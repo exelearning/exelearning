@@ -118,7 +118,8 @@ var $eXePuzzle = {
     },
 
     loadGame: function () {
-        $eXePuzzle.options = [];
+        // Running activities keep their entry; each one is stored at its own index.
+        $eXePuzzle.options.length = $eXePuzzle.activities.length;
         $eXePuzzle.activities.each(function (i) {
             const dl = $('.puzzle-DataGame', this);
             if (dl.length === 0) return; // Skip already initialized activities
@@ -129,7 +130,7 @@ var $eXePuzzle = {
             mOption.main = 'pzlMainContainer-' + i;
             mOption.idevice = 'puzzle-IDevice';
 
-            $eXePuzzle.options.push(mOption);
+            $eXePuzzle.options[i] = mOption;
 
             const pzl = $eXePuzzle.createInterfacePuzzle(i);
             dl.before(pzl).remove();

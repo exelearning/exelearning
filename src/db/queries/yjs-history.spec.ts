@@ -112,6 +112,57 @@ describe('Yjs version history queries', () => {
         expect(await countVersions(db, projectId)).toBe(0);
     });
 
+    it('writes and keeps history when the expected version still matches', async () => {
+        await upsertSnapshot(db, projectId, new Uint8Array([1]), '1');
+
+        const saved = await saveSnapshotWithHistory(db, {
+            projectId,
+            snapshotData: new Uint8Array([2]),
+            snapshotVersion: '2',
+            historyLimit: 5,
+            createdBy: userId,
+            expectedVersion: '1',
+        });
+
+        expect(saved?.snapshot_version).toBe('2');
+        expect((await listVersionHistory(db, projectId))[0].snapshot_data).toEqual(new Uint8Array([1]));
+    });
+
+    for (const historyLimit of [5, 0]) {
+        it(`writes nothing when the expected version is stale (limit ${historyLimit})`, async () => {
+            await upsertSnapshot(db, projectId, new Uint8Array([1]), '1');
+
+            const saved = await saveSnapshotWithHistory(db, {
+                projectId,
+                snapshotData: new Uint8Array([2]),
+                snapshotVersion: '3',
+                historyLimit,
+                createdBy: userId,
+                expectedVersion: '0',
+            });
+
+            expect(saved).toBeUndefined();
+            const current = await findSnapshotByProjectId(db, projectId);
+            expect(current?.snapshot_data).toEqual(new Uint8Array([1]));
+            expect(await countVersions(db, projectId)).toBe(0);
+        });
+    }
+
+    it('writes as a compare-and-set without history when the limit is zero', async () => {
+        await upsertSnapshot(db, projectId, new Uint8Array([1]), '1');
+
+        const saved = await saveSnapshotWithHistory(db, {
+            projectId,
+            snapshotData: new Uint8Array([2]),
+            snapshotVersion: '2',
+            historyLimit: 0,
+            expectedVersion: '1',
+        });
+
+        expect(saved?.snapshot_data).toEqual(new Uint8Array([2]));
+        expect(await countVersions(db, projectId)).toBe(0);
+    });
+
     it('rolls back the history entry when the canonical snapshot update fails', async () => {
         await upsertSnapshot(db, projectId, new Uint8Array([1]), '1');
         await sql`

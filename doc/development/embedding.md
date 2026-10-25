@@ -225,6 +225,10 @@ iframe.contentWindow.postMessage({
 }
 ```
 
+Sending `SAVE_FILE` completes the embedded save. The editor marks the open
+document clean and emits `PROJECT_SAVED`. The next edit emits `PROJECT_DIRTY`
+again. `REQUEST_SAVE_ERROR` leaves the document dirty.
+
 #### `REQUEST_EXPORT` (parent -> editor)
 
 Export the project in any supported format.

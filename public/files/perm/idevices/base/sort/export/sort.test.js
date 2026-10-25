@@ -987,6 +987,26 @@ describe('sort iDevice export', () => {
             expect($('#ordenaStartGame-0').css('display')).toBe('none');
         });
 
+        it('keeps a running board and files a new one under its own index', () => {
+            const mOption = setupLoad();
+            // The first board is already running (its DataGame was consumed);
+            // only the second one is rendered again, e.g. after an undo.
+            document.body.innerHTML = `
+                <div class="ordena-IDevice"><div class="ordena-running"></div></div>
+                <div class="ordena-IDevice"><div class="ordena-DataGame">encoded</div></div>`;
+            $eXeOrdena.activities = $('.ordena-IDevice');
+            const running = { msgs: {}, gameStarted: true };
+            $eXeOrdena.options = [running];
+            // The real interface reads its own options by index.
+            $eXeOrdena.createInterfaceOrdena.mockImplementation(
+                (i) => `<div id="ordenaMainContainer-${i}">${$eXeOrdena.options[i].idevice}</div>`
+            );
+
+            expect(() => $eXeOrdena.loadGame()).not.toThrow();
+            expect($eXeOrdena.options[0]).toBe(running);
+            expect($eXeOrdena.options[1]).toBe(mOption);
+        });
+
         it('leaves a timed board for the learner to start', () => {
             setupLoad({ type: 0, time: 2 });
 

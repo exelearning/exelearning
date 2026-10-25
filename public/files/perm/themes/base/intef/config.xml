@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<theme>
+    <name>intef</name>
+    <title>INTEF</title>
+    <version>20261019</version>
+    <compatibility>4.0.5</compatibility>
+    <author>INTEF</author>
+    <license>Creative Commons BY-SA 4.0</license>
+    <license-url>http://creativecommons.org/licenses/by-sa/4.0/</license-url>
+    <description>A web-accessibility–focused style for eXeLearning 4. Developed by Ignacio Gros for INTEF. Designed by INTEF and Ignacio Gros.
+
+iDevice icons by Francisco Javier Pulido Cuadrado, under the same license as this style (Creative Commons BY-SA 4.0, http://creativecommons.org/licenses/by-sa/4.0/).
+
+Atkinson Hyperlegible Next (text) and Atkinson Hyperlegible Mono (code), licensed under the SIL Open Font License, Version 1.1 (https://openfontlicense.org/open-font-license-official-text/). Copyright: Braille Institute of America, Inc. (https://www.brailleinstitute.org/freefont). The full license text is included in theme/fonts/OFL.txt.
+
+Navigation icons (theme/img/icons.png), attachment icons (theme/img/clip.png, theme/img/clip_on.png), external link icon (theme/img/external_link.svg) and message block icons (theme/img/icon_info.png, icon_success.png, icon_warning.png, icon_alert.png, icon_danger.png and icon_download.png) based on Material Icons by Google (https://fonts.google.com/icons), under the 2.0 version of the Apache License (https://www.apache.org/licenses/LICENSE-2.0.html).
+
+Creative Commons license badges (theme/img/licenses.gif): trademarks of Creative Commons (https://creativecommons.org/policies/), shown only to identify the license of the content. They are not covered by the license of this style.
+
+INSTITUTIONAL LOGOS — ALL RIGHTS RESERVED, NOT COVERED BY THE LICENSE OF THIS STYLE. The files theme/img/mefpd.png, theme/img/mefpd_sm.png, theme/img/intef.png, theme/img/intef_sm.png and theme/img/favicon.ico reproduce the corporate identity of the Ministerio de Educación, Formación Profesional y Deportes and of the Instituto Nacional de Tecnologías Educativas y de Formación del Profesorado (INTEF). They are trademarks of their respective owners and are included here solely to identify the institutions that publish this style. They may not be used, reproduced, distributed or modified — on their own or as part of a derivative work — without the express written authorization of their owners. Anyone reusing this style for their own materials must replace or remove them: setting the "logos" switch in theme/style.js to false drops the band entirely.</description>
+</theme>

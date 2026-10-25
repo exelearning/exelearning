@@ -144,6 +144,70 @@ describe('Yjs version history routes', () => {
         expect(canonicalSaveCalls).toHaveLength(1);
     });
 
+    describe('saves over an existing snapshot', () => {
+        const storedSnapshot = {
+            id: 1,
+            project_id: 1,
+            snapshot_data: new Uint8Array([1]),
+            snapshot_version: '100',
+            created_at: 1,
+            updated_at: 1,
+        };
+        let casCalls: unknown[][];
+
+        function saveRequest(markSaved: boolean): Request {
+            return new Request(
+                `http://localhost/api/projects/uuid/${mockProject.uuid}/yjs-document${markSaved ? '?markSaved=true' : ''}`,
+                {
+                    method: 'POST',
+                    headers: { ...authHeaders(userToken), 'X-Base-Version': '100' },
+                    body: new Uint8Array([9, 8, 7]),
+                },
+            );
+        }
+
+        function createAppWithSnapshot(historyResults: Array<'saved' | 'stale'>): Elysia {
+            casCalls = [];
+            const deps = createDependencies();
+            deps.queries.loadDocumentWithUpdates = async () => ({ snapshot: storedSnapshot as any, updates: [] });
+            deps.queries.replaceSnapshotIfVersion = async (...args: unknown[]) => {
+                casCalls.push(args);
+                return true;
+            };
+            const saveWithHistory = deps.history!.saveSnapshotWithHistory;
+            deps.history!.saveSnapshotWithHistory = async (...args) => {
+                const result = await saveWithHistory(...args);
+                return historyResults.shift() === 'stale' ? undefined : result;
+            };
+            return new Elysia().use(createYjsRoutes(deps));
+        }
+
+        it('passes the stored version as the compare-and-set guard on explicit saves', async () => {
+            const response = await createAppWithSnapshot(['saved']).handle(saveRequest(true));
+
+            expect(response.status).toBe(200);
+            expect(historySaveCalls).toHaveLength(1);
+            expect((historySaveCalls[0][1] as any).expectedVersion).toBe('100');
+            expect(casCalls).toHaveLength(0);
+        });
+
+        it('retries the explicit save when another save replaced the version first', async () => {
+            const response = await createAppWithSnapshot(['stale', 'saved']).handle(saveRequest(true));
+
+            expect(response.status).toBe(200);
+            expect(historySaveCalls).toHaveLength(2);
+        });
+
+        it('keeps automatic persistence on the plain compare-and-set', async () => {
+            const response = await createAppWithSnapshot([]).handle(saveRequest(false));
+
+            expect(response.status).toBe(200);
+            expect(historySaveCalls).toHaveLength(0);
+            expect(casCalls).toHaveLength(1);
+            expect(casCalls[0][4]).toBe('100');
+        });
+    });
+
     it('requires authentication to list history', async () => {
         const response = await app.handle(
             new Request(`http://localhost/api/projects/uuid/${mockProject.uuid}/yjs-history`),

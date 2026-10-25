@@ -8,6 +8,7 @@ import {
     findSnapshotByProjectId,
     getVersionById,
     pruneOldVersions,
+    replaceSnapshotIfVersion,
     upsertSnapshot,
 } from './yjs';
 
@@ -18,6 +19,8 @@ export interface SaveSnapshotWithHistoryOptions {
     historyLimit: number;
     createdBy?: number;
     description?: string;
+    /** Compare-and-set (#2615): only write when the stored snapshot still has this version. */
+    expectedVersion?: string;
 }
 
 export interface RestoreVersionSnapshotOptions {
@@ -45,22 +48,46 @@ export function binarySnapshotsEqual(left: Uint8Array, right: Uint8Array): boole
 }
 
 /**
+ * Write the canonical snapshot, as a compare-and-set when `expectedVersion` is given.
+ * Returns undefined when another save replaced the expected version first.
+ */
+async function writeSnapshot(
+    db: Kysely<Database>,
+    options: SaveSnapshotWithHistoryOptions,
+): Promise<YjsDocument | undefined> {
+    if (options.expectedVersion === undefined) {
+        return upsertSnapshot(db, options.projectId, options.snapshotData, options.snapshotVersion);
+    }
+    const replaced = await replaceSnapshotIfVersion(
+        db,
+        options.projectId,
+        options.snapshotData,
+        options.snapshotVersion,
+        options.expectedVersion,
+    );
+    return replaced ? findSnapshotByProjectId(db, options.projectId) : undefined;
+}
+
+/**
  * Save a canonical Yjs snapshot and preserve the previous distinct state.
+ * Returns undefined, writing nothing, when the `expectedVersion` check fails.
  */
 export async function saveSnapshotWithHistory(
     db: Kysely<Database>,
     options: SaveSnapshotWithHistoryOptions,
-): Promise<YjsDocument> {
+): Promise<YjsDocument | undefined> {
     if (options.historyLimit <= 0) {
-        return upsertSnapshot(db, options.projectId, options.snapshotData, options.snapshotVersion);
+        return writeSnapshot(db, options);
     }
 
     return db.transaction().execute(async transaction => {
         const current = await findSnapshotByProjectId(transaction, options.projectId);
-        const shouldCreateHistory =
-            current !== undefined && !binarySnapshotsEqual(current.snapshot_data, options.snapshotData);
+        const saved = await writeSnapshot(transaction, options);
+        if (!saved) {
+            return undefined;
+        }
 
-        if (shouldCreateHistory) {
+        if (current !== undefined && !binarySnapshotsEqual(current.snapshot_data, options.snapshotData)) {
             const description =
                 options.description ?? `Previous snapshot before explicit save (${current.snapshot_version})`;
             await createVersionSnapshot(
@@ -70,16 +97,6 @@ export async function saveSnapshotWithHistory(
                 description,
                 options.createdBy,
             );
-        }
-
-        const saved = await upsertSnapshot(
-            transaction,
-            options.projectId,
-            options.snapshotData,
-            options.snapshotVersion,
-        );
-
-        if (shouldCreateHistory) {
             await pruneOldVersions(transaction, options.projectId, options.historyLimit);
         }
 

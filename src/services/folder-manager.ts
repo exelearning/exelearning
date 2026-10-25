@@ -17,6 +17,7 @@ import {
     tryResolveAssetStoragePath as defaultTryResolveAssetStoragePath,
 } from './file-helper';
 import { buildAssetStoragePath } from '../utils/asset-paths';
+import { safeUnzipSync, ZipLimitError, type ZipDecompressionLimits } from '../utils/safe-unzip';
 
 // ============================================================================
 // Types and Interfaces
@@ -34,6 +35,7 @@ export interface FolderManagerDeps {
     crypto?: typeof cryptoModule;
     resolveAssetStoragePath?: (storagePath: string) => string;
     tryResolveAssetStoragePath?: (storagePath: string) => string | null;
+    zipLimits?: Partial<ZipDecompressionLimits>;
 }
 
 /**
@@ -159,6 +161,7 @@ export function createFolderManagerService(deps: FolderManagerDeps = {}): Folder
     const crypto = deps.crypto ?? cryptoModule;
     const resolveAssetStoragePath = deps.resolveAssetStoragePath ?? defaultResolveAssetStoragePath;
     const tryResolveAssetStoragePath = deps.tryResolveAssetStoragePath ?? defaultTryResolveAssetStoragePath;
+    const zipLimits = deps.zipLimits;
 
     // ========================================================================
     // Validation Functions
@@ -524,15 +527,21 @@ export function createFolderManagerService(deps: FolderManagerDeps = {}): Folder
             };
         }
 
-        // Extract ZIP contents
+        // Refuse archives over the decompression limits before any entry is inflated.
+        // safeUnzipSync is the shared guard for every server unzip sink. Its
+        // central-directory check is the same pre-inflation cap main added on this
+        // path, and an injected zipLimits override still applies.
         const uint8ZipData = new Uint8Array(zipData);
         let unzipped: Record<string, Uint8Array>;
         try {
-            unzipped = fflate.unzipSync(uint8ZipData);
-        } catch {
+            unzipped = safeUnzipSync(uint8ZipData, { label: 'project ZIP asset', fflate, limits: zipLimits });
+        } catch (err) {
             return {
                 success: false,
-                error: 'Failed to extract ZIP file - invalid or corrupted archive',
+                error:
+                    err instanceof ZipLimitError
+                        ? err.message
+                        : 'Failed to extract ZIP file - invalid or corrupted archive',
                 extractedCount: 0,
                 folders: [],
                 assets: [],

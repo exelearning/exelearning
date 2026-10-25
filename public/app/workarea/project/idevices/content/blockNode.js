@@ -424,8 +424,13 @@ export default class IdeviceBlockNode {
         }
 
         if (icon.source === 'asset') {
+            // The descriptor comes from the shared Y.Doc: build the <img> through the
+            // DOM so its value can never leave the attributes.
             const assetIcon = this.getAssetPreviewDescriptor(icon);
-            return `<img src="${assetIcon.previewUrl}" alt="${assetIcon.name || assetIcon.value}">`;
+            const img = document.createElement('img');
+            img.setAttribute('src', assetIcon.previewUrl || '');
+            img.setAttribute('alt', assetIcon.name || assetIcon.value);
+            return img.outerHTML;
         }
 
         const iconData = this.resolveThemeIconData(icon.value);

@@ -36,6 +36,8 @@ export default class EmbeddingBridge {
         this.messageHandler = null;
 
         this._documentReadyHandler = null;
+        this._watchedDocumentManager = null;
+        this._saveStatusHandler = null;
     }
 
     /**
@@ -91,6 +93,7 @@ export default class EmbeddingBridge {
         const bridge = this.app.project?._yjsBridge;
         const documentManager = bridge?.documentManager;
         const navigation = documentManager?.getNavigation?.();
+        this._watchDirtyState(documentManager);
 
         window.parent.postMessage({
             type: 'DOCUMENT_LOADED',
@@ -103,9 +106,38 @@ export default class EmbeddingBridge {
     }
 
     /**
+     * Relay the document's dirty/saved transitions as PROJECT_DIRTY / PROJECT_SAVED events
+     * @param {Object} documentManager
+     * @private
+     */
+    _watchDirtyState(documentManager) {
+        if (typeof documentManager?.on !== 'function' || this._watchedDocumentManager === documentManager) {
+            return;
+        }
+        this._unwatchDirtyState();
+        this._saveStatusHandler = ({ status } = {}) => {
+            if (status === 'dirty') this.notifyDirty();
+            else if (status === 'saved') this.notifySaved();
+        };
+        documentManager.on('saveStatus', this._saveStatusHandler);
+        this._watchedDocumentManager = documentManager;
+    }
+
+    /**
+     * Stop relaying the watched document's save status
+     * @private
+     */
+    _unwatchDirtyState() {
+        this._watchedDocumentManager?.off?.('saveStatus', this._saveStatusHandler);
+        this._watchedDocumentManager = null;
+        this._saveStatusHandler = null;
+    }
+
+    /**
      * Cleanup resources
      */
     destroy() {
+        this._unwatchDirtyState();
         if (this.messageHandler) {
             window.removeEventListener('message', this.messageHandler);
             this.messageHandler = null;
@@ -278,6 +310,22 @@ export default class EmbeddingBridge {
         } else if (project?._yjsBridge?.exporter) {
             blob = await project._yjsBridge.exporter.exportToBlob();
             filename = project._yjsBridge.exporter.buildFilename?.() || 'project.elpx';
+        } else if (project?._yjsBridge && window.SharedExporters?.quickExport) {
+            // The ELPX export every build ships (same path as REQUEST_EXPORT with format "elpx").
+            const bridge = project._yjsBridge;
+            const result = await window.SharedExporters.quickExport(
+                'elpx',
+                bridge.documentManager,
+                null,
+                bridge.resourceFetcher,
+                {},
+                bridge.assetManager,
+            );
+            if (!result?.success || !result.data) {
+                throw new Error(result?.error || 'Export failed');
+            }
+            blob = new Blob([result.data]);
+            filename = result.filename || 'project.elpx';
         } else {
             throw new Error('Export not available');
         }
@@ -285,13 +333,21 @@ export default class EmbeddingBridge {
         // Convert blob to ArrayBuffer
         const bytes = await blob.arrayBuffer();
 
-        this.postToParent({
+        // Handing the package to the host is the embedded save. Clear the dirty
+        // flag only after SAVE_FILE is delivered, so this transition emits
+        // PROJECT_SAVED and the next edit emits PROJECT_DIRTY. A failed export
+        // throws before this point and leaves the document dirty.
+        const delivered = this.postToParent({
             type: 'SAVE_FILE',
             requestId,
             bytes,
             filename,
             size: bytes.byteLength,
         });
+        const documentManager = project?._yjsBridge?.documentManager;
+        if (delivered && typeof documentManager?.markClean === 'function') {
+            documentManager.markClean();
+        }
     }
 
     /**
@@ -451,19 +507,23 @@ export default class EmbeddingBridge {
     /**
      * Post message to parent window
      * @param {Object} message - Message to send
+     * @returns {boolean} True when the parent received the message
      */
     postToParent(message) {
-        if (window.parent !== window && this.parentOrigin) {
-            try {
-                window.parent.postMessage(message, this.parentOrigin);
-            } catch (e) {
-                // If origin validation fails, try with '*' for same-origin iframes
-                if (e.name === 'DataCloneError') {
-                    getLogger().error('[EmbeddingBridge] Cannot serialize message:', e);
-                } else {
-                    window.parent.postMessage(message, '*');
-                }
+        if (window.parent === window || !this.parentOrigin) {
+            return false;
+        }
+        try {
+            window.parent.postMessage(message, this.parentOrigin);
+            return true;
+        } catch (e) {
+            // If origin validation fails, try with '*' for same-origin iframes
+            if (e.name === 'DataCloneError') {
+                getLogger().error('[EmbeddingBridge] Cannot serialize message:', e);
+                return false;
             }
+            window.parent.postMessage(message, '*');
+            return true;
         }
     }
 

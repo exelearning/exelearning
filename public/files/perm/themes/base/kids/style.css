@@ -1,0 +1,1996 @@
+/*!
+ * eXeLearning v4+ Kids Style File
+ * ----------------------
+ * Author: Ignacio Gros
+ * Project: eXeLearning.net
+ *
+ * This CSS file is part of a style for eXeLearning.
+ * Licensed under Creative Commons Attribution-ShareAlike (CC BY-SA).
+ *
+ * Note: The style's config.xml contains additional information
+ *       about materials (images, fonts, logos, etc.) created by third
+ *       parties and included in this style. The institutional logos are
+ *       trademarks and may not be reused without written permission.
+ */
+
+/* Typefaces */
+@font-face {
+    font-family: "Andika";
+    src: url(fonts/Andika-Regular.woff2) format("woff2");
+    font-weight: 400;
+    font-style: normal;
+    font-display: swap;
+}
+@font-face {
+    font-family: "Andika";
+    src: url(fonts/Andika-Italic.woff2) format("woff2");
+    font-weight: 400;
+    font-style: italic;
+    font-display: swap;
+}
+@font-face {
+    font-family: "Andika";
+    src: url(fonts/Andika-Bold.woff2) format("woff2");
+    font-weight: 700;
+    font-style: normal;
+    font-display: swap;
+}
+@font-face {
+    font-family: "Andika";
+    src: url(fonts/Andika-BoldItalic.woff2) format("woff2");
+    font-weight: 700;
+    font-style: italic;
+    font-display: swap;
+}
+
+/* Color palette */
+:root {
+    /* Header geometry */
+    --exe-bar-height: 84px; /* .nav-buttons */
+    --exe-logos-height: 0px; /* Institutional logo band */
+    /* Typefaces */
+    --exe-font: "Andika", Arial, Verdana, Helvetica, sans-serif;
+    --exe-font-mono: ui-monospace, "Cascadia Mono", Consolas, "DejaVu Sans Mono",
+        monospace;
+    /* Brand: teal */
+    --exe-teal-dark: #0a8078; /* Top bar, page counter, search button */
+    --exe-teal: #0b756f; /* Accent: titles, buttons, components */
+    --exe-teal-hover: #005c57;
+    --exe-teal-deep: #0b5f61; /* Text on the light teal surface */
+    /* Brand: orange */
+    --exe-orange: #b84510; /* Links, and the current page in the menu */
+    --exe-orange-hover: #8f3510;
+    --exe-orange-deep: #a83e0e; /* Text on the tinted menu surface */
+    --exe-orange-light: #f26a1b; /* Non-text accents only */
+    --exe-orange-vivid: #c43b00; /* Current page in the menu, on --exe-orange-surface only */
+    --exe-orange-surface: #fef0dc; /* Current page in the menu */
+    /* Text */
+    --exe-ink: #0a1030; /* Headings */
+    --exe-text: #2f3047; /* Body text */
+    --exe-text-soft: #5f6a70; /* Secondary text */
+    --exe-text-muted: #6b6b6b; /* Breadcrumbs */
+    --exe-text-faint: #9aa0a6; /* Breadcrumb separator */
+    /* Surfaces */
+    --exe-bg: #fdf9f2;
+    --exe-surface: #fcf6e6; /* Footer, menu panel */
+    --exe-surface-hover: #f4e9cf; /* Menu hover */
+    --exe-surface-accent: #e4f4ec; /* Box head, tables, effects */
+    --exe-surface-accent-hover: #d5ecdf;
+    /* Borders */
+    --exe-border: #ebe2d2;
+    --exe-border-soft: #efe7d9; /* False left column divider */
+    --exe-border-accent: #c3e3d4;
+    --exe-border-accent-strong: #a5d6c1; /* Table grid */
+    --exe-border-faint: #dfeae3;
+    --exe-block-info: #0b7274;
+    --exe-block-info-surface: #def2f2;
+    --exe-block-success: #2f6b3a;
+    --exe-block-success-surface: #e2f2e6;
+    --exe-block-warning: #8a6000;
+    --exe-block-warning-surface: #faf1d6;
+    --exe-block-alert: #a8480a;
+    --exe-block-alert-surface: #fdeade;
+    --exe-block-danger: #a32633;
+    --exe-block-danger-surface: #fae5e7;
+}
+
+/* Institutional logo band */
+body.logos {
+    --exe-logos-height: 48px;
+}
+
+/* Common definitions */
+body.exe-export {
+    background: var(--exe-bg);
+}
+.exe-content {
+    font-family: var(--exe-font);
+    line-height: 1.6;
+    font-size: 1.05em;
+    color: var(--exe-text);
+    background: var(--exe-bg);
+}
+body.exe-export input,
+body.exe-export select,
+body.exe-export textarea {
+    font-family: var(--exe-font);
+    font-size: 1em;
+}
+body.exe-export .pre-code,
+body.exe-export .highlighted-code,
+.exe-content pre,
+.exe-content code {
+    font-family: var(--exe-font-mono);
+    font-size: 0.9em;
+    border-radius: 0;
+}
+body#tinymce {
+    font-family: var(--exe-font);
+    line-height: 1.5;
+    font-size: 1.05em;
+}
+.exe-content p {
+    margin: 1em 0;
+}
+.exe-content a {
+    color: var(--exe-orange);
+    text-decoration: none;
+}
+/* Attachment links */
+.exe-content a.exe-attachment-link {
+    background: url(img/clip.png) no-repeat 0 50%;
+    padding-left: 20px;
+    background-size: 16px auto;
+    margin: 0 2px;
+}
+.exe-content a.exe-attachment-link.tmp,
+.exe-content a.exe-attachment-link:hover,
+.exe-content a.exe-attachment-link:focus {
+    background-image: url(img/clip_on.png);
+}
+.exe-content a:hover,
+.exe-content a:focus {
+    color: var(--exe-orange-hover);
+    text-decoration: underline;
+}
+/* Figure captions */
+.exe-content .figcaption {
+    text-align: center;
+}
+
+/* External links */
+.exe-content a.exe-external-link {
+    background: url(img/external_link.svg) no-repeat right 40%;
+    padding-right: 17px;
+}
+.exe-content figcaption a.exe-external-link {
+    background: none;
+    padding-right: 0;
+}
+.box-content a {
+    text-decoration: underline;
+}
+.box-content a:hover {
+    text-decoration: none;
+}
+.box-content a:focus {
+    text-decoration: underline;
+}
+.box-content a:focus-visible {
+    --bs-focus-ring-color: var(--exe-teal);
+}
+
+/* Quotations */
+.exe-content :is(.exe-quote-cite, .styled-qc) {
+    max-width: 40em;
+    margin: 1.5em auto;
+    padding: 0.35em 0 0.35em 1.5em;
+    border-left: 5px solid var(--exe-orange);
+    font-family: var(--exe-font);
+    font-size: 1.05em;
+    line-height: 1.6;
+}
+.exe-content :is(.exe-quote-cite, .styled-qc) p {
+    font-style: italic;
+    margin: 0 0 0.8em;
+}
+.exe-content :is(.exe-quote-cite, .styled-qc) p:last-of-type {
+    margin-bottom: 0;
+}
+/* Quote with authorship: the opening mark hangs in the left gutter */
+.exe-content .styled-qc {
+    padding-left: 3em;
+}
+.exe-content .styled-qc:before {
+    color: var(--exe-orange);
+    font-size: 3.5em;
+    line-height: 1;
+    left: 14px;
+    top: -2px;
+}
+.exe-content .exe-quote-cite cite {
+    color: var(--exe-text-soft);
+    font-style: normal;
+    font-size: 0.9em;
+    margin-top: 1em;
+}
+.exe-content .exe-quote-cite cite:before {
+    content: "\2014\00a0";
+}
+@media (max-width: 576px) {
+    .exe-content .styled-qc {
+        padding-left: 2.25em;
+    }
+    .exe-content .styled-qc:before {
+        font-size: 2.75em;
+        left: 10px;
+    }
+}
+
+/* Effects: accordion */
+.exe-content .exe-accordion {
+    width: 100%;
+    margin: 1.5em 0;
+    border: 0;
+    background: none;
+    box-shadow: none !important; /* JS writes a shadow tinted with the title color */
+}
+.exe-content .fx-accordion-section .fx-accordion-title {
+    background: var(--exe-surface-accent);
+    border: 1px solid var(--exe-border);
+    border-color: var(--exe-border) !important; /* JS writes it inline */
+    border-radius: 10px;
+    margin-top: 10px;
+    padding: 14px 60px 14px 20px;
+    position: relative;
+    transition: background 0.3s ease;
+}
+.exe-content .fx-accordion-title-0 {
+    margin-top: 0;
+}
+.exe-content .fx-accordion-section .fx-accordion-title:hover,
+.exe-content .fx-accordion-section .fx-accordion-title:focus-visible {
+    background: var(--exe-surface-accent-hover);
+    border-color: var(--exe-border-faint) !important; /* JS writes border-color inline */
+}
+.exe-content .fx-accordion-section .fx-accordion-title.active {
+    background: var(--exe-bg);
+    border-bottom: 0;
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+}
+.exe-content .fx-accordion-title h2 {
+    color: var(--exe-teal-deep);
+    font-size: 1.05em;
+    padding-right: 0;
+    margin: 0;
+}
+.exe-content .fx-accordion-title:hover h2,
+.exe-content .fx-accordion-title:focus-visible h2 {
+    color: var(--exe-ink);
+}
+.exe-content .fx-accordion-title.active h2 {
+    color: var(--exe-teal);
+}
+.exe-content .fx-accordion-title:after {
+    content: "";
+    width: 32px;
+    height: 32px;
+    display: block;
+    position: absolute;
+    top: 50%;
+    right: 14px;
+    margin-top: -16px;
+    background: url(img/icons.png) no-repeat -192px 50%; /* Cell 6 at auto 32px */
+    background-size: auto 32px;
+    opacity: 0.75;
+    transition: transform 0.3s ease, opacity 0.3s ease;
+    transform: rotate(180deg);
+}
+.exe-content .fx-accordion-title:hover:after,
+.exe-content .fx-accordion-title:focus-visible:after {
+    opacity: 1;
+}
+.exe-content .fx-accordion-title.active:after {
+    transform: rotate(0);
+}
+.exe-content .fx-accordion-content {
+    color: var(--exe-text);
+    background: var(--exe-bg);
+    border: 1px solid var(--exe-border);
+    border-top: 0;
+    border-radius: 0 0 10px 10px;
+    margin-top: 0;
+    padding: 4px 20px 12px 20px;
+}
+
+/* Effects: tabs */
+.exe-content .exe-tabs {
+    width: 100%;
+    margin: 1.5em 0;
+}
+.exe-content .exe-tabs .fx-tabs {
+    border-bottom: 1px solid var(--exe-border);
+}
+.exe-content .exe-tabs .fx-tabs a {
+    padding: 12px 20px;
+    color: var(--exe-text-soft);
+    font-weight: 700;
+    border-radius: 6px 6px 0 0;
+    transition: background 0.3s ease, color 0.3s ease;
+}
+.exe-content .exe-tabs .fx-tabs a:hover,
+.exe-content .exe-tabs .fx-tabs a:focus {
+    background: var(--exe-surface-accent);
+    color: var(--exe-teal-hover);
+}
+.exe-content .exe-tabs .fx-tabs .fx-current a {
+    background: none;
+    color: var(--exe-teal);
+    box-shadow: inset 0 -3px 0 var(--exe-teal);
+}
+.exe-content .exe-tabs .fx-tab-content {
+    background: var(--exe-surface-accent);
+    padding: 20px 24px;
+    border-radius: 0 0 10px 10px;
+}
+.exe-content .exe-tabs .fx-default-panel {
+    border-radius: 0 0 10px 10px;
+}
+
+/* Effects: pagination and carousel controls */
+.exe-content .exe-paginated,
+.exe-content .exe-carousel {
+    width: 100%;
+    margin: 1.5em 0;
+}
+.exe-content .fx-pagination {
+    margin: 0 0 12px 0;
+}
+.exe-content .fx-carousel-pagination {
+    margin: 12px 0 0 0;
+}
+.exe-content .fx-pagination a {
+    background: none;
+    color: var(--exe-teal);
+    font-weight: 700;
+    min-width: 34px;
+    padding: 5px 10px;
+    border-radius: 6px;
+    box-shadow: inset 0 0 0 1px var(--exe-border-accent);
+    transition: background 0.3s ease;
+}
+.exe-content .fx-pagination a:hover,
+.exe-content .fx-pagination a:focus {
+    background: var(--exe-surface-accent-hover);
+    color: var(--exe-teal-hover);
+}
+.exe-content .fx-pagination .fx-current a,
+.exe-content .fx-pagination .fx-current a:hover,
+.exe-content .fx-pagination .fx-current a:focus {
+    background: var(--exe-teal-dark);
+    color: #ffffff;
+    box-shadow: none;
+}
+.exe-content .fx-pagination .fx-disabled {
+    opacity: 1;
+}
+.exe-content .fx-pagination .fx-disabled a {
+    color: var(--exe-text-faint);
+    box-shadow: inset 0 0 0 1px var(--exe-border);
+    background: none;
+}
+.exe-content .fx-page-content,
+.exe-content .fx-carousel-content {
+    background: var(--exe-surface-accent);
+    padding: 8px 24px;
+    border-radius: 10px;
+}
+.exe-content .fx-page-content > h2:first-child,
+.exe-content .fx-carousel-content > h2:first-child {
+    color: var(--exe-teal);
+    margin-top: 0.667em;
+}
+/* Carousel arrows */
+.exe-content .fx-carousel-pagination .fx-carousel-prev-next a {
+    width: 44px;
+    height: 44px;
+    line-height: 44px;
+    font-size: 20px;
+    border-radius: 22px;
+    text-indent: 0;
+    text-align: center;
+    padding: 0;
+    min-width: 0;
+}
+.exe-content .fx-carousel-pagination .fx-carousel-next a {
+    text-indent: 0;
+}
+/* Focus ring (exe_effects.css draws the one on the effects) */
+.exe-content {
+    --exe-fx-focus-color: var(--exe-teal);
+    --exe-icon-color: var(--exe-teal); /* General icons; the PNGs are full colour */
+}
+.exe-content .exe-dl dt a:focus-visible,
+.exe-content .exe-dl-toggler a:focus-visible {
+    outline: 2px solid var(--exe-teal);
+    outline-offset: 2px;
+}
+
+/* Effects: timeline */
+.exe-content .exe-timeline {
+    color: var(--exe-teal);
+}
+.exe-content div.fx-timeline-container {
+    border-left-width: 1px;
+    margin: 1.5em auto;
+}
+/* JS writes the background inline */
+.exe-content .fx-timeline-major h2 a {
+    background: none !important;
+    color: var(--exe-ink);
+    font-weight: 700;
+    padding: 0;
+    line-height: 1.4;
+}
+.exe-content .fx-timeline-major h2 a:hover,
+.exe-content .fx-timeline-major h2 a:focus {
+    color: var(--exe-teal);
+}
+.exe-content .fx-timeline-major h2 {
+    font-size: 1.15em;
+    margin: 0 0 6px;
+    padding: 0 0 0 22px;
+    position: relative;
+}
+.exe-content .fx-timeline-major h2:before {
+    content: "";
+    position: absolute;
+    left: -5px;
+    top: 0.55em;
+    width: 9px;
+    height: 9px;
+    margin-left: 0;
+    border-radius: 50%;
+    background: var(--exe-teal);
+}
+.exe-content .fx-timeline-minor h3 {
+    font-size: 1em;
+    font-weight: 700;
+    margin: 4px 0 10px;
+    padding-left: 22px;
+    white-space: normal;
+}
+.exe-content .fx-timeline-major h3:before {
+    content: "";
+    margin: 0;
+}
+.exe-content .exe-timeline p,
+.exe-content .fx-timeline-event {
+    color: var(--exe-text);
+}
+.exe-content .fx-timeline-event {
+    padding-left: 22px;
+}
+/* JS writes color inline as rgba(tone, .8), which falls under AA on white */
+.exe-content .fx-timeline-event-trigger a {
+    color: var(--exe-teal) !important;
+}
+.exe-content .fx-timeline-event-trigger a:hover,
+.exe-content .fx-timeline-event-trigger a:focus {
+    color: var(--exe-teal-hover) !important; /* Same inline color */
+}
+/* JS writes background-color inline */
+.exe-content .fx-timeline-container a.fx-timeline-expand {
+    background-color: var(--exe-teal-dark) !important;
+    color: #ffffff;
+    border-radius: 6px;
+    padding: 6px 12px;
+    font-weight: 700;
+}
+.exe-content .fx-timeline-container a.fx-timeline-expand:hover,
+.exe-content .fx-timeline-container a.fx-timeline-expand:focus {
+    background-color: var(--exe-teal-hover) !important;
+    opacity: 1;
+}
+
+/* Definition lists */
+.exe-content .exe-dl {
+    color: var(--exe-teal);
+    margin-left: 0;
+}
+.exe-content .exe-dl dt a {
+    color: var(--exe-teal);
+    font-weight: 700;
+}
+.exe-content .exe-dl dt a:hover,
+.exe-content .exe-dl dt a:focus {
+    color: var(--exe-teal-hover);
+    text-decoration: none;
+}
+.exe-content .exe-dl .icon {
+    border-radius: 4px;
+    margin-right: 0.75em;
+}
+.exe-content .exe-dl dd {
+    color: var(--exe-text);
+    border-left: 1px solid var(--exe-border-accent);
+    padding-left: 1em;
+}
+.js .exe-content .exe-dl dd {
+    margin: 0.6em 1em 1.2em 9px;
+}
+.exe-content .exe-dl-toggler a {
+    color: var(--exe-orange);
+}
+.exe-content .exe-dl-toggler a:hover,
+.exe-content .exe-dl-toggler a:focus {
+    color: var(--exe-orange-hover);
+}
+
+/* Message blocks */
+.exe-content
+    :is(
+        .exe-block-info,
+        .exe-block-success,
+        .exe-block-warning,
+        .exe-block-alert,
+        .exe-block-danger,
+        .exe-block-download
+    ) {
+    color: var(--exe-text);
+    border: 0;
+    border-radius: 0 6px 6px 0;
+    padding: 1em 1.25em;
+    margin: 1em 0;
+}
+.exe-content
+    :is(
+        .exe-block-info,
+        .exe-block-success,
+        .exe-block-warning,
+        .exe-block-alert,
+        .exe-block-danger,
+        .exe-block-download
+    )
+    > :first-child {
+    margin-top: 0;
+}
+.exe-content
+    :is(
+        .exe-block-info,
+        .exe-block-success,
+        .exe-block-warning,
+        .exe-block-alert,
+        .exe-block-danger,
+        .exe-block-download
+    )
+    > :last-child {
+    margin-bottom: 0;
+}
+.exe-content .exe-block-info {
+    background: var(--exe-block-info-surface);
+    box-shadow: inset 3px 0 0 var(--exe-block-info);
+}
+.exe-content .exe-block-success {
+    background: var(--exe-block-success-surface);
+    box-shadow: inset 3px 0 0 var(--exe-block-success);
+}
+.exe-content .exe-block-warning {
+    background: var(--exe-block-warning-surface);
+    box-shadow: inset 3px 0 0 var(--exe-block-warning);
+}
+.exe-content .exe-block-alert {
+    background: var(--exe-block-alert-surface);
+    box-shadow: inset 3px 0 0 var(--exe-block-alert);
+}
+.exe-content .exe-block-danger {
+    background: var(--exe-block-danger-surface);
+    box-shadow: inset 3px 0 0 var(--exe-block-danger);
+}
+.exe-content
+    :is(
+        .exe-block-info,
+        .exe-block-success,
+        .exe-block-warning,
+        .exe-block-alert,
+        .exe-block-danger,
+        .exe-block-download
+    )
+    :is(a, a:hover, a:focus) {
+    color: var(--exe-orange-hover);
+    text-decoration: underline;
+}
+.exe-content .exe-block-info :is(a, a:hover, a:focus) {
+    color: var(--exe-block-info);
+}
+.exe-content .exe-block-success :is(a, a:hover, a:focus) {
+    color: var(--exe-block-success);
+}
+.exe-content .exe-block-warning :is(a, a:hover, a:focus) {
+    color: var(--exe-block-warning);
+}
+.exe-content .exe-block-alert :is(a, a:hover, a:focus) {
+    color: var(--exe-block-alert);
+}
+.exe-content .exe-block-danger :is(a, a:hover, a:focus) {
+    color: var(--exe-block-danger);
+}
+.exe-content
+    :is(
+        .exe-block-info,
+        .exe-block-success,
+        .exe-block-warning,
+        .exe-block-alert,
+        .exe-block-danger
+    ).exe-block-with-icon,
+.exe-content .exe-block-download {
+    background-repeat: no-repeat;
+    background-position: 1.15em 1.05em;
+    background-size: 24px auto;
+    padding-left: 3.25em;
+}
+.exe-content .exe-block-info.exe-block-with-icon {
+    background-image: url(img/icon_info.png);
+}
+.exe-content .exe-block-success.exe-block-with-icon {
+    background-image: url(img/icon_success.png);
+}
+.exe-content .exe-block-warning.exe-block-with-icon {
+    background-image: url(img/icon_warning.png);
+}
+.exe-content .exe-block-alert.exe-block-with-icon {
+    background-image: url(img/icon_alert.png);
+}
+.exe-content .exe-block-danger.exe-block-with-icon {
+    background-image: url(img/icon_danger.png);
+}
+/* Download blocks: one icon per block, whatever the number of links */
+.exe-content .exe-block-download {
+    background-color: var(--exe-surface-accent);
+    background-image: url(img/icon_download.png);
+    box-shadow: inset 3px 0 0 var(--exe-icon-color);
+}
+
+/* Text iDevice: activity data (duration, grouping). Provisional, tied to the current dl > div.inline markup */
+.exe-content .exe-text-activity > dl {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 0.5em 1.25em;
+    margin: 0 0 1.1em 0;
+}
+.exe-content .exe-text-activity > dl > div.inline {
+    margin: 0;
+    background: var(--exe-bg);
+    border: 1px solid var(--exe-border);
+    border-left: 3px solid var(--exe-orange);
+    border-radius: 0 6px 6px 0;
+    box-shadow: rgba(149, 157, 165, 0.15) 0px 1px 3px;
+    padding: 0.3em 0.9em 0.3em 1em;
+}
+.exe-content .exe-text-activity > dl > div.inline > dt {
+    color: var(--exe-orange);
+    font-weight: 700;
+    margin: 0;
+}
+.exe-content .exe-text-activity > dl > div.inline > dd {
+    color: var(--exe-ink);
+    margin: 0 0 0 0.5em;
+}
+
+/* Tables */
+.exe-content .exe-table,
+.exe-content .exe-table td,
+.exe-content .exe-table th {
+    border-color: var(--exe-border-accent-strong);
+}
+.exe-content .exe-table tbody tr {
+    background: var(--exe-bg);
+}
+.exe-content .exe-table thead th {
+    background: var(--exe-teal-dark);
+    color: #ffffff;
+    border-color: var(--exe-teal);
+}
+.exe-content .exe-table tr:nth-child(2n-1) td,
+.exe-content .exe-table tbody tr:nth-child(2n-1) th,
+.exe-content .exe-table tbody tr:nth-child(2n) th,
+.exe-content .exe-table thead + tbody tr:nth-child(2n-1) th {
+    background: var(--exe-surface-accent);
+}
+.exe-content .exe-table tbody tr:nth-child(2n-1) th {
+    background: var(--exe-surface-accent-hover);
+}
+.exe-content .exe-table thead + tbody tr:nth-child(2n) th {
+    background: var(--exe-bg);
+}
+
+/* Minimalist tables */
+.exe-content .exe-table-minimalist tr {
+    background: var(--exe-bg);
+}
+.exe-content .exe-table-minimalist thead th,
+.exe-content .exe-table-minimalist caption {
+    border-bottom-color: var(--exe-teal);
+}
+.exe-content .exe-table-minimalist thead th {
+    color: var(--exe-teal-deep);
+}
+.exe-content .exe-table-minimalist td,
+.exe-content .exe-table-minimalist tbody th {
+    border-bottom-color: var(--exe-border-accent-strong);
+    color: var(--exe-text-soft);
+}
+.exe-content .exe-table-minimalist tbody tr:hover td,
+.exe-content .exe-table-minimalist tbody tr:hover th {
+    color: var(--exe-ink);
+}
+.exe-content .exe-table-minimalist tr:nth-child(2n-1) td,
+.exe-content .exe-table-minimalist tbody tr:nth-child(2n-1) th {
+    background: var(--exe-surface-accent);
+}
+
+/* Page header */
+.exe-content .package-header {
+    color: var(--exe-text);
+    position: relative;
+}
+.exe-content .package-header .package-title {
+    color: var(--exe-ink);
+}
+body:has(#teacher-mode-toggler-wrapper) .package-title {
+    padding-right: 100px;
+}
+#teacher-mode-toggler-wrapper {
+    float: right;
+    position: relative;
+    z-index: 100;
+}
+body:has(.package-header #darkModeToggler) #teacher-mode-toggler-wrapper {
+    margin-right: 45px;
+}
+#teacher-mode-toggler-wrapper .form-check-input {
+    filter: grayscale(1);
+}
+#teacher-mode-toggler-wrapper .form-check-input:checked {
+    filter: grayscale(0);
+    background-color: var(--exe-teal);
+    border-color: var(--exe-teal);
+}
+.exe-content .package-title {
+    font-size: 1.2em;
+    margin: 0;
+}
+.exe-content .package-title a,
+.exe-content .package-title a:hover,
+.exe-content .package-title a:focus {
+    color: inherit;
+}
+.exe-content .package-title a {
+    text-decoration: none;
+}
+.exe-content .package-title a:hover {
+    text-decoration: underline;
+}
+.exe-content .package-title a:focus-visible {
+    outline: 2px solid var(--exe-teal);
+    outline-offset: 2px;
+}
+.exe-content .package-subtitle {
+    font-size: 1em;
+    margin: 0.5em 0 0 0;
+    opacity: 0.9;
+}
+.exe-content .page-header {
+    color: var(--exe-ink);
+    padding-top: 20px;
+    border-top: 0;
+    margin-top: 20px;
+}
+.exe-content .page-title {
+    color: var(--exe-ink);
+    font-size: 2.2em;
+    margin: 0;
+    font-weight: 700;
+}
+/* Short accent rule under the page title */
+.exe-content .page-title:not(:empty):after {
+    content: "";
+    display: block;
+    width: 120px;
+    height: 4px;
+    margin-top: 0.4em;
+    background: var(--exe-orange-light);
+    border-radius: 2px;
+}
+/* Content headings. h1 stays oversized: it is the page's own level, not the author's */
+.exe-content h1,
+.exe-content h2,
+.exe-content h3,
+.exe-content h4,
+.exe-content h5,
+.exe-content h6 {
+    font-weight: 700;
+    color: var(--exe-ink);
+    margin-top: 1.2em;
+}
+.exe-content :is(h1, h2, h3, h4, h5, h6):first-child {
+    margin-top: 0;
+}
+.exe-content h1 {
+    font-size: 2.1em;
+    color: var(--exe-teal);
+}
+.exe-content h2 {
+    font-size: 1.5em;
+    color: var(--exe-teal);
+}
+.exe-content h3 {
+    font-size: 1.35em;
+    color: var(--exe-orange-deep);
+}
+.exe-content h4 {
+    font-size: 1.2em;
+}
+.exe-content h5 {
+    font-size: 1.1em;
+}
+.exe-content h6 {
+    font-size: 1.05em;
+}
+/* The effects build their headings from the author's: the component keeps its own ink */
+.exe-content :where(.exe-fx) :is(h1, h2, h3) {
+    color: var(--exe-ink);
+}
+
+/* Page content and common elements (max-width) */
+.exe-export .exe-content {
+    max-width: 1280px;
+    padding: 20px;
+    margin: 0 auto;
+    position: relative;
+}
+
+/* Page counter */
+.exe-content .page-counter {
+    position: absolute;
+    top: 55px;
+    right: 40px;
+    background: none;
+    color: var(--exe-text-soft);
+    font-size: 0.9em;
+    z-index: 99;
+}
+
+/* Boxes / iDevices */
+.exe-content .box {
+    border: 1px solid var(--exe-border-accent);
+    margin: 24px 0;
+    border-radius: 16px;
+    box-shadow: rgba(149, 157, 165, 0.1) 0px 2px 8px;
+}
+.exe-content .box-content {
+    border-top: 1px solid var(--exe-border-accent);
+}
+.exe-content .box-head {
+    border: 0;
+    background: var(--exe-surface-accent);
+    /* Icon (50) + padding (16 x 2) */
+    min-height: 82px;
+    padding: 16px 20px;
+    position: relative;
+    border-top-left-radius: 16px;
+    border-top-right-radius: 16px;
+}
+.exe-content .box-icon {
+    float: left;
+    margin-right: 16px;
+}
+.exe-content .box-head.no-icon {
+    padding-left: 20px;
+}
+.exe-content .box-icon img {
+    width: 50px;
+    height: 50px;
+    object-fit: contain;
+}
+/* General icons: masked span on currentColor. The 1.2 offsets the 20/24 live area */
+.exe-content .box-icon .exe-material-icon,
+#node-content-container.exe-content .box-head .exe-material-icon {
+    width: 45px;
+    height: 45px;
+    color: var(--exe-icon-color);
+    transform: scale(1.2);
+}
+/* iDevice icons in the application */
+#node-content-container.exe-content .box-head .exe-icon img {
+    max-width: none;
+    height: 45px;
+    width: auto;
+    scale: 1;
+    margin-right: -10px;
+}
+.exe-export .box-head .box-title {
+    margin-top: 0;
+    padding-top: 10px;
+    color: var(--exe-teal);
+    font-weight: 700;
+    font-size: 1.55em;
+}
+.exe-export .box-head .box-toggle {
+    position: absolute;
+    right: 16px;
+    top: 16px;
+    border: none;
+    display: block;
+    background: url(img/icons.png) no-repeat -300px 0; /* Cell 6 */
+    background-size: auto 50px;
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    transition: rotate 0.5s ease;
+}
+.exe-content .box.minimized .box-head {
+    border-radius: 16px;
+}
+.exe-export .box.minimized .box-head .box-toggle {
+    rotate: -180deg;
+}
+.exe-export .box-head .box-toggle span {
+    position: absolute;
+    clip: rect(1px 1px 1px 1px);
+    clip: rect(1px, 1px, 1px, 1px);
+}
+.exe-export .box-content {
+    padding: 28px;
+}
+.exe-content .box-content img {
+    border-radius: 8px;
+}
+/* iDevices with no box head (no title, icon or toggler) */
+.exe-export .box.no-header:not(:has(.box-toggle)) .box-head {
+    display: none;
+}
+.exe-export .box.no-header:not(:has(.box-toggle)) .box-content {
+    border-top: 0;
+}
+
+/* Feedback buttons */
+.exe-content input.feedbackbutton,
+.exe-content .iDevice_buttons input[type="button"],
+.exe-content .iDevice_buttons input[type="submit"],
+.exe-content .iDevice_buttons button {
+    border: none;
+    background: var(--exe-teal);
+    color: #ffffff;
+    padding: 0.5em 1em;
+    margin: 0.5em 0;
+    border-radius: 6px;
+    transition: all 1s ease;
+}
+.exe-content input.feedbackbutton:hover,
+.exe-content input.feedbackbutton:focus,
+.exe-content .iDevice_buttons input[type="button"]:hover,
+.exe-content .iDevice_buttons input[type="button"]:focus,
+.exe-content .iDevice_buttons input[type="submit"]:hover,
+.exe-content .iDevice_buttons input[type="submit"]:focus,
+.exe-content .iDevice_buttons button:hover,
+.exe-content .iDevice_buttons button:focus {
+    background: var(--exe-teal-hover);
+}
+/* UDL iDevice buttons */
+.exe-content .exe-udlContent .udl-btn {
+    border-radius: 6px;
+}
+/* Bootstrap buttons */
+.exe-content .btn-primary {
+    --bs-btn-bg: var(--exe-teal);
+    --bs-btn-border-color: var(--exe-teal);
+    --bs-btn-hover-bg: var(--exe-teal-hover);
+    --bs-btn-hover-border-color: var(--exe-teal-hover);
+    --bs-btn-active-bg: var(--exe-teal-hover);
+    --bs-btn-active-border-color: var(--exe-teal-hover);
+}
+
+/* True or false */
+.exe-content .TOFP-QuestionDiv {
+    background: var(--exe-surface-accent);
+}
+.exe-content .TOFP-QuestionDivBlack {
+    background: var(--exe-surface-accent-hover);
+}
+.exe-content .TOFP-Suggestion,
+.exe-content .TOFP-Feedback {
+    background: var(--exe-surface-accent-hover);
+}
+
+/* Site footer */
+#siteFooter {
+    background: var(--exe-surface);
+    color: var(--exe-text);
+    padding: 20px;
+    border: 1px solid var(--exe-border);
+    border-radius: 4px;
+}
+/* Footer links */
+#siteFooter a {
+    color: var(--exe-orange-hover);
+    text-decoration: underline;
+}
+#siteFooter a:hover,
+#siteFooter a:focus {
+    color: var(--exe-orange-hover);
+    text-decoration: none;
+}
+
+/* Licenses */
+#packageLicense {
+    text-align: left;
+    font-size: 0.9em;
+    line-height: 1em;
+    margin-bottom: 1em;
+}
+#packageLicense p {
+    margin: 0;
+}
+#packageLicense .license-label {
+    position: absolute;
+    clip: rect(1px 1px 1px 1px);
+    clip: rect(1px, 1px, 1px, 1px);
+}
+#packageLicense a {
+    color: var(--exe-text-soft);
+    text-transform: capitalize;
+    display: inline-block;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    max-width: 100%;
+    overflow: hidden;
+    line-height: 15px;
+}
+#packageLicense a:hover,
+#packageLicense a:focus {
+    text-decoration: none;
+    color: var(--exe-orange);
+}
+#packageLicense.propietary {
+    position: absolute;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    height: 0;
+}
+/* Creative Commons badges: seven rows of 100px */
+#packageLicense.cc {
+    padding: 0 20px 0 90px;
+    background: url(img/licenses.gif) no-repeat 0 0;
+}
+#packageLicense.cc-by-sa {
+    background-position: 0 -100px;
+}
+#packageLicense.cc-by-nd {
+    background-position: 0 -200px;
+}
+#packageLicense.cc-by-nc {
+    background-position: 0 -300px;
+}
+#packageLicense.cc-by-nc-sa {
+    background-position: 0 -400px;
+}
+#packageLicense.cc-by-nc-nd {
+    background-position: 0 -500px;
+}
+#packageLicense.cc-0 {
+    background-position: 0 -600px;
+}
+
+/* Website */
+.exe-web-site .exe-content {
+    max-width: none;
+    padding: 0;
+}
+.exe-web-site .main-header,
+.exe-web-site .page-content,
+.exe-web-site #siteFooterContent {
+    max-width: 1280px;
+    margin: 0 auto;
+}
+.exe-web-site .page-content {
+    padding: 0;
+}
+
+/* Breadcrumbs */
+#siteBreadcrumbs {
+    font-size: 0.9em;
+    color: var(--exe-text-muted);
+}
+#siteBreadcrumbs ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+#siteBreadcrumbs li {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: inline;
+}
+#siteBreadcrumbs a {
+    color: var(--exe-teal);
+    text-decoration: none;
+}
+#siteBreadcrumbs a:hover,
+#siteBreadcrumbs a:focus {
+    color: var(--exe-teal-dark);
+}
+#siteBreadcrumbs a img {
+    position: relative;
+    top: -2px;
+}
+#siteBreadcrumbs a:after {
+    content: "\2771";
+    margin: 0 0.6em;
+    color: var(--exe-text-faint);
+}
+#exe-index #siteBreadcrumbs {
+    display: none;
+}
+#siteBreadcrumbsHome:hover img,
+#siteBreadcrumbsHome:focus img {
+    filter: brightness(1.1) saturate(1.1) hue-rotate(350deg);
+}
+#siteBreadcrumbs strong {
+    font-weight: normal;
+    opacity: 0.7;
+}
+.package-header.width-breadcrumbs .package-title,
+.package-header.width-breadcrumbs .package-subtitle {
+    position: absolute;
+    clip: rect(1px 1px 1px 1px);
+    clip: rect(1px, 1px, 1px, 1px);
+}
+
+/* Navigation menu */
+#skipNav:focus {
+    top: 4px;
+}
+#sidebar-nav.fixed {
+    position: fixed;
+}
+#siteNav {
+    float: left;
+    width: 360px;
+    background: var(--exe-surface);
+}
+@media (min-width: 676px) {
+    #siteNav {
+        position: fixed;
+        min-height: calc(100vh - var(--exe-logos-height) - var(--exe-bar-height));
+        max-height: calc(100vh - var(--exe-logos-height) - var(--exe-bar-height));
+        overflow-y: auto;
+        overflow-x: hidden;
+        padding-bottom: 164px;
+        background: var(--exe-surface) url(img/deco_nav.svg) no-repeat left 20px bottom 24px;
+        background-attachment: local;
+    }
+}
+#siteNav .other-section {
+    display: none; /* Optional (hide subpages) */
+}
+#siteNav ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+#siteNav > ul {
+    margin: 10px 10px 0 10px;
+}
+#siteNav ul ul {
+    margin: 5px 0 0 20px;
+}
+#siteNav li {
+    margin: 0 0 2px 0;
+    padding: 0;
+    list-style: none;
+}
+#siteNav a {
+    color: var(--exe-text);
+    display: block;
+    padding: 10px 16px;
+    background: transparent;
+    border-radius: 6px;
+    transition: background 0.5s ease;
+    position: relative;
+    overflow-wrap: break-word;
+}
+#siteNav a.active {
+    color: var(--exe-orange-vivid);
+    background: var(--exe-orange-surface);
+    font-weight: 700;
+    text-decoration: none;
+    box-shadow: inset 3px 0 0 var(--exe-orange-light);
+    border-radius: 0 6px 6px 0;
+}
+#siteNav a:hover,
+#siteNav a:focus {
+    background: var(--exe-surface-hover);
+    color: var(--exe-ink);
+    text-decoration: none;
+    box-shadow: inset 0 0 1px var(--exe-border-faint);
+}
+#siteNav a.active:hover,
+#siteNav a.active:focus {
+    color: var(--exe-orange-deep);
+    box-shadow: inset 3px 0 0 var(--exe-orange-light);
+}
+#siteNav li.current-page-parent > a {
+    box-shadow: inset 2px 0 0 var(--exe-orange);
+    border-radius: 0 6px 6px 0;
+}
+#siteNav li.current-page-parent > a:hover,
+#siteNav li.current-page-parent > a:focus {
+    box-shadow: inset 2px 0 0 var(--exe-orange);
+}
+#siteNav ul ul a {
+    font-size: 0.95em;
+}
+#siteNav ul ul ul a {
+    font-size: 0.9em;
+}
+
+/* Special links */
+#siteNav a.highlighted-link {
+    background: var(--exe-bg);
+    color: var(--exe-teal-deep);
+    box-shadow: inset 0 0 0 1px var(--exe-border-accent);
+    padding: 18px 16px 18px 62px;
+    margin: 8px 0;
+}
+#siteNav a.highlighted-link.active {
+    color: var(--exe-orange);
+    box-shadow: inset 3px 0 0 var(--exe-orange), inset 0 0 0 1px var(--exe-border-accent);
+    border-radius: 0 6px 6px 0;
+}
+#siteNav a.highlighted-link:before {
+    content: "";
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    margin-top: -20px;
+    width: 40px; /* One sprite cell */
+    height: 40px;
+    background: url(img/icons.png) no-repeat -320px 0; /* Cell 8 */
+    background-size: auto 40px;
+}
+#siteNav a.highlighted-link:hover,
+#siteNav a.highlighted-link:focus {
+    background: var(--exe-bg);
+    box-shadow: inset 0 0 0 2px var(--exe-teal);
+    color: var(--exe-teal-hover);
+}
+#siteNav a.highlighted-link.active:hover,
+#siteNav a.highlighted-link.active:focus {
+    color: var(--exe-orange);
+    box-shadow: inset 3px 0 0 var(--exe-orange), inset 0 0 0 2px var(--exe-teal);
+}
+
+/* Dropdown buttons */
+#siteNav a:has(button) {
+    padding-right: 35px;
+}
+#siteNav a button {
+    width: 20px;
+    height: 20px;
+    position: absolute;
+    right: 10px;
+    bottom: 10px;
+    border: none;
+    /* Cell 6 */
+    background: url(img/icons.png) no-repeat -185px 50%;
+    background-size: auto 30px;
+    transform: rotate(180deg);
+    transition: all 0.5s ease;
+}
+#siteNav a button.open-ul {
+    transform: rotate(0);
+}
+#siteNav a button span {
+    position: absolute;
+    clip: rect(1px 1px 1px 1px);
+    clip: rect(1px, 1px, 1px, 1px);
+}
+
+/* Web content layout */
+.exe-web-site .exe-content {
+    padding: 0 0 20px 0;
+    position: relative;
+    /* False left column when the menu is visible */
+    box-shadow: inset 360px 0 0 0 var(--exe-surface), inset 361px 0 0 0 var(--exe-border-faint);
+}
+.exe-web-site main.page {
+    background: url(img/deco_corner.svg) no-repeat right 24px top 16px;
+    padding-top: 20px;
+    padding-left: 400px; /* #siteNav width + margin */
+    padding-right: 40px;
+    /* Sticky footer */
+    min-height: calc(100vh - var(--exe-logos-height) - var(--exe-bar-height) - 97px);
+}
+body:has(#teacher-mode-toggler-wrapper) main.page {
+    background-image: none;
+}
+.exe-web-site #siteFooter {
+    background: none;
+    border: none;
+    padding: 0 40px 0 400px; /* 400 = #siteNav width + margin */
+}
+.exe-web-site #siteFooterContent {
+    background: var(--exe-surface);
+    border: 1px solid var(--exe-border);
+    color: var(--exe-text);
+    margin: 0 auto;
+    padding: 20px;
+    border-radius: 4px;
+}
+
+/* Hidden navigation */
+html body.exe-web-site.siteNav-off .exe-content {
+    box-shadow: none !important; /* No false left column */
+}
+body.siteNav-off #siteNav {
+    display: none;
+}
+body.siteNav-off main.page,
+body.siteNav-off #siteFooter {
+    padding-left: 40px;
+}
+
+/* Search bar */
+button#searchBarToggler {
+    display: none;
+}
+.exe-search-on #searchBarToggler {
+    display: inline;
+}
+#exe-client-search {
+    display: none;
+    max-width: 1280px;
+    margin: -10px auto 30px auto;
+    text-align: center;
+}
+#exe-client-search-reset span {
+    position: absolute;
+    clip: rect(1px 1px 1px 1px);
+    clip: rect(1px, 1px, 1px, 1px);
+}
+#exe-client-search-text {
+    display: inline;
+    width: min(600px, 80%);
+    min-width: 0;
+}
+#exe-client-search-submit {
+    text-indent: -999em;
+    background: var(--exe-teal-dark) url(img/icons.png) no-repeat -41px -1px; /* Cell 1 */
+    background-size: auto 40px;
+    width: 38px;
+    height: 38px;
+    border: none;
+    border-radius: 4px;
+}
+#exe-client-search-reset.visible {
+    background: url(img/icons.png) no-repeat -280px -1px; /* Cell 7 */
+    background-size: auto 40px;
+    width: 38px;
+    height: 38px;
+    display: inline-block;
+    vertical-align: middle;
+    position: relative;
+    top: -2px;
+    left: -5px;
+    opacity: 0.8;
+    border-radius: 4px;
+}
+#exe-client-search-reset:hover,
+#exe-client-search-reset:focus {
+    opacity: 1;
+}
+#exe-client-search-submit:hover,
+#exe-client-search-submit:focus {
+    background-color: var(--exe-teal-hover);
+}
+#exe-client-search-results-list {
+    text-align: left;
+}
+#exe-client-search-results-list ul,
+#exe-client-search-results-list li {
+    margin: 2em 0;
+    padding: 0;
+    list-style: none;
+}
+#exe-client-search-results-list li {
+    margin: 0 0 1em 0;
+}
+#exe-client-search-results-list p {
+    margin-top: 2em;
+}
+
+/* Top navigation bar */
+#siteNavToggler span,
+#searchBarToggler span,
+#darkModeToggler span,
+.nav-buttons a span,
+.nav-buttons span span {
+    position: absolute;
+    clip: rect(1px 1px 1px 1px);
+    clip: rect(1px, 1px, 1px, 1px);
+}
+/* Disabled next / previous buttons */
+.nav-buttons span.nav-button {
+    opacity: 0.7;
+    filter: grayscale(1);
+    cursor: not-allowed;
+}
+#siteNavToggler {
+    position: fixed;
+    top: calc(var(--exe-logos-height) + (var(--exe-bar-height) - 50px) / 2);
+    left: 10px;
+    border: none;
+    display: block;
+    background: url(img/icons.png) no-repeat 0 0; /* Cell 0 */
+    background-size: auto 50px;
+    width: 50px;
+    height: 50px;
+    z-index: 100;
+}
+#searchBarToggler {
+    position: fixed;
+    top: calc(var(--exe-logos-height) + (var(--exe-bar-height) - 50px) / 2);
+    left: 60px;
+    border: none;
+    display: block;
+    background: url(img/icons.png) no-repeat -50px 0; /* Cell 1 */
+    background-size: auto 50px;
+    width: 50px;
+    height: 50px;
+    z-index: 100;
+}
+#darkModeToggler {
+    position: absolute;
+    right: 10px;
+    top: 8px;
+    border: none;
+    display: block;
+    background: url(img/icons.png) no-repeat -200px 0; /* Cell 4 */
+    background-size: auto 50px;
+    width: 50px;
+    height: 50px;
+    z-index: 100;
+    scale: 0.8;
+}
+.package-header #darkModeToggler {
+    filter: invert(1);
+}
+.exe-web-site #darkModeToggler {
+    position: fixed;
+    top: calc(var(--exe-logos-height) + (var(--exe-bar-height) - 50px) / 2);
+    right: 130px; /* Left button (70 + 50) + 10px gap */
+    scale: 0.92; /* Matches the ink of the other bar icons */
+}
+.nav-buttons {
+    position: fixed;
+    top: var(--exe-logos-height);
+    left: 0;
+    height: var(--exe-bar-height);
+    border: none;
+    background: var(--exe-teal-dark) url(img/deco_bar.svg) repeat-x 40px 0;
+    width: 100%;
+    z-index: 99;
+}
+
+/* Institutional logo band. Trademarks: see config.xml */
+#siteLogos {
+    display: none;
+}
+body.logos #siteLogos {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: var(--exe-logos-height);
+    padding: 0 20px 0 0;
+    background: var(--exe-bg);
+    z-index: 101;
+}
+#siteLogos a {
+    display: flex;
+    flex: none;
+    align-items: center;
+}
+#siteLogos img {
+    display: block;
+    width: auto;
+}
+#siteLogos .logo-mefpd img {
+    height: var(--exe-logos-height);
+}
+#siteLogos .logo-intef img {
+    height: 32px;
+}
+#siteLogos .logo-cedec {
+    margin-left: auto;
+}
+#siteLogos .logo-cedec img {
+    height: 28px;
+}
+@media (max-width: 460px) {
+    body.logos {
+        --exe-logos-height: 40px;
+    }
+    body.logos #siteLogos {
+        gap: 8px;
+        padding: 0 10px 0 0;
+    }
+    #siteLogos .logo-intef img {
+        height: 24px;
+    }
+    #siteLogos .logo-cedec img {
+        height: 20px;
+    }
+    /* Page counter: number only */
+    .exe-export .page-counter-label {
+        position: absolute;
+        clip: rect(1px 1px 1px 1px);
+        clip: rect(1px, 1px, 1px, 1px);
+    }
+}
+
+@media (max-width: 359.98px) {
+    body.logos {
+        --exe-logos-height: 36px;
+    }
+}
+
+/* Package title and subtitle in the top bar */
+#topBarTitle {
+    display: none;
+}
+@media (min-width: 1200px) {
+    #topBarTitle {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        position: absolute;
+        top: 0;
+        left: 136px; /* Search toggler ink ends at 96 */
+        right: 480px; /* Page counter, dark mode toggler and nav buttons */
+        height: var(--exe-bar-height);
+        color: #ffffff;
+        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+        overflow: hidden;
+    }
+    body:not(.exe-search-on) #topBarTitle {
+        left: 87px; /* Menu toggler ink ends at 47 */
+    }
+    #exe-index .exe-web-site .package-header {
+        position: absolute;
+        clip: rect(1px 1px 1px 1px);
+        clip: rect(1px, 1px, 1px, 1px);
+    }
+    #topBarTitle p {
+        margin: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    #topBarTitle .top-bar-title {
+        font-size: 1.5em;
+        font-weight: 700;
+        line-height: 1.25;
+    }
+    #topBarTitle .top-bar-title a,
+    #topBarTitle .top-bar-title a:hover,
+    #topBarTitle .top-bar-title a:focus {
+        color: inherit;
+        background: none;
+        box-shadow: none;
+    }
+    #topBarTitle .top-bar-title a {
+        text-decoration: none;
+    }
+    #topBarTitle .top-bar-title a:hover {
+        text-decoration: underline;
+    }
+    #topBarTitle .top-bar-subtitle {
+        font-size: 1.05em;
+        line-height: 1.3;
+        opacity: 0.85;
+    }
+}
+
+/* Next / previous buttons */
+.nav-buttons .nav-button-left {
+    position: absolute;
+    top: calc((var(--exe-bar-height) - 50px) / 2);
+    right: 70px; /* Right button (10 + 50) + 10px gap */
+    display: block;
+    background: url(img/icons.png) no-repeat -100px 0; /* Cell 2 */
+    background-size: auto 50px;
+    width: 50px;
+    height: 50px;
+}
+.nav-buttons .nav-button-right {
+    position: absolute;
+    top: calc((var(--exe-bar-height) - 50px) / 2);
+    right: 10px;
+    display: block;
+    background: url(img/icons.png) no-repeat -150px 0; /* Cell 3 */
+    background-size: auto 50px;
+    width: 50px;
+    height: 50px;
+}
+
+/* Page counter, website only */
+.exe-web-site .page-counter {
+    position: fixed;
+    top: var(--exe-logos-height);
+    right: 190px; /* Toggler (130 + 50) + 10px gap */
+    z-index: 100;
+    color: #ffffff;
+    margin: 0;
+    line-height: var(--exe-bar-height); /* Centered in the bar */
+}
+body.exe-web-site {
+    padding-top: calc(var(--exe-logos-height) + var(--exe-bar-height));
+}
+
+/* Bigger next / previous buttons */
+@media (min-width: 768px) {
+    .nav-buttons a span,
+    .nav-buttons span span {
+        position: relative;
+        clip: auto;
+    }
+    .nav-buttons .nav-button-left,
+    .nav-buttons .nav-button-right {
+        width: auto;
+        height: 44px;
+        top: calc((var(--exe-bar-height) - 44px) / 2);
+        right: 20px;
+        min-width: 130px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        background: none;
+        box-shadow: inset 0 0 2px #ffffff;
+        color: #ffffff !important;
+        padding: 0 14px; /* Distance from the arrow to the outer edge */
+        border-radius: 6px;
+        font-size: 0.9em;
+        transition: background 0.5s ease;
+    }
+    /* Offsets include the glyph crop */
+    .nav-buttons .nav-button-left:before,
+    .nav-buttons .nav-button-right:after {
+        content: "";
+        display: block;
+        flex: none;
+        width: 18px;
+        height: 18px;
+        background: url(img/icons.png) no-repeat;
+        background-size: auto 40px;
+    }
+    .nav-buttons .nav-button-left:before {
+        background-position: -91px -10px; /* Cell 2 */
+    }
+    .nav-buttons .nav-button-right:after {
+        background-position: -131px -10px; /* Cell 3 */
+    }
+    .nav-buttons a:hover,
+    .nav-buttons a:focus {
+        text-decoration: none;
+        background: var(--exe-teal-hover);
+        color: #ffffff;
+    }
+    .nav-buttons .nav-button-left {
+        right: 164px; /* Right button (20 + 130) + 14px gap */
+    }
+    .exe-web-site #darkModeToggler {
+        right: 308px; /* Left button (164 + 130) + 14px gap */
+    }
+    .exe-web-site .page-counter {
+        right: 372px; /* Toggler (308 + 50) + 14px gap */
+    }
+}
+
+/* Scrollbar */
+/* WebKit (Chrome, Edge, Safari) */
+*::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+/* Firefox */
+* {
+    scrollbar-width: thin; /* Closest to 8px */
+}
+
+/* Mobile */
+@media (max-width: 675.98px) {
+    #sidebar-nav.fixed {
+        position: relative;
+    }
+    #siteNav {
+        width: 100%;
+        float: none;
+        padding-bottom: 10px;
+    }
+    body.exe-web-site main.page,
+    body.exe-web-site #siteFooter {
+        padding-left: 20px;
+        padding-right: 20px;
+    }
+    body.exe-web-site main.page {
+        background-image: none;
+    }
+    .exe-web-site .exe-content {
+        box-shadow: none !important; /* No false left column */
+    }
+}
+
+/* Print */
+@media print {
+    html body.exe-export {
+        background: #ffffff;
+    }
+    .exe-export .exe-content {
+        background: #ffffff;
+        box-shadow: none;
+        color: #000000;
+        padding: 0;
+    }
+    @page {
+        margin: 1.5cm;
+    }
+    .exe-export .box-head .box-toggle {
+        display: none;
+    }
+    .exe-content
+        :is(
+            .exe-block-info,
+            .exe-block-success,
+            .exe-block-warning,
+            .exe-block-alert,
+            .exe-block-danger,
+            .exe-block-download
+        ) {
+        background: none;
+        box-shadow: none;
+        border-left: 3px solid #000000;
+        border-radius: 0;
+        padding: 0.5em 0 0.5em 1em;
+    }
+    .exe-content .exe-text-activity > dl > div.inline {
+        background: none;
+        border: 0;
+        box-shadow: none;
+        border-left: 3px solid #000000;
+        border-radius: 0;
+        padding: 0 0 0 0.6em;
+    }
+    .exe-content .box {
+        box-shadow: none;
+    }
+    /* Controls */
+    .exe-export button.toggler,
+    .exe-export #siteNavToggler,
+    .exe-export #searchBarToggler,
+    .exe-export #darkModeToggler,
+    .exe-export #teacher-mode-toggler-wrapper,
+    .exe-content .iDevice_buttons,
+    .exe-content .fx-timeline-toggler,
+    .exe-content .fx-carousel-pagination,
+    .exe-web-site #siteNav,
+    .exe-web-site .nav-buttons {
+        display: none;
+    }
+    body.logos #siteLogos {
+        position: static;
+    }
+    body.exe-web-site {
+        padding-top: 0;
+    }
+    .exe-web-site main.page {
+        min-height: 0;
+    }
+    .exe-export #siteFooter,
+    .exe-export #siteFooterContent,
+    .exe-export main.page,
+    .exe-export .package-header,
+    .exe-export .page-header {
+        padding-left: 0;
+        padding-right: 0;
+    }
+    .exe-export #siteFooter,
+    .exe-export #siteFooterContent {
+        background: none;
+        border: 0;
+        border-radius: 0;
+    }
+    .exe-export #packageLicense.cc {
+        padding: 0;
+        background: none;
+    }
+    .exe-export .page-counter {
+        position: static;
+        text-align: right;
+        color: #000000;
+        line-height: normal;
+    }
+}
+
+/* eXe dark mode */
+@media screen {
+    html.exe-dark-mode {
+        filter: invert(98%) hue-rotate(180deg);
+    }
+    html.exe-dark-mode .body,
+    html.exe-dark-mode .exe-content {
+        background: #f9f9f9 !important;
+        color: #2f2f2f;
+    }
+    html.exe-dark-mode .exe-web-site .exe-content {
+        box-shadow: inset 360px 0 0 0 #f9f9f9, inset 361px 0 0 0 var(--exe-border-soft) !important;
+    }
+    /* No filter */
+    html.exe-dark-mode :is(img, video, iframe):not(#siteBreadcrumbsHome img),
+    html.exe-dark-mode #skipNav {
+        filter: invert(100%) hue-rotate(180deg);
+    }
+    html.exe-dark-mode #siteNav,
+    html.exe-dark-mode #packageLicense.cc,
+    html.exe-dark-mode .exe-web-site .nav-buttons,
+    html.exe-dark-mode .exe-web-site .toggler,
+    html.exe-dark-mode .exe-web-site .page-counter {
+        filter: invert(100%) hue-rotate(180deg);
+    }
+    html.exe-dark-mode #siteLogos {
+        background: #050505;
+    }
+    html.exe-dark-mode #siteLogos a.logo-mefpd picture img {
+        filter: invert(100%) hue-rotate(180deg) brightness(1.1) contrast(1.1) !important;
+    }
+    /* Licenses */
+    html.exe-dark-mode #packageLicense.cc a {
+        color: #99c2ef;
+    }
+    html.exe-dark-mode #packageLicense.cc a:hover,
+    html.exe-dark-mode #packageLicense.cc a:focus {
+        color: #3fa5fb;
+    }
+    html.exe-dark-mode .exe-download-package-instructions a.cc span {
+        filter: invert(100%) hue-rotate(180deg);
+    }
+    /* Top bar */
+    html.exe-dark-mode .nav-buttons,
+    html.exe-dark-mode .exe-web-site .page-counter {
+        background-color: #131313;
+        background-image: none;
+    }
+    html.exe-dark-mode #darkModeToggler {
+        background-position: -250px 0; /* Cell 5 */
+    }
+    /* Breadcrumbs */
+    html.exe-dark-mode #siteBreadcrumbs {
+        filter: grayscale(1);
+    }
+    html.exe-dark-mode .exe-content .page-header {
+        color: #131313;
+    }
+    /* Navigation */
+    html.exe-dark-mode #siteNav {
+        background: none;
+    }
+    html.exe-dark-mode #siteNav a {
+        color: #c4c4c4;
+        background: #121212;
+    }
+    html.exe-dark-mode #siteNav a.active {
+        background: #272727;
+        color: #f0935f;
+        box-shadow: inset 3px 0 0 #f0935f;
+    }
+    html.exe-dark-mode #siteNav a:hover,
+    html.exe-dark-mode #siteNav a:focus {
+        background: #272727;
+        color: #ffffff;
+        box-shadow: inset 0 0 1px #d2d2d5;
+    }
+    html.exe-dark-mode #siteNav a.active:hover,
+    html.exe-dark-mode #siteNav a.active:focus {
+        color: #f0935f;
+        box-shadow: inset 3px 0 0 #f0935f;
+    }
+    html.exe-dark-mode #siteNav li.current-page-parent > a,
+    html.exe-dark-mode #siteNav li.current-page-parent > a:hover,
+    html.exe-dark-mode #siteNav li.current-page-parent > a:focus {
+        box-shadow: inset 2px 0 0 #f0935f;
+    }
+    html.exe-dark-mode #siteNav a button {
+        filter: invert(1) grayscale(1);
+    }
+    /* Special links */
+    html.exe-dark-mode #siteNav a.highlighted-link {
+        background: #0e3536;
+        color: #52b9bb;
+        box-shadow: inset 0 0 0 1px #1e5657;
+    }
+    html.exe-dark-mode #siteNav a.highlighted-link.active {
+        color: #f0935f;
+        box-shadow: inset 3px 0 0 #f0935f, inset 0 0 0 1px #1e5657;
+    }
+    html.exe-dark-mode #siteNav a.highlighted-link:before {
+        filter: brightness(2.3);
+    }
+    html.exe-dark-mode #siteNav a.highlighted-link:hover,
+    html.exe-dark-mode #siteNav a.highlighted-link:focus {
+        background: #0e3536;
+        box-shadow: inset 0 0 0 2px #52b9bb;
+        color: #8fd6d7;
+    }
+    html.exe-dark-mode #siteNav a.highlighted-link.active:hover,
+    html.exe-dark-mode #siteNav a.highlighted-link.active:focus {
+        color: #f0935f;
+        box-shadow: inset 3px 0 0 #f0935f, inset 0 0 0 2px #52b9bb;
+    }
+    /* iDevices */
+    html.exe-dark-mode .exe-content .box {
+        box-shadow: none;
+    }
+    html.exe-dark-mode .exe-content .fx-pagination li:not(.fx-current) a {
+        box-shadow: inset 0 0 0 1px #7fb0b0;
+    }
+    html.exe-dark-mode .exe-content .fx-pagination li.fx-disabled a {
+        box-shadow: inset 0 0 0 1px #c8c8c8;
+    }
+    /* Decorative separators */
+    html.exe-dark-mode .exe-content .fx-accordion-content,
+    html.exe-dark-mode .exe-content .exe-tabs .fx-tabs,
+    html.exe-dark-mode .exe-content .exe-dl dd {
+        border-color: #c8c8c8;
+    }
+    html.exe-dark-mode .exe-content .fx-accordion-title {
+        border-color: #c8c8c8 !important; /* JS writes border-color inline */
+    }
+    /* Made with eXe */
+    html.exe-dark-mode #made-with-eXe a {
+        filter: invert(100%) hue-rotate(180deg);
+        opacity: 1;
+    }
+    /* Accessibility toolbar */
+    html.exe-dark-mode #eXeAtoolsBtnSet,
+    html.exe-dark-mode #eXeAtoolsSet {
+        filter: invert(94%) hue-rotate(180deg);
+        box-shadow: #ffffff 0px 0 2px;
+    }
+}
+/* Bigger next / previous buttons */
+@media (min-width: 768px) {
+    html.exe-dark-mode .nav-buttons a:hover,
+    html.exe-dark-mode .nav-buttons a:focus {
+        background: #272727;
+        box-shadow: inset 0 0 1px #d2d2d5;
+    }
+}
+
+/* In eXeLearning */
+#workarea .box-head .box-title,
+#node-content-container .box-head .box-title {
+    color: var(--exe-teal);
+    font-weight: 700;
+}
+#workarea .box-head,
+#node-content-container .box-head {
+    border: 0 !important; /* The head is delimited by its background */
+    margin-bottom: 0;
+}
