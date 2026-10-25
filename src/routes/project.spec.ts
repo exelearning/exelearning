@@ -3804,6 +3804,18 @@ describe('Project Routes', () => {
             expect(body.project.collaborators.length).toBeGreaterThanOrEqual(1);
         });
 
+        it('should reject a sharing UUID that is not a single safe path segment without creating a project', async () => {
+            const token = await createAuthToken(1);
+            const res = await app.handle(
+                new Request('http://localhost/api/projects/uuid/..%2F./sharing', {
+                    headers: { Cookie: `auth=${token}` },
+                }),
+            );
+
+            expect(res.status).toBe(400);
+            expect(mockProjectsByUuid.has('../.')).toBe(false);
+        });
+
         it('should return sharing info by UUID with collaborators', async () => {
             const project = {
                 id: 1501,
