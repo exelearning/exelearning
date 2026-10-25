@@ -1,7 +1,7 @@
 ---
 id: ADR-2615-01
 title: "Merge the stored snapshot on every online open and reconnection, and validate saves against the stored version on the server"
-status: Proposed
+status: Accepted
 date: 2026-10-23
 tracking_issue: 2615
 deciders:
