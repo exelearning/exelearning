@@ -72,6 +72,13 @@ class YjsDocumentManager {
 
     // Stateless relay architecture: track dirty state for explicit saves
     this.isDirty = false;
+    // Issue #2615: the stored document version this client last loaded or
+    // saved (X-Document-Version / save response). Echoed back as X-Base-Version
+    // so the server can detect a stale save and merge instead of overwriting.
+    this.serverVersion = null;
+    // Issue #2615: a reconnection after a drop merges the server snapshot first.
+    this._wasDisconnected = false;
+    this._serverMergePromise = null;
     this.lastSavedAt = null;
     this.saveInProgress = false;
 
@@ -333,16 +340,19 @@ class YjsDocumentManager {
       // The YjsProjectBridge will call startWebSocketConnection() after AssetWebSocketHandler is ready
     }
 
-    // Check if document is empty (after IndexedDB sync, before WebSocket sync)
+    // Merge the server snapshot in online mode, whether or not IndexedDB had a
+    // local copy (issue #2615). The WebSocket is a pure relay with no document
+    // state, so a local copy that missed saves made elsewhere (laptop asleep,
+    // restored tab) would otherwise be shown as current and the next save would
+    // overwrite the server with it. Yjs merges are idempotent, so this only adds
+    // what the local copy lacks.
+    if (!this.config.offline) {
+      await this.loadFromServer();
+    }
+
+    // Check if document is empty (after IndexedDB + server merge, before WebSocket sync)
     const navigation = this.ydoc.getArray('navigation');
     if (navigation.length === 0) {
-      // Always try to load from server if not offline
-      // Server-side initialization creates initial Yjs document when project is created,
-      // so even new projects have data on the server
-      if (!this.config.offline) {
-        await this.loadFromServer();
-      }
-
       // For OFFLINE mode only: create blank structure immediately
       // (no WebSocket sync will happen, so no risk of duplicates)
       // For ONLINE mode: defer to ensureBlankStructureIfEmpty() after WebSocket sync
@@ -581,6 +591,15 @@ class YjsDocumentManager {
    * Load document state from server
    */
   async loadFromServer() {
+    if (this._serverMergePromise) return this._serverMergePromise;
+    this._serverMergePromise = this._loadFromServer().finally(() => {
+      this._serverMergePromise = null;
+    });
+    return this._serverMergePromise;
+  }
+
+  /** @private */
+  async _loadFromServer() {
     try {
       const response = await fetch(
         `${this.config.apiUrl}/projects/uuid/${this.projectId}/yjs-document`,
@@ -603,11 +622,17 @@ class YjsDocumentManager {
 
       const arrayBuffer = await response.arrayBuffer();
       const update = new Uint8Array(arrayBuffer);
+      const version = response.headers?.get ? response.headers.get('X-Document-Version') : null;
+      if (version) {
+        this.serverVersion = version;
+      }
 
-      // Apply server state
-      this.Y.applyUpdate(this.ydoc, update);
+      // Merge the server state. Yjs updates are idempotent, so applying the
+      // snapshot on top of a local copy only adds what the local copy lacks.
+      // The 'initial' origin keeps the merge out of dirty tracking and undo.
+      this.Y.applyUpdate(this.ydoc, update, 'initial');
 
-      Logger.log(`[YjsDocumentManager] Loaded ${update.length} bytes from server`);
+      Logger.log(`[YjsDocumentManager] Merged ${update.length} bytes from server (version ${version || 'unknown'})`);
     } catch (error) {
       // Network errors or other issues - log but continue with local-only operation
       console.warn('[YjsDocumentManager] Could not load from server (using local data):', error.message);
@@ -829,10 +854,23 @@ class YjsDocumentManager {
     this.wsProvider.on('status', ({ status }) => {
       Logger.log(`[YjsDocumentManager] Connection status: ${status}`);
       if (status === 'connected') {
-        this.emit('connectionChange', { connected: true });
+        if (this._wasDisconnected) {
+          // Issue #2615: while this tab was offline other clients may have
+          // saved. The relay has no document state to hand us, so merge the
+          // server snapshot before this tab's next save can run; the
+          // 'connectionChange' event is emitted after the merge.
+          this._wasDisconnected = false;
+          const announce = () => this.emit('connectionChange', { connected: true });
+          // loadFromServer() swallows its own errors; the rejection branch only
+          // guards a mocked/overridden implementation from leaking a rejection.
+          this.loadFromServer().then(announce, announce);
+        } else {
+          this.emit('connectionChange', { connected: true });
+        }
         // Refresh presence immediately after connect/reconnect.
         this.rebroadcastAwareness('status-connected');
       } else if (status === 'disconnected') {
+        this._wasDisconnected = true;
         this.emit('connectionChange', { connected: false });
       }
     });
@@ -1665,6 +1703,10 @@ class YjsDocumentManager {
       if (this.config.token) {
         headers['Authorization'] = `Bearer ${this.config.token}`;
       }
+      // Save validation (#2615): see SaveManager.saveYjsState().
+      if (this.serverVersion) {
+        headers['X-Base-Version'] = String(this.serverVersion);
+      }
 
       const response = await fetch(
         `${this.config.apiUrl}/projects/uuid/${this.projectId}/yjs-document`,
@@ -1679,7 +1721,22 @@ class YjsDocumentManager {
         throw new Error(`Failed to save: ${response.status} ${response.statusText}`);
       }
 
+      let result = null;
+      try {
+        result = typeof response.json === 'function' ? await response.json() : null;
+      } catch (_) {
+        result = null;
+      }
+      if (result?.version) {
+        this.serverVersion = String(result.version);
+      }
+
       this.markClean();
+
+      if (result?.merged) {
+        // The server merged this save with newer stored changes: converge.
+        await this.loadFromServer();
+      }
       Logger.log(`[YjsDocumentManager] Saved to server (${state.length} bytes)`);
 
       return { success: true, bytes: state.length };

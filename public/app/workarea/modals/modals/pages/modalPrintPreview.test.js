@@ -833,10 +833,10 @@ describe('ModalPrintPreview and its options panel', () => {
 
             expect(choices.querySelector('.print-options-group-title').textContent).toBe('What would you like to print?');
             expect(radios().map((radio) => choices.querySelector(`label[for="${radio.id}"]`).textContent)).toEqual([
-                'Content without activities',
                 'Content with activities',
                 'Content with activities in an appendix',
                 'Activities only (no other content)',
+                'Content without activities',
             ]);
             expect(choices.querySelector('.print-activities-selection-title').textContent).toBe('Activities');
             expect(choices.querySelector('.print-activities-selection-hint').textContent).toBe(
@@ -850,7 +850,7 @@ describe('ModalPrintPreview and its options panel', () => {
             expect(panelEl().hidden).toBe(false);
             expect(optionsBtn().hidden).toBe(false);
             expect(optionsBtn().getAttribute('aria-expanded')).toBe('true');
-            expect(radios().map((radio) => radio.value)).toEqual(['omit', 'in-place', 'appendix', 'idevices']);
+            expect(radios().map((radio) => radio.value)).toEqual(['in-place', 'appendix', 'idevices', 'omit']);
             expect(checkedChoice()).toBe(ACTIVITY_MODE_IN_PLACE);
             expect(boxes()).toHaveLength(3);
             expect(boxes().every((box) => box.checked)).toBe(true);
@@ -863,11 +863,11 @@ describe('ModalPrintPreview and its options panel', () => {
             expect(lastOptions().activities).not.toHaveProperty('selectedActivities');
         });
 
-        it('starts the activities in an appendix when the arguments say nothing about them', async () => {
+        it('starts the activities where the author put them when the arguments say nothing about them', async () => {
             await modal.show(PREVIEW_MODE_DOCUMENT, null, null, ACTIVITIES);
 
-            expect(checkedChoice()).toBe(ACTIVITY_MODE_APPENDIX);
-            expect(lastOptions().activities.mode).toBe(ACTIVITY_MODE_APPENDIX);
+            expect(checkedChoice()).toBe(ACTIVITY_MODE_IN_PLACE);
+            expect(lastOptions().activities.mode).toBe(ACTIVITY_MODE_IN_PLACE);
         });
 
         it('starts with the choice it is told to', async () => {

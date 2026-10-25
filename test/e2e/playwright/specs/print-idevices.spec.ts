@@ -2217,7 +2217,7 @@ test.describe('Print: choosing what happens to the interactive activities', () =
         await expect(frame.locator('#section-worksheet-appendix')).toHaveCount(0);
     });
 
-    test('offers the options beside the preview when the project has them, with printing them in an appendix preselected', async ({
+    test('offers the options beside the preview when the project has them, with printing them in place preselected', async ({
         authenticatedPage,
         createProject,
     }) => {
@@ -2229,7 +2229,7 @@ test.describe('Print: choosing what happens to the interactive activities', () =
 
         await expect(page.locator('#printPreviewOverlay')).toHaveAttribute('data-visible', 'true');
         await expect(panel.locator('input[name="print-activity-mode"]')).toHaveCount(4);
-        await expect(panel.locator('input[name="print-activity-mode"][value="appendix"]')).toBeChecked();
+        await expect(panel.locator('input[name="print-activity-mode"][value="in-place"]')).toBeChecked();
 
         // One section under another, each set off from the one above by a rule: the document
         // options, then what to print, then which activities.
@@ -2260,17 +2260,17 @@ test.describe('Print: choosing what happens to the interactive activities', () =
         );
         await expect(sections[1].locator('legend')).toHaveText('What would you like to print?');
         await expect(sections[1].locator('label')).toHaveText([
-            'Content without activities',
             'Content with activities',
             'Content with activities in an appendix',
             'Activities only (no other content)',
+            'Content without activities',
         ]);
         await expect(sections[2].locator('legend')).toHaveText('Activities');
 
-        // The preview is drawn at once, for the choice that is preselected: a pointer where each
-        // activity was, and the exercise itself in the appendix.
+        // The preview is drawn at once, for the choice that is preselected: each exercise where the
+        // author put it, with no pointer into an appendix.
         const { frame } = await waitForPreview(page);
-        await expect(frame.locator('.worksheet-reference').first()).toBeVisible();
+        await expect(frame.locator('.worksheet-reference')).toHaveCount(0);
         await expect(
             frame.locator('.worksheet-activity[data-idevice="guess"]:not(.worksheet-activity-reference)'),
         ).toHaveCount(1);
@@ -2336,7 +2336,8 @@ test.describe('Print: choosing what happens to the interactive activities', () =
 
         await openPrintPanel(page);
         const { frame } = await waitForPreview(page);
-        await expect(frame.locator('.worksheet-reference').first()).toBeVisible();
+        await expect(frame.locator('.worksheet-activity[data-idevice="guess"]')).toHaveCount(1);
+        await expect(frame.locator('.worksheet-reference')).toHaveCount(0);
 
         await choosePrintOption(page, 'omit');
         await expect(frame.locator('.worksheet-activity')).toHaveCount(0);
@@ -2346,10 +2347,9 @@ test.describe('Print: choosing what happens to the interactive activities', () =
         await expect(frame.locator('.worksheet')).toBeVisible();
         await expect(frame.locator('.exe-single-page')).toHaveCount(0);
 
-        await choosePrintOption(page, 'in-place');
+        await choosePrintOption(page, 'appendix');
         await expect(frame.locator('.exe-single-page')).toBeVisible();
-        await expect(frame.locator('.worksheet-activity[data-idevice="guess"]')).toHaveCount(1);
-        await expect(frame.locator('.worksheet-reference')).toHaveCount(0);
+        await expect(frame.locator('.worksheet-reference').first()).toBeVisible();
     });
 
     test('titles the overlay for the worksheet while only the activities are chosen', async ({
@@ -2383,7 +2383,8 @@ test.describe('Print: choosing what happens to the interactive activities', () =
         const print = page.locator('.print-preview-print-btn');
         await expect(print).toBeEnabled();
 
-        await panel.locator('input[name="print-activity-mode"][value="in-place"]').check();
+        // A choice other than the preselected one, so the preview is drawn again.
+        await panel.locator('input[name="print-activity-mode"][value="appendix"]').check();
         await expect(page.locator('#printPreviewOverlay')).toHaveAttribute('data-busy', 'true');
         await expect(print).toBeDisabled();
 
@@ -2408,7 +2409,7 @@ test.describe('Print: choosing what happens to the interactive activities', () =
             };
         });
 
-        await panel.locator('input[value="in-place"]').check();
+        await panel.locator('input[value="appendix"]').check();
         await expect(page.locator('.print-preview-error')).toContainText('Print regeneration test failure');
         await expect(page.locator('#printPreviewOverlay')).toHaveAttribute('data-busy', 'false');
         await expect(page.locator('.print-preview-print-btn')).toBeDisabled();
@@ -2455,11 +2456,11 @@ test.describe('Print: choosing what happens to the interactive activities', () =
             app.__printGenerationTest = state;
         });
         try {
-            await panel.locator('input[value="in-place"]').check();
+            await panel.locator('input[value="appendix"]').check();
             await expect
                 .poll(() => page.evaluate(() => (window as any).__printGenerationTest.calls))
-                .toEqual(['in-place']);
-            for (const choice of ['omit', 'idevices', 'appendix']) {
+                .toEqual(['appendix']);
+            for (const choice of ['omit', 'idevices', 'in-place']) {
                 await panel.locator(`input[value="${choice}"]`).check();
                 await expect
                     .poll(() =>
@@ -2469,15 +2470,16 @@ test.describe('Print: choosing what happens to the interactive activities', () =
                     )
                     .toBe(true);
             }
-            expect(await page.evaluate(() => (window as any).__printGenerationTest.calls)).toEqual(['in-place']);
+            expect(await page.evaluate(() => (window as any).__printGenerationTest.calls)).toEqual(['appendix']);
             await expect(page.locator('.print-preview-print-btn')).toBeDisabled();
             await page.evaluate(() => (window as any).__printGenerationTest.release());
             const { frame } = await waitForPreview(page);
             expect(await page.evaluate(() => (window as any).__printGenerationTest.calls)).toEqual([
-                'in-place',
                 'appendix',
+                'in-place',
             ]);
-            await expect(frame.locator('.worksheet-reference').first()).toBeVisible();
+            await expect(frame.locator('.worksheet-activity[data-idevice="guess"]')).toHaveCount(1);
+            await expect(frame.locator('.worksheet-reference')).toHaveCount(0);
             await expect(page.locator('.print-preview-print-btn')).toBeEnabled();
         } finally {
             await page.evaluate(() => {
@@ -2865,8 +2867,8 @@ test.describe('Print: the activities that can never be printed', () => {
         await expect(panel.locator(TITLE_ONLY)).toHaveText(['Title only', 'Title only']);
         await expect(panel.locator('#print-activity-select-all')).not.toBeChecked();
 
-        // In the appendix, where printing starts: no pointer, no entry and no block for them.
-        let { frame } = await waitForPreview(page);
+        // In the appendix: no pointer, no entry and no block for them.
+        let { frame } = await choosePrintOption(page, 'appendix');
         await expect(frame.locator('.worksheet-reference')).toHaveCount(1);
         await expect(frame.locator('.worksheet-activity[data-idevice="padlock"] .worksheet-item')).toHaveText(
             'Texto desbloqueado',
@@ -3320,11 +3322,11 @@ test.describe('Print: teacher-only content', () => {
         await page.emulateMedia({ media: 'screen' });
 
         // Ticked, the notes print, and the activity is listed, marked and ticked: in the appendix,
-        // where printing starts, a pointer stands where it was and its exercise is at the back.
+        // a pointer stands where it was and its exercise is at the back.
         await option.check();
         await expect(teacherBox).toBeChecked();
         await expect(teacherBox).toHaveAccessibleDescription('Teacher only');
-        ({ frame } = await waitForPreview(page));
+        ({ frame } = await choosePrintOption(page, 'appendix'));
         await page.emulateMedia({ media: 'print' });
         await expect(notes()).toBeVisible();
         await expect(notes()).toContainText('Teacher notes');

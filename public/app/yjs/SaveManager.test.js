@@ -748,6 +748,85 @@ describe('SaveManager', () => {
       expect(xhr.setRequestHeader).toHaveBeenCalledWith('X-Project-Title', '');
     });
 
+    describe('save validation headers and merged responses (issue #2615)', () => {
+      /** XHR mock whose response body is configurable per test. */
+      function installXhr(responseBody) {
+        const instances = [];
+        global.XMLHttpRequest = class {
+          constructor() {
+            this.open = vi.fn();
+            this.setRequestHeader = vi.fn();
+            this.upload = { onprogress: null };
+            this.status = 200;
+            this.responseText = JSON.stringify(responseBody);
+            this.send = vi.fn(() => {
+              setTimeout(() => {
+                if (this.onload) this.onload();
+              }, 0);
+            });
+            instances.push(this);
+          }
+        };
+        return instances;
+      }
+
+      it('sends X-Base-Version when the document manager knows the stored version', async () => {
+        const instances = installXhr({ success: true, version: '2000', merged: false });
+        mockBridge.documentManager.serverVersion = '1000';
+        const manager = new SaveManager(mockBridge, { token: 'test-token', apiUrl: 'http://test.com/api' });
+
+        await manager.saveYjsState('project-123', mockBridge.documentManager, null);
+
+        expect(instances[0].setRequestHeader).toHaveBeenCalledWith('X-Base-Version', '1000');
+        // The response version becomes the new base for the next save.
+        expect(mockBridge.documentManager.serverVersion).toBe('2000');
+      });
+
+      it('does not send X-Base-Version when no stored version is known', async () => {
+        const instances = installXhr({ success: true, version: '2000' });
+        mockBridge.documentManager.serverVersion = null;
+        const manager = new SaveManager(mockBridge, { token: 'test-token', apiUrl: 'http://test.com/api' });
+
+        await manager.saveYjsState('project-123', mockBridge.documentManager, null);
+
+        const baseCall = instances[0].setRequestHeader.mock.calls.find((c) => c[0] === 'X-Base-Version');
+        expect(baseCall).toBeUndefined();
+      });
+
+      it('reloads the merged document when the server merged the save with newer changes', async () => {
+        installXhr({ success: true, version: '3000', merged: true });
+        mockBridge.documentManager.serverVersion = '1000';
+        mockBridge.documentManager.loadFromServer = vi.fn().mockResolvedValue(undefined);
+        const manager = new SaveManager(mockBridge, { token: 'test-token', apiUrl: 'http://test.com/api' });
+
+        const result = await manager.saveYjsState('project-123', mockBridge.documentManager, null);
+
+        expect(result.merged).toBe(true);
+        expect(mockBridge.documentManager.loadFromServer).toHaveBeenCalledTimes(1);
+        expect(mockBridge.documentManager.serverVersion).toBe('3000');
+      });
+
+      it('does not reload when the save was stored as-is', async () => {
+        installXhr({ success: true, version: '3000', merged: false });
+        mockBridge.documentManager.loadFromServer = vi.fn().mockResolvedValue(undefined);
+        const manager = new SaveManager(mockBridge, { token: 'test-token', apiUrl: 'http://test.com/api' });
+
+        await manager.saveYjsState('project-123', mockBridge.documentManager, null);
+
+        expect(mockBridge.documentManager.loadFromServer).not.toHaveBeenCalled();
+      });
+
+      it('survives a merged response when the document manager cannot reload', async () => {
+        installXhr({ success: true, version: '3000', merged: true });
+        delete mockBridge.documentManager.loadFromServer;
+        const manager = new SaveManager(mockBridge, { token: 'test-token', apiUrl: 'http://test.com/api' });
+
+        await expect(manager.saveYjsState('project-123', mockBridge.documentManager, null)).resolves.toMatchObject({
+          merged: true,
+        });
+      });
+    });
+
     it('handles missing getMetadata method gracefully', async () => {
       const manager = new SaveManager(mockBridge, { token: 'test-token', apiUrl: 'http://test.com/api' });
       mockBridge.documentManager.getMetadata = undefined;
