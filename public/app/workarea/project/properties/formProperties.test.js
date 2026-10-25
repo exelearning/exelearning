@@ -1534,7 +1534,7 @@ describe('FormProperties', () => {
     });
 
     describe('addRowsWithTabs', () => {
-        it('should create tab navigation with 3 tabs', () => {
+        it('should create tab navigation with 5 tabs', () => {
             const formProperties = new FormProperties(mockProperties);
             const table = document.createElement('div');
             const properties = {
@@ -1550,7 +1550,7 @@ describe('FormProperties', () => {
             formProperties.addRowsWithTabs(properties, table);
 
             const tabs = table.querySelectorAll('.project-properties-tab');
-            expect(tabs.length).toBe(4);
+            expect(tabs.length).toBe(5);
         });
 
         it('should create tab panes for each tab', () => {
@@ -1561,7 +1561,7 @@ describe('FormProperties', () => {
             formProperties.addRowsWithTabs(properties, table);
 
             const panes = table.querySelectorAll('.project-properties-tab-pane');
-            expect(panes.length).toBe(4);
+            expect(panes.length).toBe(5);
         });
 
         it('should set first tab as active by default', () => {
@@ -1587,7 +1587,8 @@ describe('FormProperties', () => {
             const tabs = table.querySelectorAll('.project-properties-tab');
             expect(tabs[0].textContent).toBe('Content metadata');
             expect(tabs[1].textContent).toBe('Export options');
-            expect(tabs[2].textContent).toBe('Custom code');
+            expect(tabs[2].textContent).toBe('Grading');
+            expect(tabs[3].textContent).toBe('Custom code');
         });
 
         it('should have proper ARIA attributes on tabs', () => {
@@ -1600,6 +1601,97 @@ describe('FormProperties', () => {
             const firstTab = table.querySelector('.project-properties-tab');
             expect(firstTab.getAttribute('role')).toBe('tab');
             expect(firstTab.getAttribute('aria-selected')).toBe('true');
+        });
+
+        it('should place the grading properties in their own tab', () => {
+            const formProperties = new FormProperties(mockProperties);
+            const table = document.createElement('div');
+            const properties = {
+                pp_addPagination: {
+                    type: 'checkbox',
+                    title: 'Page counter',
+                    value: 'false',
+                    groups: { export: 'Export options' },
+                    category: { properties: 'Properties' },
+                },
+                pp_passScore: {
+                    type: 'number',
+                    title: 'Minimum score to pass',
+                    value: 5,
+                    groups: { grading: 'Grading' },
+                    category: { properties: 'Properties' },
+                },
+                pp_passScoreEveryActivity: {
+                    type: 'checkbox',
+                    title: 'Each SCORM activity must reach its minimum score',
+                    value: 'false',
+                    groups: { grading: 'Grading' },
+                    category: { properties: 'Properties' },
+                },
+            };
+
+            formProperties.addRowsWithTabs(properties, table);
+
+            const pane = table.querySelector('#props-pane-grading');
+            expect(pane.querySelector('[property="pp_passScore"]')).not.toBeNull();
+            expect(pane.querySelector('[property="pp_passScoreEveryActivity"]')).not.toBeNull();
+            expect(pane.querySelector('[property="pp_addPagination"]')).toBeNull();
+            const exportPane = table.querySelector('#props-pane-export');
+            expect(exportPane.querySelector('[property="pp_addPagination"]')).not.toBeNull();
+            expect(exportPane.querySelector('[property="pp_passScore"]')).toBeNull();
+        });
+
+        it('should render a note at the top of the grading pane', () => {
+            const formProperties = new FormProperties(mockProperties);
+            const table = document.createElement('div');
+
+            formProperties.addRowsWithTabs({}, table);
+
+            const pane = table.querySelector('#props-pane-grading');
+            const note = pane.querySelector('.form-properties').firstElementChild;
+            expect(note.classList.contains('properties-note')).toBe(true);
+            expect(note.textContent).toBe(
+                'Gradable activities use the minimum score in every export format. The SCORM option only applies to SCORM-compatible exports.'
+            );
+            expect(pane.getAttribute('aria-describedby')).toBe(note.id);
+            expect(table.querySelectorAll('.properties-note').length).toBe(1);
+        });
+    });
+
+    describe('addPropertiesToPane', () => {
+        const checkbox = {
+            type: 'checkbox',
+            title: 'Switch',
+            value: 'false',
+            groups: { grading: 'Grading' },
+            category: { properties: 'Properties' },
+        };
+
+        it('should add no note when none is given', () => {
+            const formProperties = new FormProperties(mockProperties);
+            const pane = document.createElement('div');
+
+            formProperties.addPropertiesToPane([['pp_switch', { ...checkbox }]], pane);
+
+            const container = pane.querySelector('.form-properties');
+            expect(container.children.length).toBe(1);
+            expect(container.firstElementChild.classList.contains('property-row')).toBe(true);
+            expect(pane.hasAttribute('aria-describedby')).toBe(false);
+        });
+
+        it('should put the note before the rows and describe the pane with it', () => {
+            const formProperties = new FormProperties(mockProperties);
+            const pane = document.createElement('div');
+            pane.id = 'props-pane-test';
+
+            formProperties.addPropertiesToPane([['pp_switch', { ...checkbox }]], pane, 'A note');
+
+            const container = pane.querySelector('.form-properties');
+            const [note, row] = container.children;
+            expect(note.textContent).toBe('A note');
+            expect(note.id).toBe('props-pane-test-note');
+            expect(row.getAttribute('property')).toBe('pp_switch');
+            expect(pane.getAttribute('aria-describedby')).toBe('props-pane-test-note');
         });
     });
 
@@ -1943,6 +2035,39 @@ describe('FormProperties', () => {
             expect(tab2.classList.contains('active')).toBe(true);
             expect(pane1.classList.contains('active')).toBe(false);
             expect(pane2.classList.contains('active')).toBe(true);
+        });
+
+        describe('tab row scrolling', () => {
+            const rect = (left, right) => ({ left, right });
+            const setUp = (tabRect) => {
+                const formProperties = new FormProperties(mockProperties);
+                const tabsNav = document.createElement('div');
+                tabsNav.getBoundingClientRect = () => rect(0, 500);
+                tabsNav.scrollLeft = 100;
+                const tab = document.createElement('button');
+                tab.classList.add('project-properties-tab');
+                tab.getBoundingClientRect = () => tabRect;
+                tab.scrollIntoView = vi.fn();
+                tabsNav.appendChild(tab);
+                formProperties.activateTab(tabsNav, document.createElement('div'), tab, 'pane-1');
+                return { tabsNav, tab };
+            };
+
+            it('scrolls right so the next tab peeks in, without scrollIntoView', () => {
+                const { tabsNav, tab } = setUp(rect(400, 520));
+                expect(tabsNav.scrollLeft).toBe(168);
+                expect(tab.scrollIntoView).not.toHaveBeenCalled();
+            });
+
+            it('scrolls left so the previous tab peeks in', () => {
+                const { tabsNav } = setUp(rect(-20, 100));
+                expect(tabsNav.scrollLeft).toBe(32);
+            });
+
+            it('leaves the row alone when the tab is well inside it', () => {
+                const { tabsNav } = setUp(rect(100, 200));
+                expect(tabsNav.scrollLeft).toBe(100);
+            });
         });
 
         it('should update aria-selected attributes', () => {

@@ -44,6 +44,8 @@ export default class ModalConfirm extends Modal {
             let focusCancelButton = data.focusCancelButton
                 ? data.focusCancelButton
                 : null;
+            // Every confirm dialog shares this button, and one may have left it disabled
+            this.confirmButton.disabled = false;
             // Set params
             this.setTitle(title);
             this.setContentId(contentId);
