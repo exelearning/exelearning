@@ -628,11 +628,15 @@ function createNotReadyResponse() {
  * @returns {Response} 404 Not Found response
  */
 function createNotFoundResponse(filePath) {
+    const safePath = String(filePath).replace(
+        /[&<>"']/g,
+        (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c],
+    );
     return new Response(
         `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Not Found</title></head>` +
             `<body style="font-family: system-ui; padding: 2rem;">` +
             `<h2>File not found</h2>` +
-            `<p>The requested file was not found: <code>${filePath}</code></p>` +
+            `<p>The requested file was not found: <code>${safePath}</code></p>` +
             `</body></html>`,
         {
             status: 404,
