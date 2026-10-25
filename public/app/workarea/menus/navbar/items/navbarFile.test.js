@@ -1651,6 +1651,14 @@ describe('NavbarFile', () => {
             expect(window.location.href).toBe('/workarea?project=proj-3');
         });
 
+        it('makeRecentProjecList should render project titles as text, not HTML', () => {
+            const title = '<img src=x onerror="alert(1)">';
+            const list = navbarFile.makeRecentProjecList([{ odeId: 'proj-4', title }]);
+            const link = list.querySelector('a');
+            expect(link.textContent).toBe(title);
+            expect(link.querySelector('img')).toBeNull();
+        });
+
         it('makeRecentProjecList should show empty message when list is empty', () => {
             const list = navbarFile.makeRecentProjecList([]);
             expect(list.textContent).toContain('No recent projects');
@@ -3451,11 +3459,11 @@ describe('NavbarFile printing with interactive activities', () => {
     });
 
     describe('when the project has them', () => {
-        it('opens the preview at once, with the activities printed in an appendix', () => {
+        it('opens the preview at once, with the activities printed where the author put them', () => {
             navbarFile.startPrint();
 
             expect(printPreview.show).toHaveBeenCalledTimes(1);
-            expect(printPreview.show).toHaveBeenCalledWith('document', 'appendix', null, ACTIVITIES);
+            expect(printPreview.show).toHaveBeenCalledWith('document', 'in-place', null, ACTIVITIES);
         });
 
         it('lists the activities of the project', () => {
