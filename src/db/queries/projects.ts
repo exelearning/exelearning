@@ -119,6 +119,28 @@ export async function findProjectByPlatformId(db: Kysely<Database>, platformId: 
 }
 
 /**
+ * Find the project a user keeps for one platform activity (site + course module).
+ * Deleted projects are skipped; the most recently updated one wins.
+ */
+export async function findOwnedProjectByPlatformBinding(
+    db: Kysely<Database>,
+    ownerId: number,
+    platformSite: string,
+    platformId: string,
+): Promise<Project | undefined> {
+    return db
+        .selectFrom('projects')
+        .selectAll()
+        .where('owner_id', '=', ownerId)
+        .where('platform_site', '=', platformSite)
+        .where('platform_id', '=', platformId)
+        .where('status', 'in', ['active', 'archived'])
+        .orderBy('updated_at', 'desc')
+        .orderBy('id', 'desc')
+        .executeTakeFirst();
+}
+
+/**
  * Find a project by its opaque public view id.
  * This is used only by public viewer/export routes. It never accepts the
  * internal project UUID, so the editing identifier cannot be used as a

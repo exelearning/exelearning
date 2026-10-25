@@ -1,0 +1,998 @@
+import { describe, expect, it } from 'bun:test';
+import { encryptDataGame } from '../utils/dataGameCipher';
+import type { ExportBlock, ExportComponent, ExportPage } from '../interfaces';
+import {
+    applyActivityMode,
+    convertedBy,
+    droppedBy,
+    hasTeacherOnlyContent,
+    leaveOutTeacherOnlyActivities,
+    listInteractiveActivities,
+    PRINTABLE_ACTIVITY_TYPE,
+    type ApplyActivityModeOptions,
+    type DocumentActivityMode,
+} from './printActivityModes';
+
+/** Component HTML the Guess editor writes, with one answerable question. */
+function guessHtml(definition = 'Ciudad conquistada', word = 'Valencia'): string {
+    const payload = JSON.stringify({
+        typeGame: 'Adivina',
+        wordsGame: [{ definition, word, percentageShow: 0 }],
+    });
+    return `<div class="adivina-IDevice"><div class="adivina-DataGame js-hidden">${encryptDataGame(payload)}</div></div>`;
+}
+
+/** Component HTML the Crossword editor writes, with two words that can cross. */
+function crosswordHtml(): string {
+    const payload = JSON.stringify({
+        typeGame: 'Crucigrama',
+        difficulty: 100,
+        wordsGame: [
+            { word: 'CASA', definition: 'Hogar' },
+            { word: 'SOL', definition: 'Astro' },
+        ],
+    });
+    return `<div class="crucigrama-DataGame js-hidden">${encryptDataGame(payload)}</div>`;
+}
+
+function component(overrides: Partial<ExportComponent> = {}): ExportComponent {
+    return { id: 'c1', type: 'guess', order: 0, content: guessHtml(), properties: {}, ...overrides };
+}
+
+/** One page, one block, holding the given components. */
+function page(components: ExportComponent[], overrides: Partial<ExportPage> = {}): ExportPage {
+    return {
+        id: 'p1',
+        title: 'El Poema de Mio Cid',
+        parentId: null,
+        order: 0,
+        blocks: [{ id: 'b1', name: 'Bloque', order: 0, components }],
+        ...overrides,
+    };
+}
+
+const text = () => component({ id: 'text-1', type: 'text', content: '<p>El Cid</p>' });
+
+/**
+ * An activity whose adapter cannot read what it stores (the tests give it no payload): the one
+ * left with no printed form because its data is invalid or empty.
+ */
+const WAITING = 'guess';
+
+/** A padlock that guards no writing: its instructions only say how to open it. */
+const emptyPadlock = () =>
+    component({
+        type: 'padlock',
+        content:
+            '<div class="candado-IDevice"><div class="candado-instructions js-hidden"><p>Busca el código</p></div>' +
+            '<div class="candado-retro js-hidden"></div></div>',
+    });
+
+function componentsOf(pages: ExportPage[]): ExportComponent[] {
+    return pages.flatMap(p => (p.blocks || []).flatMap(b => b.components || []));
+}
+
+function run(pages: ExportPage[], mode: DocumentActivityMode, options: ApplyActivityModeOptions = {}): ExportPage[] {
+    return applyActivityMode(pages, mode, options);
+}
+
+describe('applyActivityMode', () => {
+    it.each(['in-place', 'appendix'] as const)('keeps rubric identity fields in %s mode', mode => {
+        const content = `<div class="exe-rubrics-DataGame">${escape(
+            JSON.stringify({
+                categories: ['Content'],
+                scores: ['Good'],
+                descriptions: [[{ text: 'Complete', weight: '4' }]],
+                i18n: { activity: 'Activity', name: 'Learner name', date: 'Assessment date', score: 'Score' },
+            }),
+        )}</div>`;
+        const html = componentsOf(run([page([component({ type: 'rubric', content })])], mode))
+            .map(entry => entry.content)
+            .join('');
+        expect(html).toContain('<span>Learner name:</span>');
+        expect(html).toContain('<span>Assessment date:</span>');
+    });
+
+    it('leaves a project with no interactive activity untouched', () => {
+        for (const mode of ['omit', 'in-place', 'appendix'] as DocumentActivityMode[])
+            expect(run([page([text()])], mode)).toEqual([page([text()])]);
+    });
+
+    it('never modifies the pages it is given', () => {
+        const pages = [page([component(), text()])];
+        const before = JSON.stringify(pages);
+
+        run(pages, 'in-place');
+        run(pages, 'appendix');
+        run(pages, 'omit');
+
+        expect(JSON.stringify(pages)).toBe(before);
+    });
+
+    describe('omit', () => {
+        it('drops the activity and keeps everything else', () => {
+            const types = componentsOf(run([page([text(), component()])], 'omit')).map(c => c.type);
+
+            expect(types).toEqual(['text']);
+        });
+
+        it('drops a block it has emptied, so no heading is left hanging', () => {
+            const result = run([page([component()])], 'omit');
+
+            expect(result[0].blocks).toHaveLength(0);
+        });
+
+        it('keeps a block that arrived empty, which is how the document already prints', () => {
+            const empty = page([], { blocks: [{ id: 'b1', name: 'Bloque', order: 0, components: [] }] });
+
+            expect(run([empty], 'omit')[0].blocks).toHaveLength(1);
+        });
+
+        it('adds no appendix', () => {
+            expect(run([page([component()])], 'omit')).toHaveLength(1);
+        });
+
+        it('leaves out the widgets that only work on screen, json or html', () => {
+            const widgets = ['external-website', 'download-source-file', 'file-attachment', 'magnifier'];
+            const result = run(
+                [page([text(), ...widgets.map(type => component({ type, content: '<div/>' }))])],
+                'omit',
+            );
+
+            expect(componentsOf(result).map(c => c.type)).toEqual(['text']);
+        });
+    });
+
+    describe('in place', () => {
+        it('replaces the activity with its exercise, where the author put it', () => {
+            const components = componentsOf(run([page([text(), component()])], 'in-place'));
+
+            expect(components.map(c => c.type)).toEqual(['text', PRINTABLE_ACTIVITY_TYPE]);
+            expect(components[1].content).toContain('<article class="worksheet-activity"');
+            expect(components[1].content).toContain('Ciudad conquistada');
+        });
+
+        it('keeps the component where it was in the document', () => {
+            const components = componentsOf(run([page([component({ id: 'c9', order: 3 })])], 'in-place'));
+
+            expect(components[0].id).toBe('c9');
+            expect(components[0].order).toBe(3);
+        });
+
+        it('drops the stored game configuration along with the game', () => {
+            const withProps = component({ properties: { percentajeQuestions: 50 } });
+
+            expect(componentsOf(run([page([withProps])], 'in-place'))[0].properties).toEqual({});
+        });
+
+        it('prints a note where an activity has data its adapter could not read, as the worksheet words it', () => {
+            const content = componentsOf(run([page([component({ type: WAITING, content: '<div/>' })])], 'in-place'))[0]
+                .content;
+
+            expect(content).toContain('worksheet-activity-unprintable');
+            // The worksheet's words for the same case, and no promise of a printed form for later.
+            expect(content).toContain('Invalid or empty activity data');
+            expect(content).not.toMatch(/\byet\b/);
+            // The type survives as an attribute, for stylesheets and tests, but is not written out
+            // anywhere a reader would see it.
+            expect(content).toContain(`data-idevice="${WAITING}"`);
+        });
+
+        it('says an activity is not available rather than not ready, where that is settled', () => {
+            // Trivial, and the two video activities, are not waiting for an adapter. Saying yet
+            // would have the teacher waiting for a release that is not coming. Nor are the widgets
+            // that only work on screen: a website, a download, a file list, a magnifier.
+            for (const type of [
+                'trivial',
+                'interactive-video',
+                'quick-questions-video',
+                'external-website',
+                'download-source-file',
+                'file-attachment',
+                'magnifier',
+            ]) {
+                const content = componentsOf(run([page([component({ type, content: '<div/>' })])], 'in-place'))[0]
+                    .content;
+
+                expect(content).toContain('Not available in print.');
+                expect(content).not.toContain('Invalid or empty activity data');
+            }
+        });
+
+        it('says a padlock that guards no writing is not available, that being settled for it', () => {
+            // Its adapter found nothing for paper, which no release will change; it is not data
+            // that could not be read.
+            const content = componentsOf(run([page([emptyPadlock()])], 'in-place'))[0].content;
+
+            expect(content).toContain('worksheet-activity-unprintable');
+            expect(content).toContain('Not available in print.');
+            expect(content).not.toContain('Invalid or empty activity data');
+            expect(content).not.toContain('Busca el código');
+        });
+
+        it('lets the caller word both notes', () => {
+            const labels = { invalidData: 'Datos no válidos', notAvailable: 'No disponible en impresión' };
+            const settled = componentsOf(
+                run([page([component({ type: 'trivial', content: '<div/>' })])], 'in-place', { labels }),
+            )[0].content;
+            const unreadable = componentsOf(
+                run([page([component({ type: WAITING, content: '<div/>' })])], 'in-place', { labels }),
+            )[0].content;
+
+            expect(settled).toContain('No disponible en impresión');
+            expect(unreadable).toContain('Datos no válidos');
+        });
+
+        it.each(['in-place', 'appendix', 'omit'] as const)(
+            'prints an iDevice it does not know as it always has, in %s mode',
+            mode => {
+                // One an administrator installed is content of its own, not an activity.
+                const custom = component({ id: 'custom', type: 'my-accordion', content: '<p>Contenido propio</p>' });
+
+                const result = run([page([custom])], mode);
+
+                expect(result).toHaveLength(1);
+                expect(componentsOf(result)).toEqual([custom]);
+            },
+        );
+
+        it('prints the same note when the payload cannot be read', () => {
+            const broken = component({ content: '<div class="adivina-DataGame js-hidden">not a payload</div>' });
+
+            expect(componentsOf(run([page([broken])], 'in-place'))[0].content).toContain('worksheet-not-printable');
+        });
+
+        it('prints the same note when the adapter fails on the data, rather than failing the print', () => {
+            // The list is always shuffled, so a draw that fails is an error inside the adapter.
+            const list = component({
+                type: 'scrambled-list',
+                content: '',
+                properties: { options: ['Primero', 'Segundo', 'Tercero'] },
+            });
+            const random = () => {
+                throw new Error('No draw');
+            };
+
+            const content = componentsOf(run([page([list])], 'in-place', { random }))[0].content;
+
+            expect(content).toContain('worksheet-not-printable');
+            expect(content).not.toContain('Primero');
+        });
+
+        it('adds no appendix', () => {
+            expect(run([page([component()])], 'in-place')).toHaveLength(1);
+        });
+    });
+
+    describe('appendix', () => {
+        it('leaves a pointer in place and puts the exercise at the back', () => {
+            const result = run([page([component()])], 'appendix');
+
+            expect(result).toHaveLength(2);
+            expect(componentsOf([result[0]])[0].content).toContain('See appendix, activity 1');
+            expect(componentsOf([result[1]])[0].content).toContain('Ciudad conquistada');
+        });
+
+        it('numbers the pointer and its exercise the same', () => {
+            const result = run([page([component({ id: 'a' }), component({ id: 'b' })])], 'appendix');
+
+            expect(componentsOf([result[0]]).map(c => c.content)).toEqual([
+                expect.stringContaining('activity 1'),
+                expect.stringContaining('activity 2'),
+            ]);
+            expect(componentsOf([result[1]]).map(c => c.content)).toEqual([
+                expect.stringContaining('>1. Bloque<'),
+                expect.stringContaining('>2. Bloque<'),
+            ]);
+        });
+
+        it('numbers across pages, in document order', () => {
+            const result = run(
+                [page([component()], { id: 'p1' }), page([component()], { id: 'p2', order: 1 })],
+                'appendix',
+            );
+
+            expect(componentsOf([result[0]])[0].content).toContain('activity 1');
+            expect(componentsOf([result[1]])[0].content).toContain('activity 2');
+            expect(componentsOf([result[2]])).toHaveLength(2);
+        });
+
+        it('numbers an activity with no printable form too, so the pointers still line up', () => {
+            const result = run([page([component({ type: WAITING, content: '<div/>' }), component()])], 'appendix');
+            const inAppendix = componentsOf([result[result.length - 1]]);
+
+            expect(inAppendix[0].content).toContain('worksheet-not-printable');
+            expect(inAppendix[0].content).toContain('>1. Bloque<');
+            expect(inAppendix[1].content).toContain('>2. Bloque<');
+        });
+
+        it('numbers and names a padlock that guards no writing, and says it is not available', () => {
+            const result = run([page([component(), emptyPadlock()])], 'appendix');
+            const entry = componentsOf([result[result.length - 1]])[1].content;
+
+            expect(componentsOf([result[0]])[1].content).toContain('See appendix, activity 2');
+            expect(entry).toContain('>2. Bloque<');
+            expect(entry).toContain('Not available in print.');
+            expect(entry).not.toContain('Invalid or empty activity data');
+        });
+
+        it('builds the appendix as an ordinary page, after the last one', () => {
+            const appendixPage = run([page([component()], { order: 4 })], 'appendix')[1];
+
+            expect(appendixPage.id).toBe('worksheet-appendix');
+            expect(appendixPage.title).toBe('Appendix');
+            expect(appendixPage.parentId).toBeNull();
+            expect(appendixPage.order).toBe(5);
+            expect(appendixPage.blocks[0].name).toBe('');
+        });
+
+        it('gives the copy at the back its own id, so nothing is duplicated', () => {
+            const result = run([page([component({ id: 'c7' })])], 'appendix');
+
+            expect(componentsOf([result[0]])[0].id).toBe('c7');
+            expect(componentsOf([result[1]])[0].id).toBe('c7-appendix');
+        });
+
+        it('orders the appendix entries as they appear in the document', () => {
+            const result = run([page([component({ id: 'a' }), component({ id: 'b' })])], 'appendix');
+
+            expect(componentsOf([result[1]]).map(c => c.order)).toEqual([0, 1]);
+        });
+    });
+
+    describe('translated strings', () => {
+        it('uses the labels it is given', () => {
+            const result = run([page([component(), component({ type: WAITING, content: '<div/>' })])], 'appendix', {
+                labels: {
+                    appendixTitle: 'Anexo',
+                    appendixReference: 'Ver anexo, actividad %s',
+                    invalidData: 'Datos no válidos o vacíos',
+                },
+                ideviceTitles: { guess: 'Adivina', puzzle: 'Puzle' },
+            });
+
+            expect(result[1].title).toBe('Anexo');
+            expect(componentsOf([result[0]])[0].content).toContain('Ver anexo, actividad 1');
+            expect(componentsOf([result[1]])[0].content).toContain('>1. Bloque<');
+            expect(componentsOf([result[1]])[1].content).toContain('Datos no válidos o vacíos');
+            expect(componentsOf([result[1]])[1].content).toContain('>2. Bloque<');
+        });
+
+        it('passes the worksheet labels down into the exercise itself', () => {
+            // A crossword numbers its clues by direction, which is the one place the worksheet
+            // labels show up inside an activity rather than around it.
+            const result = run([page([component({ type: 'crossword', content: crosswordHtml() })])], 'in-place', {
+                labels: { across: 'Horizontal', down: 'Vertical' },
+            });
+            const content = componentsOf(result)[0].content;
+
+            expect(content).toMatch(/Horizontal|Vertical/);
+            expect(content).not.toContain('Across');
+            expect(content).not.toContain('Down');
+        });
+    });
+
+    describe('untrusted content', () => {
+        it('escapes the iDevice type before putting it in markup', () => {
+            const nasty = component({ type: 'evil"><script>alert(1)</script>', content: '<div/>' });
+
+            expect(componentsOf(run([page([nasty])], 'in-place'))[0].content).not.toContain('<script>');
+        });
+
+        it('escapes a translated label before putting it in markup', () => {
+            const result = run([page([component({ type: WAITING, content: '<div/>' })])], 'in-place', {
+                labels: { invalidData: '<img src=x onerror=alert(1)>' },
+            });
+
+            expect(componentsOf(result)[0].content).not.toContain('<img');
+            expect(componentsOf(result)[0].content).toContain('&lt;img');
+        });
+    });
+});
+
+describe('PRINTABLE_ACTIVITY_TYPE', () => {
+    it('is not named after a class the worksheet markup uses', () => {
+        // IdeviceRenderer puts the component's type on the wrapper it emits as a CSS class. A type
+        // sharing a name with a worksheet class would land on both the wrapper and the exercise
+        // inside it, so every selector — in a stylesheet or a test — would match twice.
+        const markup = componentsOf(applyActivityMode([page([component()])], 'in-place'))[0].content;
+        const classes = [...markup.matchAll(/class="([^"]+)"/g)].flatMap(match => match[1].split(/\s+/));
+
+        expect(classes).not.toContain(PRINTABLE_ACTIVITY_TYPE);
+    });
+});
+
+describe('the iDevice name is never printed', () => {
+    /** The text a reader would see, with attributes and tags stripped out. */
+    const visibleText = (markup: string) => markup.replace(/<[^>]*>/g, ' ');
+
+    const named = { ideviceTitles: { guess: 'Adivina', puzzle: 'Puzle' } };
+
+    it('is absent from an exercise', () => {
+        const markup = componentsOf(applyActivityMode([page([component()])], 'in-place', named))[0].content;
+
+        expect(visibleText(markup)).not.toContain('Adivina');
+        expect(visibleText(markup)).not.toContain('Guess');
+    });
+
+    it('is absent from the note for an activity with no printable form', () => {
+        const unprintable = component({ type: WAITING, content: '<div/>' });
+        const markup = componentsOf(applyActivityMode([page([unprintable])], 'in-place', named))[0].content;
+
+        expect(visibleText(markup)).not.toContain('Puzle');
+        expect(visibleText(markup)).not.toContain(WAITING);
+    });
+
+    it('is absent from the pointer into the appendix and from the entry it points at', () => {
+        const result = applyActivityMode([page([component()])], 'appendix', named);
+
+        for (const markup of componentsOf(result).map(entry => entry.content)) {
+            expect(visibleText(markup)).not.toContain('Adivina');
+        }
+    });
+
+    it('still leaves the appendix entry findable by its number', () => {
+        const result = applyActivityMode([page([component()])], 'appendix', named);
+        const inAppendix = componentsOf([result[1]])[0].content;
+
+        expect(inAppendix).toContain('<h3 class="worksheet-activity-title">1. Bloque</h3>');
+    });
+});
+
+describe('what the author restricted', () => {
+    /** A block carrying the given properties, holding one Guess activity. */
+    const restrictedPage = (properties: Record<string, unknown>) =>
+        page([component()], {
+            blocks: [{ id: 'b1', name: 'Bloque', order: 0, components: [component()], properties } as never],
+        });
+
+    it.each([
+        ['a teacher-only block', { teacherOnly: true }],
+        ['a hidden block', { visibility: false }],
+        ['a legacy teacher block', { visibilityType: 'teacher' }],
+    ])('leaves %s exactly as the document prints it', (_name, properties) => {
+        for (const mode of ['omit', 'in-place', 'appendix'] as DocumentActivityMode[]) {
+            const result = applyActivityMode([restrictedPage(properties)], mode);
+
+            // Untouched: still the activity, still in its own block, and no appendix built from it.
+            expect(result).toHaveLength(1);
+            expect(componentsOf(result)[0].type).toBe('guess');
+            expect(componentsOf(result)[0].content).toContain('adivina-DataGame');
+        }
+    });
+
+    it('never copies a hidden component into the appendix', () => {
+        // The appendix is a block of ours, so a copy there would not carry the restriction the
+        // original block applied — and both markers are display:none in the export stylesheet.
+        const hidden = component({ structureProperties: { visibility: 'false' } });
+        const teacherOnly = component({ id: 'c2', structureProperties: { teacherOnly: 'true' } });
+
+        const result = applyActivityMode([page([hidden, teacherOnly])], 'appendix');
+
+        expect(result).toHaveLength(1);
+        expect(componentsOf(result).map(entry => entry.type)).toEqual(['guess', 'guess']);
+    });
+
+    it('still converts an ordinary activity beside a restricted one', () => {
+        const restricted = component({ id: 'c1', structureProperties: { teacherOnly: 'true' } });
+        const ordinary = component({ id: 'c2' });
+
+        const types = componentsOf(applyActivityMode([page([restricted, ordinary])], 'in-place')).map(
+            entry => entry.type,
+        );
+
+        expect(types).toEqual(['guess', PRINTABLE_ACTIVITY_TYPE]);
+    });
+});
+
+describe('questions an adapter had to leave out', () => {
+    const onlyVideoQuestions = (includeInvalid = false) => {
+        const payload = JSON.stringify({
+            typeGame: 'Adivina',
+            wordsGame: [
+                { type: 2, definition: 'Identify the city in the video', word: 'Valencia' },
+                { type: 2, definition: 'Identify the river in the video', word: 'Ebro' },
+                ...(includeInvalid ? [null] : []),
+            ],
+        });
+        return component({ content: `<div class="adivina-DataGame js-hidden">${encryptDataGame(payload)}</div>` });
+    };
+
+    it.each(['in-place', 'appendix'] as const)('keeps the reason when every question needs media in %s', mode => {
+        const markup = componentsOf(run([page([onlyVideoQuestions()])], mode))
+            .map(entry => entry.content)
+            .join('');
+
+        expect(markup).toContain('worksheet-activity-unprintable');
+        expect(markup).toContain('Requires multimedia');
+        expect(markup).not.toContain('Invalid or empty activity data');
+        expect(markup.match(/Requires multimedia/g)).toHaveLength(1);
+        if (mode === 'appendix') {
+            expect(markup).toContain('See appendix, activity 1');
+            expect(markup).toContain('>1. Bloque<');
+        }
+    });
+
+    it.each(['in-place', 'appendix'] as const)('escapes translated reasons when nothing can print in %s', mode => {
+        const markup = componentsOf(
+            run([page([onlyVideoQuestions()])], mode, {
+                labels: { mediaRequired: 'Media <img src=x onerror=alert(1)>' },
+            }),
+        )
+            .map(entry => entry.content)
+            .join('');
+
+        expect(markup).toContain('Media &lt;img src=x onerror=alert(1)&gt;');
+        expect(markup).not.toContain('<img');
+        expect(markup).not.toContain('Invalid or empty activity data');
+    });
+
+    it.each(['in-place', 'appendix'] as const)('keeps distinct reasons when no questions can print in %s', mode => {
+        const markup = componentsOf(run([page([onlyVideoQuestions(true)])], mode))
+            .map(entry => entry.content)
+            .join('');
+
+        expect(markup).toContain('Requires multimedia');
+        expect(markup).toContain('Invalid or empty activity data');
+    });
+
+    /** A Guess activity with one answerable question and one that needs a video. */
+    const withVideoQuestion = () => {
+        const payload = JSON.stringify({
+            typeGame: 'Adivina',
+            wordsGame: [
+                { definition: 'Ciudad conquistada', word: 'Valencia', percentageShow: 0 },
+                { type: 2, definition: 'Un vídeo', word: 'Nada', percentageShow: 0 },
+            ],
+        });
+        return component({
+            content: `<div class="adivina-DataGame js-hidden">${encryptDataGame(payload)}</div>`,
+        });
+    };
+
+    it('says so beside the exercise instead of dropping the news', () => {
+        const markup = componentsOf(applyActivityMode([page([withVideoQuestion()])], 'in-place'))[0].content;
+
+        expect(markup).toContain('worksheet-unsupported');
+        expect(markup).toContain('Requires multimedia');
+        expect(markup).toContain('(1)');
+    });
+
+    it('uses the translated wording', () => {
+        const markup = componentsOf(
+            applyActivityMode([page([withVideoQuestion()])], 'in-place', {
+                labels: { mediaRequired: 'Necesita multimedia' },
+            }),
+        )[0].content;
+
+        expect(markup).toContain('Necesita multimedia');
+    });
+
+    it('says nothing when nothing was left out', () => {
+        const markup = componentsOf(applyActivityMode([page([component()])], 'in-place'))[0].content;
+
+        expect(markup).not.toContain('worksheet-unsupported');
+    });
+
+    it('reports in the appendix too, where the exercise actually is', () => {
+        const result = applyActivityMode([page([withVideoQuestion()])], 'appendix');
+
+        expect(componentsOf([result[1]])[0].content).toContain('worksheet-unsupported');
+    });
+});
+
+describe("the author's own heading", () => {
+    const named = (name: string) =>
+        page([component()], { blocks: [{ id: 'b1', name, order: 0, components: [component()] }] });
+
+    it('names the appendix entry after the block it came from', () => {
+        const result = applyActivityMode([named('Une cada pareja')], 'appendix');
+
+        expect(componentsOf([result[1]])[0].content).toContain(
+            '<h3 class="worksheet-activity-title">1. Une cada pareja</h3>',
+        );
+    });
+
+    it('names an appendix entry that has no printable form too', () => {
+        const unprintable = component({ type: WAITING, content: '<div/>' });
+        const result = applyActivityMode(
+            [page([unprintable], { blocks: [{ id: 'b1', name: 'El puzle', order: 0, components: [unprintable] }] })],
+            'appendix',
+        );
+
+        expect(componentsOf([result[1]])[0].content).toContain('1. El puzle');
+    });
+
+    it('leaves the exercise unnamed in place, where the block draws its own heading', () => {
+        // Repeating it under the block's own header would say the same thing twice.
+        const markup = componentsOf(applyActivityMode([named('Une cada pareja')], 'in-place'))[0].content;
+
+        expect(markup).not.toContain('worksheet-activity-title');
+    });
+
+    it('prints just the number when the author left the block unnamed', () => {
+        const result = applyActivityMode([named('   ')], 'appendix');
+
+        expect(componentsOf([result[1]])[0].content).toContain('<h3 class="worksheet-activity-title">1.</h3>');
+    });
+
+    it('escapes a block name before putting it in markup', () => {
+        const result = applyActivityMode([named('<img src=x onerror=alert(1)>')], 'appendix');
+
+        expect(componentsOf([result[1]])[0].content).not.toContain('<img');
+        expect(componentsOf([result[1]])[0].content).toContain('&lt;img');
+    });
+});
+
+describe('an activity stored under its legacy name', () => {
+    it('is converted with the adapter it is listed by', () => {
+        // Listing reads 'GuessIdevice' as 'guess'; converting has to find the same adapter, or the
+        // activity it offered would print as a note that it cannot be printed.
+        const legacy = component({ type: 'GuessIdevice' });
+        expect(listInteractiveActivities([page([legacy])]).map(entry => entry.id)).toEqual(['c1']);
+
+        const [converted] = componentsOf(run([page([legacy])], 'in-place'));
+
+        expect(converted.type).toBe(PRINTABLE_ACTIVITY_TYPE);
+        expect(converted.content).toContain('Ciudad conquistada');
+        expect(converted.content).not.toContain('worksheet-not-printable');
+    });
+});
+
+describe('the activities the user chose to print', () => {
+    const two = () => [
+        page([text(), component({ id: 'a' }), component({ id: 'b', content: guessHtml('Río', 'Ebro') })]),
+    ];
+
+    it('prints every activity when no choice was made', () => {
+        const contents = componentsOf(run(two(), 'in-place')).map(c => c.content);
+
+        expect(contents.join('')).toContain('Ciudad conquistada');
+        expect(contents.join('')).toContain('Río');
+    });
+
+    it('leaves out one left unticked, where the author put it', () => {
+        const result = run(two(), 'in-place', { selectedActivities: ['b'] });
+
+        expect(componentsOf(result).map(c => c.id)).toEqual(['text-1', 'b']);
+        expect(componentsOf(result)[1].content).toContain('Río');
+    });
+
+    it('numbers the appendix without a gap where one was left out', () => {
+        const result = run(two(), 'appendix', { selectedActivities: ['b'] });
+
+        expect(componentsOf([result[0]]).map(c => c.id)).toEqual(['text-1', 'b']);
+        expect(componentsOf([result[0]])[1].content).toContain('activity 1');
+        expect(componentsOf([result[1]]).map(c => c.content)).toEqual([expect.stringContaining('>1. Bloque<')]);
+    });
+
+    it('drops a block that held only activities left unticked', () => {
+        const result = run([page([component({ id: 'a' })])], 'in-place', { selectedActivities: [] });
+
+        expect(result[0].blocks).toHaveLength(0);
+    });
+
+    it('never touches what is not an activity, ticked or not', () => {
+        expect(componentsOf(run(two(), 'appendix', { selectedActivities: [] })).map(c => c.id)).toEqual(['text-1']);
+    });
+
+    it('leaves what the author restricted as it was, whatever was ticked', () => {
+        const restricted = component({ id: 'a', structureProperties: { teacherOnly: 'true' } });
+
+        expect(componentsOf(run([page([restricted])], 'in-place', { selectedActivities: [] }))).toEqual([restricted]);
+    });
+});
+
+describe('convertedBy', () => {
+    const block: ExportBlock = { id: 'b1', name: 'Bloque', order: 0, components: [] };
+
+    it('says yes for an activity the mode turns into an exercise', () => {
+        expect(convertedBy('in-place')(block, component())).toBe(true);
+        expect(convertedBy('appendix', { selectedActivities: ['c1'] })(block, component())).toBe(true);
+    });
+
+    it.each([
+        ['an activity left out', convertedBy('omit'), block, component()],
+        ['an activity left unticked', convertedBy('in-place', { selectedActivities: [] }), block, component()],
+        ['what is not an activity', convertedBy('in-place'), block, text()],
+        [
+            'a hidden activity',
+            convertedBy('in-place'),
+            block,
+            component({ structureProperties: { visibility: 'false' } }),
+        ],
+        [
+            'a teacher-only activity',
+            convertedBy('in-place'),
+            block,
+            component({ structureProperties: { teacherOnly: 'true' } }),
+        ],
+        [
+            'an activity in a hidden block',
+            convertedBy('in-place'),
+            { ...block, properties: { visibility: false } } as never,
+            component(),
+        ],
+    ])('says no for %s, which prints as it is or not at all', (_name, converted, where, what) => {
+        expect(converted(where, what)).toBe(false);
+    });
+
+    it.each(['omit', 'in-place', 'appendix'] as DocumentActivityMode[])(
+        'picks out the components applyActivityMode converts in %s',
+        mode => {
+            const components = [
+                text(),
+                component({ id: 'ticked' }),
+                component({ id: 'unticked' }),
+                component({ id: 'hidden', structureProperties: { visibility: 'false' } }),
+                component({ id: 'teacher', structureProperties: { teacherOnly: 'true' } }),
+            ];
+            const options = { selectedActivities: ['ticked', 'hidden', 'teacher'] };
+            const converted = convertedBy(mode, options);
+            // A converted component leaves a printable one where it was, an exercise or a pointer.
+            const replaced = componentsOf([run([page(components)], mode, options)[0]])
+                .filter(c => c.type === PRINTABLE_ACTIVITY_TYPE)
+                .map(c => c.id);
+
+            expect(components.filter(c => converted(block, c)).map(c => c.id)).toEqual(replaced);
+        },
+    );
+});
+
+describe('droppedBy', () => {
+    const block: ExportBlock = { id: 'b1', name: 'Bloque', order: 0, components: [] };
+
+    it.each(['omit', 'in-place', 'appendix'] as DocumentActivityMode[])(
+        'picks out the components applyActivityMode leaves out in %s',
+        mode => {
+            const components = [
+                text(),
+                component({ id: 'ticked' }),
+                component({ id: 'unticked' }),
+                component({ id: 'hidden', structureProperties: { visibility: 'false' } }),
+                component({ id: 'teacher', structureProperties: { teacherOnly: 'true' } }),
+            ];
+            const options = { selectedActivities: ['ticked', 'hidden', 'teacher'] };
+            const dropped = droppedBy(mode, options);
+            const kept = new Set(componentsOf([run([page(components)], mode, options)[0]]).map(c => c.id));
+
+            expect(components.filter(c => dropped(block, c)).map(c => c.id)).toEqual(
+                components.filter(c => !kept.has(c.id)).map(c => c.id),
+            );
+        },
+    );
+
+    it('leaves out nothing that is not an activity, nor what the author restricted', () => {
+        const dropped = droppedBy('omit');
+
+        expect(dropped(block, text())).toBe(false);
+        expect(dropped(block, component({ structureProperties: { teacherOnly: 'true' } }))).toBe(false);
+    });
+});
+
+describe('listInteractiveActivities', () => {
+    it('lists each activity with its page and the block it sits in, in document order', () => {
+        const pages = [
+            page([text(), component({ id: 'a' })], { id: 'p1', title: '  La Edad Media  ' }),
+            page([], {
+                id: 'p2',
+                title: 'Repaso',
+                order: 1,
+                blocks: [
+                    {
+                        id: 'b2',
+                        name: ' Crucigrama final ',
+                        order: 0,
+                        components: [component({ id: 'b', type: 'crossword' })],
+                    },
+                ],
+            }),
+        ];
+
+        expect(listInteractiveActivities(pages)).toEqual([
+            {
+                id: 'a',
+                type: 'guess',
+                pageTitle: 'La Edad Media',
+                blockTitle: 'Bloque',
+                neverPrintable: false,
+                teacherOnly: false,
+            },
+            {
+                id: 'b',
+                type: 'crossword',
+                pageTitle: 'Repaso',
+                blockTitle: 'Crucigrama final',
+                neverPrintable: false,
+                teacherOnly: false,
+            },
+        ]);
+    });
+
+    it('marks the activities that will never be given a printed form, and only those', () => {
+        const pages = [
+            page([
+                component({ id: 'guess' }),
+                component({ id: 'map', type: 'map', content: '' }),
+                component({ id: 'download', type: 'download-source-file', content: '' }),
+                // A padlock prints the writing it guards. One that guards none says so, but that is
+                // about this component, not about padlocks.
+                { ...emptyPadlock(), id: 'padlock' },
+                // Data its adapter cannot read, which is a gap to report rather than a decision.
+                component({ id: 'waiting', type: WAITING, content: '' }),
+                // Content of its own, which is not offered at all.
+                component({ id: 'custom', type: 'my-accordion', content: '<p>Contenido propio</p>' }),
+            ]),
+        ];
+
+        expect(listInteractiveActivities(pages).map(({ id, neverPrintable }) => [id, neverPrintable])).toEqual([
+            ['guess', false],
+            ['map', true],
+            ['download', true],
+            ['padlock', false],
+            ['waiting', false],
+        ]);
+    });
+
+    it('gives an empty block title where the author left the block unnamed', () => {
+        const unnamed = page([], { blocks: [{ id: 'b1', name: '', order: 0, components: [component()] }] });
+
+        expect(listInteractiveActivities([unnamed])[0].blockTitle).toBe('');
+    });
+
+    it('lists what the modes can act on, marking what is kept for teachers, and nothing hidden', () => {
+        const hiddenPage = page([component({ id: 'on-hidden-page' })], {
+            id: 'hidden',
+            properties: { visibility: false },
+        });
+        const underHidden = page([component({ id: 'under-hidden' })], { id: 'child', parentId: 'hidden', order: 1 });
+        const restrictedBlock = page([], {
+            id: 'p3',
+            order: 2,
+            blocks: [
+                {
+                    id: 'b',
+                    name: '',
+                    order: 0,
+                    components: [component({ id: 'in-teacher-block' })],
+                    properties: { teacherOnly: true },
+                } as never,
+            ],
+        });
+        const mixed = page(
+            [
+                component({ id: 'hidden-component', structureProperties: { visibility: 'false' } }),
+                component({ id: 'teacher-only', structureProperties: { teacherOnly: 'true' } }),
+                text(),
+                component({ id: 'listed' }),
+            ],
+            { id: 'p4', order: 3 },
+        );
+
+        // Those kept for teachers are listed, marked: the options offer them with that content.
+        const listed = listInteractiveActivities([hiddenPage, underHidden, restrictedBlock, mixed]);
+        expect(listed.map(entry => [entry.id, entry.teacherOnly])).toEqual([
+            ['in-teacher-block', true],
+            ['teacher-only', true],
+            ['listed', false],
+        ]);
+    });
+
+    it('lists nothing for a project with no activities', () => {
+        expect(listInteractiveActivities([page([text()])])).toEqual([]);
+        expect(listInteractiveActivities([])).toEqual([]);
+    });
+});
+
+/** One page whose single block carries the given properties and holds the given components. */
+const blockPage = (properties: Record<string, unknown>, components: ExportComponent[]) =>
+    page(components, { blocks: [{ id: 'b1', name: 'Bloque', order: 0, components, properties } as ExportBlock] });
+
+const teacherText = () => component({ id: 'notes', type: 'text', content: '<p>Notas</p>' });
+
+describe('the activities kept for teachers, once that content prints', () => {
+    const teacherBlock = () => blockPage({ teacherOnly: 'true' }, [teacherText(), component({ id: 'kept' })]);
+    const teacherComponent = () => page([component({ id: 'own', structureProperties: { teacherOnly: 'true' } })]);
+
+    it('are converted where they are, or moved to the appendix, as any other activity is', () => {
+        for (const pages of [[teacherBlock()], [teacherComponent()]]) {
+            const inPlace = applyActivityMode(pages, 'in-place', { teacherOnly: true });
+            expect(componentsOf(inPlace).map(entry => entry.type)).toContain(PRINTABLE_ACTIVITY_TYPE);
+
+            const appendix = applyActivityMode(pages, 'appendix', { teacherOnly: true });
+            expect(appendix).toHaveLength(2);
+            expect(componentsOf(appendix.slice(1))).toHaveLength(1);
+        }
+    });
+
+    it('are left out with the others, or when unticked', () => {
+        expect(componentsOf(applyActivityMode([teacherBlock()], 'omit', { teacherOnly: true })).map(e => e.id)).toEqual(
+            ['notes'],
+        );
+        const unticked = applyActivityMode([teacherBlock()], 'in-place', { teacherOnly: true, selectedActivities: [] });
+        expect(componentsOf(unticked).map(e => e.id)).toEqual(['notes']);
+    });
+
+    it('are drawn and left out by the same rule the modes follow', () => {
+        const [block] = teacherBlock().blocks;
+        const activity = block.components[1];
+
+        expect(convertedBy('in-place', { teacherOnly: true })(block, activity)).toBe(true);
+        expect(convertedBy('in-place')(block, activity)).toBe(false);
+        expect(droppedBy('omit', { teacherOnly: true })(block, activity)).toBe(true);
+        expect(droppedBy('omit')(block, activity)).toBe(false);
+    });
+
+    it('are still left alone when hidden', () => {
+        const hidden = blockPage({ teacherOnly: 'true', visibility: 'false' }, [component({ id: 'hidden' })]);
+
+        expect(componentsOf(applyActivityMode([hidden], 'in-place', { teacherOnly: true }))[0].type).toBe('guess');
+    });
+});
+
+describe('leaveOutTeacherOnlyActivities', () => {
+    it('leaves out the activities of a teacher-only block, keeping its other content', () => {
+        const result = leaveOutTeacherOnlyActivities([
+            blockPage({ teacherOnly: 'true' }, [teacherText(), component()]),
+        ]);
+
+        expect(componentsOf(result).map(entry => entry.id)).toEqual(['notes']);
+    });
+
+    it('leaves out a teacher-only activity in an open block, and nothing else', () => {
+        const restricted = component({ id: 'c1', structureProperties: { teacherOnly: 'true' } });
+        const ordinary = component({ id: 'c2' });
+
+        const result = leaveOutTeacherOnlyActivities([page([text(), restricted, ordinary])]);
+
+        expect(componentsOf(result).map(entry => entry.id)).toEqual(['text-1', 'c2']);
+    });
+
+    it('takes away a block left with nothing, and keeps one that arrived empty', () => {
+        const emptied = blockPage({ visibilityType: 'teacher' }, [component()]);
+        const empty = blockPage({ teacherOnly: true }, []);
+
+        expect(leaveOutTeacherOnlyActivities([emptied])[0].blocks).toEqual([]);
+        expect(leaveOutTeacherOnlyActivities([empty])[0].blocks).toHaveLength(1);
+    });
+
+    it('returns the same block when it has nothing to leave out', () => {
+        const pages = [page([text(), component()])];
+
+        expect(leaveOutTeacherOnlyActivities(pages)[0].blocks[0]).toBe(pages[0].blocks[0]);
+    });
+});
+
+describe('hasTeacherOnlyContent', () => {
+    it('finds a teacher-only block, or a teacher-only component in an open one', () => {
+        expect(hasTeacherOnlyContent([blockPage({ teacherOnly: 'true' }, [teacherText()])])).toBe(true);
+        expect(
+            hasTeacherOnlyContent([
+                page([text(), component({ type: 'text', structureProperties: { teacherOnly: true } })]),
+            ]),
+        ).toBe(true);
+    });
+
+    it('finds none in a project open to students', () => {
+        expect(hasTeacherOnlyContent([page([text(), component()])])).toBe(false);
+        expect(hasTeacherOnlyContent([])).toBe(false);
+    });
+
+    it('counts teacher-only activities, which print with that content', () => {
+        expect(hasTeacherOnlyContent([blockPage({ teacherOnly: 'true' }, [component()])])).toBe(true);
+        expect(hasTeacherOnlyContent([page([component({ structureProperties: { teacherOnly: 'true' } })])])).toBe(true);
+    });
+
+    it('does not count what does not print anyway: hidden pages, blocks and components', () => {
+        const teacherBlock = (properties: Record<string, unknown>, components = [teacherText()]) =>
+            blockPage({ teacherOnly: 'true', ...properties }, components);
+
+        expect(hasTeacherOnlyContent([{ ...teacherBlock({}), properties: { visibility: 'false' } }])).toBe(false);
+        expect(hasTeacherOnlyContent([teacherBlock({ visibility: 'false' })])).toBe(false);
+        expect(
+            hasTeacherOnlyContent([
+                teacherBlock({}, [component({ type: 'text', structureProperties: { visibility: 'false' } })]),
+            ]),
+        ).toBe(false);
+    });
+});
