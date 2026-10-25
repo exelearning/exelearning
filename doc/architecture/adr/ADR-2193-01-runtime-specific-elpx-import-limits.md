@@ -1,7 +1,7 @@
 ---
 id: ADR-2193-01
 title: "Runtime-specific ELP/ELPX decompression limits"
-status: Proposed
+status: Accepted
 date: 2026-07-21
 tracking_issue: 2193
 legacy_id: ADR-0001

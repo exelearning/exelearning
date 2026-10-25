@@ -1,7 +1,7 @@
 ---
 id: ADR-348-02
 title: "Address the public view via a distinct opaque identifier gated by an independent enablement flag"
-status: Proposed
+status: Accepted
 date: 2026-07-09
 tracking_issue: 348
 legacy_id: ADR-0018

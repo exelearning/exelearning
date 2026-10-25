@@ -1,7 +1,7 @@
 ---
 id: ADR-2539-02
 title: "Choose how interactive activities print, as part of the document"
-status: Proposed
+status: Accepted
 date: 2026-10-11
 tracking_issue: 2539
 deciders:

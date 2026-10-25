@@ -1,7 +1,7 @@
 ---
 id: ADR-2006-02
 title: "Single bounded ZIP-decompression guard for every server-side inflate"
-status: Proposed
+status: Accepted
 date: 2026-07-09
 tracking_issue: 2006
 legacy_id: ADR-0021

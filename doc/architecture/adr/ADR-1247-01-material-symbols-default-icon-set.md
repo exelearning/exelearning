@@ -1,7 +1,7 @@
 ---
 id: ADR-1247-01
 title: "Adopt Google Material Symbols as the default built-in block/iDevice icon set"
-status: Proposed
+status: Accepted
 date: 2026-07-09
 tracking_issue: 1247
 legacy_id: ADR-0013
