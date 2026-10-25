@@ -108,7 +108,8 @@ export default class ModalOdeUsedFiles extends Modal {
                 return;
             }
 
-            const blobUrl = await assetManager.createBlobURL(asset.blob);
+            // Never the raw blob: a same-origin tab would run an uploaded HTML/SVG's scripts
+            const blobUrl = await assetManager.resolveViewerURL(assetId);
             window.open(blobUrl, '_blank');
         } catch (error) {
             console.error(

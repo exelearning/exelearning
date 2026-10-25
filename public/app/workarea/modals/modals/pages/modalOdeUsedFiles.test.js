@@ -173,7 +173,7 @@ describe('ModalOdeUsedFiles', () => {
     beforeEach(() => {
       mockAssetManager = {
         getAsset: vi.fn(),
-        createBlobURL: vi.fn().mockResolvedValue('blob:test-url'),
+        resolveViewerURL: vi.fn().mockResolvedValue('blob:test-url'),
       };
       window.eXeLearning.app.project._yjsBridge = {
         assetManager: mockAssetManager,
@@ -189,7 +189,7 @@ describe('ModalOdeUsedFiles', () => {
       await modal.openAssetInNewWindow('test-asset-id');
 
       expect(mockAssetManager.getAsset).toHaveBeenCalledWith('test-asset-id');
-      expect(mockAssetManager.createBlobURL).toHaveBeenCalledWith(mockBlob);
+      expect(mockAssetManager.resolveViewerURL).toHaveBeenCalledWith('test-asset-id');
       expect(window.open).toHaveBeenCalledWith('blob:test-url', '_blank');
     });
 
