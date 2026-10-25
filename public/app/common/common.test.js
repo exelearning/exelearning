@@ -5345,6 +5345,46 @@ describe('common.js $exeDevices', () => {
       }
     });
 
+    it.each([
+      ['plain text', '<p>No equations</p>', '.math-content', true],
+      ['plain text without configuration', '<p>No equations</p>', '.math-content', false],
+      ['pre-rendered SVG and assistive MathML', '<span class="exe-math-rendered" data-latex="\\begin{matrix}1\\end{matrix}"><svg></svg><math><mi>x</mi></math></span>', '.math-content', true],
+      ['a pre-rendered MathML target', '<span class="exe-math-rendered"><math><mi>x</mi></math></span>', 'math', true],
+      ['serialized MathJax output', '<mjx-container><svg></svg><mjx-assistive-mml><math><mi>x</mi></math></mjx-assistive-mml></mjx-container>', '.math-content', true],
+    ])('does not request an absent engine for %s', (_name, html, selector, configured) => {
+      const math = getMath();
+      if (configured) global.MathJax = { startup: { typeset: false } };
+      else delete global.MathJax;
+      document.body.innerHTML = '<div class="math-content">' + html + '</div>';
+      const load = vi.spyOn(math, 'loadMathJax').mockImplementation(() => {});
+
+      math.updateLatex(selector);
+
+      expect(load).not.toHaveBeenCalled();
+      expect(document.querySelector('.math-content').innerHTML).toBe(html);
+    });
+
+    it.each([
+      ['raw MathML', '<math><mi>x</mi></math>', '.math-content'],
+      ['a raw MathML target', '<math><mi>x</mi></math>', 'math'],
+      ['raw MathML beside rendered math', '<span class="exe-math-rendered"><svg></svg><math><mi>a</mi></math></span><math><mi>x</mi></math>', '.math-content'],
+      ['raw LaTeX beside rendered math', '<span class="exe-math-rendered"><svg></svg></span> \\(x^2\\)', '.math-content'],
+    ])('loads the engine for %s', async (_name, html, selector) => {
+      const math = getMath();
+      global.MathJax = { startup: { typeset: false } };
+      document.body.innerHTML = '<div class="math-content">' + html + '</div>';
+      const typesetPromise = vi.fn().mockResolvedValue();
+      const load = vi.spyOn(math, 'loadMathJax').mockImplementation(callback => {
+        global.MathJax = { typesetPromise };
+        callback();
+      });
+
+      math.updateLatex(selector);
+
+      await vi.waitFor(() => expect(typesetPromise).toHaveBeenCalledWith([document.querySelector(selector)]));
+      expect(load).toHaveBeenCalledOnce();
+    });
+
     it('updateLatex accepts DOM element', () => {
       const math = getMath();
       document.body.innerHTML = '<div class="math-content">\\(x^2\\)</div>';

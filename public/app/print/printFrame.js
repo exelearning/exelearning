@@ -122,4 +122,3 @@ export function bindPrintFrame(token, host = window) {
 
 const token = document.currentScript?.dataset.printToken;
 if (token) bindPrintFrame(token);
-

@@ -3059,6 +3059,17 @@ var $exeDevices = {
                         return [];
                     }
 
+                    function hasUnrenderedMath(node) {
+                        if (node.closest('.exe-math-rendered, mjx-container')) return false;
+                        // Exported formulas already contain SVG and assistive MathML.
+                        // Inspect a copy so their saved source cannot trigger an engine load.
+                        var content = node.cloneNode(true);
+                        content.querySelectorAll('.exe-math-rendered, mjx-container').forEach(function (rendered) {
+                            rendered.remove();
+                        });
+                        return self.hasLatex(content.innerHTML) || content.matches('math') || !!content.querySelector('math');
+                    }
+
                     function runV3(nodes) {
                         if (!nodes.length) return;
                         // Filter out nodes in hidden SPA pages (prevents replaceChild errors)
@@ -3094,6 +3105,7 @@ var $exeDevices = {
                             (!MathJax.typesetPromise && !MathJax.typeset &&
                                 !(MathJax.startup && MathJax.startup.promise) &&
                                 !(MathJax.Hub && typeof MathJax.Hub.Queue === 'function'))) {
+                            if (!nodes.some(hasUnrenderedMath)) return;
                             self.loadMathJax(function () {
                                 typesetNow();
                             });

@@ -413,9 +413,14 @@ test.describe('Export print button project property (addPrintButton)', () => {
                         JSON.stringify(link.getAttribute('href')),
                     );
                 });
-            await expect.poll(linkSuffix).toContain('https://example.org/lesson');
+            // Option changes replace the iframe document; retry evaluations across navigation.
+            await expect(async () => {
+                expect(await linkSuffix()).toContain('https://example.org/lesson');
+            }).toPass({ timeout: 7000 });
             await exported.locator('#printOptLinkUrls').uncheck();
-            await expect.poll(linkSuffix).toBe('none');
+            await expect(async () => {
+                expect(await linkSuffix()).toBe('none');
+            }).toPass({ timeout: 7000 });
             await expect(exported.locator('#printOptUnfoldBlocks')).not.toBeChecked();
             await expect(frame.locator('html')).toHaveClass(/exe-print-as-shown/);
             await exported.locator('#printOptUnfoldBlocks').check();

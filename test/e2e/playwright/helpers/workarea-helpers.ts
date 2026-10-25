@@ -735,10 +735,7 @@ export function getPreviewFrame(page: Page): FrameLocator {
  * @returns true if content loaded, false if timeout
  */
 export async function waitForPreviewContent(page: Page, timeout = 30000): Promise<boolean> {
-    // Always click preview button to ensure panel opens
-    await page.click('#head-bottom-preview');
-    const previewPanel = page.locator('#previewsidenav');
-    await previewPanel.waitFor({ state: 'visible', timeout: 15000 });
+    await openPreviewPanel(page);
 
     // Wait for content to load in iframe
     try {

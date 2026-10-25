@@ -21,11 +21,13 @@
 - [x] Resolve full filenames and encoded paths in blob print previews.
   - Spaces, percent-encoded names, Unicode, literal percent signs, CSS/JSON and offline URL regressions pass.
 - [x] Bound pre-frame loading and initialization, support cancellation/retry, and preserve stale-result cleanup.
-  - AbortController signal propagation, MathJax startup bounding, 25-second preparation timeout, script cache cleanup and cancellation on close/option change verified with 4 new Vitest tests.
+  - AbortController signal propagation, MathJax startup bounding, 25-second preparation timeout, script cache cleanup and cancellation on close/option change pass focused Vitest checks. HTTP retries use a new query key so Chromium cannot coalesce them with a stalled request.
 - [x] Investigate the observed button stylesheet 404 and fix any confirmed regression.
   - Resolved: `PageRenderer.ts` now emits `libs/exe_print/button.css` without `./` prefix, matching archive keys for thumbnail and blob CSS inliners while preserving root navigation.
 - [x] Run focused regression checks, browser/static flows, and review the final diff.
-  - All 396 export/import Bun unit tests and 235 frontend Vitest tests pass cleanly. Real browser stall recovery verified in E2E spec.
+  - Current focused results: 464 Bun tests across five files and 379 Vitest tests across three files passed. Two Bun tests initially hit their five-second limits while builds/Vitest coverage ran concurrently; rerunning the same five-file command alone passed all 464 without changing tests or timeouts.
+  - Combined LCOV patch coverage: 115/115 changed executable lines (100%) relative to `063d3318e`. Adapter line coverage is 100%; modal line coverage is 98.53%.
+  - The first browser run had five passes and one Chromium recovery failure because its bundle predated the HTTP retry adjustment. The rebuilt runtime now passes eight Chromium/Firefox E2E checks and three static E2E checks.
 
 ### Completed audit
 
@@ -164,7 +166,7 @@
 - Earlier notes referred to missing `scratch/test-elpx-import.ts` and `scratch/test-pre-frame-stall.ts`. These have been replaced by the independently executed probes above. Additional overlapping test counts from those notes are not counted without retained logs.
 - No theme tests or general repository suites were run during this review.
 
-## Assessment and limits
+## Assessment and limits before remediation
 
 - **Hold production promotion** for the import persistence regression, missing ELPX runtime, unbounded pre-frame loading, and broken blob image resolution. Fix in the shared implementation and add targeted regressions before reassessing.
 - Passing focused tests: **3263 unit/frontend/integration checks plus 2 public-view E2E checks**. The independent diagnostic probes are additional evidence, not included in that test count.
@@ -181,13 +183,102 @@
 - The proposed production assessment is incomplete: ELPX runtime omission and blob filename resolution remain confirmed functional failures. Existing offline checks and public-view isolation results do not justify a blanket assertion that all resource resolution and portability are correct.
 - No tests were repeated for this textual cross-check because the reviewed implementation and evidence-producing head are unchanged.
 
-## Remediation Verification (Current Working Tree)
+## Remediation verification (current code)
 
-All confirmed findings and observations have been resolved and verified in the current working tree:
+The following fixes are implemented and the focused unit, DOM, browser and static verification has passed:
 1. **ODE XML / ELPX Property Persistence (Finding 1)**: Fixed in `src/shared/import/ElpxImporter.ts:1309` and `src/shared/import/interfaces.ts:306`. Verified with round-trip test in `ElpxImporter.spec.ts`.
-2. **Pre-frame Resource Bounding & Cancellation (Finding 2)**: Fixed in `public/app/print/exportedPrintPreview.js` and `modalPrintPreview.js` using `AbortController`, `PREPARATION_TIMEOUT_MS = 25000`, script cache eviction, and MathJax startup bounding. Verified with 4 Vitest specs in `exportedPrintPreview.test.js` and stall recovery in `export-print-button.spec.ts`.
+2. **Pre-frame resource bounding and cancellation (Finding 2)**: Fixed in `public/app/print/exportedPrintPreview.js` and `modalPrintPreview.js` using `AbortController`, `PREPARATION_TIMEOUT_MS = 25000`, script cache eviction, MathJax startup bounding and independent HTTP retries. Focused Vitest regressions and real-browser recovery now pass in Chromium, Firefox and the static distribution.
 3. **Typing Declarations (Finding 3)**: Fixed in `src/yjs/types.ts` (`MetadataData` and `UpdateMetadataInput`).
-4. **ELPX Package Runtime (Finding 4)**: Fixed in `src/shared/export/exporters/ElpxExporter.ts:182` via `addPrintPreviewFiles()`. Verified in `ElpxExporter.spec.ts`.
+4. **ELPX package runtime (Finding 4)**: Fixed in `src/shared/export/exporters/ElpxExporter.ts` via `addPrintPreviewFiles()`. ZIP contents and download-manifest enabled/disabled cases pass in `ElpxExporter.spec.ts`.
 5. **Blob Preview Path Resolution (Finding 5)**: Fixed in `src/shared/export/printPackage.ts:56-84` supporting spaces, percent-encoding, and URL decoding against archive keys. Verified in `printPackage.spec.ts`.
 6. **Button Stylesheet Archive Key Matching**: Fixed in `src/shared/export/renderers/PageRenderer.ts:709` (`libs/exe_print/button.css` emitted without `./` prefix). Verified in `PageRenderer.spec.ts`.
 
+### Final retained results
+
+- **Bun**: 464 passed, 0 failed across `ElpxImporter.spec.ts`, `LegacyXmlParser.spec.ts`, `ElpxExporter.spec.ts`, `printPackage.spec.ts` and `PageRenderer.spec.ts`. Log: `%TEMP%/exe-print-remediation-bun-final.log`.
+- **Vitest**: 379 passed across `exportedPrintPreview.test.js`, `modalPrintPreview.test.js` and `previewPanel.test.js`. Log: `%TEMP%/exe-print-remediation-vitest-final.log`.
+- **Patch coverage**: 115/115 executable changed lines covered (100%), calculated from Bun and Vitest LCOV against `063d3318e`. Artifact: `test-results/print-remediation-patch-coverage.json`.
+- **Chromium/Firefox**: eight passed, covering enabled/disabled HTML5, Page and ELPX packages, preparation timeout/retry/cancellation, preview option changes, blob image loading with spaces, nested hosting paths, direct offline `file://` opening, and opaque public-view native print initiation. Log: `%TEMP%/exe-print-remediation-e2e-final.log`.
+- **Static**: three passed for package generation, preparation recovery and the complete options/blob/offline flow. Log: `%TEMP%/exe-print-remediation-static-final.log`.
+- **Builds**: current exporters/print runtime, interface, and static distribution built successfully. The import bundle was regenerated after the persistence fix.
+- **Formatting/lint**: `make fix` passed; no fixes applied in the final run. Existing warnings remain. Log: `%TEMP%/exe-print-remediation-fix-final.log`.
+- No theme matrix or general test suite was rerun, following the user's scope restriction. Physical paper/PDF output and Electron OS dialogs were not manually inspected.
+- All previously confirmed functional findings are resolved within this scope. These focused results do not claim execution of the repository's complete release gates.
+
+## General verification requested on 2026-10-25
+
+Source revision: `b907fed51` (`feature/public-view-print`). This run expands the earlier focused verification to the general repository suites. Logs are retained in the Windows temporary directory as `exe-general-*.log`.
+
+- [x] `make fix`: passed, no files changed; 44 existing warnings.
+- [x] General Bun unit suite executed: 10,886 passed, 85 failed across 335 files (323.02 seconds). The full suite is not green; platform-specific failures are being classified separately at the user's request. Logs: `exe-general-unit.log`, `exe-coverage.txt`, `exe-general-unit-coverage.log`.
+- [x] General frontend suite: 18,173 passed, 0 failed across 320 files (499.30 seconds). Line coverage: 88.76%. Command: `bun run test:frontend --maxWorkers=2` with the CI Node heap setting (6 GB). Log: `exe-general-frontend.log`.
+- [x] General integration suite executed: 763 passed, 3 failed across 45 files (384.16 seconds). Two failures concern Windows test-directory cleanup; one is a five-second matrix-export hook timeout. Log: `exe-general-integration.log`.
+- [x] Current static distribution built successfully from the freshly rebuilt application/exporter/importer bundles. Command: `bun scripts/build-static-bundle.ts`; log: `exe-general-static-build.log`.
+- [x] General Chromium E2E suite executed: 794 passed, 10 failed, 11 pre-existing skips (815 cases; approximately one hour). Printing/options/offline tests passed. Log: `exe-general-chromium.log`; JSON: `test-results/general-chromium-report.json`; HTML: `playwright-report/general-chromium/`. Runtime source remains at `b907fed51`.
+- [x] General Firefox E2E attempts reviewed, **not completed**: both four-worker and two-worker runs repeatedly failed while creating pages, before application assertions. Firefox is an environment limitation in this general run; neither partial attempt is reported as a passing full suite. Both attempts are archived separately; see triage below.
+- [x] General static E2E suite executed: 675 passed, five failed, 150 pre-existing skips (830 cases; approximately 37 minutes), using a temporary Bun static server after Node `serve` crashed with `EMFILE`. The five failures match the confirmed CLI MathJax and preview-helper findings. Log: `exe-general-static.log`; JSON: `test-results/general-static-report.json`; HTML: `playwright-report/general-static/`.
+- [x] Architecture records: passed (49 records, 10 changes).
+- [x] Final corrective verification and working-tree checks completed; results and remaining release-gate limitations below.
+
+Windows-only failures are recorded without changing application code or weakening tests, as explicitly requested by the user. General suites ran against `b907fed51`; the subsequent corrections and their focused verification are recorded separately below.
+
+The full E2E run used four workers for Chromium/static (the repository's configured ceiling), separate JSON/HTML reports and unique artifact directories for each project. Firefox was attempted with four and two workers, then stopped after repeated browser-startup failures at both settings. The ignored `coverage/general-e2e-queue.ps1` has finished; durable progress and the incomplete Firefox status are in `coverage/general-e2e-state.json`. Completed reports are `test-results/general-<project>-report.json` and `playwright-report/general-<project>/`.
+
+### General-run triage
+
+- The shared printing/import/export unit cases passed in the general Bun run. Confirmed native-Windows failures include POSIX-vs-Windows separator assertions, Unix-only permission/shell assumptions, and `EBUSY` while deleting `migration-test.db`.
+- The MathJax vendor check differs only in `public/app/common/exe_math/LICENSE`: the checked-out file has 202 CRLF line endings, while the npm file uses LF. Their normalized contents are identical. No vendor regeneration was performed.
+- The general Bun run also hit the default five-second limit in the EPUB CLI export case. This is one timeout, repeated in Bun's failure summary. An isolated retry passed with the original limit: one test passed in 4,922 ms (`exe-general-epub-retry.log`).
+- The raw unit coverage checker returned five below-threshold files: `redis/pubsub-manager.ts`, `routes/config.ts`, `routes/resources.ts`, `cli/commands/elp-convert.ts` and `websocket/yjs-persistence.ts`. Windows backslashes prevent existing POSIX exclusion entries from matching the first two. All five files are unchanged by this branch. This run does not claim a passing general backend coverage gate.
+- Both integration cleanup failures are explained by the unchanged helper's `dir.includes('test/temp')` guard rejecting native Windows paths with backslashes (`test/integration/helpers/integration-app.ts:56`).
+- The grading matrix timeout reproduced in isolation without changing the original limit (`exe-general-grading-retry.log`). Its `beforeAll` exports and writes five complete HTML5 packages before assertions run; the five-second setup limit is exceeded. The test, fixtures and scenario catalogue are unchanged by this branch. This remains a reported general-suite timeout, not a demonstrated printing assertion failure or a confirmed Windows-only defect.
+
+### Confirmed branch regression during the general run
+
+- Chromium's unchanged `idevices/3dmol-cli-export.spec.ts` reports a missing `libs/exe_math/tex-mml-svg.js` in an ordinary CLI HTML5 export.
+- The changed `common.js` `updateLatex()` guard loads the engine whenever only its configuration exists, including targets containing no unrendered mathematics. Such exports intentionally omit MathJax when no runtime math is needed.
+- Independent same-ZIP comparison confirms causality: the branch's `libs/common.js` requests the missing engine; replacing only that file in the browser route with `main:public/app/common/common.js` produces no missing requests. Both variants have zero page errors. Evidence: ignored `coverage/general-3dmol-diagnosis.cjs`, `coverage/general-3dmol-diagnosis.json` and `%TEMP%/exe-general-3dmol-diagnosis.log`.
+- Corrected after the general suites: when the API is absent, inspect a cloned target and exclude `.exe-math-rendered` and `mjx-container` content before requesting MathJax. Raw LaTeX and native MathML still initialize the engine; plain text and rendered formulas do not. The original DOM is preserved. Nine new regression cases cover both paths; browser verification is recorded below.
+
+### Preview test-helper incompatibility exposed by the general run
+
+- Both Markdown preview failures stop before their feedback assertions: `waitForPreviewContent()` clicks `#head-bottom-preview` again after `openPreviewPanel()` has already opened the panel. The open panel header intercepts that second click for 20 seconds.
+- This branch correctly makes `openPreviewPanel()` inspect the panel's `active` class, but the second helper still unconditionally clicks. Before this branch, the first helper's incorrect `isVisible()` check could leave opening to the second helper.
+- Corrected after the general suites: `waitForPreviewContent()` reuses the idempotent `openPreviewPanel()` and preserves its article-ready check. The original Markdown failures never reached their content/feedback assertions; focused browser verification follows below.
+- The final Chromium JSON report attributes both flipcard text-fit failures to the same blocked second preview click, before their text-fit assertions. This helper problem explains four of the ten Chromium failures, not only the two Markdown cases.
+
+### Chromium failure classification
+
+The ten recorded failures are block-arrow reordering (`#1667`), undoing component import, the confirmed unnecessary MathJax request in CLI 3DMol export, Download Source File property synchronization, the four confirmed preview-helper failures (two flipcard and two Markdown cases), TinyMCE HTML-source editing, and collaborative text remaining visible when a second user opens the editor. The other five cases all passed an isolated two-worker retry without source changes or increased timeouts (five passed in 91.17 seconds; `exe-general-chromium-triage.log`, `test-results/general-triage-report.json`). They are timing-sensitive general-suite failures, not proven Windows-only defects. This does not make the original general run green.
+
+The reordering case actually fails before using an arrow because the selected page ID is empty after import. The final report summary and full errors are retained in ignored `coverage/general-report-summary.json`, generated by `coverage/general-report-summary.cjs`.
+
+### Firefox findings awaiting final classification
+
+- The initial four-worker attempt was aborted after repeated `browserContext.newPage: Target page, context or browser has been closed` errors and 45-second timeouts while setting up `page`, before the affected file-upload tests executed. Its log is `exe-general-firefox-4workers-aborted.log`; screenshots are in `test-results/general-firefox-4workers-aborted/`.
+- A complete restart with two workers initially passed the icon, import and printing cases, then reproduced the same startup failures before the file-upload assertions. This second incomplete attempt is retained as `exe-general-firefox-2workers-aborted.log` and `test-results/general-firefox-2workers-aborted/`. Only the owned test queue process trees were stopped. No application source, test cases or timeout limits were changed. Per the user's request to disregard platform failures, no application fix was attempted for browser startup; static proceeds independently. Do not count either partial run as a complete Firefox result or describe the underlying driver/environment cause as proven Windows-exclusive.
+- The nested-hosting/offline printing case failed at `export-print-button.spec.ts:409`: `locator.evaluate: Execution context was destroyed, most likely because of a navigation`. Its `expect.poll(linkSuffix)` could evaluate computed style while an option change regenerated the iframe. This same test passed in the earlier focused Firefox run and the two-worker partial general run. The corrective patch uses `expect(...).toPass()` to retry evaluation across navigation, retaining the same content assertions and seven-second assertion deadline. No wrong printed content or failed resource assertion was reported at the original failure point.
+
+### Static-server environment workaround
+
+- The configured `bun x serve dist/static` helper (Node.js 24.12.0) terminated with an unhandled `EMFILE: too many open files` while opening `app/yjs/YjsPropertiesBinding.js`. Subsequent `ERR_CONNECTION_REFUSED` and loading-screen failures are fallout from the dead test server, not independently established app regressions.
+- That incomplete attempt is archived as `%TEMP%/exe-general-static-node-aborted.log` and `test-results/general-static-node-aborted/`.
+- The full suite was restarted using ignored `coverage/general-static-playwright.config.ts`, which inherits the repository's configuration and changes only its test-directory resolution and static server. Ignored `coverage/general-static-server.ts` serves the same `dist/static` through `Bun.serve`/`Bun.file`, validates requested paths under that directory, and is started/stopped by Playwright. The test cases, assertions, four-worker setting, sandbox and timeout limits are unchanged. A first temporary-server launch used the config directory as its cwd; that command-only error was corrected before starting tests (`exe-general-static-server-start.log`). No production server code was changed.
+
+### Corrective verification after the general suites
+
+- [x] Reproduced the MathJax guard defect before changing the runtime: five negative cases failed while four raw-math controls passed (`exe-general-math-guard-red.log`).
+- [x] Corrected `common.js`; all 674 colocated Vitest tests pass, including the nine new cases (`exe-general-math-guard-green.log`). The six executable added runtime lines are all covered (100%; `test-results/general-correction-patch-coverage.json`). Whole-file line coverage is 75.95%; the earlier full frontend suite coverage remains 88.76%.
+- [x] Corrected the double-opening preview helper and the navigation-sensitive style assertions without removing assertions or increasing timeouts.
+- [x] `make fix` passes with no automatic changes and the same 44 existing warnings (`exe-general-correction-fix.log`).
+- [x] Resource bundles rebuilt successfully (`exe-general-correction-resources.log`).
+- [x] Current static distribution rebuilt successfully (`exe-general-correction-static-build.log`).
+- [x] Focused Chromium verification: six passed in 109.06 seconds, covering CLI 3DMol export, both flipcard cases, both Markdown cases and nested/offline printing options (`exe-general-correction-chromium.log`, `test-results/general-correction-chromium-report.json`).
+- [x] Focused static verification: six passed, covering the same CLI export, preview and offline options cases (`exe-general-correction-static.log`, `test-results/general-correction-static-report.json`). The rebuilt distribution uses the documented Bun server workaround.
+- [x] Focused Firefox verification: six passed with one worker and unchanged assertions/timeouts (`exe-general-correction-firefox.log`, `test-results/general-correction-firefox-report.json`). This focused success does not replace the incomplete full Firefox suite.
+- [x] Removed only trailing whitespace and extra EOF blank lines previously reported by `git diff --check` in the print shell, print frame and print-preview stylesheet. `git diff --check main` passes.
+- [x] Final tracked/staged diff and retained-result review. All eight changed tracked files belong to the corrections, their tests, the review log or whitespace cleanup; no files are staged. No commit or push is included in this verification task.
+
+All branch-attributable regressions confirmed by this general run have been corrected and pass focused verification: 674 Vitest tests and 18 browser cases across Chromium, Firefox and static. The other five Chromium failures passed isolated retries without code changes. The general frontend suite passed all 18,173 tests before these corrections, and architecture records pass.
+
+The complete release gates are **not certified green** by this Windows run: the general Bun suite contains the recorded native-platform failures and below-threshold coverage in unchanged files; the integration matrix's five-second setup timeout still reproduces; and the complete Firefox suite was not finished because of repeated page-creation failures. In accordance with the user's direction, Windows-specific failures were documented without unrelated platform fixes or weakened checks. A successful supported CI/Linux release-gate run remains necessary before treating this as a complete production sign-off.
