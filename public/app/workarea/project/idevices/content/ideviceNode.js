@@ -1592,7 +1592,7 @@ export default class IdeviceNode {
         pages.forEach((page) => {
             let option = document.createElement('option');
             option.value = page.id;
-            option.innerHTML = `${'&nbsp;&nbsp;'.repeat(page.deep)} ${page.pageName}`;
+            option.textContent = `${'\u00a0\u00a0'.repeat(page.deep)} ${page.pageName}`;
             if (page.id == this.block.odeNavStructureSyncId)
                 option.setAttribute('selected', 'selected');
             selectElement.append(option);
