@@ -74,6 +74,10 @@ class YjsDocumentManager {
     this.isDirty = false;
     // Issue #2615: set when a deferred cleanup was skipped to keep unsaved local work.
     this._recoverUnsavedLocalCopy = false;
+    // Issue #2615: the stored document version this client last loaded or
+    // saved (X-Document-Version / save response). Echoed back as X-Base-Version
+    // so the server can detect a stale save and merge instead of overwriting.
+    this.serverVersion = null;
     // Issue #2615: a reconnection after a drop merges the server snapshot first.
     this._wasDisconnected = false;
     this._serverMergePromise = null;
@@ -631,13 +635,17 @@ class YjsDocumentManager {
 
       const arrayBuffer = await response.arrayBuffer();
       const update = new Uint8Array(arrayBuffer);
+      const version = response.headers?.get ? response.headers.get('X-Document-Version') : null;
+      if (version) {
+        this.serverVersion = version;
+      }
 
       // Merge the server state. Yjs updates are idempotent, so applying the
       // snapshot on top of a local copy only adds what the local copy lacks.
       // The 'initial' origin keeps the merge out of dirty tracking and undo.
       this.Y.applyUpdate(this.ydoc, update, 'initial');
 
-      Logger.log(`[YjsDocumentManager] Merged ${update.length} bytes from server`);
+      Logger.log(`[YjsDocumentManager] Merged ${update.length} bytes from server (version ${version || 'unknown'})`);
     } catch (error) {
       // Network errors or other issues - log but continue with local-only operation
       console.warn('[YjsDocumentManager] Could not load from server (using local data):', error.message);
@@ -1708,6 +1716,10 @@ class YjsDocumentManager {
       if (this.config.token) {
         headers['Authorization'] = `Bearer ${this.config.token}`;
       }
+      // Save validation (#2615): see SaveManager.saveYjsState().
+      if (this.serverVersion) {
+        headers['X-Base-Version'] = String(this.serverVersion);
+      }
 
       const response = await fetch(
         `${this.config.apiUrl}/projects/uuid/${this.projectId}/yjs-document`,
@@ -1722,7 +1734,22 @@ class YjsDocumentManager {
         throw new Error(`Failed to save: ${response.status} ${response.statusText}`);
       }
 
+      let result = null;
+      try {
+        result = typeof response.json === 'function' ? await response.json() : null;
+      } catch (_) {
+        result = null;
+      }
+      if (result?.version) {
+        this.serverVersion = String(result.version);
+      }
+
       this.markClean();
+
+      if (result?.merged) {
+        // The server merged this save with newer stored changes: converge.
+        await this.loadFromServer();
+      }
       Logger.log(`[YjsDocumentManager] Saved to server (${state.length} bytes)`);
 
       return { success: true, bytes: state.length };

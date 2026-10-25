@@ -458,7 +458,7 @@ describe('YjsDocumentManager', () => {
       expect(loadSpy).not.toHaveBeenCalled();
     });
 
-    it('applies the server state with the initial origin so a merge never marks the document dirty', async () => {
+    it('applies the server state with the initial origin so a merge never marks the document dirty, and records the version', async () => {
       await manager.destroy();
       manager = makeOnlineManager();
       await manager.initialize();
@@ -471,13 +471,27 @@ describe('YjsDocumentManager', () => {
       serverDoc.getMap('metadata').set('author', 'Someone Else');
       const serverState = Y.encodeStateAsUpdate(serverDoc);
       global.fetch = mock(() =>
-        Promise.resolve({ ok: true, status: 200, arrayBuffer: () => Promise.resolve(serverState.buffer) })
+        Promise.resolve({
+          ok: true,
+          status: 200,
+          headers: { get: (name) => (name === 'X-Document-Version' ? '1700000000000' : null) },
+          arrayBuffer: () => Promise.resolve(serverState.buffer),
+        })
       );
 
       await manager.loadFromServer();
 
       expect(manager.getMetadata().get('author')).toBe('Someone Else');
       expect(manager.isDirty).toBe(false);
+      expect(manager.serverVersion).toBe('1700000000000');
+    });
+
+    it('keeps the previous version when the server response carries no version header', async () => {
+      await manager.initialize();
+      manager.serverVersion = '42';
+      global.fetch = mock(() => Promise.resolve({ ok: true, status: 200, arrayBuffer: () => Promise.resolve(new ArrayBuffer(0)) }));
+      await manager.loadFromServer();
+      expect(manager.serverVersion).toBe('42');
     });
 
     it('merges the server snapshot again after a reconnection, before announcing the connection', async () => {
@@ -537,6 +551,66 @@ describe('YjsDocumentManager', () => {
       global.fetch = mock(() => Promise.resolve({ ok: false, status: 404 }));
       await manager.loadFromServer();
       expect(global.fetch).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('saveToServer sends the base version and converges on a merged save (issue #2615)', () => {
+    beforeEach(async () => {
+      manager.config.offline = false;
+      await manager.initialize();
+      manager.captureBaselineState();
+    });
+
+    function okJson(body) {
+      return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(body) });
+    }
+
+    it('sends X-Base-Version when a server version is known', async () => {
+      manager.serverVersion = '1111';
+      global.fetch = mock(() => okJson({ success: true, version: '2222', merged: false }));
+
+      await manager.saveToServer({ silent: true });
+
+      const post = global.fetch.mock.calls.find((c) => c[1]?.method === 'POST');
+      expect(post).toBeDefined();
+      expect(post[1].headers['X-Base-Version']).toBe('1111');
+      expect(manager.serverVersion).toBe('2222');
+    });
+
+    it('omits X-Base-Version when no server version is known yet', async () => {
+      manager.serverVersion = null;
+      global.fetch = mock(() => okJson({ success: true, version: '2222' }));
+
+      await manager.saveToServer({ silent: true });
+
+      const post = global.fetch.mock.calls.find((c) => c[1]?.method === 'POST');
+      expect('X-Base-Version' in post[1].headers).toBe(false);
+    });
+
+    it('reloads the merged document when the server reports merged=true', async () => {
+      manager.serverVersion = '1111';
+      global.fetch = mock(() => okJson({ success: true, version: '3333', merged: true }));
+      const loadSpy = spyOn(manager, 'loadFromServer').mockResolvedValue(undefined);
+
+      await manager.saveToServer({ silent: true });
+
+      expect(loadSpy).toHaveBeenCalledTimes(1);
+      expect(manager.isDirty).toBe(false);
+    });
+
+    it('does not reload when the save was stored as-is', async () => {
+      global.fetch = mock(() => okJson({ success: true, version: '3333', merged: false }));
+      const loadSpy = spyOn(manager, 'loadFromServer').mockResolvedValue(undefined);
+
+      await manager.saveToServer({ silent: true });
+
+      expect(loadSpy).not.toHaveBeenCalled();
+    });
+
+    it('tolerates a response without a JSON body', async () => {
+      global.fetch = mock(() => Promise.resolve({ ok: true, status: 200 }));
+      const result = await manager.saveToServer({ silent: true });
+      expect(result.success).toBe(true);
     });
   });
 

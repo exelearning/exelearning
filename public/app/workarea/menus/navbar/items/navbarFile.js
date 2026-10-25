@@ -2162,7 +2162,7 @@ export default class NavbarFile {
                     }
                 });
 
-                recentProjectLink.innerHTML = odeFile.title;
+                recentProjectLink.textContent = odeFile.title;
                 recentProjectsLi.append(recentProjectLink);
             });
         } else {
