@@ -4,6 +4,7 @@ import {
     buildComponentStorageKey,
 } from './componentDownloadHelper.js';
 import { parseCssClassList } from './cssClassHelper.js';
+import { sanitizeCollaborativeHtml } from '../../../../utils/sanitizeHtml.js';
 import EditionLifecycle, {
     getActiveEditionLifecycle,
     setActiveEditionLifecycle,
@@ -1718,7 +1719,12 @@ export default class IdeviceNode {
 
     /**
      * Get html view
-     * Resolves {{context_path}} URLs to blob URLs from IndexedDB cache
+     * Resolves {{context_path}} URLs to blob URLs from IndexedDB cache.
+     *
+     * SECURITY: htmlView (and the jsonProperties a JSON iDevice renders it from)
+     * is shared over Yjs, so any collaborator controls it. Every editor render
+     * goes through here, so the result is sanitized last, after every transform.
+     * this.htmlView itself is left untouched: exports and the edition form read it.
      */
     exportHtmlView() {
         let html;
@@ -1754,7 +1760,7 @@ export default class IdeviceNode {
             html = window.resolveAssetUrls(html);
         }
 
-        return html;
+        return sanitizeCollaborativeHtml(html);
     }
 
     /**
@@ -2772,7 +2778,7 @@ export default class IdeviceNode {
      */
     async apiGetHtmlView() {
         let response = await eXeLearning.app.api.getSaveHtmlView(this.id);
-        this.ideviceBody.innerHTML = response.htmlView;
+        this.ideviceBody.innerHTML = sanitizeCollaborativeHtml(response.htmlView);
         this.htmlView = response.htmlView;
         return this.htmlView;
     }
