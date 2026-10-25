@@ -123,7 +123,7 @@ test.describe('ABC music notation', () => {
         await expect(form.locator('#midi')).toBeChecked();
         await form.getByRole('button', { name: 'Preview' }).click();
 
-        // abcmusic.html (opened with ?midi=1) builds the exported markup and exe_abc_music.js renders it.
+        // abcmusic.html (opened with #midi=1) builds the exported markup and exe_abc_music.js renders it.
         const dialog = page.frameLocator('.tox-dialog__body-iframe iframe');
         await expect(dialog.locator('.abcjs-paper svg').first()).toBeVisible({ timeout: 20000 });
         await expect(dialog.locator('.abcjs-paper .abcjs-note')).toHaveCount(8);

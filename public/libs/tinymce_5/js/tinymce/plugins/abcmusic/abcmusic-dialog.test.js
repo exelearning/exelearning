@@ -45,9 +45,9 @@ describe('abcmusic.html resource URLs', () => {
 
 describe('abcmusic.html preview markup', () => {
     // The dialog builds the exported markup so exe_abc_music.js renders it as in the export (ABC/MIDI buttons).
-    function previewDocument(parentWindow, search = '') {
+    function previewDocument(parentWindow, fragment = '') {
         return new JSDOM(html, {
-            url: `${pluginDir}abcmusic.html${search}`,
+            url: `${pluginDir}abcmusic.html${fragment}`,
             runScripts: 'dangerously',
             virtualConsole: new VirtualConsole(),
             beforeParse(window) {
@@ -63,7 +63,7 @@ describe('abcmusic.html preview markup', () => {
     }
 
     it('adds the ABC source as exported content with the MIDI class when the URL asks for MIDI', () => {
-        const win = previewDocument(editorWindow({ source: 'X:1\nK:C\nabc' }), '?midi=1');
+        const win = previewDocument(editorWindow({ source: 'X:1\nK:C\nabc' }), '#midi=1');
         const pre = win.document.querySelector('main > pre');
         expect(pre.className).toBe('abc-music abc-music-midi');
         expect(pre.textContent).toBe('X:1\nK:C\nabc');
@@ -71,7 +71,7 @@ describe('abcmusic.html preview markup', () => {
 
     it('omits the MIDI class when the URL does not ask for MIDI', () => {
         expect(previewDocument(editorWindow()).document.querySelector('pre').className).toBe('abc-music');
-        expect(previewDocument(editorWindow(), '?midi=10').document.querySelector('pre').className).toBe('abc-music');
+        expect(previewDocument(editorWindow(), '#midi=10').document.querySelector('pre').className).toBe('abc-music');
     });
 
     it('takes $exe_i18n from the editor window', () => {

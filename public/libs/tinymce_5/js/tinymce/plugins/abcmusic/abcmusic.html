@@ -33,7 +33,7 @@
             // The editor loads common_i18n.js, which defines $exe_i18n.download with c_()
             if (typeof window.$exe_i18n === 'undefined') window.$exe_i18n = parent.$exe_i18n || {};
             var pre = document.createElement('pre');
-            pre.className = 'abc-music' + (/[?&]midi=1(&|$)/.test(location.search) ? ' abc-music-midi' : '');
+            pre.className = 'abc-music' + (location.hash === '#midi=1' ? ' abc-music-midi' : '');
             pre.textContent = source ? source.value : '';
             document.querySelector('main').appendChild(pre);
         })();
