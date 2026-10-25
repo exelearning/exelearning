@@ -30,10 +30,10 @@
         // (ABC/MIDI buttons, player and download link) when it runs on DOM ready.
         (function () {
             var source = parent.document.querySelector('#htmlSource');
-            var dialog = parent.ABCmusicDialog;
-            if (typeof window.$exe_i18n === 'undefined') window.$exe_i18n = parent.$exe_i18n || { download: 'Download' };
+            // The editor loads common_i18n.js, which defines $exe_i18n.download with c_()
+            if (typeof window.$exe_i18n === 'undefined') window.$exe_i18n = parent.$exe_i18n || {};
             var pre = document.createElement('pre');
-            pre.className = 'abc-music' + (dialog && dialog.previewMidi ? ' abc-music-midi' : '');
+            pre.className = 'abc-music' + (/[?&]midi=1(&|$)/.test(location.search) ? ' abc-music-midi' : '');
             pre.textContent = source ? source.value : '';
             document.querySelector('main').appendChild(pre);
         })();
