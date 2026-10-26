@@ -695,6 +695,12 @@ input.feedbacktooglebutton {
         padding: 0;
     }
 
+    /* White on the blue band on screen. Browsers leave the band off the page, which would leave
+       the title light grey on white. */
+    .exe-content .box-head .box-title {
+        color: #000000;
+    }
+
     @page {
         margin: 1.5cm;
     }

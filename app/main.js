@@ -14,7 +14,10 @@ const {
     windowHasUnsavedChanges,
 } = require('./editor-window-close-guard');
 const { checkLink } = require('./link-check');
+const { extractZipEntries } = require('./zip-extract');
 const { createFileReadGrants } = require('./file-read-grants');
+const { savePrintPreviewAsPdf } = require('./print-to-pdf');
+const { printPreview } = require('./print-preview');
 const {
     createSpellCheckerController,
     registerSpellCheckerIpc,
@@ -214,9 +217,9 @@ console.error = (...args) => {
 process.on('uncaughtException', e => log.error('uncaughtException:', e));
 process.on('unhandledRejection', e => log.error('unhandledRejection:', e));
 
-// Locale detection for fallback strings
-const defaultLocale = app.getLocale().startsWith('es') ? 'es' : 'en';
-console.log(`Default locale: ${defaultLocale}.`);
+// Locale for the fallback strings of the native dialogs. It is read once the app is ready: before
+// that app.getLocale() returns an empty string, and every dialog spoke English on a Spanish system.
+let defaultLocale = 'en';
 
 let appDataPath;
 
@@ -1152,16 +1155,7 @@ ipcMain.handle('app:exportToFolder', async (e, { downloadUrl, projectKey, sugges
             const uint8Data = new Uint8Array(zipData);
             const unzipped = fflate.unzipSync(uint8Data);
 
-            for (const [relativePath, content] of Object.entries(unzipped)) {
-                const fullPath = path.join(destDir, relativePath);
-                // Skip directories (they end with /)
-                if (relativePath.endsWith('/')) {
-                    fs.mkdirSync(fullPath, { recursive: true });
-                } else {
-                    fs.mkdirSync(path.dirname(fullPath), { recursive: true });
-                    fs.writeFileSync(fullPath, Buffer.from(content));
-                }
-            }
+            extractZipEntries(unzipped, destDir);
         } finally {
             try {
                 fs.unlinkSync(tmpZip);
@@ -1200,15 +1194,7 @@ ipcMain.handle('app:exportBufferToFolder', async (e, { base64Data, suggestedDirN
         const uint8Data = new Uint8Array(buffer);
         const unzipped = fflate.unzipSync(uint8Data);
 
-        for (const [relativePath, content] of Object.entries(unzipped)) {
-            const fullPath = path.join(destDir, relativePath);
-            if (relativePath.endsWith('/')) {
-                fs.mkdirSync(fullPath, { recursive: true });
-            } else {
-                fs.mkdirSync(path.dirname(fullPath), { recursive: true });
-                fs.writeFileSync(fullPath, Buffer.from(content));
-            }
-        }
+        extractZipEntries(unzipped, destDir);
 
         // Notify renderer with final destination
         const wc = e?.sender ? e.sender : mainWindow ? mainWindow.webContents : null;
@@ -1378,6 +1364,9 @@ app.on('new-window-for-tab', () => {
 });
 
 app.whenReady().then(() => {
+    defaultLocale = app.getLocale().startsWith('es') ? 'es' : 'en';
+    console.log(`Default locale: ${defaultLocale}.`);
+
     const spellCheckerController = createSpellCheckerController({
         electronSession: session.defaultSession,
         platform: process.platform,
@@ -1677,6 +1666,48 @@ async function saveBufferWithDialog(e, { bufferData, base64Data, projectKey, sug
 }
 ipcMain.handle('app:saveBuffer', saveBufferWithDialog);
 ipcMain.handle('app:saveBufferAs', saveBufferWithDialog);
+
+ipcMain.handle('app:printPreview', (e, { url } = {}) =>
+    printPreview(url, {
+        owner: e.sender.id,
+        createWindow: () => {
+            const win = new BrowserWindow({
+                show: false,
+                parent: BrowserWindow.fromWebContents(e.sender) || mainWindow,
+                webPreferences: {
+                    session: e.sender.session,
+                    nodeIntegration: false,
+                    contextIsolation: true,
+                    sandbox: true,
+                },
+            });
+            win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
+            return win;
+        },
+    }),
+);
+
+// Save the print preview as a PDF: printing needs a print service and a printer, a PDF does not
+// (issue #1398). The PDF is made from the preview's own frame; see print-to-pdf.js.
+ipcMain.handle('app:savePrintPreviewAsPdf', async (e, { frameName, title } = {}) => {
+    const owner = BrowserWindow.fromWebContents(e.sender) || mainWindow;
+    const result = await savePrintPreviewAsPdf(
+        { webContents: e.sender, frameName, title },
+        {
+            showSaveDialog: options => dialog.showSaveDialog(owner, options),
+            writeFile: (filePath, data) => fs.promises.writeFile(filePath, data),
+            defaultDir: getLastUsedDir() || app.getPath('documents'),
+            countryCode: app.getLocaleCountryCode(),
+            dialogText: {
+                title: tOrDefault('save.downloadTitle', defaultLocale === 'es' ? 'Guardar archivo' : 'Save file'),
+                buttonLabel: tOrDefault('save.button', defaultLocale === 'es' ? 'Guardar' : 'Save'),
+            },
+        },
+    );
+    if (result.saved) setLastUsedDir(path.dirname(result.filePath));
+    else if (result.error) console.error('[app:savePrintPreviewAsPdf] Error:', result.error);
+    return result;
+});
 
 
 /**
