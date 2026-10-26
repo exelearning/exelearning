@@ -19,8 +19,11 @@ declare global {
  * project and the published edits were gone". The fix merges the server
  * snapshot on every online open and after every reconnection, so the stale
  * client converges before its autosave can run.
+ *
+ * The explicit-save variants and the open-time merge are covered in
+ * stale-client-save.spec.ts (#2618); this spec only adds the autosave path.
  */
-test.describe('Cloud autosave: stale client never overwrites newer saves', () => {
+test.describe('Cloud autosave: a stale client\'s autosave never overwrites newer saves', () => {
     test.setTimeout(150000);
     const SHORT_IDLE_MS = 1500;
 
@@ -113,41 +116,5 @@ test.describe('Cloud autosave: stale client never overwrites newer saves', () =>
         await navReopen.waitForNodeInNav(baseNode, 30000);
         await navReopen.waitForNodeInNav(laterNode, 30000);
         await navReopen.waitForNodeInNav(afterNode, 30000);
-    });
-
-    test('a stale local copy is merged with the server snapshot on open, not shown as current', async ({
-        authenticatedPage,
-        secondAuthenticatedPage,
-        createProject,
-        getShareUrl,
-        joinSharedProject,
-    }) => {
-        for (const page of [authenticatedPage, secondAuthenticatedPage]) {
-            await page.addInitScript(ms => {
-                window.__EXE_COLLAB_AUTOSAVE_IDLE_MS__ = ms;
-            }, SHORT_IDLE_MS);
-        }
-        const projectUuid = await createProject(authenticatedPage, 'Stale Local Copy');
-        await authenticatedPage.goto(`/workarea?project=${projectUuid}`);
-        const shareUrl = await getShareUrl(authenticatedPage);
-        await joinSharedProject(secondAuthenticatedPage, shareUrl);
-        await waitForYjsSync(authenticatedPage);
-        await waitForYjsSync(secondAuthenticatedPage);
-
-        // A leaves with a local IndexedDB copy that survives (same-tab navigation
-        // keeps the tab session, so the deferred cleanup does not run).
-        await authenticatedPage.goto('about:blank');
-
-        // B saves new content meanwhile.
-        const navB = new NavigationPage(secondAuthenticatedPage);
-        const laterNode = `Saved Meanwhile ${Date.now()}`;
-        await navB.createNodeAtRoot(laterNode);
-        await saveProject(secondAuthenticatedPage);
-        await secondAuthenticatedPage.close();
-
-        // A reopens: the stale copy must be merged with the server snapshot.
-        await authenticatedPage.goto(`/workarea?project=${projectUuid}`);
-        await waitForYjsSync(authenticatedPage);
-        await new NavigationPage(authenticatedPage).waitForNodeInNav(laterNode, 30000);
     });
 });
