@@ -42,6 +42,9 @@ import {
 } from '../importPolicy';
 import type { ZipDecompressionLimits } from '../importPolicy';
 
+// Legacy mind map conversion
+import { convertLegacyMindmapCode, LegacyMindmapError } from '../legacyMindmap';
+
 // Import types and interfaces
 import type { AssetHandler, ElpxImportOptions, ElpxImportResult, ImportProgress, Logger } from '../interfaces';
 
@@ -363,6 +366,9 @@ if (typeof window !== 'undefined') {
 
         // Import policy (single source of truth for limits + export warning)
         importPolicy: importPolicyNamespace,
+
+        // Legacy mind map to Mermaid conversion (exemindmap TinyMCE plugin)
+        legacyMindmap: { convertLegacyMindmapCode, LegacyMindmapError },
 
         // Registry
         LegacyHandlerRegistry,

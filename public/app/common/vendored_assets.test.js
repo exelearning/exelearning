@@ -1,11 +1,10 @@
 /**
  * Guards for pruned or trimmed vendored assets.
  *
- * mindmaps: the exemindmap TinyMCE plugin's editor iframe loads exactly
- * min/js/script.js plus four stylesheets under src/css (the src/js script
- * block in its index.html is an HTML comment pointing at a /tools/ path
- * that does not exist in any build). The dead development half was removed;
- * these tests pin the live set and keep the dead set from coming back.
+ * mindmaps: the legacy mind map editor (mindmaps.app and the exemindmap
+ * plugin's editor iframe with its private jQuery, Cropper and FileSaver
+ * copies) was retired; the exemindmap plugin only converts existing maps to
+ * Mermaid. Every distribution copies these trees, so they must stay gone.
  *
  * exe_media: the MediaElement 2.x Flash/Silverlight fallback binaries can
  * never load in any shipping browser (plugin APIs removed in 2015-2021)
@@ -21,26 +20,12 @@ import { fileURLToPath } from 'node:url';
 
 const commonDir = path.dirname(fileURLToPath(import.meta.url));
 
-describe('mindmaps vendored tree', () => {
-    const mindmaps = path.join(commonDir, 'mindmaps');
-
-    it('ships every file the exemindmap editor iframe references', () => {
-        for (const file of [
-            'min/js/script.js',
-            'src/css/common.css',
-            'src/css/app.css',
-            'src/css/Aristo/jquery-ui-1.8.7.custom.css',
-            'src/css/minicolors/jquery.miniColors.css',
-            'LICENSE',
-        ]) {
-            expect(fs.existsSync(path.join(mindmaps, file)), `missing ${file}`).toBe(true);
-        }
-    });
-
-    it('does not ship the commented-out development sources', () => {
-        for (const gone of ['src/js', 'src/index.html', 'src/about.html', 'src/cache.appcache', 'src/css/about.css']) {
-            expect(fs.existsSync(path.join(mindmaps, gone)), `${gone} should stay removed`).toBe(false);
-        }
+describe('retired mindmaps editor', () => {
+    it('does not ship the mindmaps application or the exemindmap editor iframe', () => {
+        const pluginDir = path.resolve(commonDir, '../../libs/tinymce_5/js/tinymce/plugins/exemindmap');
+        expect(fs.existsSync(path.join(commonDir, 'mindmaps'))).toBe(false);
+        expect(fs.existsSync(path.join(pluginDir, 'editor'))).toBe(false);
+        expect(fs.readdirSync(pluginDir).sort()).toEqual(['css', 'exemindmap-plugin.test.js', 'plugin.min.js']);
     });
 });
 

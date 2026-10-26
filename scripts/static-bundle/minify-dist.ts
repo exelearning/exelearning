@@ -2,7 +2,7 @@
  * Minify first-party editor JavaScript inside the static distribution.
  *
  * Scope is deliberately narrow:
- *  - only our own code (never vendored trees like exe_math/pele/mindmaps/
+ *  - only our own code (never vendored trees like exe_math/pele/
  *    edicuatex/exe_tooltips/exe_media, and never app/common/scorm, whose two
  *    vendored pipwerks files carry a byte-identity contract);
  *  - only editor-side files that are NOT copied into exported packages

@@ -9,7 +9,6 @@ import { addTextIdevice } from '../../helpers/workarea-helpers';
  * Tests the Text iDevice functionality including:
  * - Basic operations (add, edit, save, delete)
  * - TinyMCE advanced editor (CodeMagic)
- * - TinyMCE mind map editor (exemindmap)
  * - Text formatting and persistence
  */
 
@@ -271,112 +270,6 @@ test.describe('Text iDevice', () => {
 
             // Verify the HTML content was applied
             await expect(page.locator('#node-content')).toContainText('HTML edited via CodeMagic', { timeout: 10000 });
-        });
-    });
-
-    test.describe('TinyMCE Mind Map Editor (exemindmap)', () => {
-        test('should open mind map editor without blank window', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
-            const _workarea = new WorkareaPage(page);
-
-            const projectUuid = await createProject(page, 'MindMap Test');
-            await gotoWorkarea(page, projectUuid);
-
-            await waitForAppReady(page);
-
-            // Add a text iDevice
-            await addTextIdevice(page);
-
-            // Check if already in edit mode (TinyMCE visible) or need to click edit button
-            const tinyMceMenubar = page.locator('.tox-menubar');
-            const isTinyMceVisible = await tinyMceMenubar.isVisible().catch(() => false);
-
-            if (!isTinyMceVisible) {
-                // Enter edit mode
-                const block = page.locator('#node-content article .idevice_node.text').last();
-                await block.waitFor({ timeout: 10000 });
-                const editBtn = block.locator('.btn-edit-idevice');
-                if ((await editBtn.count()) > 0) {
-                    await editBtn.waitFor({ timeout: 10000 });
-                    await editBtn.click();
-                }
-            }
-
-            // Wait for TinyMCE to load
-            await page.waitForSelector('.tox-menubar', { timeout: 15000 });
-
-            // The mindmap button is on the 4th toolbar row (buttons3), which is hidden by default
-            // First, click the toggletoolbars button to expand all toolbars
-            const toggleToolbarsButton = page
-                .locator(
-                    '.tox-tbtn[aria-label*="Toggle"], .tox-tbtn[aria-label*="Alternar"], .tox-tbtn[title*="Toggle"], .tox-tbtn[title*="Alternar"]',
-                )
-                .first();
-            if ((await toggleToolbarsButton.count()) > 0 && (await toggleToolbarsButton.isVisible())) {
-                await toggleToolbarsButton.click();
-                await page.waitForTimeout(500); // Wait for toolbar animation
-            }
-
-            // Find and click the mindmap button in TinyMCE toolbar
-            // The button has a tooltip "Mind map" or "Mapa mental" and uses the exemindmap icon
-            const mindmapButton = page
-                .locator(
-                    '.tox-tbtn[aria-label*="Mind map"], .tox-tbtn[aria-label*="Mapa mental"], .tox-tbtn[aria-label*="mind"]',
-                )
-                .first();
-            await expect(mindmapButton).toBeVisible({ timeout: 10000 });
-            await mindmapButton.click();
-
-            // Wait for the mindmap TinyMCE dialog to appear
-            const dialog = page.locator('.tox-dialog');
-            await expect(dialog).toBeVisible({ timeout: 10000 });
-
-            // Verify the dialog title contains "Mind map" or similar
-            const dialogTitle = dialog.locator('.tox-dialog__title');
-            await expect(dialogTitle).toContainText(/Mind|Mapa/i, { timeout: 5000 });
-
-            // Find and click the "Open the mind map editor" button (it's a primary button)
-            const openEditorButton = dialog.locator('button.tox-button').filter({
-                hasText: /Open.*mind.*map|Abrir.*mapa.*mental|editor/i,
-            });
-            await expect(openEditorButton).toBeVisible({ timeout: 5000 });
-            await openEditorButton.click();
-
-            // Wait for the mindmap editor dialog (nested dialog) to appear
-            // This is a second dialog that contains an iframe with the mindmap editor
-            const editorDialog = page.locator('.tox-dialog').nth(1);
-            await expect(editorDialog).toBeVisible({ timeout: 10000 });
-
-            // Find the mindmap editor iframe
-            // Server mode: /api/exemindmap-editor/index.html
-            // Static mode: ./libs/tinymce_5/js/tinymce/plugins/exemindmap/editor/index.html
-            const mindmapFrame = page.frameLocator('iframe[src*="exemindmap"]');
-
-            // Verify key UI elements are visible inside the iframe (NOT blank)
-            // The mindmap editor should have toolbar and canvas elements
-            await expect(mindmapFrame.locator('#toolbar')).toBeVisible({ timeout: 15000 });
-            await expect(mindmapFrame.locator('canvas').first()).toBeVisible({ timeout: 5000 });
-
-            // Close both dialogs
-            // First close the editor dialog (the nested one)
-            const closeEditorButton = editorDialog
-                .locator('.tox-dialog__header-close, button[aria-label="Close"]')
-                .first();
-            if ((await closeEditorButton.count()) > 0) {
-                await closeEditorButton.click();
-            }
-
-            // Then close the main mindmap dialog
-            const cancelButton = dialog
-                .locator('button')
-                .filter({ hasText: /Cancel|Cancelar/i })
-                .first();
-            if ((await cancelButton.count()) > 0 && (await cancelButton.isVisible())) {
-                await cancelButton.click();
-            }
-
-            // Verify dialogs are closed
-            await expect(page.locator('.tox-dialog')).not.toBeVisible({ timeout: 5000 });
         });
     });
 
