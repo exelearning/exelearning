@@ -705,7 +705,7 @@ var $exeIDevicesEdition = {
                                 <label class="form-check-label" for="eXeGameSCORMNoSave">${_("Do not save the score")}</label>
                                 ${help([
                                     _('The activity sends no score to the LMS, not even when exported as SCORM. Learners can do it and see their own result, but nothing is recorded on the platform.'),
-                                    _('The progress report is not affected: it is kept in the learner\'s own browser and works whatever you choose here.'),
+                                    _("The progress report is not affected: it is kept in the learner's own browser and works whatever you choose here."),
                                 ].join('\n\n'))}
                             </div>
                             <div class="${autoSaveClass} align-items-center gap-1 mb-3 ml-1" id="eXeGameSCORMAutomatically">
