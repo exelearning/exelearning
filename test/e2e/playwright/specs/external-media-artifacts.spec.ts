@@ -43,7 +43,13 @@ function startServer(root: string): Promise<{ server: Server; base: string }> {
                 res.writeHead(404).end('not found');
                 return;
             }
-            res.writeHead(200, { 'Content-Type': TYPES[extname(path)] ?? 'application/octet-stream' });
+            const headers: Record<string, string> = {
+                'Content-Type': TYPES[extname(path)] ?? 'application/octet-stream',
+            };
+            // A top-level page in an opaque origin, the way a platform serves untrusted
+            // content in a tab of its own (ADR-2199-16).
+            if (path.endsWith('.sandboxed.html')) headers['Content-Security-Policy'] = 'sandbox allow-scripts';
+            res.writeHead(200, headers);
             res.end(readFileSync(path));
         });
         s.listen(0, '127.0.0.1', () => {
@@ -58,6 +64,31 @@ const CONTENT = `<!doctype html><meta charset="utf-8"><body>
 <iframe id="yt" src="https://www.youtube-nocookie.com/embed/aqz-KE-bpKQ" width="480" height="270"></iframe>
 <iframe id="ext" src="https://example.com/" width="200" height="120"></iframe>
 <script src="./${ARTIFACT_NAMES.child}"></script>
+</body>`;
+
+/**
+ * What ADR-2199-16 is about: an embed no provider covers (Padlet), and Canva's responsive
+ * snippet — a zero-height box that reserves space with padding-top and overflow:hidden,
+ * with the iframe positioned over it.
+ */
+const CONTENT_FACADE = `<!doctype html><meta charset="utf-8"><body>
+<iframe id="yt" src="https://www.youtube-nocookie.com/embed/aqz-KE-bpKQ" width="480" height="270"></iframe>
+<iframe id="padlet" src="https://padlet.com/embed/abc" width="300" height="200"></iframe>
+<div id="canva" style="position:relative;width:400px;height:0;padding-top:50%;overflow:hidden">
+<iframe style="position:absolute;width:100%;height:100%;top:0;left:0;border:0" src="https://www.canva.com/design/DAG/view?embed"></iframe>
+</div>
+<script src="./${ARTIFACT_NAMES.child}"></script>
+</body>`;
+
+const PARENT_FACADE_NO_HOST = `<!doctype html><meta charset="utf-8">
+<body><iframe id="content" sandbox="allow-scripts allow-popups" src="./content-facade.html" width="520" height="800"></iframe></body>`;
+
+const PARENT_FACADE_STRICT = `<!doctype html><meta charset="utf-8">
+<style>#wrap{position:relative;width:520px;height:800px}#content{width:100%;height:100%;border:0}</style>
+<body>
+<div id="wrap"><iframe id="content" sandbox="allow-scripts allow-popups" src="./content-facade.html"></iframe></div>
+<script src="./${ARTIFACT_NAMES.host}"></script>
+<script>window.exeEmbedRelay.init({ mode: 'strict', whitelist: ['www.youtube-nocookie.com', 'padlet.com'] });</script>
 </body>`;
 
 const PARENT = `<!doctype html><meta charset="utf-8">
@@ -122,6 +153,10 @@ test.beforeAll(async () => {
     writeFileSync(join(dir, 'parent-nohost.html'), PARENT_NO_HOST);
     writeFileSync(join(dir, 'parent-early-init.html'), PARENT_EARLY_INIT);
     writeFileSync(join(dir, 'parent-coverable.html'), PARENT_COVERABLE);
+    writeFileSync(join(dir, 'content-facade.html'), CONTENT_FACADE);
+    writeFileSync(join(dir, 'content-facade.sandboxed.html'), CONTENT_FACADE);
+    writeFileSync(join(dir, 'parent-facade-nohost.html'), PARENT_FACADE_NO_HOST);
+    writeFileSync(join(dir, 'parent-facade-strict.html'), PARENT_FACADE_STRICT);
     ({ server, base } = await startServer(dir));
 });
 
@@ -142,7 +177,7 @@ test('built artifacts promote every embed once the host welcomes the child', asy
     expect(srcs.some(s => /^https:\/\/example\.com\//.test(s))).toBe(true);
 });
 
-test('built artifacts stay inert when no relay answers', async ({ page, context }) => {
+test('built artifacts promote nothing when no relay answers', async ({ page, context }) => {
     // Offline apart from the harness itself, like a package re-hosted somewhere that
     // speaks no eXe protocol. The child DOES load here — it stays dormant by choice.
     await context.route('**/*', route => (route.request().url().startsWith(base) ? route.continue() : route.abort()));
@@ -153,8 +188,69 @@ test('built artifacts stay inert when no relay answers', async ({ page, context 
     await page.waitForTimeout(6500);
 
     await expect(content.locator('#yt')).toHaveCount(1);
-    await expect(content.locator('[data-exe-embed-id]')).toHaveCount(0);
+    // The frame is sandboxed, so the embed no provider covers became a link (ADR-2199-16).
+    // Nothing became a bare placeholder only a host could fill (ADR-2199-08).
+    await expect(content.locator('[data-exe-embed-id]:not([data-exe-embed-facade])')).toHaveCount(0);
+    await expect(content.locator('[data-exe-embed-facade] a')).toHaveText('View content from example.com');
     await expect(page.locator('.exe-embed-overlay iframe')).toHaveCount(0);
+});
+
+test.describe('the facade in sandboxed content (ADR-2199-16)', () => {
+    test('links an embed no provider covers when no host answers', async ({ page, context }) => {
+        await context.route('**/*', route =>
+            route.request().url().startsWith(base) ? route.continue() : route.abort(),
+        );
+        await page.goto(`${base}/parent-facade-nohost.html`);
+        const content = page.frameLocator('#content');
+
+        // Built on start: no waiting for the handshake to give up.
+        const link = content.locator('[data-exe-embed-facade] a', { hasText: 'padlet.com' });
+        await expect(link).toHaveAttribute('href', 'https://padlet.com/embed/abc');
+        await expect(link).toHaveAttribute('target', '_blank');
+        await expect(link).toHaveAttribute('rel', 'noopener noreferrer');
+        await expect(link).toBeVisible();
+        // A provider keeps waiting for a host that can render it.
+        await expect(content.locator('#yt')).toHaveCount(1);
+    });
+
+    test("fills the box of Canva's responsive snippet instead of falling below it", async ({ page, context }) => {
+        await context.route('**/*', route =>
+            route.request().url().startsWith(base) ? route.continue() : route.abort(),
+        );
+        await page.goto(`${base}/parent-facade-nohost.html`);
+        const content = page.frameLocator('#content');
+        await expect(content.locator('#canva [data-exe-embed-facade] a')).toHaveCount(1);
+
+        // With overflow:hidden and zero height, anything left in flow is clipped away.
+        const hit = await content.locator('#canva').evaluate(box => {
+            const rect = box.getBoundingClientRect();
+            const target = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
+            return target?.closest('a')?.textContent ?? null;
+        });
+        expect(hit).toBe('View content from www.canva.com');
+    });
+
+    test('a strict host overlays the providers it accepts and leaves the facade for the rest', async ({ page }) => {
+        await page.goto(`${base}/parent-facade-strict.html`);
+        const content = page.frameLocator('#content');
+
+        // Only YouTube is a provider: padlet.com is allowlisted, but strict mode refuses
+        // anything the registry cannot rebuild, so its link stays the way in.
+        const players = page.locator('.exe-embed-overlay iframe');
+        await expect.poll(() => players.count(), { timeout: 15000 }).toBe(1);
+        expect(await players.first().getAttribute('src')).toMatch(/youtube-nocookie\.com\/embed\/aqz-KE-bpKQ/);
+        await expect(content.locator('[data-exe-embed-facade] a', { hasText: 'padlet.com' })).toBeVisible();
+    });
+
+    test('works in a top-level sandboxed page, which has no parent to ask', async ({ page, context }) => {
+        await context.route('**/*', route =>
+            route.request().url().startsWith(base) ? route.continue() : route.abort(),
+        );
+        await page.goto(`${base}/content-facade.sandboxed.html`);
+
+        await expect(page.locator('[data-exe-embed-facade] a', { hasText: 'padlet.com' })).toBeVisible();
+        await expect(page.locator('#yt')).toHaveCount(1);
+    });
 });
 
 test('built artifacts promote when the host was initialised before the frame existed', async ({ page }) => {

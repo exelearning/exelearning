@@ -25,6 +25,7 @@ $exe_i18n = {
     "block": c_("block"),
     "more": c_("More"),
     "newWindow": c_("New window"),
+    "viewContentFrom": c_("View content from %s"),
     "fullSize": c_("Full size"),
     "accessibility_tools": c_("Accessibility tools"),
     "close_toolbar": c_("Close"),

@@ -9,6 +9,8 @@
  * The load-bearing property is WHEN the observers are installed: not at load, but on
  * activation. A document with no host — a `file://` package, a third-party LMS, an ePub
  * reader — is left exactly as authored, and pays for no observers either (ADR-2199-08).
+ * A SANDBOXED document is the exception: it gets the facade on start and one childList
+ * observer that keeps it current (ADR-2199-16).
  *
  * It publishes two names:
  *
@@ -19,7 +21,14 @@ import { createDeprecations, withDeprecationNotice, type DeprecationOptions } fr
 import { createMediaBridge, type MediaBridge } from './media/media-child';
 import { createChildRuntime, type ChildHostWindow, type ChildRuntime, type EmbedScanner } from './child/child-runtime';
 import { collect, promote, type ScanCounter } from './child/embed-scanner';
-import { contentBase, isFramed, isOpaqueOrigin, isPromotable, type RuntimeWindow } from './child/environment';
+import {
+    contentBase,
+    isFramed,
+    isOpaqueOrigin,
+    isPromotable,
+    isSandboxedOpaque,
+    type RuntimeWindow,
+} from './child/environment';
 
 interface ObserverConstructor {
     new (callback: () => void): { observe(target: unknown, options?: unknown): void };
@@ -58,17 +67,24 @@ export function createDomScanner(win: ChildWindow): EmbedScanner {
     const root = () => (win.document.body ?? win.document) as ParentNode & { ownerDocument?: Document | null };
     let promoting = false;
 
+    // Decided per call, not once: the verdict is cheap and a test may hand in either kind.
+    function guarded(options: { facadeOnly?: boolean }): void {
+        if (promoting) return;
+        promoting = true;
+        try {
+            promote(root(), counter, win as unknown as RuntimeWindow, {
+                facade: isSandboxedOpaque(win as unknown as RuntimeWindow),
+                ...options,
+            });
+        } finally {
+            promoting = false;
+        }
+    }
+
     return {
-        promote: () => {
-            if (promoting) return;
-            promoting = true;
-            try {
-                promote(root(), counter, win as unknown as RuntimeWindow);
-            } finally {
-                promoting = false;
-            }
-        },
+        promote: () => guarded({}),
         collect: () => collect(root()),
+        facade: () => guarded({ facadeOnly: true }),
     };
 }
 
@@ -84,7 +100,19 @@ export function startChild(win: ChildWindow): ChildEntry {
     // `onActivate` fires exactly once, however many welcomes arrive — the runtime owns
     // that, and tests it. No second guard here, which would only be a second place for
     // the rule to be stated and drift.
-    const runtime: ChildRuntime = createChildRuntime(win, scanner, { onActivate: observe });
+    const runtime: ChildRuntime = createChildRuntime(win, scanner, { onActivate: observe, onFacade: watchForFacade });
+
+    /**
+     * Keep the facade current as content arrives — an iDevice that renders its embed
+     * after load. childList only, and nothing that measures: until a host answers there
+     * is no geometry to report. Once one has, `observe` takes over.
+     */
+    function watchForFacade(): void {
+        if (!win.MutationObserver || !win.document.documentElement) return;
+        new win.MutationObserver(() => {
+            if (!runtime.isActivated()) scanner.facade?.();
+        }).observe(win.document.documentElement, { childList: true, subtree: true });
+    }
 
     function observe(): void {
         // Attributes as well as childList: layout-affecting UI — an exported page's nav

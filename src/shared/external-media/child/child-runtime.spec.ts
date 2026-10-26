@@ -326,3 +326,78 @@ describe('resyncing unconditionally', () => {
         expect(syncs()).toHaveLength(0);
     });
 });
+
+/**
+ * ADR-2199-16: in a sandboxed document, embeds the registry does not know get a link
+ * straight away, host or no host. Everything else still waits for the handshake.
+ */
+describe('the facade in a sandboxed document', () => {
+    function facadeScanner(): EmbedScanner & { facades: number; promoted: number } {
+        const base = makeScanner();
+        let facades = 0;
+        return {
+            promote: base.promote,
+            collect: base.collect,
+            facade: () => {
+                facades += 1;
+            },
+            get promoted() {
+                return base.promoted;
+            },
+            get facades() {
+                return facades;
+            },
+        };
+    }
+
+    it('builds the facade on start, before any host answers, without promoting', () => {
+        const withFacade = facadeScanner();
+        const runtime = createChildRuntime(win, withFacade);
+        runtime.start();
+
+        expect(withFacade.facades).toBe(1);
+        expect(withFacade.promoted).toBe(0);
+        expect(runtime.isActivated()).toBe(false);
+    });
+
+    /** «Ver online»: a top-level sandboxed page has no parent to handshake with. */
+    it('builds it in an unframed sandboxed page too, which can never handshake', () => {
+        const top = makeWin();
+        (top as { parent: unknown }).parent = top;
+        const withFacade = facadeScanner();
+
+        const started = createChildRuntime(top, withFacade).start();
+
+        expect(started).toBe(false);
+        expect(withFacade.facades).toBe(1);
+        expect(actions()).not.toContain('hello');
+    });
+
+    it('leaves a file:// package exactly as authored (ADR-2199-08)', () => {
+        const withFacade = facadeScanner();
+        createChildRuntime(makeWin({ location: { href: 'file:///tmp/pkg/index.html' } }), withFacade).start();
+        expect(withFacade.facades).toBe(0);
+    });
+
+    it('does nothing in a document with a real origin', () => {
+        const withFacade = facadeScanner();
+        createChildRuntime(makeWin({ origin: 'https://lms.example' }), withFacade).start();
+        expect(withFacade.facades).toBe(0);
+    });
+
+    it('tells the caller, so it can keep the facade current as content arrives', () => {
+        let notified = 0;
+        createChildRuntime(win, facadeScanner(), { onFacade: () => (notified += 1) }).start();
+        expect(notified).toBe(1);
+    });
+
+    it('still promotes the rest once welcomed', () => {
+        const withFacade = facadeScanner();
+        const runtime = createChildRuntime(win, withFacade);
+        runtime.start();
+        runtime.handleHostMessage(welcome());
+
+        expect(withFacade.promoted).toBe(1);
+        expect(syncs()).toHaveLength(1);
+    });
+});

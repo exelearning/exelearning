@@ -6,6 +6,7 @@ import {
     isOpaqueOrigin,
     isPdfUrl,
     isPromotable,
+    isSandboxedOpaque,
     type RuntimeWindow,
 } from './environment';
 
@@ -33,6 +34,38 @@ describe('isOpaqueOrigin', () => {
             },
         } as unknown as RuntimeWindow;
         expect(isOpaqueOrigin(throwing)).toBe(true);
+    });
+});
+
+describe('isSandboxedOpaque', () => {
+    it('is true for an opaque document served over http(s): only a sandbox does that', () => {
+        expect(isSandboxedOpaque(win())).toBe(true);
+        expect(isSandboxedOpaque(win({ location: { href: 'http://lms.example/x.html' } }))).toBe(true);
+    });
+
+    /** `file://` is opaque too, and there nested embeds load fine (ADR-2199-08). */
+    it('is false for a package opened from file://', () => {
+        expect(isSandboxedOpaque(win({ location: { href: 'file:///home/user/package/index.html' } }))).toBe(false);
+    });
+
+    it('is false for a document with a real origin', () => {
+        expect(isSandboxedOpaque(win({ origin: 'https://lms.example' }))).toBe(false);
+    });
+
+    it('treats a throwing cookie access as sandboxed, wherever it is served from', () => {
+        const throwing = {
+            parent: {},
+            origin: 'null',
+            location: { href: 'file:///home/user/package/index.html' },
+            get document(): { cookie: string } {
+                throw new Error('SecurityError');
+            },
+        } as unknown as RuntimeWindow;
+        expect(isSandboxedOpaque(throwing)).toBe(true);
+    });
+
+    it('is false when the location cannot be read', () => {
+        expect(isSandboxedOpaque(win({ location: undefined }))).toBe(false);
     });
 });
 

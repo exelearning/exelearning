@@ -19,7 +19,7 @@ describe('common_i18n.js', () => {
       'previous', 'next', 'show', 'hide', 'showFeedback', 'hideFeedback',
       'correct', 'incorrect', 'menu', 'download', 'yourScoreIs', 'dataError',
       'epubJSerror', 'epubDisabled', 'solution', 'print', 'fullSearch',
-      'noSearchResults', 'searchResults', 'hideResults', 'more', 'newWindow',
+      'noSearchResults', 'searchResults', 'hideResults', 'more', 'newWindow', 'viewContentFrom',
       'fullSize', 'search', 'accessibility_tools', 'close_toolbar',
       'default_font', 'increase_text_size', 'decrease_text_size', 'read',
       'stop_reading', 'translate', 'drag_and_drop', 'reset', 'mode_toggler',

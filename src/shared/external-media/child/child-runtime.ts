@@ -6,9 +6,13 @@
  * the author's document is left exactly as written, because a placeholder only the host
  * can fill is a permanent black box — strictly worse than an unprotected embed — and
  * this code ships inside content that is routinely opened where no host exists at all.
+ *
+ * One narrow exception, ADR-2199-16: in a SANDBOXED document, embeds the registry does not
+ * know are given a facade on start — a placeholder that carries its own link, so it is
+ * usable without a host. There the author's embed could not load anyway.
  */
 import { EMBED_TYPE } from '../protocol/messages';
-import { isFramed, isOpaqueOrigin, type RuntimeWindow } from './environment';
+import { isFramed, isOpaqueOrigin, isSandboxedOpaque, type RuntimeWindow } from './environment';
 import type { EmbedRecord } from './embed-scanner';
 
 /**
@@ -64,11 +68,18 @@ export interface EmbedScanner {
     promote(): void;
     /** Current geometry of every placeholder. */
     collect(): EmbedRecord[];
+    /**
+     * Give embeds the registry does not know a link to themselves (ADR-2199-16). Called
+     * on start in a sandboxed document only, before and regardless of any handshake.
+     */
+    facade?(): void;
 }
 
 export interface ChildRuntimeOptions {
     /** Called on activation, so the caller can attach observers it owns. */
     onActivate?(): void;
+    /** Called once the facade is built, so the caller can keep it current. */
+    onFacade?(): void;
 }
 
 export function createChildRuntime(
@@ -146,6 +157,10 @@ export function createChildRuntime(
     }
 
     function start(): boolean {
+        if (scanner.facade && isSandboxedOpaque(win)) {
+            scanner.facade();
+            options.onFacade?.();
+        }
         if (!isFramed(win) || !isOpaqueOrigin(win)) return false;
         win.addEventListener('message', handleHostMessage as (event: MessageEvent) => void);
         announce(0);

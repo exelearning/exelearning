@@ -34,6 +34,33 @@ export function isOpaqueOrigin(win: RuntimeWindow): boolean {
     }
 }
 
+/**
+ * Whether the document runs in a SANDBOXED opaque origin — the one context where an
+ * author's nested embeds are known to break, because the sandbox propagates to them.
+ *
+ * Narrower than `isOpaqueOrigin` on purpose: `file://` is opaque as well, and there the
+ * embeds load fine, so treating it as sandboxed would replace working players with links
+ * (the failure ADR-2199-08 exists to prevent). Two signals identify a sandbox:
+ *
+ * - cookie access throws, which only a sandboxed document does;
+ * - the origin is opaque although the document came over http(s), which no unsandboxed
+ *   document can be.
+ */
+export function isSandboxedOpaque(win: RuntimeWindow): boolean {
+    try {
+        void win.document?.cookie;
+    } catch {
+        return true;
+    }
+    if (win.origin !== 'null') return false;
+    try {
+        const protocol = new URL(win.location?.href ?? '').protocol;
+        return protocol === 'https:' || protocol === 'http:';
+    } catch {
+        return false;
+    }
+}
+
 /** Whether this window is nested in another browsing context. */
 export function isFramed(win: RuntimeWindow): boolean {
     try {

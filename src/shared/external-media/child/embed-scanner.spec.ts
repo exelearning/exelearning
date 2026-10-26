@@ -2,6 +2,7 @@ import { describe, expect, it } from 'bun:test';
 import {
     collect,
     promote,
+    EMBED_FACADE_ATTR,
     EMBED_ID_ATTR,
     EMBED_PROVIDER_ATTR,
     EMBED_RESOURCE_ATTR,
@@ -26,6 +27,10 @@ interface StubElement {
     className: string;
     style: Record<string, string>;
     parentNode: StubParent | null;
+    childNodes: StubElement[];
+    textContent: string;
+    href?: string;
+    appendChild(child: StubElement): StubElement;
     getAttribute(name: string): string | null;
     setAttribute(name: string, value: string): void;
     getBoundingClientRect(): { left: number; top: number; width: number; height: number };
@@ -45,6 +50,12 @@ function element(tag: string, attrs: Record<string, string> = {}): StubElement {
         className: attrs.class ?? '',
         style: {},
         parentNode: null,
+        childNodes: [],
+        textContent: '',
+        appendChild(child) {
+            this.childNodes.push(child);
+            return child;
+        },
         getAttribute(name) {
             return name in this.attrs ? this.attrs[name] : null;
         },
@@ -78,6 +89,16 @@ function container(children: StubElement[]): StubParent {
 const win = { location: { href: 'https://lms.example/preview/page.html' } } as RuntimeWindow;
 const counter = (): ScanCounter => ({ n: 0 });
 const run = (parent: StubParent) => promote(parent as never, counter(), win);
+
+/** The window of a sandboxed document: computed style reads the stub's own style. */
+const sandboxed = (extra: Record<string, unknown> = {}): RuntimeWindow =>
+    ({
+        ...win,
+        getComputedStyle: (node: StubElement) => ({ position: node.style.position ?? '' }),
+        ...extra,
+    }) as unknown as RuntimeWindow;
+
+const link = (placeholder: StubElement) => placeholder.childNodes.find(child => child.tag === 'a');
 
 describe('promote', () => {
     it('replaces a recognised provider embed and reports provider + id, not the URL', () => {
@@ -147,6 +168,114 @@ describe('promote', () => {
         const a = promote(first as never, shared, win);
         const b = promote(second as never, shared, win);
         expect(a[0].getAttribute(EMBED_ID_ATTR)).not.toBe(b[0].getAttribute(EMBED_ID_ATTR));
+    });
+});
+
+describe('promote with the facade', () => {
+    const PADLET = 'https://padlet.com/embed/abc';
+
+    it('turns an embed the registry does not know into a link to it, before any handshake', () => {
+        const parent = container([element('iframe', { src: PADLET, width: '600', height: '400' })]);
+
+        const [placeholder] = promote(parent as never, counter(), sandboxed(), { facade: true, facadeOnly: true });
+
+        expect(placeholder.getAttribute(EMBED_FACADE_ATTR)).toBe('');
+        expect(placeholder.getAttribute(EMBED_URL_ATTR)).toBe(PADLET);
+        expect(placeholder.style.width).toBe('600px');
+        const anchor = link(placeholder as never);
+        expect(anchor?.getAttribute('href')).toBe(PADLET);
+        expect(anchor?.getAttribute('target')).toBe('_blank');
+        expect(anchor?.getAttribute('rel')).toBe('noopener noreferrer');
+        expect(anchor?.textContent).toBe('View content from padlet.com');
+    });
+
+    /** Providers and PDFs keep waiting for a host, which can render them properly. */
+    it('leaves providers, PDFs and same-origin embeds for the handshake', () => {
+        const parent = container([
+            element('iframe', { src: 'https://www.youtube.com/embed/aqz-KE-bpKQ' }),
+            element('iframe', { src: 'https://docs.example/handout.pdf' }),
+            element('iframe', { src: './local.html' }),
+        ]);
+
+        expect(promote(parent as never, counter(), sandboxed(), { facade: true, facadeOnly: true })).toHaveLength(0);
+        expect(parent.children.every(child => child.tag === 'iframe')).toBe(true);
+    });
+
+    it('reads the label from the content language bundle', () => {
+        const parent = container([element('iframe', { src: PADLET })]);
+        const translated = sandboxed({ $exe_i18n: { viewContentFrom: 'Ver contenido de %s' } });
+
+        const [placeholder] = promote(parent as never, counter(), translated, { facade: true, facadeOnly: true });
+
+        expect(link(placeholder as never)?.textContent).toBe('Ver contenido de padlet.com');
+    });
+
+    it('on a full promotion, links the unknown embeds and leaves providers as plain placeholders', () => {
+        const parent = container([
+            element('iframe', { src: 'https://www.youtube.com/embed/aqz-KE-bpKQ' }),
+            element('iframe', { src: PADLET }),
+        ]);
+
+        const [video, padlet] = promote(parent as never, counter(), sandboxed(), { facade: true });
+
+        expect(video.getAttribute(EMBED_FACADE_ATTR)).toBeNull();
+        expect(link(video as never)).toBeUndefined();
+        expect(padlet.getAttribute(EMBED_FACADE_ATTR)).toBe('');
+        expect(link(padlet as never)).toBeDefined();
+    });
+
+    it('without the facade, an unknown embed is a plain placeholder, as before', () => {
+        const parent = container([element('iframe', { src: PADLET })]);
+        const [placeholder] = run(parent);
+        expect(placeholder.getAttribute(EMBED_FACADE_ATTR)).toBeNull();
+        expect(link(placeholder as never)).toBeUndefined();
+    });
+
+    /**
+     * Canva's responsive snippet: a zero-height box reserving space with padding-top and
+     * overflow:hidden, the iframe positioned over it. A placeholder left in flow falls
+     * below the box and is clipped, so it must take the iframe's place instead.
+     */
+    it('fills the container when the iframe is positioned', () => {
+        const frame = element('iframe', { src: PADLET });
+        frame.style.position = 'absolute';
+        const parent = container([frame]);
+
+        const [placeholder] = promote(parent as never, counter(), sandboxed(), { facade: true, facadeOnly: true });
+
+        expect(placeholder.style).toMatchObject({
+            position: 'absolute',
+            top: '0',
+            left: '0',
+            width: '100%',
+            height: '100%',
+        });
+    });
+
+    it('falls back to the inline style when computed style is unavailable', () => {
+        const frame = element('iframe', { src: PADLET });
+        frame.style.position = 'absolute';
+        const parent = container([frame]);
+        const throwing = sandboxed({
+            getComputedStyle: () => {
+                throw new Error('detached');
+            },
+        });
+
+        const [placeholder] = promote(parent as never, counter(), throwing, { facade: true, facadeOnly: true });
+
+        expect(placeholder.style.position).toBe('absolute');
+    });
+
+    it('applies the same geometry to a positioned provider placeholder', () => {
+        const frame = element('iframe', { src: 'https://www.youtube.com/embed/aqz-KE-bpKQ', width: '560' });
+        frame.style.position = 'fixed';
+        const parent = container([frame]);
+
+        const [placeholder] = promote(parent as never, counter(), sandboxed());
+
+        expect(placeholder.style.position).toBe('absolute');
+        expect(placeholder.style.height).toBe('100%');
     });
 });
 

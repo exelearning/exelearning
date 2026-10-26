@@ -110,10 +110,40 @@ describe('before a host answers', () => {
      * The point of the whole handshake. A `file://` package or a third-party LMS gets a
      * document that stays exactly as authored — and pays for no observers either.
      */
-    it('observes nothing', () => {
+    it('observes nothing in a file:// package', () => {
+        mutationObserved.length = 0;
+        const packaged = { ...win, location: { href: 'file:///home/user/package/index.html' } } as Record<
+            string,
+            unknown
+        >;
+        packaged.self = packaged;
+
+        startChild(packaged as never);
+
         expect(mutationObserved).toHaveLength(0);
         expect(resizeObserved).toHaveLength(0);
         expect(listeners.filter(l => l.type === 'scroll')).toHaveLength(0);
+    });
+
+    /**
+     * A sandboxed document (ADR-2199-16) builds the facade straight away and keeps it
+     * current as content arrives — with one childList observer, and nothing that measures.
+     */
+    it('in a sandboxed document, only watches for new embeds to give a facade', () => {
+        expect(mutationObserved).toHaveLength(1);
+        expect(mutationObserved[0].options).toEqual({ childList: true, subtree: true });
+        expect(resizeObserved).toHaveLength(0);
+        expect(listeners.filter(l => l.type === 'scroll')).toHaveLength(0);
+        expect(scanned).toContain('iframe[src]');
+    });
+
+    it('gives a facade to embeds that arrive later', () => {
+        scanned.length = 0;
+
+        fireMutation();
+
+        expect(scanned).toContain('iframe[src]');
+        expect(syncs()).toHaveLength(0);
     });
 
     it('refuses to start outside a frame', () => {
@@ -135,9 +165,11 @@ describe('before a host answers', () => {
 describe('once a host answers', () => {
     beforeEach(() => welcome());
 
+    const measuring = () => mutationObserved.filter(o => (o.options as { attributes?: boolean }).attributes);
+
     it('watches the document for content that arrives or moves', () => {
-        expect(mutationObserved).toHaveLength(1);
-        expect(mutationObserved[0].options).toMatchObject({ childList: true, subtree: true, attributes: true });
+        expect(measuring()).toHaveLength(1);
+        expect(measuring()[0].options).toMatchObject({ childList: true, subtree: true, attributes: true });
     });
 
     /** A drawer pushing the content column fires no window resize. */
@@ -163,7 +195,7 @@ describe('once a host answers', () => {
         welcome();
         welcome();
 
-        expect(mutationObserved).toHaveLength(1);
+        expect(measuring()).toHaveLength(1);
         expect(listeners.filter(l => l.type === 'scroll')).toHaveLength(1);
     });
 
@@ -214,6 +246,9 @@ describe('re-entrancy during promotion', () => {
     it('ignores a promotion that starts inside a promotion', () => {
         const queries: string[] = [];
         let reentered = 0;
+        // Armed only for the welcome: a sandboxed start has already scanned once for the
+        // facade (ADR-2199-16), and that pass is not the one under test.
+        let armed = false;
         let entry: ChildEntry;
 
         // A body whose query synchronously re-enters the scan, exactly as a `load` event
@@ -221,7 +256,7 @@ describe('re-entrancy during promotion', () => {
         const body = {
             querySelectorAll: (selector: string) => {
                 queries.push(selector);
-                if (selector === 'iframe[src]' && reentered === 0) {
+                if (armed && selector === 'iframe[src]' && reentered === 0) {
                     reentered += 1;
                     entry.runtime.rescan();
                 }
@@ -236,6 +271,8 @@ describe('re-entrancy during promotion', () => {
             document: { ...(win.document as object), body },
             addEventListener: (type: string, fn: (event?: unknown) => void) => own.push({ type, fn }),
         } as never);
+        queries.length = 0;
+        armed = true;
         own.filter(l => l.type === 'message').forEach(l =>
             l.fn({ source: parent, data: { type: 'exe-embed', action: 'welcome' } }),
         );

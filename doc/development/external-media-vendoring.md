@@ -113,6 +113,13 @@ Starting is not activating. The child announces itself and waits; a document who
 never answers stays exactly as the author wrote it (ADR-2199-08). This is what keeps exported
 packages usable on `file://`, in an ePub reader, or in a third-party LMS.
 
+The one exception is a **sandboxed** document — an opaque origin served over http(s), framed
+or not. There the author's embeds cannot load anyway, so on start the child turns each one
+no provider covers (Padlet, Canva, Genially…) into a link to it, "View content from <host>",
+translated through `$exe_i18n.viewContentFrom` (ADR-2199-16). A host in `open` mode still
+renders the embed over it; a `strict` host that refuses it leaves the link. Do not ship a
+facade script of your own next to the artifact.
+
 ### The legacy names still work
 
 `window.exeEmbedRelay.init(config)` and `window.exeEmbedShim` are kept as facades over the
