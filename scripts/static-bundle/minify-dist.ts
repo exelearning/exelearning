@@ -42,6 +42,7 @@ export const MINIFY_FILES = [
     'app/common/common_edition.js',
     'app/common/connectionMonitor.js',
     'app/common/LatexPreRenderer.js',
+    'app/common/MoleculeCapture.js',
     'app/common/mime-sniff.js',
 ];
 

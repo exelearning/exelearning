@@ -9,6 +9,7 @@ import { now } from '../types';
 import { v4 as uuidv4 } from 'uuid';
 import { randomUUID } from 'crypto';
 import { supportsReturning, updateByColumnAndReturn, updateByIdAndReturn, insertIgnore } from '../helpers';
+import { assertSafePathSegment } from '../../utils/safe-path';
 
 // ============================================================================
 // HELPER TYPES AND FUNCTIONS
@@ -116,6 +117,28 @@ export async function findProjectByUuid(db: Kysely<Database>, uuid: string): Pro
 
 export async function findProjectByPlatformId(db: Kysely<Database>, platformId: string): Promise<Project | undefined> {
     return db.selectFrom('projects').selectAll().where('platform_id', '=', platformId).executeTakeFirst();
+}
+
+/**
+ * Find the project a user keeps for one platform activity (site + course module).
+ * Deleted projects are skipped; the most recently updated one wins.
+ */
+export async function findOwnedProjectByPlatformBinding(
+    db: Kysely<Database>,
+    ownerId: number,
+    platformSite: string,
+    platformId: string,
+): Promise<Project | undefined> {
+    return db
+        .selectFrom('projects')
+        .selectAll()
+        .where('owner_id', '=', ownerId)
+        .where('platform_site', '=', platformSite)
+        .where('platform_id', '=', platformId)
+        .where('status', 'in', ['active', 'archived'])
+        .orderBy('updated_at', 'desc')
+        .orderBy('id', 'desc')
+        .executeTakeFirst();
 }
 
 /**
@@ -515,6 +538,9 @@ export async function createProjectWithUuid(
     uuid: string,
     data: Omit<NewProject, 'uuid'>,
 ): Promise<Project> {
+    // The uuid later names session and asset directories, so a caller-chosen
+    // value must be a single safe path segment.
+    assertSafePathSegment(uuid, { label: 'project uuid' });
     const timestamp = now();
     const values = {
         ...data,
