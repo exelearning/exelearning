@@ -1400,7 +1400,10 @@ export default class ModalFilemanager extends Modal {
         const thumbCell = document.createElement('td');
         thumbCell.className = 'col-thumb';
         if (asset.mime && asset.mime.startsWith('image/')) {
-            thumbCell.innerHTML = `<img src="${blobUrl}" alt="" loading="lazy">`;
+            // Not ready yet: placeholder, swapped by updateDomImagesForAsset through data-asset-id
+            const loadingAttrs = blobUrl ? '' : ` data-asset-id="${asset.id}" data-asset-loading="true"`;
+            blobUrl ||= this.assetManager.generateLoadingPlaceholder(asset.id);
+            thumbCell.innerHTML = `<img src="${blobUrl}" alt="" loading="lazy"${loadingAttrs}>`;
         } else {
             const icon = this.getFileIcon(asset.mime, asset.filename);
             thumbCell.innerHTML = `<div class="list-thumb-icon"><span class="exe-icon">${icon}</span></div>`;
@@ -1785,10 +1788,10 @@ export default class ModalFilemanager extends Modal {
         let isLoading = false;
 
         if (!blobUrl) {
-            // Asset not available locally - show loading placeholder and trigger fetch
+            // Not ready (no local blob, or an SVG still being sanitized) - show loading placeholder
             blobUrl = this.assetManager.generateLoadingPlaceholder(asset.id);
             isLoading = true;
-            this.triggerAssetFetch(asset.id);
+            if (!asset.blob) this.triggerAssetFetch(asset.id);
         }
 
         // Get usage count badge (only when showRefCount is enabled)
@@ -2004,10 +2007,10 @@ export default class ModalFilemanager extends Modal {
         let blobUrl = this.assetManager.getDisplayBlobURLSync(asset);
         let isLoading = false;
         if (!blobUrl) {
-            // Asset not available locally - show loading placeholder and trigger fetch
+            // Not ready (no local blob, or an SVG still being sanitized) - show loading placeholder
             blobUrl = this.assetManager.generateLoadingPlaceholder(asset.id);
             isLoading = true;
-            this.triggerAssetFetch(asset.id);
+            if (!asset.blob) this.triggerAssetFetch(asset.id);
         }
 
         // Hide all preview elements
@@ -3148,16 +3151,13 @@ export default class ModalFilemanager extends Modal {
 
         const asset = this.selectedAsset;
 
-        // Get blob URL
-        let blobUrl = this.assetManager?.getBlobURLSynced?.(asset.id) ?? this.assetManager?.blobURLCache.get(asset.id);
-        if (!blobUrl && asset.blob) {
-            blobUrl = URL.createObjectURL(asset.blob);
-        }
-
-        if (!blobUrl) {
-            console.error('[MediaLibrary] No blob URL available for download');
+        // The stored bytes, not the cached display copy (sanitized SVG, text/plain HTML).
+        // A download link never renders the file, so the original is safe here.
+        if (!asset.blob) {
+            console.error('[MediaLibrary] No blob available for download');
             return;
         }
+        const blobUrl = URL.createObjectURL(asset.blob);
 
         // Create a temporary link and trigger download
         const a = document.createElement('a');
@@ -3166,6 +3166,8 @@ export default class ModalFilemanager extends Modal {
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
+        // Revoke later: the download (or Electron's save handler) reads the URL asynchronously
+        setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
 
         Logger.log(`[MediaLibrary] Downloaded asset: ${asset.id}`);
     }
@@ -3197,16 +3199,18 @@ export default class ModalFilemanager extends Modal {
 
         const asset = this.selectedAsset;
 
-        // Never the raw blob: a same-origin tab would run an uploaded HTML/SVG's scripts
+        // Never the raw blob: a same-origin tab would run an uploaded HTML/SVG's scripts.
+        // The tab opens first, while the click still allows popups; resolving HTML can take a while.
+        const viewer = window.open('', '_blank');
         const blobUrl = await this.assetManager?.resolveViewerURL(asset.id);
 
         if (!blobUrl) {
+            viewer?.close();
             console.error('[MediaLibrary] No blob URL available for full size view');
             return;
         }
 
-        // Open in new tab
-        window.open(blobUrl, '_blank');
+        if (viewer) viewer.location.href = blobUrl;
         Logger.log(`[MediaLibrary] Opened asset in new tab: ${asset.id}`);
     }
 

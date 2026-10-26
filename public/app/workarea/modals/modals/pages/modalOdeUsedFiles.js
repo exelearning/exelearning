@@ -88,6 +88,7 @@ export default class ModalOdeUsedFiles extends Modal {
      * @param {string} assetId - The asset UUID
      */
     async openAssetInNewWindow(assetId) {
+        let viewer = null;
         try {
             const assetManager =
                 eXeLearning.app.project?._yjsBridge?.assetManager;
@@ -108,10 +109,18 @@ export default class ModalOdeUsedFiles extends Modal {
                 return;
             }
 
-            // Never the raw blob: a same-origin tab would run an uploaded HTML/SVG's scripts
+            // Never the raw blob: a same-origin tab would run an uploaded HTML/SVG's scripts.
+            // The tab opens before resolving, which can take a while for HTML, so popups stay allowed.
+            viewer = window.open('', '_blank');
             const blobUrl = await assetManager.resolveViewerURL(assetId);
-            window.open(blobUrl, '_blank');
+            if (!blobUrl) {
+                viewer?.close();
+                alert(_('Cannot open resource: Asset not found'));
+                return;
+            }
+            if (viewer) viewer.location.href = blobUrl;
         } catch (error) {
+            viewer?.close();
             console.error(
                 '[ModalOdeUsedFiles] Error opening asset:',
                 error

@@ -1651,13 +1651,36 @@ describe('AssetManager', () => {
           expect(assetManager.reverseBlobCache.get(url)).toBe('c3');
         });
 
-        it('gives an SVG a placeholder and leaves the sanitized URL to the async path', () => {
-          const update = vi.spyOn(assetManager, 'updateDomImagesForAsset').mockResolvedValue(0);
-          const url = assetManager.getDisplayBlobURLSync({ id: 'c4', blob: new Blob(['<svg/>'], { type: 'image/svg+xml' }) });
+        it('leaves an SVG to one async sanitize pass and reports it as not ready', async () => {
+          let finish;
+          const update = vi
+            .spyOn(assetManager, 'updateDomImagesForAsset')
+            .mockReturnValue(new Promise(r => (finish = r)));
+          const asset = { id: 'c4', blob: new Blob(['<svg/>'], { type: 'image/svg+xml' }) };
 
-          expect(url).toBe(assetManager.generateLoadingPlaceholder('c4'));
+          // undefined, so the caller marks its element with data-asset-id for the DOM update
+          expect(assetManager.getDisplayBlobURLSync(asset)).toBeUndefined();
+          expect(assetManager.getDisplayBlobURLSync(asset)).toBeUndefined();
           expect(assetManager.blobURLCache.has('c4')).toBe(false);
+          expect(update).toHaveBeenCalledTimes(1);
           expect(update).toHaveBeenCalledWith('c4');
+
+          finish(1);
+          await Promise.resolve();
+          await Promise.resolve();
+          expect(assetManager.pendingDisplayURLs.has('c4')).toBe(false);
+        });
+
+        it('types an untyped blob from the asset MIME', () => {
+          const url = assetManager.getDisplayBlobURLSync({ id: 'c5', mime: 'application/pdf', blob: new Blob(['%PDF']) });
+
+          expect(mockObjectURLs.get(url).type).toBe('application/pdf');
+        });
+
+        it('still neutralizes an untyped blob whose asset MIME is HTML', () => {
+          const url = assetManager.getDisplayBlobURLSync({ id: 'c6', mime: 'text/html', blob: new Blob(['<p>']) });
+
+          expect(mockObjectURLs.get(url).type).toBe('text/plain');
         });
       });
 

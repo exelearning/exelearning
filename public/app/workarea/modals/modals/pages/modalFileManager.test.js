@@ -2760,40 +2760,30 @@ describe('getMimeTypeFromFilename', () => {
         expect(appendSpy).not.toHaveBeenCalled();
       });
 
-      it('should download asset using blob URL from getBlobURLSynced', () => {
+      it('downloads the stored bytes, never the cached display copy (#2621)', () => {
+        modal.assetManager.blobURLCache.set('asset1', 'blob:display-copy');
+        const original = new Blob(['<svg onload="x()"/>'], { type: 'image/svg+xml' });
+        modal.selectedAsset.blob = original;
+        const createURLSpy = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:original');
+        const revokeSpy = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
         const appendSpy = vi.spyOn(document.body, 'appendChild');
         const removeSpy = vi.spyOn(document.body, 'removeChild');
+        vi.useFakeTimers();
 
-        modal.downloadSelectedAsset();
+        try {
+          modal.downloadSelectedAsset();
 
-        expect(appendSpy).toHaveBeenCalled();
-        expect(removeSpy).toHaveBeenCalled();
-        const link = appendSpy.mock.calls[0][0];
-        expect(link.download).toBe('test-image.jpg');
-      });
-
-      it('should use blobURLCache if getBlobURLSynced not available', () => {
-        modal.assetManager.getBlobURLSynced = undefined;
-        modal.assetManager.blobURLCache.set('asset1', 'blob:from-cache');
-
-        const appendSpy = vi.spyOn(document.body, 'appendChild');
-        modal.downloadSelectedAsset();
-
-        expect(appendSpy).toHaveBeenCalled();
-      });
-
-      it('should create blob URL from asset.blob if no cached URL', () => {
-        modal.assetManager.getBlobURLSynced = vi.fn(() => null);
-        modal.assetManager.blobURLCache = new Map();
-        modal.selectedAsset.blob = new Blob(['test'], { type: 'image/jpeg' });
-
-        const createURLSpy = vi.spyOn(URL, 'createObjectURL');
-        const appendSpy = vi.spyOn(document.body, 'appendChild');
-
-        modal.downloadSelectedAsset();
-
-        expect(createURLSpy).toHaveBeenCalled();
-        expect(appendSpy).toHaveBeenCalled();
+          expect(createURLSpy).toHaveBeenCalledWith(original);
+          const link = appendSpy.mock.calls[0][0];
+          expect(link.href).toBe('blob:original');
+          expect(link.download).toBe('test-image.jpg');
+          expect(removeSpy).toHaveBeenCalledWith(link);
+          expect(revokeSpy).not.toHaveBeenCalled();
+          vi.advanceTimersByTime(60000);
+          expect(revokeSpy).toHaveBeenCalledWith('blob:original');
+        } finally {
+          vi.useRealTimers();
+        }
       });
 
       it('should not download if no blob URL available', () => {
@@ -2845,8 +2835,11 @@ describe('getMimeTypeFromFilename', () => {
     });
 
     describe('viewFullSize', () => {
+      let viewer;
+
       beforeEach(() => {
-        window.open = vi.fn();
+        viewer = { location: { href: 'about:blank' }, close: vi.fn() };
+        window.open = vi.fn(() => viewer);
       });
 
       it('should do nothing if no asset selected', () => {
@@ -2857,32 +2850,36 @@ describe('getMimeTypeFromFilename', () => {
         expect(window.open).not.toHaveBeenCalled();
       });
 
-      it('should open asset in new tab', async () => {
-        await modal.viewFullSize();
-
-        expect(window.open).toHaveBeenCalledWith('blob:test-url', '_blank');
-      });
-
-      it('opens the viewer URL, never a raw blob of the asset (#2621)', async () => {
-        modal.assetManager.resolveViewerURL = vi.fn().mockResolvedValue('blob:opaque-page');
+      it('opens the tab before resolving, then shows the viewer URL (#2621)', async () => {
+        let resolve;
+        modal.assetManager.resolveViewerURL = vi.fn(() => new Promise(r => (resolve = r)));
         modal.selectedAsset.blob = new Blob(['<script>parent.x=1</script>'], { type: 'text/html' });
         const createURLSpy = vi.spyOn(URL, 'createObjectURL');
 
-        await modal.viewFullSize();
+        const pending = modal.viewFullSize();
+        // Still inside the click: a later window.open would be blocked as a popup
+        expect(window.open).toHaveBeenCalledWith('', '_blank');
+        resolve('blob:opaque-page');
+        await pending;
 
         expect(modal.assetManager.resolveViewerURL).toHaveBeenCalledWith('asset1');
         expect(createURLSpy).not.toHaveBeenCalled();
-        expect(window.open).toHaveBeenCalledWith('blob:opaque-page', '_blank');
+        expect(viewer.location.href).toBe('blob:opaque-page');
       });
 
-      it('should not open if no blob URL available', async () => {
-        modal.assetManager.getBlobURLSynced = vi.fn(() => null);
-        modal.assetManager.blobURLCache = new Map();
-        modal.selectedAsset.blob = null;
+      it('closes the tab if no viewer URL is available', async () => {
+        modal.assetManager.resolveViewerURL = vi.fn().mockResolvedValue(null);
 
         await modal.viewFullSize();
 
-        expect(window.open).not.toHaveBeenCalled();
+        expect(viewer.close).toHaveBeenCalled();
+        expect(viewer.location.href).toBe('about:blank');
+      });
+
+      it('does not fail when the popup is blocked', async () => {
+        window.open = vi.fn(() => null);
+
+        await expect(modal.viewFullSize()).resolves.toBeUndefined();
       });
     });
   });
@@ -4199,6 +4196,24 @@ describe('getMimeTypeFromFilename', () => {
 
       expect(row).not.toBeNull();
     });
+
+    it('marks a not-yet-sanitized SVG thumbnail so the DOM update can swap it (#2621)', () => {
+      modal.assetManager.getDisplayBlobURLSync = vi.fn(() => undefined);
+      const row = modal.createListRow({ id: 's1', filename: 'a.svg', mime: 'image/svg+xml', blob: new Blob(['<svg/>']) });
+      const img = row.querySelector('.col-thumb img');
+
+      expect(img.getAttribute('src')).toBe('placeholder');
+      expect(img.dataset.assetId).toBe('s1');
+      expect(img.dataset.assetLoading).toBe('true');
+    });
+
+    it('does not mark a ready thumbnail as loading', () => {
+      const row = modal.createListRow({ id: 'a1', filename: 'photo.jpg', mime: 'image/jpeg' });
+      const img = row.querySelector('.col-thumb img');
+
+      expect(img.getAttribute('src')).toBe('blob:test');
+      expect(img.hasAttribute('data-asset-loading')).toBe(false);
+    });
   });
 
   describe('createGridItem', () => {
@@ -4225,6 +4240,26 @@ describe('getMimeTypeFromFilename', () => {
       expect(item.classList.contains('media-library-item')).toBe(true);
       expect(item.dataset.assetId).toBe('a1');
       expect(item.dataset.filename).toBe('photo.jpg');
+    });
+
+    it('marks a local SVG still being sanitized as loading without a peer fetch (#2621)', () => {
+      modal.assetManager.getDisplayBlobURLSync = vi.fn(() => undefined);
+      const fetchSpy = vi.spyOn(modal, 'triggerAssetFetch').mockImplementation(() => {});
+      const item = modal.createGridItem({ id: 's1', filename: 'a.svg', mime: 'image/svg+xml', blob: new Blob(['<svg/>']) });
+      const img = item.querySelector('img');
+
+      expect(img.dataset.assetId).toBe('s1');
+      expect(img.dataset.assetLoading).toBe('true');
+      expect(fetchSpy).not.toHaveBeenCalled();
+    });
+
+    it('fetches from peers when the asset has no local blob', () => {
+      modal.assetManager.getBlobURLSynced = vi.fn(() => undefined);
+      const fetchSpy = vi.spyOn(modal, 'triggerAssetFetch').mockImplementation(() => {});
+
+      modal.createGridItem({ id: 'r1', filename: 'remote.jpg', mime: 'image/jpeg' });
+
+      expect(fetchSpy).toHaveBeenCalledWith('r1');
     });
 
     it('should create grid item for video asset with icon', () => {

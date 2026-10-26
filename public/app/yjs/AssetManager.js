@@ -919,7 +919,7 @@ class AssetManager {
         console.warn('[AssetManager] Failed to convert .srt subtitle to WebVTT for display:', e);
       }
     }
-    return this.createBlobURL(await this._inertDisplayBlob(asset && asset.blob ? asset.blob : asset));
+    return this.createBlobURL(await this._inertDisplayBlob(asset && asset.blob ? asset.blob : asset, asset && asset.mime));
   }
 
   /**
@@ -934,28 +934,31 @@ class AssetManager {
    * The display copy of a blob, safe to hand to any element: scriptable
    * document types become text/plain, an untyped blob becomes
    * application/octet-stream (no HTML sniffing), and SVG is sanitized so it
-   * still works as an image. Returns null only for SVG, which needs the async
-   * sanitizer. The stored blob is never changed.
+   * still works as an image. An untyped blob takes the asset's recorded MIME
+   * type first. Returns null only for SVG, which needs the async sanitizer.
+   * The stored blob is never changed.
    * @param {Blob} blob
+   * @param {string} [mime] - Asset MIME type, used when the blob has none
    * @returns {Blob|null}
    * @private
    */
-  _inertDisplayBlobSync(blob) {
+  _inertDisplayBlobSync(blob, mime) {
     if (!(blob instanceof Blob)) return blob;
-    const type = (blob.type || '').split(';')[0].trim().toLowerCase();
+    const type = (blob.type || mime || '').split(';')[0].trim().toLowerCase();
     if (type === 'image/svg+xml') return null;
     if (!type) return new Blob([blob], { type: 'application/octet-stream' });
     if (AssetManager.SCRIPTABLE_DOCUMENT_TYPE.test(type)) return new Blob([blob], { type: 'text/plain' });
-    return blob;
+    return blob.type ? blob : new Blob([blob], { type });
   }
 
   /**
    * @param {Blob} blob
+   * @param {string} [mime]
    * @returns {Promise<Blob>}
    * @private
    */
-  async _inertDisplayBlob(blob) {
-    return this._inertDisplayBlobSync(blob) ?? this._sanitizedSvgBlob(blob);
+  async _inertDisplayBlob(blob, mime) {
+    return this._inertDisplayBlobSync(blob, mime) ?? this._sanitizedSvgBlob(blob);
   }
 
   /**
@@ -2981,19 +2984,25 @@ class AssetManager {
 
   /**
    * Cached display URL for an asset, created on the spot for synchronous UI
-   * code. Goes through the same inert display copy as _displayBlobURLForAsset;
-   * an SVG needs the async sanitizer, so it gets a loading placeholder and the
-   * DOM is updated once the sanitized URL is cached.
-   * @param {{id: string, blob?: Blob}} asset
-   * @returns {string|undefined} URL, or undefined when the asset has no local blob
+   * code. Goes through the same inert display copy as _displayBlobURLForAsset.
+   * An SVG needs the async sanitizer: this returns undefined, so the caller
+   * marks its element as loading (data-asset-id), and one sanitize pass per
+   * asset then updates those elements through updateDomImagesForAsset.
+   * @param {{id: string, mime?: string, blob?: Blob}} asset
+   * @returns {string|undefined} URL, or undefined when it is not ready yet
    */
   getDisplayBlobURLSync(asset) {
     const cached = this.getBlobURLSynced(asset.id);
     if (cached || !asset.blob) return cached;
-    const inert = this._inertDisplayBlobSync(asset.blob);
+    const inert = this._inertDisplayBlobSync(asset.blob, asset.mime);
     if (!inert) {
-      this.updateDomImagesForAsset(asset.id).catch(() => {});
-      return this.generateLoadingPlaceholder(asset.id);
+      if (!this.pendingDisplayURLs.has(asset.id)) {
+        this.pendingDisplayURLs.add(asset.id);
+        this.updateDomImagesForAsset(asset.id)
+          .catch(() => {})
+          .finally(() => this.pendingDisplayURLs.delete(asset.id));
+      }
+      return undefined;
     }
     const blobUrl = this.createBlobURLSync(inert);
     if (blobUrl) {
@@ -4231,6 +4240,9 @@ class AssetManager {
    * @type {Set<string>}
    */
   pendingFetches = new Set();
+
+  /** Asset IDs whose SVG display copy is being sanitized (see getDisplayBlobURLSync) */
+  pendingDisplayURLs = new Set();
 
   /**
    * Update all images in the DOM that reference a specific asset
