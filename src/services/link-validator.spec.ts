@@ -394,6 +394,27 @@ describe('Link Validator Service', () => {
             expect(callCount).toBe(1);
         });
 
+        it('should probe without decoding the response body', async () => {
+            // The body is cancelled unread, so the probe asks for identity and
+            // also turns Bun's automatic decompression off: a host that answers
+            // with a Content-Encoding anyway must not get its bytes decoded.
+            let init: (RequestInit & { decompress?: boolean }) | undefined;
+            const fetchImpl = (async (_url: string, options?: RequestInit) => {
+                init = options;
+                return mockResponse({ status: 200, ok: true });
+            }) as unknown as typeof fetch;
+
+            const result = await validateLink('https://example.com/page', {
+                filesDir: tempDir,
+                timeout: 5000,
+                lookupFn: publicLookup,
+                fetchImpl,
+            });
+            expect(result).toBeNull();
+            expect(init?.headers).toMatchObject({ 'Accept-Encoding': 'identity' });
+            expect(init?.decompress).toBe(false);
+        });
+
         it('should report the real status code on 404', async () => {
             const fetchImpl = (async () => mockResponse({ status: 404, ok: false })) as unknown as typeof fetch;
 

@@ -207,6 +207,24 @@ describe('ssrf-guard', () => {
             );
         });
 
+        it('forwards decompress to every hop', async () => {
+            const inits: Array<RequestInit & { decompress?: boolean }> = [];
+            const fetchImpl = (async (url: string, init?: RequestInit) => {
+                inits.push(init ?? {});
+                return String(url) === 'https://a.example/' ? res(302, 'https://b.example/landing') : res(200);
+            }) as unknown as typeof fetch;
+            await safeFetch('https://a.example/', {
+                lookupFn: lookupTo('93.184.216.34'),
+                fetchImpl,
+                decompress: false,
+            });
+            expect(inits).toHaveLength(2);
+            for (const init of inits) {
+                expect(init.decompress).toBe(false);
+                expect(init.redirect).toBe('manual');
+            }
+        });
+
         it('stops after too many redirects', async () => {
             const fetchImpl = (async () => res(302, 'https://loop.example/next')) as unknown as typeof fetch;
             await expect(
