@@ -150,6 +150,12 @@ We will take Option 3. In every online session with remote storage and a live, s
 
 6. **Convergence with the stored snapshot and server-side save validation** are decided in ADR-2615-01
    (shipped first in PR #2618); this record builds on them and does not restate them.
+7. **A save only cleans what it uploaded.** `SaveManager.save()` reads `YjsDocumentManager.getChangeSeq()` before
+   encoding the snapshot and passes it to `markClean()`; edits made while the save runs keep the document dirty
+   and are picked up by the next autosave. The save's own bookkeeping (the `asset-upload` origin of the uploaded
+   flag) and the post-save thumbnail do not count as edits. A failed manual or pre-export save hands the document
+   back to the retry queue (`notifyExternalSaveFailed()`), and the chip only replaces the Save button once a phase
+   has been announced, so a session that never becomes eligible keeps a working Save button.
 
 The `sendBeacon` unload save is left in place but is no longer relied upon.
 
@@ -194,10 +200,12 @@ The `sendBeacon` unload save is left in place but is no longer relied upon.
 
 - Unit: `CollaborativeAutosaveManager.test.js` (eligibility, connection-aware start, unbounded retry and
   reconnection recovery), `YjsDocumentManager.test.js` (deferred cleanup keeps unsaved work, wipes clean
-  sessions, offline unchanged), `YjsProjectBridge.test.js` (`flushPendingSave`, export ordering),
+  sessions, offline unchanged, change counter), `SaveManager.test.js` (counter passed to `markClean`, failed
+  manual save re-arms autosave), `YjsProjectBridge.test.js` (`flushPendingSave`, export ordering),
   `CollaborativeSaveStatusView.test.js` (chip rendering), `navbarFile.test.js` (export flushes first).
 - E2E: `test/e2e/playwright/specs/cloud-autosave.spec.ts` (persistence across the IndexedDB wipe, pending/clean
-  chip, blank project, debounce, reload, export, tab-close recovery, self-recovery after 503),
+  chip, blank project, burst of edits, edit during an upload, Save-button fallback, reload, export, tab-close
+  recovery, self-recovery after 503),
   `collaborative-autosave.spec.ts`, `indexeddb-tab-close-cleanup.spec.ts` (keep and wipe paths).
 - Production: on an installation, `yjs_documents.snapshot_version` advances within the idle window after an
   edit; a reopened project in a fresh browser shows the last edit without a manual save.

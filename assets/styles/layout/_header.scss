@@ -515,14 +515,17 @@
 // Save button: #head-top-save-button carries `.cloud-autosave` and shows the
 // autosave state as a Material icon + short label (Google Docs style). A click
 // still saves immediately. Static/Electron never get the class and keep the
-// green Save button untouched.
+// green Save button untouched. The chip only takes over once the autosave
+// manager has announced a phase (data-cloud-phase): a cloud session that never
+// becomes eligible (collaboration disabled, WebSocket blocked) keeps a working
+// Save button instead of an empty box.
 #head-top-save-button {
     .cloud-save-icon,
     .cloud-save-label {
         display: none;
     }
 
-    &.cloud-autosave {
+    &.cloud-autosave[data-cloud-phase] {
         background: transparent;
         border: 1px solid var(--gray-300);
         gap: 6px;
@@ -541,8 +544,10 @@
         .collab-autosave-badge {
             display: none !important;
         }
+        // The legacy red dot is declared under a longer selector chain in the
+        // header block above, so it needs !important to lose to the chip.
         &.unsaved:before {
-            display: none;
+            display: none !important;
         }
 
         .cloud-save-icon {
@@ -579,7 +584,7 @@
 @media (max-width: 767.98px) {
     // Icon-only chip on narrow screens; the icon must survive the generic
     // "hide spans in the Save button" mobile rule above.
-    #head-top-save-button.cloud-autosave {
+    #head-top-save-button.cloud-autosave[data-cloud-phase] {
         .cloud-save-icon {
             display: inline-block !important;
         }

@@ -94,15 +94,6 @@ class CollaborativeAutosaveManager {
      * @returns {boolean}
      */
     isEligible() {
-        return this._isModeEligible();
-    }
-
-    /**
-     * Mode-level eligibility (capabilities + live connection).
-     * @returns {boolean}
-     * @private
-     */
-    _isModeEligible() {
         const caps = this.bridge && this.bridge.app && this.bridge.app.capabilities;
         if (!caps || !caps.collaboration || !caps.collaboration.enabled) return false;
         if (!caps.storage || !caps.storage.remote) return false;
@@ -113,7 +104,10 @@ class CollaborativeAutosaveManager {
 
         const ws = dm.wsProvider;
         if (!ws) return false;
-        return ws.wsconnected === true || ws.synced === true || dm.synced === true;
+        // The provider resets both flags when the socket closes; the document
+        // manager's own `synced` flag is never reset, so it cannot tell whether
+        // the connection is still live.
+        return ws.wsconnected === true || ws.synced === true;
     }
 
     /**
@@ -160,6 +154,20 @@ class CollaborativeAutosaveManager {
         this._started = false;
     }
 
+    /**
+     * A save that did not come from this manager (a click on the chip, a
+     * pre-export flush) failed. SaveManager cancelled the queued autosave when
+     * that save started, and the failure is not reported through the document
+     * manager, so re-arm the retry loop while there is still unsaved work.
+     */
+    notifyExternalSaveFailed() {
+        if (this._destroyed || !this.isEligible() || !this._isDirty()) return;
+        this._pendingAfterSave = false;
+        if (this._phase !== 'failed') this._setPhase('pending');
+        this.scheduleSave({ retry: true });
+        this._retryCount += 1;
+    }
+
     /** @returns {string} The current collaborative save phase. */
     getPhase() {
         return this._phase;
@@ -190,7 +198,7 @@ class CollaborativeAutosaveManager {
             this._retryCount = 0;
             this._pendingAfterSave = false;
             this._clearTimer();
-            if (this._isModeEligible()) this._setPhase('clean');
+            if (this.isEligible()) this._setPhase('clean');
         }
     }
 

@@ -169,6 +169,18 @@ describe('CollaborativeAutosaveManager', () => {
             expect(bridge.saveManager.save).not.toHaveBeenCalled();
         });
 
+        it('does not autosave after the socket closed even though the document manager once synced', async () => {
+            // y-websocket resets its own flags on close; dm.synced is never reset.
+            bridge.documentManager.wsProvider = { wsconnected: false, synced: false };
+            bridge.documentManager.synced = true;
+            manager.start();
+            makeDirty(bridge.documentManager);
+
+            await vi.advanceTimersByTimeAsync(OPTIONS.idleDelayMs * 2);
+            expect(bridge.saveManager.save).not.toHaveBeenCalled();
+            expect(manager.isEligible()).toBe(false);
+        });
+
         it('does not autosave when the document manager is offline', async () => {
             bridge.documentManager.config.offline = true;
             manager.start();
@@ -509,6 +521,61 @@ describe('CollaborativeAutosaveManager', () => {
             expect(manager.getPhase()).toBe('clean');
 
             await vi.advanceTimersByTimeAsync(OPTIONS.idleDelayMs * 2);
+            expect(bridge.saveManager.save).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('external save failures (issue #2615)', () => {
+        it('re-arms the retry loop after a failed manual save cancelled the queued autosave', async () => {
+            manager.start();
+            makeDirty(bridge.documentManager);
+            // SaveManager cancels the autosave when a manual save starts ...
+            manager.cancel();
+            // ... and reports its failure here.
+            manager.notifyExternalSaveFailed();
+            expect(manager.getPhase()).toBe('pending');
+
+            await vi.advanceTimersByTimeAsync(OPTIONS.retryBaseMs);
+            expect(bridge.saveManager.save).toHaveBeenCalledTimes(1);
+            expect(bridge.saveManager.save.mock.calls[0][0].reason).toBe('collaborative-autosave');
+        });
+
+        it('keeps the failed phase when autosave was already failing', async () => {
+            bridge.saveManager.save.mockResolvedValueOnce({ success: false, error: 'down' });
+            manager.start();
+            makeDirty(bridge.documentManager);
+            await vi.advanceTimersByTimeAsync(OPTIONS.idleDelayMs);
+            expect(manager.getPhase()).toBe('failed');
+
+            manager.cancel();
+            manager.notifyExternalSaveFailed();
+            expect(manager.getPhase()).toBe('failed');
+        });
+
+        it('runs the autosave that was deferred behind a manual save once that save fails', async () => {
+            manager.start();
+            makeDirty(bridge.documentManager);
+            bridge.saveManager.isSaving = true;
+            await vi.advanceTimersByTimeAsync(OPTIONS.idleDelayMs);
+            expect(bridge.saveManager.save).not.toHaveBeenCalled();
+
+            bridge.saveManager.isSaving = false;
+            manager.notifyExternalSaveFailed();
+            await vi.advanceTimersByTimeAsync(OPTIONS.retryBaseMs);
+            expect(bridge.saveManager.save).toHaveBeenCalledTimes(1);
+        });
+
+        it('does nothing when the document is clean, ineligible or destroyed', async () => {
+            manager.start();
+            manager.notifyExternalSaveFailed();
+            bridge.documentManager.isDirty = true;
+            bridge.app.capabilities.storage.remote = false;
+            manager.notifyExternalSaveFailed();
+            bridge.app.capabilities.storage.remote = true;
+            manager.destroy();
+            manager.notifyExternalSaveFailed();
+
+            await vi.advanceTimersByTimeAsync(OPTIONS.idleDelayMs * 4);
             expect(bridge.saveManager.save).not.toHaveBeenCalled();
         });
     });

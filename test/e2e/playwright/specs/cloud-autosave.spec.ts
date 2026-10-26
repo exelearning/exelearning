@@ -181,6 +181,11 @@ test.describe('Cloud autosave (single user)', () => {
         await expect(chipLabel(page)).toHaveText('Unsaved changes');
         await expect(page.locator('#head-top-save-button .cloud-save-icon')).toHaveText('cloud_upload');
         await expect(page.locator('#head-top-save-button .save-label')).toBeHidden();
+        // The legacy red "unsaved" dot must not overlap the chip icon.
+        const dotDisplay = await page.evaluate(
+            () => getComputedStyle(document.getElementById('head-top-save-button')!, '::before').display,
+        );
+        expect(dotDisplay).toBe('none');
 
         // The chip replaces the Save button but a click still means "save now".
         const saveButton = page.locator('#head-top-save-button');
@@ -223,6 +228,57 @@ test.describe('Cloud autosave (single user)', () => {
         await expect(page.locator('#head-top-save-button')).not.toHaveClass(/unsaved/);
     });
 
+    test('falls back to the Save button while no autosave phase has been announced', async ({
+        authenticatedPage,
+        createProject,
+    }) => {
+        const page = authenticatedPage;
+        const projectUuid = await createProject(page, 'Cloud Autosave Fallback');
+        await gotoWorkarea(page, projectUuid);
+        await waitForAppReady(page);
+        await waitForYjsSync(page);
+        await expect(badge(page)).toHaveAttribute('data-cloud-phase', 'clean', { timeout: 20000 });
+
+        // A session that never becomes eligible (collaboration disabled, WebSocket
+        // blocked) has no phase: it must show a usable Save button, not an empty chip.
+        await page.evaluate(() => document.getElementById('head-top-save-button')!.removeAttribute('data-cloud-phase'));
+        await expect(page.locator('#head-top-save-button .save-label')).toBeVisible();
+        await expect(page.locator('#head-top-save-button .cloud-save-icon')).toBeHidden();
+    });
+
+    test('an edit made while an autosave is uploading is saved by the next autosave', async ({
+        authenticatedPage,
+        createProject,
+    }) => {
+        const page = authenticatedPage;
+        await setIdle(page, SHORT_IDLE_MS);
+        const projectUuid = await createProject(page, 'Cloud Autosave Concurrent Edit');
+        await gotoWorkarea(page, projectUuid);
+        await waitForAppReady(page);
+        await waitForYjsSync(page);
+        await spyOnSaves(page);
+
+        // The first upload carries 'First Author'; the second edit lands after the
+        // snapshot was encoded, so the save must not mark the document clean.
+        const saveUrl = `**/api/projects/uuid/${projectUuid}/yjs-document**`;
+        let intercepted = false;
+        await page.route(saveUrl, async route => {
+            if (route.request().method() === 'POST' && !intercepted) {
+                intercepted = true;
+                await editMetadata(page, 'Second Author');
+            }
+            return route.continue();
+        });
+        await editMetadata(page, 'First Author');
+
+        await expect.poll(async () => (await saveCalls(page)).length, { timeout: 30000 }).toBeGreaterThanOrEqual(2);
+        await expect(badge(page)).toHaveAttribute('data-cloud-phase', 'clean', { timeout: 30000 });
+        await page.unroute(saveUrl);
+
+        await reopenFromServer(page, projectUuid);
+        expect(await readAuthor(page)).toBe('Second Author');
+    });
+
     test('tags the automatic save with its reason and the document ends clean', async ({
         authenticatedPage,
         createProject,
@@ -247,7 +303,10 @@ test.describe('Cloud autosave (single user)', () => {
         expect(dirty).toBe(false);
     });
 
-    test('debounces a burst of edits into a single autosave', async ({ authenticatedPage, createProject }) => {
+    test('a burst of edits reaches the server with its last value, without a save per edit', async ({
+        authenticatedPage,
+        createProject,
+    }) => {
         const page = authenticatedPage;
         await setIdle(page, SHORT_IDLE_MS);
         const projectUuid = await createProject(page, 'Cloud Autosave Debounce');
@@ -263,8 +322,15 @@ test.describe('Cloud autosave (single user)', () => {
 
         await expect(badge(page)).toHaveAttribute('data-cloud-phase', 'clean', { timeout: 20000 });
         await page.waitForTimeout(SHORT_IDLE_MS);
+        // The idle timer starts with the first edit, so a long burst may take a
+        // second save for the edits made while the first one was uploading.
         const calls = await saveCalls(page);
-        expect(calls.length).toBe(1);
+        expect(calls.length).toBeGreaterThanOrEqual(1);
+        expect(calls.length).toBeLessThan(5);
+        expect(calls.every(c => c.reason === 'collaborative-autosave')).toBe(true);
+
+        // Read it back from the server, not from this tab's document.
+        await reopenFromServer(page, projectUuid);
         expect(await readAuthor(page)).toBe('Burst 4');
     });
 

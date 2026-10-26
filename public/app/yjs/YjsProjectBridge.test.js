@@ -5325,6 +5325,12 @@ describe('YjsProjectBridge', () => {
 
     it('persists unsaved edits before building the package (issue #2615)', async () => {
       const order = [];
+      bridge.documentManager._updateVersionMetadata = mock(async () => {
+        order.push('version');
+      });
+      spyOn(bridge, 'ensureScreenshotForExport').mockImplementation(async () => {
+        order.push('screenshot');
+      });
       spyOn(bridge, 'flushPendingSave').mockImplementation(async (reason) => {
         order.push(`flush:${reason}`);
         return { saved: true };
@@ -5344,7 +5350,8 @@ describe('YjsProjectBridge', () => {
 
       await bridge.exportToElpx();
 
-      expect(order).toEqual(['flush:pre-export', 'export']);
+      // The metadata written for the export is saved with it.
+      expect(order).toEqual(['version', 'screenshot', 'flush:pre-export', 'export']);
     });
 
     it('does not pre-save when the desktop compatibility check is cancelled', async () => {
@@ -8131,6 +8138,35 @@ describe('YjsProjectBridge', () => {
       expect(mockMetadata.set).toHaveBeenCalledWith('screenshot', 'data:image/png;base64,fakeScreenshot');
     });
 
+    function setUpScreenshotCapture(isDirty) {
+      const encoder = new TextEncoder();
+      bridge.documentManager = {
+        isDirty,
+        getMetadata: mock(() => mockMetadata),
+        markClean: mock(() => true),
+      };
+      window.SharedExporters = {
+        generatePreviewForSW: mock(async () => ({
+          success: true,
+          files: { 'index.html': encoder.encode('<html><body>content</body></html>').buffer },
+        })),
+      };
+      bridge._captureHtmlAsScreenshot = mock(async () => 'data:image/png;base64,fakeScreenshot');
+    }
+
+    it('re-marks an already clean document as clean after writing the screenshot', async () => {
+      setUpScreenshotCapture(false);
+      await bridge.generateScreenshotFromFirstPage();
+      expect(bridge.documentManager.markClean).toHaveBeenCalledTimes(1);
+    });
+
+    it('keeps a document dirty when it was edited during the save (#2615)', async () => {
+      setUpScreenshotCapture(true);
+      await bridge.generateScreenshotFromFirstPage();
+      expect(mockMetadata.set).toHaveBeenCalledWith('screenshot', 'data:image/png;base64,fakeScreenshot');
+      expect(bridge.documentManager.markClean).not.toHaveBeenCalled();
+    });
+
     it('inlines CSS link tags as style tags in the HTML passed to capture', async () => {
       const encoder = new TextEncoder();
       let capturedHtml = '';
@@ -8577,9 +8613,29 @@ describe('YjsProjectBridge', () => {
       expect(await bridge.flushPendingSave()).toEqual({ saved: false });
     });
 
-    it('does not overlap a save that is already running', async () => {
+    it('waits for a save already in flight, then saves what it did not cover', async () => {
       bridge.saveManager.isSaving = true;
-      expect(await bridge.flushPendingSave()).toEqual({ saved: false });
+      setTimeout(() => {
+        bridge.saveManager.isSaving = false;
+      }, 5);
+      const result = await bridge.flushPendingSave('pre-export', { pollMs: 1 });
+      expect(bridge.saveManager.save).toHaveBeenCalledTimes(1);
+      expect(result.saved).toBe(true);
+    });
+
+    it('does not save again when the in-flight save left the document clean', async () => {
+      bridge.saveManager.isSaving = true;
+      setTimeout(() => {
+        bridge.saveManager.isSaving = false;
+        bridge.documentManager.hasUnsavedChanges = mock(() => false);
+      }, 5);
+      expect(await bridge.flushPendingSave('pre-export', { pollMs: 1 })).toEqual({ saved: false });
+      expect(bridge.saveManager.save).not.toHaveBeenCalled();
+    });
+
+    it('gives up waiting and never overlaps a save that does not finish', async () => {
+      bridge.saveManager.isSaving = true;
+      expect(await bridge.flushPendingSave('pre-export', { waitMs: 5, pollMs: 1 })).toEqual({ saved: false });
       expect(bridge.saveManager.save).not.toHaveBeenCalled();
     });
 

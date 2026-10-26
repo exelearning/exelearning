@@ -374,7 +374,6 @@ describe('YjsDocumentManager', () => {
       expect(deleteDatabase).not.toHaveBeenCalled();
       expect(global.localStorage.getItem('exelearning_dirty_state_test-project-123')).toBe('true');
       expect(global.localStorage.getItem('exe-needs-cleanup-test-project-123')).toBeNull();
-      expect(manager._recoverUnsavedLocalCopy).toBe(true);
       // The server state is merged on top of the kept copy (as on every online open).
       expect(manager.loadFromServer).toHaveBeenCalled();
       // And captureBaselineState() restores the dirty state for autosave.
@@ -389,7 +388,6 @@ describe('YjsDocumentManager', () => {
       await manager.initialize();
 
       expect(deleteDatabase).toHaveBeenCalledWith('exelearning-project-test-project-123');
-      expect(manager._recoverUnsavedLocalCopy).toBe(false);
       expect(global.localStorage.getItem('exe-needs-cleanup-test-project-123')).toBeNull();
     });
 
@@ -402,7 +400,6 @@ describe('YjsDocumentManager', () => {
 
       expect(deleteDatabase).toHaveBeenCalledTimes(1);
       expect(global.localStorage.getItem('exelearning_dirty_state_test-project-123')).toBeNull();
-      expect(manager._recoverUnsavedLocalCopy).toBe(false);
     });
 
     it('preserves nothing on a same-tab reload (session storage marker present): existing behaviour', async () => {
@@ -414,7 +411,6 @@ describe('YjsDocumentManager', () => {
       await manager.initialize();
 
       expect(deleteDatabase).not.toHaveBeenCalled();
-      expect(manager._recoverUnsavedLocalCopy).toBe(false);
       expect(global.localStorage.getItem('exelearning_dirty_state_test-project-123')).toBe('true');
     });
   });
@@ -774,6 +770,53 @@ describe('YjsDocumentManager', () => {
       manager.markClean();
 
       expect(global.localStorage.getItem(manager._dirtyStateKey)).toBeNull();
+    });
+
+    it('markClean with the current change counter cleans the document (#2615)', () => {
+      manager.markDirty();
+      const seq = manager.getChangeSeq();
+
+      expect(manager.markClean(seq)).toBe(true);
+      expect(manager.isDirty).toBe(false);
+    });
+
+    it('markClean keeps the document dirty when it changed after the saved snapshot (#2615)', () => {
+      manager.markDirty();
+      const seq = manager.getChangeSeq();
+      manager.markDirty(); // edit made while the save was uploading
+      const callback = mock(() => undefined);
+      manager.on('saveStatus', callback);
+
+      expect(manager.markClean(seq)).toBe(false);
+
+      expect(manager.isDirty).toBe(true);
+      expect(global.localStorage.getItem(manager._dirtyStateKey)).toBe('true');
+      expect(callback).toHaveBeenCalledWith({ status: 'dirty', isDirty: true });
+      expect(manager.lastSavedAt).toBeInstanceOf(Date);
+    });
+
+    it('getChangeSeq ignores the save bookkeeping origin (#2615)', () => {
+      manager.markDirty();
+      const seq = manager.getChangeSeq();
+      manager.markDirty('asset-upload');
+      expect(manager.getChangeSeq()).toBe(seq);
+      expect(manager.markClean(seq)).toBe(true);
+    });
+
+    it('counts real document updates but not asset-upload transactions', () => {
+      const before = manager.getChangeSeq();
+      manager.ydoc.transact(() => manager.ydoc.getMap('metadata').set('author', 'x'));
+      expect(manager.getChangeSeq()).toBe(before + 1);
+      manager.ydoc.transact(() => manager.ydoc.getMap('assets').set('a1', { uploaded: true }), 'asset-upload');
+      expect(manager.getChangeSeq()).toBe(before + 1);
+    });
+
+    it('getChangeSeq ignores suppressed edits', () => {
+      const before = manager.getChangeSeq();
+      manager._suppressDirtyTracking = true;
+      manager.markDirty();
+      manager._suppressDirtyTracking = false;
+      expect(manager.getChangeSeq()).toBe(before);
     });
 
     it('hasUnsavedChanges returns isDirty', () => {
@@ -1707,6 +1750,18 @@ describe('YjsDocumentManager', () => {
       const metadata = manager.getMetadata();
       expect(metadata.get('exelearning_version')).toBe('4.0.0-beta');
       expect(global.fetch).not.toHaveBeenCalled();
+      delete global.window.eXeLearning;
+    });
+
+    it('does not write (or dirty the document) when the version is unchanged (#2615)', async () => {
+      global.window.eXeLearning = { version: '4.0.0' };
+      manager.getMetadata().set('exelearning_version', '4.0.0');
+      const updates = [];
+      manager.ydoc.on('update', (u) => updates.push(u));
+
+      await manager._updateVersionMetadata();
+
+      expect(updates).toHaveLength(0);
       delete global.window.eXeLearning;
     });
 

@@ -2667,14 +2667,24 @@ class YjsProjectBridge {
    * never blocks the export: a failed save is logged and the export proceeds
    * with the local content.
    *
+   * A save already in flight (usually an autosave) is waited for first, since
+   * edits made after its snapshot would otherwise be exported unsaved.
+   *
    * @param {string} [reason='pre-export'] - Tag passed to SaveManager.save().
+   * @param {Object} [opts]
+   * @param {number} [opts.waitMs=60000] - Longest wait for an in-flight save.
+   * @param {number} [opts.pollMs=100] - Poll interval while waiting.
    * @returns {Promise<{saved: boolean, success?: boolean, error?: string}>}
    */
-  async flushPendingSave(reason = 'pre-export') {
+  async flushPendingSave(reason = 'pre-export', { waitMs = 60000, pollMs = 100 } = {}) {
     if (!this.app?.capabilities?.storage?.remote) return { saved: false };
     const dm = this.documentManager;
     const sm = this.saveManager;
     if (!dm || !sm || typeof sm.save !== 'function') return { saved: false };
+    const deadline = Date.now() + waitMs;
+    while (sm.isSaving && Date.now() < deadline) {
+      await new Promise((resolve) => setTimeout(resolve, pollMs));
+    }
     const dirty = typeof dm.hasUnsavedChanges === 'function' ? dm.hasUnsavedChanges() === true : dm.isDirty === true;
     if (!dirty || sm.isSaving) return { saved: false };
     try {
@@ -3400,10 +3410,14 @@ class YjsProjectBridge {
       // Capture screenshot using html2canvas in a hidden iframe
       const dataUrl = await this._captureHtmlAsScreenshot(htmlString);
       if (dataUrl) {
+        // Read before the write: an edit made during the save or the capture
+        // must stay unsaved (#2615), so only an already clean document is
+        // re-marked clean.
+        const wasClean = this.documentManager?.isDirty !== true;
         metadata.set('screenshot', dataUrl);
         // Re-mark as clean: screenshot is auto-generated metadata, not a user edit,
         // so it should not trigger "unsaved changes" guards on navigation
-        if (this.documentManager?.markClean) {
+        if (wasClean && this.documentManager?.markClean) {
           this.documentManager.markClean();
         }
         Logger.log('[YjsProjectBridge] Auto-generated screenshot from first page');
@@ -3513,11 +3527,6 @@ class YjsProjectBridge {
       return { saved: false };
     }
 
-    // Issue #2615: the export is built from the browser Y.Doc, so persist any
-    // unsaved edits first and the downloaded package can never be newer than
-    // what the server stores.
-    await this.flushPendingSave('pre-export');
-
     const trace = this.createElpxExportTrace();
 
     // Ensure exelearning_version is set in metadata before export
@@ -3533,6 +3542,12 @@ class YjsProjectBridge {
     this.logElpxExportPhase('bridge:ensure-screenshot:start', {}, trace);
     await this.ensureScreenshotForExport();
     this.logElpxExportPhase('bridge:ensure-screenshot:end', {}, trace);
+
+    // Issue #2615: the export is built from the browser Y.Doc, so persist any
+    // unsaved edits first and the downloaded package can never be newer than
+    // what the server stores. It runs after the version and screenshot writes
+    // above so those are part of the saved snapshot too.
+    await this.flushPendingSave('pre-export');
 
     // Use SharedExporters if available (preferred - includes theme, idevices, DTD)
     if (window.SharedExporters?.createExporter) {

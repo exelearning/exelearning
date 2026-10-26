@@ -2612,11 +2612,15 @@ class AssetManager {
       return;
     }
 
-    // Update metadata in Yjs
-    this.setAssetMetadata(id, {
-      ...metadata,
-      uploaded: true
-    });
+    // Update metadata in Yjs. The 'asset-upload' origin tells the document
+    // manager this is save bookkeeping, not an edit made during the save (#2615).
+    const update = () => this.setAssetMetadata(id, { ...metadata, uploaded: true });
+    const doc = this.getAssetsYMap()?.doc;
+    if (doc && typeof doc.transact === 'function') {
+      doc.transact(update, 'asset-upload');
+    } else {
+      update();
+    }
     this.locallySavedAssetIds.delete(id);
 
     // Evict from memory cache - blob is safely on server + Cache API
