@@ -194,6 +194,24 @@ window.MathJax = window.MathJax || (function() {
                     $exe.math.silenceUnvendoredFontRanges();
                     $exe.math.hideUnavailableMenuEntries();
                 }
+            },
+            // The initial typeset covers the whole page, and MathJax's MathML input
+            // replaces every <math> it finds: an exported formula would lose its
+            // accessible MathML and gain a second SVG. updateLatex protects them
+            // too, but only after startup, which is too late for this first pass.
+            // Not in ready: pageReady waits for the DOM, ready can run before <body>.
+            pageReady: function() {
+                try {
+                    if (typeof $exeDevices !== 'undefined') {
+                        $exeDevices.iDevice.gamification.math.protectRenderedMath(document.body);
+                    }
+                } catch (e) {
+                    // Rethrowing would reject MathJax.startup.promise, which updateLatex
+                    // waits for before every typeset: no formula would render.
+                    console.warn('[MathJax] Could not protect pre-rendered formulas:', e);
+                }
+                // Returned so that MathJax.startup.promise waits for the initial typeset.
+                return MathJax.startup.defaultPageReady();
             }
         }
     };
@@ -369,8 +387,8 @@ var $exe = {
         hasLatex: function(text) {
             return $exeDevices.iDevice.gamification.math.hasLatex(text);
         },
-        refresh: function(elements) {
-            return $exeDevices.iDevice.gamification.math.updateLatex(elements);
+        refresh: function(elements, options) {
+            return $exeDevices.iDevice.gamification.math.updateLatex(elements, options);
         },
         // Stop MathJax asking for glyph ranges this build does not ship.
         //
@@ -569,41 +587,9 @@ var $exe = {
         init: function () {
             $("body").addClass("exe-auto-math"); // Always load it
             var math = $(".exe-math");
-            var mathjax = false;
-
-            // Check if content is pre-rendered (SVG+MathML)
-            // Pre-rendered LaTeX uses class "exe-math-rendered"
-            // If ALL LaTeX is pre-rendered and no explicit exe-math-engine elements exist,
-            // no need for MathJax library (similar pattern to Mermaid pre-rendering).
-            // IMPORTANT: in mixed content (some pre-rendered + some raw LaTeX),
-            // we MUST still load MathJax for the raw formulas.
-            var hasPreRendered = $(".exe-math-rendered").length > 0;
-            var hasExplicitEngine = $(".exe-math-engine").length > 0;
-
-            if (hasPreRendered && !hasExplicitEngine) {
-                // Remove already rendered wrappers before scanning for pending raw LaTeX.
-                // This avoids false positives from data-latex attributes and rendered internals.
-                var bodyHtml = $('body').html() || '';
-                var htmlWithoutRendered = bodyHtml.replace(
-                    /<span\b[^>]*class\s*=\s*["'][^"']*\bexe-math-rendered\b[^"']*["'][^>]*>[\s\S]*?<\/span>/gi,
-                    ''
-                );
-
-                var hasPendingRawLatex = /(?:\\\(|\\\[|\$\$|\\begin\{.*?}|\\(?:eq)?ref\{)/.test(htmlWithoutRendered);
-
-                if (!hasPendingRawLatex) {
-                    // Content was fully pre-rendered to SVG+MathML, no need for MathJax library
-                    // Still create links for code/image access if needed
-                    $exe.math.createLinks(math);
-                    return;
-                }
-            }
+            var mathjax = $exeDevices.iDevice.gamification.math.hasUnrenderedMath(document.body);
 
             if (math.length > 0 || $("body").hasClass("exe-auto-math")) {
-                if ($("body").hasClass("exe-auto-math")) {
-                    var hasLatex = /(?:\\\(|\\\[|\\begin\{.*?})/.test($('body').html());
-                    if (hasLatex) mathjax = true;
-                }
                 math.each(function () {
                     var e = $(this);
                     if (e.hasClass("exe-math-engine")) {
@@ -642,16 +628,9 @@ var $exe = {
                     $exe.math.loadMathJax(function () {
                         // For SPA preview: only typeset active page (prevents replaceChild errors)
                         var activePage = document.querySelector('.spa-page.active');
-                        if (activePage) {
-                            MathJax.typesetPromise([activePage]).catch(function(e) {
-                                console.warn('[MathJax] Typeset error:', e.message);
-                            });
-                        } else {
-                            // Not a SPA preview, typeset everything
-                            MathJax.typesetPromise().catch(function(e) {
-                                console.warn('[MathJax] Typeset error:', e.message);
-                            });
-                        }
+                        // Initialization adds formulas without replacing existing content.
+                        // Keep their MathJax items (including contextual-menu access).
+                        $exe.math.refresh(activePage || document.body, { clear: false });
                         $exe.math.createLinks();
                     });
                 } else {
@@ -3044,6 +3023,73 @@ var $exeDevices = {
                     return /\\\(|\\\[|\\begin\{|\$\$/.test(stripped);
                 },
 
+                // Inspect existing text nodes only: cloning content can reload images,
+                // run their handlers and construct custom elements even off-document.
+                hasUnrenderedMath: function (root) {
+                    var config = window.MathJax && (window.MathJax.config || window.MathJax);
+                    var options = Object.assign({}, this.engineConfig.options, config && config.options);
+                    var skipTags = options.skipHtmlTags || ['script', 'noscript', 'style', 'textarea', 'pre', 'code'];
+                    var ignoreClass = new RegExp('(?:^|\\s)(?:' + [options.ignoreHtmlClass ?? 'tex2jax_ignore'].flat().join('|') + ')(?:\\s|$)');
+                    var processClass = new RegExp('(?:^|\\s)(?:' + [options.processHtmlClass ?? 'mathjax_process'].flat().join('|') + ')(?:\\s|$)');
+
+                    function ignoredState(node, ignored) {
+                        if (node.matches('.exe-math-rendered, mjx-container, mjx-assistive-mml') || node.getAttribute('data-mjx')) return null;
+                        var classes = node.getAttribute('class') || '';
+                        var process = processClass.test(classes);
+                        if (!process && skipTags.indexOf(node.localName) !== -1) return null;
+                        return (ignored || ignoreClass.test(classes)) && !process;
+                    }
+
+                    var pendingText = '';
+                    function visit(node, ignored) {
+                        if (node.nodeType === 3) {
+                            pendingText += node.nodeValue;
+                            return !ignored && /\\\(|\\\[|\$\$|\\begin\{|\\(?:eq)?ref\{/.test(pendingText);
+                        }
+                        // MathJax joins adjacent text and comments, but resets at containers.
+                        if (node.nodeType === 8) return false;
+                        pendingText = '';
+                        if (node.nodeType !== 1) return false;
+                        ignored = ignoredState(node, ignored);
+                        if (ignored === null) return false;
+                        if (!ignored && node.localName === 'math') return true;
+                        for (var child = node.firstChild; child; child = child.nextSibling) {
+                            if (visit(child, ignored)) return true;
+                        }
+                        pendingText = '';
+                        return false;
+                    }
+
+                    // A caller can target a descendant of an ignored or rendered block.
+                    var ancestors = [];
+                    for (var parent = root.parentElement; parent; parent = parent.parentElement) ancestors.unshift(parent);
+                    var ignored = false;
+                    for (var i = 0; i < ancestors.length; i++) {
+                        ignored = ignoredState(ancestors[i], ignored);
+                        if (ignored === null) return false;
+                    }
+                    return visit(root, ignored);
+                },
+
+                protectRenderedMath: function (root) {
+                    var mathNodes = Array.from(root.querySelectorAll('.exe-math-rendered math'));
+                    // querySelectorAll does not include the root or its ancestors.
+                    if (root.closest('.exe-math-rendered')) {
+                        mathNodes = root.matches('math') ? [root] : Array.from(root.querySelectorAll('math'));
+                    }
+                    mathNodes.forEach(function (math) {
+                        if (math.parentElement.localName === 'mjx-assistive-mml') return;
+                        // MathJax's MathML input skips this parent, independently of
+                        // ignoreHtmlClass. Preserve the original accessible MathML and SVG.
+                        var wrapper = math.ownerDocument.createElement('mjx-assistive-mml');
+                        wrapper.setAttribute('data-mjx', 'true');
+                        wrapper.setAttribute('unselectable', 'on');
+                        wrapper.setAttribute('display', math.getAttribute('display') === 'block' ? 'block' : 'inline');
+                        math.parentNode.insertBefore(wrapper, math);
+                        wrapper.appendChild(math);
+                    });
+                },
+
                 updateLatex: function (target, opts) {
                     var self = $exeDevices.iDevice.gamification.math;
                     var options = opts || {};
@@ -3059,17 +3105,6 @@ var $exeDevices = {
                         return [];
                     }
 
-                    function hasUnrenderedMath(node) {
-                        if (node.closest('.exe-math-rendered, mjx-container')) return false;
-                        // Exported formulas already contain SVG and assistive MathML.
-                        // Inspect a copy so their saved source cannot trigger an engine load.
-                        var content = node.cloneNode(true);
-                        content.querySelectorAll('.exe-math-rendered, mjx-container').forEach(function (rendered) {
-                            rendered.remove();
-                        });
-                        return self.hasLatex(content.innerHTML) || content.matches('math') || !!content.querySelector('math');
-                    }
-
                     function runV3(nodes) {
                         if (!nodes.length) return;
                         // Filter out nodes in hidden SPA pages (prevents replaceChild errors)
@@ -3083,7 +3118,8 @@ var $exeDevices = {
                         if (!visibleNodes.length) return;
                         var start = (MathJax.startup && MathJax.startup.promise) ? MathJax.startup.promise : Promise.resolve();
                         return start.then(function () {
-                            if (typeof MathJax.typesetClear === 'function') MathJax.typesetClear(visibleNodes);
+                            visibleNodes.forEach(function (node) { self.protectRenderedMath(node); });
+                            if (options.clear !== false && typeof MathJax.typesetClear === 'function') MathJax.typesetClear(visibleNodes);
                             return (MathJax.typesetPromise ? MathJax.typesetPromise(visibleNodes) : MathJax.typeset(visibleNodes));
                         }).catch(function (e) { console.error('MathJax v3 typeset error:', e); });
                     }
@@ -3105,7 +3141,7 @@ var $exeDevices = {
                             (!MathJax.typesetPromise && !MathJax.typeset &&
                                 !(MathJax.startup && MathJax.startup.promise) &&
                                 !(MathJax.Hub && typeof MathJax.Hub.Queue === 'function'))) {
-                            if (!nodes.some(hasUnrenderedMath)) return;
+                            if (!nodes.some(function (node) { return self.hasUnrenderedMath(node); })) return;
                             self.loadMathJax(function () {
                                 typesetNow();
                             });

@@ -5392,6 +5392,130 @@ describe('common.js $exeDevices', () => {
       expect(() => math.updateLatex(element)).not.toThrow();
     });
 
+    it('inspects content without constructing copies of custom elements', () => {
+      let constructions = 0;
+      customElements.define('math-scan-widget', class extends HTMLElement {
+        constructor() { super(); constructions++; }
+      });
+      document.body.innerHTML = '<div id="math-scan"><math-scan-widget></math-scan-widget></div>';
+      global.MathJax = { startup: { typeset: false } };
+      const load = vi.spyOn(getMath(), 'loadMathJax').mockImplementation(() => {});
+
+      getMath().updateLatex('#math-scan');
+      getMath().updateLatex('#math-scan');
+
+      expect(constructions).toBe(1);
+      expect(load).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      '<pre>\\(x\\)</pre>',
+      '<code>\\(x\\)</code>',
+      '<script type="application/json">{"example":"\\(x\\)"}</script>',
+      '<style>/* \\(x\\) */</style>',
+      '<textarea>\\(x\\)</textarea>',
+      '<noscript>\\(x\\)</noscript>',
+      '<!-- \\(x\\) -->',
+      '<img alt="\\(x\\)">',
+      '<div class="tex2jax_ignore"><span>\\(x\\)</span></div>',
+    ])('does not load MathJax for excluded content: %s', html => {
+      document.body.innerHTML = '<div id="math-scan">' + html + '</div>';
+      global.MathJax = { startup: { typeset: false } };
+      const load = vi.spyOn(getMath(), 'loadMathJax').mockImplementation(() => {});
+
+      getMath().updateLatex('#math-scan');
+      global.$exe.math.init();
+
+      expect(load).not.toHaveBeenCalled();
+    });
+
+    it('honors excluded ancestors when the target is inside a code example', () => {
+      document.body.innerHTML = '<pre><span id="math-scan">\\(x\\)</span></pre>';
+      global.MathJax = { startup: { typeset: false } };
+      const load = vi.spyOn(getMath(), 'loadMathJax').mockImplementation(() => {});
+      getMath().updateLatex('#math-scan');
+      expect(load).not.toHaveBeenCalled();
+    });
+
+    it('honors explicit processing inside ignored content', () => {
+      document.body.innerHTML = '<div class="tex2jax_ignore"><p class="mathjax_process" id="math-scan">\\(x\\)</p></div>';
+      global.MathJax = { startup: { typeset: false } };
+      const load = vi.spyOn(getMath(), 'loadMathJax').mockImplementation(() => {});
+      getMath().updateLatex('#math-scan');
+      expect(load).toHaveBeenCalledOnce();
+    });
+
+    it.each(['updateLatex', 'init'])('protects existing assistive MathML through %s', async entry => {
+      document.body.innerHTML = '<div id="math-scan"><span class="exe-math-rendered"><svg></svg><math><mi>a</mi></math></span><p>\\(b\\)</p></div>';
+      const originalMath = document.querySelector('math');
+      const originalSvg = document.querySelector('svg');
+      const typeset = global.MathJax.typesetPromise;
+      const run = () => entry === 'init' ? global.$exe.math.init() : getMath().updateLatex('#math-scan');
+
+      run();
+      await vi.waitFor(() => expect(typeset).toHaveBeenCalledOnce());
+      expect(originalMath.parentElement.localName).toBe('mjx-assistive-mml');
+      expect(document.querySelector('math')).toBe(originalMath);
+      expect(document.querySelector('svg')).toBe(originalSvg);
+      run();
+      await vi.waitFor(() => expect(typeset).toHaveBeenCalledTimes(2));
+      expect(document.querySelectorAll('mjx-assistive-mml')).toHaveLength(1);
+    });
+
+    it.each(['\\(x\\)', '\\[x\\]', '$$x$$', '\\begin{matrix}x\\end{matrix}', '\\ref{eq}', '\\eqref{eq}', '<math><mi>x</mi></math>'])(
+      'detects supported raw math without the engine: %s', html => {
+        document.body.innerHTML = '<div id="math-scan">' + html + '</div>';
+        delete global.MathJax;
+        expect(getMath().hasUnrenderedMath(document.querySelector('#math-scan'))).toBe(true);
+      }
+    );
+
+    it('detects delimiters across adjacent text nodes and comments without reading comments', () => {
+      const root = document.createElement('div');
+      root.append(document.createTextNode('\\'), document.createComment('example'), document.createTextNode('(x\\)'));
+      expect(getMath().hasUnrenderedMath(root)).toBe(true);
+      root.innerHTML = '<span>\\</span><span>(x\\)</span>';
+      expect(getMath().hasUnrenderedMath(root)).toBe(false);
+    });
+
+    it('uses configured ignore and process classes, including array options', () => {
+      global.MathJax.config = { options: { ignoreHtmlClass: ['custom-ignore'], processHtmlClass: ['custom-process'] } };
+      document.body.innerHTML = '<div class="custom-ignore"><p id="math-scan">\\(x\\)</p></div>';
+      const root = document.querySelector('#math-scan');
+      expect(getMath().hasUnrenderedMath(root)).toBe(false);
+      root.className = 'custom-process';
+      expect(getMath().hasUnrenderedMath(root)).toBe(true);
+    });
+
+    it.each(['.exe-math-rendered', '.exe-math-rendered math'])(
+      'protects MathML when the target itself is %s', selector => {
+        document.body.innerHTML = '<span class="exe-math-rendered"><svg></svg><math display="block"><mi>x</mi></math></span><math id="raw"><mi>y</mi></math>';
+        const originalMath = document.querySelector('.exe-math-rendered math');
+        getMath().protectRenderedMath(document.querySelector(selector));
+        expect(originalMath.parentElement.localName).toBe('mjx-assistive-mml');
+        expect(originalMath.parentElement.getAttribute('display')).toBe('block');
+        expect(document.querySelector('#raw').parentElement).toBe(document.body);
+      }
+    );
+
+    it.each([
+      '<mjx-assistive-mml>\\(x\\)<math><mi>x</mi></math></mjx-assistive-mml>',
+      '<span data-mjx="true">\\(x\\)</span>',
+    ])('ignores MathJax-owned content: %s', html => {
+      document.body.innerHTML = '<div id="math-scan">' + html + '</div>';
+      expect(getMath().hasUnrenderedMath(document.querySelector('#math-scan'))).toBe(false);
+    });
+
+    it('initialization keeps registered math while activity refresh still clears replaced content', async () => {
+      document.body.innerHTML = '<p>\\(x\\)</p>';
+      const clear = global.MathJax.typesetClear = vi.fn();
+      global.$exe.math.init();
+      await vi.waitFor(() => expect(global.MathJax.typesetPromise).toHaveBeenCalledOnce());
+      expect(clear).not.toHaveBeenCalled();
+      global.$exe.math.refresh(document.body);
+      await vi.waitFor(() => expect(clear).toHaveBeenCalledWith([document.body]));
+    });
+
     it('updateLatex handles deferred option', async () => {
       const math = getMath();
       document.body.innerHTML = '<div class="math-content">\\(x^2\\)</div>';
