@@ -23,7 +23,7 @@ declare global {
  * The explicit-save variants and the open-time merge are covered in
  * stale-client-save.spec.ts (#2618); this spec only adds the autosave path.
  */
-test.describe('Cloud autosave: a stale client\'s autosave never overwrites newer saves', () => {
+test.describe("Cloud autosave: a stale client's autosave never overwrites newer saves", () => {
     test.setTimeout(150000);
     const SHORT_IDLE_MS = 1500;
 
