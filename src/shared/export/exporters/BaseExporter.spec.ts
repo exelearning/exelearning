@@ -201,6 +201,10 @@ class TestExporter extends BaseExporter {
     }
 
     // Expose protected methods for testing
+    testFetchNavLabels(language: string, license?: string): ReturnType<typeof fetchNavLabels> {
+        return this.fetchNavLabels(language, license);
+    }
+
     testGenerateElpxManifestFile(fileList: string[]): string {
         return this.generateElpxManifestFile(fileList);
     }
@@ -242,6 +246,26 @@ describe('BaseExporter', () => {
         assets = new MockAssetProvider();
         zip = new MockZipProvider();
         exporter = new TestExporter(document, resources, assets, zip);
+    });
+
+    it('fetches navigation and license labels through its injected resource provider', async () => {
+        const license = 'creative commons: attribution - share alike 4.0';
+        const requestedLanguages: string[] = [];
+        resources.fetchI18nTranslations = async language => {
+            requestedLanguages.push(language);
+            return new Map([
+                [license, 'Creative Commons: Reconocimiento - compartir igual 4.0'],
+                ['License', 'Licencia'],
+                ['Previous', 'Anterior'],
+            ]);
+        };
+
+        const labels = await exporter.testFetchNavLabels('es', license);
+
+        expect(requestedLanguages).toEqual(['es']);
+        expect(labels.license).toBe('Creative Commons: Reconocimiento - compartir igual 4.0');
+        expect(labels.licenseLabel).toBe('Licencia');
+        expect(labels.previous).toBe('Anterior');
     });
 
     describe('Structure Access', () => {
