@@ -8,6 +8,7 @@
 - Printing: a "Print options" panel beside the preview prints activities in place by default and lets you move them to an appendix, print only the activities or leave them out, and the preview follows every change
 - Desktop app: new "Save as PDF" button in the print preview, which works without a printer
 - iDevices: a shared Grading tab groups the SCORM score, progress report and minimum score options in every scoring iDevice
+- LOMLOE iDevice: 4th ESO now includes Mathematics A and B in the state curriculum and the datasets built from it
 - Project properties: a project-wide minimum score to pass, in a new Grading tab, which every scoring iDevice follows unless it sets its own
 - SCORM: a project option requires every activity on a page to reach its own minimum score, and each page shows the learner the minimum score needed to pass it
 - Public read-only viewer: projects can be shared through an opaque link that anyone can open without signing in, with the content isolated from the user's session
@@ -26,6 +27,7 @@
   - Moodle sites on a private network (intranet, VPN, `localhost`) also need `PROVIDER_ALLOW_PRIVATE_NETWORK=true`, and the callbacks no longer follow redirects
   - Non-Docker deployments with `APP_ENV=prod` must be served over HTTPS, because session cookies are now `Secure`
 - Project properties: Export options are laid out in aligned columns, with the global font in its own row
+- Project properties: the preview image panel now starts by explaining what the image is used for
 - Printing: the print preview now matches the paper, with correct styles and icons, the paper's margins, and links and code shown as they print
 - Link validator: timeouts, rate limits and server errors are now reported as "unavailable" instead of broken, and requests to the same site are spaced out and retried once
 - Collaborative editing: while you edit an iDevice, moves, reorders and deletions made by other users on the same page are applied when you finish editing
@@ -56,6 +58,9 @@
 - Download source file iDevice: the download no longer stays at "Processing... 100%" on sites whose security policy blocks background workers, such as Omeka S
 - Games: each iDevice now keeps its own clock and saved progress, also when the same game appears on several pages or is duplicated
 - iDevices: closing an editor no longer leaves timers and handlers running that could act on another iDevice
+- Sort iDevice: activities whose cards lack an image, text or audio no longer fail to start
+- LOMLOE iDevice: 1st–3rd ESO Mathematics no longer mixes in the 4th ESO evaluation criteria and basic knowledge, and changing the curriculum no longer leaves the previous criteria on screen
+- TinyMCE: the preview of the ABC music notation dialog now works on sites that serve pages without the `.html` extension
 - Interface: highlighted buttons no longer show white text on a white background when focused with the keyboard
 - Fixed misaligned translations that showed unrelated texts in German (DE), Esperanto (EO), Basque (EU), Portuguese (PT) and Valencian (VA)
 - Fixed runtime errors reported from production in game iDevices, the editor tooltips, the image editor and the file open flow
@@ -66,6 +71,7 @@
 - Moodle: editing an activity now reopens the user's own project for it instead of creating a new one each time, and no longer shows "Access denied" with older plugin versions
 - Security: hardened the backend against path traversal, cross-site scripting, server-side request forgery, broken access control and decompression bombs
 - Security: OpenID Connect sign-in rejects callbacks without a valid token exchange and state, so accounts can no longer be created without signing in at the identity provider
+- Security: crafted sign-in links can no longer redirect you to another site after logging in
 - Security: exports and project deletion can no longer read or remove files outside their own folders
 - Security: text and iDevice content written by collaborators is sanitized in the editor, so it can no longer run scripts in other users' sessions
 - Security: uploaded HTML, SVG and XML files are served in a sandbox that cannot use the visitor's session
@@ -77,7 +83,8 @@
 ### Upgraded
 
 - bun (Docker image): 1.3 → 1.4
-- electron: 44.2.0 → 44.8.0
+- mariadb (Docker Compose example): 12.3 → 13.0
+- electron: 44.2.0 → 45.0.0
 - abcjs: 6.0.4 → 6.7.2
 - bootstrap: 5.3.6 → 5.3.8
 - dompurify: 3.3.1 → 3.4.17
@@ -86,20 +93,29 @@
 - @material-symbols/svg-400: 0.47.0 → 0.48.0
 - dotenv: 17.4.2 → 18.0.8
 - elysia: 1.4.29 → 1.4.30
+- fast-xml-parser: 5.11.1 → 5.11.2
 - fs-extra: 11.4.0 → 11.4.1
 - jose: 6.2.10 → 6.2.12
-- kysely: 0.29.5 → 0.29.6
+- jsdom: 30.0.1 → 30.1.3
+- kysely: 0.29.5 → 0.29.7
 - lib0: 0.2.117 → 0.2.119
-- mysql2: 3.23.4 → 3.24.4
+- mysql2: 3.23.4 → 3.24.6
 - pdfjs-dist: 6.3.289 → 6.4.299
 - uuid: 14.0.2 → 14.0.3
 - ws: 8.21.3 → 8.22.0
 - yjs: 13.6.32 → 13.6.33
 - @biomejs/biome: 2.5.11 → 2.5.15
+- @electron/notarize: 3.1.1 → 3.1.2
+- @types/node: 26.2.0 → 26.6.5
+- @types/ws: 8.18.1 → 8.18.2
+- @vitest/coverage-v8: 4.1.11 → 5.0.5
+- @vitest/ui: 4.1.11 → 5.0.5
 - happy-dom: 20.11.6 → 21.0.3
 - sass: 1.103.1 → 1.105.2
+- scorm-again: 3.3.2 → 3.4.7
 - vite: 8.2.2 → 8.3.4
 - vitest: 4.1.11 → 5.0.5
+- wait-on: 9.1.0 → 9.5.1
 
 ### Removed
 
