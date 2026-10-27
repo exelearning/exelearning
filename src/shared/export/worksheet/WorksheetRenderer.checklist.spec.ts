@@ -79,18 +79,20 @@ describe('renderWorksheet with a checklist', () => {
         expect(text).toContain('<span class="worksheet-checklist-line"></span>');
     });
 
-    it('writes out each state of a Selection item, each with a box to tick', () => {
+    it('writes out each state of a Selection item, each with a dotted blank before it to write in', () => {
         const selection = itemsOf(render())[3];
+        const blank = '<span class="worksheet-checklist-blank"></span>';
 
         expect(selection).toStartWith(
             `<li class="worksheet-checklist-item" style="margin-left: 12mm">${CONTENT}<span class="worksheet-checklist-text">`,
         );
         expect(selection).toContain(
             '<span class="worksheet-checklist-states">' +
-                `<span class="worksheet-checklist-state">${BOX}Hecho</span>` +
-                `<span class="worksheet-checklist-state">${BOX}En progreso</span>` +
-                `<span class="worksheet-checklist-state">${BOX}No completado</span></span>`,
+                `<span class="worksheet-checklist-state">${blank}Hecho</span>` +
+                `<span class="worksheet-checklist-state">${blank}En progreso</span>` +
+                `<span class="worksheet-checklist-state">${blank}No completado</span></span>`,
         );
+        expect(selection).not.toContain(BOX);
     });
 
     it('indents each item to its level', () => {
@@ -137,9 +139,11 @@ describe('renderWorksheet with a checklist', () => {
             '.worksheet-checklist-item {',
             '.worksheet-checklist-line {',
             '.worksheet-checklist-states {',
+            '.worksheet-checklist-blank {',
             '.worksheet-checklist-score .worksheet-line {',
         ])
             expect(WORKSHEET_ACTIVITY_STYLES).toContain(selector);
         expect(WORKSHEET_ACTIVITY_STYLES).toMatch(/\.worksheet-checklist-item \{[^}]*break-inside: avoid;/);
+        expect(WORKSHEET_ACTIVITY_STYLES).toMatch(/\.worksheet-checklist-blank \{[^}]*border-bottom: 1px dotted/);
     });
 });

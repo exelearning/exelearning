@@ -7,9 +7,9 @@
  *
  * Like the rubric, nothing here is a game and nothing is hidden: the items are what is being ticked
  * off. What the sheet takes away is only what paper cannot carry. A switch becomes a box to tick, a
- * text field a line to write on, and a drop-down one box per state, its states written out. The
- * buttons and the running count of what is done go, and so do the logos: on screen they are
- * background images, which a browser leaves off the page unless the reader asks for them.
+ * text field a line to write on, and a drop-down its states written out, each with a dotted blank
+ * before it. The buttons and the running count of what is done go, and so do the logos: on screen
+ * they are background images, which a browser leaves off the page unless the reader asks for them.
  *
  * Notes on the stored data:
  * - The DataGame class prefix is 'listacotejo', and the payload is obfuscated like most of the

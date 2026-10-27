@@ -936,7 +936,7 @@ export const WORKSHEET_ACTIVITY_STYLES = `
     border-bottom: 1px solid #1a1a1a;
 }
 
-/* A Selection item's states, after its words, each with its own box to tick. */
+/* A Selection item's states, after its words, each with a dotted blank before it to write in. */
 .worksheet-checklist-states {
     display: flex;
     flex-wrap: wrap;
@@ -947,6 +947,12 @@ export const WORKSHEET_ACTIVITY_STYLES = `
     display: inline-flex;
     align-items: baseline;
     gap: 1.5mm;
+}
+
+.worksheet-checklist-blank {
+    flex: 0 0 12mm;
+    width: 12mm;
+    border-bottom: 1px dotted #1a1a1a;
 }
 
 .worksheet-checklist-footer {
@@ -1497,13 +1503,16 @@ function renderRubricTable(table: PrintableRubric): string {
 /** A box to tick, as a multiple-choice option draws it. */
 const CHECKLIST_BOX = '<span class="worksheet-option-box"></span>';
 
+/** A dotted blank to write in, before each state a Selection item offers. */
+const CHECKLIST_BLANK = '<span class="worksheet-checklist-blank"></span>';
+
 /**
  * Render a checklist: its heading, the fields and the score to fill in, then its items.
  *
  * Each item is drawn as the activity draws it, with what paper cannot carry replaced by what a pen
- * can fill in: a box for a switch, a line for a text field, and a box for each state a drop-down
- * offers. An item that is not marked has nothing beside it, as on screen: it heads the ones under
- * it.
+ * can fill in: a box for a switch, a line for a text field, and each state a drop-down offers
+ * written out with a dotted blank before it. An item that is not marked has nothing beside it, as
+ * on screen: it heads the ones under it.
  */
 function renderChecklist(list: PrintableChecklist): string {
     let html = '<div class="worksheet-checklist">';
@@ -1542,7 +1551,7 @@ function renderChecklistItem(item: PrintableChecklistItem, states: string[]): st
     if (item.marker === 'boxAndLine') html += '<span class="worksheet-checklist-line"></span>';
     if (item.marker === 'states') {
         html += `<span class="worksheet-checklist-states">${states
-            .map(state => `<span class="worksheet-checklist-state">${CHECKLIST_BOX}${state}</span>`)
+            .map(state => `<span class="worksheet-checklist-state">${CHECKLIST_BLANK}${state}</span>`)
             .join('')}</span>`;
     }
 

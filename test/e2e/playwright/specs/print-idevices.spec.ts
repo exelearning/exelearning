@@ -592,8 +592,8 @@ test.describe('Print iDevices', () => {
             await expect(checklist.locator('.worksheet-checklist-title')).toHaveText('Unit checklist');
             const items = checklist.locator('.worksheet-checklist-item');
             await expect(items).toHaveCount(4);
-            // The heading marks nothing; the box and the text item get a box; the selection one a box
-            // per state, written out.
+            // The heading marks nothing; the box and the text item get a box; the selection one its
+            // states written out, each with a dotted blank before it to write in.
             await expect(items.nth(0).locator('.worksheet-option-box')).toHaveCount(0);
             await expect(items.nth(1).locator('.worksheet-option-box')).toHaveCount(1);
             await expect(items.nth(1)).toContainText('(5 points)');
@@ -603,6 +603,13 @@ test.describe('Print iDevices', () => {
                 'In progress',
                 'Not completed',
             ]);
+            await expect(items.nth(3).locator('.worksheet-option-box')).toHaveCount(0);
+            const blanks = items.nth(3).locator('.worksheet-checklist-state .worksheet-checklist-blank');
+            await expect(blanks).toHaveCount(3);
+            for (const blank of await blanks.all()) {
+                await expect(blank).toHaveCSS('border-bottom-style', 'dotted');
+                expect((await blank.boundingBox())?.width).toBeGreaterThan(30);
+            }
             await expect(checklist.locator('.worksheet-checklist-score')).toContainText('Score:');
             await expect(checklist.locator('.worksheet-checklist-score')).toContainText('/ 15');
             await expect(frame.locator('.worksheet-unsupported')).toContainText('Invalid or empty activity data');

@@ -115,7 +115,7 @@ describe('applyActivityMode', () => {
         expect(componentsOf(pages).map(entry => entry.type)).not.toContain('checklist');
         expect(html).not.toContain('listacotejo-DataGame');
         expect(html).toContain('<span class="worksheet-checklist-text">Box item</span>');
-        expect(html).toContain('<span class="worksheet-option-box"></span>Done</span>');
+        expect(html).toContain('<span class="worksheet-checklist-blank"></span>Done</span>');
         // The document asks for nobody's name of its own, so the checklist keeps both fields.
         expect(html).toContain('<span>Learner name:</span>');
         expect(html).toContain('<span>Date:</span>');

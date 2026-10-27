@@ -266,8 +266,8 @@ export interface PrintableChecklistItem {
     level: number;
     /**
      * How the item is marked, one value per kind the editor offers: a box to tick (Box), a box
-     * and a line to write on (Text), a box for each state (Selection), or nothing, for an item
-     * that heads the ones under it (Do not mark).
+     * and a line to write on (Text), a dotted blank before each state (Selection), or nothing, for
+     * an item that heads the ones under it (Do not mark).
      */
     marker: 'box' | 'boxAndLine' | 'states' | 'none';
     /** What the item is worth, in the activity's words, e.g. '(10 points)'. */
