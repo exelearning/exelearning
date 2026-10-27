@@ -17,8 +17,7 @@ import {
     tryResolveAssetStoragePath as defaultTryResolveAssetStoragePath,
 } from './file-helper';
 import { buildAssetStoragePath } from '../utils/asset-paths';
-import { inspectZipArchive } from '../shared/import/ElpxImporter';
-import { assertInspectionWithinLimits, DEFAULT_ZIP_LIMITS, ZipLimitError } from '../shared/import/importPolicy';
+import { safeUnzipSync, ZipLimitError, type ZipDecompressionLimits } from '../utils/safe-unzip';
 
 // ============================================================================
 // Types and Interfaces
@@ -36,6 +35,7 @@ export interface FolderManagerDeps {
     crypto?: typeof cryptoModule;
     resolveAssetStoragePath?: (storagePath: string) => string;
     tryResolveAssetStoragePath?: (storagePath: string) => string | null;
+    zipLimits?: Partial<ZipDecompressionLimits>;
 }
 
 /**
@@ -161,6 +161,7 @@ export function createFolderManagerService(deps: FolderManagerDeps = {}): Folder
     const crypto = deps.crypto ?? cryptoModule;
     const resolveAssetStoragePath = deps.resolveAssetStoragePath ?? defaultResolveAssetStoragePath;
     const tryResolveAssetStoragePath = deps.tryResolveAssetStoragePath ?? defaultTryResolveAssetStoragePath;
+    const zipLimits = deps.zipLimits;
 
     // ========================================================================
     // Validation Functions
@@ -526,12 +527,14 @@ export function createFolderManagerService(deps: FolderManagerDeps = {}): Folder
             };
         }
 
-        // Extract ZIP contents, refusing archives over the import limits before any entry is inflated
+        // Refuse archives over the decompression limits before any entry is inflated.
+        // safeUnzipSync is the shared guard for every server unzip sink. Its
+        // central-directory check is the same pre-inflation cap main added on this
+        // path, and an injected zipLimits override still applies.
         const uint8ZipData = new Uint8Array(zipData);
         let unzipped: Record<string, Uint8Array>;
         try {
-            assertInspectionWithinLimits(inspectZipArchive(uint8ZipData), DEFAULT_ZIP_LIMITS, 'ZIP file');
-            unzipped = fflate.unzipSync(uint8ZipData);
+            unzipped = safeUnzipSync(uint8ZipData, { label: 'project ZIP asset', fflate, limits: zipLimits });
         } catch (err) {
             return {
                 success: false,

@@ -7,6 +7,7 @@ import { Elysia } from 'elysia';
 import * as fs from 'fs';
 import * as path from 'path';
 import { LEGACY_IDEVICE_MAPPING } from '../shared/export/constants';
+import { isSafePathSegment, safeJoin } from '../utils/safe-path';
 
 // Base paths for resources
 const PUBLIC_PATH = 'public';
@@ -156,17 +157,27 @@ export const resourcesRoutes = new Elysia({ name: 'resources-routes' })
     // Note: User themes are stored client-side in IndexedDB and served via ResourceFetcher
     .get('/api/resources/theme/:themeName', ({ params, set }) => {
         const { themeName } = params;
+
+        // Theme names are slugs ([A-Za-z0-9_-]); reject any traversal/separator
+        // before it reaches `path.join`. Elysia decodes `%2F`/`%2E` to real path
+        // characters, so an unvalidated name lets `scanDirectory` recurse out of
+        // the themes base and enumerate arbitrary directories (security audit).
+        if (!isSafePathSegment(themeName)) {
+            set.status = 404;
+            return { error: 'Not Found', message: `Theme ${themeName} not found` };
+        }
+
         const version = getAppVersion();
         const basePath = getBasePath();
 
         // Check base themes first
-        let themePath = path.join(THEMES_BASE_PATH, themeName);
+        let themePath = safeJoin(THEMES_BASE_PATH, themeName);
         const urlPrefix = `/files/perm/themes/base/${themeName}`;
 
         // Check site themes (from FILES_DIR)
         if (!deps.fs.existsSync(themePath)) {
             const siteThemesPath = getSiteThemesPath();
-            themePath = path.join(siteThemesPath, themeName);
+            themePath = safeJoin(siteThemesPath, themeName);
             if (deps.fs.existsSync(themePath)) {
                 // Site themes are served via /site-files/themes/
                 // Return file list with direct URLs (not through /files/ prefix)
@@ -189,6 +200,17 @@ export const resourcesRoutes = new Elysia({ name: 'resources-routes' })
     // GET /api/resources/idevice/:ideviceType - Get export files for an iDevice
     .get('/api/resources/idevice/:ideviceType', ({ params, set }) => {
         const { ideviceType } = params;
+
+        // iDevice types are slugs ([A-Za-z0-9_-]); reject any traversal/separator
+        // before deriving on-disk paths. The normalizations below (lowercasing,
+        // suffix and camelCase rewrites) never strip `..` or separators, so an
+        // unvalidated type (Elysia decodes `%2F`/`%2E`) would let `scanDirectory`
+        // escape the iDevices base. Once the raw type is a validated slug, every
+        // derived path stays within the base, so the existing path.join is safe.
+        if (!isSafePathSegment(ideviceType)) {
+            set.status = 404;
+            return [];
+        }
 
         // First check for legacy iDevice name mapping
         const mappedType = LEGACY_IDEVICE_MAPPING[ideviceType] || ideviceType;
@@ -325,12 +347,20 @@ export const resourcesRoutes = new Elysia({ name: 'resources-routes' })
     .get('/api/resources/libs/directory/:libraryName', ({ params, set }) => {
         const { libraryName } = params;
 
+        // Library names are slugs ([A-Za-z0-9_-]); reject any traversal/separator
+        // before joining. Elysia decodes `%2F`/`%2E`, so an unvalidated name lets
+        // `scanDirectory` climb out of public/ and enumerate arbitrary directories.
+        if (!isSafePathSegment(libraryName)) {
+            set.status = 404;
+            return { error: 'Not Found', message: `Library ${libraryName} not found` };
+        }
+
         // Try common paths first, then libs
-        let libPath = path.join(COMMON_PATH, libraryName);
+        let libPath = safeJoin(COMMON_PATH, libraryName);
         let urlPrefix = `/app/common/${libraryName}`;
 
         if (!deps.fs.existsSync(libPath)) {
-            libPath = path.join(LIBS_PATH, libraryName);
+            libPath = safeJoin(LIBS_PATH, libraryName);
             urlPrefix = `/libs/${libraryName}`;
         }
 
@@ -392,8 +422,17 @@ export const resourcesRoutes = new Elysia({ name: 'resources-routes' })
     .get('/api/resources/bundle/theme/:themeName', async ({ params, set }) => {
         const { themeName } = params;
 
+        // Theme names are slugs ([A-Za-z0-9_-]); reject any traversal/separator
+        // before joining. Without this an attacker could escape the base (Elysia
+        // decodes `%2F`/`%2E`) and have the on-demand ZIP generation below read
+        // and exfiltrate arbitrary file contents (base64) from outside the theme.
+        if (!isSafePathSegment(themeName)) {
+            set.status = 404;
+            return { error: 'Not Found', message: `Theme bundle ${themeName} not found` };
+        }
+
         // Check for pre-built bundle (base themes) - no version in physical path
-        const prebuiltPath = path.join(BUNDLES_PATH, 'themes', `${themeName}.zip`);
+        const prebuiltPath = safeJoin(BUNDLES_PATH, 'themes', `${themeName}.zip`);
 
         if (deps.fs.existsSync(prebuiltPath)) {
             set.headers['content-type'] = 'application/zip';
@@ -404,7 +443,7 @@ export const resourcesRoutes = new Elysia({ name: 'resources-routes' })
         // Note: User themes are stored client-side in IndexedDB, not on server
         // Check if this is a site theme that needs on-demand ZIP generation
         const siteThemesPath = getSiteThemesPath();
-        const siteThemePath = path.join(siteThemesPath, themeName);
+        const siteThemePath = safeJoin(siteThemesPath, themeName);
         if (deps.fs.existsSync(siteThemePath)) {
             // Generate ZIP on-the-fly for site themes
             const files = scanDirectory(siteThemePath);

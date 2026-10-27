@@ -8,6 +8,7 @@ import * as path from 'path';
 import { XMLParser } from 'fast-xml-parser';
 
 export interface IdeviceConfigCache {
+    /** iDevice folder name: node class, data-idevice-type and resource paths in exports */
     cssClass: string;
     componentType: 'json' | 'html';
     template: string;
@@ -80,7 +81,9 @@ export function loadIdeviceConfigs(customBasePath?: string): void {
             };
 
             const config: IdeviceConfigCache = {
-                cssClass: getValue('css-class') || entry.name,
+                // The folder, not <css-class>: exports package the iDevice under its folder name, and
+                // its export JS finds the node by that name (3dmol declares <css-class>dmole</css-class>)
+                cssClass: entry.name,
                 componentType: (getValue('component-type') || 'html') as 'json' | 'html',
                 template: getValue('export-template-filename') || `${entry.name}.html`,
             };

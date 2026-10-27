@@ -1408,7 +1408,11 @@ button#searchBarToggler {
     @page {
         margin: 1.5cm;
     }
-    .exe-export .page-title {
+    /* White with a dark shadow on screen. Without the shadow the title would be light grey on
+       white, so it takes the colour it has in the formats without that header. */
+    .exe-export .page-title,
+    body.exe-single-page section > .main-header .page-title {
+        color: #282573;
         text-shadow: none;
     }
     #packageLicense.cc {

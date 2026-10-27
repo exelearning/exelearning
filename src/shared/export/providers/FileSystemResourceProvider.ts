@@ -16,8 +16,9 @@ import * as fs from 'fs-extra';
 import * as path from 'path';
 import type { ResourceProvider, LibraryPattern } from '../interfaces';
 import { normalizeIdeviceType as normalizeIdeviceTypeFromConstants, LEGACY_IDEVICE_MAPPING } from '../constants';
-import { parseXlfTranslations } from '../generators/I18nGenerator';
+import { generateI18nScript, parseXlfTranslations } from '../generators/I18nGenerator';
 import { SCORM12_RUNTIME_SOURCE_PATHS } from '../utils/Scorm12Runtime';
+import { isSafePathSegment } from '../../../utils/safe-path';
 
 /**
  * Resource file entry
@@ -67,8 +68,9 @@ export class FileSystemResourceProvider implements ResourceProvider {
         }
 
         // 2. Try base themes from public/files/perm/themes/base/{themeName}/
+        // The name comes from project metadata, so it must be a single segment.
         const themePath = path.join(this.publicDir, 'files', 'perm', 'themes', 'base', themeName);
-        if (await fs.pathExists(themePath)) {
+        if (isSafePathSegment(themeName, { allowDots: true }) && (await fs.pathExists(themePath))) {
             console.log(`[FileSystemResourceProvider] Using base theme '${themeName}' from ${themePath}`);
             return this.readDirectoryRecursive(themePath, '');
         }
@@ -98,6 +100,9 @@ export class FileSystemResourceProvider implements ResourceProvider {
         const mappedType = LEGACY_IDEVICE_MAPPING[ideviceType] || ideviceType;
         // Then normalize type name (e.g., 'FreeTextIdevice' -> 'text')
         const typeName = this.normalizeIdeviceType(mappedType);
+        if (!isSafePathSegment(typeName, { allowDots: true })) {
+            return new Map();
+        }
         const idevicePath = path.join(this.publicDir, 'files', 'perm', 'idevices', 'base', typeName, 'export');
         if (await fs.pathExists(idevicePath)) {
             // No prefix - files go to idevices/{type}/ folder (prefix added by caller)
@@ -382,7 +387,7 @@ export class FileSystemResourceProvider implements ResourceProvider {
      * @returns Map of file paths to content (paths like 'fonts/global/opendyslexic/OpenDyslexic-Regular.woff')
      */
     async fetchGlobalFontFiles(fontId: string): Promise<Map<string, Buffer>> {
-        if (!fontId || fontId === 'default') {
+        if (!fontId || fontId === 'default' || !isSafePathSegment(fontId)) {
             return new Map();
         }
 
@@ -413,6 +418,10 @@ export class FileSystemResourceProvider implements ResourceProvider {
      * Fetch the pre-built, pre-translated i18n JS file for the given language.
      * Reads from `public/app/common/i18n/common_i18n.{lang}.js` (generated at build time).
      * Falls back to English if the locale file is not available.
+     *
+     * A checkout that was never built has none of those files. The file is then built from the
+     * template and the XLF translations, as the build does, so that the export still defines
+     * `$exe_i18n`, which its scripts expect.
      * @param language - BCP-47 language code (e.g., 'es', 'eu')
      * @returns Resolved JS content ready to add to the export ZIP as libs/common_i18n.js
      */
@@ -420,15 +429,22 @@ export class FileSystemResourceProvider implements ResourceProvider {
         const i18nDir = path.join(this.publicDir, 'app', 'common', 'i18n');
         const lang = language.split('-')[0];
 
-        // Try exact language first, then base language, then English
-        for (const candidate of [language, lang, 'en']) {
+        // Try exact language first, then base language, then English.
+        // The language comes from project metadata, so skip anything that is not a single segment.
+        for (const candidate of [language, lang, 'en'].filter(c => isSafePathSegment(c))) {
             const filePath = path.join(i18nDir, `common_i18n.${candidate}.js`);
             if (await fs.pathExists(filePath)) {
                 return fs.readFile(filePath, 'utf-8');
             }
         }
 
-        console.warn('[FileSystemResourceProvider] common_i18n.{lang}.js not found for:', language);
+        const templatePath = path.join(this.publicDir, 'app', 'common', 'common_i18n.js');
+        if (await fs.pathExists(templatePath)) {
+            const template = await fs.readFile(templatePath, 'utf-8');
+            return generateI18nScript(template, await this.fetchI18nTranslations(language));
+        }
+
+        console.warn('[FileSystemResourceProvider] common_i18n.js not found for:', language);
         return '';
     }
 
@@ -438,6 +454,10 @@ export class FileSystemResourceProvider implements ResourceProvider {
      * @returns Map<englishSource, translatedTarget>, empty if not found
      */
     async fetchI18nTranslations(language: string): Promise<Map<string, string>> {
+        if (!isSafePathSegment(language)) {
+            return new Map();
+        }
+
         // XLF files live one level above publicDir, in translations/
         const translationsDir = path.join(this.publicDir, '..', 'translations');
         const xlfPath = path.join(translationsDir, `messages.${language}.xlf`);

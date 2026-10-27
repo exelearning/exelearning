@@ -435,6 +435,24 @@ describe('interactive-video iDevice export', () => {
     });
   });
 
+  // Sentry: "YT.Player is not a constructor". The API script defines YT as a
+  // stub before the player is there.
+  describe('youtubeApiReady', () => {
+    afterEach(() => {
+      delete global.YT;
+    });
+
+    it('waits while YT is only the loading stub', () => {
+      global.YT = { loading: 1, loaded: 0 };
+      expect($interactivevideo.youtubeApiReady()).toBe(false);
+    });
+
+    it('is ready once YT.Player exists', () => {
+      global.YT = { loading: 1, loaded: 1, Player: function () {} };
+      expect($interactivevideo.youtubeApiReady()).toBe(true);
+    });
+  });
+
   describe('showYoutubeFallback', () => {
     let capturedHtml;
     let capturedAfterHtml;
@@ -1473,5 +1491,58 @@ describe('interactive-video minimum score notice', () => {
     expect($exeDevices.iDevice.gamification.report.showPassScoreNotice).toHaveBeenCalledWith(
       expect.objectContaining({ msgs: expect.objectContaining({ msgPassScore: 'Nota mínima: %s' }) })
     );
+  });
+});
+
+describe('interactive-video data reader on document ready', () => {
+  // The editor renders sanitized content, where the legacy (eXe 2.9) data
+  // block survives as inert text: type="text/plain" data-exe-inert-script="text/javascript".
+  let readyCallbacks;
+
+  const loadWithReadyCapture = () => {
+    readyCallbacks = [];
+    global.$interactivevideo = undefined;
+    global.InteractiveVideo = undefined;
+    global.$ = (arg) => {
+      if (typeof arg === 'function') readyCallbacks.push(arg);
+      return { html: () => {}, eq: () => ({ attr: () => '' }), length: 0 };
+    };
+    global.$.fn = {};
+    const code = readFileSync(join(__dirname, 'interactive-video.js'), 'utf-8');
+    const iv = loadExportIdevice(code);
+    iv.init = vi.fn();
+    return iv;
+  };
+
+  afterEach(() => {
+    document.body.innerHTML = '';
+    delete global.$interactivevideo;
+    delete global.InteractiveVideo;
+    delete global.$;
+  });
+
+  it.each([
+    ['as stored (exports)', 'type="text/javascript"'],
+    ['as sanitized in the editor', 'type="text/plain" data-exe-inert-script="text/javascript"'],
+  ])('reads the legacy data block %s', (_label, attrs) => {
+    const iv = loadWithReadyCapture();
+    document.body.innerHTML =
+      `<div class="exe-interactive-video"><script ${attrs}>//<![CDATA[\nvar InteractiveVideo = {"slides":[{"type":"text","text":"hi"}]};\n//]]></script></div>`;
+
+    readyCallbacks.forEach((cb) => cb());
+
+    expect(global.InteractiveVideo.slides).toEqual([{ type: 'text', text: 'hi' }]);
+    expect(iv.init).toHaveBeenCalled();
+  });
+
+  it('reads the modern JSON block', () => {
+    const iv = loadWithReadyCapture();
+    document.body.innerHTML =
+      '<script id="exe-interactive-video-contents" type="application/json">{"slides":[{"type":"text","text":"<p>x</p>"}]}</script>';
+
+    readyCallbacks.forEach((cb) => cb());
+
+    expect(global.InteractiveVideo.slides[0].text).toBe('<p>x</p>');
+    expect(iv.init).toHaveBeenCalled();
   });
 });
