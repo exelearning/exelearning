@@ -2039,3 +2039,63 @@ body.exe-web-site {
     border: 0 !important; /* The head is delimited by its background */
     margin-bottom: 0;
 }
+
+/* Print action: reserve the rightmost slot and match this theme's navigation. */
+:root {
+    --exe-print-size: 44px;
+    --exe-print-top: calc(var(--exe-logos-height) + (var(--exe-bar-height) - var(--exe-print-size)) / 2);
+    --exe-print-right: 20px;
+    --exe-print-radius: 6px;
+    --exe-print-background: transparent;
+    --exe-print-color: #fff;
+    --exe-print-border: 1px solid #ffffff70;
+    --exe-print-shadow: none;
+    --exe-print-hover-background: var(--exe-teal-hover);
+    --exe-print-icon-size: 24px;
+}
+body.exe-web-site:is(.has-print-button, :has(#exe-print-btn)) .nav-buttons .nav-button-right {
+    right: 78px;
+}
+body.exe-web-site:is(.has-print-button, :has(#exe-print-btn)) .nav-buttons .nav-button-left {
+    right: 222px;
+}
+body.exe-web-site:is(.has-print-button, :has(#exe-print-btn)) #darkModeToggler {
+    right: 366px;
+}
+body.exe-web-site:is(.has-print-button, :has(#exe-print-btn)) .page-counter {
+    right: 430px;
+}
+
+body.exe-web-site:is(.has-print-button, :has(#exe-print-btn)) #topBarTitle {
+    right: 538px;
+}
+@media (max-width: 767.98px) {
+    :root {
+        --exe-print-right: 10px;
+    }
+    body.exe-web-site:is(.has-print-button, :has(#exe-print-btn)) .nav-buttons .nav-button-right {
+        right: 64px;
+    }
+    body.exe-web-site:is(.has-print-button, :has(#exe-print-btn)) .nav-buttons .nav-button-left {
+        right: 124px;
+    }
+    body.exe-web-site:is(.has-print-button, :has(#exe-print-btn)) #darkModeToggler {
+        right: 184px;
+    }
+    body.exe-web-site:is(.has-print-button, :has(#exe-print-btn)) .page-counter {
+        right: 244px;
+    }
+
+}
+@media (max-width: 460px) {
+    body.exe-web-site:is(.has-print-button, :has(#exe-print-btn)) .page-counter-label {
+        display: none;
+    }
+}
+
+@media screen {
+    html.exe-dark-mode .exe-web-site .exe-print-action {
+        filter: invert(100%) hue-rotate(180deg);
+        --exe-print-hover-background: #272727;
+    }
+}

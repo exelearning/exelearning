@@ -21,6 +21,7 @@
  */
 import PrintOptionsPanel, { PRINT_TEACHER_ONLY_FIELD, PRINT_UNFOLD_BLOCKS_FIELD } from './printOptionsPanel.js';
 import { printPreviewSnapshot } from './printPreviewSnapshot.js';
+import { printPreviewShell } from './printPreviewShell.js';
 
 /**
  * Class on the <html> of the preview that keeps folded blocks folded on paper, so the page prints
@@ -74,7 +75,12 @@ export const PRINT_START_TIMEOUT_MS = 2000;
 export const OPEN_TAB_CHECK_MS = 1000;
 
 export default class ModalPrintPreview {
-    constructor(manager) {
+    constructor(manager, adapter = null) {
+        this.adapter = adapter;
+        this.translate = adapter?.translate || ((text) => _(text));
+        this.frameTransport = adapter?.frameTransport || null;
+        const mount = document.getElementById('printPreviewMount');
+        if (mount && !document.getElementById('printPreviewOverlay')) mount.innerHTML = printPreviewShell(this.translate);
         this.manager = manager;
         this.overlay = document.getElementById('printPreviewOverlay');
         this.iframe = this.overlay?.querySelector('.print-preview-iframe');
@@ -131,44 +137,59 @@ export default class ModalPrintPreview {
         this.openTabs = new Set();
         /** Checks whether those tabs are still open. Null while there are none. */
         this.openTabTimer = null;
+        this.disposers = [];
     }
 
     /**
      * Initialize behavior
      */
     behaviour() {
-        if (!this.overlay) return;
+        if (!this.overlay || this.disposers.length) return;
+
+        const listen = (target, type, listener) => {
+            if (!target) return;
+            target.addEventListener(type, listener);
+            this.disposers.push(() => target.removeEventListener(type, listener));
+        };
 
         this.panel?.bind();
 
         // Print button
-        this.printBtn?.addEventListener('click', () => {
+        listen(this.printBtn, 'click', () => {
             this.print();
         });
 
         // Close button
-        this.closeBtn?.addEventListener('click', () => {
+        listen(this.closeBtn, 'click', () => {
             this.close();
         });
 
         // The way out offered when printing did not start
-        this.openTabBtn?.addEventListener('click', () => {
+        listen(this.openTabBtn, 'click', () => {
             this.openInNewTab();
         });
 
         // Desktop app: a PDF, from the header or as the way out when printing did not start
         for (const button of [this.pdfBtn, this.noticePdfBtn]) {
-            button?.addEventListener('click', () => {
+            listen(button, 'click', () => {
                 this.savePdf();
             });
         }
 
         // ESC key to close
-        document.addEventListener('keydown', (e) => {
+        listen(document, 'keydown', (e) => {
             if (e.key === 'Escape' && this.isVisible()) {
                 this.close();
             }
         });
+    }
+
+    destroy() {
+        this.close();
+        for (const dispose of this.disposers) dispose();
+        this.disposers = [];
+        this.panel?.destroy();
+        this.frameTransport?.destroy();
     }
 
     /**
@@ -196,11 +217,13 @@ export default class ModalPrintPreview {
             return;
         }
 
+        this.returnFocus = document.activeElement;
         this.mode = mode;
         this.activityMode = activityMode;
         this.selectedActivities = selectedActivities;
         this.activities = Array.isArray(activities) ? activities : [];
         const requestId = ++this.requestId;
+        this.adapter?.cancelGeneration?.();
         this.cleanup();
         this.configurePanel();
         this.applyTitle();
@@ -208,6 +231,7 @@ export default class ModalPrintPreview {
         // Show overlay with loading
         this.showLoading(true);
         this.overlay.setAttribute('data-visible', 'true');
+        this.closeBtn?.focus();
 
         await this.loadPreview(requestId);
     }
@@ -226,7 +250,12 @@ export default class ModalPrintPreview {
         const generation = this.generatePreview(requestId).catch((error) => {
             if (requestId !== this.requestId) return;
             console.error('[PrintPreview] Error:', error);
-            this.showError(error.message || 'An error occurred');
+            const _ = this.translate;
+            const resourceErrors = {
+                PRINT_RESOURCES_TIMEOUT: _('Print resources did not finish loading. Please try again.'),
+                PRINT_IMAGE_FAILED: _('An image could not be loaded. Check the resource and try again.'),
+            };
+            this.showError(resourceErrors[error.message?.replace(/^Error: /, '')] || error.message || 'An error occurred');
         });
         this.generationPromise = generation;
         try {
@@ -240,6 +269,7 @@ export default class ModalPrintPreview {
      * Put the heading in step with the current mode.
      */
     applyTitle() {
+        const _ = this.translate;
         if (!this.titleEl) return;
 
         this.titleEl.textContent =
@@ -251,6 +281,7 @@ export default class ModalPrintPreview {
      */
     close() {
         this.requestId++;
+        this.adapter?.cancelGeneration?.();
         if (this.overlay) {
             this.overlay.setAttribute('data-visible', 'false');
         }
@@ -262,6 +293,7 @@ export default class ModalPrintPreview {
         this.endPrintJob();
         this.cleanup();
         this.setBusy(false);
+        this.returnFocus?.focus?.();
     }
 
     /**
@@ -305,6 +337,7 @@ export default class ModalPrintPreview {
      * @returns {boolean} false too when the project cannot be inspected: the option is then left out
      */
     hasTeacherOnlyContent() {
+        if (this.adapter) return this.adapter.hasTeacherOnlyContent();
         const check = window.SharedExporters?.projectHasTeacherOnlyContent;
         const documentManager = eXeLearning?.app?.project?._yjsBridge?.documentManager;
         if (typeof check !== 'function' || !documentManager) return false;
@@ -356,6 +389,7 @@ export default class ModalPrintPreview {
      * the preview as it is shown has to keep.
      */
     applyFolding() {
+        if (this.frameTransport) { this.frameTransport.setOptions({ unfoldBlocks: this.unfoldBlocks }); return; }
         let root = null;
         try {
             root = this.iframe?.contentDocument?.documentElement ?? null;
@@ -372,6 +406,7 @@ export default class ModalPrintPreview {
      * Applied in place, as folding is, so that nothing the user folded or opened is lost.
      */
     applyTeacherMode() {
+        if (this.frameTransport) { this.frameTransport.setOptions({ teacherOnly: this.teacherOnly }); return; }
         let root = null;
         try {
             root = this.iframe?.contentDocument?.documentElement ?? null;
@@ -435,6 +470,7 @@ export default class ModalPrintPreview {
         this.cancelRegeneration();
         this.requestId++;
         this.showLoading(true);
+        this.adapter?.cancelGeneration?.();
         this.regenerateTimer = setTimeout(() => {
             this.regenerateTimer = null;
             this.regenerate();
@@ -455,6 +491,7 @@ export default class ModalPrintPreview {
      * Draw the preview again with the options as they are now.
      */
     async regenerate() {
+        this.adapter?.cancelGeneration?.();
         await this.loadPreview(++this.requestId);
     }
 
@@ -465,6 +502,7 @@ export default class ModalPrintPreview {
      *     choice that leaves the activities out, which makes picking among them pointless
      */
     getChoices() {
+        const _ = this.translate;
         return [
             { value: ACTIVITY_MODE_IN_PLACE, label: _('Content with activities'), prints: true },
             { value: ACTIVITY_MODE_APPENDIX, label: _('Content with activities in an appendix'), prints: true },
@@ -479,6 +517,7 @@ export default class ModalPrintPreview {
      * @returns {object} Translated headings and messages
      */
     getPanelLabels() {
+        const _ = this.translate;
         return {
             choicesHeading: _('What would you like to print?'),
             selectionHeading: _('Activities'),
@@ -499,6 +538,7 @@ export default class ModalPrintPreview {
      * @returns {string} The name, or empty when the iDevice is not installed
      */
     ideviceName(type) {
+        if (this.adapter) return this.getIdeviceTitles()[type] || type;
         return window.eXeLearning?.app?.idevices?.getIdeviceInstalled?.(type)?.title || '';
     }
 
@@ -508,6 +548,7 @@ export default class ModalPrintPreview {
      * @returns {object} The bridge, guaranteed to carry a documentManager
      */
     requireYjsBridge() {
+        const _ = this.translate;
         if (!eXeLearning.app.project?._yjsEnabled) {
             throw new Error(_('Print preview requires server mode'));
         }
@@ -531,6 +572,7 @@ export default class ModalPrintPreview {
      * @returns {string} Base URL ending in a slash
      */
     getIdeviceBasePath() {
+        if (this.adapter) return this.adapter.ideviceBasePath;
         const { baseUrl, basePath, version } = this.getServerPaths();
         // v1.0.0 is the unversioned development default, which is not part of the path.
         const versionSegment = version && version !== 'v1.0.0' ? `/${version}` : '';
@@ -564,6 +606,7 @@ export default class ModalPrintPreview {
      * @returns {object} Translated worksheet labels
      */
     getWorksheetLabels() {
+        const _ = this.translate;
         // A string is translated once, whatever it labels. "Down" and "Before" are in the catalog
         // already with another sense ("Abajo", "Antes de optimizar"), so the crossword and the
         // before/after headings use the words those activities use themselves.
@@ -595,6 +638,7 @@ export default class ModalPrintPreview {
      * @returns {object} Titles keyed by iDevice type
      */
     getIdeviceTitles() {
+        const _ = this.translate;
         const installed = window.eXeLearning?.app?.idevices?.list?.installed || {};
         const editorNames = Object.fromEntries(
             Object.entries(installed)
@@ -642,6 +686,11 @@ export default class ModalPrintPreview {
      * @returns {Promise<object>} Result carrying the worksheet HTML
      */
     async generateIdevicesWorksheet() {
+        const _ = this.translate;
+        if (this.adapter) return this.adapter.generateWorksheet({
+            labels: this.getWorksheetLabels(), ideviceTitles: this.getIdeviceTitles(),
+            ideviceBasePath: this.getIdeviceBasePath(), ...this.getSelectionOptions(), ...this.getTeacherOnlyOptions(),
+        });
         const yjsBridge = this.requireYjsBridge();
         const generateWorksheetFn =
             window.generateWorksheet || window.SharedExporters?.generateWorksheet;
@@ -690,6 +739,7 @@ export default class ModalPrintPreview {
      * @returns {object} An options fragment, empty when there is nothing to do
      */
     getActivityOptions() {
+        const _ = this.translate;
         if (!this.activityMode) return {};
 
         return {
@@ -715,6 +765,8 @@ export default class ModalPrintPreview {
      * @returns {Promise<object>} Result carrying the preview HTML
      */
     async generateDocumentPreview() {
+        const _ = this.translate;
+        if (this.adapter) return this.adapter.generateDocument({ ...this.getPrintOptions(), ...this.getActivityOptions() });
         const yjsBridge = this.requireYjsBridge();
         const generatePrintPreviewFn =
             window.generatePrintPreview || window.SharedExporters?.generatePrintPreview;
@@ -787,6 +839,7 @@ export default class ModalPrintPreview {
      * Generate and load the preview for the current mode
      */
     async generatePreview(requestId = ++this.requestId) {
+        const _ = this.translate;
         const result =
             this.mode === PREVIEW_MODE_IDEVICES
                 ? await this.generateIdevicesWorksheet()
@@ -816,6 +869,16 @@ export default class ModalPrintPreview {
             };
         };
         this.disposePreview = this.retainPreview();
+        if (this.frameTransport) {
+            await this.frameTransport.load(html);
+            if (requestId === this.requestId) {
+                this.ready = true;
+                this.applyFolding();
+                this.applyTeacherMode();
+                this.showLoading(false);
+            }
+            return;
+        }
         const blob = new Blob([html], { type: 'text/html' });
         try {
             this.blobUrl = URL.createObjectURL(blob);
@@ -855,7 +918,7 @@ export default class ModalPrintPreview {
             this.printJob = job;
             this.syncPrintButton();
             try {
-                const html = await printPreviewSnapshot(this.iframe.contentDocument);
+                const html = this.frameTransport ? await this.frameTransport.snapshot() : await printPreviewSnapshot(this.iframe.contentDocument);
                 // Closed while the copy was being made, which a few 3D models can make take a
                 // while: the user no longer wants the print dialog.
                 if (this.printJob !== job) return;
@@ -872,6 +935,11 @@ export default class ModalPrintPreview {
                 release?.();
                 if (this.printJob === job) this.endPrintJob();
             }
+            return;
+        }
+        if (this.frameTransport) {
+            try { await this.frameTransport.print(); }
+            catch { this.showNotice('not-started'); }
             return;
         }
         this.watchPrintStart(win);
@@ -949,7 +1017,7 @@ export default class ModalPrintPreview {
      * the click, and making the copy waits for the 3D models' pictures.
      */
     async openInNewTab() {
-        if (!this.canPrint() || !this.blobUrl) return;
+        if (!this.canPrint() || (!this.blobUrl && !this.frameTransport)) return;
         const tab = window.open('', '_blank');
         if (!tab) return;
         let url;
@@ -957,7 +1025,7 @@ export default class ModalPrintPreview {
         try {
             tab.opener = null;
             release = this.retainPreview?.();
-            const html = await printPreviewSnapshot(this.iframe.contentDocument);
+            const html = this.frameTransport ? await this.frameTransport.snapshot() : await printPreviewSnapshot(this.iframe.contentDocument);
             url = URL.createObjectURL(new Blob([html], { type: 'text/html' }));
             tab.location.href = url;
         } catch (error) {
@@ -1099,6 +1167,7 @@ export default class ModalPrintPreview {
      * Clean up resources
      */
     cleanup() {
+        this.frameTransport?.clear();
         this.ready = false;
         this.syncPrintButton();
         this.cancelRegeneration();
@@ -1122,6 +1191,7 @@ export default class ModalPrintPreview {
 
     /** Restore the loading message after an error or a previous preview. */
     resetLoadingIndicator() {
+        const _ = this.translate;
         if (this.loadingEl) {
             this.loadingEl.classList.remove('hidden');
             this.loadingEl.innerHTML = `

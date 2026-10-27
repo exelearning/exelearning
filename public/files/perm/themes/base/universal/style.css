@@ -1344,3 +1344,54 @@ body.exe-web-site {
     border: 1px solid #ebebee !important;
     margin-bottom: 10px;
 }
+
+/* Print action: reserve the rightmost slot and match this theme's navigation. */
+:root {
+    --exe-print-size: 30px;
+    --exe-print-top: 10px;
+    --exe-print-right: 20px;
+    --exe-print-background: transparent;
+    --exe-print-color: #fff;
+    --exe-print-border: 1px solid #ffffff70;
+    --exe-print-shadow: none;
+    --exe-print-hover-background: #145cb1;
+}
+body.exe-web-site:is(.has-print-button, :has(#exe-print-btn)) .nav-buttons .nav-button-right {
+    right: 60px;
+}
+body.exe-web-site:is(.has-print-button, :has(#exe-print-btn)) .nav-buttons .nav-button-left {
+    right: 190px;
+}
+body.exe-web-site:is(.has-print-button, :has(#exe-print-btn)) #darkModeToggler {
+    right: 320px;
+}
+body.exe-web-site:is(.has-print-button, :has(#exe-print-btn)) .page-counter {
+    right: 380px;
+}
+
+@media (max-width: 767.98px) {
+    :root {
+        --exe-print-size: 40px;
+        --exe-print-top: 5px;
+        --exe-print-right: 10px;
+    }
+    body.exe-web-site:is(.has-print-button, :has(#exe-print-btn)) .nav-buttons .nav-button-right {
+        right: 60px;
+    }
+    body.exe-web-site:is(.has-print-button, :has(#exe-print-btn)) .nav-buttons .nav-button-left {
+        right: 110px;
+    }
+    body.exe-web-site:is(.has-print-button, :has(#exe-print-btn)) #darkModeToggler {
+        right: 160px;
+    }
+    body.exe-web-site:is(.has-print-button, :has(#exe-print-btn)) .page-counter {
+        right: 230px;
+    }
+
+}
+@media screen {
+    html.exe-dark-mode .exe-web-site .exe-print-action {
+        filter: invert(100%) hue-rotate(180deg);
+        --exe-print-hover-background: #272727;
+    }
+}

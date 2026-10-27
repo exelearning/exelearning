@@ -377,6 +377,14 @@ export function buildConfigParams(deps: ConfigParamsDeps) {
                 category: 'properties',
                 groups: { export: GROUPS_TITLE.export },
             },
+            pp_addPrintButton: {
+                title: `${TRANS_PREFIX}Print button`,
+                help: `${TRANS_PREFIX}Allows visitors to print the resource content from the exported website.`,
+                value: 'false',
+                type: 'checkbox',
+                category: 'properties',
+                groups: { export: GROUPS_TITLE.export },
+            },
             pp_globalFont: {
                 title: `${TRANS_PREFIX}Global font`,
                 help: `${TRANS_PREFIX}Apply a global font to all content. Useful for accessibility and early literacy.`,

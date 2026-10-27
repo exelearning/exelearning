@@ -366,6 +366,11 @@ export class Scorm12Exporter extends Html5Exporter {
             // 9. Add project assets (with tracking for ELPX manifest)
             await this.addAssetsToZipWithResourcePath(fileList);
 
+            await this.addPrintPreviewFiles(pages, meta, themeFilesMap, (path, content) => {
+                addFile(path, content);
+                commonFiles.push(path);
+            });
+
             // 10. Generate ELPX manifest file if download-source-file is used
             if (needsElpxDownload && fileList) {
                 const pageUrls = Object.values(pageFiles).map(pf => pf.fileUrl);
@@ -488,6 +493,7 @@ export class Scorm12Exporter extends Html5Exporter {
             addSearchBox: false,
             addExeLink: meta.addExeLink ?? true,
             addPagination: meta.addPagination ?? false,
+            addPrintButton: meta.addPrintButton ?? false,
             addMathJax: meta.addMathJax === true,
             // Project-wide pass score, published to the page as a META so iDevices
             // resolve it at runtime instead of carrying a copy of their own.

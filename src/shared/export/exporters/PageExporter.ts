@@ -240,6 +240,10 @@ export class PageExporter extends Html5Exporter {
             // 7. Add project assets
             await this.addAssetsToZipWithResourcePath();
 
+            await this.addPrintPreviewFiles(pages, meta, themeFilesMap, (path, content) =>
+                this.zip.addFile(path, content),
+            );
+
             // 8. Generate ZIP buffer
             const buffer = await this.zip.generateAsync();
 
@@ -296,6 +300,7 @@ export class PageExporter extends Html5Exporter {
             materialIconDataUris,
             // The style's own root files: an older style has content.css and default.js
             themeFiles,
+            addPrintButton: meta.addPrintButton ?? false,
         });
     }
 

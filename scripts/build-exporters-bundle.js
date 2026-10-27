@@ -70,11 +70,45 @@ esbuild.build({
     define: {
         'process.env.APP_DEBUG': '"0"',
     },
-}).then(() => {
+}).then(async () => {
+    const printDir = path.join(projectRoot, 'public/app/common/exe_print');
+    fs.mkdirSync(printDir, { recursive: true });
+    fs.writeFileSync(path.join(printDir, 'frame.html'), '<!DOCTYPE html><html><head><meta charset="utf-8"></head><body></body></html>');
+    await esbuild.build({
+        entryPoints: {
+            runtime: path.join(projectRoot, 'public/app/print/exportedPrintPreview.js'),
+            frame: path.join(projectRoot, 'public/app/print/printFrame.js'),
+        },
+        outdir: printDir,
+        bundle: true,
+        minify: true,
+        format: 'iife',
+        platform: 'browser',
+        plugins: [browserAliasPlugin],
+        define: { 'process.env.APP_DEBUG': '"0"' },
+    });
+    const sass = require('sass');
+    const css = sass.compile(path.join(projectRoot, 'assets/styles/print-preview.scss'), { style: 'compressed' }).css;
+    const variables = sass.compile(path.join(projectRoot, 'assets/styles/abstracts/_variables.scss'), { style: 'compressed' }).css;
+    fs.writeFileSync(path.join(printDir, 'preview.css'), variables.replace(':root', '.print-preview-overlay') + css);
+    fs.copyFileSync(path.join(projectRoot, 'public/app/print/printButton.css'), path.join(printDir, 'button.css'));
+    fs.mkdirSync(path.join(printDir, 'fonts'), { recursive: true });
+    for (const weight of ['Regular', 'SemiBold', 'Bold']) {
+        const name = `Catamaran-${weight}.woff2`;
+        fs.copyFileSync(path.join(projectRoot, 'public/style/workarea/fonts', name), path.join(printDir, 'fonts', name));
+    }
+    // Collect the shared UI's source keys without extracting or changing translation catalogs.
+    const strings = new Set();
+    for (const file of ['modalPrintPreview.js', 'printPreviewShell.js']) {
+        const source = fs.readFileSync(path.join(projectRoot, 'public/app/workarea/modals/modals/pages', file), 'utf8');
+        for (const match of source.matchAll(/\b_\((['"])(.*?)\1\)/g)) strings.add(match[2]);
+    }
+    fs.writeFileSync(path.join(printDir, 'strings.json'), JSON.stringify([...strings]));
     for (const mirrorPath of mirrorOutputs) {
         const mirrorDir = path.dirname(mirrorPath);
         fs.mkdirSync(mirrorDir, { recursive: true });
         fs.copyFileSync(outputPath, mirrorPath);
+        fs.cpSync(printDir, path.join(mirrorDir, '../common/exe_print'), { recursive: true });
     }
     console.log('exporters.bundle.js built successfully');
 }).catch((err) => {

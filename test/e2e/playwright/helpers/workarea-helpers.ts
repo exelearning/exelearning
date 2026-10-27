@@ -23,7 +23,7 @@
  * ```
  */
 
-import type { Page, FrameLocator, Download } from '@playwright/test';
+import { expect, type Page, type FrameLocator, type Download } from '@playwright/test';
 
 const IMPORT_STABILITY_MS = 1800;
 
@@ -694,18 +694,17 @@ export async function openPreviewPanel(page: Page): Promise<void> {
         });
 
     const previewPanel = page.locator('#previewsidenav');
-    const isVisible = await previewPanel.isVisible();
-    if (!isVisible) {
+    const isOpen = await previewPanel.evaluate(panel => panel.classList.contains('active'));
+    if (!isOpen) {
         await page.click('#head-bottom-preview');
-        await previewPanel.waitFor({ state: 'visible', timeout: 15000 });
+        await expect(previewPanel).toHaveClass(/\bactive\b/, { timeout: 15000 });
     }
 
     // Wait for iframe to exist
     const previewIframe = page.locator('#preview-iframe');
     await previewIframe.waitFor({ state: 'attached', timeout: 10000 });
 
-    // Give time for preview generation
-    await page.waitForTimeout(500);
+    // Callers wait for the content they need; the panel may still be generating it.
 }
 
 /**
@@ -713,12 +712,12 @@ export async function openPreviewPanel(page: Page): Promise<void> {
  */
 export async function closePreviewPanel(page: Page): Promise<void> {
     const previewPanel = page.locator('#previewsidenav');
-    const isVisible = await previewPanel.isVisible();
-    if (isVisible) {
+    const isOpen = await previewPanel.evaluate(panel => panel.classList.contains('active'));
+    if (isOpen) {
         // Use the X close button on the panel header (force in case of viewport issues)
         const closeButton = page.locator('#previewsidenavclose');
         await closeButton.click({ force: true });
-        await previewPanel.waitFor({ state: 'hidden', timeout: 15000 });
+        await expect(previewPanel).not.toHaveClass(/\bactive\b/, { timeout: 15000 });
     }
 }
 
@@ -736,10 +735,7 @@ export function getPreviewFrame(page: Page): FrameLocator {
  * @returns true if content loaded, false if timeout
  */
 export async function waitForPreviewContent(page: Page, timeout = 30000): Promise<boolean> {
-    // Always click preview button to ensure panel opens
-    await page.click('#head-bottom-preview');
-    const previewPanel = page.locator('#previewsidenav');
-    await previewPanel.waitFor({ state: 'visible', timeout: 15000 });
+    await openPreviewPanel(page);
 
     // Wait for content to load in iframe
     try {

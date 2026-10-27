@@ -66,6 +66,7 @@ export interface ExportMetadata {
     addSearchBox?: boolean; // Search functionality (HTML5 website only)
     addAccessibilityToolbar?: boolean; // Accessibility toolbar
     addMathJax?: boolean; // Always include MathJax library for math formulas
+    addPrintButton?: boolean; // Print button for exported resource
     exportSource?: boolean; // Include content.xml for re-editing
     globalFont?: string; // Global font for accessibility
     passScore?: number; // Project-wide mark out of 10 an activity needs to be passed
@@ -669,6 +670,7 @@ export interface PageRenderOptions {
     addSearchBox?: boolean;
     addAccessibilityToolbar?: boolean;
     addMathJax?: boolean;
+    addPrintButton?: boolean;
     /** Project-wide pass score (0-10). Published to the page so iDevices can read it at runtime. */
     passScore?: number;
     /**
@@ -699,6 +701,7 @@ export interface PageRenderOptions {
 
     /** Translated labels for navigation buttons (resolved at export time from XLF) */
     navLabels?: {
+        print?: string;
         previous: string;
         next: string;
         page: string;

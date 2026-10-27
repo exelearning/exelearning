@@ -2974,3 +2974,59 @@ describe('the molecules the document has to draw before it can convert them', ()
         expect(html).not.toContain(PICTURE);
     });
 });
+
+describe('PrintPreviewExporter portable resources', () => {
+    it('preserves package paths until the final resolver and carries the chosen font', async () => {
+        const document = createMockDocument(
+            [
+                {
+                    id: 'p',
+                    title: 'Page',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'b',
+                            name: 'Block',
+                            order: 0,
+                            components: [
+                                {
+                                    id: 'c',
+                                    type: 'text',
+                                    order: 0,
+                                    content: '<img src="asset://picture.png">',
+                                    properties: {},
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ],
+            { globalFont: 'andika' },
+        );
+        const result = await new PrintPreviewExporter(document, createMockResourceProvider()).generatePreview({
+            assetExportPathMap: new Map([['picture', 'images/photo.png']]),
+            materialIconDataUris: new Map(),
+            navLabels: { previous: 'Previous', next: 'Next', page: 'Page', licenseLabel: 'Licencia' },
+            resolveResourceUrls: html =>
+                html.replaceAll('content/resources/', 'https://course.test/content/resources/'),
+        });
+        expect(result.success).toBe(true);
+        expect(result.html).toContain('https://course.test/content/resources/images/photo.png');
+        expect(result.html).toContain('href="content/css/base.css"');
+        expect(result.html).toContain('fonts/global/andika/Andika-Regular.woff2');
+        expect(result.html).toContain('Licencia');
+        result.dispose?.();
+    });
+
+    it('maps the chosen font to the workarea asset path in the editor', async () => {
+        const result = await new PrintPreviewExporter(
+            createMockDocument([{ id: 'p', title: 'Page', parentId: null, order: 0, blocks: [] }], {
+                globalFont: 'andika',
+            }),
+            createMockResourceProvider(),
+        ).generatePreview({ baseUrl: 'https://editor.test', basePath: '/editor' });
+        expect(result.html).toContain('https://editor.test/editor/files/perm/fonts/global/andika/Andika-Regular.woff2');
+        result.dispose?.();
+    });
+});

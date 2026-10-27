@@ -5,6 +5,7 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'bun:test';
 import { loadIdeviceConfigs, resetIdeviceConfigCache } from '../../../services/idevice-config';
 import { ElpxExporter } from './ElpxExporter';
+import { PRINT_RUNTIME_FILES } from '../printPackage';
 import { zipSync, unzipSync, strToU8 } from 'fflate';
 import type {
     ExportDocument,
@@ -1183,6 +1184,40 @@ describe('ElpxExporter', () => {
             const manifest = zip.files.get('libs/elpx-manifest.js') as string;
             expect(manifest).toContain('__ELPX_MANIFEST__');
         });
+
+        it.each([true, false])(
+            'includes the complete print package and download manifest only when enabled (%s)',
+            async enabled => {
+                resources.fetchLibraryFiles = async files =>
+                    new Map(
+                        files.map(file => [
+                            file,
+                            Buffer.from(file === 'exe_print/strings.json' ? '[]' : `/* ${file} */`),
+                        ]),
+                    );
+                exporter = new ElpxExporter(
+                    new MockDocument({ addPrintButton: enabled }, pagesWithDownloadSourceFile),
+                    resources,
+                    assets,
+                    zip,
+                );
+                const result = await exporter.export();
+                expect(result.success).toBe(true);
+                const entries = unzipSync(result.data!);
+                const manifest = new TextDecoder().decode(entries['libs/elpx-manifest.js']);
+                const printFiles = [
+                    ...PRINT_RUNTIME_FILES.map(name => `libs/${name}`),
+                    'libs/exe_print/data.js',
+                    'print.html',
+                ];
+                for (const name of printFiles) {
+                    expect(Object.hasOwn(entries, name)).toBe(enabled);
+                    expect(manifest.includes(name)).toBe(enabled);
+                }
+                expect(new TextDecoder().decode(entries['index.html']).includes('id="exe-print-btn"')).toBe(enabled);
+                if (enabled) expect(entries['libs/exe_math/tex-mml-svg.js']).toBeDefined();
+            },
+        );
 
         it('should not generate elpx-manifest.js when no download-source-file iDevice', async () => {
             // Default samplePages have no download-source-file

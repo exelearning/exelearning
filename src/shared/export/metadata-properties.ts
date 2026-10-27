@@ -228,6 +228,13 @@ export const METADATA_PROPERTIES: MetadataPropertyConfig[] = [
         category: 'export',
     },
     {
+        key: 'addPrintButton',
+        xmlKey: 'pp_addPrintButton',
+        type: 'boolean',
+        defaultValue: false,
+        category: 'export',
+    },
+    {
         key: 'exportSource',
         xmlKey: 'exportSource', // No pp_ prefix for legacy compatibility
         type: 'boolean',

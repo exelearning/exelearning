@@ -999,3 +999,21 @@ html.exe-dark-mode #eXeAtoolsSet {
     }
 
 }
+
+/* Print action: reserve the rightmost slot and match this theme's navigation. */
+:root {
+    --exe-print-top: 5px;
+    --exe-print-right: 10px;
+    --exe-print-background: transparent;
+    --exe-print-color: #0a376b;
+    --exe-print-border: 0;
+    --exe-print-shadow: none;
+    --exe-print-hover-background: #c3dbf0;
+    --exe-print-icon-size: 24px;
+}
+body.exe-web-site:is(.has-print-button, :has(#exe-print-btn)) .nav-buttons .nav-button-right {
+    right: 60px;
+}
+body.exe-web-site:is(.has-print-button, :has(#exe-print-btn)) .nav-buttons .nav-button-left {
+    right: 110px;
+}

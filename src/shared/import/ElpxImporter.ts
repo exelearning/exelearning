@@ -1050,6 +1050,7 @@ export class ElpxImporter {
         metadata.set('addSearchBox', legacyMeta.pp_addSearchBox);
         metadata.set('addExeLink', legacyMeta.pp_addExeLink);
         metadata.set('addAccessibilityToolbar', legacyMeta.pp_addAccessibilityToolbar);
+        metadata.set('addPrintButton', legacyMeta.pp_addPrintButton);
         metadata.set('exportSource', legacyMeta.exportSource);
 
         // Legacy files don't have addMathJax, globalFont or the pass score options - use defaults
@@ -1275,6 +1276,7 @@ export class ElpxImporter {
                 'pp_addAccessibilityToolbar',
                 false,
             ),
+            addPrintButton: this.getBooleanMetadataProperty(odeProperties, 'pp_addPrintButton', false),
             exportSource: this.getBooleanMetadataProperty(odeProperties, 'exportSource', true),
             extraHeadContent: this.getMetadataProperty(odeProperties, 'pp_extraHeadContent'),
             footer: this.getMetadataProperty(odeProperties, 'footer'),
@@ -1304,6 +1306,7 @@ export class ElpxImporter {
         metadata.set('addSearchBox', values.addSearchBox);
         metadata.set('addExeLink', values.addExeLink);
         metadata.set('addAccessibilityToolbar', values.addAccessibilityToolbar);
+        metadata.set('addPrintButton', values.addPrintButton);
         metadata.set('exportSource', values.exportSource);
         metadata.set('addMathJax', values.addMathJax);
         metadata.set('globalFont', values.globalFont);

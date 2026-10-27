@@ -329,6 +329,11 @@ export class ImsExporter extends Html5Exporter {
                 commonFiles.push('content.xml', ODE_DTD_FILENAME);
             }
 
+            await this.addPrintPreviewFiles(pages, meta, themeFilesMap, (path, content) => {
+                addFile(path, content);
+                commonFiles.push(path);
+            });
+
             // 9. Generate ELPX manifest file if download-source-file is used
             if (needsElpxDownload && fileList) {
                 const pageUrls = Object.values(pageFiles).map(pf => pf.fileUrl);
@@ -446,6 +451,7 @@ export class ImsExporter extends Html5Exporter {
             addSearchBox: false,
             addExeLink: meta.addExeLink ?? true,
             addPagination: meta.addPagination ?? false,
+            addPrintButton: meta.addPrintButton ?? false,
             addMathJax: meta.addMathJax === true,
             // Project-wide pass score, published to the page as a META so iDevices
             // resolve it at runtime instead of carrying a copy of their own.

@@ -222,6 +222,7 @@ export class Html5Exporter extends BaseExporter {
 
             // Fetch translated nav button labels for the content language
             const navLabels = await this.fetchNavLabels(meta.language || 'en', meta.license);
+            const usedIdevices = this.getUsedIdevices(pages);
 
             // 1. Generate HTML pages, pre-render LaTeX/Mermaid, and add directly to ZIP
             // Pages are added to ZIP immediately to avoid storing all HTML in memory
@@ -290,6 +291,8 @@ export class Html5Exporter extends BaseExporter {
                 const searchIndexContent = this.pageRenderer.generateSearchIndexFile(pages, '', pageFilenameMap);
                 addFile('search_index.js', searchIndexContent);
             }
+
+            await this.addPrintPreviewFiles(pages, meta, themeFilesMap, addFile);
 
             // 3. Add content.xml (ODE format for re-import) - only when editable source is enabled
             this.addEditableContentXml(pages, meta, addFile, options);
@@ -381,7 +384,6 @@ export class Html5Exporter extends BaseExporter {
             }
 
             // 9. Fetch and add iDevice assets
-            const usedIdevices = this.getUsedIdevices(pages);
             for (const idevice of usedIdevices) {
                 try {
                     // Normalize iDevice type to directory name (e.g., 'FreeTextIdevice' -> 'text')
@@ -508,6 +510,7 @@ export class Html5Exporter extends BaseExporter {
             // Export options
             addExeLink: meta.addExeLink ?? true,
             addPagination: meta.addPagination ?? false,
+            addPrintButton: meta.addPrintButton ?? false,
             addSearchBox: meta.addSearchBox ?? false,
             addAccessibilityToolbar: meta.addAccessibilityToolbar ?? false,
             addMathJax: meta.addMathJax === true,
@@ -689,6 +692,7 @@ export class Html5Exporter extends BaseExporter {
 
             // Fetch translated nav button labels for the content language
             const navLabels = await this.fetchNavLabels(meta.language || 'en', meta.license);
+            const usedIdevices = this.getUsedIdevices(pages);
 
             // 1. Generate HTML pages, pre-render LaTeX/Mermaid, and collect for later addition
             // We buffer page HTML because ELPX download scripts need libraries to be loaded first
@@ -745,6 +749,8 @@ export class Html5Exporter extends BaseExporter {
                 const searchIndexContent = this.pageRenderer.generateSearchIndexFile(pages, '', pageFilenameMap);
                 addFile('search_index.js', searchIndexContent);
             }
+
+            await this.addPrintPreviewFiles(pages, meta, themeFilesMap, addFile);
 
             // 3. Add content.xml (ODE format for re-import) when editable source is enabled.
             // Registered via addFile, so it is automatically listed in the ELPX manifest below.
@@ -827,7 +833,6 @@ export class Html5Exporter extends BaseExporter {
             }
 
             // 9. Fetch and add iDevice assets
-            const usedIdevices = this.getUsedIdevices(pages);
             for (const idevice of usedIdevices) {
                 try {
                     const normalizedType = this.resources.normalizeIdeviceType(idevice);

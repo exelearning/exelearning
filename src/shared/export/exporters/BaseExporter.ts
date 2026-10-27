@@ -21,6 +21,7 @@ import type {
 import { IdeviceRenderer } from '../renderers/IdeviceRenderer';
 import { PageRenderer } from '../renderers/PageRenderer';
 import { LibraryDetector } from '../utils/LibraryDetector';
+import { PRINT_RUNTIME_FILES, printPackagePages, serializePrintPackage, printPackageEntry } from '../printPackage';
 import { JSON_PROPERTY_LIBRARY_EXCLUSIONS, iterateJsonPropertyStrings } from '../utils/jsonPropertyContent';
 import { generateOdeXml, generateOdeId } from '../generators/OdeXmlGenerator';
 import { ELPX_DOWNLOAD_ONCLICK, formatLicenseText } from '../constants';
@@ -254,6 +255,92 @@ export abstract class BaseExporter {
         return this.resources.fetchI18nFile(language);
     }
 
+    /** Package the same preview for every web format, including its manifest-visible dependencies. */
+    protected async addPrintPreviewFiles(
+        pages: ExportPage[],
+        meta: ExportMetadata,
+        themeFiles: Map<string, unknown> | null,
+        addFile: (path: string, content: Uint8Array | string) => void,
+    ): Promise<void> {
+        if (!meta.addPrintButton) return;
+        const resources = await this.resources.fetchLibraryFiles([...PRINT_RUNTIME_FILES, 'exe_print/strings.json']);
+        for (const name of PRINT_RUNTIME_FILES) {
+            const content = resources.get(name);
+            if (!content) throw new Error(`Print preview resource missing: ${name}. Run bundle:exporters.`);
+            addFile(`libs/${name}`, content);
+        }
+        const strings = resources.get('exe_print/strings.json');
+        if (!strings) throw new Error('Print preview translations missing. Run bundle:exporters.');
+        // Activity conversion can introduce formulas absent from the exported page's visible HTML.
+        // Keep the local engine available; the preview loads it only when needed.
+        const mathFiles = await this.resources.fetchLibraryFiles(
+            ['exe_math/tex-mml-svg.js'],
+            [
+                {
+                    name: 'print-math',
+                    type: 'class',
+                    pattern: '',
+                    files: ['exe_math/tex-mml-svg.js'],
+                    isDirectory: true,
+                },
+            ],
+        );
+        for (const [name, content] of mathFiles) addFile(`libs/${name}`, content);
+        if (JSON.stringify(pages).includes('mermaid')) {
+            const diagrams = await this.resources.fetchLibraryFiles(['mermaid/mermaid.min.js']);
+            for (const [name, content] of diagrams) addFile(`libs/${name}`, content);
+        }
+        const keys: string[] = JSON.parse(new TextDecoder().decode(strings));
+        const language = meta.language || 'en';
+        const translations = await this.resources.fetchI18nTranslations(language);
+        const { dataUris } = await this.resolveMaterialIconDataUris(pages);
+        const {
+            title,
+            subtitle,
+            author,
+            description,
+            license,
+            licenseUrl,
+            customStyles,
+            footer,
+            globalFont,
+            addExeLink,
+            passScore,
+            passScoreEveryActivity,
+            exelearningVersion,
+        } = meta;
+        addFile(
+            'libs/exe_print/data.js',
+            serializePrintPackage({
+                metadata: {
+                    theme: meta.theme,
+                    title,
+                    subtitle,
+                    author,
+                    description,
+                    language,
+                    license,
+                    licenseUrl,
+                    customStyles,
+                    footer,
+                    globalFont,
+                    addExeLink,
+                    passScore,
+                    passScoreEveryActivity,
+                    exelearningVersion,
+                },
+                pages: printPackagePages(pages),
+                assetPaths: [...(await this.buildAssetExportPathMap())],
+                themeFiles: [...(themeFiles?.keys() || ['style.css', 'style.js'])],
+                materialIcons: [...dataUris],
+                translations: Object.fromEntries(keys.map(key => [key, translations.get(key) || key])),
+                i18n: await this.generateI18nContent(language),
+                navLabels: await this.fetchNavLabels(language, license),
+            }),
+        );
+        addFile('print.html', printPackageEntry(language));
+    }
+
     /**
      * Fetch translated labels for navigation buttons (Previous / Next / Page counter).
      * Labels are resolved from XLF translations so the exported HTML already
@@ -270,6 +357,7 @@ export abstract class BaseExporter {
         licenseLabel: string;
         madeWith: string;
         newWindow: string;
+        print: string;
     }> {
         const translations = await this.resources.fetchI18nTranslations(language);
         let translatedLicense = license;
@@ -287,6 +375,7 @@ export abstract class BaseExporter {
             licenseLabel: translations.get('License') || 'License',
             madeWith: translations.get('Made with eXeLearning') || 'Made with eXeLearning',
             newWindow: translations.get('New window') || 'New window',
+            print: translations.get('Print') || 'Print',
         };
     }
 

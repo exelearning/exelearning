@@ -1436,3 +1436,68 @@ button#searchBarToggler {
         padding-top: 1em;
     }
 }
+
+/* Print action: reserve the rightmost slot and match this theme's navigation. */
+:root {
+    --exe-print-size: 60px;
+    --exe-print-top: 20px;
+    --exe-print-right: 20px;
+    --exe-print-radius: 8px;
+    --exe-print-background: #ffcc00;
+    --exe-print-color: #282573;
+    --exe-print-border: 0;
+    --exe-print-shadow: none;
+    --exe-print-hover-background: #ffe366;
+    --exe-print-icon-size: 24px;
+}
+body.exe-web-site:is(.has-print-button, :has(#exe-print-btn)) .nav-buttons .nav-button-right {
+    right: 94px;
+}
+body.exe-web-site:is(.has-print-button, :has(#exe-print-btn)) .nav-buttons .nav-button-left {
+    right: 254px;
+}
+body.exe-web-site:is(.has-print-button, :has(#exe-print-btn)) .page-counter {
+    right: 440px;
+}
+
+body.exe-web-site:is(.has-print-button, :has(#exe-print-btn)) .package-title {
+    max-width: calc(100% - 530px);
+}
+@media (max-width: 1024px) {
+    :root {
+        --exe-print-top: 18px;
+    }
+    body.exe-web-site:is(.has-print-button, :has(#exe-print-btn)) .nav-buttons .nav-button-right {
+        right: 94px;
+    }
+    body.exe-web-site:is(.has-print-button, :has(#exe-print-btn)) .nav-buttons .nav-button-left {
+        right: 174px;
+    }
+    body.exe-web-site:is(.has-print-button, :has(#exe-print-btn)) .page-counter {
+        right: 267px;
+    }
+
+    body.exe-web-site:is(.has-print-button, :has(#exe-print-btn)) .package-title {
+        max-width: calc(100% - 320px);
+    }
+}
+@media (max-width: 750px) {
+    :root {
+        --exe-print-size: 50px;
+        --exe-print-top: 25px;
+        --exe-print-right: 20px;
+    }
+    body.exe-web-site:is(.has-print-button, :has(#exe-print-btn)) .nav-buttons .nav-button-right {
+        right: 84px;
+    }
+    body.exe-web-site:is(.has-print-button, :has(#exe-print-btn)) .nav-buttons .nav-button-left {
+        right: 144px;
+    }
+    body.exe-web-site:is(.has-print-button, :has(#exe-print-btn)) .page-counter {
+        right: 168px;
+    }
+
+    body.exe-web-site:is(.has-print-button, :has(#exe-print-btn)) .package-title {
+        max-width: calc(100% - 250px);
+    }
+}

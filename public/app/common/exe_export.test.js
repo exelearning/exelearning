@@ -799,6 +799,32 @@ describe('exe_export.js', () => {
       consoleSpy.mockRestore();
       vi.useRealTimers();
     });
+
+    it('keeps initializing when the print button cannot be bound', () => {
+      vi.useFakeTimers();
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      vi.spyOn(window.$exeExport, 'addBoxToggleEvent').mockImplementation(() => {});
+      vi.spyOn(window.$exeExport, 'setExe').mockImplementation(() => {});
+      vi.spyOn(window.$exeExport, 'initExe').mockImplementation(() => {});
+      vi.spyOn(window.$exeExport, 'initJsonIdevices').mockImplementation(() => {});
+      vi.spyOn(window.$exeExport, 'loadScorm').mockImplementation(() => {});
+      vi.spyOn(window.$exeExport.teacherMode, 'init').mockImplementation(() => {});
+      vi.spyOn(window.$exeExport, 'addClassJsExecutedToExeContent').mockImplementation(() => {});
+      const printSpy = vi.spyOn(window.$exeExport, 'triggerPrintIfRequested').mockImplementation(() => {});
+      vi.spyOn(window.$exeExport, 'initPrintButton').mockImplementation(() => {
+        throw new Error('Test error');
+      });
+
+      expect(() => window.$exeExport.init()).not.toThrow();
+      vi.advanceTimersByTime(300);
+
+      // Both the immediate and the delayed attempt fail without stopping the rest of the setup.
+      const printButtonErrors = consoleSpy.mock.calls.filter(([message]) => message === 'Error: Failed to initialize print button');
+      expect(printButtonErrors).toHaveLength(2);
+      expect(printSpy).toHaveBeenCalled();
+      consoleSpy.mockRestore();
+      vi.useRealTimers();
+    });
   });
 
   describe('addBoxToggleEvent', () => {
@@ -1732,6 +1758,64 @@ describe('exe_export.js', () => {
 
       window.URLSearchParams = originalParams;
       window.print = originalPrint;
+    });
+  });
+
+  describe('initPrintButton', () => {
+    afterEach(() => {
+      delete window.ExePrintPreview;
+      document.head.querySelectorAll('[data-print-root], link[href*="exe_print"]').forEach(node => node.remove());
+    });
+
+    it('does nothing without a print button', () => {
+      expect(() => window.$exeExport.initPrintButton()).not.toThrow();
+    });
+
+    it.each(['', 'exe-single-page'])('opens the shared overlay once in %s', async bodyClass => {
+      document.body.innerHTML = '<button id="exe-print-btn" data-print-root="../">Print</button>';
+      document.body.className = bodyClass;
+      window.ExePrintPreview = { open: vi.fn().mockResolvedValue() };
+      const btn = document.getElementById('exe-print-btn');
+      window.$exeExport.initPrintButton();
+      expect(document.body.classList.contains('has-print-button')).toBe(true);
+      btn.click();
+      expect(btn.disabled).toBe(true);
+      await vi.waitFor(() => expect(btn.disabled).toBe(false));
+      expect(window.ExePrintPreview.open).toHaveBeenCalledTimes(1);
+      expect(document.querySelector('script[src*="exe_print"]')).toBeNull();
+    });
+
+    it('loads the snapshot and runtime lazily using the explicit package root', async () => {
+      document.body.innerHTML = '<button id="exe-print-btn" data-print-root="https://example.test/html/course/">Print</button>';
+      const append = vi.spyOn(document.head, 'appendChild');
+      const loads = [];
+      append.mockImplementation(node => {
+        if (node.tagName === 'SCRIPT') {
+          loads.push(node.src);
+          if (node.src.endsWith('runtime.js')) window.ExePrintPreview = { open: vi.fn().mockResolvedValue() };
+          queueMicrotask(() => node.onload());
+        }
+        return node;
+      });
+      window.$exeExport.initPrintButton();
+      document.getElementById('exe-print-btn').click();
+      await vi.waitFor(() => expect(window.ExePrintPreview?.open).toHaveBeenCalledTimes(1));
+      expect(loads).toEqual(['https://example.test/html/course/libs/exe_print/data.js', 'https://example.test/html/course/libs/exe_print/runtime.js']);
+      append.mockRestore();
+    });
+
+    it('announces a failed load and allows retrying', async () => {
+      document.body.innerHTML = '<button id="exe-print-btn">Print</button>';
+      const append = vi.spyOn(document.head, 'appendChild').mockImplementation(node => {
+        if (node.tagName === 'SCRIPT') queueMicrotask(() => node.onerror());
+        return node;
+      });
+      window.$exeExport.initPrintButton();
+      const btn = document.getElementById('exe-print-btn');
+      btn.click();
+      await vi.waitFor(() => expect(btn.disabled).toBe(false));
+      expect(document.querySelector('[role="alert"]').textContent).toContain('Print preview not available');
+      append.mockRestore();
     });
   });
 

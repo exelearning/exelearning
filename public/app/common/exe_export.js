@@ -101,7 +101,18 @@ window.$exeExport = {
             }
         }, 100);
         setTimeout(() => { this.addClassJsExecutedToExeContent() }, this.delayLoadingPageTime);
+        // The standard button is already visible at DOM ready. Bind it before a reader can click it.
+        try {
+            this.initPrintButton();
+        } catch (err) {
+            console.error('Error: Failed to initialize print button');
+        }
         setTimeout(() => {
+            try {
+                this.initPrintButton();
+            } catch (err) {
+                console.error('Error: Failed to initialize print button');
+            }
             try {
                 this.triggerPrintIfRequested();
             } catch (err) {
@@ -665,6 +676,48 @@ window.$exeExport = {
         if (params.get('print') === '1' && typeof window.print === 'function') {
             window.print();
         }
+    },
+
+    /** Load the shared preview on demand, using the base path supplied by the renderer. */
+    initPrintButton: function () {
+        var btn = document.getElementById('exe-print-btn');
+        if (!btn) return;
+        document.body.classList.add('has-print-button');
+        if (btn.dataset.printBound) return;
+        btn.dataset.printBound = 'true';
+        btn.addEventListener('click', async function (event) {
+            event.preventDefault();
+            btn.disabled = true;
+            try {
+                if (!window.ExePrintPreview) {
+                    var root = new URL(btn.dataset.printRoot || './', window.location.href).href;
+                    var style = document.createElement('link');
+                    style.rel = 'stylesheet';
+                    style.href = new URL('libs/exe_print/preview.css', root).href;
+                    document.head.appendChild(style);
+                    var load = function (path) {
+                        return new Promise(function (resolve, reject) {
+                            var script = document.createElement('script');
+                            script.src = new URL(path, root).href;
+                            script.dataset.printRoot = root;
+                            script.onload = resolve;
+                            script.onerror = function () { script.remove(); reject(new Error('Print preview not available')); };
+                            document.head.appendChild(script);
+                        });
+                    };
+                    await load('libs/exe_print/data.js');
+                    await load('libs/exe_print/runtime.js');
+                }
+                await window.ExePrintPreview.open(btn);
+            } catch (error) {
+                var notice = document.createElement('p');
+                notice.setAttribute('role', 'alert');
+                notice.textContent = getI18nText('printPreviewUnavailable', 'Print preview not available');
+                btn.parentElement.appendChild(notice);
+            } finally {
+                btn.disabled = false;
+            }
+        });
     }
 }
 } // End of if (typeof window.$exeExport === 'undefined')

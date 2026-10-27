@@ -121,6 +121,7 @@ export class PageRenderer {
             // Export options (with defaults)
             addExeLink = true,
             addPagination = false,
+            addPrintButton = false,
             addSearchBox = false,
             addAccessibilityToolbar = false,
             addMathJax = false,
@@ -178,18 +179,22 @@ export class PageRenderer {
         const currentIdx = currentPageIndex ?? allPages.findIndex(p => p.id === page.id);
 
         // Build body class
-        const bodyClassStr = bodyClass || 'exe-export exe-web-site';
+        const bodyClassStr = `${bodyClass || 'exe-export exe-web-site'}${addPrintButton ? ' has-print-button' : ''}`;
         const onLoadAttr = onLoadScript ? ` onload="${onLoadScript}"` : '';
         const onUnloadAttr = onUnloadScript ? ` onunload="${onUnloadScript}" onbeforeunload="${onUnloadScript}"` : '';
 
-        // Build page header (with optional page counter)
+        // Build page header (with optional page counter and print button)
         const pageHeaderHtml = this.renderPageHeader(page, {
             projectTitle,
             projectSubtitle: options.projectSubtitle,
             currentPageIndex: currentIdx,
             totalPages: total,
             addPagination,
+            addPrintButton,
             pageLabel: options.navLabels?.page,
+            printLabel: options.navLabels?.print,
+            printBasePath: basePath,
+            language,
         });
 
         // Build search box div (only if enabled)
@@ -697,12 +702,16 @@ ${this.renderPassScoreEveryActivityMeta(passScoreEveryActivity)}${licenseUrl ? `
             .substring(0, 50);
     }
 
-    /**
-     * Render page header with page counter, package title (h1), subtitle, and page title (h2)
-     * @param page - Page
-     * @param options - Header options including counter info
-     * @returns Header HTML
-     */
+    /** A font-independent, accessible print action shared by all web export layouts. */
+    private renderPrintButton(label: string, basePath: string): string {
+        const title = this.escapeHtml(label);
+        const root = this.escapeHtml(basePath);
+        // Match archive keys so both blob preview and thumbnail CSS inliners find it.
+        const cssRoot = root === './' ? '' : root;
+        return `<link rel="stylesheet" href="${cssRoot}libs/exe_print/button.css"><div class="exe-print-action"><button type="button" class="btn-print" id="exe-print-btn" data-print-root="${root}" title="${title}" aria-label="${title}"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M19 8H5c-1.66 0-3 1.34-3 3v6h4v4h12v-4h4v-6c0-1.66-1.34-3-3-3zm-3 11H8v-5h8v5zm3-7c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zm-1-9H6v4h12V3z"/></svg><span class="sr-av">${title}</span></button></div>\n`;
+    }
+
+    /** Render the page counter, package title, subtitle and page title. */
     renderPageHeader(
         page: ExportPage,
         options: {
@@ -711,14 +720,32 @@ ${this.renderPassScoreEveryActivityMeta(passScoreEveryActivity)}${licenseUrl ? `
             currentPageIndex: number;
             totalPages: number;
             addPagination?: boolean;
+            addPrintButton?: boolean;
             pageLabel?: string;
+            printLabel?: string;
+            printBasePath?: string;
+            language?: string;
         },
     ): string {
-        const { projectTitle, projectSubtitle, currentPageIndex, totalPages, addPagination, pageLabel } = options;
+        const {
+            projectTitle,
+            projectSubtitle,
+            currentPageIndex,
+            totalPages,
+            addPagination,
+            addPrintButton,
+            pageLabel,
+            language = 'en',
+        } = options;
 
         // Page counter is only shown if addPagination is true
         const pageCounterHtml = addPagination
             ? ` <p class="page-counter"> <span class="page-counter-label">${pageLabel || 'Page'} </span><span class="page-counter-content"> <strong class="page-counter-current-page">${currentPageIndex + 1}</strong><span class="page-counter-sep">/</span><strong class="page-counter-total">${totalPages}</strong></span></p>\n`
+            : '';
+
+        const effectivePrintLabel = options.printLabel || trans('Print', {}, language);
+        const printButtonHtml = addPrintButton
+            ? this.renderPrintButton(effectivePrintLabel, options.printBasePath || './')
             : '';
 
         // Check if page title should be hidden and get effective title
@@ -737,7 +764,7 @@ ${this.renderPassScoreEveryActivityMeta(passScoreEveryActivity)}${licenseUrl ? `
         // Wrap headers in main-header so theme JS (e.g., flux movePageTitle) can find them
         // Theme JS looks for '.main-header .page-header' to move title into .page-content
         // Note: page-counter is inside main-header for CSS compatibility with legacy themes
-        return `<header class="main-header">${pageCounterHtml}
+        return `<header class="main-header">${pageCounterHtml}${printButtonHtml}
 <div class="package-header"><p class="package-title">${this.escapeHtml(projectTitle)}</p>${subtitleHtml}</div>
 <div class="page-header"><h1 class="${pageTitleClass}">${this.escapeHtml(effectiveTitle)}</h1></div>
 </header>`;
@@ -1275,10 +1302,12 @@ ${userFooterHtml}</div></footer>`;
             passScoreEveryActivity?: boolean;
             version?: string;
             addExeLink?: boolean;
+            addPrintButton?: boolean;
             userFooterContent?: string;
-            navLabels?: { previous?: string; next?: string; page?: string; license?: string };
+            navLabels?: Partial<PageRenderOptions['navLabels']>;
             materialIconDataUris?: Map<string, string>;
             printContext?: PrintContext;
+            assetExportPathMap?: Map<string, string>;
             /** The style's root .js and .css files; style.js and style.css when not given. */
             themeFiles?: string[];
         } = {},
@@ -1295,6 +1324,7 @@ ${userFooterHtml}</div></footer>`;
             faviconPath = 'libs/favicon.ico',
             faviconType = 'image/x-icon',
             addExeLink = true,
+            addPrintButton = false,
             userFooterContent = '',
             version,
             detectedLibraries = [],
@@ -1304,6 +1334,7 @@ ${userFooterHtml}</div></footer>`;
             passScoreEveryActivity = false,
             navLabels,
             materialIconDataUris,
+            assetExportPathMap,
             themeFiles = [],
         } = options;
 
@@ -1326,7 +1357,7 @@ ${userFooterHtml}</div></footer>`;
                 page,
                 '',
                 projectTitle,
-                undefined,
+                assetExportPathMap,
                 {
                     author: options.author,
                     description: options.description,
@@ -1388,6 +1419,9 @@ ${sectionContent}
                 .map(file => `<link rel="stylesheet" href="theme/${this.escapeAttr(file)}">`),
         ].join('\n');
 
+        const effectivePrintLabel = navLabels?.print || trans('Print', {}, language);
+        const printButtonHtml = addPrintButton ? this.renderPrintButton(effectivePrintLabel, './') : '';
+
         return `<!DOCTYPE html>
 <html lang="${language}" id="exe-index">
 <head>
@@ -1410,11 +1444,11 @@ ${themeIncludes}
 ${customStyles ? `<style>\n${customStyles}\n</style>` : ''}
 ${addMathJax ? `<script src="libs/exe_math/tex-mml-svg.js"> </script>` : ''}
 </head>
-<body class="exe-export exe-single-page">
+<body class="exe-export exe-single-page${addPrintButton ? ' has-print-button' : ''}">
 <script>document.body.className+=" js"</script>
 <div class="exe-content exe-export pre-js siteNav-hidden">
 <main class="page">
-<header class="package-header"><p class="package-title">${this.escapeHtml(projectTitle)}</p>${projectSubtitle ? `\n<p class="package-subtitle">${this.escapeHtml(projectSubtitle)}</p>` : ''}</header>
+<header class="package-header">${printButtonHtml}<p class="package-title">${this.escapeHtml(projectTitle)}</p>${projectSubtitle ? `\n<p class="package-subtitle">${this.escapeHtml(projectSubtitle)}</p>` : ''}</header>
 ${contentHtml}
 </main>
 ${this.renderFooterSection({ license, licenseUrl, userFooterContent, language, navLabels })}
