@@ -4,81 +4,81 @@
 
 ### Added
 
-- Printing: interactive activities now print as paper exercises built from their data (for example, a crossword prints as its grid and clues)
-- Printing: a "Print options" panel beside the preview prints activities in place by default and lets you move them to an appendix, print only the activities or leave them out, and the preview follows every change
-- Desktop app: new "Save as PDF" button in the print preview, which works without a printer
-- iDevices: a shared Grading tab groups the SCORM score, progress report and minimum score options in every scoring iDevice
-- LOMLOE iDevice: 4th ESO now includes Mathematics A and B in the state curriculum and the datasets built from it
-- Project properties: a project-wide minimum score to pass, in a new Grading tab, which every scoring iDevice follows unless it sets its own
-- SCORM: a project option requires every activity on a page to reach its own minimum score, and each page shows the learner the minimum score needed to pass it
-- Public read-only viewer: projects can be shared through an opaque link that anyone can open without signing in, with the content isolated from the user's session
-- Desktop app (Windows and Linux): choose the spell checker languages in Preferences, listed by name in the interface language, or keep the system default
-- New Cedec, eTwinning, INTEF and Kids styles
-- TinyMCE: new `exe-block-download` class to highlight blocks with download links
-- Documentation: plugin guides for Moodle, Nextcloud, WordPress, Omeka S, Google Drive and OneDrive in English and Spanish, and a unified Spanish manual
-- Reviewed and completed the Spanish (ES), Galician (GL), Italian (IT) and Valencian (VA) translations
-- Added automatic placeholder translations for new strings in incomplete translations
+- Printing: interactive activities are now printed as paper exercises using their content; for example, crosswords include the grid and clues
+- Printing: a new "Print options" panel beside the preview keeps activities in place by default and lets you move them to an appendix, print only activities or leave them out; the preview updates to reflect your choices
+- Desktop app: added a "Save as PDF" button to the print preview, so you can save a PDF without a printer
+- iDevices: scoring iDevices now share a Grading tab for SCORM score, progress report and minimum score settings
+- LOMLOE iDevice: added Mathematics A and B for 4th ESO to the state curriculum and its datasets
+- Project properties: added a project-wide minimum passing score in a new Grading tab; scoring iDevices use it unless they define their own minimum
+- SCORM: added an option requiring every activity on a page to meet its own minimum score; learners can also see the score needed to pass each page
+- Public read-only viewer: projects can now be shared through an unlisted link that anyone can open without signing in, keeping the project content separate from the user's session
+- Desktop app (Windows and Linux): you can now choose spell-checking languages in Preferences, displayed in the interface language, or use the system default
+- Styles: added Cedec, eTwinning, INTEF and Kids
+- TinyMCE: added the `exe-block-download` class to highlight blocks containing download links
+- Documentation: added English and Spanish plugin guides for Moodle, Nextcloud, WordPress, Omeka S, Google Drive and OneDrive, plus a unified Spanish manual
+- Translations: reviewed and completed Spanish (ES), Galician (GL), Italian (IT) and Valencian (VA)
+- Translations: added automatic placeholder translations for new strings in incomplete translations
 
 ### Changed
 
-- Security: the backend hardening requires action when upgrading (see `UPGRADE.md`):
-  - Production (`NODE_ENV=production` or `APP_ENV=prod`) refuses to start unless `API_JWT_SECRET` and `APP_SECRET` are set to real values
-  - Platform integration (Moodle `exescorm`/`exeweb`) requires an explicit `PROVIDER_URLS` allow-list; an empty value now rejects every callback
-  - Moodle sites on a private network (intranet, VPN, `localhost`) also need `PROVIDER_ALLOW_PRIVATE_NETWORK=true`, and the callbacks no longer follow redirects
-  - Non-Docker deployments with `APP_ENV=prod` must be served over HTTPS, because session cookies are now `Secure`
-- Project properties: Export options are laid out in aligned columns, with the global font in its own row
-- Project properties: the preview image panel now starts by explaining what the image is used for
-- Printing: the print preview now matches the paper, with correct styles and icons, the paper's margins, and links and code shown as they print
-- Link validator: timeouts, rate limits and server errors are now reported as "unavailable" instead of broken, and requests to the same site are spaced out and retried once
-- Collaborative editing: while you edit an iDevice, moves, reorders and deletions made by other users on the same page are applied when you finish editing
-- Download source file iDevice: the default button text and instructions now name the `.elpx` file
-- Download source file iDevice: images, PDFs, office documents and other compressed files are stored without recompression, making the download much faster
-- Missing-file notices now name the iDevice by its position, type and page
-- Docker: the image now runs on older x86_64 processors (Intel Sandy Bridge and Ivy Bridge) that were previously refused at startup
-- The "Access denied" page button now logs out, so you can sign in with another account
+- Security: strengthened backend protections; some deployment settings must be updated when upgrading (see `UPGRADE.md`):
+  - Production environments (`NODE_ENV=production` or `APP_ENV=prod`) must set `API_JWT_SECRET` and `APP_SECRET` to real values before the application can start
+  - Moodle integrations (`exescorm` and `exeweb`) must explicitly list permitted callback hosts in `PROVIDER_URLS`; an empty value blocks all callbacks
+  - Moodle sites on private networks (intranet, VPN or `localhost`) must also set `PROVIDER_ALLOW_PRIVATE_NETWORK=true`; callbacks no longer follow redirects
+  - Non-Docker deployments using `APP_ENV=prod` must use HTTPS because session cookies are now marked `Secure`
+- Project properties: export options are now arranged in aligned columns, with the global font on its own row
+- Project properties: the preview image panel now explains what the image is used for, above the recommendations
+- Printing: the print preview now matches the printed page, including styles, icons, margins, links and code
+- Link validator: links that cannot be checked because of timeouts, rate limits or server errors are now reported as "unavailable" rather than broken; requests to the same site are spaced out and retried once
+- Collaborative editing: while you edit an iDevice, other users' moves, reorders and deletions on the same page are applied when you finish editing
+- Download Source File iDevice: the default button text and instructions now clearly identify the `.elpx` file
+- Download Source File iDevice: images, PDFs, office documents and other compressed files are now added to the package without recompression, making package generation much faster
+- Missing-file notices now identify the affected iDevice by position, type and page
+- Docker: the image can now run on older x86_64 processors, including Intel Sandy Bridge and Ivy Bridge, that previously failed at startup
+- Access denied: the button now signs you out so you can sign in with another account
 
 ### Fixed
 
-- Preview: the first preview after opening a project no longer waits about 5 seconds, and the preview now recovers by itself when its worker stops responding during a session
+- Preview: the first preview after opening a project now loads without the previous delay of about five seconds; the preview also recovers automatically if its worker stops responding
 - Preview: images no longer disappear when a block uses a custom icon
-- Preview: theme icons, buttons and fonts are no longer missing when the preview cannot use its service worker
-- Math: in-line formulas are no longer cut at their first `=`, `+` or space in the preview and in exports
-- Collaborative editing: your unsaved work in an iDevice is no longer lost when another user adds or moves an iDevice on the same page
-- Collaborative editing: a tab that was offline or kept an outdated copy no longer overwrites the changes other users saved, because saves are now merged with the stored project
-- Collaborative editing: music notation and games such as the A-Z quiz, Guess and GeoGebra activity now render for other users without reloading the page
-- SCORM, IMS: the "Editable export" property is now respected, so packages exported without it no longer include the editable project
+- Preview: theme icons, buttons and fonts now appear even when the preview cannot use its service worker
+- Math: inline formulas are no longer cut off at the first `=`, `+` or space in previews and exports
+- Collaborative editing: unsaved work in an iDevice is no longer lost when another user adds or moves an iDevice on the same page
+- Collaborative editing: offline tabs and tabs with outdated project copies no longer overwrite changes saved by other users; saves are merged with the stored project
+- Collaborative editing: music notation and games such as A-Z Quiz, Guess and GeoGebra now render for other users without requiring a page reload
+- SCORM and IMS: packages exported with "Editable export" disabled no longer include the editable project
 - SCORM 2004: exported packages now report valid statuses
-- ELPX: exported packages now include the files of the selected global font
-- Server exports: images and audio stored in resource subfolders, as eXeLearning 3 did, are no longer broken
-- Server exports: 3DMol activities now load their library and images
+- ELPX: exported packages now include the files required by the selected global font
+- Server exports: images and audio stored in resource subfolders, as in eXeLearning 3, now work correctly
+- Server exports: 3DMol activities now load their library and images correctly
 - Exports: lightbox links now work in iDevices rendered after the page loads
 - Exports: long lightbox content no longer hides the close button
-- Exports: a page no longer keeps checking indefinitely for an iDevice whose script fails to load
-- Exported `content.xml` no longer contains a second copy of the project screenshot
-- Download source file iDevice: the download no longer stays at "Processing... 100%" on sites whose security policy blocks background workers, such as Omeka S
-- Games: each iDevice now keeps its own clock and saved progress, also when the same game appears on several pages or is duplicated
-- iDevices: closing an editor no longer leaves timers and handlers running that could act on another iDevice
-- Sort iDevice: activities whose cards lack an image, text or audio no longer fail to start
-- LOMLOE iDevice: 1st–3rd ESO Mathematics no longer mixes in the 4th ESO evaluation criteria and basic knowledge, and changing the curriculum no longer leaves the previous criteria on screen
-- TinyMCE: the preview of the ABC music notation dialog now works on sites that serve pages without the `.html` extension
-- Interface: highlighted buttons no longer show white text on a white background when focused with the keyboard
-- Fixed misaligned translations that showed unrelated texts in German (DE), Esperanto (EO), Basque (EU), Portuguese (PT) and Valencian (VA)
-- Fixed runtime errors reported from production in game iDevices, the editor tooltips, the image editor and the file open flow
-- Static mode: a style or library loaded with missing files is no longer stored in the browser cache
-- Desktop app: opening a project with images or other files no longer reports unsaved changes on exit
-- Embedding: saving through the host (`REQUEST_SAVE`) now works, and hosts are notified when the project has unsaved changes and when it is saved
-- Embedding: the static editor now uses the `locale` set by the host in its embedding configuration
-- Moodle: editing an activity now reopens the user's own project for it instead of creating a new one each time, and no longer shows "Access denied" with older plugin versions
-- Security: hardened the backend against path traversal, cross-site scripting, server-side request forgery, broken access control and decompression bombs
-- Security: OpenID Connect sign-in rejects callbacks without a valid token exchange and state, so accounts can no longer be created without signing in at the identity provider
-- Security: crafted sign-in links can no longer redirect you to another site after logging in
-- Security: exports and project deletion can no longer read or remove files outside their own folders
-- Security: text and iDevice content written by collaborators is sanitized in the editor, so it can no longer run scripts in other users' sessions
-- Security: uploaded HTML, SVG and XML files are served in a sandbox that cannot use the visitor's session
-- Security: the file manager applies the import size limits before extracting a ZIP archive
-- Security: the desktop app only reads files the user opened
-- Security: exporting to a folder in the desktop app can no longer write files outside the chosen folder
-- Security: the link validator no longer decompresses the responses of the sites it checks
+- Exports: pages no longer keep checking indefinitely for an iDevice whose script fails to load
+- Exports: `content.xml` no longer contains a duplicate copy of the project screenshot
+- Download Source File iDevice: downloads no longer remain stuck at "Processing... 100%" on sites that block background workers, such as Omeka S
+- Games: each iDevice now keeps its own timer and saved progress, even when the same game appears on multiple pages or is duplicated
+- iDevices: closing an editor now stops its timers and event handlers, preventing them from affecting other iDevices
+- Sort iDevice: activities no longer fail to start when cards have no image, text or audio
+- LOMLOE iDevice: Mathematics for 1st–3rd ESO no longer includes 4th ESO evaluation criteria or basic knowledge; changing the curriculum also clears the previous criteria from the screen
+- TinyMCE: the ABC music notation dialog preview now works on sites that serve pages without the `.html` extension
+- Interface: highlighted buttons now retain readable text contrast when focused with the keyboard
+- Translations: corrected misplaced text in German (DE), Esperanto (EO), Basque (EU), Portuguese (PT) and Valencian (VA)
+- Stability: fixed errors that could occur in game iDevices, editor tooltips, the image editor and when opening files
+- Static mode: styles and libraries with missing files are no longer stored in the browser cache
+- Desktop app: opening a project containing images or other files no longer triggers an unsaved-changes warning on exit
+- Embedding: saving through the host using `REQUEST_SAVE` now works; hosts are also notified when a project has unsaved changes and when it is saved
+- Embedding: the static editor now uses the `locale` specified in the host's embedding configuration
+- Moodle: editing an activity now reopens the user's existing project instead of creating a new one each time; older plugin versions no longer trigger an "Access denied" message
+- Security: strengthened backend protections against path traversal, cross-site scripting, server-side request forgery, broken access control and decompression bombs
+- Security: OpenID Connect sign-in now rejects callbacks without a valid token exchange and state, preventing account creation without signing in through the identity provider
+- Security: crafted sign-in links can no longer redirect users to another site after login
+- Security: exports and project deletion can no longer read or delete files outside their own folders
+- Security: content written by collaborators is sanitized in the editor so it cannot run scripts in other users' sessions
+- Security: uploaded HTML, SVG and XML files are served in an isolated sandbox that cannot access the visitor's session
+- Security: the file manager now checks import size limits before extracting ZIP archives
+- Security: the desktop app now reads only files opened by the user
+- Security: exporting to a folder in the desktop app can no longer write files outside the selected folder
+- Security: the link validator no longer decompresses responses from the sites it checks
 
 ### Upgraded
 
@@ -119,7 +119,7 @@
 
 ### Removed
 
-- The File → Print iDevices menu entry; printing only the activities is now an option of the print panel
+- Removed the File → Print iDevices menu entry; you can now choose to print only activities from the print options panel
 
 ---
 
