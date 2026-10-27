@@ -102,7 +102,11 @@ window.$exeExport = {
         }, 100);
         setTimeout(() => { this.addClassJsExecutedToExeContent() }, this.delayLoadingPageTime);
         // The standard button is already visible at DOM ready. Bind it before a reader can click it.
-        this.initPrintButton();
+        try {
+            this.initPrintButton();
+        } catch (err) {
+            console.error('Error: Failed to initialize print button');
+        }
         setTimeout(() => {
             try {
                 this.initPrintButton();

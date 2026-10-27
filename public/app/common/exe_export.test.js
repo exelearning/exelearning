@@ -799,6 +799,32 @@ describe('exe_export.js', () => {
       consoleSpy.mockRestore();
       vi.useRealTimers();
     });
+
+    it('keeps initializing when the print button cannot be bound', () => {
+      vi.useFakeTimers();
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      vi.spyOn(window.$exeExport, 'addBoxToggleEvent').mockImplementation(() => {});
+      vi.spyOn(window.$exeExport, 'setExe').mockImplementation(() => {});
+      vi.spyOn(window.$exeExport, 'initExe').mockImplementation(() => {});
+      vi.spyOn(window.$exeExport, 'initJsonIdevices').mockImplementation(() => {});
+      vi.spyOn(window.$exeExport, 'loadScorm').mockImplementation(() => {});
+      vi.spyOn(window.$exeExport.teacherMode, 'init').mockImplementation(() => {});
+      vi.spyOn(window.$exeExport, 'addClassJsExecutedToExeContent').mockImplementation(() => {});
+      const printSpy = vi.spyOn(window.$exeExport, 'triggerPrintIfRequested').mockImplementation(() => {});
+      vi.spyOn(window.$exeExport, 'initPrintButton').mockImplementation(() => {
+        throw new Error('Test error');
+      });
+
+      expect(() => window.$exeExport.init()).not.toThrow();
+      vi.advanceTimersByTime(300);
+
+      // Both the immediate and the delayed attempt fail without stopping the rest of the setup.
+      const printButtonErrors = consoleSpy.mock.calls.filter(([message]) => message === 'Error: Failed to initialize print button');
+      expect(printButtonErrors).toHaveLength(2);
+      expect(printSpy).toHaveBeenCalled();
+      consoleSpy.mockRestore();
+      vi.useRealTimers();
+    });
   });
 
   describe('addBoxToggleEvent', () => {
