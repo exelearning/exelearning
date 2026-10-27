@@ -364,13 +364,14 @@ var $eXeListaCotejo = {
                     localStorage.removeItem(mOptions.storageKey);
                 }
                 mOptions.points = 0;
-                mOptions.totalPoints = 0;
                 $('#ctjUserName-' + instance).val('');
                 $('#ctjUserDate-' + instance).val('');
-                $('#ctjItems-' + instance).empty();
-                $('#ctjItems-' + instance).append(
-                    $eXeListaCotejo.createItems(instance)
-                );
+                // Clear the items where they stand: rebuilding them dropped the
+                // handlers bound to them and any formula typeset in them.
+                const $items = $('#ctjItems-' + instance);
+                $items.find("input[type='checkbox']").prop('checked', false);
+                $items.find("input[type='text']").val('');
+                $items.find('select').val('0');
                 $eXeListaCotejo.counter(instance);
             }
         });
