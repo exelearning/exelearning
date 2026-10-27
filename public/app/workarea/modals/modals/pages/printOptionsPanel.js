@@ -416,9 +416,10 @@ export default class PrintOptionsPanel {
     }
 
     /**
-     * Allow the document options, or not: links and folded blocks mean nothing to a preview that
-     * is not the document. Teacher-only content stays allowed, since it also decides which
-     * activities go on the worksheet.
+     * Allow the document options, or not: they mean nothing to a preview that is not the document.
+     * The worksheet has no folded blocks, and always writes out the addresses of its links.
+     * Teacher-only content stays allowed, since it also decides which activities go on the
+     * worksheet.
      *
      * @param {boolean} enabled - true while the document is being previewed
      */

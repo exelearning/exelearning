@@ -470,6 +470,51 @@ describe('renderWorksheet', () => {
             expect(html).toContain('&quot;');
         });
     });
+
+    describe('links', () => {
+        /** A sheet whose one question holds this prompt. */
+        const sheetWith = (prompt: string) =>
+            renderWorksheet(
+                model({
+                    pages: [
+                        {
+                            pageId: 'p1',
+                            title: 'Página',
+                            activities: [
+                                activity({
+                                    items: [{ prompt, answer: { kind: 'characterBoxes', groups: emptyBoxes(1) } }],
+                                }),
+                            ],
+                        },
+                    ],
+                }),
+            );
+
+        it('writes the address after each link to the web, there being no option to turn it off', () => {
+            const html = sheetWith('<a href="https://x/doc">esto</a>');
+
+            expect(html).toMatch(/a\[href\^="http"\]::after \{\s*content: " \[" attr\(href\) "\]";/);
+            expect(html).toContain('<a href="https://x/doc">esto</a>');
+        });
+
+        it('does not write it twice after a link whose text already is the address', () => {
+            const genially = 'https://view.genial.ly/5bb353835b64ad591a0c0924';
+            const html = sheetWith(
+                `<span class="external-iframe-src"><a href="${genially}">${genially}</a></span>` +
+                    '<a href="https://x/doc">esto</a>',
+            );
+
+            expect(html).toContain(`<a data-exe-text-is-url href="${genially}">${genially}</a>`);
+            expect(html).toContain('<a href="https://x/doc">esto</a>');
+            expect(html).toMatch(/a\[href\^="http"\]\[data-exe-text-is-url\]::after,[^{]*\{\s*content: none;/);
+        });
+
+        it('leaves the links of a converted document to the document’s own option', () => {
+            // The activity styles go into the printed document too, where Show link URLs decides.
+            expect(WORKSHEET_ACTIVITY_STYLES).not.toContain('a[href^="http"]');
+            expect(WORKSHEET_ACTIVITY_STYLES).not.toContain('.external-iframe-src');
+        });
+    });
 });
 
 describe('renderActivityFragment', () => {

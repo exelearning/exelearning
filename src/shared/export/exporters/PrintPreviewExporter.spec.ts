@@ -826,6 +826,51 @@ describe('PrintPreviewExporter', () => {
                 expect(marked).toEqual([]);
             });
 
+            it('reaches the links of an activity converted to an exercise, and the addresses of its embeds', async () => {
+                // Issue #2634: a Challenge pointing at a Genially printed a blank where it had been.
+                const genially = 'https://view.genial.ly/5bb353835b64ad591a0c0924';
+                const payload = JSON.stringify({
+                    typeGame: 'desafio',
+                    desafioTitle: 'Pandemia',
+                    desafioDescription: '',
+                    challengesGame: [{ title: 'Primer reto', description: '', solution: 'Dulce' }],
+                    msgs: { msgChallenge: 'Reto' },
+                });
+                const description =
+                    `<p>Revisa la siguiente información:</p><div><iframe src="${genially}"></iframe></div>` +
+                    '<p>Lee <a href="https://es.wikipedia.org/wiki/Gusto">este artículo</a></p>';
+                const content =
+                    '<div class="desafio-IDevice">' +
+                    `<div class="desafio-ChallengeDescription">${description}</div>` +
+                    `<div class="desafio-DataGame js-hidden">${encryptDataGame(payload)}</div></div>`;
+                const page: ExportPage = {
+                    id: 'page-challenge',
+                    title: 'Desafío',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'block-challenge',
+                            name: 'Desafío',
+                            order: 0,
+                            components: [
+                                { id: 'comp-challenge', type: 'challenge', order: 0, content, properties: {} },
+                            ],
+                        },
+                    ],
+                };
+
+                const { html } = await new PrintPreviewExporter(
+                    createMockDocument([page]),
+                    createMockResourceProvider(),
+                ).generatePreview({ activities: { mode: 'in-place', labels: {}, ideviceTitles: {} } });
+
+                expect(html).toContain(
+                    `<span class="external-iframe-src"><a data-exe-text-is-url href="${genially}">${genially}</a></span>`,
+                );
+                expect(html).toContain('<a href="https://es.wikipedia.org/wiki/Gusto">este artículo</a>');
+            });
+
             it('marks multiple start tags without changing their case, attributes or surrounding source', async () => {
                 const content = [
                     '<p>🙂\r\n',

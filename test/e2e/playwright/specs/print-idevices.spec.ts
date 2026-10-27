@@ -527,6 +527,71 @@ test.describe('Print iDevices', () => {
         });
     }
 
+    test('prints where to find what a challenge embedded, and where each of its links goes', async ({
+        authenticatedPage: page,
+        createProject,
+    }) => {
+        // Issue #2634: each challenge pointed at a Genially, and the paper showed a blank instead.
+        const uuid = await createProject(page, 'Printable challenge');
+        await gotoWorkarea(page, uuid);
+        await waitForAppReady(page);
+        const genially = 'https://view.genial.ly/5bb353835b64ad591a0c0924';
+        const article = 'https://es.wikipedia.org/wiki/Gusto';
+        const html =
+            '<div class="desafio-IDevice"><div class="desafio-ChallengeDescription">' +
+            `<p>Revisa la siguiente información:</p><div><iframe src="${genially}" width="1200" height="675"></iframe></div>` +
+            `<p>Lee <a href="${article}">este artículo</a></p></div>` +
+            '<div class="desafio-DataGame js-hidden">' +
+            encryptDataGame(
+                JSON.stringify({
+                    typeGame: 'desafio',
+                    desafioTitle: 'Pandemia',
+                    desafioDescription: '<p>Averigua qué pandemia fue</p>',
+                    desafioSolution: 'Gripe',
+                    challengesGame: [{ title: 'Primer reto', description: '', solution: 'Dulce' }],
+                    msgs: { msgChallenge: 'Reto' },
+                }),
+            ) +
+            '</div></div>';
+        await page.evaluate(html => {
+            const binding = (window as any).eXeLearning.app.project._yjsBridge.structureBinding;
+            const parent = binding.createPage('Printable challenge');
+            binding.createComponent(parent.id, binding.createBlock(parent.id), 'challenge', { htmlContent: html });
+        }, html);
+
+        // Chromium resolves attr(href); Firefox reports the declared value unresolved.
+        const showsArticle = /\[(https:\/\/es\.wikipedia\.org\/wiki\/Gusto|" attr\(href\) ")\]/;
+        const afterContent = (anchor: Locator) =>
+            anchor.evaluate(a => getComputedStyle(a, '::after').content).catch(() => null);
+
+        await openPrintPanel(page);
+        const { frame } = await choosePrintOption(page, 'in-place');
+        const exercise = frame.locator('.worksheet-activity[data-idevice="challenge"]');
+        const embed = exercise.locator('.external-iframe-src');
+        const link = exercise.locator(`a[href="${article}"]`);
+        // The address stands where the Genially was, and is not written after itself again.
+        await expect(embed).toHaveText(genially);
+        await expect(embed).toBeVisible();
+        expect(await afterContent(embed.locator('a'))).toBe('none');
+        await expect(link).toHaveText('este artículo');
+        expect(await afterContent(link)).toMatch(showsArticle);
+
+        // Show link URLs governs both, as it does for the rest of the document.
+        await page.locator('#printOptLinkUrls').uncheck();
+        await expect.poll(() => afterContent(link), { timeout: 30000 }).toBe('none');
+        await waitForPreview(page);
+        await expect(embed).toBeHidden();
+
+        // The worksheet has no such option, and writes both out whatever the document's says.
+        const { frame: sheet } = await choosePrintOption(page, 'idevices');
+        await expect(page.locator('#printOptLinkUrls')).toBeDisabled();
+        const sheetEmbed = sheet.locator('.worksheet-activity[data-idevice="challenge"] .external-iframe-src');
+        await expect(sheetEmbed).toHaveText(genially);
+        await expect(sheetEmbed).toBeVisible();
+        expect(await afterContent(sheetEmbed.locator('a'))).toBe('none');
+        expect(await afterContent(sheet.locator(`a[href="${article}"]`))).toMatch(showsArticle);
+    });
+
     test('waits for real molecule surfaces and reuses the viewer across print previews', async ({
         authenticatedPage: page,
         createProject,

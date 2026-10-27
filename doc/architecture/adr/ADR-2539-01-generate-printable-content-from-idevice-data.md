@@ -262,6 +262,27 @@ they asked for and is kept, and a table cell is kept whatever is in it, because 
 part of the table's shape and dropping one shifts every cell after it. Only the emptiness this
 pipeline caused is this pipeline's to clear up.
 
+### What came from the web says where it is
+
+Dropping an embed whole turned out to be too much (#2634). A Challenge whose every step pointed at a
+Genially printed "check the following information:" over nothing, and the student had no way to
+find what they were sent to. The document's own printing never had that problem: `common.js`
+writes the address of each external frame beside it, and the print styles show it.
+
+So the sanitiser does the same. An `iframe` or `embed` (`src`) or an `object` (`data`) with a web
+address is replaced by that address, in the markup `common.js` writes
+(`<span class="external-iframe-src"><a href>`), so the base styles and **Show link URLs** govern it
+too. One with no protocol is given HTTPS. Content from anywhere else (the project's own files,
+`blob:`, scripts) leaves nothing a reader holding the paper could follow, and is still dropped by
+the rule above.
+
+Links had the same gap. The sanitiser unwrapped every one to its text, so "read this article"
+reached paper with no hint of which article, and Show link URLs, which writes the address after
+each link, had nothing to act on. A link to a web address is now kept, with its `href` and nothing
+else; any other is still unwrapped. In the document the option decides as it does for the rest of
+the page. The worksheet has no such option, so it always writes the address out, and both mark the
+links whose text already is their address, so it is not written twice.
+
 ### The one activity whose answers are printed in full
 
 Every other adapter hides what the student is meant to arrive at. A rubric is the exception, and it

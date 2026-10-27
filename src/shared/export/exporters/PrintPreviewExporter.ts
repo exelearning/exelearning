@@ -18,13 +18,12 @@ import { IdeviceRenderer } from '../renderers/IdeviceRenderer';
 import { PageRenderer } from '../renderers/PageRenderer';
 import { generateI18nScript } from '../generators/I18nGenerator';
 import { AssetUrlResolver } from '../utils/AssetUrlResolver';
+import { markLinksShowingTheirUrl } from '../utils/linkUrls';
 import { ThemeFileUrlResolver } from '../utils/ThemeFileUrlResolver';
 import { visibleWorksheetPages } from '../utils/visibility';
 import { WORKSHEET_ACTIVITY_STYLES } from '../worksheet/WorksheetRenderer';
 import { renderMatchingLayoutScript } from '../worksheet/matchingLayout';
 import { captureMolecules, type MoleculeRenderer } from '../worksheet/moleculeCapture';
-import { nodeText } from '../worksheet/sanitizeHtml';
-import { parse, type DefaultTreeAdapterMap } from 'parse5';
 import { resolveMaterialIconDataUris } from './BaseExporter';
 import { PRERENDERED_LATEX_CSS } from '../constants';
 import {
@@ -303,7 +302,7 @@ export class PrintPreviewExporter {
             // Only a mode that puts exercises in the document needs their styling.
             const convertsActivities = options.activities !== undefined && options.activities.mode !== 'omit';
             const showLinkUrls = options.showLinkUrls !== false;
-            if (showLinkUrls) html = this.markLinksShowingTheirUrl(html);
+            if (showLinkUrls) html = markLinksShowingTheirUrl(html);
             html = this.injectPreviewStyles(html, { includeActivityStyles: convertsActivities, showLinkUrls });
 
             // 4. Inject Print scripts and CSS (if printMode)
@@ -389,72 +388,6 @@ export class PrintPreviewExporter {
                     return newPage;
                 })
         );
-    }
-
-    /**
-     * Mark the external links whose text already is their address, so that it is not written
-     * after them a second time.
-     *
-     * CSS cannot compare a link's text with its href, so the HTML says it. Both are compared as
-     * the reader sees them, entities and percent-encoding decoded. The protocol, a trailing slash
-     * and the letter case of the host may differ: "Example.com" is the address of
-     * "https://example.com/". The rest may not, since a path or a query can tell two addresses
-     * apart by case alone.
-     *
-     * The links are found in the parsed document, not by a pattern, which would take an anchor
-     * never closed, or a "<a" in a script, for a link. Only the start tags are written to, at the
-     * places the parser read them from, so the rest of the document is left as it was.
-     */
-    private markLinksShowingTheirUrl(html: string): string {
-        const bare = (url: string) => {
-            const address = url
-                .trim()
-                .replace(/^https?:\/\//i, '')
-                .replace(/\/$/, '');
-            const hostEnd = address.search(/[/?#]/);
-            const host = hostEnd < 0 ? address.toLowerCase() : address.slice(0, hostEnd).toLowerCase();
-            const rest = hostEnd < 0 ? '' : address.slice(hostEnd);
-            try {
-                return host + decodeURI(rest);
-            } catch {
-                return host + rest;
-            }
-        };
-
-        const matchesByStart = new Map<number, boolean>();
-        const visit = (node: DefaultTreeAdapterMap['node']) => {
-            if (node.nodeName === 'a' && 'attrs' in node) {
-                const href = node.attrs.find(attribute => attribute.name === 'href')?.value ?? '';
-                const start = node.sourceCodeLocation?.startTag?.startOffset;
-                if (start !== undefined && /^https?:\/\//i.test(href)) {
-                    // Malformed HTML can produce several anchors from one start tag. An attribute
-                    // inserted there reaches every copy, so all must already show their address.
-                    const matches = bare(nodeText(node)) === bare(href);
-                    matchesByStart.set(start, matchesByStart.get(start) !== false && matches);
-                }
-            }
-            if ('childNodes' in node) for (const child of node.childNodes) visit(child);
-            if ('content' in node) visit(node.content);
-        };
-        visit(parse(html, { sourceCodeLocationInfo: true }));
-
-        const starts = [...matchesByStart]
-            .filter(([, matches]) => matches)
-            .map(([start]) => start)
-            .sort((a, b) => a - b);
-        if (starts.length === 0) return html;
-
-        // Slice only the original source and join once. Rebuilding the whole document for each
-        // insertion makes previews with many links take time proportional to links times HTML size.
-        const parts: string[] = [];
-        let cursor = 0;
-        for (const start of starts) {
-            const insertion = start + 2;
-            parts.push(html.slice(cursor, insertion), ' data-exe-text-is-url');
-            cursor = insertion;
-        }
-        parts.push(html.slice(cursor));
-        return parts.join('');
     }
 
     /**

@@ -10,6 +10,7 @@
 
 import { PRERENDERED_LATEX_CSS } from '../constants';
 import { renderPrintContextScript } from '../printContext';
+import { markLinksShowingTheirUrl } from '../utils/linkUrls';
 import { accentOutline, readColor } from './cardColors';
 import { renderMatchingLayoutScript } from './matchingLayout';
 import { escapeText } from './sanitizeHtml';
@@ -111,6 +112,30 @@ body {
     padding-bottom: 1mm;
     border-bottom: 1px solid #999;
     font-size: 14pt;
+}
+
+/* Paper cannot follow a link, so the sheet writes the address after each one to the web: always,
+   as there is no document option here to turn it off. Not after one whose text already is the
+   address, nor after a picture. */
+a[href^="http"] {
+    color: inherit;
+}
+a[href^="http"]::after {
+    content: " [" attr(href) "]";
+    font-size: 0.85em;
+    word-break: break-all;
+    color: #666;
+}
+a[href^="http"][data-exe-text-is-url]::after,
+a[href^="http"]:has(img:only-child)::after {
+    content: none;
+}
+
+/* Where content embedded from the web can be found, on a line of its own where it was */
+.external-iframe-src {
+    display: block;
+    font-size: 0.85em;
+    color: #666;
 }
 `;
 
@@ -1934,7 +1959,8 @@ export function renderWorksheet(model: WorksheetModel, labels: WorksheetLabels =
 
     const body = pages || `<p class="worksheet-empty">${escapeText(text.empty)}</p>`;
 
-    return `<!DOCTYPE html>
+    // The sheet writes each link's address after it, except where the link's text already is it.
+    return markLinksShowingTheirUrl(`<!DOCTYPE html>
 <html lang="${escapeText(model.language || 'en')}">
 <head>
 <meta charset="utf-8" />
@@ -1957,5 +1983,5 @@ ${body}
 ${renderUnsupported(model, text)}
 </div>
 </body>
-</html>`;
+</html>`);
 }
