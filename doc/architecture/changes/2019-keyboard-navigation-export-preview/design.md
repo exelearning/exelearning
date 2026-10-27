@@ -39,9 +39,9 @@ content.
 
 ## Scope
 
-Web site (HTML5) exports opened as the top-level document. Not SCORM/IMS
-(navigation belongs to the LMS), not EPUB, not content embedded in an iframe
-(which includes the editor's preview panel).
+Web site (HTML5) exports, top-level or in an iframe whose URL carries the
+parameter (eXeViewer, a host page). Not SCORM/IMS (navigation belongs to the
+LMS), not EPUB, not the editor's preview panel (it never adds the parameter).
 
 ## Goals
 
@@ -126,12 +126,14 @@ rendered outside `.exe-content` and the footer, styled in
   current state to `#siteNav a` and `.nav-buttons a` through the shared
   `$exeExport.propagateNavParam()`, appends the control before `</body>` and
   enters the mode when requested.
-- `isSupported()`: `body.exe-web-site` and `window.self === window.top`.
+- `isSupported()`: `body.exe-web-site` (only reached when the parameter is present).
 - `enter()`/`leave()`/`toggle()`: `html.mode-presentation`, `_syncState()`
   (rewrites `exe-presentation=1|0` in the URL with `history.replaceState`, in
   the links, and relabels the control), menu via the theme's own toggler
   (`_setMenuExpanded()` clicks `#siteNavToggler` only when its `aria-expanded`
-  differs), one `keydown` listener bound on enter and removed on leave.
+  differs; `_clickMenuToggler()` scrolls to the top and clicks again when a
+  narrow-width style left the menu open because it was out of view), one
+  `keydown` listener bound on enter and removed on leave.
 - `handleKeydown()`: bails out on `defaultPrevented`, composition, any
   modifier, a typing target or an active overlay; otherwise clicks
   `a.nav-button-left` / `a.nav-button-right` (arrows, PageUp/PageDown),

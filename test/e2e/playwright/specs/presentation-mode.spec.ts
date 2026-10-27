@@ -7,13 +7,13 @@
  * where available) and shows an "Exit presentation mode" control
  * next to the "made with eXe" badge. The parameter is the state: leaving
  * rewrites it to `=0` in the URL and the navigation links, so the choice
- * survives page changes and reloads without any storage. It only exists for a
- * web site export opened as the top-level document, so the export is served
- * from its own origin and opened directly, not through the preview iframe.
+ * survives page changes and reloads without any storage. The export is served
+ * from its own origin and opened directly (or embedded by a host page), not
+ * through the preview iframe, which never adds the parameter.
  */
 import type { Page } from '@playwright/test';
 import { test, expect } from '../fixtures/auth.fixture';
-import { addPage, gotoWorkarea, serveWebSiteExport, waitForAppReady } from '../helpers/workarea-helpers';
+import { addPage, changeTheme, gotoWorkarea, serveWebSiteExport, waitForAppReady } from '../helpers/workarea-helpers';
 
 const ORIGIN = 'http://presentation-mode.test';
 const SECOND_PAGE = 'Presentation second page';
@@ -41,11 +41,13 @@ async function expectPresenting(page: Page, active: boolean, menuExpanded = fals
 async function exportTwoPageSite(
     page: Page,
     createProject: (page: Page, title?: string) => Promise<string>,
+    themeId?: string,
 ): Promise<void> {
     const uuid = await createProject(page, 'Presentation mode');
     await gotoWorkarea(page, uuid);
     await waitForAppReady(page);
     await addPage(page, SECOND_PAGE);
+    if (themeId) await changeTheme(page, themeId);
     const files = await serveWebSiteExport(page, ORIGIN);
     expect(files).toContain('index.html');
 }
@@ -182,5 +184,71 @@ test.describe('Presentation mode (web site export)', () => {
         await page.locator('#exe-presentation-toggler').click();
         await expectPresenting(page, false);
         await expect(page.locator('#siteNavToggler')).toHaveAttribute('aria-expanded', 'false');
+    });
+
+    test('a host page can embed the export in presentation mode', async ({ authenticatedPage, createProject }) => {
+        const page = authenticatedPage;
+        await exportTwoPageSite(page, createProject);
+
+        await page.setContent(
+            `<iframe src="${ORIGIN}/index.html?exe-presentation=1" style="width: 1000px; height: 700px"></iframe>`,
+        );
+        const frame = page.frameLocator('iframe');
+        const heading = frame.locator('main h1.page-title');
+        await expect(frame.locator('#exe-presentation-toggler')).toHaveText('Exit presentation mode');
+        await heading.click();
+        await page.keyboard.press('ArrowRight');
+        await expect(heading).toHaveText(SECOND_PAGE);
+        await expect(frame.locator('#exe-presentation-toggler')).toHaveText('Exit presentation mode');
+    });
+
+    test('M hides the menu at narrow widths after scrolling down', async ({ authenticatedPage, createProject }) => {
+        const page = authenticatedPage;
+        await exportTwoPageSite(page, createProject);
+
+        // The style's narrow layout, shorter than the menu so it is not pinned (#sidebar-nav.fixed).
+        await page.setViewportSize({ width: 400, height: 120 });
+        await page.goto(`${ORIGIN}/index.html?exe-presentation=1&nav=true`);
+        await expectPresenting(page, true, true);
+        await expect(page.locator('#sidebar-nav')).not.toHaveClass(/fixed/);
+        // The styles only collapse the menu at this width while it is in view.
+        await page.evaluate(() => {
+            document.body.style.paddingBottom = '3000px';
+            window.scrollTo(0, 2000);
+        });
+        await expect.poll(() => page.evaluate(() => (window as any).$('#siteNav').isInViewport())).toBe(false);
+
+        await page.keyboard.press('m');
+        await expect(page.locator('#siteNavToggler')).toHaveAttribute('aria-expanded', 'false');
+        await expect(page.locator('a.nav-button-right')).toHaveAttribute('href', /nav=false/);
+    });
+
+    test('the cedec title link keeps the menu the reader chose', async ({ authenticatedPage, createProject }) => {
+        const page = authenticatedPage;
+        await exportTwoPageSite(page, createProject, 'cedec');
+
+        await page.goto(`${ORIGIN}/index.html?exe-presentation=1&nav=true`);
+        await expectPresenting(page, true, true);
+        const title = page.locator('#topBarTitle .package-title-link');
+        // The style rereads the home link on mousedown/click.
+        await title.dispatchEvent('mousedown');
+        await expect(title).toHaveAttribute('href', /exe-presentation=1/);
+        await expect(title).toHaveAttribute('href', /nav=true/);
+    });
+
+    test('the universal breadcrumbs keep the mode', async ({ authenticatedPage, createProject }) => {
+        const page = authenticatedPage;
+        await exportTwoPageSite(page, createProject, 'universal');
+
+        await page.goto(`${ORIGIN}/index.html?exe-presentation=1`);
+        await expectPresenting(page, true);
+        await page.keyboard.press('ArrowRight');
+        await expect(page.locator('main h1.page-title')).toHaveText(SECOND_PAGE);
+        await expectPresenting(page, true);
+
+        // Breadcrumbs are built before the runtime rewrites the menu: their href is read on use.
+        const home = page.locator('#siteBreadcrumbsHome');
+        await home.dispatchEvent('mousedown');
+        await expect(home).toHaveAttribute('href', /exe-presentation=1/);
     });
 });

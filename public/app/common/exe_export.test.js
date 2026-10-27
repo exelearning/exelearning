@@ -3032,7 +3032,7 @@ describe('exe_export.js', () => {
 
     // A minimal web-site export page: nav toggler + prev/next links, plus the
     // "made with eXe" badge that the control must sit next to.
-    function buildWebSitePage({ expanded = true } = {}) {
+    function buildWebSitePage({ expanded = true, navInViewport = () => true } = {}) {
       document.body.className = 'exe-export exe-web-site';
       document.body.innerHTML =
         '<button type="button" id="siteNavToggler" aria-expanded="' + (expanded ? 'true' : 'false') + '"></button>' +
@@ -3041,7 +3041,10 @@ describe('exe_export.js', () => {
         '<p id="made-with-eXe"><a href="https://exelearning.net/">eXe</a></p>';
       const toggler = document.getElementById('siteNavToggler');
       toggler.addEventListener('click', () => {
-        toggler.setAttribute('aria-expanded', toggler.getAttribute('aria-expanded') === 'true' ? 'false' : 'true');
+        const open = toggler.getAttribute('aria-expanded') === 'true';
+        // Like the styles at narrow widths: the menu only collapses while #siteNav is in view.
+        if (open && !navInViewport()) return;
+        toggler.setAttribute('aria-expanded', open ? 'false' : 'true');
       });
     }
 
@@ -3102,7 +3105,7 @@ describe('exe_export.js', () => {
       });
     });
 
-    describe('isSupported (web site export, top-level document only)', () => {
+    describe('isSupported (web site export)', () => {
       it('supports a top-level web site export', () => {
         buildWebSitePage();
         expect(pm().isSupported()).toBe(true);
@@ -3118,10 +3121,10 @@ describe('exe_export.js', () => {
         expect(pm().isSupported()).toBe(false);
       });
 
-      it('rejects a document embedded in an iframe', () => {
+      it('supports a web site export embedded in an iframe (the host asked for the mode)', () => {
         buildWebSitePage();
         window.top = {};
-        expect(pm().isSupported()).toBe(false);
+        expect(pm().isSupported()).toBe(true);
       });
     });
 
@@ -3403,6 +3406,50 @@ describe('exe_export.js', () => {
         window.$exeExport.setNavLinksParam('nav', 'true');
         expect(document.querySelector('#siteNav a[href^="https"]').getAttribute('href')).toBe('https://example.org/');
         expect(nextHref()).toBe('next.html?nav=true');
+      });
+    });
+
+    describe('narrow widths (PR #2020 review)', () => {
+      let scrolledDown;
+      let scrollTo;
+
+      beforeEach(() => {
+        scrolledDown = true;
+        scrollTo = vi.spyOn(window, 'scrollTo').mockImplementation(() => {
+          scrolledDown = false;
+        });
+        buildWebSitePage({ navInViewport: () => !scrolledDown });
+      });
+
+      afterEach(() => {
+        scrollTo.mockRestore();
+      });
+
+      it('M hides a menu scrolled out of view by going back to the top first', () => {
+        bootstrapWith('1', { nav: 'true' });
+        pm().init();
+        pm().handleKeydown(makeEvent({ key: 'm', code: 'KeyM' }));
+        expect(menuExpanded()).toBe('false');
+        expect(scrollTo).toHaveBeenCalledWith({ top: 0, behavior: 'instant' });
+        expect(firstMenuHref()).toContain('nav=false');
+      });
+
+      it('M shows the menu without scrolling', () => {
+        buildWebSitePage({ expanded: false, navInViewport: () => !scrolledDown });
+        bootstrapWith('1', { nav: 'false' });
+        pm().init();
+        pm().handleKeydown(makeEvent({ key: 'm', code: 'KeyM' }));
+        expect(menuExpanded()).toBe('true');
+        expect(scrollTo).not.toHaveBeenCalled();
+      });
+
+      it('entering from the control collapses a menu scrolled out of view', () => {
+        bootstrapWith('0');
+        pm().init();
+        pm().toggle();
+        expect(menuExpanded()).toBe('false');
+        pm().leave();
+        expect(menuExpanded()).toBe('true');
       });
     });
 

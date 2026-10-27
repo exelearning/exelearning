@@ -126,8 +126,13 @@ the mode is off only the style's own `nav=false` convention remains.
   (single source of truth, AGENTS.md §1); search hits get both parameters in
   `$exeExport.searchBar`.
 - Scope guard: `presentationMode.isSupported()` requires `body.exe-web-site`
-  (set only by `Html5Exporter`; SCORM/IMS/EPUB bodies carry their own classes)
-  and `window.self === window.top`.
+  (set only by `Html5Exporter`; SCORM/IMS/EPUB bodies carry their own classes).
+  It is only reached when the URL carries the parameter, so an iframe whose
+  host asked for the mode (eXeViewer, a host page) is accepted; the editor
+  preview never adds it (PR #2020 review, 2026-10-27).
+- Narrow widths: the styles only collapse the menu while `#siteNav` is in the
+  viewport, so `_clickMenuToggler()` goes back to the top (instantly, as
+  Bootstrap scrolls smoothly) and clicks again when a click left it open.
 - Control placement and look: appended to `<body>` after `#made-with-eXe`,
   styled in `public/style/workarea/base.css` with the same recipe as the badge
   (fixed bottom-right, neutral, hidden in print, offset when the badge exists)
@@ -153,8 +158,8 @@ parameter in the URL and the navigation links. The parameter is the only
 state: no storage, no project property, no export option and no export type.
 The keys are `←`/`PageUp`, `→`/`PageDown`, `M` (menu) and `T` (Teacher Mode
 where available); `↑`/`↓`, `Space`, `Enter` and `Esc` are never captured. Fullscreen is not part of the mode
-and `Esc` is not its exit key. It exists only for a web site export opened as
-the top-level document.
+and `Esc` is not its exit key. It exists only for web site exports, top-level
+or in an iframe whose URL carries the parameter.
 
 ## Consequences
 
@@ -169,8 +174,8 @@ the top-level document.
 ### Negative
 
 - Discoverability depends on the user guide documenting the parameter.
-- The editor preview is an iframe, so the control does not appear there;
-  verifying the mode means opening the export.
+- The editor preview never adds the parameter, so the control does not appear
+  there; verifying the mode means opening the export.
 
 ### Neutral
 

@@ -137,7 +137,6 @@ window.$exeExport = {
         window.eXe.app.init();
     },
 
-    // Set one query param on an href (null removes it), keeping the rest and the fragment.
     /**
      * Append a `name=value` navigation parameter to an in-package href so a reader-chosen
      * mode (Teacher Mode, Presentation mode) survives navigation between pages — works in
@@ -176,6 +175,7 @@ window.$exeExport = {
         });
     },
 
+    // Set one query param on an href (null removes it), keeping the rest and the fragment.
     setUrlParam : function (href, name, value) {
         if (!href || !name) return href;
         // A query would turn a fragment-only jump into a page load.
@@ -722,8 +722,9 @@ window.$exeExport = {
      * collapsed it, unless the reader has chosen a state since; outside the mode only
      * the style's own nav=false convention is kept.
      *
-     * Scope: web site exports opened as the top-level document. Never SCORM/IMS (the LMS
-     * owns navigation), EPUB, or content embedded in an iframe. Fullscreen is deliberately
+     * Scope: web site exports, top-level or embedded in an iframe whose URL carries the
+     * parameter (eXeViewer, a host page): the editor preview never adds it. Never
+     * SCORM/IMS (the LMS owns navigation) or EPUB. Fullscreen is deliberately
      * left to the browser (F11): the Fullscreen API needs a user gesture, is lost on
      * navigation in Firefox/Safari and on file://, and is unavailable on iPhone. An
      * iDevice that goes fullscreen on its own counts as an open overlay (see
@@ -773,10 +774,9 @@ window.$exeExport = {
             if (this._active && menu) href = $exeExport.withNavParam(href, 'nav=' + menu);
             return href;
         },
-        /** Web site export (never SCORM/IMS/EPUB) opened as the top-level document. */
+        /** Web site export (never SCORM/IMS/EPUB); only reached when the parameter asked for it. */
         isSupported : function(){
-            if (!document.body || !document.body.classList.contains('exe-web-site')) return false;
-            try { return window.self === window.top; } catch (e) { return false; }
+            return !!document.body && document.body.classList.contains('exe-web-site');
         },
         init : function(){
             if (!this._available) return;
@@ -867,9 +867,20 @@ window.$exeExport = {
             if ((toggler.getAttribute('aria-expanded') === 'true') === expanded) return;
             this._ownMenuToggle = true;
             try {
-                toggler.click();
+                this._clickMenuToggler(toggler);
             } finally {
                 this._ownMenuToggle = false;
+            }
+        },
+        // At narrow widths the styles only collapse the menu while #siteNav is in the
+        // viewport: if a click left it open, go back to the top and click once more.
+        // Instant, as Bootstrap's smooth scrolling would still be under way.
+        _clickMenuToggler : function(toggler){
+            var wasOpen = toggler.getAttribute('aria-expanded') === 'true';
+            toggler.click();
+            if (wasOpen && toggler.getAttribute('aria-expanded') === 'true') {
+                window.scrollTo({ top: 0, behavior: 'instant' });
+                toggler.click();
             }
         },
         /** true/false from the style's toggler, or null when the style has none. */
@@ -966,7 +977,7 @@ window.$exeExport = {
                 target = document.getElementById('teacher-mode-toggler');
             }
             if (!target) return;
-            target.click();
+            if (target.id === 'siteNavToggler') this._clickMenuToggler(target); else target.click();
             if (event.cancelable) event.preventDefault();
         },
         // KeyboardEvent.code identifies the physical key on any layout (Option+M gives
