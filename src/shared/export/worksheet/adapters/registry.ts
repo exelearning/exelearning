@@ -1,0 +1,97 @@
+/**
+ * Worksheet adapter registry
+ *
+ * The single place to touch when a new iDevice becomes printable: write its adapter, add it to
+ * the list below, and the menu entry picks it up. Nothing else in the pipeline knows which
+ * iDevices are supported.
+ */
+
+import { getIdeviceConfig } from '../../browser/idevice-config-browser';
+import type { WorksheetAdapter } from '../types';
+import { AzQuizGameWorksheetAdapter } from './AzQuizGameWorksheetAdapter';
+import { BeforeAfterWorksheetAdapter } from './BeforeAfterWorksheetAdapter';
+import { AdaptativeQuizWorksheetAdapter } from './AdaptativeQuizWorksheetAdapter';
+import { ChallengeWorksheetAdapter } from './ChallengeWorksheetAdapter';
+import { ClassifyWorksheetAdapter } from './ClassifyWorksheetAdapter';
+import { SortWorksheetAdapter } from './SortWorksheetAdapter';
+import { MathOperationsWorksheetAdapter } from './MathOperationsWorksheetAdapter';
+import { MathProblemsWorksheetAdapter } from './MathProblemsWorksheetAdapter';
+import { WordSearchWorksheetAdapter } from './WordSearchWorksheetAdapter';
+import { CompleteWorksheetAdapter } from './CompleteWorksheetAdapter';
+import { CrosswordWorksheetAdapter } from './CrosswordWorksheetAdapter';
+import { DiscoverWorksheetAdapter } from './DiscoverWorksheetAdapter';
+import { ElectricalCircuitsWorksheetAdapter } from './ElectricalCircuitsWorksheetAdapter';
+import { DragDropWorksheetAdapter } from './DragDropWorksheetAdapter';
+import { FlipcardsWorksheetAdapter } from './FlipcardsWorksheetAdapter';
+import { HiddenImageWorksheetAdapter } from './HiddenImageWorksheetAdapter';
+import { IdentifyWorksheetAdapter } from './IdentifyWorksheetAdapter';
+import { MultipleChoiceWorksheetAdapter } from './MultipleChoiceWorksheetAdapter';
+import { GuessWorksheetAdapter } from './GuessWorksheetAdapter';
+import { QuickQuestionsWorksheetAdapter } from './QuickQuestionsWorksheetAdapter';
+import { PadlockWorksheetAdapter } from './PadlockWorksheetAdapter';
+import { PeriodicTableWorksheetAdapter } from './PeriodicTableWorksheetAdapter';
+import { FormWorksheetAdapter } from './FormWorksheetAdapter';
+import { RelateWorksheetAdapter } from './RelateWorksheetAdapter';
+import { RubricWorksheetAdapter } from './RubricWorksheetAdapter';
+import { ScrambledListWorksheetAdapter } from './ScrambledListWorksheetAdapter';
+import { SelectMediaFilesWorksheetAdapter } from './SelectMediaFilesWorksheetAdapter';
+import { ThreeDMolWorksheetAdapter } from './ThreeDMolWorksheetAdapter';
+import { TrueOrFalseWorksheetAdapter } from './TrueOrFalseWorksheetAdapter';
+
+/** Every adapter shipped today, in no particular order. */
+const ADAPTERS: readonly WorksheetAdapter[] = [
+    GuessWorksheetAdapter,
+    CrosswordWorksheetAdapter,
+    QuickQuestionsWorksheetAdapter,
+    MultipleChoiceWorksheetAdapter,
+    CompleteWorksheetAdapter,
+    ClassifyWorksheetAdapter,
+    DragDropWorksheetAdapter,
+    AzQuizGameWorksheetAdapter,
+    SortWorksheetAdapter,
+    WordSearchWorksheetAdapter,
+    MathProblemsWorksheetAdapter,
+    MathOperationsWorksheetAdapter,
+    RelateWorksheetAdapter,
+    DiscoverWorksheetAdapter,
+    FlipcardsWorksheetAdapter,
+    HiddenImageWorksheetAdapter,
+    BeforeAfterWorksheetAdapter,
+    ElectricalCircuitsWorksheetAdapter,
+    ThreeDMolWorksheetAdapter,
+    ChallengeWorksheetAdapter,
+    IdentifyWorksheetAdapter,
+    RubricWorksheetAdapter,
+    SelectMediaFilesWorksheetAdapter,
+    PeriodicTableWorksheetAdapter,
+    FormWorksheetAdapter,
+    ScrambledListWorksheetAdapter,
+    TrueOrFalseWorksheetAdapter,
+    AdaptativeQuizWorksheetAdapter,
+    PadlockWorksheetAdapter,
+];
+
+const BY_TYPE = new Map<string, WorksheetAdapter>(ADAPTERS.map(adapter => [adapter.ideviceType, adapter]));
+
+/**
+ * Look up the adapter for an iDevice type.
+ *
+ * The type is read as `getIdeviceConfig` reads it, so a legacy spelling ('CrosswordIdevice') finds
+ * the adapter 'crossword' does. Every lookup goes through here: whether printing counts something
+ * as an activity and how it then converts it cannot disagree about which adapter is its own.
+ *
+ * @param ideviceType - Type as stored in the document, e.g. 'guess'
+ * @returns The adapter, or undefined when the type is not printable
+ */
+export function getWorksheetAdapter(ideviceType: string): WorksheetAdapter | undefined {
+    return BY_TYPE.get(ideviceType) ?? BY_TYPE.get(getIdeviceConfig(ideviceType).cssClass);
+}
+
+/**
+ * List the iDevice types that can be printed today.
+ *
+ * @returns The supported types, sorted for stable output
+ */
+export function getSupportedIdeviceTypes(): string[] {
+    return [...BY_TYPE.keys()].sort();
+}

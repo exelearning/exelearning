@@ -291,6 +291,10 @@ export async function validateLink(url: string, options: ValidateLinkOptions): P
                     // refuse to accept.
                     'Accept-Encoding': 'identity',
                 },
+                // The body is discarded, so never decode it: a host is free to
+                // ignore Accept-Encoding and answer with any Content-Encoding,
+                // and the decoder would run on its bytes before cancel().
+                decompress: false,
             });
             try {
                 await response.body?.cancel();
