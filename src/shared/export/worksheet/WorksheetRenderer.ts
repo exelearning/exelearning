@@ -24,6 +24,8 @@ import type {
     PrintableAnswer,
     PrintableActivity,
     PrintableBoard,
+    PrintableChecklist,
+    PrintableChecklistItem,
     PrintableElementCard,
     PrintableItem,
     PrintableRubric,
@@ -786,8 +788,9 @@ export const WORKSHEET_ACTIVITY_STYLES = `
     margin: 0 0 4mm;
 }
 
-/* The fields the teacher fills in, above the table, each a label and a rule. */
-.worksheet-rubric-field {
+/* The fields filled in above a rubric's table or a checklist's items, each a label and a rule. */
+.worksheet-rubric-field,
+.worksheet-checklist-field {
     display: flex;
     align-items: baseline;
     gap: 2mm;
@@ -795,7 +798,8 @@ export const WORKSHEET_ACTIVITY_STYLES = `
     font-weight: 600;
 }
 
-.worksheet-rubric-field .worksheet-line {
+.worksheet-rubric-field .worksheet-line,
+.worksheet-checklist-field .worksheet-line {
     flex: 1;
     height: 5mm;
 }
@@ -854,6 +858,86 @@ export const WORKSHEET_ACTIVITY_STYLES = `
 .worksheet-rubric-notes {
     margin: 3mm 0 0;
     font-weight: 600;
+}
+
+/* A checklist, in the order the activity lays it out: its heading, the fields, the score, then one
+   row per item, indented to its level and marked as the activity marks it on screen. */
+.worksheet-checklist {
+    margin: 0 0 4mm;
+}
+
+.worksheet-checklist-title {
+    margin: 0;
+    font-weight: bold;
+}
+
+.worksheet-checklist-subtitle {
+    margin: 1mm 0 0;
+}
+
+.worksheet-checklist-title + .worksheet-checklist-field,
+.worksheet-checklist-subtitle + .worksheet-checklist-field {
+    margin-top: 3mm;
+}
+
+/* The score is a number out of the total, so its line is only as long as a number needs. */
+.worksheet-checklist-score .worksheet-line {
+    flex: 0 0 15mm;
+}
+
+.worksheet-checklist-items {
+    margin: 3mm 0 0;
+    padding: 0;
+    list-style: none;
+}
+
+/* The box, the words and whatever follows them on one line, wrapping under the words when they run
+   long. A row is never split across sheets. */
+.worksheet-checklist-item {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 1mm 2mm;
+    margin-bottom: 2mm;
+    page-break-inside: avoid;
+    break-inside: avoid;
+}
+
+.worksheet-checklist-text {
+    min-width: 0;
+}
+
+.worksheet-checklist-text > p {
+    margin: 0;
+}
+
+.worksheet-checklist-points {
+    white-space: nowrap;
+}
+
+/* What a Text item asks for is written on the rest of its row, or on a row of its own when the
+   words leave too little of it. */
+.worksheet-checklist-line {
+    flex: 1 0 30mm;
+    border-bottom: 1px solid #1a1a1a;
+}
+
+/* A Selection item's states, after its words, each with its own box to tick. */
+.worksheet-checklist-states {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1mm 4mm;
+}
+
+.worksheet-checklist-state {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 1.5mm;
+}
+
+.worksheet-checklist-footer {
+    margin: 3mm 0 0;
+    font-size: 9pt;
 }
 
 /* A grid of letters with the answers hidden in it. Square cells and no rules between them, as the
@@ -1310,6 +1394,7 @@ function renderBoard(board: PrintableBoard, labels: Required<WorksheetLabels>): 
     if (board.kind === 'wordGrid') return renderWordGrid(board.rows);
     if (board.kind === 'operationTable') return renderOperationTable(board.rows, labels);
     if (board.kind === 'rubricTable') return renderRubricTable(board.table);
+    if (board.kind === 'checklist') return renderChecklist(board.list);
     if (board.kind === 'elementCards') return renderElementCards(board.cards);
 
     return renderCrosswordGrid(board);
@@ -1393,6 +1478,61 @@ function renderRubricTable(table: PrintableRubric): string {
     }
 
     return `${html}</div>`;
+}
+
+/** A box to tick, as a multiple-choice option draws it. */
+const CHECKLIST_BOX = '<span class="worksheet-option-box"></span>';
+
+/**
+ * Render a checklist: its heading, the fields and the score to fill in, then its items.
+ *
+ * Each item is drawn as the activity draws it, with what paper cannot carry replaced by what a pen
+ * can fill in: a box for a switch, a line for a text field, and a box for each state a drop-down
+ * offers. An item that is not marked has nothing beside it, as on screen: it heads the ones under
+ * it.
+ */
+function renderChecklist(list: PrintableChecklist): string {
+    let html = '<div class="worksheet-checklist">';
+
+    if (list.title) html += `<p class="worksheet-checklist-title">${list.title}</p>`;
+    if (list.subtitle) html += `<p class="worksheet-checklist-subtitle">${list.subtitle}</p>`;
+
+    for (const field of list.fields) {
+        html += `<p class="worksheet-checklist-field"><span>${field}:</span><span class="worksheet-line"></span></p>`;
+    }
+
+    if (list.score) {
+        html +=
+            `<p class="worksheet-checklist-field worksheet-checklist-score"><span>${list.score.label}:</span>` +
+            `<span class="worksheet-line"></span><span>/ ${list.score.total}</span></p>`;
+    }
+
+    html += `<ul class="worksheet-checklist-items">${list.items
+        .map(item => renderChecklistItem(item, list.states))
+        .join('')}</ul>`;
+
+    if (list.footer) html += `<div class="worksheet-checklist-footer">${list.footer}</div>`;
+
+    return `${html}</div>`;
+}
+
+/** Render one checklist item, indented to its level. */
+function renderChecklistItem(item: PrintableChecklistItem, states: string[]): string {
+    // A computed number, never author content, so it is safe in a style attribute.
+    const level = Number.isFinite(item.level) ? Math.max(0, Math.floor(item.level)) : 0;
+    const indent = level > 0 ? ` style="margin-left: ${level * CHECKLIST_INDENT_MM}mm"` : '';
+    const box = item.marker === 'box' || item.marker === 'boxAndLine' ? CHECKLIST_BOX : '';
+
+    let html = `<li class="worksheet-checklist-item"${indent}>${box}<span class="worksheet-checklist-text">${item.text}</span>`;
+    if (item.points) html += `<span class="worksheet-checklist-points">${item.points}</span>`;
+    if (item.marker === 'boxAndLine') html += '<span class="worksheet-checklist-line"></span>';
+    if (item.marker === 'states') {
+        html += `<span class="worksheet-checklist-states">${states
+            .map(state => `<span class="worksheet-checklist-state">${CHECKLIST_BOX}${state}</span>`)
+            .join('')}</span>`;
+    }
+
+    return `${html}</li>`;
 }
 
 /**
@@ -1516,6 +1656,9 @@ const WRITING_LINE_HEIGHT_MM = 5;
 
 /** Room left under a rubric for the assessor's notes, in millimetres. */
 const RUBRIC_NOTES_HEIGHT_MM = 14;
+
+/** How far each level of a checklist is indented under the one above it, in millimetres. */
+const CHECKLIST_INDENT_MM = 6;
 
 /** Split a list into chunks of at most `size`. */
 function chunk<T>(items: T[], size: number): T[][] {
