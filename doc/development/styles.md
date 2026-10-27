@@ -676,6 +676,21 @@ Common functionality found in built-in eXe styles:
   // Themes can still trigger the (opt-in) toggle setup explicitly:
   $exeExport.teacherMode.init();
   ```
+- **Presentation mode**. Opening a web site export with `?exe-presentation=1` collapses the
+  menu, adds an "Exit presentation mode" button (`#exe-presentation-toggler`, next to
+  `#made-with-eXe`) and lets the reader present with the keyboard: `←`/`PageUp` and
+  `→`/`PageDown` change page, `M` shows/hides the menu and `T` toggles Teacher Mode where its
+  toggle exists. The runtime drives the style's own controls, so a style only has to keep
+  them where it expects:
+  - The menu toggler is `#siteNavToggler`, and its click handler must update
+    `aria-expanded` **synchronously**: the runtime reads it right after clicking to know the
+    new state.
+  - Previous/next are `a.nav-button-left` / `a.nav-button-right`.
+  - `html.mode-presentation` and `#exe-presentation-toggler` are the hooks to restyle the
+    mode and its button.
+  - Do not bind `←`/`→`/`PageUp`/`PageDown`/`M`/`T` on `document`. The mode only yields to a
+    handler that calls `preventDefault()`, so an unconditional handler would change the page
+    twice.
 
 ### Knowing whether the page is being printed
 
@@ -736,8 +751,8 @@ given, so encode it yourself when it needs it (the export's own search does
 `encodeURIComponent(this.query)` for `q`).
 
 **Why it matters:** those URLs are a shared channel. Through them travel `exe-teacher` /
-`teacher-mode`, the search term `q`, `print=1`, and the xAPI launch parameters `endpoint`,
-`auth`, `actor` and `registration`. Wiping the query breaks LMS tracking and teacher mode,
+`teacher-mode`, `exe-presentation`, the search term `q`, `print=1`, and the xAPI launch
+parameters `endpoint`, `auth`, `actor` and `registration`. Wiping the query breaks LMS tracking and teacher mode,
 and nothing on screen says so. The three broken patterns all survive a casual test, because
 sample content usually has no other parameter:
 
@@ -747,12 +762,19 @@ e.href = ref + (cond ? '&' : '?') + 'nav=false';  // guesses the separator; a se
 window.location = this.href + '?nav=false';       // lands inside the fragment if there is a #ancla
 ```
 
-Two more rules that go with it:
+More rules that go with it:
 
 - **Operate on `getAttribute('href')`, not the `.href` property**, which absolutises the
   relative links the export writes.
 - **Read the current value with `URLSearchParams`**, not by searching the string:
   `indexOf('nav=false')` also matches `?xnav=false` and any fragment containing that text.
+- **`nav` can also be `true`.** While presenting, the runtime writes `nav=true` or
+  `nav=false` with the menu state the reader chose. Keep testing
+  `get('nav') === 'false'`, never "any `nav`", and do not strip a `nav=true` you did not add.
+- **Copy menu links when they are used, not in `init()`.** The runtime adds `exe-teacher`
+  and `exe-presentation` to the menu and previous/next links after the style's `init()`. A
+  link the style builds from a menu `href` (breadcrumbs, a title link to the home page)
+  should reread that `href` on `mousedown`/`click`, as `universal` and `cedec` do.
 
 `base` is the reference implementation — detection in `init()`, and one `params()` helper
 that both adds and removes:
