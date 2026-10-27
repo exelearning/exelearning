@@ -1766,7 +1766,9 @@ var $exeDevice = (function () {
                     renderNivelBar();
                     renderMateriaList();
                     // Restore materia if it was previously selected and still exists
+                    // otherwise drop the previous dataset's list (issue #2587)
                     if (selectedMateria) renderContent();
+                    else clearContent();
                     renderSelectedPanel();
                 }),
             )
