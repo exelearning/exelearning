@@ -151,6 +151,16 @@ describe('exported print preview adapter', () => {
         expect(document.activeElement.id).toBe('opener');
     });
 
+    it('offers a way out when the frame cannot start printing', async () => {
+        await preview.open();
+        doubles.print.mockRejectedValueOnce(new Error('Printing blocked'));
+        await preview.controller.print();
+        const notice = document.querySelector('.print-preview-notice');
+        expect(notice.hidden).toBe(false);
+        expect(notice.querySelector('[data-notice="not-started"]').hidden).toBe(false);
+        expect(document.querySelector('.print-preview-open-tab-btn').hidden).toBe(false);
+    });
+
     it('resolves package assets and loads render engines only when required', async () => {
         await preview.open();
         const hooks = doubles.document.mock.calls[0][0];

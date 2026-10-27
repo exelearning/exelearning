@@ -5,6 +5,7 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'bun:test';
 import { loadIdeviceConfigs, resetIdeviceConfigCache } from '../../../services/idevice-config';
 import { ImsExporter } from './ImsExporter';
+import { PRINT_RUNTIME_FILES } from '../printPackage';
 import { zipSync, unzipSync, strToU8 } from 'fflate';
 import type {
     ExportDocument,
@@ -307,6 +308,32 @@ describe('ImsExporter', () => {
 
             const indexHtml = zip.files.get('index.html') as string;
             expect(indexHtml).not.toContain('exe_atools');
+        });
+    });
+
+    describe('Print button (addPrintButton)', () => {
+        // The print preview loads its runtime from the package itself, so every file it adds
+        // must be bundled and declared in imsmanifest.xml for the platform to serve it.
+        const mockPrintLibFiles = () => {
+            const content = (file: string) => Buffer.from(file.endsWith('strings.json') ? '["Print"]' : '// mock lib');
+            resources.fetchLibraryFiles = async files => new Map(files.map(file => [file, content(file)]));
+        };
+
+        it('bundles the print preview and references it in imsmanifest.xml when enabled', async () => {
+            document = new MockDocument({ addPrintButton: true }, samplePages);
+            exporter = new ImsExporter(document, resources, assets, zip);
+            mockPrintLibFiles();
+
+            const result = await exporter.export();
+
+            expect(result.success).toBe(true);
+            expect(zip.files.get('index.html') as string).toContain('id="exe-print-btn"');
+            const manifest = zip.files.get('imsmanifest.xml') as string;
+            const printFiles = ['print.html', 'libs/exe_print/data.js', ...PRINT_RUNTIME_FILES.map(f => `libs/${f}`)];
+            for (const path of printFiles) {
+                expect(zip.files.has(path)).toBe(true);
+                expect(manifest).toContain(path);
+            }
         });
     });
 

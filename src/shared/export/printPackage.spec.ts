@@ -104,6 +104,22 @@ describe('portable print package', () => {
         );
     });
 
+    it('resolves unquoted CSS and attribute URLs, keeping fragments', () => {
+        const html =
+            '<div style="background:url(content/resources/sky.png)"></div>' +
+            '<img src=theme/img/logo.svg alt=logo>' +
+            '<style>@font-face{src:url(fonts/global/test.woff2#iefix)}</style>';
+        expect(
+            resolvePrintResourceUrls(html, 'https://example.test/course/', new Map(), {
+                'theme/img/logo.svg': 'blob:logo',
+            }),
+        ).toBe(
+            '<div style="background:url(https://example.test/course/content/resources/sky.png)"></div>' +
+                '<img src=blob:logo alt=logo>' +
+                '<style>@font-face{src:url(https://example.test/course/fonts/global/test.woff2#iefix)}</style>',
+        );
+    });
+
     it.each(['https://example.test/01/', 'file:///C:/course/'])(
         'resolves preprocessed worksheet pictures without leaving context markers at %s',
         root => {
