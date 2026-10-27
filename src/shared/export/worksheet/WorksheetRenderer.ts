@@ -891,20 +891,34 @@ export const WORKSHEET_ACTIVITY_STYLES = `
     list-style: none;
 }
 
-/* The box, the words and whatever follows them on one line, wrapping under the words when they run
-   long. A row is never split across sheets. */
+/* Keep the box beside the first line of its criterion. Only the content beside it can wrap. */
 .worksheet-checklist-item {
     display: flex;
-    flex-wrap: wrap;
     align-items: baseline;
-    gap: 1mm 2mm;
+    gap: 2mm;
     margin-bottom: 2mm;
     page-break-inside: avoid;
     break-inside: avoid;
 }
 
+.worksheet-checklist-content {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 1mm 2mm;
+}
+
 .worksheet-checklist-text {
     min-width: 0;
+    max-width: 100%;
+    overflow-wrap: anywhere;
+}
+
+.worksheet-checklist-text img {
+    max-width: 100%;
+    height: auto;
 }
 
 .worksheet-checklist-text > p {
@@ -1523,7 +1537,7 @@ function renderChecklistItem(item: PrintableChecklistItem, states: string[]): st
     const indent = level > 0 ? ` style="margin-left: ${level * CHECKLIST_INDENT_MM}mm"` : '';
     const box = item.marker === 'box' || item.marker === 'boxAndLine' ? CHECKLIST_BOX : '';
 
-    let html = `<li class="worksheet-checklist-item"${indent}>${box}<span class="worksheet-checklist-text">${item.text}</span>`;
+    let html = `<li class="worksheet-checklist-item"${indent}>${box}<div class="worksheet-checklist-content"><span class="worksheet-checklist-text">${item.text}</span>`;
     if (item.points) html += `<span class="worksheet-checklist-points">${item.points}</span>`;
     if (item.marker === 'boxAndLine') html += '<span class="worksheet-checklist-line"></span>';
     if (item.marker === 'states') {
@@ -1532,7 +1546,7 @@ function renderChecklistItem(item: PrintableChecklistItem, states: string[]): st
             .join('')}</span>`;
     }
 
-    return `${html}</li>`;
+    return `${html}</div></li>`;
 }
 
 /**

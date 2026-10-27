@@ -46,6 +46,7 @@ function itemsOf(body: string): string[] {
 }
 
 const BOX = '<span class="worksheet-option-box"></span>';
+const CONTENT = '<div class="worksheet-checklist-content">';
 
 describe('renderWorksheet with a checklist', () => {
     it('draws its heading, then the fields, then the score out of the total', () => {
@@ -65,16 +66,16 @@ describe('renderWorksheet with a checklist', () => {
         const [heading, box] = itemsOf(render());
 
         expect(heading).toBe(
-            '<li class="worksheet-checklist-item"><span class="worksheet-checklist-text">Arte con polígonos</span></li>',
+            `<li class="worksheet-checklist-item">${CONTENT}<span class="worksheet-checklist-text">Arte con polígonos</span></div></li>`,
         );
-        expect(box).toContain(`${BOX}<span class="worksheet-checklist-text">Triángulos</span>`);
+        expect(box).toContain(`${BOX}${CONTENT}<span class="worksheet-checklist-text">Triángulos</span>`);
         expect(box).toContain('<span class="worksheet-checklist-points">(5 puntos)</span>');
     });
 
     it('draws a box and a line to write on for a Text item', () => {
         const text = itemsOf(render())[2];
 
-        expect(text).toContain(`${BOX}<span class="worksheet-checklist-text">Geoplanos</span>`);
+        expect(text).toContain(`${BOX}${CONTENT}<span class="worksheet-checklist-text">Geoplanos</span>`);
         expect(text).toContain('<span class="worksheet-checklist-line"></span>');
     });
 
@@ -82,7 +83,7 @@ describe('renderWorksheet with a checklist', () => {
         const selection = itemsOf(render())[3];
 
         expect(selection).toStartWith(
-            '<li class="worksheet-checklist-item" style="margin-left: 12mm"><span class="worksheet-checklist-text">',
+            `<li class="worksheet-checklist-item" style="margin-left: 12mm">${CONTENT}<span class="worksheet-checklist-text">`,
         );
         expect(selection).toContain(
             '<span class="worksheet-checklist-states">' +

@@ -18,15 +18,15 @@
  *   numbers it: '0' Box, '1' Text, '2' Selection, '3' Do not mark. `nivel` is how deep it is
  *   indented, from '0' to '3'. `item` is HTML. All three are strings.
  * - `points` is a string as well, empty for an item that is not scored. The runtime adds the items
- *   up with `parseInt` and shows the score only when that total is above zero; the sheet does the
- *   same.
+ *   up with `parseInt` and shows the score only when that total is above zero. The sheet counts
+ *   only the items it can print and reports any it has to omit.
  * - The activity's own wording is in `msgs`, where the author may have changed it, and it is used
  *   rather than ours. Where it names nothing, nothing is printed for it.
  * - The instructions and the closing text are not in the payload but in divs beside it.
  */
 
 import { extractDataGame, extractDivContent } from '../dataGameReader';
-import { escapeText, sanitizeHtml } from '../sanitizeHtml';
+import { escapeText, hasPrintableContent, sanitizeHtml } from '../sanitizeHtml';
 import type {
     PrintableActivity,
     PrintableChecklist,
@@ -104,52 +104,54 @@ function pointsOf(points: string, msgs: ChecklistMessages): string {
     return escapeText(`(${unit ? `${points} ${unit}` : points})`);
 }
 
-/** The items the list prints, in order. One the runtime would not draw is not printed either. */
-function readItems(levels: ChecklistLevel[], data: ChecklistDataGame): PrintableChecklistItem[] {
+/** Read printable items and their total together, reporting any criteria left off the sheet. */
+function readItems(
+    levels: ChecklistLevel[],
+    data: ChecklistDataGame,
+    onOmission: WorksheetAdapterOptions['onOmission'],
+): { items: PrintableChecklistItem[]; total: number } {
     const msgs = data.msgs ?? {};
     const items: PrintableChecklistItem[] = [];
+    let total = 0;
 
     for (const level of levels) {
-        const marker = MARKERS[text(level?.type)];
+        const type = text(level?.type);
+        const marker = Object.hasOwn(MARKERS, type) ? MARKERS[type] : undefined;
         const content = sanitizeHtml(level?.item);
-        if (!marker || !content) continue;
+        if (!marker || !hasPrintableContent(content)) {
+            onOmission?.('invalid-data');
+            continue;
+        }
 
         const item: PrintableChecklistItem = { text: content, level: levelOf(level.nivel), marker };
         const points = data.useScore ? pointsOf(text(level.points), msgs) : '';
         if (points) item.points = points;
         items.push(item);
+        const value = Number.parseInt(text(level.points), 10);
+        if (!Number.isNaN(value)) total += value;
     }
 
-    return items;
-}
-
-/** What the scored items add up to, as the runtime adds them. */
-function totalPoints(levels: ChecklistLevel[]): number {
-    return levels.reduce((total, level) => {
-        const points = Number.parseInt(text(level?.points), 10);
-        return Number.isNaN(points) ? total : total + points;
-    }, 0);
+    return { items, total };
 }
 
 /**
  * Assemble the list as it prints.
  *
- * @param hasIdentityFields - Whether the containing sheet already asks for the learner's name and
- *     date. A checklist asks for exactly those two, of the same learner, so it then asks for
- *     neither.
+ * The containing sheet may already ask for the learner's name and date. In that case the
+ * checklist does not repeat those fields.
  */
 function assemble(
     data: ChecklistDataGame,
     levels: ChecklistLevel[],
-    hasIdentityFields: boolean,
+    options: WorksheetAdapterOptions,
 ): PrintableChecklist | null {
-    const items = readItems(levels, data);
+    const { items, total } = readItems(levels, data, options.onOmission);
     if (items.length === 0) return null;
 
     const msgs = data.msgs ?? {};
     const word = (value: unknown) => escapeText(text(value));
 
-    const fields = data.userData && !hasIdentityFields ? [word(msgs.msgName), word(msgs.msgDate)] : [];
+    const fields = data.userData && !options.hasIdentityFields ? [word(msgs.msgName), word(msgs.msgDate)] : [];
     const list: PrintableChecklist = {
         fields: fields.filter(label => label !== ''),
         states: [word(msgs.msgDone), word(msgs.msgInProgress), word(msgs.msgUnrealized)],
@@ -162,7 +164,6 @@ function assemble(
     const subtitle = sanitizeHtml(data.subtitle);
     if (subtitle) list.subtitle = subtitle;
 
-    const total = totalPoints(levels);
     const scoreLabel = word(msgs.msgScore);
     if (data.useScore && total > 0 && scoreLabel) list.score = { label: scoreLabel, total };
 
@@ -180,7 +181,7 @@ export const ChecklistWorksheetAdapter: WorksheetAdapter = {
         const data = extractDataGame<ChecklistDataGame>(html, PREFIX);
         if (!data || !Array.isArray(data.levels)) return null;
 
-        const list = assemble(data, data.levels, Boolean(options.hasIdentityFields));
+        const list = assemble(data, data.levels, options);
         if (!list) return null;
 
         // The whole checklist is the board: on screen it is one thing the learner fills in, and its

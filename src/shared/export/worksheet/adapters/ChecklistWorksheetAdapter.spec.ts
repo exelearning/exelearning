@@ -205,6 +205,51 @@ describe('ChecklistWorksheetAdapter', () => {
         expect(listOf({ data: { levels } }).items.map(item => item.text)).toEqual(['Kept']);
     });
 
+    it('reports omitted criteria and scores only the ones that print', () => {
+        const omissions: string[] = [];
+        const levels = [
+            { type: '0', nivel: '0', item: 'Kept', points: '2' },
+            { type: '0', nivel: '0', item: '<math><mi>x</mi><mo>+</mo><mn>1</mn></math>', points: '10' },
+            { type: '9', nivel: '0', item: 'Unknown kind', points: '20' },
+            { type: 'constructor', nivel: '0', item: 'Invalid kind', points: '30' },
+            { type: '0', nivel: '0', item: '<p><br></p>', points: '40' },
+            null,
+        ];
+        const list = listOf({ data: { levels } }, { onOmission: reason => omissions.push(reason) });
+
+        expect(list.items.map(item => item.text)).toEqual(['Kept']);
+        expect(list.score?.total).toBe(2);
+        expect(omissions).toEqual(Array(5).fill('invalid-data'));
+    });
+
+    it('does not show a score when only omitted criteria have points', () => {
+        const levels = [
+            { type: '0', nivel: '0', item: 'Unscored', points: '' },
+            { type: '0', nivel: '0', item: '<script>alert(1)</script>', points: '10' },
+        ];
+
+        expect(listOf({ data: { levels } }).score).toBeUndefined();
+    });
+
+    it('reports every omitted criterion when none can print', () => {
+        const omissions: string[] = [];
+        const levels = [{ type: '0', nivel: '0', item: '<math><mi>x</mi></math>', points: '10' }];
+        const activity = ChecklistWorksheetAdapter.build(checklistHtml({ data: { levels } }), {
+            onOmission: reason => omissions.push(reason),
+        });
+
+        expect(activity).toBeNull();
+        expect(omissions).toEqual(['invalid-data']);
+    });
+
+    it('keeps a criterion illustrated only by an image and counts its points', () => {
+        const levels = [{ type: '0', nivel: '0', item: '<img src="asset://picture" width="1400">', points: '3' }];
+        const list = listOf({ data: { levels } });
+
+        expect(list.items[0].text).toContain('src="asset://picture"');
+        expect(list.score?.total).toBe(3);
+    });
+
     it('reads an item whose kind and level were stored as numbers', () => {
         const levels = [{ type: 1, nivel: 2, item: 'Numeric', points: 3 }];
 

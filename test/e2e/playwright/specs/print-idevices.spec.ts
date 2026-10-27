@@ -535,7 +535,15 @@ test.describe('Print iDevices', () => {
             const uuid = await createProject(page, 'Printable checklist');
             await gotoWorkarea(page, uuid);
             await waitForAppReady(page);
-            // One item of each kind the editor offers, as it stores them.
+            const longCriterion =
+                'Explain the steps followed and check that every part of the activity is complete. '.repeat(5);
+            const picture =
+                'data:image/svg+xml,' +
+                encodeURIComponent(
+                    '<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="200"><rect width="1400" height="200" fill="gray"/></svg>',
+                );
+            // Each item kind, including long wording and an oversized illustration. An unreadable
+            // criterion must be reported and must not add points to the printed score.
             const html =
                 '<div class="listacotejo-IDevice"><div class="listacotejo-DataGame js-hidden">' +
                 encryptDataGame(
@@ -547,9 +555,15 @@ test.describe('Print iDevices', () => {
                         saveData: true,
                         levels: [
                             { type: '3', nivel: '0', item: 'Heading item', points: '' },
-                            { type: '0', nivel: '1', item: 'Box item', points: '5' },
-                            { type: '1', nivel: '1', item: 'Text item', points: '' },
+                            { type: '0', nivel: '1', item: longCriterion, points: '5' },
+                            {
+                                type: '1',
+                                nivel: '1',
+                                item: `${longCriterion}<img src="${picture}" width="1400" height="200">`,
+                                points: '',
+                            },
                             { type: '2', nivel: '1', item: 'Selection item', points: '10' },
+                            { type: '0', nivel: '1', item: '<math><mi>x</mi></math>', points: '100' },
                         ],
                         msgs: {
                             msgName: 'Learner name',
@@ -591,6 +605,43 @@ test.describe('Print iDevices', () => {
             ]);
             await expect(checklist.locator('.worksheet-checklist-score')).toContainText('Score:');
             await expect(checklist.locator('.worksheet-checklist-score')).toContainText('/ 15');
+            await expect(frame.locator('.worksheet-unsupported')).toContainText('Invalid or empty activity data');
+            await expect(frame.locator('.worksheet-unsupported')).toContainText('(1)');
+
+            // Check actual geometry in both preview and print media. A long criterion must wrap
+            // beside its box, and an image must fit the available width without distortion.
+            for (const media of ['screen', 'print'] as const) {
+                await page.emulateMedia({ media });
+                for (const index of [1, 2]) {
+                    const geometry = await items.nth(index).evaluate(row => {
+                        const box = row.querySelector('.worksheet-option-box')!.getBoundingClientRect();
+                        const text = row.querySelector('.worksheet-checklist-text')!;
+                        const bounds = text.getBoundingClientRect();
+                        return {
+                            boxRight: box.right,
+                            boxTop: box.top,
+                            boxBottom: box.bottom,
+                            textLeft: bounds.left,
+                            textTop: bounds.top,
+                            lineHeight: Number.parseFloat(getComputedStyle(text).lineHeight),
+                        };
+                    });
+                    expect(geometry.boxRight).toBeLessThanOrEqual(geometry.textLeft);
+                    expect(geometry.boxBottom).toBeGreaterThan(geometry.textTop);
+                    expect(Math.abs(geometry.boxTop - geometry.textTop)).toBeLessThan(geometry.lineHeight);
+                }
+                const illustration = await items
+                    .nth(2)
+                    .locator('img')
+                    .evaluate(img => {
+                        const bounds = img.getBoundingClientRect();
+                        const row = img.closest('.worksheet-checklist-item')!.getBoundingClientRect();
+                        return { right: bounds.right, rowRight: row.right, ratio: bounds.width / bounds.height };
+                    });
+                expect(illustration.right).toBeLessThanOrEqual(illustration.rowRight + 1);
+                expect(illustration.ratio).toBeCloseTo(7, 1);
+            }
+            await page.emulateMedia({ media: 'screen' });
             // The worksheet asks for the name and date in its own header, so there the checklist asks
             // for neither.
             const fields = checklist.locator('.worksheet-checklist-field:not(.worksheet-checklist-score)');
