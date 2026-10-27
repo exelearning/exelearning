@@ -57,6 +57,26 @@ describe('Redirect Validator Utilities', () => {
             expect(isValidReturnUrl('/workarea\\')).toBe(false);
         });
 
+        it('should return false for URLs with any ASCII control character', () => {
+            // Browsers strip tab/newline while parsing, so '/<TAB>/host' becomes '//host'
+            expect(isValidReturnUrl('/\t/evil.com')).toBe(false);
+            expect(isValidReturnUrl('/\t\t/evil.com/path')).toBe(false);
+            expect(isValidReturnUrl('/work\tarea')).toBe(false);
+            expect(isValidReturnUrl('/workarea\x00')).toBe(false);
+            expect(isValidReturnUrl('/workarea\x1f')).toBe(false);
+            expect(isValidReturnUrl('/workarea\x7f')).toBe(false);
+        });
+
+        it('should return false for URLs that resolve to another origin', () => {
+            expect(isValidReturnUrl('/\\evil.com')).toBe(false);
+            expect(isValidReturnUrl('///evil.com')).toBe(false);
+        });
+
+        it('should keep percent-encoded characters as same-origin paths', () => {
+            expect(isValidReturnUrl('/%09/evil.com')).toBe(true);
+            expect(isValidReturnUrl('/workarea?title=a%20b')).toBe(true);
+        });
+
         it('should return false for javascript: URLs', () => {
             expect(isValidReturnUrl('/path?redirect=javascript:alert(1)')).toBe(false);
             expect(isValidReturnUrl('/path?redirect=JAVASCRIPT:alert(1)')).toBe(false);
@@ -194,6 +214,9 @@ describe('Redirect Validator Utilities', () => {
             // Attacker tries open redirect
             expect(isValidReturnUrl('//evil.com/steal')).toBe(false);
             expect(getSafeRedirectUrl('//evil.com/steal')).toBe('/exelearning/workarea');
+
+            // Attacker hides a protocol-relative URL behind a tab
+            expect(getSafeRedirectUrl('/\t/evil.com')).toBe('/exelearning/workarea');
 
             // Attacker tries header injection
             expect(isValidReturnUrl('/workarea\r\nX-Injected: true')).toBe(false);
