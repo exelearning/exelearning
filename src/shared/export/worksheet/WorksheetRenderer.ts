@@ -223,6 +223,21 @@ export const WORKSHEET_ACTIVITY_STYLES = `
     height: auto;
 }
 
+/* A question laid out as a table, a picture in one cell and its words in the next, takes its number
+   from the first row. Cells centred in the row, with the picture sitting on the line like a letter,
+   drop that row's line to the foot of the picture, and the number hung there under it. Cells lined
+   up on their first line, each picture hung from the top of its own, keep the number level with
+   the first words of the question. */
+.worksheet-prompt td,
+.worksheet-prompt th {
+    vertical-align: baseline;
+}
+
+.worksheet-prompt td img,
+.worksheet-prompt th img {
+    vertical-align: top;
+}
+
 .worksheet-media {
     margin: 2mm 0;
 }

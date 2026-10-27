@@ -1668,6 +1668,92 @@ test.describe('Print iDevices', () => {
         expect(heightPx).toBeLessThan(22);
     });
 
+    // A problem laid out as a picture in one table cell and its words in the next used to have its
+    // number printed at the foot of the picture instead of in front of the question (#2635).
+    for (const mode of ['idevices', 'in-place']) {
+        test(`numbers a math problem laid out as a table level with its words in ${mode} mode`, async ({
+            authenticatedPage: page,
+            createProject,
+        }) => {
+            const uuid = await createProject(page, 'Print iDevices Math Problems Table');
+            await gotoWorkarea(page, uuid);
+            await waitForAppReady(page);
+            const picture = await page.evaluate(() => {
+                const canvas = document.createElement('canvas');
+                canvas.width = 200;
+                canvas.height = 122;
+                const context = canvas.getContext('2d')!;
+                context.fillStyle = '#bbccee';
+                context.fillRect(0, 0, 200, 122);
+                return canvas.toDataURL('image/png');
+            });
+
+            const payload = JSON.stringify({
+                typeGame: 'MathProblems',
+                optionsRamdon: false,
+                percentajeQuestions: 100,
+                questions: [
+                    {
+                        wordingseg:
+                            `<table><tbody><tr><td><img src="${picture}" width="200" height="122"></td>` +
+                            '<td>Calcula el área de un triángulo de base {b} m y altura {h} m</td></tr></tbody></table>',
+                        min: 6,
+                        max: 6,
+                        decimals: 0,
+                    },
+                    { wordingseg: 'Tiene {a} lápices y regala 1. ¿Cuántos le quedan?', min: 5, max: 5, decimals: 0 },
+                ],
+            });
+            const html = `<div class="mathproblems-IDevice"><div class="mathproblems-DataGame js-hidden">${encryptDataGame(payload)}</div></div>`;
+
+            await page.evaluate(
+                ({ htmlContent }) => {
+                    const binding = (window as any).eXeLearning.app.project._yjsBridge.structureBinding;
+                    const parent = binding.createPage('Math Page');
+                    binding.createComponent(parent.id, binding.createBlock(parent.id), 'mathproblems', {
+                        htmlContent,
+                    });
+                },
+                { htmlContent: html },
+            );
+
+            await openPrintPanel(page);
+            const { frame } = await choosePrintOption(page, mode);
+            await page.emulateMedia({ media: 'print' });
+
+            const items = frame.locator('.worksheet-activity[data-idevice="mathproblems"] .worksheet-item');
+            await expect(items).toHaveCount(2);
+            const problem = items.first();
+            await expect
+                .poll(() =>
+                    problem.locator('img').evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth > 0),
+                )
+                .toBe(true);
+
+            // A list number has no box of its own to measure, but it belongs to its item: walking
+            // down the margin where it is drawn, the rows that land on the item are the number's.
+            const placement = await problem.evaluate(item => {
+                item.scrollIntoView({ block: 'center' });
+                const words = document.createRange();
+                words.selectNodeContents(item.querySelectorAll('td')[1]);
+                const firstLine = words.getClientRects()[0];
+                const bounds = item.getBoundingClientRect();
+                const rows: number[] = [];
+                for (let y = Math.floor(bounds.top); y < bounds.bottom; y++) {
+                    if (document.elementFromPoint(bounds.left - 8, y) === item) rows.push(y);
+                }
+                return {
+                    line: { top: firstLine.top, bottom: firstLine.bottom },
+                    number: rows.length === 0 ? null : (rows[0] + rows[rows.length - 1]) / 2,
+                };
+            });
+
+            expect(placement.number).not.toBeNull();
+            expect(placement.number!).toBeGreaterThan(placement.line.top);
+            expect(placement.number!).toBeLessThan(placement.line.bottom);
+        });
+    }
+
     test('prints a challenge activity with compact writing spaces for challenge and trials', async ({
         authenticatedPage: page,
         createProject,

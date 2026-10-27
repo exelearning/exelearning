@@ -912,6 +912,45 @@ describe('questions set in two columns', () => {
     });
 });
 
+describe('questions laid out as a table', () => {
+    const prompt =
+        '<table><tbody><tr><td><img src="triangle.png" width="200" height="122"></td><td>Area?</td></tr></tbody></table>';
+    const ruleFor = (styles: string, selector: string) => styles.split(`${selector} {`)[1].split('}')[0];
+
+    it('keeps the table the author laid the question out in', () => {
+        const html = renderActivityFragment(activity({ ideviceType: 'mathproblems', items: [{ prompt }, { prompt }] }));
+
+        expect(html).toContain(`<li class="worksheet-item"><div class="worksheet-prompt">${prompt}</div>`);
+    });
+
+    it('lines the cells up on their first line, so the number stays level with the first words', () => {
+        const standalone = renderWorksheet(model());
+
+        for (const styles of [standalone, WORKSHEET_ACTIVITY_STYLES]) {
+            expect(ruleFor(styles, '.worksheet-prompt td,\n.worksheet-prompt th')).toContain(
+                'vertical-align: baseline',
+            );
+        }
+    });
+
+    it('hangs a picture in a cell from its top, so it never drops the number to its foot', () => {
+        const standalone = renderWorksheet(model());
+
+        for (const styles of [standalone, WORKSHEET_ACTIVITY_STYLES]) {
+            expect(ruleFor(styles, '.worksheet-prompt td img,\n.worksheet-prompt th img')).toContain(
+                'vertical-align: top',
+            );
+        }
+    });
+
+    it('leaves a picture in the middle of the words on the line, as the author wrote it', () => {
+        // Hanging every picture from the top would lift the ones set among the words of a sentence.
+        const imageRules = WORKSHEET_ACTIVITY_STYLES.split('}').filter(rule => rule.includes('vertical-align: top'));
+
+        for (const rule of imageRules) expect(rule).not.toMatch(/\.worksheet-prompt img\b/);
+    });
+});
+
 describe('writing lines and cards to be ordered', () => {
     const answered = (answer: unknown) =>
         renderActivityFragment(activity({ ideviceType: 'sort', items: [{ prompt: 'x', answer } as never] }));
