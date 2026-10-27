@@ -355,4 +355,70 @@ describe('checklist iDevice export', () => {
             expect(store['dataCotejo-']).toBe('{}');
         });
     });
+
+    describe('a Text item', () => {
+        let store;
+
+        // One Text item: a box to tick and a field to write in, as the editor's "Text" type asks.
+        const renderTextItem = () => {
+            $checklist.options = [
+                {
+                    storageKey: 'dataCotejo-idevice-abc',
+                    saveData: true,
+                    save: true,
+                    showCounter: true,
+                    useScore: false,
+                    levels: [{ type: '1', nivel: '0', item: 'Write the summary', points: '' }],
+                    msgs: { msgPoint: 'point', msgPoints: 'points', msgComplit: 'Completed' },
+                },
+            ];
+            document.body.innerHTML = `
+                <div id="ctjCounter-0"></div>
+                <div id="ctjItems-0">${$checklist.createItems(0)}</div>`;
+        };
+        const box = () => document.querySelector('#ctjItems-0 .toggle-control input[type="checkbox"]');
+
+        beforeEach(() => {
+            store = {};
+            vi.stubGlobal('localStorage', {
+                getItem: (key) => (key in store ? store[key] : null),
+                setItem: (key, value) => {
+                    store[key] = String(value);
+                },
+            });
+            renderTextItem();
+        });
+
+        afterEach(() => {
+            document.body.innerHTML = '';
+            vi.unstubAllGlobals();
+        });
+
+        it('has a box to tick, which its label ticks', () => {
+            // The box's wrapper was left unclosed, so the browser read the box as attributes of the
+            // wrapper: there was nothing to tick, and the label pointed at the wrapper.
+            expect(box()).not.toBeNull();
+            expect(document.querySelector('#ctjItems-0 .toggle-label').htmlFor).toBe(box().id);
+            expect(document.querySelector('#ctjItems-0 input[type="text"]')).not.toBeNull();
+        });
+
+        it('keeps what is ticked and written as a Text item', () => {
+            box().checked = true;
+            $('#ctjItems-0 input[type="text"]').val('Done in class');
+
+            $checklist.saveCotejo(0);
+
+            expect(JSON.parse(store['dataCotejo-idevice-abc']).items).toEqual([
+                { type: 1, state: 1, text: 'Done in class' },
+            ]);
+        });
+
+        it('counts towards what is completed once ticked', () => {
+            box().checked = true;
+
+            $checklist.counter(0);
+
+            expect($('#ctjCounter-0').text()).toBe('Completed: 1/1. ');
+        });
+    });
 });

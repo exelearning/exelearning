@@ -727,7 +727,7 @@ var $eXeListaCotejo = {
             } else if (level.type === '1') {
                 const cid = `ctjToggle-${instance}-${i}`;
                 html += `<div class="CTJP-Item d-flex align-item-center flex-nowrap gap-1"  style="margin-left: ${marginLeft}em">
-                        <div class="toggle-control"
+                        <div class="toggle-control">
                             <input type="checkbox" id="${cid}" class="toggle-input" />
                             <span class="toggle-visual"></span>
                         </div>
