@@ -155,16 +155,36 @@ export async function saveIdevice(page: Page, block: Locator): Promise<void> {
 export async function storedMaps(
     page: Page,
 ): Promise<Array<{ format: string; data: MindElixirData; img: string; svg: string }>> {
-    const raw = await page.evaluate(() =>
-        Promise.all(
-            Array.from(document.querySelectorAll('#node-content .exe-mind-map')).map(async map => {
-                const img = map.querySelector('img')?.getAttribute('src') ?? '';
-                const response = img ? await fetch(img).catch(() => null) : null;
-                const svg = response?.headers.get('content-type')?.includes('svg') ? await response.text() : '';
-                return { code: map.querySelector('.exe-mindmap-code')?.innerHTML ?? '', img, svg };
+    // The code comes from the iDevice's HTML in the Y.Doc, not from the rendered view: the
+    // editor renders a sanitized copy, which drops markup-like text a legacy map stored
+    // unescaped (`<clima>`). The image URL is the rendered one, which the page can fetch.
+    const raw = await page.evaluate(() => {
+        const yDoc = (window as any).eXeLearning?.app?.project?._yjsBridge?.getDocumentManager?.()?.getDoc?.();
+        const stored = new Map<string, string>();
+        const walk = (pageMap: any): void => {
+            for (const block of pageMap?.get('blocks')?.toArray?.() ?? []) {
+                for (const comp of block?.get('components')?.toArray?.() ?? []) {
+                    const html = comp.get('htmlContent')?.toString?.() || comp.get('htmlView');
+                    stored.set(comp.get('id'), typeof html === 'string' ? html : '');
+                }
+            }
+            (pageMap?.get('pages') || pageMap?.get('children'))?.forEach?.(walk);
+        };
+        yDoc?.getArray('navigation').forEach(walk);
+        return Promise.all(
+            Array.from(document.querySelectorAll('#node-content .idevice_node')).flatMap(idevice => {
+                const codes = new DOMParser()
+                    .parseFromString(stored.get(idevice.id) ?? '', 'text/html')
+                    .querySelectorAll('.exe-mind-map');
+                return Array.from(idevice.querySelectorAll('.exe-mind-map')).map(async (map, i) => {
+                    const img = map.querySelector('img')?.getAttribute('src') ?? '';
+                    const response = img ? await fetch(img).catch(() => null) : null;
+                    const svg = response?.headers.get('content-type')?.includes('svg') ? await response.text() : '';
+                    return { code: codes[i]?.querySelector('.exe-mindmap-code')?.innerHTML ?? '', img, svg };
+                });
             }),
-        ),
-    );
+        );
+    });
     return raw.map(({ code, img, svg }) => {
         const { format, data } = readStoredCode(code);
         return { format, data, img, svg };
