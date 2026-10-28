@@ -192,7 +192,7 @@ class ComponentImporter {
     try {
       // Only .idevice files are allowed in this flow
       if (!file.name.toLowerCase().endsWith('.idevice')) {
-        return { success: false, error: _('The file is not an iDevice (.idevice)') };
+        return { success: false, error: _('The file is not an iDevice content (.idevice)') };
       }
 
       // Load the ZIP with the full limit guard (see readComponentZip)
