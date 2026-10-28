@@ -4,12 +4,6 @@
  * Responsible for the resize and drag and drop operation of the menu elements
  */
 
-/**
- * Below this viewport width the left panels start collapsed, and collapse when the viewport
- * shrinks past it: with them open the toolbar does not fit (#2638).
- */
-export const COLLAPSE_PANELS_BELOW = 1200;
-
 export default class MenuEngine {
     constructor() {
         this.main = document.querySelector('body#main');
@@ -62,14 +56,6 @@ export default class MenuEngine {
 
         // Initialize mobile button handlers
         this.initMobileButtonHandlers();
-
-        // Initialize mobile layout based on screen size
-        this.initMobileLayout();
-
-        // Handle resize events
-        window.addEventListener('resize', () => {
-            this.handleResponsiveLayout();
-        });
     }
 
     /**
@@ -106,29 +92,6 @@ export default class MenuEngine {
                 }
             });
         });
-    }
-
-    /**
-     * Initialize mobile layout - collapse left panel by default on phones and tablets
-     */
-    initMobileLayout() {
-        const isNarrow = window.innerWidth < COLLAPSE_PANELS_BELOW;
-        if (isNarrow) {
-            document.body.classList.add('left-column-hidden');
-        }
-    }
-
-    /**
-     * Handle responsive layout changes: collapse once when the viewport becomes narrow
-     */
-    handleResponsiveLayout() {
-        const isNarrow = window.innerWidth < COLLAPSE_PANELS_BELOW;
-        if (isNarrow && !this._wasResizedToMobile) {
-            document.body.classList.add('left-column-hidden');
-            this._wasResizedToMobile = true;
-        } else if (!isNarrow) {
-            this._wasResizedToMobile = false;
-        }
     }
 
     closeMenusEvent() {

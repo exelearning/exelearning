@@ -10,7 +10,12 @@ import {
     saveProjectFolderInBrowser,
 } from '../../../../core/ProjectFolderStorage.js';
 import { DEFAULT_ACTIVITY_MODE, PREVIEW_MODE_DOCUMENT } from '../../../modals/modals/pages/modalPrintPreview.js';
-import { COLLAPSE_PANELS_BELOW } from '../../menuEngine.js';
+
+/**
+ * Below this viewport width the left panels start collapsed, and collapse when the viewport
+ * shrinks past it: with them open the toolbar does not fit (#2638).
+ */
+export const COLLAPSE_PANELS_BELOW = 1200;
 
 const KNOWN_EXPORT_EXTENSIONS = new Set(['.elpx', '.zip', '.epub', '.xml']);
 
@@ -1436,6 +1441,8 @@ export default class NavbarFile {
         if (isNarrow) {
             document.body.classList.add('left-column-hidden');
         }
+        // Already collapsed: a later resize must not close panels the user reopened
+        this._wasResizedToMobile = isNarrow;
     }
 
     /**

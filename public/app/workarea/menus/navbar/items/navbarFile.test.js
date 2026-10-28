@@ -10,7 +10,7 @@ import createTooltip from '../../../../common/app_tooltip.js';
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import NavbarFile from './navbarFile.js';
+import NavbarFile, { COLLAPSE_PANELS_BELOW } from './navbarFile.js';
 
 describe('NavbarFile', () => {
     let mockMenu;
@@ -2778,6 +2778,7 @@ describe('NavbarFile', () => {
         });
 
         it('initMobileLayout should keep the sidebar open from 1200px', () => {
+            expect(COLLAPSE_PANELS_BELOW).toBe(1200);
             window.innerWidth = 1200;
             navbarFile.initMobileLayout();
             expect(document.body.classList.contains('left-column-hidden')).toBe(false);
@@ -2806,6 +2807,17 @@ describe('NavbarFile', () => {
             // Reopened by hand, the panels stay open while the viewport stays narrow
             document.body.classList.remove('left-column-hidden');
             window.innerWidth = 1000;
+            navbarFile.handleResponsiveLayout();
+            expect(document.body.classList.contains('left-column-hidden')).toBe(false);
+        });
+
+        it('handleResponsiveLayout should not close panels reopened by hand after a tablet load', () => {
+            window.innerWidth = 810;
+            navbarFile.initMobileLayout();
+            expect(document.body.classList.contains('left-column-hidden')).toBe(true);
+
+            document.body.classList.remove('left-column-hidden');
+            window.innerWidth = 1080;
             navbarFile.handleResponsiveLayout();
             expect(document.body.classList.contains('left-column-hidden')).toBe(false);
         });
