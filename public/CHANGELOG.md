@@ -6,11 +6,13 @@
 
 - Printing: interactive activities are now printed as paper exercises using their content; for example, crosswords include the grid and clues
 - Printing: a new "Print options" panel beside the preview keeps activities in place by default and lets you move them to an appendix, print only activities or leave them out; the preview updates to reflect your choices
+- Printing: Checklist iDevices are now printed with tick boxes and lines for handwritten answers
 - Desktop app: added a "Save as PDF" button to the print preview, so you can save a PDF without a printer
 - iDevices: scoring iDevices now share a Grading tab for SCORM score, progress report and minimum score settings
 - LOMLOE iDevice: added Mathematics A and B for 4th ESO to the state curriculum and its datasets
 - Project properties: added a project-wide minimum passing score in a new Grading tab; scoring iDevices use it unless they define their own minimum
 - SCORM: added an option requiring every activity on a page to meet its own minimum score; learners can also see the score needed to pass each page
+- Web site exports: added a Presentation mode, enabled by adding `?exe-presentation=1` to the URL, that lets you navigate between pages using the keyboard or a presenter remote
 - Public read-only viewer: projects can now be shared through an unlisted link that anyone can open without signing in, keeping the project content separate from the user's session
 - Desktop app (Windows and Linux): you can now choose spell-checking languages in Preferences, displayed in the interface language, or use the system default
 - Styles: added Cedec, eTwinning, INTEF and Kids
@@ -59,9 +61,12 @@
 - Games: each iDevice now keeps its own timer and saved progress, even when the same game appears on multiple pages or is duplicated
 - iDevices: closing an editor now stops its timers and event handlers, preventing them from affecting other iDevices
 - Sort iDevice: activities no longer fail to start when cards have no image, text or audio
+- Checklist iDevice: Text items can be ticked and counted again; after Restart, new ticks are saved, counted and scored again
 - LOMLOE iDevice: Mathematics for 1st–3rd ESO no longer includes 4th ESO evaluation criteria or basic knowledge; changing the curriculum also clears the previous criteria from the screen
 - TinyMCE: the ABC music notation dialog preview now works on sites that serve pages without the `.html` extension
 - Interface: highlighted buttons now retain readable text contrast when focused with the keyboard
+- Interface: the editor toolbar and content now fit on tablet screens; the left panels are collapsed by default on screens narrower than 1200px
+- Styles: the hidden label on the box show/hide button no longer causes a horizontal scrollbar
 - Translations: corrected misplaced text in German (DE), Esperanto (EO), Basque (EU), Portuguese (PT) and Valencian (VA)
 - Stability: fixed errors that could occur in game iDevices, editor tooltips, the image editor and when opening files
 - Static mode: styles and libraries with missing files are no longer stored in the browser cache
