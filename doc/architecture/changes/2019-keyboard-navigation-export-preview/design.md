@@ -94,13 +94,12 @@ LMS), not EPUB, not the editor's preview panel (it never adds the parameter).
 
 - Without the parameter: no `#exe-presentation-toggler`, no parameter in the
   navigation links, `→` does nothing.
-- With `=1`: mode on at once, control reads "Exit presentation mode",
+- With `=1`: mode on at once, the "Presentation mode" toggle is pressed,
   `html.mode-presentation`, `#siteNavToggler` collapsed, `→`/`PageDown` and
   `←`/`PageUp` change page, every next page re-enters by itself, the menu can
   still be opened.
 - After leaving: URL and links carry `=0`, keys inert, the choice survives a
-  reload and a page change, and the control reads "Presentation mode" to come
-  back in.
+  reload and a page change, and the toggle is not pressed, to come back in.
 - With a SimpleLightbox open: keys inert; after closing: keys work.
 
 ## Current state
@@ -129,7 +128,7 @@ rendered outside `.exe-content` and the footer, styled in
 - `isSupported()`: `body.exe-web-site` (only reached when the parameter is present).
 - `enter()`/`leave()`/`toggle()`: `html.mode-presentation`, `_syncState()`
   (rewrites `exe-presentation=1|0` in the URL with `history.replaceState`, in
-  the links, and relabels the control), menu via the theme's own toggler
+  the links, and sets the control's `aria-pressed` and title), menu via the theme's own toggler
   (`_setMenuExpanded()` clicks `#siteNavToggler` only when its `aria-expanded`
   differs; `_clickMenuToggler()` scrolls to the top and clicks again when a
   narrow-width style left the menu open because it was out of view), one
@@ -149,8 +148,12 @@ rendered outside `.exe-content` and the footer, styled in
 - CSS: `#exe-presentation-toggler` in `base.css` follows the `#made-with-eXe`
   recipe (fixed bottom-right, neutral, print-hidden), shifts left when the
   badge is present and stacks below it (`z-index` 1 vs 2) so the badge's hover
-  expansion covers it. Labels: `presentation_mode`, `exit_presentation_mode`
-  and the `presentation_mode_keys` tooltip in `common_i18n.js`.
+  expansion covers it; beside the badge its top-right corner is rounded too.
+  A dot before the fixed label (empty ring / filled) shows the state; both sit
+  in `#exe-presentation-toggler span`, so a style can hide them accessibly. Labels:
+  `presentation_mode`, `activate_presentation_mode`,
+  `deactivate_presentation_mode` and `presentation_mode_keys` (title) in
+  `common_i18n.js`.
 
 ## Data model
 
@@ -172,13 +175,15 @@ the state if the browser refuses it.
 
 ## Accessibility
 
-The mode is visible (a button whose label names the action), entered and left
+The mode is visible (a toggle button with a fixed label and `aria-pressed`,
+whose state is also drawn as a dot, and whose title names the action), entered and left
 from the interface, and never captures keys with modifiers, inside form fields or while
 an overlay is open. `↑`/`↓` keep scrolling. `Esc` keeps its existing meanings.
 
 ## Internationalization
 
-`presentation_mode`, `exit_presentation_mode` and `presentation_mode_keys` are
+`presentation_mode`, `activate_presentation_mode`, `deactivate_presentation_mode`
+and `presentation_mode_keys` are
 added to `public/app/common/common_i18n.js` with `c_()`; per-language bundles are
 generated at build time from the translations, and the runtime falls back to
 English when a bundle predates the keys.

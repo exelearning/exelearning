@@ -772,13 +772,31 @@ video {
     opacity: 1
 }
 
+/* State dot inside the label span: ring when off, filled when on, same size in both */
+#exe-presentation-toggler span::before {
+    content: "";
+    display: inline-block;
+    width: 7px;
+    height: 7px;
+    margin-right: 6px;
+    border: 1px solid currentColor;
+    border-radius: 50%;
+    vertical-align: middle
+}
+
 html.mode-presentation #exe-presentation-toggler {
     background: #222;
     color: #fff
 }
 
+html.mode-presentation #exe-presentation-toggler span::before {
+    background: currentColor
+}
+
+/* Beside the badge its top-right corner is free, so round it too */
 #made-with-eXe ~ #exe-presentation-toggler {
-    right: 40px
+    right: 40px;
+    border-top-right-radius: 4px
 }
 
 #made-with-eXe a:hover {

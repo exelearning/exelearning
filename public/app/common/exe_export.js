@@ -707,7 +707,7 @@ window.$exeExport = {
      * like Teacher Mode.
      *
      *   ?exe-presentation=1|true|yes   present: the mode is on and a visible
-     *                                  "Exit presentation mode" control leaves it.
+     *                                  "Presentation mode" toggle leaves it.
      *   ?exe-presentation=0            the control is available but the mode is off.
      *   (no parameter)                 nothing is injected and no key is captured.
      *
@@ -733,7 +733,8 @@ window.$exeExport = {
      * The control is appended to <body> as a sibling of #made-with-eXe (styled in
      * base.css the same way, and stacked below it so the badge can expand over it):
      * outside .exe-content and the footer, present in every web site export whatever
-     * the style does to the page layout.
+     * the style does to the page layout. Its label never changes, so its size does not
+     * either: aria-pressed carries the state and the title names the action and the keys.
      */
     presentationMode : {
         PARAM : 'exe-presentation',
@@ -789,9 +790,11 @@ window.$exeExport = {
             var control = document.createElement('button');
             control.type = 'button';
             control.id = 'exe-presentation-toggler';
-            control.textContent = this._label();
-            control.title = $exe_i18n.presentation_mode_keys
-                || 'Keys: Left/Right change page, M menu, T teacher mode, F11 full screen';
+            // The label and its state dot share one span, so a style can hide both accessibly.
+            var text = document.createElement('span');
+            text.textContent = $exe_i18n.presentation_mode || 'Presentation mode';
+            control.appendChild(text);
+            this._renderControl(control);
             var self = this;
             control.addEventListener('click', function(){ self.toggle(); });
             document.body.appendChild(control);
@@ -829,10 +832,15 @@ window.$exeExport = {
             document.removeEventListener('keydown', this._boundHandleKeydown);
             this._boundHandleKeydown = null;
         },
-        _label : function(){
-            return this._active
-                ? ($exe_i18n.exit_presentation_mode || 'Exit presentation mode')
-                : ($exe_i18n.presentation_mode || 'Presentation mode');
+        // A toggle button: the state is in aria-pressed; the title names the action and the keys.
+        _renderControl : function(control){
+            var action = this._active
+                ? ($exe_i18n.deactivate_presentation_mode || 'Deactivate presentation mode')
+                : ($exe_i18n.activate_presentation_mode || 'Activate presentation mode');
+            var keys = $exe_i18n.presentation_mode_keys
+                || 'Keys: Left/Right change page, M menu, T teacher mode, F11 full screen';
+            control.setAttribute('aria-pressed', this._active ? 'true' : 'false');
+            control.title = action + '. ' + keys;
         },
         // The menu state to carry in the nav parameter: nav=true|false while presenting,
         // the style's own convention (nav=false or nothing) otherwise; undefined without
@@ -856,7 +864,7 @@ window.$exeExport = {
                 // The links still carry the state; only a reload of this page forgets it.
             }
             var control = document.getElementById('exe-presentation-toggler');
-            if (control) control.textContent = this._label();
+            if (control) this._renderControl(control);
         },
         // Reuse the style's own menu toggler so its state classes, nav=false links and
         // low-resolution behaviour stay the single source of truth. The menu can still be

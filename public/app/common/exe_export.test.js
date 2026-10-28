@@ -3063,7 +3063,8 @@ describe('exe_export.js', () => {
     let replaceState;
 
     beforeEach(() => {
-      window.$exe_i18n.exit_presentation_mode = 'Exit presentation mode';
+      window.$exe_i18n.activate_presentation_mode = 'Activate presentation mode';
+      window.$exe_i18n.deactivate_presentation_mode = 'Deactivate presentation mode';
       window.$exe_i18n.presentation_mode_keys = 'Keys: Left/Right change page, M menu, T teacher mode, F11 full screen';
       // Earlier describes replace window.location with bare objects and never restore
       // it; the URL rewrite needs a real href, so pin one for these tests.
@@ -3147,14 +3148,21 @@ describe('exe_export.js', () => {
         expect(pm().isActive()).toBe(false);
       });
 
-      it('with =1 enters the mode at once: exit control, collapsed menu, links carrying =1', () => {
+      it('with =1 enters the mode at once: pressed toggle, collapsed menu, links carrying =1', () => {
         buildWebSitePage();
         bootstrapWith('1');
         pm().init();
         expect(control().tagName).toBe('BUTTON');
         expect(control().getAttribute('type')).toBe('button');
-        expect(control().textContent).toBe('Exit presentation mode');
-        expect(control().title).toBe('Keys: Left/Right change page, M menu, T teacher mode, F11 full screen');
+        expect(control().textContent).toBe('Presentation mode');
+        // One span holds the label (and its state dot), so a style can hide both accessibly.
+        expect(control().children).toHaveLength(1);
+        expect(control().firstElementChild.tagName).toBe('SPAN');
+        expect(control().firstElementChild.textContent).toBe('Presentation mode');
+        expect(control().getAttribute('aria-pressed')).toBe('true');
+        expect(control().title).toBe(
+          'Deactivate presentation mode. Keys: Left/Right change page, M menu, T teacher mode, F11 full screen'
+        );
         expect(pm().isActive()).toBe(true);
         expect(menuExpanded()).toBe('false');
         expect(firstMenuHref()).toBe('page1.html?exe-presentation=1&nav=false');
@@ -3168,6 +3176,10 @@ describe('exe_export.js', () => {
         bootstrapWith('0');
         pm().init();
         expect(control().textContent).toBe('Presentation mode');
+        expect(control().getAttribute('aria-pressed')).toBe('false');
+        expect(control().title).toBe(
+          'Activate presentation mode. Keys: Left/Right change page, M menu, T teacher mode, F11 full screen'
+        );
         expect(pm().isActive()).toBe(false);
         expect(menuExpanded()).toBe('true');
         expect(firstMenuHref()).toBe('page1.html?exe-presentation=0');
@@ -3182,16 +3194,26 @@ describe('exe_export.js', () => {
       });
 
       it('falls back to English labels when the i18n bundle predates the keys', () => {
+        const label = window.$exe_i18n.presentation_mode;
         delete window.$exe_i18n.presentation_mode;
-        delete window.$exe_i18n.exit_presentation_mode;
+        delete window.$exe_i18n.activate_presentation_mode;
+        delete window.$exe_i18n.deactivate_presentation_mode;
         delete window.$exe_i18n.presentation_mode_keys;
-        buildWebSitePage();
-        bootstrapWith('1');
-        pm().init();
-        expect(control().textContent).toBe('Exit presentation mode');
-        expect(control().title).toBe('Keys: Left/Right change page, M menu, T teacher mode, F11 full screen');
-        pm().leave();
-        expect(control().textContent).toBe('Presentation mode');
+        try {
+          buildWebSitePage();
+          bootstrapWith('1');
+          pm().init();
+          expect(control().textContent).toBe('Presentation mode');
+          expect(control().title).toBe(
+            'Deactivate presentation mode. Keys: Left/Right change page, M menu, T teacher mode, F11 full screen'
+          );
+          pm().leave();
+          expect(control().title).toBe(
+            'Activate presentation mode. Keys: Left/Right change page, M menu, T teacher mode, F11 full screen'
+          );
+        } finally {
+          window.$exe_i18n.presentation_mode = label;
+        }
       });
 
       it('does not add a second control when called twice', () => {
@@ -3218,10 +3240,12 @@ describe('exe_export.js', () => {
         pm().init();
       });
 
-      it('enter() marks <html>, relabels the control, collapses the menu and rewrites links and URL to =1', () => {
+      it('enter() marks <html>, presses the control, collapses the menu and rewrites links and URL to =1', () => {
         pm().enter();
         expect(presenting()).toBe(true);
-        expect(control().textContent).toBe('Exit presentation mode');
+        expect(control().textContent).toBe('Presentation mode');
+        expect(control().getAttribute('aria-pressed')).toBe('true');
+        expect(control().title).toMatch(/^Deactivate presentation mode\. /);
         expect(menuExpanded()).toBe('false');
         expect(firstMenuHref()).toBe('page1.html?exe-presentation=1&nav=false');
         expect(replaceState.mock.lastCall[2]).toContain('exe-presentation=1&nav=false');
@@ -3240,6 +3264,8 @@ describe('exe_export.js', () => {
         pm().leave();
         expect(presenting()).toBe(false);
         expect(control().textContent).toBe('Presentation mode');
+        expect(control().getAttribute('aria-pressed')).toBe('false');
+        expect(control().title).toMatch(/^Activate presentation mode\. /);
         expect(menuExpanded()).toBe('true');
         expect(firstMenuHref()).toBe('page1.html?exe-presentation=0');
         expect(replaceState.mock.lastCall[2]).toContain('exe-presentation=0');

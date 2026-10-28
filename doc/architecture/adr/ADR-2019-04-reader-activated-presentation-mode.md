@@ -88,8 +88,8 @@ where does the control that enters and leaves it go?
 
 ### Option 4 (chosen): Reader-activated mode carried by the parameter itself
 
-`?exe-presentation=1|true|yes` enters the mode and shows a visible "Exit
-presentation mode" control; `?exe-presentation=0` shows the control with the
+`?exe-presentation=1|true|yes` enters the mode and shows a visible, pressed
+"Presentation mode" toggle; `?exe-presentation=0` shows the toggle with the
 mode off; without the parameter nothing is injected and no key is captured.
 While presenting, `←`/`PageUp` and `→`/`PageDown` change page, `M` shows or
 hides the menu through the style's own toggler and `T` toggles Teacher Mode
@@ -120,7 +120,7 @@ the mode is off only the style's own `nav=false` convention remains.
   `html.mode-presentation` flicker-free), `init()` appends the control and
   enters the mode when the parameter asked for it, `enter()`/`leave()`/
   `toggle()` manage `html.mode-presentation`, the menu and, through
-  `_syncState()`, the URL, the links and the control's label.
+  `_syncState()`, the URL, the links and the control's state.
 - Shared propagation helpers `$exeExport.withNavParam()` and
   `$exeExport.propagateNavParam()` serve both Teacher Mode and presentation mode
   (single source of truth, AGENTS.md §1); search hits get both parameters in
@@ -137,11 +137,19 @@ the mode is off only the style's own `nav=false` convention remains.
   styled in `public/style/workarea/base.css` with the same recipe as the badge
   (fixed bottom-right, neutral, hidden in print, offset when the badge exists)
   and stacked below it (`z-index` 1 vs 2) so the badge's hover expansion
-  covers the control instead of the other way round. The label changes with
-  the state ("Presentation mode" / "Exit presentation mode"), so it is a plain
-  button, not an `aria-pressed` toggle.
-- Labels: `presentation_mode`, `exit_presentation_mode` and
-  `presentation_mode_keys` (tooltip) in `public/app/common/common_i18n.js`,
+  covers the control instead of the other way round. It is a toggle button
+  with a fixed label ("Presentation mode"), so it keeps its size whatever the
+  state and the language: `aria-pressed` carries the state, a dot before the
+  label (empty ring / filled, the same size in both) and the dark look under
+  `html.mode-presentation` show it, and the title names the action (activate
+  / deactivate) followed by the keys (PR #2020 review, 2026-10-28). The label
+  and the dot share one span (`#exe-presentation-toggler span`, the dot is its
+  `::before`), so a style can hide both accessibly and draw its own icon. An earlier revision relabelled the
+  button ("Exit presentation mode"); its width changed with the state, and a
+  label that changes together with the state is not a toggle pattern.
+- Labels: `presentation_mode`, `activate_presentation_mode`,
+  `deactivate_presentation_mode` and `presentation_mode_keys` (title) in
+  `public/app/common/common_i18n.js`,
   the template every export's `libs/common_i18n.js` is generated from (English
   fallback in the runtime).
 - Tests: `public/app/common/exe_export.test.js` (`describe('presentationMode')`)
@@ -153,7 +161,8 @@ the mode is off only the style's own `nav=false` convention remains.
 Presentation mode is a reader-activated mode of web site exports.
 `?exe-presentation=1` (aliases `true`/`yes`) enters it and `=0` leaves the
 control available with the mode off; a visible `#exe-presentation-toggler`
-control placed next to `#made-with-eXe` enters and leaves it, rewriting the
+toggle button (`aria-pressed`, fixed label) placed next to `#made-with-eXe`
+enters and leaves it, rewriting the
 parameter in the URL and the navigation links. The parameter is the only
 state: no storage, no project property, no export option and no export type.
 The keys are `←`/`PageUp`, `→`/`PageDown`, `M` (menu) and `T` (Teacher Mode

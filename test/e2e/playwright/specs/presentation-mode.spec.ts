@@ -4,7 +4,7 @@
  * The mode is activated by the READER, never stored in the project: opening the
  * export with `?exe-presentation=1` enters the mode (menu collapsed, Left/PageUp
  * and Right/PageDown change page, M shows/hides the menu, T toggles Teacher Mode
- * where available) and shows an "Exit presentation mode" control
+ * where available) and shows a pressed "Presentation mode" toggle
  * next to the "made with eXe" badge. The parameter is the state: leaving
  * rewrites it to `=0` in the URL and the navigation links, so the choice
  * survives page changes and reloads without any storage. The export is served
@@ -28,9 +28,10 @@ async function expectPresenting(page: Page, active: boolean, menuExpanded = fals
         expected => (window as any).$exeExport?.presentationMode?.isActive() === expected,
         active,
     );
-    await expect(page.locator('#exe-presentation-toggler')).toHaveText(
-        active ? 'Exit presentation mode' : 'Presentation mode',
-    );
+    // The label never changes; the toggle's state does.
+    const control = page.locator('#exe-presentation-toggler');
+    await expect(control).toHaveText('Presentation mode');
+    await expect(control).toHaveAttribute('aria-pressed', String(active));
     // The mode collapses the menu unless the reader chose otherwise (nav=true); when it
     // is off the menu is the style's business.
     if (active) {
@@ -195,11 +196,11 @@ test.describe('Presentation mode (web site export)', () => {
         );
         const frame = page.frameLocator('iframe');
         const heading = frame.locator('main h1.page-title');
-        await expect(frame.locator('#exe-presentation-toggler')).toHaveText('Exit presentation mode');
+        await expect(frame.locator('#exe-presentation-toggler')).toHaveAttribute('aria-pressed', 'true');
         await heading.click();
         await page.keyboard.press('ArrowRight');
         await expect(heading).toHaveText(SECOND_PAGE);
-        await expect(frame.locator('#exe-presentation-toggler')).toHaveText('Exit presentation mode');
+        await expect(frame.locator('#exe-presentation-toggler')).toHaveAttribute('aria-pressed', 'true');
     });
 
     test('M hides the menu at narrow widths after scrolling down', async ({ authenticatedPage, createProject }) => {

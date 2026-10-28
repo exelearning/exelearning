@@ -677,8 +677,8 @@ Common functionality found in built-in eXe styles:
   $exeExport.teacherMode.init();
   ```
 - **Presentation mode**. Opening a web site export with `?exe-presentation=1` collapses the
-  menu, adds an "Exit presentation mode" button (`#exe-presentation-toggler`, next to
-  `#made-with-eXe`) and lets the reader present with the keyboard: `←`/`PageUp` and
+  menu, adds a "Presentation mode" toggle button (`#exe-presentation-toggler`, next to
+  `#made-with-eXe`, its state in `aria-pressed`) and lets the reader present with the keyboard: `←`/`PageUp` and
   `→`/`PageDown` change page, `M` shows/hides the menu and `T` toggles Teacher Mode where its
   toggle exists. The runtime drives the style's own controls, so a style only has to keep
   them where it expects:
@@ -687,7 +687,9 @@ Common functionality found in built-in eXe styles:
     new state.
   - Previous/next are `a.nav-button-left` / `a.nav-button-right`.
   - `html.mode-presentation` and `#exe-presentation-toggler` are the hooks to restyle the
-    mode and its button.
+    mode and its button. The label never changes (the state is in `aria-pressed`) and sits
+    in `#exe-presentation-toggler span` together with its on/off dot (`::before`), so hiding
+    that span accessibly (as `.sr-av` does) leaves room for a style's own icon.
   - Do not bind `←`/`→`/`PageUp`/`PageDown`/`M`/`T` on `document`. The mode only yields to a
     handler that calls `preventDefault()`, so an unconditional handler would change the page
     twice.

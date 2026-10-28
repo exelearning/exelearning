@@ -557,7 +557,7 @@ test.describe('Image Gallery iDevice', () => {
 
             // =1 enters the mode at once; wait for the runtime to have bound its keys.
             await page.waitForFunction(() => (window as any).$exeExport?.presentationMode?.isActive() === true);
-            await expect(page.locator('#exe-presentation-toggler')).toHaveText('Exit presentation mode');
+            await expect(page.locator('#exe-presentation-toggler')).toHaveAttribute('aria-pressed', 'true');
 
             // Check the page's own <h1> rather than the whole body: #siteNav
             // always lists every page's title in the sidebar, so a body-text
