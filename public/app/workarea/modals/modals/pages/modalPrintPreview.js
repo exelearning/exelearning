@@ -626,6 +626,7 @@ export default class ModalPrintPreview {
             challenge: _('Challenge'),
             identify: _('Identify'),
             rubric: _('Rubric'),
+            checklist: _('Checklist'),
             'select-media-files': _('Select multimedia'),
             'periodic-table': _('Periodic table'),
             form: _('Form'),
