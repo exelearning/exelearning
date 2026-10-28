@@ -1678,14 +1678,20 @@ test.describe('Print iDevices', () => {
             const uuid = await createProject(page, 'Print iDevices Math Problems Table');
             await gotoWorkarea(page, uuid);
             await waitForAppReady(page);
-            const picture = await page.evaluate(() => {
+            const { picture, formula } = await page.evaluate(() => {
                 const canvas = document.createElement('canvas');
                 canvas.width = 200;
                 canvas.height = 122;
                 const context = canvas.getContext('2d')!;
                 context.fillStyle = '#bbccee';
                 context.fillRect(0, 0, 200, 122);
-                return canvas.toDataURL('image/png');
+                const picture = canvas.toDataURL('image/png');
+                canvas.width = 65;
+                canvas.height = 32;
+                context.fillStyle = '#000';
+                context.font = '30px serif';
+                context.fillText('2x+1', 0, 29);
+                return { picture, formula: canvas.toDataURL('image/png') };
             });
 
             const payload = JSON.stringify({
@@ -1702,6 +1708,17 @@ test.describe('Print iDevices', () => {
                         decimals: 0,
                     },
                     { wordingseg: 'Tiene {a} lápices y regala 1. ¿Cuántos le quedan?', min: 5, max: 5, decimals: 0 },
+                    {
+                        wordingseg:
+                            `<table><tbody><tr><td>Solve <img src="${formula}" width="65" height="32"> = 5.</td>` +
+                            `<th>Check <span><img src="${formula}" width="65" height="32"></span> = 5.</th>` +
+                            '</tr></tbody></table>',
+                    },
+                    {
+                        wordingseg:
+                            `<p>Solve <img src="${formula}" width="65" height="32"> = 5. ` +
+                            `<strong>Check <span><img src="${formula}" width="65" height="32"></span> = 5.</strong></p>`,
+                    },
                 ],
             });
             const html = `<div class="mathproblems-IDevice"><div class="mathproblems-DataGame js-hidden">${encryptDataGame(payload)}</div></div>`;
@@ -1722,7 +1739,7 @@ test.describe('Print iDevices', () => {
             await page.emulateMedia({ media: 'print' });
 
             const items = frame.locator('.worksheet-activity[data-idevice="mathproblems"] .worksheet-item');
-            await expect(items).toHaveCount(2);
+            await expect(items).toHaveCount(4);
             const problem = items.first();
             await expect
                 .poll(() =>
@@ -1751,6 +1768,32 @@ test.describe('Print iDevices', () => {
             expect(placement.number).not.toBeNull();
             expect(placement.number!).toBeGreaterThan(placement.line.top);
             expect(placement.number!).toBeLessThan(placement.line.bottom);
+
+            // A formula among words must align as it does outside a table. The in-place theme
+            // centres inline images, whereas the standalone worksheet uses their baseline.
+            // An empty inline block measures that baseline independently of either stylesheet.
+            const formulas = items.nth(2).locator('img');
+            const controls = items.nth(3).locator('img');
+            await expect(formulas).toHaveCount(2);
+            await expect(controls).toHaveCount(2);
+            const baselineOffset = async (formula: Locator) => {
+                await expect
+                    .poll(() => formula.evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth > 0))
+                    .toBe(true);
+                return formula.evaluate(img => {
+                    const baseline = document.createElement('span');
+                    baseline.style.cssText = 'display:inline-block;width:0;height:0;vertical-align:baseline';
+                    img.after(baseline);
+                    const offset = img.getBoundingClientRect().bottom - baseline.getBoundingClientRect().bottom;
+                    baseline.remove();
+                    return offset;
+                });
+            };
+            for (const index of [0, 1]) {
+                const offset = await baselineOffset(formulas.nth(index));
+                const reference = await baselineOffset(controls.nth(index));
+                expect(Math.abs(offset - reference)).toBeLessThan(1);
+            }
         });
     }
 

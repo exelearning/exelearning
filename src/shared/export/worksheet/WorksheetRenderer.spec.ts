@@ -920,7 +920,12 @@ describe('questions laid out as a table', () => {
     it('keeps the table the author laid the question out in', () => {
         const html = renderActivityFragment(activity({ ideviceType: 'mathproblems', items: [{ prompt }, { prompt }] }));
 
-        expect(html).toContain(`<li class="worksheet-item"><div class="worksheet-prompt">${prompt}</div>`);
+        expect(html).toContain(
+            `<li class="worksheet-item"><div class="worksheet-prompt">${prompt.replace(
+                'height="122"',
+                'height="122" class="worksheet-table-illustration"',
+            )}</div>`,
+        );
     });
 
     it('lines the cells up on their first line, so the number stays level with the first words', () => {
@@ -933,21 +938,66 @@ describe('questions laid out as a table', () => {
         }
     });
 
-    it('hangs a picture in a cell from its top, so it never drops the number to its foot', () => {
+    it('hangs a separate illustration from its top, so it never drops the number to its foot', () => {
         const standalone = renderWorksheet(model());
 
         for (const styles of [standalone, WORKSHEET_ACTIVITY_STYLES]) {
-            expect(ruleFor(styles, '.worksheet-prompt td img,\n.worksheet-prompt th img')).toContain(
-                'vertical-align: top',
-            );
+            expect(ruleFor(styles, '.worksheet-prompt .worksheet-table-illustration')).toContain('vertical-align: top');
         }
     });
 
-    it('leaves a picture in the middle of the words on the line, as the author wrote it', () => {
-        // Hanging every picture from the top would lift the ones set among the words of a sentence.
-        const imageRules = WORKSHEET_ACTIVITY_STYLES.split('}').filter(rule => rule.includes('vertical-align: top'));
+    for (const cell of ['td', 'th']) {
+        it.each([
+            '<img src="triangle.png">',
+            ' \n&nbsp;<p><span><img src="triangle.png"></span></p><!-- Illustration --> ',
+        ])(`marks a separate illustration in ${cell}: %s`, content => {
+            const prompt = `<table><tbody><tr><${cell}>${content}</${cell}><td>Area?</td></tr></tbody></table>`;
+            const html = renderActivityFragment(activity({ items: [{ prompt }] }));
 
-        for (const rule of imageRules) expect(rule).not.toMatch(/\.worksheet-prompt img\b/);
+            expect(html).toContain('<img src="triangle.png" class="worksheet-table-illustration">');
+            expect(html).toContain('<td>Area?</td>');
+        });
+
+        it.each([
+            'Solve <img src="formula.png"> = 5.',
+            '<span>Solve</span> <span><img src="formula.png"></span> <strong>= 5.</strong>',
+            '<img src="formula.png">&lt;',
+        ])(`keeps an image among words on its baseline in ${cell}: %s`, content => {
+            const prompt = `<table><tbody><tr><${cell}>${content}</${cell}></tr></tbody></table>`;
+            const html = renderActivityFragment(activity({ items: [{ prompt }] }));
+
+            expect(html).toContain(`<div class="worksheet-prompt">${prompt}</div>`);
+            expect(html).not.toContain('worksheet-table-illustration');
+        });
+    }
+
+    it('distinguishes an inner illustration cell from the text in its containing cell', () => {
+        const prompt =
+            '<table><tbody><tr><td>Outer <img src="formula.png">' +
+            '<table><tbody><tr><td><img src="triangle.png"></td><td>Area?</td></tr></tbody></table>' +
+            '</td></tr></tbody></table>';
+        const html = renderActivityFragment(activity({ items: [{ prompt }] }));
+
+        expect(html).toContain('Outer <img src="formula.png">');
+        expect(html).toContain('<img src="triangle.png" class="worksheet-table-illustration">');
+        expect(html.match(/worksheet-table-illustration/g)).toHaveLength(1);
+    });
+
+    it('preserves existing image attributes and classes when marking an illustration', () => {
+        const prompt =
+            '<table><tbody><tr><td rowspan="2"><img src="triangle.png" alt="A &amp; B" class="diagram"></td>' +
+            '<td>Area?</td></tr></tbody></table>';
+        const html = renderActivityFragment(activity({ items: [{ prompt }] }));
+
+        expect(html).toContain('<td rowspan="2">');
+        expect(html).toContain('alt="A &amp; B" class="diagram worksheet-table-illustration"');
+    });
+
+    it('leaves a table without images unchanged', () => {
+        const prompt = '<table><tbody><tr><td>2 &lt; 5</td></tr></tbody></table>';
+        const html = renderActivityFragment(activity({ items: [{ prompt }] }));
+
+        expect(html).toContain(`<div class="worksheet-prompt">${prompt}</div>`);
     });
 });
 

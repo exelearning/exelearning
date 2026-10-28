@@ -8,11 +8,12 @@
  * the same approach PrintPreviewExporter takes for its own injected styles.
  */
 
+import { parseFragment, serialize, type DefaultTreeAdapterMap } from 'parse5';
 import { PRERENDERED_LATEX_CSS } from '../constants';
 import { renderPrintContextScript } from '../printContext';
 import { accentOutline, readColor } from './cardColors';
 import { renderMatchingLayoutScript } from './matchingLayout';
-import { escapeText } from './sanitizeHtml';
+import { escapeText, nodeText } from './sanitizeHtml';
 import type {
     CharacterBoxGroup,
     PrintableCard,
@@ -226,15 +227,14 @@ export const WORKSHEET_ACTIVITY_STYLES = `
 /* A question laid out as a table, a picture in one cell and its words in the next, takes its number
    from the first row. Cells centred in the row, with the picture sitting on the line like a letter,
    drop that row's line to the foot of the picture, and the number hung there under it. Cells lined
-   up on their first line, each picture hung from the top of its own, keep the number level with
-   the first words of the question. */
+   up on their first line, with separate illustrations hung from the top, keep the number level
+   with the first words. Images among words keep their baseline, including inside cells. */
 .worksheet-prompt td,
 .worksheet-prompt th {
     vertical-align: baseline;
 }
 
-.worksheet-prompt td img,
-.worksheet-prompt th img {
+.worksheet-prompt .worksheet-table-illustration {
     vertical-align: top;
 }
 
@@ -1738,6 +1738,28 @@ function renderWordBank(words: string[]): string {
     return `<ul class="worksheet-word-bank">${items}</ul>`;
 }
 
+/** Align only the illustrations in text-free table cells; CSS cannot detect adjacent text nodes. */
+function renderPrompt(prompt: string): string {
+    if (!/<table\b/i.test(prompt) || !/<img\b/i.test(prompt)) return prompt;
+
+    const fragment = parseFragment(prompt);
+    let changed = false;
+    const visit = (node: DefaultTreeAdapterMap['node'], imageCell = false) => {
+        if ('tagName' in node) {
+            if (node.tagName === 'td' || node.tagName === 'th') imageCell = nodeText(node).trim() === '';
+            if (node.tagName === 'img' && imageCell) {
+                const classes = node.attrs.find(attr => attr.name === 'class');
+                if (classes) classes.value += ' worksheet-table-illustration';
+                else node.attrs.push({ name: 'class', value: 'worksheet-table-illustration' });
+                changed = true;
+            }
+        }
+        if ('childNodes' in node) node.childNodes.forEach(child => visit(child, imageCell));
+    };
+    visit(fragment);
+    return changed ? serialize(fragment) : prompt;
+}
+
 /**
  * Render one question: prompt, optional picture, optional extra text, answer space.
  *
@@ -1749,7 +1771,7 @@ function renderItem(item: PrintableItem): string {
     let html = `<li class="worksheet-item"${value}>`;
 
     if (item.prompt) {
-        html += `<div class="worksheet-prompt">${item.prompt}</div>`;
+        html += `<div class="worksheet-prompt">${renderPrompt(item.prompt)}</div>`;
     }
 
     if (item.media) {
