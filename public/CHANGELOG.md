@@ -8,6 +8,7 @@
 - Printing: a new "Print options" panel beside the preview keeps activities in place by default and lets you move them to an appendix, print only activities or leave them out; the preview updates to reflect your choices
 - Printing: Checklist iDevices are now printed with tick boxes and lines for handwritten answers
 - Desktop app: added a "Save as PDF" button to the print preview, so you can save a PDF without a printer
+- Styles: added Cedec, eTwinning, INTEF and Kids
 - iDevices: scoring iDevices now share a Grading tab for SCORM score, progress report and minimum score settings
 - LOMLOE iDevice: added Mathematics A and B for 4th ESO to the state curriculum and its datasets
 - Project properties: added a project-wide minimum passing score in a new Grading tab; scoring iDevices use it unless they define their own minimum
@@ -15,7 +16,6 @@
 - Web site exports: added a Presentation mode, enabled by adding `?exe-presentation=1` to the URL, that lets you navigate between pages using the keyboard or a presenter remote
 - Public read-only viewer: projects can now be shared through an unlisted link that anyone can open without signing in, keeping the project content separate from the user's session
 - Desktop app (Windows and Linux): you can now choose spell-checking languages in Preferences, displayed in the interface language, or use the system default
-- Styles: added Cedec, eTwinning, INTEF and Kids
 - TinyMCE: added the `exe-block-download` class to highlight blocks containing download links
 - Documentation: added English and Spanish plugin guides for Moodle, Nextcloud, WordPress, Omeka S, Google Drive and OneDrive, plus a unified Spanish manual
 - Translations: reviewed and completed Spanish (ES), Galician (GL), Italian (IT) and Valencian (VA)
@@ -33,10 +33,10 @@
 - Printing: the print preview now matches the printed page, including styles, icons, margins, links and code
 - Link validator: links that cannot be checked because of timeouts, rate limits or server errors are now reported as "unavailable" rather than broken; requests to the same site are spaced out and retried once
 - Collaborative editing: while you edit an iDevice, other users' moves, reorders and deletions on the same page are applied when you finish editing
-- Download Source File iDevice: the default button text and instructions now clearly identify the `.elpx` file
+- Download Source File iDevice: the default button text and instructions now use the correct `.elpx` file extension instead of `.elp`
 - Download Source File iDevice: images, PDFs, office documents and other compressed files are now added to the package without recompression, making package generation much faster
 - Missing-file notices now identify the affected iDevice by position, type and page
-- Docker: the image can now run on older x86_64 processors, including Intel Sandy Bridge and Ivy Bridge, that previously failed at startup
+- Docker: the image can now run on older x86_64 processors that previously failed at startup
 - Access denied: the button now signs you out so you can sign in with another account
 
 ### Fixed
@@ -49,15 +49,14 @@
 - Collaborative editing: offline tabs and tabs with outdated project copies no longer overwrite changes saved by other users; saves are merged with the stored project
 - Collaborative editing: music notation and games such as A-Z Quiz, Guess and GeoGebra now render for other users without requiring a page reload
 - SCORM and IMS: packages exported with "Editable export" disabled no longer include the editable project
-- SCORM 2004: exported packages now report valid statuses
 - ELPX: exported packages now include the files required by the selected global font
 - Server exports: images and audio stored in resource subfolders, as in eXeLearning 3, now work correctly
 - Server exports: 3DMol activities now load their library and images correctly
 - Exports: lightbox links now work in iDevices rendered after the page loads
-- Exports: long lightbox content no longer hides the close button
+- Exports: long content in dialog windows created with TinyMCE no longer hides the close button
 - Exports: pages no longer keep checking indefinitely for an iDevice whose script fails to load
 - Exports: `content.xml` no longer contains a duplicate copy of the project screenshot
-- Download Source File iDevice: downloads no longer remain stuck at "Processing... 100%" on sites that block background workers, such as Omeka S
+- Download Source File iDevice: downloads no longer remain stuck at "Processing... 100%" on sites that block background workers
 - Games: each iDevice now keeps its own timer and saved progress, even when the same game appears on multiple pages or is duplicated
 - iDevices: closing an editor now stops its timers and event handlers, preventing them from affecting other iDevices
 - Sort iDevice: activities no longer fail to start when cards have no image, text or audio
@@ -67,7 +66,6 @@
 - Interface: highlighted buttons now retain readable text contrast when focused with the keyboard
 - Interface: the editor toolbar and content now fit on tablet screens; the left panels are collapsed by default on screens narrower than 1200px
 - Styles: the hidden label on the box show/hide button no longer causes a horizontal scrollbar
-- Translations: corrected misplaced text in German (DE), Esperanto (EO), Basque (EU), Portuguese (PT) and Valencian (VA)
 - Stability: fixed errors that could occur in game iDevices, editor tooltips, the image editor and when opening files
 - Static mode: styles and libraries with missing files are no longer stored in the browser cache
 - Desktop app: opening a project containing images or other files no longer triggers an unsaved-changes warning on exit
@@ -84,6 +82,7 @@
 - Security: the desktop app now reads only files opened by the user
 - Security: exporting to a folder in the desktop app can no longer write files outside the selected folder
 - Security: the link validator no longer decompresses responses from the sites it checks
+- Translations: corrected misplaced text in German (DE), Esperanto (EO), Basque (EU), Portuguese (PT) and Valencian (VA)
 
 ### Upgraded
 
