@@ -12,7 +12,7 @@
 - Project properties: added a project-wide minimum passing score in a new Grading tab; scoring iDevices use it unless they define their own minimum
 - SCORM: added an option requiring every activity on a page to meet its own minimum score; learners can also see the score needed to pass each page
 - Web site exports: added a Presentation mode, enabled by adding `?exe-presentation=1` to the URL, that lets you navigate between pages using the keyboard or a presenter remote
-- eXeLearning Cloud: projects can now be shared through an unlisted link that anyone can open without signing in, keeping the project content separate from the user's session
+- eXeLearning Cloud: projects can now be shared through an unlisted read-only link that displays their content as it would appear when exported as a website, without requiring sign-in (disabled by default; admins can enable it)
 - Desktop app (Windows and Linux): you can now choose spell-checking languages in Preferences, displayed in the interface language, or use the system default
 - TinyMCE: added the `exe-block-download` class to highlight blocks containing download links
 - Documentation: added English and Spanish plugin guides for Moodle, Nextcloud, WordPress, Omeka S, Google Drive and OneDrive, plus a unified Spanish manual
