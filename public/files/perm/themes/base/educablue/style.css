@@ -830,7 +830,8 @@ html.exe-dark-mode .nav-buttons {
     filter: invert(100%) hue-rotate(180deg);
 }
 
-html.exe-dark-mode #made-with-eXe a {
+html.exe-dark-mode #made-with-eXe a,
+html.exe-dark-mode #exe-presentation-toggler {
     filter: invert(100%) hue-rotate(180deg);
     opacity: 1;
 }

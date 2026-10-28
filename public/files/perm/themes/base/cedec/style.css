@@ -1970,8 +1970,9 @@ body.exe-web-site {
     html.exe-dark-mode .exe-content .fx-accordion-title {
         border-color: #c8c8c8 !important; /* JS writes border-color inline */
     }
-    /* Made with eXe */
-    html.exe-dark-mode #made-with-eXe a {
+    /* Made with eXe and presentation mode control */
+    html.exe-dark-mode #made-with-eXe a,
+    html.exe-dark-mode #exe-presentation-toggler {
         filter: invert(100%) hue-rotate(180deg);
         opacity: 1;
     }
