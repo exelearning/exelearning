@@ -2752,8 +2752,16 @@ describe('NavbarFile', () => {
     });
 
     describe('mobile layout helpers', () => {
+        let innerWidth;
+
         beforeEach(() => {
+            innerWidth = window.innerWidth;
             navbarFile = new NavbarFile(mockMenu);
+            document.body.classList.remove('left-column-hidden');
+        });
+
+        afterEach(() => {
+            window.innerWidth = innerWidth;
             document.body.classList.remove('left-column-hidden');
         });
 
@@ -2763,15 +2771,43 @@ describe('NavbarFile', () => {
             expect(document.body.classList.contains('left-column-hidden')).toBe(true);
         });
 
+        it('initMobileLayout should collapse on tablets, where the toolbar does not fit beside the sidebar', () => {
+            window.innerWidth = 1199;
+            navbarFile.initMobileLayout();
+            expect(document.body.classList.contains('left-column-hidden')).toBe(true);
+        });
+
+        it('initMobileLayout should keep the sidebar open from 1200px', () => {
+            window.innerWidth = 1200;
+            navbarFile.initMobileLayout();
+            expect(document.body.classList.contains('left-column-hidden')).toBe(false);
+        });
+
         it('handleResponsiveLayout should toggle state on resize', () => {
             window.innerWidth = 500;
             navbarFile.handleResponsiveLayout();
             expect(navbarFile._wasResizedToMobile).toBe(true);
             expect(document.body.classList.contains('left-column-hidden')).toBe(true);
 
-            window.innerWidth = 900;
+            window.innerWidth = 1300;
             navbarFile.handleResponsiveLayout();
             expect(navbarFile._wasResizedToMobile).toBe(false);
+        });
+
+        it('handleResponsiveLayout should collapse once when a wide viewport becomes a tablet one', () => {
+            window.innerWidth = 1366;
+            navbarFile.handleResponsiveLayout();
+            expect(document.body.classList.contains('left-column-hidden')).toBe(false);
+
+            window.innerWidth = 1024;
+            navbarFile.handleResponsiveLayout();
+            expect(document.body.classList.contains('left-column-hidden')).toBe(true);
+
+            // Reopened by hand, the panels stay open while the viewport stays narrow
+            document.body.classList.remove('left-column-hidden');
+            window.innerWidth = 1000;
+            navbarFile.handleResponsiveLayout();
+            expect(document.body.classList.contains('left-column-hidden')).toBe(false);
         });
 
         it('initMobileBackdropClose should hide sidebar on outside click', () => {

@@ -10,6 +10,7 @@ import {
     saveProjectFolderInBrowser,
 } from '../../../../core/ProjectFolderStorage.js';
 import { DEFAULT_ACTIVITY_MODE, PREVIEW_MODE_DOCUMENT } from '../../../modals/modals/pages/modalPrintPreview.js';
+import { COLLAPSE_PANELS_BELOW } from '../../menuEngine.js';
 
 const KNOWN_EXPORT_EXTENSIONS = new Set(['.elpx', '.zip', '.epub', '.xml']);
 
@@ -1367,7 +1368,7 @@ export default class NavbarFile {
      *
      */
     setLeftPanelsTogglerEvents() {
-        // Auto-collapse sidebar on mobile devices (< 768px)
+        // Auto-collapse sidebar on phones and tablets (see COLLAPSE_PANELS_BELOW)
         this.initMobileLayout();
 
         // See eXeLearning.app.common.initTooltips
@@ -1379,7 +1380,7 @@ export default class NavbarFile {
                 $('body').toggleClass('left-column-hidden');
             });
 
-        // Handle resize: collapse sidebar when transitioning to mobile
+        // Handle resize: collapse sidebar when the viewport becomes narrow
         window.addEventListener('resize', () => {
             this.handleResponsiveLayout();
         });
@@ -1427,11 +1428,12 @@ export default class NavbarFile {
     }
 
     /**
-     * Initialize mobile layout - collapse sidebar on mobile devices
+     * Initialize mobile layout - start with the sidebar collapsed on phones and tablets,
+     * where the toolbar does not fit beside it (#2638); the toggler still opens it.
      */
     initMobileLayout() {
-        const isMobile = window.innerWidth < 768;
-        if (isMobile) {
+        const isNarrow = window.innerWidth < COLLAPSE_PANELS_BELOW;
+        if (isNarrow) {
             document.body.classList.add('left-column-hidden');
         }
     }
@@ -1440,13 +1442,13 @@ export default class NavbarFile {
      * Handle responsive layout changes on window resize
      */
     handleResponsiveLayout() {
-        const isMobile = window.innerWidth < 768;
-        // Only auto-collapse when transitioning TO mobile, don't force it
-        // This allows users to manually expand on mobile if they want
-        if (isMobile && !this._wasResizedToMobile) {
+        const isNarrow = window.innerWidth < COLLAPSE_PANELS_BELOW;
+        // Only auto-collapse when the viewport BECOMES narrow, don't force it
+        // This allows users to expand the panels manually if they want
+        if (isNarrow && !this._wasResizedToMobile) {
             document.body.classList.add('left-column-hidden');
             this._wasResizedToMobile = true;
-        } else if (!isMobile) {
+        } else if (!isNarrow) {
             this._wasResizedToMobile = false;
         }
     }

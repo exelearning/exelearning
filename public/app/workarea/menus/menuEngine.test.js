@@ -1,4 +1,4 @@
-import MenuEngine from './menuEngine.js';
+import MenuEngine, { COLLAPSE_PANELS_BELOW } from './menuEngine.js';
 
 describe('MenuEngine', () => {
   let menuEngine;
@@ -312,20 +312,21 @@ describe('MenuEngine', () => {
     });
 
     it('should not add class on desktop', () => {
-      Object.defineProperty(window, 'innerWidth', { value: 1024, writable: true });
+      Object.defineProperty(window, 'innerWidth', { value: 1366, writable: true });
 
       menuEngine.initMobileLayout();
 
       expect(mockBody.classList.add).not.toHaveBeenCalled();
     });
 
-    it('should use 768px as mobile breakpoint', () => {
-      Object.defineProperty(window, 'innerWidth', { value: 767, writable: true });
+    it('should use COLLAPSE_PANELS_BELOW (1200px) as the breakpoint, so tablets start collapsed', () => {
+      expect(COLLAPSE_PANELS_BELOW).toBe(1200);
+      Object.defineProperty(window, 'innerWidth', { value: 1199, writable: true });
       menuEngine.initMobileLayout();
       expect(mockBody.classList.add).toHaveBeenCalledWith('left-column-hidden');
 
       mockBody.classList.add.mockClear();
-      Object.defineProperty(window, 'innerWidth', { value: 768, writable: true });
+      Object.defineProperty(window, 'innerWidth', { value: 1200, writable: true });
       const engine2 = new MenuEngine();
       engine2.initMobileLayout();
       expect(mockBody.classList.add).not.toHaveBeenCalled();
@@ -362,10 +363,18 @@ describe('MenuEngine', () => {
       Object.defineProperty(window, 'innerWidth', { value: 600, writable: true });
       menuEngine.handleResponsiveLayout();
 
-      Object.defineProperty(window, 'innerWidth', { value: 1024, writable: true });
+      Object.defineProperty(window, 'innerWidth', { value: 1366, writable: true });
       menuEngine.handleResponsiveLayout();
 
       expect(menuEngine._wasResizedToMobile).toBe(false);
+    });
+
+    it('should collapse when a wide viewport becomes a tablet one', () => {
+      Object.defineProperty(window, 'innerWidth', { value: 1024, writable: true });
+
+      menuEngine.handleResponsiveLayout();
+
+      expect(mockBody.classList.add).toHaveBeenCalledWith('left-column-hidden');
     });
   });
 
@@ -528,7 +537,7 @@ describe('MenuEngine', () => {
 
       // Test desktop layout (using existing instance)
       mockBody.classList.add.mockClear();
-      Object.defineProperty(window, 'innerWidth', { value: 1024, writable: true, configurable: true });
+      Object.defineProperty(window, 'innerWidth', { value: 1366, writable: true, configurable: true });
       menuEngine.initMobileLayout();
       expect(mockBody.classList.add).not.toHaveBeenCalled();
     });
