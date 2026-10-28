@@ -70,6 +70,23 @@ describe('sanitizeHtml', () => {
                 `<p>${address('https://v/1')}</p><p>Texto</p>`,
             );
         });
+
+        it.each([
+            '<iframe src="https://v/1"></iframe>',
+            '<embed src="https://v/1">',
+            '<object data="https://v/1"></object>',
+        ])('does not nest an address link inside an author link: %s', embed => {
+            expect(sanitizeHtml(`<a href="https://x/doc">Before ${embed} after</a>`)).toBe(
+                '<a href="https://x/doc">Before ' +
+                    '<span class="worksheet-embed-address">https://v/1</span> after</a>',
+            );
+        });
+
+        it('keeps the address linked when the enclosing author link is removed', () => {
+            expect(sanitizeHtml('<a href="javascript:alert(1)"><iframe src="https://v/1"></iframe></a>')).toBe(
+                address('https://v/1'),
+            );
+        });
     });
 
     it('removes content embedded from anywhere else, which a reader of the paper cannot reach', () => {

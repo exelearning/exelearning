@@ -1449,8 +1449,8 @@ export function renderInlineGap(characters: number, options?: string[]): string 
  *
  * Print writes the address of each link after it, and a link the author put round a hidden word
  * usually leads to that word: a gap followed by ".../wiki/Toledo" answers the question it asks.
- * Links reach here only as the sanitiser writes them, `<a href="…">` and nothing else, and no
- * author markup can carry the gap's class, so both are recognised exactly.
+ * Links reach here only as the sanitiser writes them, `<a href="…">` and nothing else, never one
+ * inside another, and no author markup can carry the gap's class, so both are recognised exactly.
  *
  * @param html - Sanitised HTML with its gaps already in it
  * @returns The same HTML, with no link round a gap

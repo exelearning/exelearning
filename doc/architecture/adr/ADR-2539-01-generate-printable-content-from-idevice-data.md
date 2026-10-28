@@ -271,7 +271,9 @@ writes the address of each external frame beside it, and the print styles show i
 
 So the sanitiser does the same. An `iframe` or `embed` (`src`) or an `object` (`data`) with a web
 address is replaced by that address, a link on a line of its own
-(`<span class="worksheet-embed-address"><a href>`). One with no protocol is given HTTPS. Content
+(`<span class="worksheet-embed-address"><a href>`). Inside an author's link it is written as plain
+text instead, since a link inside a link would make the browser close the outer one early. One with
+no protocol is given HTTPS. Content
 from anywhere else (the project's own files, `blob:`, scripts) leaves nothing a reader holding the
 paper could follow, and is still dropped by the rule above.
 

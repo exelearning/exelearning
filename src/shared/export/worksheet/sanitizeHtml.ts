@@ -102,9 +102,12 @@ function attributeOf(node: DefaultTreeAdapterMap['element'], name: string): stri
  * Show link URLs may move or hide it; this one is all that is left of what was embedded, and is
  * printed whatever the options say (`WORKSHEET_ACTIVITY_STYLES`).
  */
-function embeddedAddress(address: string): string {
+function embeddedAddress(address: string, insideLink: boolean): string {
     const url = escapeText(address);
-    return `<span class="worksheet-embed-address"><a href="${url}">${url}</a></span>`;
+    // An embed can sit inside an author link. Nesting a second anchor would make the browser
+    // close the first early, separating it from any answer gap whose link must be removed.
+    const content = insideLink ? url : `<a href="${url}">${url}</a>`;
+    return `<span class="worksheet-embed-address">${content}</span>`;
 }
 
 /**
@@ -127,7 +130,7 @@ function showsSomething(html: string): boolean {
     return /<(?:img|hr)\b/i.test(html) || html.replace(/<[^>]*>/g, '').trim() !== '';
 }
 
-function renderNode(node: HtmlNode): Rendered {
+function renderNode(node: HtmlNode, insideLink = false): Rendered {
     if ('value' in node) return { html: escapeText(node.value), stripped: false };
     if (!('tagName' in node)) return { html: '', stripped: false };
     if (STRIPPED_WITH_CONTENT.has(node.tagName)) {
@@ -137,10 +140,11 @@ function renderNode(node: HtmlNode): Rendered {
         const source = Object.hasOwn(EMBEDDED_CONTENT, node.tagName)
             ? webAddress(attributeOf(node, EMBEDDED_CONTENT[node.tagName]))
             : null;
-        return source ? { html: embeddedAddress(source), stripped: false } : { html: '', stripped: true };
+        return source ? { html: embeddedAddress(source, insideLink), stripped: false } : { html: '', stripped: true };
     }
 
-    const parts = node.childNodes.map(renderNode);
+    const href = node.tagName === 'a' ? webAddress(attributeOf(node, 'href')) : null;
+    const parts = node.childNodes.map(child => renderNode(child, insideLink || href !== null));
     const children = parts.map(part => part.html).join('');
     const stripped = parts.some(part => part.stripped);
 
@@ -149,7 +153,6 @@ function renderNode(node: HtmlNode): Rendered {
     // A link is kept for an address on the web, which print writes after it, and only round
     // something to read: round nothing, the address would be printed on its own. Any other link
     // leads nowhere a reader holding the paper can go, and only what it held is kept.
-    const href = node.tagName === 'a' ? webAddress(attributeOf(node, 'href')) : null;
     if (node.tagName === 'a' && (!href || !showsSomething(children))) return { html: children, stripped };
 
     // An element left with nothing to show, because what was in it could not be printed, goes with

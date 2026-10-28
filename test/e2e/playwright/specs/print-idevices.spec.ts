@@ -601,6 +601,67 @@ test.describe('Print iDevices', () => {
         await expect(linkUrls).not.toBeChecked();
     });
 
+    test('keeps linked answers hidden when an embed precedes a gap', async ({
+        authenticatedPage: page,
+        createProject,
+    }) => {
+        const uuid = await createProject(page, 'Linked answer print regression');
+        await gotoWorkarea(page, uuid);
+        await waitForAppReady(page);
+        const source = 'https://example.org/map';
+        const sentence = (answer: string) =>
+            `<p>Capital: <a href="https://es.wikipedia.org/wiki/Toledo">` +
+            `<iframe src="${source}"></iframe>${answer}</a>.</p>`;
+        const components = [
+            {
+                type: 'form',
+                html: '',
+                properties: { questionsData: [{ activityType: 'fill', baseText: sentence('<u>Toledo</u>') }] },
+            },
+            {
+                type: 'complete',
+                html:
+                    '<div class="completa-IDevice"><div class="completa-DataGame js-hidden">' +
+                    encryptDataGame(
+                        JSON.stringify({ typeGame: 'Completa', type: 0, textText: escape(sentence('@@Toledo@@')) }),
+                    ) +
+                    '</div></div>',
+                properties: {},
+            },
+        ];
+        await page.evaluate(components => {
+            const binding = (window as any).eXeLearning.app.project._yjsBridge.structureBinding;
+            const parent = binding.createPage('Linked answer regression');
+            for (const component of components) {
+                binding.createComponent(parent.id, binding.createBlock(parent.id), component.type, {
+                    htmlContent: component.html,
+                    jsonProperties: JSON.stringify(component.properties),
+                });
+            }
+        }, components);
+
+        await openPrintPanel(page);
+        for (const mode of ['in-place', 'appendix', 'idevices']) {
+            const { frame } = await choosePrintOption(page, mode);
+            for (const media of ['screen', 'print'] as const) {
+                await page.emulateMedia({ media });
+                for (const type of ['form', 'complete']) {
+                    // In the appendix the body keeps a pointer to the exercise, with the same type.
+                    const exercise = frame.locator(
+                        `.worksheet-activity[data-idevice="${type}"]:not(.worksheet-activity-reference)`,
+                    );
+                    await expect(exercise.locator('.worksheet-gap')).toHaveCount(1);
+                    await expect(exercise.locator('.worksheet-embed-address')).toHaveText(source);
+                    await expect(exercise.locator('.worksheet-embed-address')).toBeVisible();
+                    // An empty anchor still prints its href through ::after, so text alone is insufficient.
+                    await expect(exercise.locator('a')).toHaveCount(0);
+                    await expect(exercise).not.toContainText('Toledo');
+                }
+            }
+            await page.emulateMedia({ media: null });
+        }
+    });
+
     test('waits for real molecule surfaces and reuses the viewer across print previews', async ({
         authenticatedPage: page,
         createProject,
