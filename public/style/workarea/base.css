@@ -772,16 +772,21 @@ video {
     opacity: 1
 }
 
-/* State dot inside the label span: ring when off, filled when on, same size in both */
+/* Centre the dot on its label */
+#exe-presentation-toggler span {
+    display: inline-flex;
+    align-items: center
+}
+
+/* State dot: ring when off, filled when on */
 #exe-presentation-toggler span::before {
     content: "";
-    display: inline-block;
+    flex: none;
     width: 7px;
     height: 7px;
     margin-right: 6px;
     border: 1px solid currentColor;
-    border-radius: 50%;
-    vertical-align: middle
+    border-radius: 50%
 }
 
 html.mode-presentation #exe-presentation-toggler {
