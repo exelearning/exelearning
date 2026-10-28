@@ -26,6 +26,7 @@ describe('ShareProjectButton', () => {
 
     mockButton = {
       addEventListener: vi.fn(),
+      setAttribute: vi.fn(),
       querySelector: vi.fn((selector) => {
         if (selector === '.share-visibility-indicator .medium-icon') return mockVisibilityIcon;
         if (selector === '.button-share-text') return mockShareText;
@@ -200,6 +201,20 @@ describe('ShareProjectButton', () => {
       shareButton.updateVisibilityPill('private');
       expect(window._).toHaveBeenCalledWith('Share');
       expect(mockShareText.textContent).toBe('Share');
+    });
+
+    it('should name the button Shared, for screen readers and the tooltip, when public', () => {
+      shareButton.updateVisibilityPill('public');
+      expect(mockButton.setAttribute).toHaveBeenCalledWith('aria-label', 'Shared');
+      expect(mockButton.setAttribute).toHaveBeenCalledWith('title', 'Shared');
+    });
+
+    it('should name the button Share again when back to private', () => {
+      shareButton.updateVisibilityPill('public');
+      mockButton.setAttribute.mockClear();
+      shareButton.updateVisibilityPill('private');
+      expect(mockButton.setAttribute).toHaveBeenCalledWith('aria-label', 'Share');
+      expect(mockButton.setAttribute).toHaveBeenCalledWith('title', 'Share');
     });
 
     it('should return early if visibilityIcon is null', () => {
