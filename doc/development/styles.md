@@ -23,11 +23,11 @@ Example structure:
 <theme>
   <name>example</name>
   <title>Example</title>
-  <version>2025</version>
-  <compatibility>3.0</compatibility>
+  <version>20260913</version>
+  <compatibility>4.0.5</compatibility>
   <author>eXeLearning.net</author>
-  <license>Creative Commons by-sa</license>
-  <license-url>http://creativecommons.org/licenses/by-sa/3.0/</license-url>
+  <license>Creative Commons BY-SA 4.0</license>
+  <license-url>http://creativecommons.org/licenses/by-sa/4.0/</license-url>
   <description>Example style for eXe.
 
 iDevice icons by…</description>
@@ -42,6 +42,21 @@ iDevice icons by…</description>
 - **`compatibility`**: eXeLearning version the style is compatible with.
 - **`author`**, **`license`**, **`license-url`**: Author and licensing information.
 - **`description`**: Style description (may include line breaks).
+
+### Crediting third-party material
+
+`description` is also where a style credits everything it ships that it did not create:
+fonts, iDevice icons, navigation icons, the Creative Commons badges in `img/licenses.gif`.
+Every bundled style does it, one paragraph per rights holder, naming the files, the author
+and the license (with its URL), and pointing to the full license text when the style ships
+it (`fonts/OFL.txt`, `icons/LICENSE.txt`).
+
+Material that is **not** under the style's license has to say so in its own paragraph:
+the CC badges are trademarks of Creative Commons, and institutional logos are trademarks of
+their owners. `cedec`, `etwinning`, `intef` and `kids` are the worked example for logos:
+their `description` lists every logo file as *all rights reserved*, and their `style.js`
+has a `logos` switch (`true`, `false`, a domain or an array of domains) so that whoever
+reuses the style can drop the logo band, or show it only on the institution's own sites.
 
 ---
 
@@ -77,8 +92,8 @@ iDevice icons by…</description>
 ### The shared icon set
 
 Every bundled style ships **the same 50 icons under the same names** — `activity`,
-`agreement`, `alert`, … `video`. Only the artwork and the file format differ: `base` and
-`neo` ship `.png`, the others `.svg`.
+`agreement`, `alert`, … `video`. Only the artwork and the file format differ: each style
+ships either `.png` or `.svg`.
 
 That is a contract, not a coincidence. A block stores its icon by **base name, without the
 extension**, and each style resolves that name to whichever file it happens to ship
@@ -246,7 +261,7 @@ leave the element at `0.9 × 1.2`. If your style already uses `scale`, account f
 
 **No style is named anywhere in the application.** There is no table of per-style colours
 in the core: the picker tint comes from CSS your style declares, and a style you write
-yourself is read exactly like the seven that ship with eXeLearning. Whatever the bundled
+yourself is read exactly like the ones that ship with eXeLearning. Whatever the bundled
 styles achieve, yours can achieve with the same declarations — and nothing you leave out
 is filled in for you by name.
 
@@ -299,7 +314,7 @@ Everything below lives in your `style.css`. Nothing needs a change in the applic
 | Recolour your **Style** `<img>` artwork inside the picker | a `filter` chain on `.modal #change-block-icon-modal-content .option-block-icon.exe-icon img` — never on the chip, and never on the General icons |
 | Resize the icons in exports | `.exe-content .box-icon img` and `.exe-content .box-icon .exe-material-icon` |
 | Resize them in the editor | the same pair under `#node-content-container.exe-content .box-head .exe-icon …` |
-| Multi-hued Style artwork that no single tint can match | pick one tint and declare it anyway — `neo` and `universal` do exactly this; changing your mind later is a one-line edit in your own stylesheet |
+| Multi-hued Style artwork that no single tint can match | pick one tint and declare it anyway — `kids`, `neo` and `universal` do exactly this; changing your mind later is a one-line edit in your own stylesheet |
 
 The one thing CSS cannot do for you is tint an `<img>` without a filter, which is why the
 Style/General split exists at all. Everything else about the presentation of both groups —
@@ -573,6 +588,74 @@ out with a rule of equal or higher specificity:
 
 ---
 
+## Printing
+
+**File → Print** shows the whole project as one page in a preview, and prints that page. Your
+style's `@media print` rules decide what reaches the paper, and three things are worth knowing when
+you write them.
+
+### Backgrounds do not print
+
+To save ink, browsers leave background colours and images off the page unless the reader turns on
+**Background graphics** (Chrome and Edge, under *More settings*) or **Print backgrounds** (Firefox).
+The desktop app's print dialog has no such option, and its **Save as PDF** leaves backgrounds off
+as well.
+
+Light text on a coloured band suffers most. The band goes, and Chromium darkens the text only as far
+as `#ababab`: light grey on white paper, barely legible. Give such text a dark colour in your print
+rules, as Educablue does for its block titles:
+
+```css
+@media print {
+    .exe-content .box-head .box-title {
+        color: #000000;
+    }
+}
+```
+
+Keep `print-color-adjust: exact` for an element that *is* its background, which would vanish
+without it. General icons are one, and `base.css` already keeps their colour on paper, so your style
+does not need to. Forced on bands and surfaces, it prints them on every page whatever the reader
+chose.
+
+### The preview is on screen
+
+The preview is not paginated, and your `@media print` rules only apply once the browser prepares to
+print: the reader decides what to print looking at your screen rules. A change only paper shows,
+such as Educablue's bold, ununderlined links, is a surprise there.
+
+eXeLearning brings its own print rules into the preview: folded blocks open (while *Show all hidden
+dropdown content* is ticked), no *Made with eXeLearning* link, external links in the text colour and
+underlined, long code lines wrapped. It also gives the page a 15 mm margin, the
+`@page { margin: 1.5cm; }` every base style prints with. Keep that margin and the preview breaks
+lines where the paper will.
+
+Some of those rules are `!important` and win over yours when printing from the preview. Images, for
+one, are given `max-width: 100%`, so a narrower limit of your own, like Educablue's 300 px, applies
+only when an exported page is printed straight from the browser.
+
+To see the paper itself, use the browser's own print preview, or **Save as PDF** in the desktop
+app.
+
+### Refer to your files with relative paths
+
+The preview loads your style from wherever it is kept: the base styles' folder,
+`/site-files/themes/` for one an administrator installed, or the project itself for one a user
+imported. A user style is not served from anywhere, so each of its files becomes a `blob:` URL and
+its stylesheets are rewritten to match. Relative `url()` and `@import` references follow,
+`#fragment`s included, and selectors on `src` or `href`, such as `img[src$="activity.png"]`, keep
+matching.
+
+Nothing else is rewritten. A root path (`/img/band.svg`), another site's URL or a path a script
+builds at run time does not reach the style's files:
+
+```css
+/* Correct: resolved against style.css wherever the style is kept */
+#siteNav a { background-image: url(img/example.svg); }
+```
+
+---
+
 ## JavaScript in Styles
 
 You can use jQuery (already included in exported content).  
@@ -593,6 +676,47 @@ Common functionality found in built-in eXe styles:
   // Themes can still trigger the (opt-in) toggle setup explicitly:
   $exeExport.teacherMode.init();
   ```
+
+### Knowing whether the page is being printed
+
+A script in a resource sometimes has to behave differently on paper: draw a chart statically
+rather than interactively, not start a timer, open a panel it would otherwise leave folded.
+There are two different questions, and `libs/exe_export.js` answers each separately.
+
+**"Is the browser paginating right now?"** — available in every exported resource:
+
+```js
+if ($exeExport.isPrinting()) { … }            // matchMedia('print'), guarded
+window.addEventListener('beforeprint', …);    // prepare
+window.addEventListener('afterprint', …);     // restore
+```
+
+**"Was this page built to be printed?"** — `$exeExport.printing` is `null` in an ordinary
+resource, and an object in the documents eXeLearning generates for paper:
+
+```js
+if ($exeExport.printing) { … }                              // any print document
+if ($exeExport.printing?.kind === 'worksheet') { … }        // only the activities
+if ($exeExport.printing?.activities === 'appendix') { … }   // exercises at the end
+```
+
+| Field | Values |
+|---|---|
+| `kind` | `'document'` the project with its prose · `'worksheet'` only the activities, rebuilt as exercises |
+| `activities` | `'omit'` · `'in-place'` · `'appendix'`, or `null` when the author was not asked. Only for `'document'` |
+
+The two are not interchangeable. A print preview sits **on screen** before anything is sent to
+the printer, so `isPrinting()` is `false` while `printing` is already set — and that is exactly
+the moment a script has to have decided what to draw. Conversely `printing` stays `null` in an
+ordinary resource even while the reader presses Ctrl+P.
+
+For CSS that cannot wait for a script, the same documents carry `class="exe-print-document"` and
+`data-exe-print="document|worksheet"` on `<html>`:
+
+```css
+html.exe-print-document .my-widget-controls { display: none; }
+html[data-exe-print="worksheet"] .my-widget { break-inside: avoid; }
+```
 
 ### Rewriting URLs: use `$exeExport.setUrlParam`
 

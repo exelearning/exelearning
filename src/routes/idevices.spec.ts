@@ -965,8 +965,9 @@ describe('iDevices Routes', () => {
                 // Only check JSON type iDevices - they wait for exportObject in ideviceInitExport()
                 if (idevice.componentType !== 'json') continue;
 
-                // Find the export JS file
-                const exportJsFile = idevice.exportJs[0];
+                // Find the iDevice's own export script: its libraries may be listed before it
+                const exportJsFile =
+                    idevice.exportJs.find((file: string) => file === `${idevice.id}.js`) ?? idevice.exportJs[0];
                 if (!exportJsFile) continue;
 
                 const scriptPath = path.join(

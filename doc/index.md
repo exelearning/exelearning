@@ -14,6 +14,8 @@ Use the sections below to jump to what you need.
 
 ## For End Users
 - [Install](install.md)
+- [Plugins](plugins/index.md): use eXeLearning inside Moodle, Nextcloud, WordPress, Omeka S and Google Drive
+  ([en español](plugins/index.es.md))
 - [Profile pictures](profile-avatars.md)
 
 ## For System Administrators
