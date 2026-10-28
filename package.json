@@ -133,7 +133,7 @@
     "fabric": "^7.4.0",
     "happy-dom": "^21.0.3",
     "html2canvas": "^1.4.1",
-    "http-proxy-middleware": "^4.2.0",
+    "http-proxy-middleware": "^4.2.1",
     "interactjs": "^1.10.27",
     "jquery": "^3.7.1",
     "jquery-ui": "^1.14.2",
