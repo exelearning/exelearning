@@ -412,6 +412,32 @@ h2 { color: red !important; }
 .exe-content h2 { color: red !important; }
 ```
 
+### Hiding text accessibly
+
+To hide a text that screen readers must still read (the label of an icon button, for example), add
+the `sr-av` class in markup you build, or use the full pattern in CSS for markup you don't control,
+such as the `span` inside `.box-toggle`:
+
+```css
+.box-toggle span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+```
+
+`clip` alone is not enough: the element keeps its width, and near the right edge it adds a
+horizontal scrollbar, more so in languages with longer labels (#2636). Do not use `display: none`
+or `visibility: hidden`, which hide the text from screen readers too. If a media query shows the
+text again, reset what the pattern sets (`width`, `height`, `margin`, `overflow`, `clip` and
+`white-space`).
+
 ---
 
 ## Effects (FX)
