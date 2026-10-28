@@ -93,8 +93,23 @@ export const DESKTOP_CONFIRM_ENTRY_BYTES: number = CONSERVATIVE_ZIP_LIMITS.maxEn
  * collaboratively synced Yjs document, unlike the once-per-session
  * whole-project import. The cumulative cap therefore keeps the historical
  * component value (200 MiB) instead of inheriting the project tiers above,
- * and no separate per-entry / entry-count cap is introduced (maxEntryBytes
- * equals the total cap; maxEntries is maximal) — those remain follow-up work.
+ * and no separate per-entry cap is introduced (maxEntryBytes equals the total
+ * cap) — that remains follow-up work (ADR-2473-01).
+ *
+ * The entry-count cap is enforced in two places, because `unzipSync` runs
+ * synchronously on the UI thread and a very large number of tiny entries can
+ * freeze the editor even when every entry is small (review #2474, point 6):
+ *
+ * 1. `validateZipPreflight()` in `ComponentImporter`, when the shared policy
+ *    bundle is loaded: `assertInspectionWithinLimits` checks the entry count
+ *    against the central directory before any inflation.
+ * 2. `createDeclaredSizeFilter()` in `ComponentImporter`, always — including
+ *    the degraded mode where `window.ExeImportPolicy` is not loaded and the
+ *    preflight returns null. The filter counts entries before inflating each
+ *    one, so the cut still happens before the offending entry is decompressed.
+ *
+ * The same 10000 value is reused from the conservative project tiers so the
+ * three policies stay aligned on the entry-count axis.
  */
 export interface ComponentImportLimits extends ZipDecompressionLimits {
     /** Maximum compressed size of the .idevice/.block file itself, checked before the file is read into memory. */
@@ -111,7 +126,7 @@ export const COMPONENT_IMPORT_LIMITS: ComponentImportLimits = {
     maxFileBytes: 50 * MiB, // compressed, pre-read
     maxTotalBytes: 200 * MiB, // cumulative uncompressed (declared and actual)
     maxEntryBytes: 200 * MiB, // equals the total cap: no additional per-entry constraint (ADR-2473-01)
-    maxEntries: Number.MAX_SAFE_INTEGER, // no entry-count cap (ADR-2473-01)
+    maxEntries: 10000, // entry-count cap, same conservative value as the project tiers (review #2474)
 };
 
 /** Runtimes that select an import policy. Everything that is not the Electron

@@ -53,9 +53,10 @@ describe('component import limits (.idevice/.block)', () => {
         expect(COMPONENT_IMPORT_LIMITS.maxTotalBytes).toBe(200 * MiB);
     });
 
-    it('introduces no additional per-entry or entry-count cap beyond the cumulative one (ADR-2473-01)', () => {
+    it('introduces no additional per-entry cap and reuses the conservative entry-count cap (review #2474)', () => {
         expect(COMPONENT_IMPORT_LIMITS.maxEntryBytes).toBe(COMPONENT_IMPORT_LIMITS.maxTotalBytes);
-        expect(COMPONENT_IMPORT_LIMITS.maxEntries).toBe(Number.MAX_SAFE_INTEGER);
+        expect(COMPONENT_IMPORT_LIMITS.maxEntries).toBe(10000);
+        expect(COMPONENT_IMPORT_LIMITS.maxEntries).toBe(CONSERVATIVE_ZIP_LIMITS.maxEntries);
     });
 
     it('is a valid ZipDecompressionLimits object', () => {

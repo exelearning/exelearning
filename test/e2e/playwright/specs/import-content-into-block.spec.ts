@@ -125,4 +125,52 @@ test.describe('Import iDevice into an existing block (.idevice)', () => {
             { timeout: 15000 },
         );
     });
+
+    test('shows an "Import error" alert and leaves the project unchanged when the file is not a valid ZIP', async ({
+        authenticatedPage,
+        createProject,
+    }) => {
+        const page = authenticatedPage;
+
+        // 1. Same starting point as the success test: one block, one iDevice.
+        const projectUuid = await createProject(page, 'Import iDevice Error Test');
+        await gotoWorkarea(page, projectUuid);
+        await waitForAppReady(page);
+        await selectPageByIndex(page, 0);
+        await page.waitForTimeout(500);
+
+        await addTextIdevice(page);
+        await editTextIdevice(page, `Error case content ${Date.now()}`);
+
+        const { blockId } = await getFirstBlockAndIdeviceIds(page);
+        expect(blockId).toBeTruthy();
+
+        const block = page.locator(`#node-content article.box#${blockId}`);
+        const blocksBefore = await page.locator('#node-content article.box').count();
+        const idevicesBefore = await block.locator('.idevice_node').count();
+
+        // 2. A .idevice-named buffer that is not a ZIP at all: the importer
+        // must reject it (unzipSync failure) instead of importing anything.
+        await importIdeviceIntoBlock(page, blockId, {
+            name: 'invalid.idevice',
+            mimeType: 'application/zip',
+            buffer: Buffer.from('this is not a zip archive'),
+        });
+
+        // 3. The failure surfaces as the "Import error" alert (not a partial
+        // import, not a crash).
+        const alertModal = page.locator('#modalAlert');
+        await expect(alertModal).toBeVisible({ timeout: 15000 });
+        await expect(alertModal).toContainText('Import error');
+        await expect(alertModal).toContainText('Invalid ZIP file');
+
+        // 4. Dismiss the alert.
+        await alertModal.locator('.modal-footer button.btn-secondary').click();
+        await expect(page.locator('#modalAlert[data-open="true"]')).toHaveCount(0);
+
+        // 5. The project is unchanged: no new block, no new iDevice in the
+        // target block.
+        await expect(page.locator('#node-content article.box')).toHaveCount(blocksBefore);
+        await expect(block.locator('.idevice_node')).toHaveCount(idevicesBefore);
+    });
 });

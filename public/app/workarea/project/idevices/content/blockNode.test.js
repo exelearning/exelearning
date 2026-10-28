@@ -171,10 +171,8 @@ describe('IdeviceBlockNode', () => {
 
                 const block = new IdeviceBlockNode(mockEngine, {
                     blockId: 'block-123',
-                    // No id provided
                 });
 
-                // In Yjs mode, id should equal blockId for consistency
                 expect(block.id).toBe(block.blockId);
                 expect(block.id).toBe('block-123');
             });
@@ -187,7 +185,6 @@ describe('IdeviceBlockNode', () => {
                     blockId: 'block-456',
                 });
 
-                // Should use provided id, not blockId
                 expect(block.id).toBe('custom-id');
                 expect(block.blockId).toBe('block-456');
             });
@@ -195,13 +192,9 @@ describe('IdeviceBlockNode', () => {
             it('generates Yjs-style blockId when Yjs is enabled and no blockId provided', () => {
                 eXeLearning.app.project._yjsEnabled = true;
 
-                const block = new IdeviceBlockNode(mockEngine, {
-                    // No blockId provided
-                });
+                const block = new IdeviceBlockNode(mockEngine, {});
 
-                // BlockId should be generated with Yjs-style format (block-timestamp-random)
                 expect(block.blockId).toMatch(/^block-\d+-[a-z0-9]+$/);
-                // And id should match blockId since no data.id was provided
                 expect(block.id).toBe(block.blockId);
             });
 
@@ -209,11 +202,8 @@ describe('IdeviceBlockNode', () => {
                 eXeLearning.app.project._yjsEnabled = false;
                 mockEngine.generateId.mockReturnValue('engine-block-id');
 
-                const block = new IdeviceBlockNode(mockEngine, {
-                    // No blockId provided
-                });
+                const block = new IdeviceBlockNode(mockEngine, {});
 
-                // BlockId should use engine.generateId
                 expect(block.blockId).toBe('engine-block-id');
                 expect(mockEngine.generateId).toHaveBeenCalled();
             });
@@ -222,15 +212,10 @@ describe('IdeviceBlockNode', () => {
                 eXeLearning.app.project._yjsEnabled = false;
                 mockEngine.generateId.mockReturnValue('engine-block-id');
 
-                const block = new IdeviceBlockNode(mockEngine, {
-                    // No id or blockId provided
-                });
+                const block = new IdeviceBlockNode(mockEngine, {});
 
-                // id should use the default generated key
                 expect(block.id).toBe('generated-key-123');
-                // blockId should use engine.generateId
                 expect(block.blockId).toBe('engine-block-id');
-                // They should be different
                 expect(block.id).not.toBe(block.blockId);
             });
         });
@@ -423,7 +408,6 @@ describe('IdeviceBlockNode', () => {
             const teacherIndicator = node.querySelector('.teacher-only-indicator');
             expect(visIndicator).not.toBeNull();
             expect(teacherIndicator).not.toBeNull();
-            // Both at same left, stacked vertically
             expect(visIndicator.style.left).toBe('-32px');
             expect(teacherIndicator.style.left).toBe('-32px');
             expect(visIndicator.style.top).toBe('2px');
@@ -435,7 +419,6 @@ describe('IdeviceBlockNode', () => {
             block.blockContent.classList.add('old-class');
             block.toggleElement = document.createElement('button');
             block.toggleElement.setAttribute('disabled', 'true');
-            // headElement is required for updateMode() to work
             block.headElement = document.createElement('header');
 
             const node = block.generateBlockContentNode(false);
@@ -478,8 +461,6 @@ describe('IdeviceBlockNode', () => {
             expect(block.blockContent.classList.contains('class3')).toBe(true);
         });
 
-        // Browsers (unlike jsdom) throw on classList.add('') with a SyntaxError.
-        // Make the test element strict so it reproduces the real-browser behaviour.
         function makeClassListStrict(el) {
             const realAdd = el.classList.add.bind(el.classList);
             vi.spyOn(el.classList, 'add').mockImplementation((...tokens) => {
@@ -745,9 +726,6 @@ describe('IdeviceBlockNode', () => {
         });
 
         it('does not re-prefix theme icon URLs that already include BASE_PATH', () => {
-            // Theme icon URLs are resolved server-side (src/routes/themes.ts) and
-            // already include BASE_PATH. Re-applying resolveAppAssetUrl would double
-            // the prefix (/web/exelearning/web/exelearning/...) and 404. See #1802/#1804.
             eXeLearning.config = { basePath: '/web/exelearning' };
             const value = '/web/exelearning/v0.0.0-alpha/files/perm/themes/base/base/icons/info.png';
             const img = block.makeIconValueElement({ value, title: 'Info' });
@@ -780,8 +758,6 @@ describe('IdeviceBlockNode', () => {
         });
 
         it('still prefixes client-built material icon paths with BASE_PATH (contrast)', () => {
-            // Unlike theme icons, material icon paths are built client-side from the app
-            // root (/libs/...) and DO need BASE_PATH prepended.
             eXeLearning.config = { basePath: '/web/exelearning' };
             expect(block.resolveAppAssetUrl('/libs/material-icons/icons/alarm.svg')).toBe(
                 '/web/exelearning/libs/material-icons/icons/alarm.svg'
@@ -795,13 +771,11 @@ describe('IdeviceBlockNode', () => {
         });
 
         it('emits a placeholder for hydration when no shared runtime is present', () => {
-            // window.eXeBlockIconRuntime is unset here → local fallback path.
             const html = block.renderMaterialMaskIcon('lightbulb');
             expect(html).toContain('class="exe-material-icon"');
             expect(html).toContain('data-exe-material-icon="lightbulb"');
             expect(html).not.toContain('.svg');
 
-            // Unknown names collapse to the "help" fallback.
             expect(block.renderMaterialMaskIcon('totally-unknown-icon')).toContain('data-exe-material-icon="help"');
         });
 
@@ -870,8 +844,6 @@ describe('IdeviceBlockNode', () => {
         });
 
         it('does not sync to Yjs directly (handled by apiCallManager)', () => {
-            // Yjs sync is now handled by putSaveBlock -> apiCallManager
-            // to avoid duplicate undo entries
             const mockUpdateBlock = vi.fn();
             eXeLearning.app.project._yjsBridge = {
                 structureBinding: {
@@ -879,7 +851,6 @@ describe('IdeviceBlockNode', () => {
                 },
             };
             block.apiUpdateTitle('New Title');
-            // Should NOT be called here - apiCallManager handles it
             expect(mockUpdateBlock).not.toHaveBeenCalled();
         });
     });
@@ -917,7 +888,6 @@ describe('IdeviceBlockNode', () => {
         });
 
         it('lists theme icons alphabetically regardless of source order (#2411)', () => {
-            // Static bundles built on Linux ship icons in raw readdir order
             eXeLearning.app.themes.getThemeIcons = vi.fn(() => ({
                 udl_rep_informarse: { id: 'udl_rep_informarse', value: '/i/udl_rep_informarse.svg' },
                 udl_exp_grupohomogeneo: { id: 'udl_exp_grupohomogeneo', value: '/i/udl_exp_grupohomogeneo.svg' },
@@ -953,9 +923,6 @@ describe('IdeviceBlockNode', () => {
         });
 
         it('renders material modal options as inline SVG from the shared sprite runtime', () => {
-            // Under Electron's app:// scheme Chromium fetches the whole sprite once per
-            // external <use>, so 3 798 options froze the renderer (#2419). The picker
-            // must inline each glyph from the sprite already parsed in memory instead.
             const renderMaterialInlineIcon = vi.fn(
                 () =>
                     '<svg class="exe-material-icon-sprite" viewBox="0 -960 960 960" fill="currentColor" aria-hidden="true"><path d="M1-1Z"/></svg>'
@@ -1038,9 +1005,6 @@ describe('IdeviceBlockNode', () => {
         });
     });
 
-    // Regression #1665: arrow-driven reorder must consult the Y.Doc as the
-    // source of truth for the block's current position. reorderViaYjsRelative
-    // is the entrypoint the click handlers use when Yjs is enabled.
     describe('reorderViaYjsRelative', () => {
         let blockContent;
 
@@ -1065,7 +1029,6 @@ describe('IdeviceBlockNode', () => {
         it('falls back to reorderViaYjs when moveBlockRelative is not exposed by the bridge', async () => {
             eXeLearning.app.project._yjsBridge = {
                 structureBinding: {
-                    // Older bridge: only the absolute method exists.
                     updateBlockOrder: vi.fn(),
                     findBlockLocation: vi.fn(),
                 },
@@ -1118,7 +1081,6 @@ describe('IdeviceBlockNode', () => {
             eXeLearning.app.project._yjsBridge = {
                 structureBinding: {
                     moveBlockRelative: mockMove,
-                    // findBlockLocation intentionally absent
                 },
             };
 
@@ -1126,15 +1088,14 @@ describe('IdeviceBlockNode', () => {
             const result = await block.reorderViaYjsRelative(-1);
 
             expect(result.responseMessage).toBe('OK');
-            // No reconciliation possible — order stays at the previous value.
             expect(block.order).toBe(7);
         });
 
         it('retries with this.id when this.blockId fails and the two ids differ', async () => {
             const mockMove = vi
                 .fn()
-                .mockReturnValueOnce(false) // first call with blockId fails
-                .mockReturnValueOnce(true); // retry with id succeeds
+                .mockReturnValueOnce(false)
+                .mockReturnValueOnce(true);
             const mockFind = vi.fn().mockReturnValue({ index: 0 });
             eXeLearning.app.project._yjsBridge = {
                 structureBinding: {
@@ -1143,7 +1104,6 @@ describe('IdeviceBlockNode', () => {
                 },
             };
 
-            // Make blockId and id differ.
             block.id = 'different-id';
             block.blockId = 'block-id-1';
 
@@ -1199,8 +1159,6 @@ describe('IdeviceBlockNode', () => {
 
                 expect(blockContent.classList.contains('moving')).toBe(true);
                 await block.reorderViaYjsRelative(+1);
-                // Class is still present immediately after the call (the
-                // handler clears it on a timer to keep the CSS animation).
                 expect(blockContent.classList.contains('moving')).toBe(true);
 
                 vi.advanceTimersByTime(mockEngine.movingClassDuration + 10);
@@ -1211,15 +1169,6 @@ describe('IdeviceBlockNode', () => {
         });
     });
 
-    // The arrow click handlers themselves used to mutate `this.order`
-    // before forwarding to apiUpdateOrder. Issue #1665 changed them to
-    // route through reorderViaYjsRelative when Yjs is enabled. These tests
-    // exercise the click path via the real DOM button to make sure that
-    // - the move CSS class is added,
-    // - reorderViaYjsRelative is called with the right delta,
-    // - the DOM block is reinserted next to its neighbour on success,
-    // - the legacy non-Yjs path still mutates this.order and goes through
-    //   apiUpdateOrder.
     describe('addBehaviourButtonMoveUpBlock / addBehaviourButtonMoveDownBlock', () => {
         let upButton;
         let downButton;
@@ -1231,8 +1180,6 @@ describe('IdeviceBlockNode', () => {
         let originalIsAvailable;
 
         beforeEach(() => {
-            // Build a buttons container with the two arrow buttons. The
-            // handlers locate them by id (#moveUp<blockId> / #moveDown<blockId>).
             block.blockButtons = document.createElement('div');
             upButton = document.createElement('button');
             upButton.id = `moveUp${block.blockId}`;
@@ -1241,9 +1188,6 @@ describe('IdeviceBlockNode', () => {
             downButton.id = `moveDown${block.blockId}`;
             block.blockButtons.appendChild(downButton);
 
-            // The block lives inside a node-content container with a
-            // sibling that the handler will use as previousBlock / nextBlock.
-            // getContentPrevBlock / getContentNextBlock require the .box class.
             nodeContent = document.createElement('div');
             block.blockContent = document.createElement('article');
             block.blockContent.classList.add('box');
@@ -1256,9 +1200,6 @@ describe('IdeviceBlockNode', () => {
             nodeContent.appendChild(nextBlock);
             mockEngine.nodeContentElement = nodeContent;
 
-            // Stub jQuery: the handler reads $('#dropdownMenuButton<id>').
-            // vitest.setup.js loads real jQuery as global.$, so save and
-            // restore around the test instead of deleting.
             originalDollar = global.$;
             global.$ = vi.fn(() => ({
                 attr: vi.fn(() => 'false'),
@@ -1291,10 +1232,7 @@ describe('IdeviceBlockNode', () => {
             await vi.waitFor(() => {
                 expect(reorderSpy).toHaveBeenCalledWith(-1);
             });
-            // moving class is added before the await.
             expect(block.blockContent.classList.contains('moving')).toBe(true);
-            // After the promise resolves, the block is reinserted before
-            // its previous sibling.
             await vi.waitFor(() => {
                 expect(nodeContent.children[0]).toBe(block.blockContent);
             });
@@ -1305,13 +1243,11 @@ describe('IdeviceBlockNode', () => {
             const reorderSpy = vi
                 .spyOn(block, 'reorderViaYjsRelative')
                 .mockResolvedValue({ responseMessage: 'OK' });
-            // Move the block to the very top: no previous sibling.
             nodeContent.removeChild(prevBlock);
             nodeContent.insertBefore(block.blockContent, nodeContent.firstChild);
 
             block.addBehaviourButtonMoveUpBlock();
             upButton.click();
-            // Wait one microtask so the isAvalaibleOdeComponent promise resolves.
             await new Promise((r) => setTimeout(r, 0));
 
             expect(reorderSpy).not.toHaveBeenCalled();
@@ -1360,7 +1296,6 @@ describe('IdeviceBlockNode', () => {
             await new Promise((r) => setTimeout(r, 0));
             await new Promise((r) => setTimeout(r, 0));
 
-            // Position unchanged.
             expect(Array.from(nodeContent.children).indexOf(block.blockContent)).toBe(initialIndex);
         });
 
@@ -1393,7 +1328,6 @@ describe('IdeviceBlockNode', () => {
                 expect(reorderSpy).toHaveBeenCalledWith(+1);
             });
             expect(block.blockContent.classList.contains('moving')).toBe(true);
-            // After resolution, the block sits after its previous nextBlock.
             await vi.waitFor(() => {
                 expect(nodeContent.children[2]).toBe(block.blockContent);
             });
@@ -1404,7 +1338,6 @@ describe('IdeviceBlockNode', () => {
             const reorderSpy = vi
                 .spyOn(block, 'reorderViaYjsRelative')
                 .mockResolvedValue({ responseMessage: 'OK' });
-            // Move the block to the very bottom: no next sibling.
             nodeContent.removeChild(nextBlock);
             nodeContent.appendChild(block.blockContent);
 
@@ -1447,9 +1380,6 @@ describe('IdeviceBlockNode', () => {
 
     describe('test method', () => {
         it('logs click message', () => {
-            // Logger is bound at module import time to window.AppLogger from vitest.setup.js
-            // (since ES6 imports are hoisted before test file code runs)
-            // vitest.setup.js sets global.Logger = mockLogger with log: vi.fn()
             block.test();
             expect(global.Logger.log).toHaveBeenCalledWith('click');
         });
@@ -1630,10 +1560,6 @@ describe('IdeviceBlockNode', () => {
     });
 
     describe('icon helpers', () => {
-        // The tint tests attach elements to document.body, because getComputedStyle only
-        // resolves custom properties on an attached node. Take them back out again: the
-        // outer afterEach only nulls `block`, so without this a later test looking for a
-        // <header> or #change-block-icon-modal-content would find a stale one.
         const attached = [];
         const attach = (element) => {
             document.body.appendChild(element);
@@ -1670,7 +1596,6 @@ describe('IdeviceBlockNode', () => {
                 '/icons/a.png"><script>window.__xss=1</script>',
                 'javascript:window.__xss=1',
             ])('renderIconPreviewHtml keeps %s inside the <img> attributes', (value) => {
-                // Resolution succeeds and returns the crafted value, so it reaches src too.
                 eXeLearning.app.project._yjsBridge = { assetManager: { resolveAssetURLSync: () => value } };
                 const html = block.renderIconPreviewHtml({ source: 'asset', value });
                 const img = expectSingleInertImg(html);
@@ -1735,9 +1660,6 @@ describe('IdeviceBlockNode', () => {
         });
 
         it('prefers the current style icon over the legacy Material mapping', () => {
-            // 'objectives' has a legacy → Material ('target') mapping, but when the
-            // active style provides an icon with that id it must stay a style icon
-            // so picker selections survive undo/redo block reconstruction.
             eXeLearning.app.themes.getThemeIcons = vi.fn(() => ({
                 objectives: { id: 'objectives', value: '/icons/objectives.png', title: 'Objectives' },
             }));
@@ -1747,7 +1669,6 @@ describe('IdeviceBlockNode', () => {
                 name: 'objectives',
             });
 
-            // When the active style does not ship that icon, the legacy mapping applies.
             eXeLearning.app.themes.getThemeIcons = vi.fn(() => ({}));
             expect(block.normalizeIconDescriptor(null, 'objectives')).toEqual({
                 source: 'material',
@@ -1757,9 +1678,6 @@ describe('IdeviceBlockNode', () => {
         });
 
         it('normalizes a stored icon name the style has since renamed', () => {
-            // 'objetives' is what neo shipped from v4.0.0 to v4.0.3, so projects saved then
-            // still store it. The descriptor has to come out under the current name, or the
-            // picker cannot match the block's icon against the entry it lists.
             eXeLearning.app.themes.getThemeIcons = vi.fn(() => ({
                 objectives: { id: 'objectives', value: '/icons/objectives.png', title: 'Objectives' },
             }));
@@ -1770,7 +1688,6 @@ describe('IdeviceBlockNode', () => {
                 name: 'objectives',
             });
 
-            // Same for a descriptor that was already structured when it was saved.
             expect(block.normalizeIconDescriptor({ source: 'theme', value: 'objetives' })).toEqual({
                 source: 'theme',
                 value: 'objectives',
@@ -1779,10 +1696,6 @@ describe('IdeviceBlockNode', () => {
         });
 
         it('falls back to the legacy Material mapping under the renamed name', () => {
-            // A neo project saved in v4.0.3 stores 'objetives'. Opened under a style that
-            // ships no 'objectives.*' -- universal -- it has to reach the legacy mapping, which
-            // is keyed by the current name; looked up under the stored one it found nothing
-            // and the block was left with no icon at all.
             eXeLearning.app.themes.getThemeIcons = vi.fn(() => ({}));
 
             expect(block.normalizeIconDescriptor(null, 'objetives')).toEqual({
@@ -1902,7 +1815,6 @@ describe('IdeviceBlockNode', () => {
             block.headElement = attach(document.createElement('div'));
             block.headElement.style.setProperty('--exe-icon-color', '#fff');
             block.headElement.style.setProperty('--exe-icon-picker-color', '#0d77d1');
-            // The head needs white on its blue background; the white picker chip does not.
             expect(block.getCurrentThemeIconColor()).toBe('#0d77d1');
 
             block.headElement.style.removeProperty('--exe-icon-picker-color');
@@ -1910,12 +1822,6 @@ describe('IdeviceBlockNode', () => {
         });
 
         it('falls back to the title, then the icon, when the block has no header yet', () => {
-            // The header is the normal source: a style declares both variables once on
-            // .exe-content and, since they are custom properties, the header inherits them.
-            // That inheritance is what the picker E2E spec covers, because happy-dom does not
-            // resolve inherited custom properties. What is pinned here is only which source
-            // the resolver picks when headElement is null -- a defensive path, since a real
-            // browser returns nothing for the detached title and icon a headerless block has.
             block.headElement = null;
             block.blockNameElementText = attach(document.createElement('h1'));
             block.blockNameElementText.style.setProperty('--exe-icon-color', '#123456');
@@ -1929,8 +1835,6 @@ describe('IdeviceBlockNode', () => {
 
         it('resolves no color when the theme declares neither variable', () => {
             block.headElement = attach(document.createElement('div'));
-            // The block header text color is not the picker tint: an undeclared theme
-            // leaves --modal-icon-color unset so the picker CSS reaches --modal-icon-default.
             block.headElement.style.color = 'rgb(1, 2, 3)';
             block.blockNameElementText = null;
             block.iconElement = null;
@@ -1939,9 +1843,6 @@ describe('IdeviceBlockNode', () => {
         });
 
         it('resolves currentColor against the block header, not the modal it is copied onto', () => {
-            // A style may say "follow the header text" with --exe-icon-color: currentColor.
-            // Copied verbatim onto the modal body it would mean the modal's own text, so the
-            // keyword has to be resolved here, while the block header is still the context.
             block.headElement = attach(document.createElement('div'));
             block.headElement.style.color = 'rgb(1, 2, 3)';
             block.headElement.style.setProperty('--exe-icon-color', 'currentColor');
@@ -1995,7 +1896,6 @@ describe('IdeviceBlockNode', () => {
         it('sets window location hash after delay', () => {
             block.goWindowToBlock(100);
             vi.advanceTimersByTime(100);
-            // In JSDOM, window.location.hash may not include the #
             expect(window.location.hash).toContain(block.blockId);
         });
     });
@@ -2009,7 +1909,6 @@ describe('IdeviceBlockNode', () => {
 
     describe('generateBlockContentNode', () => {
         it('returns blockContent element when creating new node', () => {
-            // Set newNode=true to create a new block content node
             const content = block.generateBlockContentNode(true);
             expect(content).toBeDefined();
             expect(content.classList.contains('box')).toBe(true);
@@ -2056,8 +1955,6 @@ describe('IdeviceBlockNode', () => {
             };
 
             block.setProperties(props, true);
-
-            // visibility should not be updated since heritable is false
         });
     });
 
@@ -2124,7 +2021,6 @@ describe('IdeviceBlockNode', () => {
         });
 
         it('uses fallback search by icon.id when direct lookup fails', () => {
-            // iconName is 'my-icon-id' but the key in themeIcons is 'different-key'
             block.iconName = 'my-icon-id';
             eXeLearning.app.themes.getThemeIcons = vi.fn(() => ({
                 'different-key': { id: 'my-icon-id', value: '/path/to/icon.svg', title: 'Icon' },
@@ -2134,7 +2030,6 @@ describe('IdeviceBlockNode', () => {
         });
 
         it('uses fallback search by icon.value when direct lookup fails', () => {
-            // iconName is the icon value path
             block.iconName = '/path/to/icon.svg';
             eXeLearning.app.themes.getThemeIcons = vi.fn(() => ({
                 'some-key': { id: 'some-id', value: '/path/to/icon.svg', title: 'Icon' },
@@ -2396,7 +2291,6 @@ describe('IdeviceBlockNode', () => {
             const titleContainer = block.makeBlockTitleElementText();
             const h1 = titleContainer.querySelector('h1');
 
-            // Simulate previously rendered title markup.
             h1.innerHTML = '<mjx-container>rendered</mjx-container>';
 
             h1.click();
@@ -2612,12 +2506,6 @@ describe('IdeviceBlockNode', () => {
             expect(result).toBe(false);
         });
 
-        // Issue #1667: when a page is rendered from an imported .elpx the
-        // node-content container can end up with whitespace text nodes
-        // between the <article.box> siblings. `nextSibling` (the previous
-        // implementation) would return the text node and the down-arrow
-        // click handler would silently exit with nextBlock=false. The fix
-        // uses nextElementSibling, which skips non-element nodes.
         it('skips whitespace text nodes between blocks (regression #1667)', () => {
             const nextBlock = document.createElement('article');
             nextBlock.classList.add('box');
@@ -2649,9 +2537,6 @@ describe('IdeviceBlockNode', () => {
             block.blockContent = document.createElement('div');
         });
 
-        // Issue #1667 sibling case: getContentPrevBlock already used
-        // previousElementSibling, keep a regression lock so the two helpers
-        // stay symmetric.
         it('skips whitespace text nodes before the block', () => {
             const prevBlock = document.createElement('article');
             prevBlock.classList.add('box');
@@ -2683,8 +2568,6 @@ describe('IdeviceBlockNode', () => {
         });
 
         it('does not sync to Yjs directly (handled by apiCallManager)', () => {
-            // Yjs sync is now handled by putSaveBlock -> apiCallManager
-            // to avoid duplicate undo entries
             const mockUpdateBlock = vi.fn();
             eXeLearning.app.project._yjsBridge = {
                 structureBinding: { updateBlock: mockUpdateBlock },
@@ -2692,7 +2575,6 @@ describe('IdeviceBlockNode', () => {
 
             block.apiUpdateTitle('New Title');
 
-            // Should NOT be called here - apiCallManager handles it
             expect(mockUpdateBlock).not.toHaveBeenCalled();
         });
 
@@ -2864,7 +2746,6 @@ describe('IdeviceBlockNode', () => {
         let deleteButton;
 
         beforeEach(() => {
-            // Generate block content with buttons so addBehaviourButtonDeleteBlock can find the button
             block.blockId = 'test-block-id';
             vi.spyOn(block, 'addBehaviourButtonDropDown').mockImplementation(() => {});
             vi.spyOn(block, 'addBehaviourButtonMoveUpBlock').mockImplementation(() => {});
@@ -2878,17 +2759,14 @@ describe('IdeviceBlockNode', () => {
             vi.spyOn(block, 'addNoTranslateForGoogle').mockImplementation(() => {});
             vi.spyOn(block, 'remove').mockImplementation(() => {});
 
-            // Build buttons element (which registers the delete handler internally)
             block.makeBlockButtonsElement();
             deleteButton = block.blockButtons.querySelector('#deleteBlocktest-block-id');
 
-            // Mock jQuery $ for the handler
             global.$ = vi.fn(() => ({
                 attr: vi.fn(() => 'false'),
                 trigger: vi.fn(),
             }));
 
-            // Mock isAvalaibleOdeComponent to resolve OK
             eXeLearning.app.project.isAvalaibleOdeComponent = vi.fn().mockResolvedValue({ responseMessage: 'OK' });
         });
 
@@ -2915,7 +2793,6 @@ describe('IdeviceBlockNode', () => {
             await vi.waitFor(() => {
                 expect(eXeLearning.app.modals.confirm.show).toHaveBeenCalled();
             });
-            // Block should NOT be removed yet (user hasn't confirmed)
             expect(block.remove).not.toHaveBeenCalled();
         });
 
@@ -2945,7 +2822,6 @@ describe('IdeviceBlockNode', () => {
                 expect(eXeLearning.app.modals.confirm.show).toHaveBeenCalled();
             });
 
-            // Simulate user confirming
             const callArgs = eXeLearning.app.modals.confirm.show.mock.calls[0][0];
             callArgs.confirmExec();
 
@@ -2974,7 +2850,7 @@ describe('IdeviceBlockNode', () => {
                 remove: vi.fn(),
             };
             const mockIdevice2 = {
-                blockId: 'other-block-id', // Different block
+                blockId: 'other-block-id',
                 remove: vi.fn(),
             };
             const mockIdevice3 = {
@@ -2985,14 +2861,12 @@ describe('IdeviceBlockNode', () => {
             block.idevices = [mockIdevice1, mockIdevice2, mockIdevice3];
             block.blockId = 'test-block-id';
 
-            // Mock clearIdevicesOfList to not modify the array
             vi.spyOn(block, 'clearIdevicesOfList').mockImplementation(() => {});
 
             block.removeIdevices();
 
-            // Only iDevices with matching blockId should be removed
             expect(mockIdevice1.remove).toHaveBeenCalledWith(false);
-            expect(mockIdevice2.remove).not.toHaveBeenCalled(); // Different block
+            expect(mockIdevice2.remove).not.toHaveBeenCalled();
             expect(mockIdevice3.remove).toHaveBeenCalledWith(false);
         });
 
@@ -3013,7 +2887,6 @@ describe('IdeviceBlockNode', () => {
 
             vi.spyOn(block, 'clearIdevicesOfList').mockImplementation(() => {});
 
-            // Should not throw
             expect(() => block.removeIdevices()).not.toThrow();
         });
 
@@ -3030,7 +2903,6 @@ describe('IdeviceBlockNode', () => {
 
             block.removeIdevices();
 
-            // Should NOT be removed because it belongs to a different block
             expect(mockIdeviceFromOtherBlock.remove).not.toHaveBeenCalled();
         });
     });
@@ -3082,7 +2954,6 @@ describe('IdeviceBlockNode', () => {
 
             block.removeIdeviceOfListById('non-existent-id');
 
-            // Original idevice should still be there
             expect(block.idevices).toHaveLength(1);
             expect(block.idevices).toContain(mockIdevice);
         });
@@ -3092,7 +2963,6 @@ describe('IdeviceBlockNode', () => {
             block.idevices = [mockIdevice];
             vi.spyOn(block, 'clearIdevicesOfList').mockImplementation(() => {});
 
-            // Remove by id
             block.removeIdeviceOfListById('matching-id');
 
             expect(block.idevices).toHaveLength(0);
@@ -3104,7 +2974,6 @@ describe('IdeviceBlockNode', () => {
             const mockIdevice1 = { hasBeenDeleted: false };
             const mockIdevice2 = { hasBeenDeleted: false };
 
-            // Only mockIdevice1 is in engine.components.idevices
             block.engine.components = { idevices: [mockIdevice1] };
             block.idevices = [mockIdevice1, mockIdevice2];
 
@@ -3124,9 +2993,6 @@ describe('IdeviceBlockNode', () => {
         });
     });
 
-    // -------------------------------------------------------------------------
-    // addBehaviourChangeIcon
-    // -------------------------------------------------------------------------
     describe('addBehaviourChangeIcon', () => {
         let iconEl;
         let originalIsAvailable;
@@ -3167,9 +3033,6 @@ describe('IdeviceBlockNode', () => {
         });
     });
 
-    // -------------------------------------------------------------------------
-    // addBehaviourButtonDropDown
-    // -------------------------------------------------------------------------
     describe('addBehaviourButtonDropDown', () => {
         let dropdownButton;
 
@@ -3181,9 +3044,6 @@ describe('IdeviceBlockNode', () => {
         });
 
         it('calls toggleOn when dropdown has show class and block has hidden-idevices', () => {
-            // For getElementById to work both elements must be in the document.
-            // Appending blockButtons (which contains dropdownButton) keeps the
-            // button findable both via querySelector on blockButtons and via getElementById.
             document.body.appendChild(block.blockButtons);
             block.blockContent = document.createElement('article');
             block.blockContent.id = block.blockId;
@@ -3213,9 +3073,6 @@ describe('IdeviceBlockNode', () => {
         });
     });
 
-    // -------------------------------------------------------------------------
-    // addBehaviourButtonPropertiesBlock
-    // -------------------------------------------------------------------------
     describe('addBehaviourButtonPropertiesBlock', () => {
         let propertiesButton;
         let originalIsAvailable;
@@ -3260,9 +3117,6 @@ describe('IdeviceBlockNode', () => {
         });
     });
 
-    // -------------------------------------------------------------------------
-    // addBehaviourButtonCloneBlock
-    // -------------------------------------------------------------------------
     describe('addBehaviourButtonCloneBlock', () => {
         it('calls apiCloneBlock when button is clicked', async () => {
             block.blockButtons = document.createElement('div');
@@ -3281,9 +3135,6 @@ describe('IdeviceBlockNode', () => {
         });
     });
 
-    // -------------------------------------------------------------------------
-    // addBehaviourMoveToPageBlockButton
-    // -------------------------------------------------------------------------
     describe('addBehaviourMoveToPageBlockButton', () => {
         let moveButton;
         let originalIsAvailable;
@@ -3331,7 +3182,6 @@ describe('IdeviceBlockNode', () => {
                 .spyOn(block, 'apiUpdatePage')
                 .mockResolvedValue({ responseMessage: 'OK' });
 
-            // Build the DOM required by confirmExec
             const main = document.createElement('div');
             main.id = 'main';
             const workarea = document.createElement('div');
@@ -3345,8 +3195,6 @@ describe('IdeviceBlockNode', () => {
             main.appendChild(workarea);
             document.body.appendChild(main);
 
-            // Build modal body with a select. Append the option first, then
-            // set selectedIndex so select.item(selectedIndex) returns it reliably.
             const modalBody = document.createElement('div');
             const select = document.createElement('select');
             select.classList.add('select-move-to-page');
@@ -3375,9 +3223,6 @@ describe('IdeviceBlockNode', () => {
         });
     });
 
-    // -------------------------------------------------------------------------
-    // addBehaviourExportBlockButton
-    // -------------------------------------------------------------------------
     describe('addBehaviourExportBlockButton', () => {
         let exportButton;
         let originalIsAvailable;
@@ -3434,16 +3279,56 @@ describe('IdeviceBlockNode', () => {
             block.blockButtons.appendChild(importButton);
         });
 
-        it('does nothing when an iDevice is already open', () => {
+        const flushAvailabilityCheck = () => new Promise((r) => setTimeout(r, 0));
+
+        it('does nothing when an iDevice is already open', async () => {
             eXeLearning.app.project.checkOpenIdevice = vi.fn(() => true);
             const appendSpy = vi.spyOn(document.body, 'appendChild');
             block.addBehaviourImportIdeviceButton();
             importButton.click();
+            await flushAvailabilityCheck();
             expect(appendSpy).not.toHaveBeenCalled();
             eXeLearning.app.project.checkOpenIdevice = vi.fn(() => false);
         });
 
-        it('creates a file input restricted to .idevice on click', () => {
+        // Revisión #2474: cuando el box lo tiene otro colaborador, se muestra
+        // el alert y se sale con `return`, sin llegar a `checkOpenIdevice` ni
+        // a abrir el file picker. Este test verifica explícitamente que
+        // `checkOpenIdevice` NO se llama, lo que cubre la línea del `return`.
+        it('shows an alert and returns early when the box is held by another collaborator (#2474)', async () => {
+            const originalIsAvailable = eXeLearning.app.project.isAvalaibleOdeComponent;
+            const originalCheckOpen = eXeLearning.app.project.checkOpenIdevice;
+            eXeLearning.app.project.isAvalaibleOdeComponent = vi
+                .fn()
+                .mockResolvedValue({ responseMessage: 'iDevice locked' });
+            const checkOpenSpy = vi.fn(() => false);
+            eXeLearning.app.project.checkOpenIdevice = checkOpenSpy;
+            const appendSpy = vi.spyOn(document.body, 'appendChild');
+
+            block.addBehaviourImportIdeviceButton();
+            importButton.click();
+            await flushAvailabilityCheck();
+
+            expect(
+                eXeLearning.app.project.isAvalaibleOdeComponent
+            ).toHaveBeenCalledWith(block.blockId, null);
+            expect(eXeLearning.app.modals.alert.show).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    title: 'iDevice error',
+                    body: 'iDevice locked',
+                    contentId: 'error',
+                }),
+            );
+            // El `return` de la rama de error corta la ejecución: ni se
+            // comprueba si hay un iDevice abierto, ni se abre el file picker.
+            expect(checkOpenSpy).not.toHaveBeenCalled();
+            expect(appendSpy).not.toHaveBeenCalled();
+
+            eXeLearning.app.project.isAvalaibleOdeComponent = originalIsAvailable;
+            eXeLearning.app.project.checkOpenIdevice = originalCheckOpen;
+        });
+
+        it('creates a file input restricted to .idevice on click', async () => {
             let capturedInput;
             const appendSpy = vi.spyOn(document.body, 'appendChild').mockImplementation((node) => {
                 capturedInput = node;
@@ -3451,15 +3336,13 @@ describe('IdeviceBlockNode', () => {
             });
             block.addBehaviourImportIdeviceButton();
             importButton.click();
+            await flushAvailabilityCheck();
             expect(capturedInput.type).toBe('file');
             expect(capturedInput.accept).toBe('.idevice');
             appendSpy.mockRestore();
         });
 
-        // ---- Additional coverage ----
-
-        // Clicks the button and returns the one-shot input appended to the body.
-        const clickAndCaptureInput = () => {
+        const clickAndCaptureInput = async () => {
             let capturedInput;
             const realAppend = document.body.appendChild.bind(document.body);
             const appendSpy = vi.spyOn(document.body, 'appendChild').mockImplementation((node) => {
@@ -3471,6 +3354,7 @@ describe('IdeviceBlockNode', () => {
                 .mockImplementation(() => {});
             block.addBehaviourImportIdeviceButton();
             importButton.click();
+            await flushAvailabilityCheck();
             appendSpy.mockRestore();
             return { input: capturedInput, clickSpy };
         };
@@ -3484,25 +3368,45 @@ describe('IdeviceBlockNode', () => {
             document.querySelectorAll('input[type="file"].d-none').forEach((n) => n.remove());
         });
 
-        it('appends a hidden input to the body and opens the file picker', () => {
-            const { input, clickSpy } = clickAndCaptureInput();
+        it('appends a hidden input to the body and opens the file picker', async () => {
+            const { input, clickSpy } = await clickAndCaptureInput();
 
             expect(input.classList.contains('d-none')).toBe(true);
             expect(document.body.contains(input)).toBe(true);
             expect(clickSpy).toHaveBeenCalledTimes(1);
         });
 
-        it('removes the input when the file picker is cancelled', () => {
-            const { input } = clickAndCaptureInput();
+        it('removes the input when the file picker is cancelled', async () => {
+            const { input } = await clickAndCaptureInput();
 
             input.dispatchEvent(new Event('cancel'));
 
             expect(document.body.contains(input)).toBe(false);
         });
 
+        it('removes the input on the next window focus when the browser never fires cancel', async () => {
+            const { input } = await clickAndCaptureInput();
+            expect(document.body.contains(input)).toBe(true);
+
+            window.dispatchEvent(new Event('focus'));
+
+            expect(document.body.contains(input)).toBe(false);
+            window.dispatchEvent(new Event('focus'));
+        });
+
+        it('stops listening for window focus once the input is cleaned up', async () => {
+            const { input } = await clickAndCaptureInput();
+            const removeSpy = vi.spyOn(window, 'removeEventListener');
+
+            input.dispatchEvent(new Event('cancel'));
+
+            expect(removeSpy).toHaveBeenCalledWith('focus', expect.any(Function));
+            removeSpy.mockRestore();
+        });
+
         it('imports the selected file and removes the input on change', async () => {
             const importSpy = vi.spyOn(block, 'importIdeviceFileIntoBlock').mockResolvedValue();
-            const { input } = clickAndCaptureInput();
+            const { input } = await clickAndCaptureInput();
             const file = new File([new Uint8Array([1])], 'test.idevice');
             setFiles(input, [file]);
 
@@ -3513,9 +3417,22 @@ describe('IdeviceBlockNode', () => {
             expect(document.body.contains(input)).toBe(false);
         });
 
+        it('imports the selected file even when window focus removed the input first', async () => {
+            const importSpy = vi.spyOn(block, 'importIdeviceFileIntoBlock').mockResolvedValue();
+            const { input } = await clickAndCaptureInput();
+            const file = new File([new Uint8Array([1])], 'test.idevice');
+            setFiles(input, [file]);
+
+            window.dispatchEvent(new Event('focus'));
+            input.dispatchEvent(new Event('change'));
+
+            await vi.waitFor(() => expect(importSpy).toHaveBeenCalledWith(file));
+            expect(document.body.contains(input)).toBe(false);
+        });
+
         it('does not import when the change event has an empty file list', async () => {
             const importSpy = vi.spyOn(block, 'importIdeviceFileIntoBlock').mockResolvedValue();
-            const { input } = clickAndCaptureInput();
+            const { input } = await clickAndCaptureInput();
             setFiles(input, []);
 
             input.dispatchEvent(new Event('change'));
@@ -3527,7 +3444,7 @@ describe('IdeviceBlockNode', () => {
 
         it('does not import when the input has no files property', async () => {
             const importSpy = vi.spyOn(block, 'importIdeviceFileIntoBlock').mockResolvedValue();
-            const { input } = clickAndCaptureInput();
+            const { input } = await clickAndCaptureInput();
             setFiles(input, null);
 
             input.dispatchEvent(new Event('change'));
@@ -3539,18 +3456,18 @@ describe('IdeviceBlockNode', () => {
 
         it('does not throw when the input was already detached before change', async () => {
             const importSpy = vi.spyOn(block, 'importIdeviceFileIntoBlock').mockResolvedValue();
-            const { input } = clickAndCaptureInput();
+            const { input } = await clickAndCaptureInput();
             const file = new File([new Uint8Array([1])], 'test.idevice');
             setFiles(input, [file]);
 
-            input.dispatchEvent(new Event('cancel')); // detaches the input
+            input.dispatchEvent(new Event('cancel'));
             input.dispatchEvent(new Event('change'));
             await vi.waitFor(() => expect(importSpy).toHaveBeenCalledWith(file));
 
             expect(document.body.contains(input)).toBe(false);
         });
 
-        it('creates a new independent input on every click', () => {
+        it('creates a new independent input on every click', async () => {
             const inputs = [];
             const realAppend = document.body.appendChild.bind(document.body);
             vi.spyOn(document.body, 'appendChild').mockImplementation((node) => {
@@ -3562,6 +3479,7 @@ describe('IdeviceBlockNode', () => {
 
             importButton.click();
             importButton.click();
+            await flushAvailabilityCheck();
 
             expect(inputs).toHaveLength(2);
             expect(inputs[0]).not.toBe(inputs[1]);
@@ -3744,6 +3662,7 @@ describe('IdeviceBlockNode', () => {
 
             expect(loadIdevicesMock).toHaveBeenCalledWith(true);
         });
+
         it('falls back to the default message when the error has no message', async () => {
             eXeLearning.app.project._yjsBridge = {
                 getDocumentManager: vi.fn(() => ({})),
@@ -3752,7 +3671,6 @@ describe('IdeviceBlockNode', () => {
             window.ComponentImporter = class {
                 constructor() {}
                 importIdeviceIntoBlock = vi.fn(() => {
-                    // Throw a non-Error object: no .message property
                     throw { toString: () => 'weird failure' };
                 });
             };
@@ -3763,13 +3681,10 @@ describe('IdeviceBlockNode', () => {
             expect(eXeLearning.app.modals.alert.show).toHaveBeenCalledWith(
                 expect.objectContaining({
                     title: 'Import error',
-                    // Falls back to the translated default message
                     body: expect.any(String),
                 }),
             );
         });
-
-        // ---- Additional coverage ----
 
         const setupBridge = ({ importResult, assetManager = null, documentManager = {} } = {}) => {
             const importMock = vi.fn().mockResolvedValue(importResult);
@@ -3952,7 +3867,7 @@ describe('IdeviceBlockNode', () => {
             expect(eXeLearning.app.modals.alert.show).not.toHaveBeenCalled();
         });
 
-        it('shows an alert when preloading assets fails and skips the page refresh', async () => {
+        it('reports a refresh failure, not an import error, when preloading assets fails', async () => {
             const loadIdevicesMock = vi.fn().mockResolvedValue();
             setupBridge({
                 importResult: { success: true, componentIds: ['a'] },
@@ -3966,11 +3881,17 @@ describe('IdeviceBlockNode', () => {
 
             expect(loadIdevicesMock).not.toHaveBeenCalled();
             expect(eXeLearning.app.modals.alert.show).toHaveBeenCalledWith(
-                expect.objectContaining({ title: 'Import error', body: 'preload failed' }),
+                expect.objectContaining({
+                    title: 'Page refresh error',
+                    body: 'The iDevice was imported, but the page could not be refreshed. Reload the page to see the imported content. Do not import the file again, as it would duplicate the content.',
+                }),
+            );
+            expect(eXeLearning.app.modals.alert.show).not.toHaveBeenCalledWith(
+                expect.objectContaining({ body: 'preload failed' }),
             );
         });
 
-        it('shows an alert when refreshing the page fails', async () => {
+        it('reports a refresh failure, not an import error, when refreshing the page fails', async () => {
             setupBridge({ importResult: { success: true, componentIds: ['a'] } });
             eXeLearning.app.project.idevices = {
                 loadApiIdevicesInPage: vi.fn().mockRejectedValue(new Error('reload failed')),
@@ -3979,8 +3900,135 @@ describe('IdeviceBlockNode', () => {
             await block.importIdeviceFileIntoBlock(makeFile());
 
             expect(eXeLearning.app.modals.alert.show).toHaveBeenCalledWith(
-                expect.objectContaining({ title: 'Import error', body: 'reload failed' }),
+                expect.objectContaining({
+                    title: 'Page refresh error',
+                    body: 'The iDevice was imported, but the page could not be refreshed. Reload the page to see the imported content. Do not import the file again, as it would duplicate the content.',
+                }),
             );
+            expect(eXeLearning.app.modals.alert.show).not.toHaveBeenCalledWith(
+                expect.objectContaining({ body: 'reload failed' }),
+            );
+        });
+
+        it('logs the refresh failure separately from an import failure', async () => {
+            const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+            setupBridge({ importResult: { success: true, componentIds: ['a'] } });
+            eXeLearning.app.project.idevices = {
+                loadApiIdevicesInPage: vi.fn().mockRejectedValue(new Error('reload failed')),
+            };
+
+            await block.importIdeviceFileIntoBlock(makeFile());
+
+            expect(errorSpy).toHaveBeenCalledWith(
+                '[BlockNode] iDevice imported but the page failed to refresh:',
+                expect.objectContaining({ message: 'reload failed' }),
+            );
+            expect(errorSpy).not.toHaveBeenCalledWith(
+                '[BlockNode] Import iDevice failed:',
+                expect.anything(),
+            );
+            errorSpy.mockRestore();
+        });
+
+        // ---------------------------------------------------------------
+        // Review #2474, point 2: "import failed" vs "import succeeded but the
+        // view could not refresh". Retrying after the second would duplicate
+        // content that is already in the shared Y.Doc.
+        // ---------------------------------------------------------------
+        describe('refresh failure after a successful insert (review #2474, point 2)', () => {
+            const REFRESH_BODY =
+                'The iDevice was imported, but the page could not be refreshed. Reload the page to see the imported content. Do not import the file again, as it would duplicate the content.';
+
+            // Importer double that really "inserts": every call appends one
+            // component to an in-memory block, so duplicates are observable.
+            const setupInsertingImporter = () => {
+                const insertedComponents = [];
+                const importMock = vi.fn(async () => {
+                    insertedComponents.push(`imported-${insertedComponents.length + 1}`);
+                    return { success: true, blockId: block.blockId, componentIds: ['c1'] };
+                });
+                setupBridge({ importResult: { success: true } });
+                window.ComponentImporter = class {
+                    importIdeviceIntoBlock = importMock;
+                };
+                return { insertedComponents, importMock };
+            };
+
+            it('keeps the inserted iDevice and reports only a refresh failure when loadApiIdevicesInPage(true) rejects', async () => {
+                const order = [];
+                const { insertedComponents, importMock } = setupInsertingImporter();
+                importMock.mockImplementationOnce(async () => {
+                    order.push('insert');
+                    insertedComponents.push('imported-1');
+                    return { success: true, blockId: block.blockId, componentIds: ['c1'] };
+                });
+                const loadIdevicesMock = vi.fn(async () => {
+                    order.push('refresh');
+                    throw new Error('reload failed');
+                });
+                eXeLearning.app.project.idevices = { loadApiIdevicesInPage: loadIdevicesMock };
+                const file = makeFile();
+
+                await expect(block.importIdeviceFileIntoBlock(file)).resolves.toBeUndefined();
+
+                // The insert happened first and exactly once...
+                expect(order).toEqual(['insert', 'refresh']);
+                expect(importMock).toHaveBeenCalledTimes(1);
+                expect(importMock).toHaveBeenCalledWith(file, 'page-1', block.blockId);
+                expect(insertedComponents).toEqual(['imported-1']);
+                // ...the refresh was attempted with the force flag...
+                expect(loadIdevicesMock).toHaveBeenCalledTimes(1);
+                expect(loadIdevicesMock).toHaveBeenCalledWith(true);
+                // ...and the user gets exactly ONE alert: the refresh message,
+                // which tells them not to import again. The raw error stays in
+                // the console and is not an "import failed" message.
+                expect(eXeLearning.app.modals.alert.show).toHaveBeenCalledTimes(1);
+                expect(eXeLearning.app.modals.alert.show).toHaveBeenCalledWith(
+                    expect.objectContaining({ title: 'Page refresh error', body: REFRESH_BODY }),
+                );
+                expect(eXeLearning.app.modals.alert.show).not.toHaveBeenCalledWith(
+                    expect.objectContaining({ title: 'Import error' }),
+                );
+                expect(REFRESH_BODY).toContain('Do not import the file again');
+                expect(eXeLearning.app.modals.alert.show).not.toHaveBeenCalledWith(
+                    expect.objectContaining({ body: 'reload failed' }),
+                );
+            });
+
+            it('never re-runs the import after the refresh failed (content is not duplicated)', async () => {
+                vi.spyOn(console, 'error').mockImplementation(() => {});
+                const { insertedComponents, importMock } = setupInsertingImporter();
+                eXeLearning.app.project.idevices = {
+                    loadApiIdevicesInPage: vi.fn().mockRejectedValue(new Error('reload failed')),
+                };
+
+                await block.importIdeviceFileIntoBlock(makeFile());
+                await Promise.resolve();
+
+                expect(importMock).toHaveBeenCalledTimes(1);
+                expect(insertedComponents).toHaveLength(1);
+            });
+
+            it('contrast: a genuine import failure never refreshes and shows the import error', async () => {
+                vi.spyOn(console, 'error').mockImplementation(() => {});
+                const loadIdevicesMock = vi.fn().mockResolvedValue();
+                const { importMock } = setupBridge({
+                    importResult: { success: false, error: 'Target block not found' },
+                });
+                eXeLearning.app.project.idevices = { loadApiIdevicesInPage: loadIdevicesMock };
+
+                await block.importIdeviceFileIntoBlock(makeFile());
+
+                expect(importMock).toHaveBeenCalledTimes(1);
+                expect(loadIdevicesMock).not.toHaveBeenCalled();
+                expect(eXeLearning.app.modals.alert.show).toHaveBeenCalledTimes(1);
+                expect(eXeLearning.app.modals.alert.show).toHaveBeenCalledWith(
+                    expect.objectContaining({ title: 'Import error', body: 'Target block not found' }),
+                );
+                expect(eXeLearning.app.modals.alert.show).not.toHaveBeenCalledWith(
+                    expect.objectContaining({ body: REFRESH_BODY }),
+                );
+            });
         });
 
         it('uses the translated default message when the error has an empty message', async () => {
@@ -4022,9 +4070,6 @@ describe('IdeviceBlockNode', () => {
         });
     });
 
-    // -------------------------------------------------------------------------
-    // addBehaviourToggleBlockButton
-    // -------------------------------------------------------------------------
     describe('addBehaviourToggleBlockButton', () => {
         let toggleButton;
         let originalDollar;
@@ -4075,9 +4120,6 @@ describe('IdeviceBlockNode', () => {
         });
     });
 
-    // -------------------------------------------------------------------------
-    // addTooltips
-    // -------------------------------------------------------------------------
     describe('addTooltips', () => {
         let originalDollar;
 
@@ -4106,9 +4148,6 @@ describe('IdeviceBlockNode', () => {
         });
     });
 
-    // -------------------------------------------------------------------------
-    // addNoTranslateForGoogle
-    // -------------------------------------------------------------------------
     describe('addNoTranslateForGoogle', () => {
         let originalDollar;
 
@@ -4129,9 +4168,6 @@ describe('IdeviceBlockNode', () => {
         });
     });
 
-    // -------------------------------------------------------------------------
-    // addBehaviourToModalChangeIconBody
-    // -------------------------------------------------------------------------
     describe('addBehaviourToModalChangeIconBody', () => {
         let modalBody;
         let icon1;
@@ -4193,9 +4229,6 @@ describe('IdeviceBlockNode', () => {
         });
     });
 
-    // -------------------------------------------------------------------------
-    // apiSaveProperties
-    // -------------------------------------------------------------------------
     describe('apiSaveProperties', () => {
         beforeEach(() => {
             block.blockContent = document.createElement('article');
@@ -4216,8 +4249,6 @@ describe('IdeviceBlockNode', () => {
         });
 
         it('adds updateChildsProperties when inherit is true', async () => {
-            // odePagStructureSync must be present (even if empty) to avoid
-            // accessing .odeComponentsSyncs on undefined inside the source.
             eXeLearning.app.api.putSavePropertiesBlock.mockResolvedValue({
                 responseMessage: 'OK',
                 odePagStructureSync: {},
@@ -4275,9 +4306,6 @@ describe('IdeviceBlockNode', () => {
         });
     });
 
-    // -------------------------------------------------------------------------
-    // apiUpdatePage
-    // -------------------------------------------------------------------------
     describe('apiUpdatePage', () => {
         it('returns false when target page equals current page', async () => {
             block.odeNavStructureSyncId = 'page-1';
@@ -4321,9 +4349,6 @@ describe('IdeviceBlockNode', () => {
         });
     });
 
-    // -------------------------------------------------------------------------
-    // deleteBlockViaYjs
-    // -------------------------------------------------------------------------
     describe('deleteBlockViaYjs', () => {
         it('returns ERROR when bridge not available', async () => {
             eXeLearning.app.project._yjsBridge = null;
@@ -4381,9 +4406,6 @@ describe('IdeviceBlockNode', () => {
         });
     });
 
-    // -------------------------------------------------------------------------
-    // reorderViaYjs
-    // -------------------------------------------------------------------------
     describe('reorderViaYjs', () => {
         beforeEach(() => {
             block.blockContent = document.createElement('article');
@@ -4464,9 +4486,6 @@ describe('IdeviceBlockNode', () => {
         });
     });
 
-    // -------------------------------------------------------------------------
-    // getFallbackPageOrder
-    // -------------------------------------------------------------------------
     describe('getFallbackPageOrder', () => {
         it('returns 1 when components.blocks is not an array', () => {
             mockEngine.components = {};
@@ -4519,9 +4538,6 @@ describe('IdeviceBlockNode', () => {
         });
     });
 
-    // -------------------------------------------------------------------------
-    // apiUpdateOrder
-    // -------------------------------------------------------------------------
     describe('apiUpdateOrder', () => {
         beforeEach(() => {
             block.blockContent = document.createElement('article');
@@ -4594,9 +4610,6 @@ describe('IdeviceBlockNode', () => {
         });
     });
 
-    // -------------------------------------------------------------------------
-    // apiDeleteBlock
-    // -------------------------------------------------------------------------
     describe('apiDeleteBlock', () => {
         beforeEach(() => {
             mockEngine.updateComponentsBlocks = vi.fn();
@@ -4653,9 +4666,6 @@ describe('IdeviceBlockNode', () => {
         });
     });
 
-    // -------------------------------------------------------------------------
-    // apiSendDataService
-    // -------------------------------------------------------------------------
     describe('apiSendDataService', () => {
         beforeEach(() => {
             mockEngine.updateComponentsBlocks = vi.fn();
@@ -4697,9 +4707,6 @@ describe('IdeviceBlockNode', () => {
         });
     });
 
-    // -------------------------------------------------------------------------
-    // generateDataObject
-    // -------------------------------------------------------------------------
     describe('generateDataObject', () => {
         it('builds data object from params array', () => {
             block.blockId = 'blk-1';
@@ -4726,9 +4733,6 @@ describe('IdeviceBlockNode', () => {
         });
     });
 
-    // -------------------------------------------------------------------------
-    // getDictBaseValuesData
-    // -------------------------------------------------------------------------
     describe('getDictBaseValuesData', () => {
         it('returns correct base data dictionary', () => {
             block.blockId = 'blk-1';
@@ -4761,9 +4765,6 @@ describe('IdeviceBlockNode', () => {
         });
     });
 
-    // -------------------------------------------------------------------------
-    // showModalMessageErrorDatabase
-    // -------------------------------------------------------------------------
     describe('showModalMessageErrorDatabase', () => {
         it('shows alert with default message after 300ms timeout', async () => {
             vi.useFakeTimers();
@@ -4795,9 +4796,6 @@ describe('IdeviceBlockNode', () => {
         });
     });
 
-    // -------------------------------------------------------------------------
-    // remove
-    // -------------------------------------------------------------------------
     describe('remove', () => {
         beforeEach(() => {
             block.blockContent = document.createElement('article');
@@ -4851,9 +4849,6 @@ describe('IdeviceBlockNode', () => {
         });
     });
 
-    // -------------------------------------------------------------------------
-    // removeClassLoading
-    // -------------------------------------------------------------------------
     describe('removeClassLoading', () => {
         it('removes loading class from blockContent', () => {
             block.blockContent = document.createElement('article');
@@ -4864,9 +4859,6 @@ describe('IdeviceBlockNode', () => {
         });
     });
 
-    // -------------------------------------------------------------------------
-    // updateMode
-    // -------------------------------------------------------------------------
     describe('updateMode', () => {
         beforeEach(() => {
             block.blockContent = document.createElement('article');
@@ -4902,9 +4894,6 @@ describe('IdeviceBlockNode', () => {
         });
     });
 
-    // -------------------------------------------------------------------------
-    // updateParam — 'id' and 'order' cases
-    // -------------------------------------------------------------------------
     describe('updateParam id and order cases', () => {
         beforeEach(() => {
             block.blockContent = document.createElement('article');
@@ -4928,9 +4917,6 @@ describe('IdeviceBlockNode', () => {
         });
     });
 
-    // -------------------------------------------------------------------------
-    // resetWindowHash
-    // -------------------------------------------------------------------------
     describe('resetWindowHash', () => {
         afterEach(() => {
             window.location.hash = '';
@@ -4942,9 +4928,6 @@ describe('IdeviceBlockNode', () => {
         });
     });
 
-    // -------------------------------------------------------------------------
-    // focusTextInput
-    // -------------------------------------------------------------------------
     describe('focusTextInput', () => {
         it('focuses the input element', () => {
             const input = document.createElement('input');
@@ -4966,9 +4949,6 @@ describe('IdeviceBlockNode', () => {
         });
     });
 
-    // -------------------------------------------------------------------------
-    // sendPublishedNotification
-    // -------------------------------------------------------------------------
     describe('sendPublishedNotification', () => {
         it('does nothing when offlineInstallation is true', () => {
             block.offlineInstallation = true;
@@ -4989,10 +4969,7 @@ describe('IdeviceBlockNode', () => {
         });
     });
 
-    // -------------------------------------------------------------------------
-    // makeIconValueElement — static / offline mode branch
-    // -------------------------------------------------------------------------
-    describe('makeIconValueElement static mode branch', () => {
+    describe('makeIconValueElement — static / offline mode branch', () => {
         it('converts absolute path to relative when isStaticMode is true', () => {
             const savedConfig = eXeLearning.config;
             eXeLearning.config = { isStaticMode: true, isOfflineInstallation: false };
@@ -5028,9 +5005,6 @@ describe('IdeviceBlockNode', () => {
         });
     });
 
-    // -------------------------------------------------------------------------
-    // loadPropertiesFromYjs — null yjsProperties
-    // -------------------------------------------------------------------------
     describe('loadPropertiesFromYjs null yjsProperties', () => {
         it('does nothing when getBlockProperties returns null', () => {
             eXeLearning.app.project._yjsEnabled = true;
@@ -5057,10 +5031,7 @@ describe('IdeviceBlockNode', () => {
         });
     });
 
-    // -------------------------------------------------------------------------
-    // apiUpdateIcon — no id branch
-    // -------------------------------------------------------------------------
-    describe('apiUpdateIcon no id branch', () => {
+    describe('apiUpdateIcon — no id branch', () => {
         it('does not call apiSendDataService when id is null', () => {
             const apiSendSpy = vi
                 .spyOn(block, 'apiSendDataService')
@@ -5071,10 +5042,7 @@ describe('IdeviceBlockNode', () => {
         });
     });
 
-    // -------------------------------------------------------------------------
-    // apiUpdateTitle — no id branch
-    // -------------------------------------------------------------------------
-    describe('apiUpdateTitle no id branch', () => {
+    describe('apiUpdateTitle — no id branch', () => {
         it('does not call apiSendDataService when id is null', () => {
             block.blockNameElementText = document.createElement('h1');
             const apiSendSpy = vi
@@ -5086,16 +5054,10 @@ describe('IdeviceBlockNode', () => {
         });
     });
 
-    // -------------------------------------------------------------------------
-    // generateBlockContentNode — no id branch
-    // -------------------------------------------------------------------------
-    describe('generateBlockContentNode no id branch', () => {
+    describe('generateBlockContentNode — no id branch', () => {
         let originalDollar;
 
         beforeEach(() => {
-            // The addBehaviourButtonDeleteBlock tests in this file delete global.$
-            // via `delete global.$`. Restore a minimal stub so addTooltips does
-            // not throw when generateBlockContentNode drives the full chain.
             originalDollar = global.$;
             if (typeof global.$ !== 'function') {
                 global.$ = vi.fn(() => ({ addClass: vi.fn() }));

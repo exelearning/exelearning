@@ -1446,47 +1446,87 @@ export default class IdeviceBlockNode {
         this.blockButtons
             .querySelector('#dropdownBlockMore-button-import-idevice' + this.blockId)
             .addEventListener('click', () => {
-                if (eXeLearning.app.project.checkOpenIdevice()) return;
-                // Create a one-shot hidden file input restricted to .idevice
-                const input = document.createElement('input');
-                input.type = 'file';
-                input.accept = '.idevice';
-                input.classList.add('d-none');
-                document.body.appendChild(input);
-                const removeInput = () => {
-                    if (input.parentNode) input.parentNode.removeChild(input);
-                };
-                input.addEventListener('cancel', removeInput);
-                input.addEventListener('change', async () => {
-                    const file = input.files && input.files[0];
-                    removeInput();
-                    if (!file) return;
-                    await this.importIdeviceFileIntoBlock(file);
-                });
-                input.click();
+                // Check odeComponent flag, like the other box-menu actions:
+                // refuse when another collaborator holds the box (review
+                // #2474, point 8)
+                eXeLearning.app.project
+                    .isAvalaibleOdeComponent(this.blockId, null)
+                    .then((response) => {
+                        if (response.responseMessage !== 'OK') {
+                            eXeLearning.app.modals.alert.show({
+                                title: _('iDevice error'),
+                                body: _(response.responseMessage),
+                                contentId: 'error',
+                            });
+                            return;
+                        }
+                        if (eXeLearning.app.project.checkOpenIdevice()) return;
+                        this.openImportIdeviceFilePicker();
+                    });
             });
+    }
+
+    /**
+     * Open the one-shot .idevice file picker for this block.
+     *
+     * The hidden input is removed on `cancel`, on `change`, and on the next
+     * window `focus`: browsers that never fire `cancel` on the file input
+     * would otherwise leave it in document.body after a cancelled picker
+     * (review #2474). The `change` event still fires on the detached input,
+     * so removing it first does not lose the selection.
+     */
+    openImportIdeviceFilePicker() {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = '.idevice';
+        input.classList.add('d-none');
+        document.body.appendChild(input);
+        let cleaned = false;
+        const cleanup = () => {
+            if (cleaned) return;
+            cleaned = true;
+            if (input.parentNode) input.parentNode.removeChild(input);
+            window.removeEventListener('focus', onWindowFocus);
+        };
+        const onWindowFocus = () => cleanup();
+        window.addEventListener('focus', onWindowFocus);
+        input.addEventListener('cancel', cleanup);
+        input.addEventListener('change', async () => {
+            const file = input.files && input.files[0];
+            cleanup();
+            if (!file) return;
+            await this.importIdeviceFileIntoBlock(file);
+        });
+        input.click();
     }
 
     /**
      * Import a .idevice file, inserting its component(s) into this block.
      *
+     * The import and the post-import view refresh are handled separately
+     * (review #2474): once importIdeviceIntoBlock succeeds the components are
+     * already in the shared Y.Doc and synced to every collaborator, so a
+     * preload/refresh failure must NOT be reported as an import error (the
+     * user would retry the import and duplicate the content).
+     *
      * @param {File} file
      */
     async importIdeviceFileIntoBlock(file) {
+        let assetManager;
         try {
             const bridge = eXeLearning.app.project._yjsBridge;
             const documentManager = bridge?.getDocumentManager?.();
-            const assetManager = bridge?.assetManager;
+            assetManager = bridge?.assetManager;
             const ComponentImporter = window.ComponentImporter;
-            if (!documentManager) throw new Error('Yjs document manager not available');
-            if (!ComponentImporter) throw new Error('ComponentImporter not loaded');
+            if (!documentManager) throw new Error(_('Yjs document manager not available'));
+            if (!ComponentImporter) throw new Error(_('ComponentImporter not loaded'));
 
             const importer = new ComponentImporter(documentManager, assetManager);
             const pageId =
                 this.pageId ||
                 eXeLearning.app.menus.menuStructure.menuStructureBehaviour
                     .nodeSelected?.getAttribute('nav-id');
-            if (!pageId) throw new Error('No page selected');
+            if (!pageId) throw new Error(_('No page selected'));
 
             const result = await importer.importIdeviceIntoBlock(
                 file,
@@ -1494,14 +1534,8 @@ export default class IdeviceBlockNode {
                 this.blockId
             );
             if (!result || !result.success) {
-                throw new Error((result && result.error) || 'Import failed');
+                throw new Error((result && result.error) || _('Import failed'));
             }
-
-            // Preload assets so images resolve immediately, then refresh page
-            if (assetManager && typeof assetManager.preloadAllAssets === 'function') {
-                await assetManager.preloadAllAssets();
-            }
-            await eXeLearning.app.project.idevices.loadApiIdevicesInPage(true);
         } catch (error) {
             console.error('[BlockNode] Import iDevice failed:', error);
             eXeLearning.app.modals.alert.show({
@@ -1509,6 +1543,29 @@ export default class IdeviceBlockNode {
                 body:
                     error.message ||
                     _('An error occurred while importing the component.'),
+                contentId: 'error',
+            });
+            return;
+        }
+
+        // The import succeeded; from here a failure means the view could not
+        // be refreshed, not that the import failed.
+        try {
+            // Preload assets so images resolve immediately, then refresh page
+            if (assetManager && typeof assetManager.preloadAllAssets === 'function') {
+                await assetManager.preloadAllAssets();
+            }
+            await eXeLearning.app.project.idevices.loadApiIdevicesInPage(true);
+        } catch (error) {
+            console.error(
+                '[BlockNode] iDevice imported but the page failed to refresh:',
+                error
+            );
+            eXeLearning.app.modals.alert.show({
+                title: _('Page refresh error'),
+                body: _(
+                    'The iDevice was imported, but the page could not be refreshed. Reload the page to see the imported content. Do not import the file again, as it would duplicate the content.'
+                ),
                 contentId: 'error',
             });
         }
