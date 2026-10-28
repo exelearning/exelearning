@@ -1668,10 +1668,11 @@ test.describe('Print iDevices', () => {
         expect(heightPx).toBeLessThan(22);
     });
 
-    // A problem laid out as a picture in one table cell and its words in the next used to have its
-    // number printed at the foot of the picture instead of in front of the question (#2635).
+    // A problem that opened with a picture, in a table cell beside its words or in a paragraph of its
+    // own, used to have its number printed at the foot of the picture instead of in front of the
+    // question (#2635).
     for (const mode of ['idevices', 'in-place']) {
-        test(`numbers a math problem laid out as a table level with its words in ${mode} mode`, async ({
+        test(`numbers a math problem that opens with a picture level with its top in ${mode} mode`, async ({
             authenticatedPage: page,
             createProject,
         }) => {
@@ -1719,6 +1720,16 @@ test.describe('Print iDevices', () => {
                             `<p>Solve <img src="${formula}" width="65" height="32"> = 5. ` +
                             `<strong>Check <span><img src="${formula}" width="65" height="32"></span> = 5.</strong></p>`,
                     },
+                    {
+                        wordingseg:
+                            `<table><tbody><tr><td><img src="${picture}" width="200" height="122"><br>Figura 1</td>` +
+                            '<td>Calcula el perímetro del triángulo de la figura 1</td></tr></tbody></table>',
+                    },
+                    {
+                        wordingseg:
+                            `<p><img src="${picture}" width="200" height="122"></p>` +
+                            '<p>¿Cuántos lados tiene esta figura?</p>',
+                    },
                 ],
             });
             const html = `<div class="mathproblems-IDevice"><div class="mathproblems-DataGame js-hidden">${encryptDataGame(payload)}</div></div>`;
@@ -1739,35 +1750,56 @@ test.describe('Print iDevices', () => {
             await page.emulateMedia({ media: 'print' });
 
             const items = frame.locator('.worksheet-activity[data-idevice="mathproblems"] .worksheet-item');
-            await expect(items).toHaveCount(4);
-            const problem = items.first();
-            await expect
-                .poll(() =>
-                    problem.locator('img').evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth > 0),
-                )
-                .toBe(true);
+            await expect(items).toHaveCount(6);
+            for (const image of await items.locator('img').all()) {
+                await expect
+                    .poll(() => image.evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth > 0))
+                    .toBe(true);
+            }
+
+            // A point outside the frame's viewport hits nothing, and the document printed in place
+            // does not scroll inside it, so the frame is made as tall as what it holds.
+            await page.locator('.print-preview-iframe').evaluate((iframe: HTMLIFrameElement) => {
+                iframe.style.height = `${iframe.contentDocument!.documentElement.scrollHeight}px`;
+            });
 
             // A list number has no box of its own to measure, but it belongs to its item: walking
             // down the margin where it is drawn, the rows that land on the item are the number's.
-            const placement = await problem.evaluate(item => {
-                item.scrollIntoView({ block: 'center' });
-                const words = document.createRange();
-                words.selectNodeContents(item.querySelectorAll('td')[1]);
-                const firstLine = words.getClientRects()[0];
-                const bounds = item.getBoundingClientRect();
-                const rows: number[] = [];
-                for (let y = Math.floor(bounds.top); y < bounds.bottom; y++) {
-                    if (document.elementFromPoint(bounds.left - 8, y) === item) rows.push(y);
-                }
-                return {
-                    line: { top: firstLine.top, bottom: firstLine.bottom },
-                    number: rows.length === 0 ? null : (rows[0] + rows[rows.length - 1]) / 2,
-                };
-            });
+            const numberPlacement = (item: Locator) =>
+                item.evaluate(element => {
+                    const picture = element.querySelector('img')!.getBoundingClientRect();
+                    const wordsCell = element.querySelectorAll('td')[1];
+                    let words: DOMRect | null = null;
+                    if (wordsCell) {
+                        const range = document.createRange();
+                        range.selectNodeContents(wordsCell);
+                        words = range.getClientRects()[0];
+                    }
+                    const bounds = element.getBoundingClientRect();
+                    const rows: number[] = [];
+                    for (let y = Math.floor(bounds.top); y < bounds.bottom; y++) {
+                        if (document.elementFromPoint(bounds.left - 8, y) === element) rows.push(y);
+                    }
+                    return {
+                        picture: { top: picture.top, height: picture.height },
+                        words: words && { top: words.top, bottom: words.bottom },
+                        number: rows.length === 0 ? null : (rows[0] + rows[rows.length - 1]) / 2,
+                    };
+                });
 
-            expect(placement.number).not.toBeNull();
-            expect(placement.number!).toBeGreaterThan(placement.line.top);
-            expect(placement.number!).toBeLessThan(placement.line.bottom);
+            // The number at the top of the picture, not at its foot. Beside it, the first line of
+            // the words is there too: level with the number, whether or not the picture has a
+            // caption, rather than both dropped to the foot of the picture together.
+            for (const index of [0, 4, 5]) {
+                const placement = await numberPlacement(items.nth(index));
+                expect(placement.number).not.toBeNull();
+                expect(placement.number!).toBeGreaterThan(placement.picture.top);
+                expect(placement.number!).toBeLessThan(placement.picture.top + placement.picture.height / 4);
+                if (placement.words) {
+                    expect(placement.number!).toBeGreaterThan(placement.words.top);
+                    expect(placement.number!).toBeLessThan(placement.words.bottom);
+                }
+            }
 
             // A formula among words must align as it does outside a table. The in-place theme
             // centres inline images, whereas the standalone worksheet uses their baseline.

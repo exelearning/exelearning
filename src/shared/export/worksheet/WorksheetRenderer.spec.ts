@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'bun:test';
 import { PRERENDERED_LATEX_CSS } from '../constants';
-import { WORKSHEET_ACTIVITY_STYLES, renderActivityFragment, renderWorksheet } from './WorksheetRenderer';
+import {
+    WORKSHEET_ACTIVITY_STYLES,
+    renderActivityFragment,
+    renderInlineGap,
+    renderWorksheet,
+} from './WorksheetRenderer';
 import type { CharacterBoxGroup, PrintableActivity, WorksheetModel } from './types';
 
 /** Boxes with nothing given away: one group per size. */
@@ -861,7 +866,9 @@ describe('questions set in two columns', () => {
         );
         const fragment = renderActivityFragment(illustrated);
         for (const html of [standalone, fragment]) {
-            expect(html).toContain('<div class="worksheet-prompt"><img src="clue.png" width="400" height="300"></div>');
+            expect(html).toContain(
+                '<div class="worksheet-prompt"><img src="clue.png" width="400" height="300" class="worksheet-illustration"></div>',
+            );
         }
         for (const styles of [standalone, WORKSHEET_ACTIVITY_STYLES]) {
             expect(styles).toMatch(
@@ -923,7 +930,7 @@ describe('questions laid out as a table', () => {
         expect(html).toContain(
             `<li class="worksheet-item"><div class="worksheet-prompt">${prompt.replace(
                 'height="122"',
-                'height="122" class="worksheet-table-illustration"',
+                'height="122" class="worksheet-illustration"',
             )}</div>`,
         );
     });
@@ -942,7 +949,7 @@ describe('questions laid out as a table', () => {
         const standalone = renderWorksheet(model());
 
         for (const styles of [standalone, WORKSHEET_ACTIVITY_STYLES]) {
-            expect(ruleFor(styles, '.worksheet-prompt .worksheet-table-illustration')).toContain('vertical-align: top');
+            expect(ruleFor(styles, '.worksheet-prompt .worksheet-illustration')).toContain('vertical-align: top');
         }
     });
 
@@ -954,7 +961,7 @@ describe('questions laid out as a table', () => {
             const prompt = `<table><tbody><tr><${cell}>${content}</${cell}><td>Area?</td></tr></tbody></table>`;
             const html = renderActivityFragment(activity({ items: [{ prompt }] }));
 
-            expect(html).toContain('<img src="triangle.png" class="worksheet-table-illustration">');
+            expect(html).toContain('<img src="triangle.png" class="worksheet-illustration">');
             expect(html).toContain('<td>Area?</td>');
         });
 
@@ -967,7 +974,7 @@ describe('questions laid out as a table', () => {
             const html = renderActivityFragment(activity({ items: [{ prompt }] }));
 
             expect(html).toContain(`<div class="worksheet-prompt">${prompt}</div>`);
-            expect(html).not.toContain('worksheet-table-illustration');
+            expect(html).not.toContain('worksheet-illustration');
         });
     }
 
@@ -979,8 +986,8 @@ describe('questions laid out as a table', () => {
         const html = renderActivityFragment(activity({ items: [{ prompt }] }));
 
         expect(html).toContain('Outer <img src="formula.png">');
-        expect(html).toContain('<img src="triangle.png" class="worksheet-table-illustration">');
-        expect(html.match(/worksheet-table-illustration/g)).toHaveLength(1);
+        expect(html).toContain('<img src="triangle.png" class="worksheet-illustration">');
+        expect(html.match(/worksheet-illustration/g)).toHaveLength(1);
     });
 
     it('preserves existing image attributes and classes when marking an illustration', () => {
@@ -990,7 +997,7 @@ describe('questions laid out as a table', () => {
         const html = renderActivityFragment(activity({ items: [{ prompt }] }));
 
         expect(html).toContain('<td rowspan="2">');
-        expect(html).toContain('alt="A &amp; B" class="diagram worksheet-table-illustration"');
+        expect(html).toContain('alt="A &amp; B" class="diagram worksheet-illustration"');
     });
 
     it('leaves a table without images unchanged', () => {
@@ -998,6 +1005,61 @@ describe('questions laid out as a table', () => {
         const html = renderActivityFragment(activity({ items: [{ prompt }] }));
 
         expect(html).toContain(`<div class="worksheet-prompt">${prompt}</div>`);
+    });
+
+    it('marks an illustration with a caption under it, since the caption is on a line of its own', () => {
+        const prompt =
+            '<table><tbody><tr><td><img src="triangle.png"><br>Figure 1</td><td>Area?</td></tr></tbody></table>';
+        const html = renderActivityFragment(activity({ items: [{ prompt }] }));
+
+        expect(html).toContain('<td><img src="triangle.png" class="worksheet-illustration"><br>Figure 1</td>');
+    });
+});
+
+describe('pictures alone on their line', () => {
+    const rendered = (prompt: string) => renderActivityFragment(activity({ items: [{ prompt }] }));
+
+    it.each([
+        ['in a paragraph of its own before the words', '<p><img src="triangle.png"></p><p>Area?</p>'],
+        ['first in the question, with no paragraph around it', '<img src="triangle.png"><p>Area?</p>'],
+        ['over a caption in the same paragraph', '<p><img src="triangle.png"><br>Figure 1</p><p>Area?</p>'],
+        ['wrapped in emphasis', '<p><strong><img src="triangle.png"></strong></p><p>Area?</p>'],
+    ])('marks a picture %s as an illustration', (_case, prompt) => {
+        expect(rendered(prompt)).toContain('<img src="triangle.png" class="worksheet-illustration">');
+    });
+
+    it('marks every picture on a line with no words, as two set side by side', () => {
+        const html = rendered('<p><img src="a.png"> <img src="b.png"></p><p>Which is bigger?</p>');
+
+        expect(html.match(/class="worksheet-illustration"/g)).toHaveLength(2);
+    });
+
+    it.each([
+        ['a formula in a sentence', '<p>Solve <img src="formula.png"> = 5.</p>'],
+        ['a picture ending a sentence', '<p>Area of <img src="triangle.png"></p>'],
+        ['a picture starting a sentence', '<p><img src="a.png"> looks big.</p>'],
+    ])('leaves %s on its baseline', (_case, prompt) => {
+        const html = rendered(prompt);
+
+        expect(html).toContain(`<div class="worksheet-prompt">${prompt}</div>`);
+        expect(html).not.toContain('worksheet-illustration');
+    });
+
+    it('counts a gap left to write in as a word, so the picture it names stays on the line', () => {
+        const prompt = `<p><img src="dog.png"> ${renderInlineGap(5)}</p>`;
+
+        expect(rendered(prompt)).not.toContain('worksheet-illustration');
+    });
+
+    it('marks only the picture on its own line when the next line has words', () => {
+        const html = rendered('<p><img src="a.png"><br>It is <img src="b.png"> big.</p>');
+
+        expect(html).toContain('<img src="a.png" class="worksheet-illustration">');
+        expect(html).toContain('<img src="b.png"> big.');
+    });
+
+    it('leaves a question without pictures as it was written', () => {
+        expect(rendered('<p>2 &lt; 5</p>')).toContain('<div class="worksheet-prompt"><p>2 &lt; 5</p></div>');
     });
 });
 
