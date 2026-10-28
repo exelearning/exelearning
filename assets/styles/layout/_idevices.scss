@@ -455,6 +455,22 @@ article.box {
                     display: inline-block !important;
                 }
 
+                /* Texts tab: a long label wraps inside its column instead of spilling into the next one,
+                   and each input sits at the bottom of its column so the fields of a row line up */
+                .ci18n {
+                    display: flex;
+                    flex-direction: column;
+
+                    label {
+                        white-space: normal !important;
+                        display: block !important;
+                    }
+
+                    .form-control {
+                        margin-top: auto;
+                    }
+                }
+
                 input[type=text],
                 input[type=number],
                 textarea {
