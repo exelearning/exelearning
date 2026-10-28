@@ -90,9 +90,9 @@ offline-capable; this would be the only import that fails without connectivity.
 
 ## Evidence
 
-Facts refer to commit `f9ddf3ca80c25ecc2abf8b26119462830ffbe62c`, by function
-name. Operational details (exact message strings, input cleanup timing, the
-fflate measurement) live in the tests and the PR description.
+Facts refer to commit `9df7c7b16`, by function name. Operational details
+(exact message strings, input cleanup timing, the fflate measurement) live in
+the tests and the PR description.
 
 - **Tier.** `COMPONENT_IMPORT_LIMITS` in `src/shared/import/importPolicy.ts`:
   `maxFileBytes` 50 MiB, `maxTotalBytes` 200 MiB, `maxEntryBytes` equal to the
