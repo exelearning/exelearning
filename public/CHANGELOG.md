@@ -4,9 +4,7 @@
 
 ### Added
 
-- Printing: interactive activities are now printed as paper exercises using their content; for example, crosswords include the grid and clues
-- Printing: a new "Print options" panel beside the preview keeps activities in place by default and lets you move them to an appendix, print only activities or leave them out; the preview updates to reflect your choices
-- Printing: Checklist iDevices are now printed with tick boxes and lines for handwritten answers
+- Printing: interactive activities are now printed as paper exercises (for example, crosswords include the grid and clues), and a new "Print options" panel beside the preview lets you keep them in place, move them to an appendix, print only activities or leave them out, with the preview updating to reflect your choices
 - Desktop app: added a "Save as PDF" button to the print preview, so you can save a PDF without a printer
 - Styles: added Cedec, eTwinning, INTEF and Kids
 - iDevices: scoring iDevices now share a Grading tab for SCORM score, progress report and minimum score settings
@@ -14,7 +12,7 @@
 - Project properties: added a project-wide minimum passing score in a new Grading tab; scoring iDevices use it unless they define their own minimum
 - SCORM: added an option requiring every activity on a page to meet its own minimum score; learners can also see the score needed to pass each page
 - Web site exports: added a Presentation mode, enabled by adding `?exe-presentation=1` to the URL, that lets you navigate between pages using the keyboard or a presenter remote
-- Public read-only viewer: projects can now be shared through an unlisted link that anyone can open without signing in, keeping the project content separate from the user's session
+- eXeLearning Cloud: projects can now be shared through an unlisted link that anyone can open without signing in, keeping the project content separate from the user's session
 - Desktop app (Windows and Linux): you can now choose spell-checking languages in Preferences, displayed in the interface language, or use the system default
 - TinyMCE: added the `exe-block-download` class to highlight blocks containing download links
 - Documentation: added English and Spanish plugin guides for Moodle, Nextcloud, WordPress, Omeka S, Google Drive and OneDrive, plus a unified Spanish manual
