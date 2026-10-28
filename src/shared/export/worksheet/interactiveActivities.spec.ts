@@ -10,8 +10,14 @@ describe('isInteractiveActivity', () => {
     });
 
     it('leaves out the iDevices that render content rather than an exercise', () => {
-        for (const type of ['text', 'image-gallery', 'markdown-text', 'slide', 'udl-content', 'checklist'])
+        for (const type of ['text', 'image-gallery', 'markdown-text', 'slide', 'udl-content'])
             expect(isInteractiveActivity(type)).toBe(false);
+    });
+
+    it('counts the checklist, which is filled in like the rubric beside it', () => {
+        // It used to print as content, so its switches, drop-downs and buttons went to paper.
+        expect(isInteractiveActivity('checklist')).toBe(true);
+        expect(isNeverPrintable('checklist')).toBe(false);
     });
 
     it('counts an activity by its adapter, however it stores its data', () => {
