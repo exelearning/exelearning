@@ -860,15 +860,22 @@ describe('PrintPreviewExporter', () => {
                     ],
                 };
 
-                const { html } = await new PrintPreviewExporter(
+                const challengeExporter = new PrintPreviewExporter(
                     createMockDocument([page]),
                     createMockResourceProvider(),
-                ).generatePreview({ activities: { mode: 'in-place', labels: {}, ideviceTitles: {} } });
+                );
+                const activities = { mode: 'in-place', labels: {}, ideviceTitles: {} } as const;
+                const { html } = await challengeExporter.generatePreview({ activities });
 
                 expect(html).toContain(
-                    `<span class="external-iframe-src"><a data-exe-text-is-url href="${genially}">${genially}</a></span>`,
+                    `<span class="worksheet-embed-address"><a data-exe-text-is-url href="${genially}">${genially}</a></span>`,
                 );
                 expect(html).toContain('<a href="https://es.wikipedia.org/wiki/Gusto">este artículo</a>');
+
+                // The address is all that is left of the Genially, so turning the URLs off leaves it.
+                const off = (await challengeExporter.generatePreview({ activities, showLinkUrls: false })).html!;
+                expect(off).toContain(`<span class="worksheet-embed-address"><a href="${genially}">`);
+                expect(off).not.toMatch(/worksheet-embed-address[^{]*\{[^}]*display:\s*none/);
             });
 
             it('marks multiple start tags without changing their case, attributes or surrounding source', async () => {

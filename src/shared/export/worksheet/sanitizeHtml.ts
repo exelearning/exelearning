@@ -97,12 +97,14 @@ function attributeOf(node: DefaultTreeAdapterMap['element'], name: string): stri
 /**
  * Where content embedded from the web can be found, written where it was embedded.
  *
- * The markup is the one `common.js` writes beside each external frame of the document, so the
- * styles and the print option that show or hide those addresses govern this one as well.
+ * It has a class of its own rather than the one `common.js` gives the address beside each frame
+ * of the document. That one sits next to a frame still there to print, and the base styles and
+ * Show link URLs may move or hide it; this one is all that is left of what was embedded, and is
+ * printed whatever the options say (`WORKSHEET_ACTIVITY_STYLES`).
  */
 function embeddedAddress(address: string): string {
     const url = escapeText(address);
-    return `<span class="external-iframe-src"><a href="${url}">${url}</a></span>`;
+    return `<span class="worksheet-embed-address"><a href="${url}">${url}</a></span>`;
 }
 
 /**
@@ -144,10 +146,11 @@ function renderNode(node: HtmlNode): Rendered {
 
     if (!Object.hasOwn(ALLOWED_TAGS, node.tagName)) return { html: children, stripped };
 
-    // A link is kept for an address on the web, which print writes after it. Any other leads
-    // nowhere a reader holding the paper can go, and only its text is kept.
+    // A link is kept for an address on the web, which print writes after it, and only round
+    // something to read: round nothing, the address would be printed on its own. Any other link
+    // leads nowhere a reader holding the paper can go, and only what it held is kept.
     const href = node.tagName === 'a' ? webAddress(attributeOf(node, 'href')) : null;
-    if (node.tagName === 'a' && !href) return { html: children, stripped };
+    if (node.tagName === 'a' && (!href || !showsSomething(children))) return { html: children, stripped };
 
     // An element left with nothing to show, because what was in it could not be printed, goes with
     // it. A video in a paragraph of its own would otherwise print as a hole the size of the words

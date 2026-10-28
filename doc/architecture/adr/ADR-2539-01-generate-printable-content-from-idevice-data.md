@@ -270,18 +270,29 @@ find what they were sent to. The document's own printing never had that problem:
 writes the address of each external frame beside it, and the print styles show it.
 
 So the sanitiser does the same. An `iframe` or `embed` (`src`) or an `object` (`data`) with a web
-address is replaced by that address, in the markup `common.js` writes
-(`<span class="external-iframe-src"><a href>`), so the base styles and **Show link URLs** govern it
-too. One with no protocol is given HTTPS. Content from anywhere else (the project's own files,
-`blob:`, scripts) leaves nothing a reader holding the paper could follow, and is still dropped by
-the rule above.
+address is replaced by that address, a link on a line of its own
+(`<span class="worksheet-embed-address"><a href>`). One with no protocol is given HTTPS. Content
+from anywhere else (the project's own files, `blob:`, scripts) leaves nothing a reader holding the
+paper could follow, and is still dropped by the rule above.
+
+The address is not the one `common.js` writes, and the difference is deliberate. That one sits
+beside a frame still there to print, so the base styles may move it and **Show link URLs** may hide
+it. This one is all that is left of what was embedded: hidden, it would bring back the blank, and
+an item whose only content was an embed, which now counts as printable, would print empty. So it
+has a class of its own, styled with the activities, and prints whatever the option says, the same
+on screen as on paper.
 
 Links had the same gap. The sanitiser unwrapped every one to its text, so "read this article"
 reached paper with no hint of which article, and Show link URLs, which writes the address after
 each link, had nothing to act on. A link to a web address is now kept, with its `href` and nothing
-else; any other is still unwrapped. In the document the option decides as it does for the rest of
-the page. The worksheet has no such option, so it always writes the address out, and both mark the
-links whose text already is their address, so it is not written twice.
+else, as long as it holds something to read; any other is still unwrapped. In the document the
+option decides as it does for the rest of the page. The worksheet has no such option, so it always
+writes the address out (its box shows ticked there), and both mark the links whose text already is
+their address, so it is not written twice.
+
+One link never survives: one round a gap. An author who links a word and then hides it would have
+the address of the answer printed beside the space left for it, so Form and Complete take the link
+off every gap.
 
 ### The one activity whose answers are printed in full
 

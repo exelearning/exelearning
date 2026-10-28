@@ -567,7 +567,7 @@ test.describe('Print iDevices', () => {
         await openPrintPanel(page);
         const { frame } = await choosePrintOption(page, 'in-place');
         const exercise = frame.locator('.worksheet-activity[data-idevice="challenge"]');
-        const embed = exercise.locator('.external-iframe-src');
+        const embed = exercise.locator('.worksheet-embed-address');
         const link = exercise.locator(`a[href="${article}"]`);
         // The address stands where the Genially was, and is not written after itself again.
         await expect(embed).toHaveText(genially);
@@ -576,20 +576,29 @@ test.describe('Print iDevices', () => {
         await expect(link).toHaveText('este artículo');
         expect(await afterContent(link)).toMatch(showsArticle);
 
-        // Show link URLs governs both, as it does for the rest of the document.
-        await page.locator('#printOptLinkUrls').uncheck();
+        // Show link URLs takes the address off the link, but not the one the Genially left, which
+        // is all there is of it.
+        const linkUrls = page.locator('#printOptLinkUrls');
+        await linkUrls.uncheck();
         await expect.poll(() => afterContent(link), { timeout: 30000 }).toBe('none');
         await waitForPreview(page);
-        await expect(embed).toBeHidden();
+        await expect(embed).toHaveText(genially);
+        await expect(embed).toBeVisible();
 
-        // The worksheet has no such option, and writes both out whatever the document's says.
+        // The worksheet has no such option and writes both out, as the box, ticked, says too.
         const { frame: sheet } = await choosePrintOption(page, 'idevices');
-        await expect(page.locator('#printOptLinkUrls')).toBeDisabled();
-        const sheetEmbed = sheet.locator('.worksheet-activity[data-idevice="challenge"] .external-iframe-src');
+        await expect(linkUrls).toBeDisabled();
+        await expect(linkUrls).toBeChecked();
+        const sheetEmbed = sheet.locator('.worksheet-activity[data-idevice="challenge"] .worksheet-embed-address');
         await expect(sheetEmbed).toHaveText(genially);
         await expect(sheetEmbed).toBeVisible();
         expect(await afterContent(sheetEmbed.locator('a'))).toBe('none');
         expect(await afterContent(sheet.locator(`a[href="${article}"]`))).toMatch(showsArticle);
+
+        // Back in the document, the box is the user's choice again.
+        await choosePrintOption(page, 'in-place');
+        await expect(linkUrls).toBeEnabled();
+        await expect(linkUrls).not.toBeChecked();
     });
 
     test('waits for real molecule surfaces and reuses the viewer across print previews', async ({

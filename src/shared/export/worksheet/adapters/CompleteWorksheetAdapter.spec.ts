@@ -109,6 +109,15 @@ describe('CompleteWorksheetAdapter', () => {
         expect(activity?.items[0].prompt).toContain('</span></b>');
     });
 
+    it('takes off a link round a gap, whose address would give the hidden word away', () => {
+        const activity = CompleteWorksheetAdapter.build(
+            completeHtml({ textText: '<p>Es <a href="https://es.wikipedia.org/wiki/Toledo">@@Toledo@@</a>.</p>' }),
+            {},
+        );
+
+        expect(activity?.items[0].prompt).toMatch(/^<p>Es <span class="worksheet-gap"[^>]*><\/span>\.<\/p>$/);
+    });
+
     it('uses the supplied title and falls back to the default', () => {
         expect(CompleteWorksheetAdapter.build(completeHtml(), { title: 'Completa' })?.title).toBe('Completa');
         expect(CompleteWorksheetAdapter.build(completeHtml(), {})?.title).toBe('Complete');

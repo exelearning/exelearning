@@ -32,7 +32,7 @@ describe('sanitizeHtml', () => {
 
     describe('content embedded from the web', () => {
         /** What the sheet prints where content from this address was embedded. */
-        const address = (url: string) => `<span class="external-iframe-src"><a href="${url}">${url}</a></span>`;
+        const address = (url: string) => `<span class="worksheet-embed-address"><a href="${url}">${url}</a></span>`;
 
         it('prints its address where it was, the way the document prints its frames', () => {
             const html =
@@ -60,7 +60,7 @@ describe('sanitizeHtml', () => {
 
         it('escapes the address, which is the author’s', () => {
             expect(sanitizeHtml('<iframe src=\'https://v/?a=1&b="2"<x>\'></iframe>')).toBe(
-                '<span class="external-iframe-src"><a href="https://v/?a=1&amp;b=&quot;2&quot;&lt;x&gt;">' +
+                '<span class="worksheet-embed-address"><a href="https://v/?a=1&amp;b=&quot;2&quot;&lt;x&gt;">' +
                     'https://v/?a=1&amp;b=&quot;2&quot;&lt;x&gt;</a></span>',
             );
         });
@@ -162,6 +162,22 @@ describe('sanitizeHtml', () => {
                 expect(sanitizeHtml(`<a href="${href}">Read this</a>`)).toBe('Read this');
             }
             expect(sanitizeHtml('<a name="top">Read this</a>')).toBe('Read this');
+        });
+
+        it.each([
+            ['<a href="https://x.com"></a>', ''],
+            ['<a href="https://x.com"> </a>', ' '],
+            ['<a href="https://x.com"><span></span></a>', '<span></span>'],
+            ['<a href="https://x.com"><audio src="a.mp3"></audio></a>', ''],
+            ['<a href="https://x.com"><video><source src="v.mp4"></video></a>', ''],
+        ])('keeps no link round nothing to read, whose address would print on its own: %s', (link, left) => {
+            expect(sanitizeHtml(`<p>Mira${link}</p>`)).toBe(`<p>Mira${left}</p>`);
+        });
+
+        it('keeps one round a picture, whose address print leaves out', () => {
+            expect(sanitizeHtml('<a href="https://x.com"><img src="pic.png" /></a>')).toBe(
+                '<a href="https://x.com"><img src="pic.png" /></a>',
+            );
         });
     });
 

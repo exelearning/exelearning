@@ -343,8 +343,8 @@ export default class ModalPrintPreview {
         this.showLinkUrls = state.showLinkUrls;
         this.unfoldBlocks = state.unfoldBlocks;
         this.teacherOnly = Boolean(state.teacherOnly);
-        // The document options act on the document preview; the worksheet has neither links to
-        // show nor blocks to fold.
+        // The document options act on the document preview; the worksheet has no blocks to fold,
+        // and always writes out the addresses of its links.
         this.panel.setDocumentOptionsEnabled(this.mode === PREVIEW_MODE_DOCUMENT);
     }
 

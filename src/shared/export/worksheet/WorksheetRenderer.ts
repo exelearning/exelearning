@@ -130,13 +130,6 @@ a[href^="http"][data-exe-text-is-url]::after,
 a[href^="http"]:has(img:only-child)::after {
     content: none;
 }
-
-/* Where content embedded from the web can be found, on a line of its own where it was */
-.external-iframe-src {
-    display: block;
-    font-size: 0.85em;
-    color: #666;
-}
 `;
 
 /**
@@ -160,6 +153,16 @@ export const WORKSHEET_ACTIVITY_STYLES = `
 
 .worksheet-activity {
     margin-bottom: 8mm;
+}
+
+/* Where content embedded from the web can be found. It is all paper can give of that content, so
+   it stands on a line of its own where the content was, whatever the print options say, and the
+   same on screen as on paper. A long address breaks anywhere rather than run out of a column. */
+.worksheet-embed-address {
+    display: block;
+    font-size: 0.85em;
+    color: #666;
+    overflow-wrap: anywhere;
 }
 
 /* The number an appendix entry carries, so the pointer in the body can be followed to it. It is
@@ -1439,6 +1442,23 @@ export function renderInlineGap(characters: number, options?: string[]): string 
         ? `<span class="worksheet-gap-options"> (${options.map(escapeText).join(' / ')})</span>`
         : '';
     return `<span class="worksheet-gap" style="width: ${width.toFixed(1)}mm"></span>${choices}`;
+}
+
+/**
+ * Take the links off the gaps in a sentence, keeping what was in them.
+ *
+ * Print writes the address of each link after it, and a link the author put round a hidden word
+ * usually leads to that word: a gap followed by ".../wiki/Toledo" answers the question it asks.
+ * Links reach here only as the sanitiser writes them, `<a href="…">` and nothing else, and no
+ * author markup can carry the gap's class, so both are recognised exactly.
+ *
+ * @param html - Sanitised HTML with its gaps already in it
+ * @returns The same HTML, with no link round a gap
+ */
+export function unlinkGaps(html: string): string {
+    return html.replace(/<a href="[^"]*">((?:(?!<\/a>)[\s\S])*?)<\/a>/g, (link, content: string) =>
+        content.includes('<span class="worksheet-gap"') ? content : link,
+    );
 }
 
 /**

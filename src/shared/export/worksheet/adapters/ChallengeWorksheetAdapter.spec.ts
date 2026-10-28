@@ -239,7 +239,7 @@ describe('ChallengeWorksheetAdapter', () => {
 
         expect(smaller.extraText).toBe(
             '<p>Revisa la siguiente información:</p>' +
-                `<div><div><span class="external-iframe-src"><a href="${genially}">${genially}</a></span></div></div>`,
+                `<div><div><span class="worksheet-embed-address"><a href="${genially}">${genially}</a></span></div></div>`,
         );
     });
 
