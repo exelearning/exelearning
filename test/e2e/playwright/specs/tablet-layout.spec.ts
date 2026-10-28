@@ -1,7 +1,7 @@
 import { test, expect, skipInStaticMode } from '../fixtures/auth.fixture';
 import { ShareModalPage } from '../pages/share-modal.page';
 import { gotoWorkarea } from '../helpers/workarea-helpers';
-import type { Page } from '@playwright/test';
+import type { Locator, Page } from '@playwright/test';
 
 /**
  * Editor layout in a tablet viewport (issues #2638 and #2650)
@@ -19,6 +19,14 @@ async function resizeAndWaitForEvent(page: Page, size: { width: number; height: 
     });
     await page.setViewportSize(size);
     await page.waitForFunction(() => (window as any).__exeResized === true);
+}
+
+// Bootstrap's tooltip shows the text, with no native title tooltip on top of it
+async function expectTooltip(page: Page, button: Locator, text: string): Promise<void> {
+    await expect(button).not.toHaveAttribute('title');
+    await page.mouse.move(0, 0);
+    await button.hover();
+    await expect(page.getByRole('tooltip')).toHaveText(text);
 }
 
 test.describe('Tablet layout', () => {
@@ -85,12 +93,12 @@ test.describe('Tablet layout', () => {
         await shareModal.waitForOpen();
         await shareModal.setVisibility('public');
         await expect(shareButton).toHaveAccessibleName('Shared');
-        await expect(shareButton).toHaveAttribute('title', 'Shared');
         await shareModal.close();
+        await expectTooltip(page, shareButton, 'Shared');
 
         // The visibility is stored: a reload names the button from the server state
         await gotoWorkarea(page, projectUuid);
         await expect(shareButton).toHaveAccessibleName('Shared');
-        await expect(shareButton).toHaveAttribute('title', 'Shared');
+        await expectTooltip(page, shareButton, 'Shared');
     });
 });

@@ -63,7 +63,11 @@ export default class ShareProjectButton {
         }
         // The aria-label overrides the text and the text may be hidden: keep both in step (#2650)
         this.shareButton.setAttribute('aria-label', label);
-        this.shareButton.setAttribute('title', label);
+        // Once Bootstrap's tooltip exists it reads data-bs-original-title, not title
+        const titleAttribute = this.shareButton.hasAttribute('data-bs-original-title')
+            ? 'data-bs-original-title'
+            : 'title';
+        this.shareButton.setAttribute(titleAttribute, label);
     }
 
     /**
