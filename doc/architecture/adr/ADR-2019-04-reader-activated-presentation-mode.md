@@ -144,7 +144,9 @@ the mode is off only the style's own `nav=false` convention remains.
   `html.mode-presentation` show it, and the title names the action (activate
   / deactivate) followed by the keys (PR #2020 review, 2026-10-28). The label
   and the dot share one span (`#exe-presentation-toggler span`, the dot is its
-  `::before`), so a style can hide both accessibly and draw its own icon. An earlier revision relabelled the
+  `::before`), so a style can hide both accessibly and draw its own icon.
+  The styles that offer a light/dark mode switch give the control the same
+  `html.exe-dark-mode` rule as the badge, so the two stay alike side by side. An earlier revision relabelled the
   button ("Exit presentation mode"); its width changed with the state, and a
   label that changes together with the state is not a toggle pattern.
 - Labels: `presentation_mode`, `activate_presentation_mode`,

@@ -690,6 +690,9 @@ Common functionality found in built-in eXe styles:
     mode and its button. The label never changes (the state is in `aria-pressed`) and sits
     in `#exe-presentation-toggler span` together with its on/off dot (`::before`), so hiding
     that span accessibly (as `.sr-av` does) leaves room for a style's own icon.
+  - A style that offers a light/dark mode switch should give `#exe-presentation-toggler`
+    the same treatment as `#made-with-eXe a` (for example, in the same
+    `html.exe-dark-mode` rule), so the two badges side by side keep matching.
   - Do not bind `←`/`→`/`PageUp`/`PageDown`/`M`/`T` on `document`. The mode only yields to a
     handler that calls `preventDefault()`, so an unconditional handler would change the page
     twice.
