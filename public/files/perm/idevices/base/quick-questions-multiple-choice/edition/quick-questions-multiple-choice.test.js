@@ -575,3 +575,54 @@ describe('quick-questions-multiple-choice minimum score text', () => {
         expect(device.ci18n.msgPassScore).toBe('Minimum score needed to pass this activity: %s');
     });
 });
+
+describe('quick-questions-multiple-choice edition: a rich-text question imported from Quick questions', () => {
+    const helpers = () => global.$exeDevices.iDevice.gamification.helpers;
+    const editionHelpers = () => global.$exeDevicesEdition.iDevice.gamification.helpers;
+    let previousDecode;
+    let previousStopSound;
+    let setContent;
+
+    beforeEach(() => {
+        global.$exeDevice = undefined;
+        buildForm();
+        previousDecode = helpers().decodeStoredText;
+        previousStopSound = editionHelpers().stopSound;
+        editionHelpers().stopSound = vi.fn();
+        // As common.js decodes it: this text is one escape() could have written.
+        helpers().decodeStoredText = vi.fn(text => unescape(text));
+        setContent = vi.fn();
+        vi.spyOn(global.tinyMCE, 'get').mockReturnValue({ setContent, getContent: () => '', hide: vi.fn(), show: vi.fn() });
+    });
+
+    afterEach(() => {
+        helpers().decodeStoredText = previousDecode;
+        editionHelpers().stopSound = previousStopSound;
+        vi.restoreAllMocks();
+        global.$exeDevice = undefined;
+        document.body.innerHTML = '';
+    });
+
+    it('shows the text decoded once, as Quick questions stored it', () => {
+        const $exeDevice = global.loadIdevice(join(__dirname, 'quick-questions-multiple-choice.js'));
+        // Resetting the rest of the form is not what this is about.
+        vi.spyOn($exeDevice, 'clearQuestion').mockImplementation(() => {});
+        $exeDevice.selectsGame = [];
+        $exeDevice.importQuExt({
+            questionsGame: [
+                {
+                    type: 3,
+                    eText: escape('wiki/AC%2FDC'),
+                    quextion: '¿Qué grupo?',
+                    options: ['AC/DC', 'Queen', '', ''],
+                    numberOptions: 2,
+                    solution: 0,
+                },
+            ],
+        });
+
+        $exeDevice.showQuestion(0);
+
+        expect(setContent).toHaveBeenCalledWith('wiki/AC%2FDC');
+    });
+});
