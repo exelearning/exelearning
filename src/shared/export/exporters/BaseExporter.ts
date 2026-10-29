@@ -23,7 +23,7 @@ import { IdeviceRenderer } from '../renderers/IdeviceRenderer';
 import { PageRenderer } from '../renderers/PageRenderer';
 import { LibraryDetector } from '../utils/LibraryDetector';
 import { PRINT_RUNTIME_FILES, printPackagePages, serializePrintPackage, printPackageEntry } from '../printPackage';
-import { printPagesHaveLatex } from '../printMath';
+import { printMetadataHasLatex, printPagesHaveLatex } from '../printMath';
 import { JSON_PROPERTY_LIBRARY_EXCLUSIONS, iterateJsonPropertyStrings } from '../utils/jsonPropertyContent';
 import { generateOdeXml, generateOdeId } from '../generators/OdeXmlGenerator';
 import { ELPX_DOWNLOAD_ONCLICK, formatLicenseText } from '../constants';
@@ -280,7 +280,7 @@ export abstract class BaseExporter {
         const strings = resources.get('exe_print/strings.json');
         if (!strings) throw new Error('Print preview translations missing. Run bundle:exporters.');
         const printPages = await this.preRenderPrintMermaid(printPackagePages(pages), options);
-        const mathJax = meta.addMathJax === true || printPagesHaveLatex(printPages);
+        const mathJax = meta.addMathJax === true || printMetadataHasLatex(meta) || printPagesHaveLatex(printPages);
         if (mathJax) {
             const mathFiles = await this.resources.fetchLibraryFiles(
                 ['exe_math/tex-mml-svg.js'],

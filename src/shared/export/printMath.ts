@@ -7,8 +7,9 @@
  * the package. It goes in only when the author asked for it or the printed content has
  * LaTeX; most such packages already carry it for its accessibility menu.
  */
-import type { ExportPage } from './interfaces';
+import type { ExportMetadata, ExportPage } from './interfaces';
 import { decryptDataGame } from './utils/dataGameCipher';
+import { getWorksheetAdapter } from './worksheet/adapters/registry';
 
 // The test the preview applies before loading MathJax: LatexPreRenderer.hasLatex.
 const HAS_LATEX = /\\\(|\\\[|\$\$|\\begin\{|\\(?:eq)?ref\{/;
@@ -33,7 +34,16 @@ export function printPagesHaveLatex(pages: ExportPage[]): boolean {
     if (HAS_LATEX.test(JSON.stringify(pages))) return true;
     return pages.some(page =>
         (page.blocks || []).some(block =>
-            (block.components || []).some(component => dataGamesHaveLatex(component.content)),
+            (block.components || []).some(
+                component =>
+                    dataGamesHaveLatex(component.content) ||
+                    getWorksheetAdapter(component.type)?.generatesLatex?.(component.content || ''),
+            ),
         ),
     );
+}
+
+/** Text printed outside the page tree by PrintPreviewExporter. */
+export function printMetadataHasLatex(meta: ExportMetadata): boolean {
+    return HAS_LATEX.test(JSON.stringify([meta.title, meta.subtitle, meta.author, meta.license, meta.footer]));
 }

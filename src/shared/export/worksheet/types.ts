@@ -444,6 +444,8 @@ export interface WorksheetAdapter {
     readonly ideviceType: string;
     /** Default heading, used when the caller supplies no translated title. */
     readonly defaultTitle: string;
+    /** Whether conversion generates LaTeX that is absent from the stored content. */
+    generatesLatex?(html: string): boolean;
     build(html: string, options: WorksheetAdapterOptions): PrintableActivity | null;
 }
 

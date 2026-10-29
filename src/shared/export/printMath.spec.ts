@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'bun:test';
-import { printPagesHaveLatex } from './printMath';
+import { printMetadataHasLatex, printPagesHaveLatex } from './printMath';
 import { encryptDataGame } from './utils/dataGameCipher';
 import type { ExportPage } from './interfaces';
 
@@ -49,5 +49,32 @@ describe('printPagesHaveLatex', () => {
             false,
         );
         expect(printPagesHaveLatex([])).toBe(false);
+    });
+
+    it.each([false, true])('finds generated fractions in numeric settings (encrypted: %s)', encrypted => {
+        const data = JSON.stringify({ mode: 1, number: 2, min: 4, max: 4, operations: ['+'] });
+        const content = `<div class="mathoperations-DataGame js-hidden">${encrypted ? encryptDataGame(data) : data}</div>`;
+        const document = pages(content);
+        document[0].blocks[0].components[0].type = 'mathematicaloperations';
+        expect(content).not.toContain('\\(');
+        expect(printPagesHaveLatex(document)).toBe(true);
+    });
+
+    it.each(['{"mode":0}', '{"mode":2}', 'broken', ''])('does not load MathJax for nonfraction settings: %s', data => {
+        const document = pages(`<div class="mathoperations-DataGame">${data}</div>`);
+        document[0].blocks[0].components[0].type = 'mathematicaloperations';
+        expect(printPagesHaveLatex(document)).toBe(false);
+    });
+});
+
+describe('printMetadataHasLatex', () => {
+    it.each(['title', 'subtitle', 'footer', 'author', 'license'])('finds formulas in %s', field => {
+        expect(printMetadataHasLatex({ title: 'Course', [field]: 'Formula \\(x^2\\)' })).toBe(true);
+    });
+
+    it('ignores metadata that is not printed and plain text', () => {
+        expect(printMetadataHasLatex({ title: 'Course', subtitle: '$5', description: '\\(not printed\\)' })).toBe(
+            false,
+        );
     });
 });

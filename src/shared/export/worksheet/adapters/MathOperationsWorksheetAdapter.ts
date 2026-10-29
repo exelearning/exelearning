@@ -52,6 +52,10 @@ export const MathOperationsWorksheetAdapter: WorksheetAdapter = {
     ideviceType: 'mathematicaloperations',
     defaultTitle: 'Math operations',
 
+    generatesLatex(html: string): boolean {
+        return extractDataGame<MathOperationsDataGame>(html, PREFIX)?.mode === 1;
+    },
+
     build(html: string, options: WorksheetAdapterOptions = {}): PrintableActivity | null {
         const dataGame = extractDataGame<MathOperationsDataGame>(html, PREFIX);
         if (!dataGame) return null;

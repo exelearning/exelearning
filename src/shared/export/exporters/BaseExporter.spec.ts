@@ -427,6 +427,21 @@ describe('BaseExporter', () => {
                     {},
                 ],
                 ['a title', [page([text('c', '<p>Text</p>')], 'See \\ref{eq}')], {}],
+                ['the project title', [], { title: 'Course \\(x\\)' }],
+                ['the project subtitle', [], { subtitle: 'Course \\(x\\)' }],
+                ['the footer', [], { footer: '<p>Footer \\(x^2\\)</p>' }],
+                [
+                    'generated fraction exercises',
+                    [
+                        page([
+                            {
+                                ...text('c', '<div class="mathoperations-DataGame">{"mode":1,"number":2}</div>'),
+                                type: 'mathematicaloperations',
+                            },
+                        ]),
+                    ],
+                    {},
+                ],
                 [
                     'nothing, when the author asked for MathJax',
                     [page([text('c', '<p>Text</p>')])],

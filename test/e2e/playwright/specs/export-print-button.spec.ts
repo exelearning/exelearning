@@ -392,6 +392,68 @@ test.describe('Export print button project property (addPrintButton)', () => {
         }
     });
 
+    for (const source of ['fractions', 'metadata']) {
+        test(`prints formulas generated from ${source} without an explicit MathJax setting`, async ({
+            authenticatedPage: page,
+            createProject,
+            browser,
+        }) => {
+            test.setTimeout(120_000);
+            const uuid = await createProject(page, `Print ${source}`);
+            await gotoWorkarea(page, uuid);
+            await waitForAppReady(page);
+            await page.evaluate(kind => {
+                const bridge = (window as any).eXeLearning.app.project._yjsBridge;
+                const metadata = bridge.documentManager.getMetadata();
+                metadata.set('language', 'en');
+                metadata.set('addMathJax', false);
+                const binding = bridge.structureBinding;
+                const node = binding.createPage('Content');
+                const block = binding.createBlock(node.id, 'Content');
+                if (kind === 'fractions') {
+                    binding.createComponent(node.id, block, 'mathematicaloperations', {
+                        htmlContent:
+                            '<div class="mathoperations-DataGame js-hidden">' +
+                            JSON.stringify({ mode: 1, number: 2, min: 4, max: 4, operations: '1000', type: 'result' }) +
+                            '</div>',
+                    });
+                } else {
+                    metadata.set('title', 'Title \\(x^2\\)');
+                    metadata.set('subtitle', 'Subtitle \\(y^2\\)');
+                    metadata.set('footer', '<p>Footer \\(z^2\\)</p>');
+                    binding.createComponent(node.id, block, 'text', { htmlContent: '<p>Plain text</p>' });
+                }
+            }, source);
+            const files = await exportPackage(page, 'html5', true);
+            expect(files['libs/exe_math/tex-mml-svg.js']).toBeDefined();
+            const context = await browser.newContext();
+            try {
+                const requested = await servePackage(context, 'https://print-generated.test', files);
+                const exported = await context.newPage();
+                await exported.goto('https://print-generated.test/course/print.html');
+                const print = exported.locator('.print-preview-print-btn');
+                await expect(print).toBeEnabled({ timeout: 30_000 });
+                const frame = exported.frameLocator('.print-preview-iframe');
+                if (source === 'fractions') {
+                    for (const mode of ['in-place', 'idevices']) {
+                        await exported.locator(`input[name="print-activity-mode"][value="${mode}"]`).check();
+                        await expect(print).toBeEnabled({ timeout: 30_000 });
+                        await expect(frame.locator('.worksheet-activity .exe-math-rendered svg')).toHaveCount(4);
+                        await expect(frame.locator('.worksheet-activity')).not.toContainText('\\(');
+                    }
+                } else {
+                    await expect(frame.locator('#siteFooter .exe-math-rendered svg')).toHaveCount(1);
+                    await expect(frame.locator('body')).not.toContainText('\\(');
+                    await expect(frame.locator('.exe-math-rendered svg')).toHaveCount(3);
+                }
+                expect(requested.filter(name => !files[name])).toEqual([]);
+                await expect(exported.locator('.print-preview-error')).toHaveCount(0);
+            } finally {
+                await context.close();
+            }
+        });
+    }
+
     test('uses the editor options in a nested web path and offline from print.html', async ({
         authenticatedPage: page,
         createProject,
