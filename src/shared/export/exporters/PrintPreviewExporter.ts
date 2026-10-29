@@ -24,7 +24,7 @@ import { visibleWorksheetPages } from '../utils/visibility';
 import { WORKSHEET_ACTIVITY_STYLES } from '../worksheet/WorksheetRenderer';
 import { renderMatchingLayoutScript } from '../worksheet/matchingLayout';
 import { captureMolecules, type MoleculeRenderer } from '../worksheet/moleculeCapture';
-import { resolveMaterialIconDataUris } from './BaseExporter';
+import { fetchNavLabels, resolveMaterialIconDataUris } from './BaseExporter';
 import { PRERENDERED_LATEX_CSS } from '../constants';
 import {
     applyActivityMode,
@@ -255,6 +255,16 @@ export class PrintPreviewExporter {
                     : undefined;
             const version = windowConfig?.eXeLearning?.config?.version || 'v1.0.0';
 
+            // The footer's license, in the project's language, as the exports write it. The
+            // renderer's own fallback cannot translate in a browser: it would print the license's
+            // internal key, and "License", in English.
+            let navLabels: Awaited<ReturnType<typeof fetchNavLabels>> | undefined;
+            try {
+                navLabels = await fetchNavLabels(this.resources, meta.language || 'en', meta.license);
+            } catch (error) {
+                console.warn('[PrintPreviewExporter] Could not fetch the translated labels:', error);
+            }
+
             // Generate the single-page HTML components using PageRenderer
             // This ensures we use the exact same logic as the "Single Page" export
             let html = pageRenderer.renderSinglePage(processedPages, {
@@ -265,6 +275,8 @@ export class PrintPreviewExporter {
                 usedIdevices,
                 author: meta.author || '',
                 license: meta.license || '',
+                licenseUrl: meta.licenseUrl || '',
+                navLabels,
                 addExeLink: meta.addExeLink ?? true,
                 userFooterContent: meta.footer || '',
                 passScore: meta.passScore,

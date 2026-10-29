@@ -1109,6 +1109,64 @@ describe('PrintPreviewExporter', () => {
             expect(result.html).toContain('<footer id="siteFooter">');
             expect(result.html).toContain('CC-BY-SA');
         });
+
+        describe("the footer's license (#2637)", () => {
+            const license = 'creative commons: attribution - share alike 4.0';
+            const licenseUrl = 'https://creativecommons.org/licenses/by-sa/4.0/';
+            const spanishProject = () =>
+                createMockDocument([{ id: 'p1', title: 'Página', parentId: null, order: 0, blocks: [] }], {
+                    language: 'es',
+                    license,
+                    licenseUrl,
+                });
+            const footerOf = (html = '') => html.slice(html.indexOf('<footer id="siteFooter">'));
+
+            it("prints it in the project's language, linked to the license", async () => {
+                // Strings the renderer's own fallback does not have: in a browser that fallback
+                // cannot translate at all, so the footer has to take them from the provider.
+                const fetchI18nTranslations = async (language: string) =>
+                    new Map(
+                        language === 'es'
+                            ? [
+                                  [license, 'CC BY-SA 4.0 (provider)'],
+                                  ['License', 'Licencia (provider)'],
+                              ]
+                            : [],
+                    );
+                const resources = { ...createMockResourceProvider(), fetchI18nTranslations };
+
+                const result = await new PrintPreviewExporter(spanishProject(), resources).generatePreview();
+                const footer = footerOf(result.html);
+
+                expect(footer).toContain('<span class="license-label">Licencia (provider): </span>');
+                expect(footer).toContain(`<a href="${licenseUrl}" class="license">CC BY-SA 4.0 (provider)</a>`);
+                expect(footer).not.toContain(license);
+            });
+
+            it('still prints it, linked, when the translations cannot be fetched', async () => {
+                const warn = spyOn(console, 'warn').mockImplementation(() => {});
+                const resources = {
+                    ...createMockResourceProvider(),
+                    fetchI18nTranslations: async (): Promise<Map<string, string>> => {
+                        throw new Error('offline');
+                    },
+                };
+
+                try {
+                    const result = await new PrintPreviewExporter(spanishProject(), resources).generatePreview();
+
+                    // The text is then the renderer's own fallback's, which only a server translates
+                    expect(result.success).toBe(true);
+                    expect(footerOf(result.html)).toContain(`<a href="${licenseUrl}" class="license">`);
+                    expect(warn).toHaveBeenCalledWith(
+                        '[PrintPreviewExporter] Could not fetch the translated labels:',
+                        expect.any(Error),
+                    );
+                } finally {
+                    warn.mockRestore();
+                }
+            });
+        });
     });
 
     describe('HTML escaping', () => {

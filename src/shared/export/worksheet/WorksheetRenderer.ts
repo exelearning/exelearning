@@ -8,6 +8,7 @@
  * the same approach PrintPreviewExporter takes for its own injected styles.
  */
 
+import { parseFragment, serialize, type DefaultTreeAdapterMap } from 'parse5';
 import { PRERENDERED_LATEX_CSS } from '../constants';
 import { renderPrintContextScript } from '../printContext';
 import { markLinksShowingTheirUrl } from '../utils/linkUrls';
@@ -251,6 +252,21 @@ export const WORKSHEET_ACTIVITY_STYLES = `
 .worksheet-option-label img {
     max-width: 100%;
     height: auto;
+}
+
+/* A question's number sits on its first line. When that line is a picture, in a paragraph of its
+   own or in a table cell beside the words, a picture sitting on the line like a letter drops the
+   line to its foot, and the number hung there under it. Pictures alone on their line, which the
+   renderer marks as illustrations, hang from the top instead, and table cells line up on their
+   first line, so the number stays level with the top of the question. A picture among words keeps
+   its baseline, as the author set it in the sentence. */
+.worksheet-prompt td,
+.worksheet-prompt th {
+    vertical-align: baseline;
+}
+
+.worksheet-prompt .worksheet-illustration {
+    vertical-align: top;
 }
 
 .worksheet-media {
@@ -1934,6 +1950,89 @@ function renderWordBank(words: string[]): string {
     return `<ul class="worksheet-word-bank">${items}</ul>`;
 }
 
+/** Elements that end the line before them and start a new one, as a block or a line break does. */
+const LINE_BREAKING_TAGS = new Set([
+    'p',
+    'div',
+    'blockquote',
+    'pre',
+    'ul',
+    'ol',
+    'li',
+    'h1',
+    'h2',
+    'h3',
+    'h4',
+    'h5',
+    'h6',
+    'table',
+    'thead',
+    'tbody',
+    'tfoot',
+    'tr',
+    'td',
+    'th',
+    'hr',
+    'br',
+]);
+
+/**
+ * Mark the pictures that stand alone on their line, so the stylesheet can hang them from the top.
+ *
+ * A picture among words is part of the sentence, as a formula drawn as an image is, and keeps its
+ * place on the line. One with no words beside it is an illustration. Telling the two apart means
+ * reading the text around the picture, which a stylesheet cannot do. A line ends at a block or a
+ * line break, and a gap left to write in counts as a word.
+ */
+function renderPrompt(prompt: string): string {
+    if (!/<img\b/i.test(prompt)) return prompt;
+
+    const fragment = parseFragment(prompt);
+    let images: DefaultTreeAdapterMap['element'][] = [];
+    let words = false;
+    let changed = false;
+
+    const endLine = () => {
+        if (!words) {
+            for (const image of images) {
+                const classes = image.attrs.find(attr => attr.name === 'class');
+                if (classes) classes.value += ' worksheet-illustration';
+                else image.attrs.push({ name: 'class', value: 'worksheet-illustration' });
+                changed = true;
+            }
+        }
+        images = [];
+        words = false;
+    };
+
+    const visit = (node: DefaultTreeAdapterMap['node']) => {
+        if ('value' in node) {
+            if (node.value.trim() !== '') words = true;
+            return;
+        }
+        if (!('tagName' in node)) {
+            if ('childNodes' in node) node.childNodes.forEach(visit);
+            return;
+        }
+        if (node.tagName === 'img') {
+            images.push(node);
+            return;
+        }
+        if (node.attrs.some(attr => attr.name === 'class' && attr.value.split(/\s+/).includes('worksheet-gap'))) {
+            words = true;
+            return;
+        }
+        const breaksLine = LINE_BREAKING_TAGS.has(node.tagName);
+        if (breaksLine) endLine();
+        node.childNodes.forEach(visit);
+        if (breaksLine) endLine();
+    };
+
+    visit(fragment);
+    endLine();
+    return changed ? serialize(fragment) : prompt;
+}
+
 /**
  * Render one question: prompt, optional picture, optional extra text, answer space.
  *
@@ -1945,7 +2044,7 @@ function renderItem(item: PrintableItem): string {
     let html = `<li class="worksheet-item"${value}>`;
 
     if (item.prompt) {
-        html += `<div class="worksheet-prompt">${item.prompt}</div>`;
+        html += `<div class="worksheet-prompt">${renderPrompt(item.prompt)}</div>`;
     }
 
     if (item.media) {
