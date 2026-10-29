@@ -516,4 +516,36 @@ describe('elp:export command', () => {
             expect(xml).not.toContain('content/resources/resources/');
         });
     });
+    describe('execute - legacy mind maps', () => {
+        // Saved on main by the mindmaps.app editor: three maps, each an image plus its source
+        const FIXTURE = path.resolve(import.meta.dir, '../../../test/fixtures/legacy-mindmaps.elpx');
+        const OUT_DIR = '/tmp/elp-export-mindmap-test';
+
+        afterAll(async () => {
+            await fs.rm(OUT_DIR, { recursive: true, force: true });
+        });
+
+        for (const format of ['html5', 'html5-sp', 'scorm12', 'scorm2004', 'ims', 'epub3']) {
+            it(`keeps the map images and sources in a ${format} export, without the editor`, async () => {
+                const outputPath = path.join(OUT_DIR, `${format}.zip`);
+                const result = await execute([FIXTURE, outputPath, format], {});
+                expect(result.success).toBe(true);
+
+                const zip = unzipSync(new Uint8Array(await fs.readFile(outputPath)));
+                const names = Object.keys(zip);
+                const html = names
+                    .filter(name => /\.x?html$/.test(name))
+                    .map(name => new TextDecoder().decode(zip[name]))
+                    .join('\n');
+                expect(html.match(/<div class="exe-mind-map">/g)).toHaveLength(3);
+                expect(html.match(/<p class="exe-mindmap-code">\{/g)).toHaveLength(3);
+                for (const [, src] of html.matchAll(/<div class="exe-mind-map">[\s\S]*?<img src="([^"]+)"/g)) {
+                    const file = names.find(name => name.endsWith(src.replace(/^(\.\.\/)+/, '')));
+                    expect(file, `image ${src} is in the package`).toBeDefined();
+                }
+                expect(names.some(name => /mindmap-editor|exemindmap|mindmaps\//.test(name))).toBe(false);
+                expect(html).not.toMatch(/mindmap-editor\.bundle|exemindmap/);
+            });
+        }
+    });
 });

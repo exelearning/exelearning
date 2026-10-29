@@ -1,0 +1,207 @@
+import { expect, type Frame, type FrameLocator, type Locator, type Page } from '@playwright/test';
+import {
+    readStoredCode,
+    countNodes,
+} from '../../../../public/libs/tinymce_5/js/tinymce/plugins/exemindmap/editor/src/storedMindmap';
+import type { MindElixirData, NodeObj } from 'mind-elixir';
+
+/**
+ * Drives the exemindmap TinyMCE plugin and its Mind Elixir editor the way a user does:
+ * a text iDevice, TinyMCE, then the editor in the plugin's dialog.
+ *
+ * Selectors are the ids the editor assigns (#toolbar, #add-child, #map-title, …), Mind
+ * Elixir's own elements (me-tpc, me-epd), whose `data-nodeid` is "me" plus the node id, and
+ * the Save and Cancel buttons of the TinyMCE dialog.
+ */
+
+export const MINDMAP_BUTTON = '.tox-tbtn[aria-label*="Mind map"], .tox-tbtn[aria-label*="Mapa mental"]';
+
+/** Puts the nth text iDevice of the page in edition and shows every toolbar row. */
+export async function editTextIdevice(page: Page, index = -1): Promise<Locator> {
+    const blocks = page.locator('#node-content article .idevice_node.text');
+    const block = index < 0 ? blocks.last() : blocks.nth(index);
+    await block.waitFor({ timeout: 15000 });
+    const opened = await page
+        .locator('.tox-menubar')
+        .first()
+        .waitFor({ timeout: 3000 })
+        .then(() => true)
+        .catch(() => false);
+    if (!opened) {
+        await block.locator('.btn-edit-idevice').click();
+        await page.locator('.tox-menubar').first().waitFor({ timeout: 15000 });
+    }
+    await showMindmapButton(page);
+    return block;
+}
+
+/**
+ * The mind map button is on a toolbar row TinyMCE starts with collapsed, and TinyMCE can
+ * collapse it again while it finishes starting, so showing it and clicking it are retried
+ * together.
+ */
+async function showMindmapButton(page: Page, click = false): Promise<void> {
+    const button = page.locator(MINDMAP_BUTTON).first();
+    await expect(async () => {
+        if (!(await button.isVisible())) {
+            await page.locator('.tox-tbtn[aria-label*="Toggle"], .tox-tbtn[aria-label*="Alternar"]').first().click();
+        }
+        await expect(button).toBeVisible({ timeout: 1000 });
+        if (click) await button.click({ timeout: 1000 });
+    }).toPass({ timeout: 15000 });
+}
+
+/** The TinyMCE document of the Text iDevice's main field (it also has a feedback editor). */
+export function tinymceFrame(page: Page): FrameLocator {
+    return page.frameLocator('iframe#textTextarea_ifr');
+}
+
+/** Replaces the HTML of the Text iDevice's main field. */
+export async function setTextContent(page: Page, html: string): Promise<void> {
+    await page.evaluate(content => (window as any).tinymce.get('textTextarea').setContent(content), html);
+}
+
+/**
+ * Opens the editor: the mind map button shows it straight away, in one TinyMCE dialog. With
+ * `mapIndex`, the existing map at that position in the TinyMCE content is clicked first, as a
+ * user does to edit it.
+ */
+export async function openMindmapEditor(
+    page: Page,
+    mapIndex?: number,
+): Promise<{ frame: FrameLocator; frame2: Frame }> {
+    if (mapIndex !== undefined) {
+        await tinymceFrame(page).locator('.exe-mind-map').nth(mapIndex).click();
+    }
+    await showMindmapButton(page, true);
+    await expect(page.locator('.tox-dialog')).toHaveCount(1);
+    const frame = page.frameLocator('.tox-dialog iframe[src*="exemindmap"]');
+    await expect(frame.locator('#toolbar')).toBeVisible({ timeout: 15000 });
+    await expect(frame.locator('me-root me-tpc')).toBeVisible({ timeout: 15000 });
+    const frame2 = page.frames().find(f => f.url().includes('exemindmap'));
+    if (!frame2) throw new Error('mind map editor frame not found');
+    return { frame, frame2 };
+}
+
+/** A button of the editor dialog's footer (Save or Cancel). */
+export function dialogButton(page: Page, name: 'Save' | 'Cancel'): Locator {
+    const text = name === 'Save' ? /^(Save|Guardar)$/ : /^(Cancel|Cancelar)$/;
+    return page.locator('.tox-dialog__footer button').filter({ hasText: text });
+}
+
+/** A double click Mind Elixir recognises (see renameTopic). */
+export function doubleClick(target: Locator): Promise<void> {
+    return target.dblclick({ delay: 20 });
+}
+
+/** A node of the map by its exact caption. */
+export function topic(frame: FrameLocator, caption: string): Locator {
+    return frame.locator('me-tpc').filter({ hasText: new RegExp(`^${escapeRegExp(caption)}$`) });
+}
+
+function escapeRegExp(text: string): string {
+    return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/** Map data the editor holds right now. */
+export async function editorData(frame2: Frame): Promise<MindElixirData> {
+    return frame2.evaluate(() =>
+        (window as unknown as { __mindmapEditor: { getData(): MindElixirData } }).__mindmapEditor.getData(),
+    );
+}
+
+/**
+ * Replaces the caption of a node with a double click, as a user does. Mind Elixir detects its
+ * own double click: two taps on the same element more than 0 and less than 300 ms apart (whole
+ * milliseconds). Playwright's double click releases both in the same millisecond, so each press
+ * lasts a little, as a person's does.
+ */
+export async function renameTopic(page: Page, frame: FrameLocator, from: string, to: string): Promise<void> {
+    await doubleClick(topic(frame, from));
+    const input = frame.locator('#input-box');
+    await expect(input).toBeVisible();
+    await page.keyboard.press('ControlOrMeta+a');
+    await page.keyboard.type(to);
+    await page.keyboard.press('Enter');
+    await expect(topic(frame, to)).toBeVisible();
+}
+
+/** Closes the editor with its Cancel button, without saving. */
+export async function cancelMindmap(page: Page): Promise<void> {
+    await dialogButton(page, 'Cancel').click();
+    await expect(page.locator('.tox-dialog')).toHaveCount(0);
+}
+
+/**
+ * Saves the map with the dialog's Save button, which closes the dialog. With `title`, the
+ * descriptive title is typed first; otherwise it is the one the editor proposes.
+ */
+export async function saveMindmap(page: Page, frame: FrameLocator, title?: string): Promise<void> {
+    if (title !== undefined) await frame.locator('#map-title').fill(title);
+    await dialogButton(page, 'Save').click();
+    await expect(page.locator('.tox-dialog')).toHaveCount(0, { timeout: 15000 });
+}
+
+/** Leaves iDevice edition through its Save button. */
+export async function saveIdevice(page: Page, block: Locator): Promise<void> {
+    await block.locator('.btn-save-idevice').click();
+    await expect(block).not.toHaveAttribute('mode', 'edition', { timeout: 20000 });
+}
+
+/**
+ * The stored map of each `.exe-mind-map` in the page's iDevice views, as the editor reads it,
+ * with its image's URL and, when the image is an SVG (maps saved by Mind Elixir), its source.
+ */
+export async function storedMaps(
+    page: Page,
+): Promise<Array<{ format: string; data: MindElixirData; img: string; svg: string }>> {
+    // The code comes from the iDevice's HTML in the Y.Doc, not from the rendered view: the
+    // editor renders a sanitized copy, which drops markup-like text a legacy map stored
+    // unescaped (`<clima>`). The image URL is the rendered one, which the page can fetch.
+    const raw = await page.evaluate(() => {
+        const yDoc = (window as any).eXeLearning?.app?.project?._yjsBridge?.getDocumentManager?.()?.getDoc?.();
+        const stored = new Map<string, string>();
+        const walk = (pageMap: any): void => {
+            for (const block of pageMap?.get('blocks')?.toArray?.() ?? []) {
+                for (const comp of block?.get('components')?.toArray?.() ?? []) {
+                    const html = comp.get('htmlContent')?.toString?.() || comp.get('htmlView');
+                    stored.set(comp.get('id'), typeof html === 'string' ? html : '');
+                }
+            }
+            (pageMap?.get('pages') || pageMap?.get('children'))?.forEach?.(walk);
+        };
+        yDoc?.getArray('navigation').forEach(walk);
+        return Promise.all(
+            Array.from(document.querySelectorAll('#node-content .idevice_node')).flatMap(idevice => {
+                const codes = new DOMParser()
+                    .parseFromString(stored.get(idevice.id) ?? '', 'text/html')
+                    .querySelectorAll('.exe-mind-map');
+                return Array.from(idevice.querySelectorAll('.exe-mind-map')).map(async (map, i) => {
+                    const img = map.querySelector('img')?.getAttribute('src') ?? '';
+                    const response = img ? await fetch(img).catch(() => null) : null;
+                    const svg = response?.headers.get('content-type')?.includes('svg') ? await response.text() : '';
+                    return { code: codes[i]?.querySelector('.exe-mindmap-code')?.innerHTML ?? '', img, svg };
+                });
+            }),
+        );
+    });
+    return raw.map(({ code, img, svg }) => {
+        const { format, data } = readStoredCode(code);
+        return { format, data, img, svg };
+    });
+}
+
+export function captions(node: NodeObj): string[] {
+    return [node.topic, ...(node.children ?? []).flatMap(captions)];
+}
+
+export function findNode(node: NodeObj, caption: string): NodeObj | undefined {
+    if (node.topic === caption) return node;
+    for (const child of node.children ?? []) {
+        const found = findNode(child, caption);
+        if (found) return found;
+    }
+    return undefined;
+}
+
+export { countNodes };

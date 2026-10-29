@@ -189,6 +189,7 @@ const EXCLUDE_FILE_PATTERNS = [
     /\.spec\.ts$/, // Backend test files
     /\.test\.ts$/, // Backend test files
     /\.test\.js$/, // Frontend test files
+    /\.d\.ts$/, // Type declarations of vendored libraries
     /[\\/]+exe_math[\\/]+/, // MathJax directory (has its own t() calls)
     /[\\/]+node_modules[\\/]+/, // Dependencies
     /[\\/]+cli[\\/]+commands[\\/]+translations\.ts$/, // This file (TRANS_PREFIX pattern matches its own source)
@@ -201,6 +202,7 @@ const EXCLUDE_FILE_PATTERNS = [
     /[\\/]+jquery-ui[\\/]+jquery-ui\.min\.js$/, // jQuery UI (minified, not translatable)
     /[\\/]+libs[\\/]+pdfjs[\\/]+/, // pdf.js (minified, its embedded binary data contains `_(`-like sequences)
     /[\\/]+app\.bundle\.js$/, // Compiled bundle (stale; sources are scanned directly)
+    /[\\/]+mindmap-editor\.bundle\.js$/, // Mind map editor bundle (its src/*.ts are scanned)
 ];
 
 /**
@@ -280,6 +282,8 @@ export async function extractTranslationKeys(): Promise<Set<string>> {
         new Glob('views/**/*.njk'),
         new Glob('public/app/**/*.js'),
         new Glob('public/libs/**/*.js'),
+        // TypeScript built into a bundle, such as the exemindmap editor
+        new Glob('public/libs/**/*.ts'),
         new Glob('public/files/perm/idevices/**/*.js'),
     ];
 
@@ -708,6 +712,7 @@ ${colors.cyan('Extraction:')}
   - views/**/*.njk
   - public/app/**/*.js
   - public/libs/**/*.js
+  - public/libs/**/*.ts
   - public/files/perm/idevices/**/*.js
 
 ${colors.cyan('Generated sources:')}
