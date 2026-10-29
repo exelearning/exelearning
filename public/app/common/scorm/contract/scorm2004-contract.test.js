@@ -11,7 +11,7 @@ const sessions = [];
 function openSession({ enabled = true, stored = '', completion = 'unknown', success = 'unknown', passing = '' } = {}) {
     const page = new Window({
         url: 'https://scorm.test/',
-        settings: { disableCSSFileLoading: true, disableJavaScriptFileLoading: true },
+        settings: { enableCSSFileLoading: false, disableJavaScriptFileLoading: true },
     });
     if (enabled) page.document.head.innerHTML = '<meta name="exe-pass-score-every-activity" content="true">';
     page.document.body.innerHTML = '<div class="page-content"></div>';

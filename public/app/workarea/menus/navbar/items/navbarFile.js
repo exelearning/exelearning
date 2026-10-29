@@ -9,6 +9,13 @@ import {
     openProjectFolderInBrowser,
     saveProjectFolderInBrowser,
 } from '../../../../core/ProjectFolderStorage.js';
+import { DEFAULT_ACTIVITY_MODE, PREVIEW_MODE_DOCUMENT } from '../../../modals/modals/pages/modalPrintPreview.js';
+
+/**
+ * Below this viewport width the left panels start collapsed, and collapse when the viewport
+ * shrinks past it: with them open the toolbar does not fit (#2638).
+ */
+export const COLLAPSE_PANELS_BELOW = 1200;
 
 const KNOWN_EXPORT_EXTENSIONS = new Set(['.elpx', '.zip', '.epub', '.xml']);
 
@@ -840,21 +847,79 @@ export default class NavbarFile {
     }
 
     /**
-     * Open the unified print/PDF view in a new tab.
+     * Open the print preview.
      */
     setExportPrintEvent() {
         if (!this.exportPrintButton) return;
         this.exportPrintButton.addEventListener('click', () => {
             if (eXeLearning.app.project.checkOpenIdevice()) return;
-            this.openPrintPreview();
+            this.startPrint();
         });
     }
 
-    openPrintPreview() {
+    /**
+     * Print the project.
+     *
+     * The preview opens straight away. A game board printed as the browser draws it is not an
+     * exercise, so when the project has interactive activities the options panel beside the
+     * preview lets the user choose what to do with them, and the preview follows. They start
+     * printed as exercises where the author put them. With none, there is nothing to decide and
+     * the document prints as it always did.
+     */
+    startPrint() {
+        const activities = this.listInteractiveActivities();
+
+        this.openPrintPreview(
+            PREVIEW_MODE_DOCUMENT,
+            activities.length > 0 ? DEFAULT_ACTIVITY_MODE : null,
+            null,
+            activities
+        );
+    }
+
+    /**
+     * List the interactive activities in the project.
+     *
+     * @returns {Array<{id: string, type: string, pageTitle: string, blockTitle: string,
+     *     neverPrintable: boolean}>} The activities in document order, and none if the question
+     *     cannot be answered
+     */
+    listInteractiveActivities() {
+        const listFn = window.SharedExporters?.listProjectInteractiveActivities;
+        const documentManager =
+            eXeLearning?.app?.project?._yjsBridge?.documentManager;
+
+        if (typeof listFn !== 'function' || !documentManager) return [];
+
+        try {
+            return listFn(documentManager);
+        } catch (error) {
+            // Printing matters more than the question: fall back to printing untouched.
+            console.warn('[NavbarFile] Could not inspect the project:', error);
+            return [];
+        }
+    }
+
+    /**
+     * Show the print preview overlay in the given mode.
+     *
+     * @param {string} mode - PREVIEW_MODE_DOCUMENT (default) or PREVIEW_MODE_IDEVICES
+     * @param {string|null} activityMode - What to do with the interactive activities. Null
+     *     prints the document untouched.
+     * @param {string[]|null} selectedActivities - Ids of the activities to print; null for all
+     * @param {Array<object>} activities - The project's interactive activities, as
+     *     listInteractiveActivities gives them, for the overlay's options panel to offer
+     */
+    openPrintPreview(
+        mode = PREVIEW_MODE_DOCUMENT,
+        activityMode = null,
+        selectedActivities = null,
+        activities = []
+    ) {
         // Open print preview modal
         const printPreviewModal = eXeLearning?.app?.modals?.printpreview;
         if (printPreviewModal) {
-            printPreviewModal.show();
+            printPreviewModal.show(mode, activityMode, selectedActivities, activities);
         } else {
             console.warn('[NavbarFile] Print preview modal not available');
             eXeLearning?.app?.modals?.alert?.show({
@@ -1308,7 +1373,7 @@ export default class NavbarFile {
      *
      */
     setLeftPanelsTogglerEvents() {
-        // Auto-collapse sidebar on mobile devices (< 768px)
+        // Auto-collapse sidebar on phones and tablets (see COLLAPSE_PANELS_BELOW)
         this.initMobileLayout();
 
         // See eXeLearning.app.common.initTooltips
@@ -1320,7 +1385,7 @@ export default class NavbarFile {
                 $('body').toggleClass('left-column-hidden');
             });
 
-        // Handle resize: collapse sidebar when transitioning to mobile
+        // Handle resize: collapse sidebar when the viewport becomes narrow
         window.addEventListener('resize', () => {
             this.handleResponsiveLayout();
         });
@@ -1368,26 +1433,29 @@ export default class NavbarFile {
     }
 
     /**
-     * Initialize mobile layout - collapse sidebar on mobile devices
+     * Initialize mobile layout - start with the sidebar collapsed on phones and tablets,
+     * where the toolbar does not fit beside it (#2638); the toggler still opens it.
      */
     initMobileLayout() {
-        const isMobile = window.innerWidth < 768;
-        if (isMobile) {
+        const isNarrow = window.innerWidth < COLLAPSE_PANELS_BELOW;
+        if (isNarrow) {
             document.body.classList.add('left-column-hidden');
         }
+        // Already collapsed: a later resize must not close panels the user reopened
+        this._wasResizedToMobile = isNarrow;
     }
 
     /**
      * Handle responsive layout changes on window resize
      */
     handleResponsiveLayout() {
-        const isMobile = window.innerWidth < 768;
-        // Only auto-collapse when transitioning TO mobile, don't force it
-        // This allows users to manually expand on mobile if they want
-        if (isMobile && !this._wasResizedToMobile) {
+        const isNarrow = window.innerWidth < COLLAPSE_PANELS_BELOW;
+        // Only auto-collapse when the viewport BECOMES narrow, don't force it
+        // This allows users to expand the panels manually if they want
+        if (isNarrow && !this._wasResizedToMobile) {
             document.body.classList.add('left-column-hidden');
             this._wasResizedToMobile = true;
-        } else if (!isMobile) {
+        } else if (!isNarrow) {
             this._wasResizedToMobile = false;
         }
     }
@@ -1699,17 +1767,10 @@ export default class NavbarFile {
             eXeLearning.app.project.odeId ||
             eXeLearning.app.project.odeSession;
 
-        // Persist the latest Yjs snapshot before uploading. The new endpoint
-        // does not depend on the snapshot, but the legacy fallback does.
-        try {
-            const docManager = eXeLearning.app.project._yjsBridge?.getDocumentManager?.();
-            if (docManager?.saveToServer) {
-                await docManager.saveToServer();
-                console.log('[NavbarFile] Project saved to server before platform upload');
-            }
-        } catch (saveError) {
-            console.warn('[NavbarFile] Failed to save before platform upload:', saveError);
-        }
+        // Save the project, assets included, before uploading. The next edit of
+        // the activity may reopen it as it is, maybe from another browser
+        // (#2550), and the legacy fallback builds the package from it.
+        const projectSaved = await this._saveProjectBeforePlatformUpload();
 
         const yjsBridge = eXeLearning.app.project?._yjsBridge;
         const SharedExporters = window.SharedExporters;
@@ -1730,6 +1791,7 @@ export default class NavbarFile {
                 projectUuid,
                 yjsBridge,
                 SharedExporters,
+                projectSaved,
             );
             if (handled) {
                 return;
@@ -1768,15 +1830,40 @@ export default class NavbarFile {
     }
 
     /**
+     * Save the project to the server before sending it to the platform.
+     *
+     * @returns {Promise<boolean>} true when the document and its assets were saved
+     */
+    async _saveProjectBeforePlatformUpload() {
+        try {
+            const yjsBridge = eXeLearning.app.project._yjsBridge;
+            if (typeof yjsBridge?.save === 'function') {
+                const result = await yjsBridge.save({ showProgress: false });
+                return result?.success === true;
+            }
+            const docManager = yjsBridge?.getDocumentManager?.();
+            if (docManager?.saveToServer) {
+                await docManager.saveToServer();
+                console.log('[NavbarFile] Project saved to server before platform upload');
+            }
+        } catch (saveError) {
+            console.warn('[NavbarFile] Failed to save before platform upload:', saveError);
+        }
+        return false;
+    }
+
+    /**
      * Browser-driven publish: generate the platform package in the browser
      * (where the Yjs document and IndexedDB assets live) and POST it as a
      * binary blob to the server forwarder endpoint.
      *
+     * @param {boolean} projectSaved - Whether the server holds the project and
+     * its assets, so the next edit of the activity can reopen it as it is
      * @returns {Promise<boolean>} true when the platform upload was handled
      * (success or surfaced error); false to fall back to the legacy server
      * generation path.
      */
-    async _uploadPlatformEventClientSide(jwt_token, projectUuid, yjsBridge, SharedExporters) {
+    async _uploadPlatformEventClientSide(jwt_token, projectUuid, yjsBridge, SharedExporters, projectSaved = false) {
         const payload = this._decodePlatformJwtPayload(jwt_token) || {};
         const exportFormat = payload.pkgtype === 'scorm' ? 'SCORM12' : 'HTML5';
 
@@ -1823,6 +1910,9 @@ export default class NavbarFile {
             formData.append('jwt_token', jwt_token || '');
             formData.append('projectUuid', projectUuid || '');
             formData.append('package', blob, filename);
+            if (projectSaved) {
+                formData.append('projectSaved', '1');
+            }
 
             const apiBase = `${window.location.origin}/api`;
             const response = await fetch(`${apiBase}/platform/integration/set_platform_new_ode_browser`, {
@@ -2081,7 +2171,7 @@ export default class NavbarFile {
                     }
                 });
 
-                recentProjectLink.innerHTML = odeFile.title;
+                recentProjectLink.textContent = odeFile.title;
                 recentProjectsLi.append(recentProjectLink);
             });
         } else {

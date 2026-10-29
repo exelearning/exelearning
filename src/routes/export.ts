@@ -637,7 +637,7 @@ export function createExportRoutes(deps: ExportDependencies = {}): Elysia {
         session: ProjectSession | undefined,
         jwtPayload: { sub?: number; roles?: string[] } | null | undefined,
     ): { ok: true } | { ok: false; status: 401 | 403; message: string } {
-        const authErr = requireAuth(jwtPayload as any);
+        const authErr = requireAuth(jwtPayload);
         if (authErr) return { ok: false, status: authErr.status, message: authErr.message };
         if (hasRole(jwtPayload!.roles, ROLES.ADMIN)) return { ok: true };
         if (session && session.userId !== undefined && session.userId !== Number(jwtPayload!.sub)) {

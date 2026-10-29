@@ -164,7 +164,9 @@ var $exeDevice = (function () {
         // { id: 'ES-CT', isoCode: 'ES-CT', label: 'LOMLOE — Catalunya', ... }
     ];
 
-    var DEFAULT_DATASET = 'ES-CN';
+    // The state minimums are the common base every concretion derives from
+    // (#2631); saved iDevices keep their own lomloeDataset.
+    var DEFAULT_DATASET = 'ES';
 
     /**
      * Per-course subject availability for the obligatory ESO block (1.º–3.º).
@@ -779,11 +781,28 @@ var $exeDevice = (function () {
     function buildShell() {
         var uid = instanceId;
 
-        var datasetOptions = DATASETS.map(function (ds) {
+        function datasetOption(ds, text) {
             var sel = (ds.id === currentDataset) ? ' selected' : '';
             var dis = ds.available ? '' : ' disabled';
-            return '<option value="' + esc(ds.id) + '"' + sel + dis + '>' + esc(ds.label) + '</option>';
-        }).join('');
+            return '<option value="' + esc(ds.id) + '"' + sel + dis + '>' + esc(text) + '</option>';
+        }
+        function datasetGroup(label, list) {
+            return '<optgroup label="' + esc(label) + '">' + list.map(function (ds) {
+                return datasetOption(ds, ds.label.replace(/^LOMLOE — /, ''));
+            }).join('') + '</optgroup>';
+        }
+        // State curriculum first, then its territorial concretions (#2631).
+        var regional = DATASETS.filter(function (ds) {
+            return ds.community && ds.id !== 'ES-EFP';
+        }).sort(function (a, b) {
+            return a.label.localeCompare(b.label);
+        });
+        var datasetOptions = DATASETS.filter(function (ds) { return !ds.community; })
+            .map(function (ds) { return datasetOption(ds, ds.label); }).join('') +
+            datasetGroup(_('Autonomous Communities'), regional) +
+            datasetGroup(_('Ministry-managed territory (MEFPD)'), DATASETS.filter(function (ds) {
+                return ds.id === 'ES-EFP';
+            }));
 
         ideviceBody.innerHTML = [
             '<div class="lomloe-editor" id="lomloe-editor-' + uid + '">',
@@ -1766,7 +1785,9 @@ var $exeDevice = (function () {
                     renderNivelBar();
                     renderMateriaList();
                     // Restore materia if it was previously selected and still exists
+                    // otherwise drop the previous dataset's list (issue #2587)
                     if (selectedMateria) renderContent();
+                    else clearContent();
                     renderSelectedPanel();
                 }),
             )
