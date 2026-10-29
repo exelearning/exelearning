@@ -482,6 +482,7 @@ describe('ModalPrintPreview', () => {
                 expect(titles.map).toBe('Mapa');
                 // One with a printed form keeps the name chosen for paper.
                 expect(titles.guess).toBe('Guess');
+                expect(titles.checklist).toBe('Checklist');
                 expect(titles).not.toHaveProperty('broken');
             } finally {
                 delete global.eXeLearning.app.idevices;

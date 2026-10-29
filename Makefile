@@ -636,6 +636,12 @@ test-e2e-static: check-bun bundle build-static fail-on-windows ## Run E2E tests 
 #   make test-e2e-postgres   # Test with PostgreSQL
 #   make test-e2e-sqlite     # Test with SQLite
 
+# Generate isolated secrets for each database-matrix invocation. The deployment
+# Compose files remain production-like and never receive a published fixed key.
+E2E_API_JWT_SECRET := $(shell openssl rand -hex 32)
+E2E_APP_SECRET := $(shell openssl rand -hex 32)
+E2E_COMPOSE_SECRETS := API_JWT_SECRET=$(E2E_API_JWT_SECRET) APP_SECRET=$(E2E_APP_SECRET)
+
 # Helper to wait for app to be ready
 define wait_for_app
 	@echo "Waiting for app to be ready at http://localhost:8080..."
@@ -646,8 +652,8 @@ define wait_for_app
 		fi; \
 		if [ $$i -eq 30 ]; then \
 			echo "Timeout waiting for app"; \
-			docker compose -p $(1) -f doc/deploy/docker-compose.$(1).yml logs; \
-			docker compose -p $(1) -f doc/deploy/docker-compose.$(1).yml down -v; \
+			$(E2E_COMPOSE_SECRETS) docker compose -p $(1) --env-file doc/deploy/.env.e2e -f doc/deploy/docker-compose.$(1).yml logs; \
+			$(E2E_COMPOSE_SECRETS) docker compose -p $(1) --env-file doc/deploy/.env.e2e -f doc/deploy/docker-compose.$(1).yml down -v; \
 			exit 1; \
 		fi; \
 		echo "  Attempt $$i/30 - waiting..."; \
@@ -659,9 +665,9 @@ endef
 down-e2e:
 	@echo ""
 	@echo "Step 1: Cleaning up previous containers..."
-	-@docker compose -p sqlite -f doc/deploy/docker-compose.sqlite.yml down -v --remove-orphans
-	-@docker compose -p mariadb -f doc/deploy/docker-compose.mariadb.yml down -v --remove-orphans
-	-@docker compose -p postgres -f doc/deploy/docker-compose.postgres.yml down -v --remove-orphans
+	-@$(E2E_COMPOSE_SECRETS) docker compose -p sqlite --env-file doc/deploy/.env.e2e -f doc/deploy/docker-compose.sqlite.yml down -v --remove-orphans
+	-@$(E2E_COMPOSE_SECRETS) docker compose -p mariadb --env-file doc/deploy/.env.e2e -f doc/deploy/docker-compose.mariadb.yml down -v --remove-orphans
+	-@$(E2E_COMPOSE_SECRETS) docker compose -p postgres --env-file doc/deploy/.env.e2e -f doc/deploy/docker-compose.postgres.yml down -v --remove-orphans
 
 
 .PHONY: test-e2e-mariadb
@@ -672,7 +678,7 @@ test-e2e-mariadb: check-docker check-env vendor-libs down-e2e ## Run E2E tests w
 	@echo "============================================================"
 	@echo ""
 	@echo "Step 2: Building and starting services..."
-	@docker compose -p mariadb --env-file doc/deploy/.env.e2e -f doc/deploy/docker-compose.mariadb.yml -f doc/deploy/docker-compose.e2e.yml up --build -d
+	@$(E2E_COMPOSE_SECRETS) docker compose -p mariadb --env-file doc/deploy/.env.e2e -f doc/deploy/docker-compose.mariadb.yml -f doc/deploy/docker-compose.e2e.yml up --build -d
 	@echo ""
 	@echo "Step 3: Waiting for services to be ready..."
 	$(call wait_for_app,mariadb)
@@ -683,7 +689,7 @@ test-e2e-mariadb: check-docker check-env vendor-libs down-e2e ## Run E2E tests w
 	test_exit=$$?; \
 	echo ""; \
 	echo "Step 5: Cleaning up..."; \
-	docker compose -p mariadb -f doc/deploy/docker-compose.mariadb.yml down -v; \
+	$(E2E_COMPOSE_SECRETS) docker compose -p mariadb --env-file doc/deploy/.env.e2e -f doc/deploy/docker-compose.mariadb.yml down -v; \
 	echo ""; \
 	if [ $$test_exit -eq 0 ]; then \
 		echo "============================================================"; \
@@ -704,7 +710,7 @@ test-e2e-postgres: check-docker check-env vendor-libs down-e2e ## Run E2E tests 
 	@echo "============================================================"
 	@echo ""
 	@echo "Step 2: Building and starting services..."
-	@docker compose -p postgres --env-file doc/deploy/.env.e2e -f doc/deploy/docker-compose.postgres.yml -f doc/deploy/docker-compose.e2e.yml up --build -d
+	@$(E2E_COMPOSE_SECRETS) docker compose -p postgres --env-file doc/deploy/.env.e2e -f doc/deploy/docker-compose.postgres.yml -f doc/deploy/docker-compose.e2e.yml up --build -d
 	@echo ""
 	@echo "Step 3: Waiting for services to be ready..."
 	$(call wait_for_app,postgres)
@@ -715,7 +721,7 @@ test-e2e-postgres: check-docker check-env vendor-libs down-e2e ## Run E2E tests 
 	test_exit=$$?; \
 	echo ""; \
 	echo "Step 5: Cleaning up..."; \
-	docker compose -p postgres -f doc/deploy/docker-compose.postgres.yml down -v; \
+	$(E2E_COMPOSE_SECRETS) docker compose -p postgres --env-file doc/deploy/.env.e2e -f doc/deploy/docker-compose.postgres.yml down -v; \
 	echo ""; \
 	if [ $$test_exit -eq 0 ]; then \
 		echo "============================================================"; \
@@ -736,7 +742,7 @@ test-e2e-sqlite: check-docker check-env vendor-libs down-e2e ## Run E2E tests wi
 	@echo "============================================================"
 	@echo ""
 	@echo "Step 2: Building and starting services..."
-	@docker compose -p sqlite --env-file doc/deploy/.env.e2e -f doc/deploy/docker-compose.sqlite.yml -f doc/deploy/docker-compose.e2e.yml up --build -d
+	@$(E2E_COMPOSE_SECRETS) docker compose -p sqlite --env-file doc/deploy/.env.e2e -f doc/deploy/docker-compose.sqlite.yml -f doc/deploy/docker-compose.e2e.yml up --build -d
 	@echo ""
 	@echo "Step 3: Waiting for services to be ready..."
 	$(call wait_for_app,sqlite)
@@ -747,7 +753,7 @@ test-e2e-sqlite: check-docker check-env vendor-libs down-e2e ## Run E2E tests wi
 	test_exit=$$?; \
 	echo ""; \
 	echo "Step 5: Cleaning up..."; \
-	docker compose -p sqlite -f doc/deploy/docker-compose.sqlite.yml down -v; \
+	$(E2E_COMPOSE_SECRETS) docker compose -p sqlite --env-file doc/deploy/.env.e2e -f doc/deploy/docker-compose.sqlite.yml down -v; \
 	echo ""; \
 	if [ $$test_exit -eq 0 ]; then \
 		echo "============================================================"; \

@@ -47,11 +47,12 @@ test.describe('LOMLOE iDevice', () => {
     }, testInfo) => {
         const suffix = isStaticProject(testInfo) ? '.json.zst' : '.json';
         // Observe real responses: mocking the data would hide missing static files or a broken decoder.
-        for (const dataset of ['ES-CN', 'ES']) {
+        // The state curriculum loads by default (#2631); a regional one on demand.
+        for (const dataset of ['ES', 'ES-CN']) {
             const responsePromise = page.waitForResponse(response =>
                 new URL(response.url()).pathname.endsWith(`/lomloe-${dataset}${suffix}`),
             );
-            if (dataset === 'ES-CN') {
+            if (dataset === 'ES') {
                 await addIdevice(page, 'lomloe');
             } else {
                 await page.locator('select[id^="lomloe-ds-"]').selectOption(dataset);
@@ -127,7 +128,7 @@ test.describe('LOMLOE iDevice', () => {
         authenticatedPage: page,
     }) => {
         await addLomloe(page);
-        await page.locator('select[id^="lomloe-ds-"]').selectOption('ES');
+        await page.locator('select[id^="lomloe-ds-"]').selectOption('ES-CN');
         await expect(page.locator('.lomloe-loading')).toBeHidden();
         const { criterion, knowledge } = await selectCurriculumElements(page);
         await page.locator('.lomloe-partial-cb').check();
@@ -140,7 +141,7 @@ test.describe('LOMLOE iDevice', () => {
         await expect(idevice.locator('.lomloeIdeviceContent')).toContainText(criterion);
         await expect(idevice.locator('.lomloeIdeviceContent')).toContainText(knowledge);
         await editIdevice(page, id!);
-        await expect(page.locator('select[id^="lomloe-ds-"]')).toHaveValue('ES');
+        await expect(page.locator('select[id^="lomloe-ds-"]')).toHaveValue('ES-CN');
         await expect(page.locator('.lomloe-selected-count')).toHaveText('2');
         await expect(page.locator('.lomloe-sel-code')).toHaveText([criterion, knowledge]);
         await expect(page.locator('.lomloe-partial-cb')).toBeChecked();

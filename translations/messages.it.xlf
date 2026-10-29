@@ -16006,6 +16006,30 @@
         <source>System default uses the operating system language. It is also used when no language is checked.</source>
         <target>~L'opzione predefinita usa la lingua del sistema operativo. Viene usata anche quando nessuna lingua è selezionata.</target>
       </trans-unit>
+      <trans-unit id="5cpwydi" resname="Presentation mode">
+        <source>Presentation mode</source>
+        <target>~Modalità presentazione</target>
+      </trans-unit>
+      <trans-unit id="ikqj5zr" resname="Activate presentation mode">
+        <source>Activate presentation mode</source>
+        <target>~Attiva la modalità presentazione</target>
+      </trans-unit>
+      <trans-unit id="3wnzdzj" resname="Deactivate presentation mode">
+        <source>Deactivate presentation mode</source>
+        <target>~Disattiva la modalità presentazione</target>
+      </trans-unit>
+      <trans-unit id="44p78pa" resname="Keys: Left/Right change page, M menu, T teacher mode, F11 full screen">
+        <source>Keys: Left/Right change page, M menu, T teacher mode, F11 full screen</source>
+        <target>~Tasti: Sinistra/Destra cambiano pagina, M menu, T modalità insegnante, F11 schermo intero</target>
+      </trans-unit>
+      <trans-unit id="vqiptsj" resname="Autonomous Communities">
+        <source>Autonomous Communities</source>
+        <target>~Comunità autonome</target>
+      </trans-unit>
+      <trans-unit id="ffg67mo" resname="Ministry-managed territory (MEFPD)">
+        <source>Ministry-managed territory (MEFPD)</source>
+        <target>~Territorio gestito dal Ministero (MEFPD)</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

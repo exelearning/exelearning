@@ -159,7 +159,8 @@ Key variables:
 ```bash
 # Server
 APP_PORT=8080
-APP_SECRET=your-jwt-secret-key
+APP_SECRET=your-platform-integration-secret
+API_JWT_SECRET=your-session-and-api-jwt-secret
 
 # Database (SQLite by default)
 DB_DRIVER=pdo_sqlite
@@ -261,6 +262,11 @@ make down             # Stop Docker
 make shell            # Open shell inside container
 make logs             # View container logs
 ```
+
+Production mode (`APP_ENV=prod`, for both `make up` and `make up-local`) refuses to start without explicit secrets.
+Fill in the empty `APP_SECRET=` and `API_JWT_SECRET=` lines in `.env` first, using a different value for each
+(e.g. `openssl rand -base64 48`). `API_JWT_SECRET` must be at least 32 bytes and neither value may be a published
+example.
 
 ### Running CLI Commands with `docker run`
 
