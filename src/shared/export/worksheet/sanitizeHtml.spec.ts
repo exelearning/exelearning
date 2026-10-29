@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test';
-import { htmlToText, sanitizeHtml } from './sanitizeHtml';
+import { hasPrintableContent, htmlToText, sanitizeHtml } from './sanitizeHtml';
 
 describe('sanitizeHtml', () => {
     it('returns empty string for empty input', () => {
@@ -30,29 +30,101 @@ describe('sanitizeHtml', () => {
         expect(sanitizeHtml('<p>Text</p><script>alert(1)')).toBe('<p>Text</p>');
     });
 
-    it('removes embedded frames and objects', () => {
-        expect(sanitizeHtml('<iframe src="http://evil"></iframe><p>Text</p>')).toBe('<p>Text</p>');
+    describe('content embedded from the web', () => {
+        /** What the sheet prints where content from this address was embedded. */
+        const address = (url: string) => `<span class="worksheet-embed-address"><a href="${url}">${url}</a></span>`;
+
+        it('prints its address where it was, the way the document prints its frames', () => {
+            const html =
+                '<p>Revisa la siguiente información:</p><div><div><iframe width="1200px" ' +
+                'src="https://view.genial.ly/5bb353835b64ad591a0c0924" allowfullscreen></iframe></div></div>';
+
+            expect(sanitizeHtml(html)).toBe(
+                `<p>Revisa la siguiente información:</p><div><div>${address('https://view.genial.ly/5bb353835b64ad591a0c0924')}</div></div>`,
+            );
+        });
+
+        it('reads the address where each kind of embedding keeps it, and nothing inside it', () => {
+            expect(sanitizeHtml('<embed src="https://v/1.swf">')).toBe(address('https://v/1.swf'));
+            expect(
+                sanitizeHtml('<object data="https://v/2"><param name="movie" value="x"><p>Fallback</p></object>'),
+            ).toBe(address('https://v/2'));
+        });
+
+        it('gives an address without its protocol the one print recognises', () => {
+            expect(sanitizeHtml('<iframe src="//www.youtube.com/embed/abc"></iframe>')).toBe(
+                address('https://www.youtube.com/embed/abc'),
+            );
+            expect(sanitizeHtml('<iframe src=" HTTPS://v/1 "></iframe>')).toBe(address('https://v/1'));
+        });
+
+        it('escapes the address, which is the author’s', () => {
+            expect(sanitizeHtml('<iframe src=\'https://v/?a=1&b="2"<x>\'></iframe>')).toBe(
+                '<span class="worksheet-embed-address"><a href="https://v/?a=1&amp;b=&quot;2&quot;&lt;x&gt;">' +
+                    'https://v/?a=1&amp;b=&quot;2&quot;&lt;x&gt;</a></span>',
+            );
+        });
+
+        it('keeps the paragraph that held it, which now holds the address', () => {
+            expect(sanitizeHtml('<p><iframe src="https://v/1"></iframe></p><p>Texto</p>')).toBe(
+                `<p>${address('https://v/1')}</p><p>Texto</p>`,
+            );
+        });
+
+        it.each([
+            '<iframe src="https://v/1"></iframe>',
+            '<embed src="https://v/1">',
+            '<object data="https://v/1"></object>',
+        ])('does not nest an address link inside an author link: %s', embed => {
+            expect(sanitizeHtml(`<a href="https://x/doc">Before ${embed} after</a>`)).toBe(
+                '<a href="https://x/doc">Before ' +
+                    '<span class="worksheet-embed-address">https://v/1</span> after</a>',
+            );
+        });
+
+        it('keeps the address linked when the enclosing author link is removed', () => {
+            expect(sanitizeHtml('<a href="javascript:alert(1)"><iframe src="https://v/1"></iframe></a>')).toBe(
+                address('https://v/1'),
+            );
+        });
+    });
+
+    it('removes content embedded from anywhere else, which a reader of the paper cannot reach', () => {
+        expect(sanitizeHtml('<iframe src="content/resources/game.html"></iframe><p>Text</p>')).toBe('<p>Text</p>');
+        expect(sanitizeHtml('<iframe src="javascript:alert(1)"></iframe><p>Text</p>')).toBe('<p>Text</p>');
+        expect(sanitizeHtml('<iframe srcdoc="<p>Hi</p>"></iframe><p>Text</p>')).toBe('<p>Text</p>');
+        expect(sanitizeHtml('<iframe src="https:///v"></iframe><p>Text</p>')).toBe('<p>Text</p>');
+        expect(sanitizeHtml('<embed src="blob:http://localhost/abc"><p>Text</p>')).toBe('<p>Text</p>');
         expect(sanitizeHtml('<object data="x"></object><p>Text</p>')).toBe('<p>Text</p>');
+        // Only the embeddings point somewhere: a picture drawn in SVG has no address to print.
+        expect(sanitizeHtml('<svg src="https://v/1"></svg><p>Text</p>')).toBe('<p>Text</p>');
     });
 
     describe('what a removed element leaves behind', () => {
         it('takes the paragraph that held nothing but a video', () => {
             // Otherwise it prints as a hole the size of the words it replaced.
-            const html = '<p><span><iframe src="https://v/1"></iframe><br /></span></p><p>Texto</p>';
+            const html = '<p><span><iframe src="video.html"></iframe><br /></span></p><p>Texto</p>';
 
             expect(sanitizeHtml(html)).toBe('<p>Texto</p>');
         });
 
         it('keeps the paragraph when something in it still prints', () => {
-            const html = '<p>Mira<iframe src="https://v/1"></iframe></p>';
+            const html = '<p>Mira<iframe src="video.html"></iframe></p>';
 
             expect(sanitizeHtml(html)).toBe('<p>Mira</p>');
         });
 
         it('counts a picture as something that prints', () => {
-            const html = '<p><iframe src="https://v/1"></iframe><img src="pic.png" /></p>';
+            const html = '<p><iframe src="video.html"></iframe><img src="pic.png" /></p>';
 
             expect(sanitizeHtml(html)).toBe('<p><img src="pic.png" /></p>');
+        });
+
+        it('takes a link left with nothing to show', () => {
+            // Print would write its address after nothing at all.
+            expect(sanitizeHtml('<p><a href="https://x"><iframe src="video.html"></iframe></a>Texto</p>')).toBe(
+                '<p>Texto</p>',
+            );
         });
 
         it('keeps a blank paragraph the author left, nothing having been taken out of it', () => {
@@ -62,15 +134,68 @@ describe('sanitizeHtml', () => {
         });
 
         it('keeps a table cell, whose emptiness is the shape of the table', () => {
-            const html = '<table><tr><td><iframe src="https://v/1"></iframe></td><td>Dos</td></tr></table>';
+            const html = '<table><tr><td><iframe src="video.html"></iframe></td><td>Dos</td></tr></table>';
 
             expect(sanitizeHtml(html)).toContain('<td></td>');
         });
     });
 
     it('unwraps disallowed tags but keeps their text', () => {
-        expect(sanitizeHtml('<a href="http://x">Read this</a>')).toBe('Read this');
         expect(sanitizeHtml('<marquee>Moving</marquee>')).toBe('Moving');
+        expect(sanitizeHtml('<font color="red">Red</font>')).toBe('Red');
+    });
+
+    describe('links', () => {
+        it('keeps one to the web, for print to write its address after it', () => {
+            const html = '<p>Consulta <a href="https://es.wikipedia.org/wiki/Gusto">este artículo</a></p>';
+
+            expect(sanitizeHtml(html)).toBe(html);
+        });
+
+        it('keeps its address and nothing else of it', () => {
+            expect(
+                sanitizeHtml(
+                    '<a href="http://x/?a=1&amp;b=2" target="_blank" class="btn" style="color:red" onclick="steal()">Read this</a>',
+                ),
+            ).toBe('<a href="http://x/?a=1&amp;b=2">Read this</a>');
+        });
+
+        it('gives an address without its protocol the one print recognises', () => {
+            expect(sanitizeHtml('<a href="//x/page">Read this</a>')).toBe('<a href="https://x/page">Read this</a>');
+            expect(sanitizeHtml('<a href="HTTP://x">Read this</a>')).toBe('<a href="http://x">Read this</a>');
+        });
+
+        it('keeps only the text of one leading anywhere a reader of the paper cannot go', () => {
+            for (const href of [
+                '#top',
+                'page.html',
+                'exe-node:abc',
+                'asset://5f0e8a2c/file.pdf',
+                'mailto:someone@example.com',
+                'javascript:alert(1)',
+                'java&#115;cript:alert(1)',
+                ' java\tscript:alert(1)',
+            ]) {
+                expect(sanitizeHtml(`<a href="${href}">Read this</a>`)).toBe('Read this');
+            }
+            expect(sanitizeHtml('<a name="top">Read this</a>')).toBe('Read this');
+        });
+
+        it.each([
+            ['<a href="https://x.com"></a>', ''],
+            ['<a href="https://x.com"> </a>', ' '],
+            ['<a href="https://x.com"><span></span></a>', '<span></span>'],
+            ['<a href="https://x.com"><audio src="a.mp3"></audio></a>', ''],
+            ['<a href="https://x.com"><video><source src="v.mp4"></video></a>', ''],
+        ])('keeps no link round nothing to read, whose address would print on its own: %s', (link, left) => {
+            expect(sanitizeHtml(`<p>Mira${link}</p>`)).toBe(`<p>Mira${left}</p>`);
+        });
+
+        it('keeps one round a picture, whose address print leaves out', () => {
+            expect(sanitizeHtml('<a href="https://x.com"><img src="pic.png" /></a>')).toBe(
+                '<a href="https://x.com"><img src="pic.png" /></a>',
+            );
+        });
     });
 
     it('drops class and style from allowed tags', () => {
@@ -132,5 +257,15 @@ describe('htmlToText', () => {
     it('returns empty string for empty input', () => {
         expect(htmlToText('')).toBe('');
         expect(htmlToText(null)).toBe('');
+    });
+});
+
+describe('hasPrintableContent', () => {
+    it('counts content embedded from the web, whose address prints', () => {
+        expect(hasPrintableContent('<p><iframe src="https://v/1"></iframe></p>')).toBe(true);
+    });
+
+    it('does not count content embedded from anywhere else, which leaves nothing', () => {
+        expect(hasPrintableContent('<p><iframe src="video.html"></iframe></p>')).toBe(false);
     });
 });

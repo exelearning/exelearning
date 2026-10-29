@@ -527,6 +527,272 @@ test.describe('Print iDevices', () => {
         });
     }
 
+    for (const mode of ['idevices', 'in-place', 'appendix']) {
+        test(`prints a checklist as a list to fill in by hand in ${mode} mode`, async ({
+            authenticatedPage: page,
+            createProject,
+        }) => {
+            const uuid = await createProject(page, 'Printable checklist');
+            await gotoWorkarea(page, uuid);
+            await waitForAppReady(page);
+            const longCriterion =
+                'Explain the steps followed and check that every part of the activity is complete. '.repeat(5);
+            const picture =
+                'data:image/svg+xml,' +
+                encodeURIComponent(
+                    '<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="200"><rect width="1400" height="200" fill="gray"/></svg>',
+                );
+            // Each item kind, including long wording and an oversized illustration. An unreadable
+            // criterion must be reported and must not add points to the printed score.
+            const html =
+                '<div class="listacotejo-IDevice"><div class="listacotejo-DataGame js-hidden">' +
+                encryptDataGame(
+                    JSON.stringify({
+                        typeGame: 'Cotejo',
+                        title: 'Unit checklist',
+                        userData: true,
+                        useScore: true,
+                        saveData: true,
+                        levels: [
+                            { type: '3', nivel: '0', item: 'Heading item', points: '' },
+                            { type: '0', nivel: '1', item: longCriterion, points: '5' },
+                            {
+                                type: '1',
+                                nivel: '1',
+                                item: `${longCriterion}<img src="${picture}" width="1400" height="200">`,
+                                points: '',
+                            },
+                            { type: '2', nivel: '1', item: 'Selection item', points: '10' },
+                            { type: '0', nivel: '1', item: '<math><mi>x</mi></math>', points: '100' },
+                        ],
+                        msgs: {
+                            msgName: 'Learner name',
+                            msgDate: 'Checklist date',
+                            msgScore: 'Score',
+                            msgPoints: 'points',
+                            msgDone: 'Done',
+                            msgInProgress: 'In progress',
+                            msgUnrealized: 'Not completed',
+                            msgSave: 'Download',
+                            msgReboot: 'Restart',
+                        },
+                    }),
+                ) +
+                '</div></div>';
+            await page.evaluate(html => {
+                const binding = (window as any).eXeLearning.app.project._yjsBridge.structureBinding;
+                const parent = binding.createPage('Printable checklist');
+                binding.createComponent(parent.id, binding.createBlock(parent.id), 'checklist', { htmlContent: html });
+            }, html);
+
+            await openPrintPanel(page);
+            const { frame } = await choosePrintOption(page, mode);
+
+            const checklist = frame.locator('.worksheet-checklist');
+            await expect(checklist.locator('.worksheet-checklist-title')).toHaveText('Unit checklist');
+            const items = checklist.locator('.worksheet-checklist-item');
+            await expect(items).toHaveCount(4);
+            // The heading marks nothing; the box and the text item get a box; the selection one its
+            // states written out, each with a dotted blank before it to write in.
+            await expect(items.nth(0).locator('.worksheet-option-box')).toHaveCount(0);
+            await expect(items.nth(1).locator('.worksheet-option-box')).toHaveCount(1);
+            await expect(items.nth(1)).toContainText('(5 points)');
+            await expect(items.nth(2).locator('.worksheet-checklist-line')).toBeVisible();
+            await expect(items.nth(3).locator('.worksheet-checklist-state')).toHaveText([
+                'Done',
+                'In progress',
+                'Not completed',
+            ]);
+            await expect(items.nth(3).locator('.worksheet-option-box')).toHaveCount(0);
+            const blanks = items.nth(3).locator('.worksheet-checklist-state .worksheet-checklist-blank');
+            await expect(blanks).toHaveCount(3);
+            for (const blank of await blanks.all()) {
+                await expect(blank).toHaveCSS('border-bottom-style', 'dotted');
+                expect((await blank.boundingBox())?.width).toBeGreaterThan(30);
+            }
+            await expect(checklist.locator('.worksheet-checklist-score')).toContainText('Score:');
+            await expect(checklist.locator('.worksheet-checklist-score')).toContainText('/ 15');
+            await expect(frame.locator('.worksheet-unsupported')).toContainText('Invalid or empty activity data');
+            await expect(frame.locator('.worksheet-unsupported')).toContainText('(1)');
+
+            // Check actual geometry in both preview and print media. A long criterion must wrap
+            // beside its box, and an image must fit the available width without distortion.
+            for (const media of ['screen', 'print'] as const) {
+                await page.emulateMedia({ media });
+                for (const index of [1, 2]) {
+                    const geometry = await items.nth(index).evaluate(row => {
+                        const box = row.querySelector('.worksheet-option-box')!.getBoundingClientRect();
+                        const text = row.querySelector('.worksheet-checklist-text')!;
+                        const bounds = text.getBoundingClientRect();
+                        return {
+                            boxRight: box.right,
+                            boxTop: box.top,
+                            boxBottom: box.bottom,
+                            textLeft: bounds.left,
+                            textTop: bounds.top,
+                            lineHeight: Number.parseFloat(getComputedStyle(text).lineHeight),
+                        };
+                    });
+                    expect(geometry.boxRight).toBeLessThanOrEqual(geometry.textLeft);
+                    expect(geometry.boxBottom).toBeGreaterThan(geometry.textTop);
+                    expect(Math.abs(geometry.boxTop - geometry.textTop)).toBeLessThan(geometry.lineHeight);
+                }
+                const illustration = await items
+                    .nth(2)
+                    .locator('img')
+                    .evaluate(img => {
+                        const bounds = img.getBoundingClientRect();
+                        const row = img.closest('.worksheet-checklist-item')!.getBoundingClientRect();
+                        return { right: bounds.right, rowRight: row.right, ratio: bounds.width / bounds.height };
+                    });
+                expect(illustration.right).toBeLessThanOrEqual(illustration.rowRight + 1);
+                expect(illustration.ratio).toBeCloseTo(7, 1);
+            }
+            await page.emulateMedia({ media: 'screen' });
+            // The worksheet asks for the name and date in its own header, so there the checklist asks
+            // for neither.
+            const fields = checklist.locator('.worksheet-checklist-field:not(.worksheet-checklist-score)');
+            await expect(fields).toHaveText(mode === 'idevices' ? [] : ['Learner name:', 'Checklist date:']);
+            // Nothing of the on-screen checklist is left to print: no switches, drop-down or buttons.
+            await expect(frame.locator('.CTJP-MainContainer, .toggle-input, select, .CTJP-Capture')).toHaveCount(0);
+        });
+    }
+
+    test('prints where to find what a challenge embedded, and where each of its links goes', async ({
+        authenticatedPage: page,
+        createProject,
+    }) => {
+        // Issue #2634: each challenge pointed at a Genially, and the paper showed a blank instead.
+        const uuid = await createProject(page, 'Printable challenge');
+        await gotoWorkarea(page, uuid);
+        await waitForAppReady(page);
+        const genially = 'https://view.genial.ly/5bb353835b64ad591a0c0924';
+        const article = 'https://es.wikipedia.org/wiki/Gusto';
+        const html =
+            '<div class="desafio-IDevice"><div class="desafio-ChallengeDescription">' +
+            `<p>Revisa la siguiente información:</p><div><iframe src="${genially}" width="1200" height="675"></iframe></div>` +
+            `<p>Lee <a href="${article}">este artículo</a></p></div>` +
+            '<div class="desafio-DataGame js-hidden">' +
+            encryptDataGame(
+                JSON.stringify({
+                    typeGame: 'desafio',
+                    desafioTitle: 'Pandemia',
+                    desafioDescription: '<p>Averigua qué pandemia fue</p>',
+                    desafioSolution: 'Gripe',
+                    challengesGame: [{ title: 'Primer reto', description: '', solution: 'Dulce' }],
+                    msgs: { msgChallenge: 'Reto' },
+                }),
+            ) +
+            '</div></div>';
+        await page.evaluate(html => {
+            const binding = (window as any).eXeLearning.app.project._yjsBridge.structureBinding;
+            const parent = binding.createPage('Printable challenge');
+            binding.createComponent(parent.id, binding.createBlock(parent.id), 'challenge', { htmlContent: html });
+        }, html);
+
+        // Chromium resolves attr(href); Firefox reports the declared value unresolved.
+        const showsArticle = /\[(https:\/\/es\.wikipedia\.org\/wiki\/Gusto|" attr\(href\) ")\]/;
+        const afterContent = (anchor: Locator) =>
+            anchor.evaluate(a => getComputedStyle(a, '::after').content).catch(() => null);
+
+        await openPrintPanel(page);
+        const { frame } = await choosePrintOption(page, 'in-place');
+        const exercise = frame.locator('.worksheet-activity[data-idevice="challenge"]');
+        const embed = exercise.locator('.worksheet-embed-address');
+        const link = exercise.locator(`a[href="${article}"]`);
+        // The address stands where the Genially was, and is not written after itself again.
+        await expect(embed).toHaveText(genially);
+        await expect(embed).toBeVisible();
+        expect(await afterContent(embed.locator('a'))).toBe('none');
+        await expect(link).toHaveText('este artículo');
+        expect(await afterContent(link)).toMatch(showsArticle);
+
+        // Show link URLs takes the address off the link, but not the one the Genially left, which
+        // is all there is of it.
+        const linkUrls = page.locator('#printOptLinkUrls');
+        await linkUrls.uncheck();
+        await expect.poll(() => afterContent(link), { timeout: 30000 }).toBe('none');
+        await waitForPreview(page);
+        await expect(embed).toHaveText(genially);
+        await expect(embed).toBeVisible();
+
+        // The worksheet has no such option and writes both out, as the box, ticked, says too.
+        const { frame: sheet } = await choosePrintOption(page, 'idevices');
+        await expect(linkUrls).toBeDisabled();
+        await expect(linkUrls).toBeChecked();
+        const sheetEmbed = sheet.locator('.worksheet-activity[data-idevice="challenge"] .worksheet-embed-address');
+        await expect(sheetEmbed).toHaveText(genially);
+        await expect(sheetEmbed).toBeVisible();
+        expect(await afterContent(sheetEmbed.locator('a'))).toBe('none');
+        expect(await afterContent(sheet.locator(`a[href="${article}"]`))).toMatch(showsArticle);
+
+        // Back in the document, the box is the user's choice again.
+        await choosePrintOption(page, 'in-place');
+        await expect(linkUrls).toBeEnabled();
+        await expect(linkUrls).not.toBeChecked();
+    });
+
+    test('keeps linked answers hidden when an embed precedes a gap', async ({
+        authenticatedPage: page,
+        createProject,
+    }) => {
+        const uuid = await createProject(page, 'Linked answer print regression');
+        await gotoWorkarea(page, uuid);
+        await waitForAppReady(page);
+        const source = 'https://example.org/map';
+        const sentence = (answer: string) =>
+            `<p>Capital: <a href="https://es.wikipedia.org/wiki/Toledo">` +
+            `<iframe src="${source}"></iframe>${answer}</a>.</p>`;
+        const components = [
+            {
+                type: 'form',
+                html: '',
+                properties: { questionsData: [{ activityType: 'fill', baseText: sentence('<u>Toledo</u>') }] },
+            },
+            {
+                type: 'complete',
+                html:
+                    '<div class="completa-IDevice"><div class="completa-DataGame js-hidden">' +
+                    encryptDataGame(
+                        JSON.stringify({ typeGame: 'Completa', type: 0, textText: escape(sentence('@@Toledo@@')) }),
+                    ) +
+                    '</div></div>',
+                properties: {},
+            },
+        ];
+        await page.evaluate(components => {
+            const binding = (window as any).eXeLearning.app.project._yjsBridge.structureBinding;
+            const parent = binding.createPage('Linked answer regression');
+            for (const component of components) {
+                binding.createComponent(parent.id, binding.createBlock(parent.id), component.type, {
+                    htmlContent: component.html,
+                    jsonProperties: JSON.stringify(component.properties),
+                });
+            }
+        }, components);
+
+        await openPrintPanel(page);
+        for (const mode of ['in-place', 'appendix', 'idevices']) {
+            const { frame } = await choosePrintOption(page, mode);
+            for (const media of ['screen', 'print'] as const) {
+                await page.emulateMedia({ media });
+                for (const type of ['form', 'complete']) {
+                    // In the appendix the body keeps a pointer to the exercise, with the same type.
+                    const exercise = frame.locator(
+                        `.worksheet-activity[data-idevice="${type}"]:not(.worksheet-activity-reference)`,
+                    );
+                    await expect(exercise.locator('.worksheet-gap')).toHaveCount(1);
+                    await expect(exercise.locator('.worksheet-embed-address')).toHaveText(source);
+                    await expect(exercise.locator('.worksheet-embed-address')).toBeVisible();
+                    // An empty anchor still prints its href through ::after, so text alone is insufficient.
+                    await expect(exercise.locator('a')).toHaveCount(0);
+                    await expect(exercise).not.toContainText('Toledo');
+                }
+            }
+            await page.emulateMedia({ media: null });
+        }
+    });
+
     test('waits for real molecule surfaces and reuses the viewer across print previews', async ({
         authenticatedPage: page,
         createProject,
@@ -983,16 +1249,16 @@ test.describe('Print iDevices', () => {
 
         const { frame } = await openWorksheet(page);
 
-        // The fixture's four activities — a rubric, two forms and the Guess — sit on four pages,
-        // and each page prints its own heading.
+        // The fixture's five activities — a rubric, a checklist, two forms and the Guess — sit on
+        // five pages, and each page prints its own heading.
         const pageTitles = frame.locator('.worksheet-page-title');
-        await expect(pageTitles).toHaveCount(4);
+        await expect(pageTitles).toHaveCount(5);
         for (const title of await pageTitles.all()) await expect(title).not.toBeEmpty();
 
         // What this is really here for: no activity floats outside a page section. Counting both
         // ways keeps that true however many activities a new adapter adds to the sheet.
         const activities = await frame.locator('.worksheet-activity').count();
-        expect(activities).toBe(4);
+        expect(activities).toBe(5);
         await expect(frame.locator('.worksheet-page .worksheet-activity')).toHaveCount(activities);
     });
 
@@ -1667,6 +1933,167 @@ test.describe('Print iDevices', () => {
         expect(heightPx).toBeGreaterThan(15);
         expect(heightPx).toBeLessThan(22);
     });
+
+    // A problem that opened with a picture, in a table cell beside its words or in a paragraph of its
+    // own, used to have its number printed at the foot of the picture instead of in front of the
+    // question (#2635).
+    for (const mode of ['idevices', 'in-place']) {
+        test(`numbers a math problem that opens with a picture level with its top in ${mode} mode`, async ({
+            authenticatedPage: page,
+            createProject,
+        }) => {
+            const uuid = await createProject(page, 'Print iDevices Math Problems Table');
+            await gotoWorkarea(page, uuid);
+            await waitForAppReady(page);
+            const { picture, formula } = await page.evaluate(() => {
+                const canvas = document.createElement('canvas');
+                canvas.width = 200;
+                canvas.height = 122;
+                const context = canvas.getContext('2d')!;
+                context.fillStyle = '#bbccee';
+                context.fillRect(0, 0, 200, 122);
+                const picture = canvas.toDataURL('image/png');
+                canvas.width = 65;
+                canvas.height = 32;
+                context.fillStyle = '#000';
+                context.font = '30px serif';
+                context.fillText('2x+1', 0, 29);
+                return { picture, formula: canvas.toDataURL('image/png') };
+            });
+
+            const payload = JSON.stringify({
+                typeGame: 'MathProblems',
+                optionsRamdon: false,
+                percentajeQuestions: 100,
+                questions: [
+                    {
+                        wordingseg:
+                            `<table><tbody><tr><td><img src="${picture}" width="200" height="122"></td>` +
+                            '<td>Calcula el área de un triángulo de base {b} m y altura {h} m</td></tr></tbody></table>',
+                        min: 6,
+                        max: 6,
+                        decimals: 0,
+                    },
+                    { wordingseg: 'Tiene {a} lápices y regala 1. ¿Cuántos le quedan?', min: 5, max: 5, decimals: 0 },
+                    {
+                        wordingseg:
+                            `<table><tbody><tr><td>Solve <img src="${formula}" width="65" height="32"> = 5.</td>` +
+                            `<th>Check <span><img src="${formula}" width="65" height="32"></span> = 5.</th>` +
+                            '</tr></tbody></table>',
+                    },
+                    {
+                        wordingseg:
+                            `<p>Solve <img src="${formula}" width="65" height="32"> = 5. ` +
+                            `<strong>Check <span><img src="${formula}" width="65" height="32"></span> = 5.</strong></p>`,
+                    },
+                    {
+                        wordingseg:
+                            `<table><tbody><tr><td><img src="${picture}" width="200" height="122"><br>Figura 1</td>` +
+                            '<td>Calcula el perímetro del triángulo de la figura 1</td></tr></tbody></table>',
+                    },
+                    {
+                        wordingseg:
+                            `<p><img src="${picture}" width="200" height="122"></p>` +
+                            '<p>¿Cuántos lados tiene esta figura?</p>',
+                    },
+                ],
+            });
+            const html = `<div class="mathproblems-IDevice"><div class="mathproblems-DataGame js-hidden">${encryptDataGame(payload)}</div></div>`;
+
+            await page.evaluate(
+                ({ htmlContent }) => {
+                    const binding = (window as any).eXeLearning.app.project._yjsBridge.structureBinding;
+                    const parent = binding.createPage('Math Page');
+                    binding.createComponent(parent.id, binding.createBlock(parent.id), 'mathproblems', {
+                        htmlContent,
+                    });
+                },
+                { htmlContent: html },
+            );
+
+            await openPrintPanel(page);
+            const { frame } = await choosePrintOption(page, mode);
+            await page.emulateMedia({ media: 'print' });
+
+            const items = frame.locator('.worksheet-activity[data-idevice="mathproblems"] .worksheet-item');
+            await expect(items).toHaveCount(6);
+            for (const image of await items.locator('img').all()) {
+                await expect
+                    .poll(() => image.evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth > 0))
+                    .toBe(true);
+            }
+
+            // A point outside the frame's viewport hits nothing, and the document printed in place
+            // does not scroll inside it, so the frame is made as tall as what it holds.
+            await page.locator('.print-preview-iframe').evaluate((iframe: HTMLIFrameElement) => {
+                iframe.style.height = `${iframe.contentDocument!.documentElement.scrollHeight}px`;
+            });
+
+            // A list number has no box of its own to measure, but it belongs to its item: walking
+            // down the margin where it is drawn, the rows that land on the item are the number's.
+            const numberPlacement = (item: Locator) =>
+                item.evaluate(element => {
+                    const picture = element.querySelector('img')!.getBoundingClientRect();
+                    const wordsCell = element.querySelectorAll('td')[1];
+                    let words: DOMRect | null = null;
+                    if (wordsCell) {
+                        const range = document.createRange();
+                        range.selectNodeContents(wordsCell);
+                        words = range.getClientRects()[0];
+                    }
+                    const bounds = element.getBoundingClientRect();
+                    const rows: number[] = [];
+                    for (let y = Math.floor(bounds.top); y < bounds.bottom; y++) {
+                        if (document.elementFromPoint(bounds.left - 8, y) === element) rows.push(y);
+                    }
+                    return {
+                        picture: { top: picture.top, height: picture.height },
+                        words: words && { top: words.top, bottom: words.bottom },
+                        number: rows.length === 0 ? null : (rows[0] + rows[rows.length - 1]) / 2,
+                    };
+                });
+
+            // The number at the top of the picture, not at its foot. Beside it, the first line of
+            // the words is there too: level with the number, whether or not the picture has a
+            // caption, rather than both dropped to the foot of the picture together.
+            for (const index of [0, 4, 5]) {
+                const placement = await numberPlacement(items.nth(index));
+                expect(placement.number).not.toBeNull();
+                expect(placement.number!).toBeGreaterThan(placement.picture.top);
+                expect(placement.number!).toBeLessThan(placement.picture.top + placement.picture.height / 4);
+                if (placement.words) {
+                    expect(placement.number!).toBeGreaterThan(placement.words.top);
+                    expect(placement.number!).toBeLessThan(placement.words.bottom);
+                }
+            }
+
+            // A formula among words must align as it does outside a table. The in-place theme
+            // centres inline images, whereas the standalone worksheet uses their baseline.
+            // An empty inline block measures that baseline independently of either stylesheet.
+            const formulas = items.nth(2).locator('img');
+            const controls = items.nth(3).locator('img');
+            await expect(formulas).toHaveCount(2);
+            await expect(controls).toHaveCount(2);
+            const baselineOffset = async (formula: Locator) => {
+                await expect
+                    .poll(() => formula.evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth > 0))
+                    .toBe(true);
+                return formula.evaluate(img => {
+                    const baseline = document.createElement('span');
+                    baseline.style.cssText = 'display:inline-block;width:0;height:0;vertical-align:baseline';
+                    img.after(baseline);
+                    const offset = img.getBoundingClientRect().bottom - baseline.getBoundingClientRect().bottom;
+                    baseline.remove();
+                    return offset;
+                });
+            };
+            for (const index of [0, 1]) {
+                const offset = await baselineOffset(formulas.nth(index));
+                const reference = await baselineOffset(controls.nth(index));
+                expect(Math.abs(offset - reference)).toBeLessThan(1);
+            }
+        });
+    }
 
     test('prints a challenge activity with compact writing spaces for challenge and trials', async ({
         authenticatedPage: page,
@@ -2515,22 +2942,22 @@ test.describe('Print: choosing what happens to the interactive activities', () =
         // its own.
         const exercise = '.worksheet-activity[data-idevice="guess"]';
         await expect(frame.locator(exercise)).toHaveCount(1);
-        // The fixture holds four activities with a paper form — a rubric, two forms and the Guess —
-        // and a download button, which has none and never will. Unless its title is asked for, it
-        // is left out without even a note.
+        // The fixture holds five activities with a paper form — a rubric, a checklist, two forms and
+        // the Guess — and a download button, which has none and never will. Unless its title is
+        // asked for, it is left out without even a note.
         const converted = '.worksheet-activity:not(.worksheet-activity-reference):not(.worksheet-activity-unprintable)';
-        await expect(frame.locator(converted)).toHaveCount(4);
+        await expect(frame.locator(converted)).toHaveCount(5);
         await expect(frame.locator('.worksheet-activity-unprintable')).toHaveCount(0);
         await expect(frame.locator('.exe-download-package-link')).toHaveCount(0);
         await expect(frame.locator('.worksheet-box')).toHaveCount(EXPECTED_BOXES);
         await expect(frame.locator('.adivina-DataGame')).toHaveCount(0);
         await expect(frame.locator(`.exe-single-page ${exercise}`)).toHaveCount(1);
-        await expect(frame.locator(`.exe-single-page ${converted}`)).toHaveCount(4);
+        await expect(frame.locator(`.exe-single-page ${converted}`)).toHaveCount(5);
 
         // The exercise sits inside the component the activity occupied, and the wrapper does not
         // answer to the same class the exercise does.
         await expect(frame.locator(`.idevice_node.printable-activity ${exercise}`)).toHaveCount(1);
-        await expect(frame.locator(`.idevice_node.printable-activity ${converted}`)).toHaveCount(4);
+        await expect(frame.locator(`.idevice_node.printable-activity ${converted}`)).toHaveCount(5);
     });
 
     test('points into an appendix and prints the exercise there', async ({ authenticatedPage, createProject }) => {
@@ -2648,11 +3075,11 @@ test.describe('Print: choosing which interactive activities to print', () => {
         await panel.waitFor({ state: 'visible', timeout: 15000 });
         const selection = panel.locator('.print-activities-selection');
 
-        // A rubric, two forms and the Guess, each ticked, and the download button: it can never be
-        // printed, so it is listed cleared and marked as printing its title only.
+        // A rubric, a checklist, two forms and the Guess, each ticked, and the download button: it
+        // can never be printed, so it is listed cleared and marked as printing its title only.
         await expect(selection).toBeVisible();
-        await expect(selection.locator(SELECTED)).toHaveCount(5);
-        await expect(selection.locator(`${SELECTED}:checked`)).toHaveCount(4);
+        await expect(selection.locator(SELECTED)).toHaveCount(6);
+        await expect(selection.locator(`${SELECTED}:checked`)).toHaveCount(5);
         const cleared = selection.locator(`${SELECTED}:not(:checked)`);
         await expect(cleared).toHaveCount(1);
         await expect(cleared).toHaveAccessibleDescription('Title only');
@@ -2722,10 +3149,10 @@ test.describe('Print: choosing which interactive activities to print', () => {
         // Neither the game, nor its exercise, nor a pointer to one.
         await expect(frame.locator('.worksheet-activity[data-idevice="guess"]')).toHaveCount(0);
         await expect(frame.locator('.adivina-DataGame')).toHaveCount(0);
-        // The other three that can be printed are numbered from one without a gap.
+        // The other four that can be printed are numbered from one without a gap.
         const references = frame.locator('.worksheet-reference');
-        await expect(references).toHaveCount(3);
-        for (let index = 0; index < 3; index++) await expect(references.nth(index)).toContainText(String(index + 1));
+        await expect(references).toHaveCount(4);
+        for (let index = 0; index < 4; index++) await expect(references.nth(index)).toContainText(String(index + 1));
     });
 
     test('leaves off the worksheet an activity left unticked', async ({ authenticatedPage, createProject }) => {

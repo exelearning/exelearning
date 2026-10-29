@@ -14,6 +14,7 @@ import { zipSync, strToU8 } from 'fflate';
 
 import { createConvertRoutes, type ConvertDependencies } from './convert';
 import type { Database } from '../db/types';
+import { getJwtSecret } from '../utils/jwt-secret';
 
 const testDir = path.join(process.cwd(), 'test', 'temp', 'convert-test');
 
@@ -31,9 +32,8 @@ const testUser = {
     updated_at: '2025-01-01 00:00:00',
 };
 
-// JWT secret for testing - must match getJwtSecret() fallback in convert.ts
-// We use the default fallback 'dev_secret_change_me' to avoid env var race conditions
-const JWT_SECRET = 'dev_secret_change_me';
+// Resolve the same process-local/configured secret used by the route.
+const JWT_SECRET = getJwtSecret();
 
 // Create mock database functions
 function createMockQueries() {
@@ -143,7 +143,7 @@ describe('Convert Routes', () => {
         // Create mock dependencies
         mockDeps = createMockDependencies();
 
-        // Create app with convert routes (uses 'dev_secret_change_me' as JWT secret)
+        // Create app with convert routes using the explicit test-only JWT secret.
         app = new Elysia().use(createConvertRoutes(mockDeps));
 
         // Generate auth token

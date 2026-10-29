@@ -93,6 +93,34 @@ describe('applyActivityMode', () => {
         expect(html).toContain('<span>Assessment date:</span>');
     });
 
+    it.each(['in-place', 'appendix'] as const)('prints a checklist as a list to fill in in %s mode', mode => {
+        const payload = JSON.stringify({
+            title: 'Checklist',
+            userData: true,
+            levels: [
+                { type: '0', nivel: '0', item: 'Box item', points: '' },
+                { type: '2', nivel: '0', item: 'Selection item', points: '' },
+            ],
+            msgs: { msgName: 'Learner name', msgDate: 'Date', msgDone: 'Done' },
+        });
+        const content = `<div class="listacotejo-IDevice"><div class="listacotejo-DataGame js-hidden">${encryptDataGame(
+            payload,
+        )}</div></div>`;
+        const pages = run([page([component({ id: 'checklist-1', type: 'checklist', content })])], mode);
+        const html = componentsOf(pages)
+            .map(entry => entry.content)
+            .join('');
+
+        // Nothing of the iDevice is left for its runtime to draw its switches and buttons into.
+        expect(componentsOf(pages).map(entry => entry.type)).not.toContain('checklist');
+        expect(html).not.toContain('listacotejo-DataGame');
+        expect(html).toContain('<span class="worksheet-checklist-text">Box item</span>');
+        expect(html).toContain('<span class="worksheet-checklist-blank"></span>Done</span>');
+        // The document asks for nobody's name of its own, so the checklist keeps both fields.
+        expect(html).toContain('<span>Learner name:</span>');
+        expect(html).toContain('<span>Date:</span>');
+    });
+
     it('leaves a project with no interactive activity untouched', () => {
         for (const mode of ['omit', 'in-place', 'appendix'] as DocumentActivityMode[])
             expect(run([page([text()])], mode)).toEqual([page([text()])]);

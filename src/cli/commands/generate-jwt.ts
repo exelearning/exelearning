@@ -16,6 +16,7 @@ import { error, colors, EXIT_CODES } from '../utils/output';
 import * as jose from 'jose';
 import { db } from '../../db/client';
 import { findUserByEmail } from '../../db/queries';
+import { getConfiguredJwtSecret } from '../../utils/jwt-secret';
 
 export interface GenerateJwtResult {
     success: boolean;
@@ -31,10 +32,6 @@ export interface GenerateJwtDependencies {
 const defaultDependencies: GenerateJwtDependencies = {
     findUserByEmail,
 };
-
-function getJwtSecret(): string {
-    return process.env.API_JWT_SECRET || process.env.JWT_SECRET || process.env.APP_SECRET || '';
-}
 
 /**
  * Parse a claim value, attempting type conversion
@@ -66,11 +63,11 @@ export async function execute(
     }
 
     // Get JWT secret
-    const secret = getJwtSecret();
+    const secret = getConfiguredJwtSecret();
     if (!secret) {
         return {
             success: false,
-            message: 'JWT secret not configured. Set API_JWT_SECRET, JWT_SECRET, or APP_SECRET environment variable.',
+            message: 'JWT secret not configured. Set API_JWT_SECRET or JWT_SECRET environment variable.',
         };
     }
 
@@ -186,7 +183,7 @@ ${colors.cyan('Options:')}
   -h, --help          Show this help message
 
 ${colors.cyan('Environment:')}
-  API_JWT_SECRET, JWT_SECRET, or APP_SECRET must be set
+  API_JWT_SECRET or JWT_SECRET must be set
 
 ${colors.cyan('JWT Payload:')}
   The generated token includes:
