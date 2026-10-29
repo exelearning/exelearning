@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'bun:test';
 import { PRERENDERED_LATEX_CSS } from '../constants';
-import { WORKSHEET_ACTIVITY_STYLES, renderActivityFragment, renderWorksheet } from './WorksheetRenderer';
+import {
+    WORKSHEET_ACTIVITY_STYLES,
+    renderActivityFragment,
+    renderInlineGap,
+    renderWorksheet,
+    unlinkGaps,
+} from './WorksheetRenderer';
 import type { CharacterBoxGroup, PrintableActivity, WorksheetModel } from './types';
 
 /** Boxes with nothing given away: one group per size. */
@@ -470,6 +476,59 @@ describe('renderWorksheet', () => {
             expect(html).toContain('&quot;');
         });
     });
+
+    describe('links', () => {
+        /** A sheet whose one question holds this prompt. */
+        const sheetWith = (prompt: string) =>
+            renderWorksheet(
+                model({
+                    pages: [
+                        {
+                            pageId: 'p1',
+                            title: 'Página',
+                            activities: [
+                                activity({
+                                    items: [{ prompt, answer: { kind: 'characterBoxes', groups: emptyBoxes(1) } }],
+                                }),
+                            ],
+                        },
+                    ],
+                }),
+            );
+
+        it('writes the address after each link to the web, there being no option to turn it off', () => {
+            const html = sheetWith('<a href="https://x/doc">esto</a>');
+
+            expect(html).toMatch(/a\[href\^="http"\]::after \{\s*content: " \[" attr\(href\) "\]";/);
+            expect(html).toContain('<a href="https://x/doc">esto</a>');
+        });
+
+        it('does not write it twice after a link whose text already is the address', () => {
+            const genially = 'https://view.genial.ly/5bb353835b64ad591a0c0924';
+            const html = sheetWith(
+                `<span class="worksheet-embed-address"><a href="${genially}">${genially}</a></span>` +
+                    '<a href="https://x/doc">esto</a>',
+            );
+
+            expect(html).toContain(`<a data-exe-text-is-url href="${genially}">${genially}</a>`);
+            expect(html).toContain('<a href="https://x/doc">esto</a>');
+            expect(html).toMatch(/a\[href\^="http"\]\[data-exe-text-is-url\]::after,[^{]*\{\s*content: none;/);
+        });
+
+        it('leaves the links of a converted document to the document’s own option', () => {
+            // The activity styles go into the printed document too, where Show link URLs decides.
+            expect(WORKSHEET_ACTIVITY_STYLES).not.toContain('a[href^="http"]');
+            expect(WORKSHEET_ACTIVITY_STYLES).not.toContain('.external-iframe-src');
+        });
+
+        it('sets the address of embedded content on a line of its own, in the sheet and the document alike', () => {
+            // In the activity styles, which both carry, so it reads the same on screen and on paper.
+            const rule = WORKSHEET_ACTIVITY_STYLES.split('.worksheet-embed-address {')[1].split('}')[0];
+
+            expect(rule).toContain('display: block;');
+            expect(rule).toContain('overflow-wrap: anywhere;');
+        });
+    });
 });
 
 describe('renderActivityFragment', () => {
@@ -861,7 +920,9 @@ describe('questions set in two columns', () => {
         );
         const fragment = renderActivityFragment(illustrated);
         for (const html of [standalone, fragment]) {
-            expect(html).toContain('<div class="worksheet-prompt"><img src="clue.png" width="400" height="300"></div>');
+            expect(html).toContain(
+                '<div class="worksheet-prompt"><img src="clue.png" width="400" height="300" class="worksheet-illustration"></div>',
+            );
         }
         for (const styles of [standalone, WORKSHEET_ACTIVITY_STYLES]) {
             expect(styles).toMatch(
@@ -909,6 +970,150 @@ describe('questions set in two columns', () => {
         )[0];
 
         expect(rule).toContain('flex-wrap: wrap');
+    });
+});
+
+describe('questions laid out as a table', () => {
+    const prompt =
+        '<table><tbody><tr><td><img src="triangle.png" width="200" height="122"></td><td>Area?</td></tr></tbody></table>';
+    const ruleFor = (styles: string, selector: string) => styles.split(`${selector} {`)[1].split('}')[0];
+
+    it('keeps the table the author laid the question out in', () => {
+        const html = renderActivityFragment(activity({ ideviceType: 'mathproblems', items: [{ prompt }, { prompt }] }));
+
+        expect(html).toContain(
+            `<li class="worksheet-item"><div class="worksheet-prompt">${prompt.replace(
+                'height="122"',
+                'height="122" class="worksheet-illustration"',
+            )}</div>`,
+        );
+    });
+
+    it('lines the cells up on their first line, so the number stays level with the first words', () => {
+        const standalone = renderWorksheet(model());
+
+        for (const styles of [standalone, WORKSHEET_ACTIVITY_STYLES]) {
+            expect(ruleFor(styles, '.worksheet-prompt td,\n.worksheet-prompt th')).toContain(
+                'vertical-align: baseline',
+            );
+        }
+    });
+
+    it('hangs a separate illustration from its top, so it never drops the number to its foot', () => {
+        const standalone = renderWorksheet(model());
+
+        for (const styles of [standalone, WORKSHEET_ACTIVITY_STYLES]) {
+            expect(ruleFor(styles, '.worksheet-prompt .worksheet-illustration')).toContain('vertical-align: top');
+        }
+    });
+
+    for (const cell of ['td', 'th']) {
+        it.each([
+            '<img src="triangle.png">',
+            ' \n&nbsp;<p><span><img src="triangle.png"></span></p><!-- Illustration --> ',
+        ])(`marks a separate illustration in ${cell}: %s`, content => {
+            const prompt = `<table><tbody><tr><${cell}>${content}</${cell}><td>Area?</td></tr></tbody></table>`;
+            const html = renderActivityFragment(activity({ items: [{ prompt }] }));
+
+            expect(html).toContain('<img src="triangle.png" class="worksheet-illustration">');
+            expect(html).toContain('<td>Area?</td>');
+        });
+
+        it.each([
+            'Solve <img src="formula.png"> = 5.',
+            '<span>Solve</span> <span><img src="formula.png"></span> <strong>= 5.</strong>',
+            '<img src="formula.png">&lt;',
+        ])(`keeps an image among words on its baseline in ${cell}: %s`, content => {
+            const prompt = `<table><tbody><tr><${cell}>${content}</${cell}></tr></tbody></table>`;
+            const html = renderActivityFragment(activity({ items: [{ prompt }] }));
+
+            expect(html).toContain(`<div class="worksheet-prompt">${prompt}</div>`);
+            expect(html).not.toContain('worksheet-illustration');
+        });
+    }
+
+    it('distinguishes an inner illustration cell from the text in its containing cell', () => {
+        const prompt =
+            '<table><tbody><tr><td>Outer <img src="formula.png">' +
+            '<table><tbody><tr><td><img src="triangle.png"></td><td>Area?</td></tr></tbody></table>' +
+            '</td></tr></tbody></table>';
+        const html = renderActivityFragment(activity({ items: [{ prompt }] }));
+
+        expect(html).toContain('Outer <img src="formula.png">');
+        expect(html).toContain('<img src="triangle.png" class="worksheet-illustration">');
+        expect(html.match(/worksheet-illustration/g)).toHaveLength(1);
+    });
+
+    it('preserves existing image attributes and classes when marking an illustration', () => {
+        const prompt =
+            '<table><tbody><tr><td rowspan="2"><img src="triangle.png" alt="A &amp; B" class="diagram"></td>' +
+            '<td>Area?</td></tr></tbody></table>';
+        const html = renderActivityFragment(activity({ items: [{ prompt }] }));
+
+        expect(html).toContain('<td rowspan="2">');
+        expect(html).toContain('alt="A &amp; B" class="diagram worksheet-illustration"');
+    });
+
+    it('leaves a table without images unchanged', () => {
+        const prompt = '<table><tbody><tr><td>2 &lt; 5</td></tr></tbody></table>';
+        const html = renderActivityFragment(activity({ items: [{ prompt }] }));
+
+        expect(html).toContain(`<div class="worksheet-prompt">${prompt}</div>`);
+    });
+
+    it('marks an illustration with a caption under it, since the caption is on a line of its own', () => {
+        const prompt =
+            '<table><tbody><tr><td><img src="triangle.png"><br>Figure 1</td><td>Area?</td></tr></tbody></table>';
+        const html = renderActivityFragment(activity({ items: [{ prompt }] }));
+
+        expect(html).toContain('<td><img src="triangle.png" class="worksheet-illustration"><br>Figure 1</td>');
+    });
+});
+
+describe('pictures alone on their line', () => {
+    const rendered = (prompt: string) => renderActivityFragment(activity({ items: [{ prompt }] }));
+
+    it.each([
+        ['in a paragraph of its own before the words', '<p><img src="triangle.png"></p><p>Area?</p>'],
+        ['first in the question, with no paragraph around it', '<img src="triangle.png"><p>Area?</p>'],
+        ['over a caption in the same paragraph', '<p><img src="triangle.png"><br>Figure 1</p><p>Area?</p>'],
+        ['wrapped in emphasis', '<p><strong><img src="triangle.png"></strong></p><p>Area?</p>'],
+    ])('marks a picture %s as an illustration', (_case, prompt) => {
+        expect(rendered(prompt)).toContain('<img src="triangle.png" class="worksheet-illustration">');
+    });
+
+    it('marks every picture on a line with no words, as two set side by side', () => {
+        const html = rendered('<p><img src="a.png"> <img src="b.png"></p><p>Which is bigger?</p>');
+
+        expect(html.match(/class="worksheet-illustration"/g)).toHaveLength(2);
+    });
+
+    it.each([
+        ['a formula in a sentence', '<p>Solve <img src="formula.png"> = 5.</p>'],
+        ['a picture ending a sentence', '<p>Area of <img src="triangle.png"></p>'],
+        ['a picture starting a sentence', '<p><img src="a.png"> looks big.</p>'],
+    ])('leaves %s on its baseline', (_case, prompt) => {
+        const html = rendered(prompt);
+
+        expect(html).toContain(`<div class="worksheet-prompt">${prompt}</div>`);
+        expect(html).not.toContain('worksheet-illustration');
+    });
+
+    it('counts a gap left to write in as a word, so the picture it names stays on the line', () => {
+        const prompt = `<p><img src="dog.png"> ${renderInlineGap(5)}</p>`;
+
+        expect(rendered(prompt)).not.toContain('worksheet-illustration');
+    });
+
+    it('marks only the picture on its own line when the next line has words', () => {
+        const html = rendered('<p><img src="a.png"><br>It is <img src="b.png"> big.</p>');
+
+        expect(html).toContain('<img src="a.png" class="worksheet-illustration">');
+        expect(html).toContain('<img src="b.png"> big.');
+    });
+
+    it('leaves a question without pictures as it was written', () => {
+        expect(rendered('<p>2 &lt; 5</p>')).toContain('<div class="worksheet-prompt"><p>2 &lt; 5</p></div>');
     });
 });
 
@@ -1093,5 +1298,33 @@ describe('the printing context in the worksheet document', () => {
 
     it('sets it in the head, before anything in the body can run', () => {
         expect(html.indexOf('runtime.printing')).toBeLessThan(html.indexOf('</head>'));
+    });
+});
+
+describe('unlinkGaps', () => {
+    const gap = renderInlineGap(6);
+
+    it('takes the link off a gap, keeping the gap', () => {
+        expect(unlinkGaps(`Es <a href="https://es.wikipedia.org/wiki/Toledo">${gap}</a>.`)).toBe(`Es ${gap}.`);
+    });
+
+    it('keeps what else the link held, and the choices offered for the gap', () => {
+        const choices = renderInlineGap(6, ['Toledo', 'Madrid']);
+
+        expect(unlinkGaps(`<a href="https://x/Toledo"><b>la ciudad</b> ${choices}</a>`)).toBe(
+            `<b>la ciudad</b> ${choices}`,
+        );
+    });
+
+    it('leaves the links that hold no gap', () => {
+        const html = `<a href="https://x/a">A</a> ${gap} <a href="https://x/b">B</a>`;
+
+        expect(unlinkGaps(html)).toBe(html);
+    });
+
+    it('takes no notice of the words of a gap written as text, which the sanitiser escapes', () => {
+        const html = '<a href="https://x">&lt;span class=&quot;worksheet-gap&quot;&gt;</a>';
+
+        expect(unlinkGaps(html)).toBe(html);
     });
 });

@@ -97,6 +97,22 @@ export function extractDataGame<T = Record<string, unknown>>(html: string, prefi
     return null;
 }
 
+/**
+ * Read back a text a game keeps in its data, the way its runtime does (`decodeStoredText` in
+ * `common.js`).
+ *
+ * Older projects keep it escaped, and the editors now save it as written. `escape()` never leaves a
+ * `<` and the editors' HTML always has one, so only the escaped kind is decoded: `unescape()` on the
+ * other would turn the `%C3%B3` of a link into `Ã³`.
+ *
+ * @param text - The stored text
+ * @returns The text the activity shows
+ */
+export function decodeStoredText(text: string | null | undefined): string {
+    if (typeof text !== 'string') return '';
+    return text.includes('<') ? text : unescape(text);
+}
+
 export function extractLinkHref(html: string, className: string): string {
     return elements(html, 'a', className)[0]?.attrs.find(attr => attr.name === 'href')?.value ?? '';
 }

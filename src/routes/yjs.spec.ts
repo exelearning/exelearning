@@ -7,6 +7,7 @@ import { Elysia } from 'elysia';
 import { SignJWT } from 'jose';
 import * as Y from 'yjs';
 import { createYjsRoutes, type YjsDependencies } from './yjs';
+import { getJwtSecret } from '../utils/jwt-secret';
 
 // A real Yjs update used to exercise the snapshot+updates reconstruction path
 // (a project whose server-side state lives only in yjs_updates, e.g. edited via
@@ -20,10 +21,7 @@ function buildUpdatesOnlyRows(): Array<{ update_data: Uint8Array; version: strin
 }
 const updatesOnlyRows = buildUpdatesOnlyRows();
 
-// Use the same fallback secret that getJwtSecret() returns when no env var is
-// set. We intentionally do NOT mutate process.env here — tests run in the same
-// process and clobbering API_JWT_SECRET would race with other suites.
-const TEST_SECRET = 'dev_secret_change_me';
+const TEST_SECRET = getJwtSecret();
 
 // Mock project data
 const mockProject = {
