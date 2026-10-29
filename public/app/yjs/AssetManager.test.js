@@ -1556,17 +1556,59 @@ describe('AssetManager', () => {
         expect(mockObjectURLs.get(url)).toBe(imgBlob);
       });
 
-      it.each(['text/html', 'text/html; charset=utf-8', 'application/xhtml+xml', 'text/xml', 'application/xml', 'application/rss+xml', 'text/xsl'])(
-        'serves a %s asset as text/plain so its blob: URL never runs script in the editor origin',
+      it.each(['audio/mpeg', 'video/mp4', 'font/woff2', 'application/pdf', 'text/plain', 'text/vtt', 'text/css'])(
+        'serves an inert %s asset as its original blob',
         async (type) => {
-          const blob = new Blob(['<html><script>parent.x=1</script></html>'], { type });
-          const url = await assetManager._displayBlobURLForAsset({ id: 'h1', filename: 'x', mime: type, blob });
-          const served = mockObjectURLs.get(url);
+          const blob = new Blob(['x'], { type });
+          const url = await assetManager._displayBlobURLForAsset({ id: 'i1', filename: 'x', mime: type, blob });
 
-          expect(served.type).toBe('text/plain');
-          expect(await served.text()).toBe('<html><script>parent.x=1</script></html>');
+          expect(mockObjectURLs.get(url)).toBe(blob);
         }
       );
+
+      it.each([
+        'text/html',
+        'text/html; charset=utf-8',
+        'application/xhtml+xml',
+        'text/xml',
+        'application/xml',
+        'application/rss+xml',
+        'text/xsl',
+        'image/x-foo+xml',
+        'application/x-unknown',
+        // A browser reads the last valid type of a comma list, so this one renders as HTML
+        'text/plain,text/html',
+        'image/png,text/html',
+        'image/svg+xml,text/html',
+      ])('serves a %s asset as application/octet-stream so its blob: URL never runs script in the editor origin', async (type) => {
+        const blob = new Blob(['<html><script>parent.x=1</script></html>'], { type });
+        const url = await assetManager._displayBlobURLForAsset({ id: 'h1', filename: 'x', mime: type, blob });
+        const served = mockObjectURLs.get(url);
+
+        expect(served.type).toBe('application/octet-stream');
+        expect(await served.text()).toBe('<html><script>parent.x=1</script></html>');
+      });
+
+      it('serves an inert type as its bare type/subtype, without parameters a browser could read another type from', async () => {
+        const blob = new Blob(['<script>parent.x=1</script>'], { type: 'text/plain;charset=utf-8,text/html' });
+        const url = await assetManager._displayBlobURLForAsset({ id: 'p1', filename: 'x.txt', blob });
+        const served = mockObjectURLs.get(url);
+
+        expect(served.type).toBe('text/plain');
+        expect(await served.text()).toBe('<script>parent.x=1</script>');
+      });
+
+      it('does not let a collaborator-written MIME list re-type a received blob into HTML (#2621)', async () => {
+        // meta.mime comes from Yjs, so any collaborator can set it; putBlob re-types the blob with it
+        const mime = 'text/plain,text/html';
+        mockYjsBridge._assetsMap.set('m1', { filename: 'notes.txt', mime, size: 27 });
+        await assetManager.putBlob('m1', new Blob(['<script>parent.x=1</script>'], { type: 'text/plain' }));
+
+        const blob = assetManager.blobCache.get('m1');
+        const url = await assetManager._displayBlobURLForAsset({ id: 'm1', filename: 'notes.txt', mime, blob });
+
+        expect(mockObjectURLs.get(url).type).toBe('application/octet-stream');
+      });
 
       it('serves an untyped asset as application/octet-stream so the browser cannot sniff it as HTML', async () => {
         const blob = new Blob(['<html><script>parent.x=1</script></html>']);
@@ -1617,6 +1659,15 @@ describe('AssetManager', () => {
           expect(await blob.text()).toBe(EVIL_SVG);
         });
 
+        it('serves the sanitized SVG with the bare image/svg+xml type', async () => {
+          const blob = new Blob([EVIL_SVG], { type: 'image/svg+xml;charset=utf-8,text/html' });
+          const url = await assetManager._displayBlobURLForAsset({ id: 's4', filename: 'a.svg', blob });
+          const served = mockObjectURLs.get(url);
+
+          expect(served.type).toBe('image/svg+xml');
+          expect(await served.text()).not.toMatch(/script|onload/i);
+        });
+
         it('serves malformed SVG as text/plain', async () => {
           const blob = new Blob(['<svg xmlns="http://www.w3.org/2000/svg"><script>'], { type: 'image/svg+xml' });
           const url = await assetManager._displayBlobURLForAsset({ id: 's2', filename: 'a.svg', blob });
@@ -1646,7 +1697,7 @@ describe('AssetManager', () => {
         it('creates and caches the inert copy of an HTML asset', () => {
           const url = assetManager.getDisplayBlobURLSync({ id: 'c3', blob: new Blob(['<p>'], { type: 'text/html' }) });
 
-          expect(mockObjectURLs.get(url).type).toBe('text/plain');
+          expect(mockObjectURLs.get(url).type).toBe('application/octet-stream');
           expect(assetManager.blobURLCache.get('c3')).toBe(url);
           expect(assetManager.reverseBlobCache.get(url)).toBe('c3');
         });
@@ -1680,7 +1731,7 @@ describe('AssetManager', () => {
         it('still neutralizes an untyped blob whose asset MIME is HTML', () => {
           const url = assetManager.getDisplayBlobURLSync({ id: 'c6', mime: 'text/html', blob: new Blob(['<p>']) });
 
-          expect(mockObjectURLs.get(url).type).toBe('text/plain');
+          expect(mockObjectURLs.get(url).type).toBe('application/octet-stream');
         });
       });
 

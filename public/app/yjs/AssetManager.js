@@ -923,20 +923,23 @@ class AssetManager {
   }
 
   /**
-   * Types a browser renders as a scriptable document when the blob: URL is
-   * framed, embedded or opened. SVG is handled apart because <img> needs it.
+   * Types a browser never renders as a scriptable document when the blob: URL
+   * is framed, embedded or opened: one strict type/subtype, so no comma list
+   * (a browser takes its last valid type) and no XML. SVG is handled apart
+   * because <img> needs it.
    * @private
    */
-  static SCRIPTABLE_DOCUMENT_TYPE =
-    /^(?:text\/html|application\/xhtml\+xml|text\/xml|application\/xml|text\/xsl|application\/xslt\+xml|multipart\/x-mixed-replace)$|\+xml$/;
+  static INERT_DISPLAY_TYPE =
+    /^(?:(?:image|audio|video|font)\/(?!.*xml$)[a-z0-9][a-z0-9!#$&^_.+-]*|application\/pdf|text\/(?:plain|vtt|css))$/;
 
   /**
-   * The display copy of a blob, safe to hand to any element: scriptable
-   * document types become text/plain, an untyped blob becomes
-   * application/octet-stream (no HTML sniffing), and SVG is sanitized so it
-   * still works as an image. An untyped blob takes the asset's recorded MIME
-   * type first. Returns null only for SVG, which needs the async sanitizer.
-   * The stored blob is never changed.
+   * The display copy of a blob, safe to hand to any element. Only inert types
+   * pass, re-typed to their bare type/subtype; anything else, untyped blobs
+   * included, becomes application/octet-stream (no HTML sniffing). SVG is
+   * sanitized so it still works as an image. An untyped blob takes the asset's
+   * recorded MIME type first. Both come from Yjs metadata that any
+   * collaborator can write (#2621). Returns null only for SVG, which needs the
+   * async sanitizer. The stored blob is never changed.
    * @param {Blob} blob
    * @param {string} [mime] - Asset MIME type, used when the blob has none
    * @returns {Blob|null}
@@ -946,9 +949,8 @@ class AssetManager {
     if (!(blob instanceof Blob)) return blob;
     const type = (blob.type || mime || '').split(';')[0].trim().toLowerCase();
     if (type === 'image/svg+xml') return null;
-    if (!type) return new Blob([blob], { type: 'application/octet-stream' });
-    if (AssetManager.SCRIPTABLE_DOCUMENT_TYPE.test(type)) return new Blob([blob], { type: 'text/plain' });
-    return blob.type ? blob : new Blob([blob], { type });
+    if (!AssetManager.INERT_DISPLAY_TYPE.test(type)) return new Blob([blob], { type: 'application/octet-stream' });
+    return blob.type === type ? blob : new Blob([blob], { type });
   }
 
   /**

@@ -73,4 +73,52 @@ test.describe('Embedded HTML/SVG assets stay out of the editor origin', () => {
         }));
         expect(leaked).toEqual({ html: undefined, svg: undefined });
     });
+
+    test('a MIME type written by a collaborator cannot make an asset render as HTML', async ({
+        authenticatedPage,
+        createProject,
+    }) => {
+        const page = authenticatedPage;
+        const projectUuid = await createProject(page, 'Collaborator MIME Asset Embed');
+        await gotoWorkarea(page, projectUuid);
+        await waitForAppReady(page);
+
+        // A browser takes the last valid type of a comma list, so this renders as HTML if passed through
+        const mime = 'text/plain,text/html';
+        const probe = page.evaluate(
+            () =>
+                new Promise(resolve => {
+                    window.addEventListener('message', e => {
+                        if (e.data?.probe === 'html-2621') {
+                            resolve(e.data.reached ? 'read the editor document' : 'ran in an opaque origin');
+                        }
+                    });
+                }),
+        );
+        // The inert copy is application/octet-stream, which the frame downloads instead of rendering
+        const download = page.waitForEvent('download').then(() => 'downloaded');
+
+        const served = await page.evaluate(
+            async ({ html, mime }) => {
+                const am = (window as any).eXeLearning.app.project._yjsBridge.assetManager;
+                const url = await am.insertImage(new File([html], 'notes.txt', { type: 'text/plain' }));
+                const id = url.replace('asset://', '').split('.')[0];
+                // meta.mime lives in Yjs, so any collaborator can write it; a peer then receives the blob
+                am.setAssetMetadata(id, { ...am.getAssetMetadata(id), mime });
+                await am.putBlob(id, new Blob([html], { type: 'text/plain' }));
+                am.blobURLCache.delete(id);
+
+                const src = await am.resolveAssetURL(url);
+                const frame = document.createElement('iframe');
+                frame.src = src;
+                document.body.appendChild(frame);
+                return (await fetch(src)).headers.get('content-type');
+            },
+            { html: HTML_PROBE, mime },
+        );
+
+        expect(await Promise.race([probe, download])).toBe('downloaded');
+        expect(served).toBe('application/octet-stream');
+        expect(await page.evaluate(() => (window as any).__html2621)).toBeUndefined();
+    });
 });
