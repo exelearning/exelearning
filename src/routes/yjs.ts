@@ -7,6 +7,7 @@ import { jwt } from '@elysiajs/jwt';
 import {
     findProjectByUuid,
     upsertSnapshot,
+    replaceSnapshotIfVersion,
     findSnapshotByProjectId,
     loadDocumentWithUpdates,
     updateProjectTitle,
@@ -28,6 +29,7 @@ export interface YjsQueries {
     findSnapshotByProjectId: typeof findSnapshotByProjectId;
     loadDocumentWithUpdates: typeof loadDocumentWithUpdates;
     upsertSnapshot: typeof upsertSnapshot;
+    replaceSnapshotIfVersion: typeof replaceSnapshotIfVersion;
     updateProjectTitle: typeof updateProjectTitle;
     updateProjectTitleAndSave: typeof updateProjectTitleAndSave;
     checkProjectAccess: typeof checkProjectAccess;
@@ -51,11 +53,61 @@ const defaultDependencies: YjsDependencies = {
         findSnapshotByProjectId,
         loadDocumentWithUpdates,
         upsertSnapshot,
+        replaceSnapshotIfVersion,
         updateProjectTitle,
         updateProjectTitleAndSave,
         checkProjectAccess,
     },
 };
+
+/** Response/request header carrying the stored document version (#2615). */
+export const DOCUMENT_VERSION_HEADER = 'X-Document-Version';
+export const BASE_VERSION_HEADER = 'X-Base-Version';
+/** Compare-and-set attempts before the save falls back to a merged replace. */
+const MAX_SAVE_ATTEMPTS = 3;
+
+type StoredDocument = Awaited<ReturnType<typeof loadDocumentWithUpdates>>;
+
+/**
+ * The version a client must echo back as `X-Base-Version`: the snapshot version
+ * or, when newer incremental updates exist (REST API v1 writes), the latest of
+ * those. Mirrors `getDocumentVersion()` but works from rows already loaded.
+ */
+function currentVersionOf(stored: StoredDocument): string | null {
+    const snapshotVersion = stored.snapshot ? Number.parseInt(stored.snapshot.snapshot_version, 10) || 0 : 0;
+    const updateVersion = stored.updates.reduce((max, u) => Math.max(max, Number.parseInt(u.version, 10) || 0), 0);
+    const version = Math.max(snapshotVersion, updateVersion);
+    return version > 0 ? String(version) : null;
+}
+
+/** Decode the stored rows into one Y.Doc state (snapshot + newer updates). */
+async function mergeStoredState(stored: StoredDocument): Promise<Uint8Array | null> {
+    if (!stored.snapshot && stored.updates.length === 0) return null;
+    if (stored.snapshot && stored.updates.length === 0) return fromBinaryData(stored.snapshot.snapshot_data);
+    const Y = await import('yjs');
+    const ydoc = new Y.Doc();
+    if (stored.snapshot) Y.applyUpdate(ydoc, fromBinaryData(stored.snapshot.snapshot_data));
+    for (const update of stored.updates) Y.applyUpdate(ydoc, fromBinaryData(update.update_data));
+    const state = Y.encodeStateAsUpdate(ydoc);
+    ydoc.destroy();
+    return state;
+}
+
+/**
+ * Merge an incoming full state on top of the stored state (#2615). Yjs merges
+ * are idempotent and commutative, so a client that saved from an older base
+ * can never erase what another client stored meanwhile: both sets of edits
+ * survive, and deletions keep winning through their tombstones.
+ */
+async function mergeIncoming(stored: Uint8Array, incoming: Uint8Array): Promise<Uint8Array> {
+    const Y = await import('yjs');
+    const ydoc = new Y.Doc();
+    Y.applyUpdate(ydoc, stored);
+    Y.applyUpdate(ydoc, incoming);
+    const state = Y.encodeStateAsUpdate(ydoc);
+    ydoc.destroy();
+    return state;
+}
 
 /**
  * Factory function to create Yjs routes with injected dependencies
@@ -132,12 +184,19 @@ export function createYjsRoutes(deps: YjsDependencies = defaultDependencies) {
                     });
                 }
 
+                // The client echoes this back as X-Base-Version on save so the
+                // server can tell a stale save from a current one (#2615).
+                const versionHeader = currentVersionOf({ snapshot, updates }) ?? '0';
+
                 // Fast path: a snapshot with no newer updates is returned as-is
                 // (avoids decoding the Y.Doc on the common browser-save case).
                 if (snapshot && updates.length === 0) {
                     return new Response(fromBinaryData(snapshot.snapshot_data), {
                         status: 200,
-                        headers: { 'Content-Type': 'application/octet-stream' },
+                        headers: {
+                            'Content-Type': 'application/octet-stream',
+                            [DOCUMENT_VERSION_HEADER]: versionHeader,
+                        },
                     });
                 }
 
@@ -155,13 +214,25 @@ export function createYjsRoutes(deps: YjsDependencies = defaultDependencies) {
 
                 return new Response(mergedState, {
                     status: 200,
-                    headers: { 'Content-Type': 'application/octet-stream' },
+                    headers: {
+                        'Content-Type': 'application/octet-stream',
+                        [DOCUMENT_VERSION_HEADER]: versionHeader,
+                    },
                 });
             })
 
             // POST - Save Yjs document state
             // Use ?markSaved=true to also mark the project as saved (for explicit user save)
             // Without this parameter, only persists data (for auto-save on page unload)
+            //
+            // Save validation (#2615): the client sends X-Base-Version, the
+            // version it last loaded/saved. When it matches the stored version
+            // the snapshot is replaced as-is (fast path, no decoding). When it
+            // does not match, or is absent (older bundles, sendBeacon), the
+            // incoming state is MERGED on top of the stored one, so a client
+            // that was offline while others saved can never overwrite them.
+            // The write is a compare-and-set on the stored version, retried on
+            // a concurrent save.
             .post('/uuid/:uuid/yjs-document', async ({ params, body, set, query, headers, jwtPayload }) => {
                 if (!jwtPayload?.sub) {
                     set.status = 401;
@@ -189,8 +260,55 @@ export function createYjsRoutes(deps: YjsDependencies = defaultDependencies) {
                 }
 
                 // body is ArrayBuffer from binary request
-                const binaryData = new Uint8Array(body as ArrayBuffer);
-                const version = Date.now().toString();
+                const incoming = new Uint8Array(body as ArrayBuffer);
+                const baseVersion = headers['x-base-version'] ?? null;
+                let version = Date.now().toString();
+                let merged = false;
+                let stored = false;
+
+                for (let attempt = 0; attempt < MAX_SAVE_ATTEMPTS && !stored; attempt++) {
+                    const current = await queries.loadDocumentWithUpdates(database, project.id);
+                    const currentVersion = currentVersionOf(current);
+                    const currentState = await mergeStoredState(current);
+                    version = Date.now().toString();
+
+                    if (!currentState || currentVersion === null) {
+                        // Nothing stored yet: first save of the project.
+                        await queries.upsertSnapshot(database, project.id, incoming, version);
+                        stored = true;
+                        break;
+                    }
+
+                    const isCurrent = baseVersion !== null && baseVersion === currentVersion;
+                    const data = isCurrent ? incoming : await mergeIncoming(currentState, incoming);
+                    merged = merged || !isCurrent;
+
+                    if (!current.snapshot) {
+                        // Updates-only document (REST API v1): no row to compare against.
+                        await queries.upsertSnapshot(database, project.id, data, version);
+                        stored = true;
+                        break;
+                    }
+
+                    stored = await queries.replaceSnapshotIfVersion(
+                        database,
+                        project.id,
+                        data,
+                        version,
+                        current.snapshot.snapshot_version,
+                    );
+                }
+
+                if (!stored) {
+                    // Three concurrent saves landed in between: merge once more
+                    // against whatever is stored now and replace unconditionally.
+                    const current = await queries.loadDocumentWithUpdates(database, project.id);
+                    const currentState = await mergeStoredState(current);
+                    version = Date.now().toString();
+                    const data = currentState ? await mergeIncoming(currentState, incoming) : incoming;
+                    merged = merged || currentState !== null;
+                    await queries.upsertSnapshot(database, project.id, data, version);
+                }
 
                 // Get title from X-Project-Title header (sent by client to avoid server decoding Yjs)
                 // This is a major performance optimization: avoids Y.applyUpdate() which can take
@@ -208,8 +326,6 @@ export function createYjsRoutes(deps: YjsDependencies = defaultDependencies) {
                     }
                 }
 
-                await queries.upsertSnapshot(database, project.id, binaryData, version);
-
                 // Only mark as saved if explicitly requested (user clicked Save)
                 // Auto-persistence (beforeunload) should NOT mark as saved
                 const markSaved = query.markSaved === 'true';
@@ -219,7 +335,7 @@ export function createYjsRoutes(deps: YjsDependencies = defaultDependencies) {
                     await queries.updateProjectTitle(database, project.id, title);
                 }
 
-                return { success: true, message: 'Document saved', version, markedAsSaved: markSaved };
+                return { success: true, message: 'Document saved', version, markedAsSaved: markSaved, merged };
             })
     );
 }

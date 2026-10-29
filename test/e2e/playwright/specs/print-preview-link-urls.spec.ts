@@ -95,7 +95,7 @@ test.describe('Print preview', () => {
         expect(await page.evaluate(() => (window as any).__opened)).toBeUndefined();
     });
 
-    test('does not offer link URLs for the worksheet, which has no links to show', async ({
+    test('does not offer link URLs for the worksheet, which always prints them', async ({
         authenticatedPage: page,
         createProject,
     }) => {
@@ -108,6 +108,7 @@ test.describe('Print preview', () => {
         await expect(overlay).toHaveAttribute('data-visible', 'true');
 
         await expect(page.locator('#printOptLinkUrls')).toBeDisabled();
+        await expect(page.locator('#printOptLinkUrls')).toBeChecked();
     });
 
     test('does not write the address again after a link whose text already is it', async ({
@@ -282,5 +283,37 @@ test.describe('Print preview', () => {
             expect(await measure(media), media).toEqual({ after: 'none', iframeSource: 'none' });
         }
         await page.emulateMedia({ media: null });
+    });
+
+    test("prints the footer's license in the project's language, linked to the license (#2637)", async ({
+        authenticatedPage: page,
+        createProject,
+    }) => {
+        test.setTimeout(120000);
+
+        const projectUuid = await createProject(page, 'Print license footer');
+        await gotoWorkarea(page, projectUuid);
+        await waitForAppReady(page);
+        await page.evaluate(() => {
+            const metadata = (window as any).eXeLearning.app.project._yjsBridge.documentManager.getMetadata();
+            metadata.set('language', 'es');
+            metadata.set('license', 'creative commons: attribution - share alike 4.0');
+        });
+
+        await page.evaluate(() => (window as any).eXeLearning.app.modals.printpreview.show());
+        const overlay = page.locator('#printPreviewOverlay');
+        await expect(overlay).toHaveAttribute('data-busy', 'false', { timeout: 30000 });
+        const license = page.frameLocator('.print-preview-iframe').locator('#packageLicense');
+        await expect(license).toHaveCount(1, { timeout: 30000 });
+
+        await expect(license.locator('.license-label')).toHaveText('Licencia:');
+        const link = license.locator('a.license');
+        await expect(link).toHaveAttribute('href', 'https://creativecommons.org/licenses/by-sa/4.0/');
+        await expect(link).toHaveText('Creative Commons: Reconocimiento - compartir igual 4.0');
+        // Its address prints after it as any other link's does, with "Show link URLs" on.
+        // Chromium resolves attr(href); Firefox reports the declared value unresolved.
+        expect(await link.evaluate(a => getComputedStyle(a, '::after').content)).toMatch(
+            /\[(https:\/\/creativecommons\.org\/licenses\/by-sa\/4\.0\/|" attr\(href\) ")\]/,
+        );
     });
 });

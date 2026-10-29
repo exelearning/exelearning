@@ -2283,7 +2283,7 @@ class YjsProjectBridge {
       if (icon.source === 'asset') {
         const assetManager = window.eXeLearning?.app?.project?._yjsBridge?.assetManager;
         const resolvedAssetUrl = assetManager?.resolveAssetURLSync?.(icon.value) || icon.value;
-        iconEl.innerHTML = `<img src="${resolvedAssetUrl}" alt="${icon.value}">`;
+        iconEl.innerHTML = blockIconRuntime.renderIconImage(resolvedAssetUrl, icon.value);
         iconEl.classList.remove('exe-no-icon');
         return;
       }
@@ -2300,7 +2300,7 @@ class YjsProjectBridge {
 
       if (themeIcon && themeIcon.value) {
         if (currentIconSrc !== themeIcon.value || iconEl.classList.contains('exe-no-icon')) {
-          iconEl.innerHTML = `<img src="${themeIcon.value}" alt="${themeIcon.title || icon.value}">`;
+          iconEl.innerHTML = blockIconRuntime.renderIconImage(themeIcon.value, themeIcon.title || icon.value);
           iconEl.classList.remove('exe-no-icon');
           Logger.log(`[YjsProjectBridge] Synced block icon: ${blockId} -> ${icon.value}`);
         }
@@ -3413,8 +3413,12 @@ class YjsProjectBridge {
     }
     if (!window.html2canvas) return null;
 
-    // Create hidden iframe for rendering
+    // Create hidden iframe for rendering. The HTML is built from collaborator-
+    // controlled project content, so scripting is disabled in the frame (set
+    // before it is attached): inline handlers and javascript: URLs cannot run.
+    // allow-same-origin stays so html2canvas can read the frame's DOM.
     const iframe = document.createElement('iframe');
+    iframe.sandbox = 'allow-same-origin'; // DOMTokenList with PutForwards=value
     iframe.style.cssText = 'position:fixed;left:-9999px;top:-9999px;width:1280px;height:900px;border:none;opacity:0;';
     document.body.appendChild(iframe);
 
