@@ -402,6 +402,18 @@ describe('ModalPrintPreview', () => {
             expect(modal.loadingEl.innerHTML).toContain('print-preview-error');
         });
 
+        it('draws its icon without an icon font, so only the message is read or shown as text', () => {
+            modal.showError('Test error message');
+
+            const box = modal.loadingEl.querySelector('.print-preview-error');
+            const icon = box.querySelector('svg.print-preview-error-icon');
+            expect(icon.getAttribute('aria-hidden')).toBe('true');
+            expect(icon.getAttribute('focusable')).toBe('false');
+            expect(icon.querySelector('path').getAttribute('fill')).toBe('currentColor');
+            expect(box.querySelector('.exe-icon')).toBeNull();
+            expect(box.textContent.trim()).toBe('Test error message');
+        });
+
         it('should hide iframe', () => {
             modal.showError('Test error');
 

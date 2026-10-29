@@ -262,8 +262,10 @@
         max-width: 500px;
         text-align: center;
 
-        .exe-icon {
-            font-size: 48px;
+        .print-preview-error-icon {
+            width: 48px;
+            height: 48px;
+            flex: none;
             color: var(--red-500, #e53e3e);
         }
 

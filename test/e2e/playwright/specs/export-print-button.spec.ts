@@ -533,9 +533,12 @@ test.describe('Export print button project property (addPrintButton)', () => {
             await expect.poll(() => heldImages.length).toBeGreaterThan(0);
             await expect.poll(() => frame.locator('html').evaluate(() => document.readyState)).toBe('interactive');
             await exported.clock.fastForward(25001);
-            await expect(overlay.locator('.print-preview-error')).toContainText(
-                'Print resources did not finish loading',
-            );
+            // The package has no icon font: the icon is drawn, never its name written out.
+            const errorBox = overlay.locator('.print-preview-error');
+            await expect(errorBox).toHaveText('Print resources did not finish loading. Please try again.');
+            const errorIcon = errorBox.locator('svg.print-preview-error-icon');
+            await expect(errorIcon).toBeVisible();
+            expect(await errorIcon.boundingBox()).toMatchObject({ width: 48, height: 48 });
             await expect(overlay.locator('.print-preview-print-btn')).toBeDisabled();
             await overlay.locator('.print-preview-close-btn').click();
             releaseImages();
