@@ -41,6 +41,44 @@ export function resetPostgresSqlConstructorForTesting(): void {
     SqlCtor = SQL;
 }
 
+// ============================================================================
+// RESULT NORMALIZATION
+// ============================================================================
+
+/** PostgreSQL OID of the int8 (bigint) type. */
+const INT8_OID = 20;
+
+type BunResultColumn = { name: string; type: number };
+
+/**
+ * Bun's PostgreSQL driver returns int8 (bigint) columns as strings to avoid
+ * precision loss, while SQLite and MySQL return numbers. Timestamps and
+ * aggregates like count() live in int8 columns, so without this conversion the
+ * application receives strings where it expects numbers (e.g. `new Date(ts)`
+ * yields "Invalid Date"). Values beyond Number.MAX_SAFE_INTEGER stay strings.
+ */
+function convertInt8Columns<R>(rows: R[], columns: BunResultColumn[] | undefined): R[] {
+    const int8Names = columns?.filter(column => column.type === INT8_OID).map(column => column.name);
+    if (!int8Names?.length) {
+        return rows;
+    }
+
+    return rows.map(row => {
+        const converted = { ...(row as Record<string, unknown>) };
+        for (const name of int8Names) {
+            const value = converted[name];
+            if (typeof value !== 'string') {
+                continue;
+            }
+            const asNumber = Number(value);
+            if (Number.isSafeInteger(asNumber)) {
+                converted[name] = asNumber;
+            }
+        }
+        return converted as R;
+    });
+}
+
 // Symbol for private release method
 const RELEASE_METHOD = Symbol('release');
 
@@ -69,8 +107,11 @@ class BunPostgresConnection implements DatabaseConnection {
         const command = sql.trim().split(/\s+/)[0]?.toUpperCase();
         const isMutation = command === 'INSERT' || command === 'UPDATE' || command === 'DELETE' || command === 'MERGE';
 
+        const rows = Array.isArray(result) ? (result as R[]) : [];
+        const columns = (result as { columns?: BunResultColumn[] }).columns;
+
         return {
-            rows: Array.isArray(result) ? (result as R[]) : [],
+            rows: convertInt8Columns(rows, columns),
             numAffectedRows: isMutation ? BigInt(result.count ?? 0) : undefined,
             numUpdatedRows: isMutation ? BigInt(result.count ?? 0) : undefined,
         };
