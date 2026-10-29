@@ -27,6 +27,7 @@ export function printPreviewShell(_) {
     <div class="print-preview-notice" role="alert" hidden>
         <p class="print-preview-notice-text" data-notice="not-started">${escape(_("Printing did not start. Printing may be disabled in this browser or on this device."))}</p>
         <p class="print-preview-notice-text" data-notice="pdf-failed" hidden>${escape(_("The PDF could not be saved."))}</p>
+        <p class="print-preview-notice-text" data-notice="images-skipped" hidden>${escape(_("Some images could not be loaded and are left out of the printout."))}</p>
         <button type="button" class="print-preview-open-tab-btn btn btn-secondary btn-sm">${escape(_("Open in a new tab"))}</button>
         <button type="button" class="print-preview-notice-pdf-btn btn btn-secondary btn-sm" hidden>${escape(_("Save as PDF"))}</button>
     </div>

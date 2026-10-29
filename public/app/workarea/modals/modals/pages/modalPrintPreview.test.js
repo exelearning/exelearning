@@ -254,7 +254,6 @@ describe('ModalPrintPreview', () => {
 
         it.each([
             ['PRINT_RESOURCES_TIMEOUT', 'Print resources did not finish loading. Please try again.'],
-            ['PRINT_IMAGE_FAILED', 'An image could not be loaded. Check the resource and try again.'],
         ])('shows a translated resource error for %s and keeps printing disabled', async (code, message) => {
             modal.translate = vi.fn(text => `Translated: ${text}`);
             vi.spyOn(modal, 'generatePreview').mockRejectedValue(new Error(`Error: ${code}`));

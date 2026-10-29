@@ -1,23 +1,27 @@
 import { printPreviewSnapshot } from '../workarea/modals/modals/pages/printPreviewSnapshot.js';
 
-// Leave time for the host's 30-second deadline to receive a resource error.
+// Leave time for the host's 30-second deadline to receive the frame's answer.
 const RESOURCE_TIMEOUT_MS = 25000;
 
-function waitForImage(image, cancellations) {
+/**
+ * Wait for an image to load. One that fails or comes back zero-sized is passed to `skip`
+ * instead of failing the whole printout; so is one still loading when cancelled with `true`.
+ */
+function waitForImage(image, cancellations, skip) {
     // Empty placeholders are common in interactive activities.
     if (!image.currentSrc && !image.getAttribute('src') && !image.getAttribute('srcset') &&
         !image.closest('picture')?.querySelector('source[srcset]')) return Promise.resolve();
-    return new Promise((resolve, reject) => {
-        const finish = (error) => {
+    return new Promise(resolve => {
+        const finish = (leaveOut) => {
             image.removeEventListener('load', loaded);
             image.removeEventListener('error', failed);
             cancellations.delete(cancel);
-            if (error) reject(error);
-            else resolve();
+            if (leaveOut) skip(image);
+            resolve();
         };
-        const loaded = () => finish(image.naturalWidth > 0 ? null : new Error('PRINT_IMAGE_FAILED'));
-        const failed = () => finish(new Error('PRINT_IMAGE_FAILED'));
-        const cancel = () => finish();
+        const loaded = () => finish(image.naturalWidth === 0);
+        const failed = () => finish(true);
+        const cancel = (leaveOut) => finish(leaveOut);
         cancellations.add(cancel);
         image.addEventListener('load', loaded);
         image.addEventListener('error', failed);
@@ -35,6 +39,14 @@ export function bindPrintFrame(token, host = window) {
     let preparing = false;
     let printId = null;
     const cancellations = new Set();
+    // Images that failed, or were still loading at the deadline: the rest of the page still prints.
+    const skipped = new Set();
+    const skip = (image) => {
+        skipped.add(image);
+        image.style.setProperty('display', 'none', 'important');
+    };
+    // Set once the document, MathJax and fonts are ready and only images are left.
+    let waitingForImages = false;
     let cancelWaiting;
     const cancelled = new Promise(resolve => { cancelWaiting = resolve; });
     const reply = (id, type, value, error) => {
@@ -77,7 +89,8 @@ export function bindPrintFrame(token, host = window) {
         if (disposed || settled) return;
         settled = true;
         cleanupReadiness();
-        reply(0, 'ready', undefined, error ? String(error) : undefined);
+        const value = skipped.size ? { skippedImages: skipped.size } : undefined;
+        reply(0, 'ready', value, error ? String(error) : undefined);
     };
     const ready = async () => {
         if (preparing || disposed || settled) return;
@@ -87,12 +100,22 @@ export function bindPrintFrame(token, host = window) {
             await Promise.race([host.MathJax?.startup?.promise, cancelled]);
             if (disposed || settled) return;
             const images = Array.from(host.document.querySelectorAll('img'));
-            await Promise.race([
-                Promise.all([host.document.fonts?.ready, ...images.map(image => waitForImage(image, cancellations))]),
-                cancelled,
-            ]);
+            const loading = images.map(image => waitForImage(image, cancellations, skip));
+            await Promise.race([host.document.fonts?.ready, cancelled]);
+            if (disposed || settled) return;
+            waitingForImages = true;
+            await Promise.race([Promise.all(loading), cancelled]);
             finishReadiness();
         } catch (error) { finishReadiness(error); }
+    };
+    const expire = () => {
+        if (!waitingForImages) {
+            finishReadiness(new Error('PRINT_RESOURCES_TIMEOUT'));
+            return;
+        }
+        // Only images are missing: leave out the ones still loading rather than the whole printout.
+        for (const cancel of [...cancellations]) cancel(true);
+        finishReadiness();
     };
     const onStateChange = () => {
         // Wait for scripts and styles too. Interactive/DOMContentLoaded is too early for
@@ -115,7 +138,7 @@ export function bindPrintFrame(token, host = window) {
     host.addEventListener('load', onStateChange);
     // Recover missed lifecycle events without declaring a still-loading document ready.
     const stateTimer = setInterval(onStateChange, 250);
-    const deadline = setTimeout(() => finishReadiness(new Error('PRINT_RESOURCES_TIMEOUT')), RESOURCE_TIMEOUT_MS);
+    const deadline = setTimeout(expire, RESOURCE_TIMEOUT_MS);
     onStateChange();
     return dispose;
 }

@@ -253,7 +253,6 @@ export default class ModalPrintPreview {
             const _ = this.translate;
             const resourceErrors = {
                 PRINT_RESOURCES_TIMEOUT: _('Print resources did not finish loading. Please try again.'),
-                PRINT_IMAGE_FAILED: _('An image could not be loaded. Check the resource and try again.'),
             };
             this.showError(resourceErrors[error.message?.replace(/^Error: /, '')] || error.message || 'An error occurred');
         });
@@ -870,12 +869,14 @@ export default class ModalPrintPreview {
         };
         this.disposePreview = this.retainPreview();
         if (this.frameTransport) {
-            await this.frameTransport.load(html);
+            const loaded = await this.frameTransport.load(html);
             if (requestId === this.requestId) {
                 this.ready = true;
                 this.applyFolding();
                 this.applyTeacherMode();
                 this.showLoading(false);
+                // The frame left out images it could not load; the rest can still be printed.
+                if (loaded?.skippedImages) this.showNotice('images-skipped');
             }
             return;
         }
@@ -993,8 +994,9 @@ export default class ModalPrintPreview {
      * - 'not-started': printing did not start. Its way out is a browser's, opening the preview in a
      *   tab of its own; the desktop app has no tabs, and offers a PDF instead, which needs no printer.
      * - 'pdf-failed': the desktop app could not save the PDF.
+     * - 'images-skipped': some images could not be loaded and are left out; the rest still prints.
      *
-     * @param {'not-started'|'pdf-failed'|null} kind - The notice, or null for none
+     * @param {'not-started'|'pdf-failed'|'images-skipped'|null} kind - The notice, or null for none
      */
     showNotice(kind) {
         if (!this.noticeEl) return;

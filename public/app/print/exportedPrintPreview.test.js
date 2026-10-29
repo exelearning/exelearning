@@ -151,6 +151,25 @@ describe('exported print preview adapter', () => {
         expect(document.activeElement.id).toBe('opener');
     });
 
+    it('prints without the images the frame left out, saying so without blocking', async () => {
+        doubles.load.mockResolvedValueOnce({ skippedImages: 2 });
+        await preview.open();
+        const notice = document.querySelector('.print-preview-notice');
+        expect(notice.hidden).toBe(false);
+        expect(notice.querySelector('[data-notice="images-skipped"]').hidden).toBe(false);
+        expect(notice.querySelector('[data-notice="not-started"]').hidden).toBe(true);
+        expect(document.querySelector('.print-preview-open-tab-btn').hidden).toBe(true);
+        expect(document.querySelector('.print-preview-print-btn').disabled).toBe(false);
+        expect(document.querySelector('.print-preview-error')).toBeNull();
+        await preview.controller.print();
+        expect(doubles.print).toHaveBeenCalledTimes(1);
+
+        // A preview with every image in place says nothing.
+        preview.controller.close();
+        await preview.open();
+        expect(notice.hidden).toBe(true);
+    });
+
     it('offers a way out when the frame cannot start printing', async () => {
         await preview.open();
         doubles.print.mockRejectedValueOnce(new Error('Printing blocked'));

@@ -41,11 +41,13 @@ function completeImage(image, width = 100) {
     Object.defineProperty(image, 'naturalWidth', { configurable: true, value: width });
     image.dispatchEvent(new Event(width ? 'load' : 'error'));
 }
-function expectReady(host, error) {
+function expectReady(host, error, value) {
     expect(host.parent.postMessage).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({
-        id: 0, type: 'ready', token: 'token', error,
+        id: 0, type: 'ready', token: 'token', error, value,
     }), '*');
 }
+const isLeftOut = image => image.style.getPropertyValue('display') === 'none' &&
+    image.style.getPropertyPriority('display') === 'important';
 
 describe('print frame', () => {
     beforeEach(() => vi.useFakeTimers());
@@ -149,23 +151,50 @@ describe('print frame', () => {
     });
 
     it.each([100, 0])('checks cached images for successful loading (width %i)', async width => {
-        const { host } = frame(host => completeImage(addImage(host), width));
+        let image;
+        const { host } = frame(host => { image = addImage(host); completeImage(image, width); });
         await flush();
-        expectReady(host, width ? undefined : 'Error: PRINT_IMAGE_FAILED');
+        expectReady(host, undefined, width ? undefined : { skippedImages: 1 });
+        expect(isLeftOut(image)).toBe(!width);
     });
 
-    it('reports an image error and detaches listeners from other pending images', async () => {
-        let broken, pending;
-        const { host } = frame(host => { broken = addImage(host); pending = addImage(host); });
-        const remove = vi.spyOn(pending, 'removeEventListener');
+    it('leaves out an image that fails or comes back empty and prints the rest once the others load', async () => {
+        let broken, empty, pending;
+        const { host } = frame(host => { broken = addImage(host); empty = addImage(host); pending = addImage(host); });
+        const remove = vi.spyOn(broken, 'removeEventListener');
         await flush();
         completeImage(broken, 0);
+        empty.dispatchEvent(new Event('load'));
         await flush();
-        expectReady(host, 'Error: PRINT_IMAGE_FAILED');
         expect(remove).toHaveBeenCalledTimes(2);
+        expect(isLeftOut(broken)).toBe(true);
+        expect(isLeftOut(empty)).toBe(true);
+        expect(host.parent.postMessage).not.toHaveBeenCalled();
         completeImage(pending);
-        await vi.advanceTimersByTimeAsync(30000);
-        expectReady(host, 'Error: PRINT_IMAGE_FAILED');
+        await flush();
+        expectReady(host, undefined, { skippedImages: 2 });
+        expect(isLeftOut(pending)).toBe(false);
+        expect(vi.getTimerCount()).toBe(0);
+    });
+
+    it('leaves out the images still loading at the deadline and keeps the ones that loaded', async () => {
+        let loaded, stalled;
+        const { host } = frame(host => { loaded = addImage(host); stalled = addImage(host); });
+        const remove = vi.spyOn(stalled, 'removeEventListener');
+        await flush();
+        completeImage(loaded);
+        await vi.advanceTimersByTimeAsync(24999);
+        expect(host.parent.postMessage).not.toHaveBeenCalled();
+        await vi.advanceTimersByTimeAsync(1);
+        expectReady(host, undefined, { skippedImages: 1 });
+        expect(isLeftOut(stalled)).toBe(true);
+        expect(isLeftOut(loaded)).toBe(false);
+        expect(remove).toHaveBeenCalledTimes(2);
+        expect(vi.getTimerCount()).toBe(0);
+        // Loading late does not bring it back or answer again.
+        completeImage(stalled);
+        await flush();
+        expectReady(host, undefined, { skippedImages: 1 });
     });
 
     it.each(['fonts', 'MathJax'])('waits for slow %s and reports rejection', async resource => {
@@ -203,14 +232,15 @@ describe('print frame', () => {
         expectReady(host);
     });
 
-    it.each(['fonts', 'MathJax', 'image', 'document'])(
+    it.each(['fonts', 'MathJax', 'document'])(
         'reports a deadline error, never readiness, for stalled %s', async resource => {
             const loading = deferred();
             let image;
             const { host } = frame(host => {
+                // An image waiting with them is not what stalls the printout.
+                image = addImage(host);
                 if (resource === 'fonts') host.document.fonts = { ready: loading.promise };
                 if (resource === 'MathJax') host.MathJax = { startup: { promise: loading.promise } };
-                if (resource === 'image') image = addImage(host);
                 if (resource === 'document') setState(host, 'loading');
             });
             await vi.advanceTimersByTimeAsync(24999);

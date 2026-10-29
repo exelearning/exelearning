@@ -514,12 +514,20 @@ test.describe('Export print button project property (addPrintButton)', () => {
             await expect(exported.locator('#exe-print-btn')).toBeFocused();
             expect(missing).toEqual([]);
 
+            // An image that fails is left out and the rest still prints.
+            const skippedNotice = overlay.locator('[data-notice="images-skipped"]');
             imageMode = 'fail';
             await exported.locator('#exe-print-btn').click();
-            await expect(overlay.locator('.print-preview-error')).toContainText('An image could not be loaded');
-            await expect(overlay.locator('.print-preview-print-btn')).toBeDisabled();
+            await expect(overlay.locator('.print-preview-print-btn')).toBeEnabled({ timeout: 30_000 });
+            await expect(skippedNotice).toBeVisible();
+            await expect(skippedNotice).toHaveText('Some images could not be loaded and are left out of the printout.');
+            await expect(overlay.locator('.print-preview-error')).toHaveCount(0);
+            await expect(frame.locator('body')).toContainText('A star');
+            await expect(frame.locator('img[alt="Rabbit"]')).toBeHidden();
             await overlay.locator('.print-preview-close-btn').click();
 
+            // An image that never answers keeps the document itself from finishing loading, and
+            // printing before its scripts run is not safe: that one still stops the printout.
             imageMode = 'hold';
             await exported.locator('#exe-print-btn').click();
             await expect.poll(() => heldImages.length).toBeGreaterThan(0);
@@ -541,6 +549,7 @@ test.describe('Export print button project property (addPrintButton)', () => {
             await exported.locator('#exe-print-btn').click();
             await expect(overlay.locator('.print-preview-print-btn')).toBeEnabled({ timeout: 30_000 });
             await expect(overlay.locator('.print-preview-error')).toHaveCount(0);
+            await expect(skippedNotice).toBeHidden();
             await overlay.locator('.print-preview-close-btn').click();
 
             for (const [name, bytes] of Object.entries(files)) {
