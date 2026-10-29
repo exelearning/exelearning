@@ -29,6 +29,6 @@
 <rect x="290" y="275" width="50" height="18" fill="#d97b4a"/>
 <text x="348" y="288" font-size="13" fill="#1f2328" font-weight="600">3</text>
 <text x="20" y="318" font-size="13" fill="#1f2328" >without any test file</text>
-<rect x="290" y="305" width="283.33333333333337" height="18" fill="#d97b4a"/>
-<text x="581.3333333333334" y="318" font-size="13" fill="#1f2328" font-weight="600">17</text>
+<rect x="290" y="305" width="250" height="18" fill="#d97b4a"/>
+<text x="548" y="318" font-size="13" fill="#1f2328" font-weight="600">15</text>
 </svg>

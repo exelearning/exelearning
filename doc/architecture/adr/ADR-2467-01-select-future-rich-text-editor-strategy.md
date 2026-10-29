@@ -205,7 +205,7 @@ carry `data-mce-fragment`, a TinyMCE paste-internal marker that leaked into save
 - `exegames_hangman` and `rssfeed` register buttons, but neither name appears in any
   toolbar, menu or context menu. **[OPINION]** candidates for deletion, not migration;
   UNVERIFIED whether another entry point exposes them.
-- Tests: 17 Vitest files, 26 Playwright specs/helpers and 1 Bun spec touch TinyMCE or
+- Tests: 23 Vitest files, 32 Playwright specs/helpers and 1 Bun spec touch TinyMCE or
   `.tox-*`; `tinymce_5_settings.test.js` alone is 2,727 lines and asserts the pruning of
   the vendored tree (lines 2670-2727).
 - `public/app/common/common_edition.js:67-68` still branches on
@@ -1391,7 +1391,7 @@ implementation measurement.**
 
 Person-weeks, min–max. **Every cell is an engineering estimate, not an implementation
 measurement.** The basis is the measured surface: 24 plugins / 15,908 lines, 4 forks, 12
-iDevice init sites, ~300 `get()` calls, 17 Vitest and 26 Playwright files, the
+iDevice init sites, ~300 `get()` calls, 23 Vitest and 32 Playwright files, the
 `asset://` hooks and the persisted markers. No earlier effort figure from the research
 ("several person-weeks", "multi-quarter", "several person-months") is comparable with
 these or with each other.
