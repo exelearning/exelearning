@@ -10,6 +10,9 @@ import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { createRequire } from 'module';
+import { JSDOM } from 'jsdom';
+import createDOMPurify from '../../../../../../libs/dompurify/purify.min.js';
+import { sanitizeCollaborativeHtml } from '../../../../../../app/utils/sanitizeHtml.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -228,6 +231,55 @@ describe('image-gallery iDevice export', () => {
       expect(caption.querySelector('b')).toBeNull();
       expect(caption.textContent).toContain('<img src=x');
       expect(window.__pwned).toBeUndefined();
+    });
+
+    // The editor renders collaborator content through sanitizeCollaborativeHtml
+    // before the lightbox ever sees it, so the attribution has to survive that
+    // pass and still be inert once buildCaption renders it. See #2675.
+    describe('after the collaborative sanitizer', () => {
+      beforeEach(() => {
+        const { window: purifyWindow } = new JSDOM('<!doctype html><html><body></body></html>');
+        window.DOMPurify = typeof createDOMPurify === 'function' ? createDOMPurify(purifyWindow) : createDOMPurify;
+      });
+
+      afterEach(() => {
+        delete window.DOMPurify;
+      });
+
+      it('keeps the attribution links through sanitization', () => {
+        document.body.innerHTML = sanitizeCollaborativeHtml(
+          gallery(
+            'title="Sunset" titlelink="https://example.com/sunset" author="Jane Doe"' +
+              ' authorlink="https://example.com/jane" license="CC-BY" licenselink="http://creativecommons.org/licenses/"'
+          )
+        );
+        const caption = openCaption();
+        expect(caption.querySelector('a.caption.author')).not.toBeNull();
+        expect(caption.querySelector('a.caption.author').getAttribute('href')).toBe('https://example.com/jane');
+        expect(caption.querySelector('a.caption.title').getAttribute('href')).toBe('https://example.com/sunset');
+        expect(caption.querySelector('.caption.license a[rel~="license"]')).not.toBeNull();
+        expect(caption.textContent).toContain('Jane Doe');
+      });
+
+      it('renders markup that survived sanitization as text, not as nodes', () => {
+        document.body.innerHTML = sanitizeCollaborativeHtml(
+          gallery('title="Sunset" author="&lt;img src=x onerror=window.__pwned=1&gt;" license="CC-BY" licenselink=""')
+        );
+        const caption = openCaption();
+        expect(caption.querySelector('img')).toBeNull();
+        expect(caption.textContent).toContain('<img src=x');
+        expect(window.__pwned).toBeUndefined();
+      });
+
+      it('drops an attribution link whose scheme is not safe', () => {
+        document.body.innerHTML = sanitizeCollaborativeHtml(
+          gallery('title="Sunset" author="Jane" authorlink="javascript:window.__pwned=1" license="" licenselink=""')
+        );
+        expect(document.body.innerHTML.toLowerCase()).not.toContain('javascript:');
+        const caption = openCaption();
+        expect(caption.querySelector('a[href]')).toBeNull();
+        expect(caption.textContent).toContain('Jane');
+      });
     });
 
     it('labels a license shown alone with the translated $exe_i18n string', () => {
