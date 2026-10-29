@@ -96,6 +96,32 @@ describe('IdentifyWorksheetAdapter', () => {
         expect(JSON.stringify(item)).not.toContain('retrato.jpg');
     });
 
+    it('prints the links of the statement and the clues as their words, since they may lead to the answer', () => {
+        const [item] = itemsOf({
+            questions: [
+                question({
+                    question: 'Plantea una <a href="https://es.wikipedia.org/wiki/Plat%C3%B3n">metafísica</a> dual.',
+                    clues: [
+                        'Autor de <a href="https://es.wikipedia.org/wiki/Plat%C3%B3n">La República</a>',
+                        '',
+                        '',
+                        '',
+                        '',
+                        '',
+                        '',
+                        '',
+                    ],
+                    numberClues: 1,
+                }),
+            ],
+        });
+
+        expect(item.prompt).toBe('Plantea una metafísica dual.');
+        expect(item.extraText).toBe(
+            `<ul class="worksheet-clues">${clue('Sugerencia 1.', 'Autor de La República')}</ul>`,
+        );
+    });
+
     it('never prints the answer, nor the other wordings of it the activity accepts', () => {
         const printed = JSON.stringify(itemsOf({ questions: [question({ solution: 'Platón | El ateniense' })] }));
 
