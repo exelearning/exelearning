@@ -41,6 +41,7 @@ import {
     pruneOldVersions,
     deleteAllVersionHistory,
     getLatestVersionHistory,
+    replaceSnapshotIfVersion,
 } from './yjs';
 
 describe('Yjs Queries', () => {
@@ -167,6 +168,55 @@ describe('Yjs Queries', () => {
                 // Verify only one snapshot exists
                 const found = await findSnapshotByProjectId(db, testProjectId);
                 expect(found?.snapshot_version).toBe('2');
+            });
+        });
+
+        describe('replaceSnapshotIfVersion (#2615)', () => {
+            it('replaces the snapshot when the stored version matches', async () => {
+                await createSnapshot(db, {
+                    project_id: testProjectId,
+                    snapshot_data: new Uint8Array([1]),
+                    snapshot_version: '100',
+                });
+
+                const replaced = await replaceSnapshotIfVersion(
+                    db,
+                    testProjectId,
+                    new Uint8Array([7, 8]),
+                    '200',
+                    '100',
+                );
+
+                expect(replaced).toBe(true);
+                const found = await findSnapshotByProjectId(db, testProjectId);
+                expect(found?.snapshot_version).toBe('200');
+                expect(found?.snapshot_data).toEqual(new Uint8Array([7, 8]));
+            });
+
+            it('leaves the snapshot untouched and reports false when the stored version moved on', async () => {
+                await createSnapshot(db, {
+                    project_id: testProjectId,
+                    snapshot_data: new Uint8Array([1]),
+                    snapshot_version: '150',
+                });
+
+                const replaced = await replaceSnapshotIfVersion(
+                    db,
+                    testProjectId,
+                    new Uint8Array([7, 8]),
+                    '200',
+                    '100',
+                );
+
+                expect(replaced).toBe(false);
+                const found = await findSnapshotByProjectId(db, testProjectId);
+                expect(found?.snapshot_version).toBe('150');
+                expect(found?.snapshot_data).toEqual(new Uint8Array([1]));
+            });
+
+            it('reports false when the project has no snapshot row', async () => {
+                const replaced = await replaceSnapshotIfVersion(db, testProjectId, new Uint8Array([7]), '200', '100');
+                expect(replaced).toBe(false);
             });
         });
 

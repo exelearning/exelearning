@@ -2504,3 +2504,115 @@ export async function zipContainsFile(buffer: Buffer, filename: string): Promise
     const files = await listZipContents(buffer);
     return files.some(path => path.endsWith(filename) || path.includes(`/${filename}`));
 }
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// SERVED WEB SITE EXPORT
+// ═══════════════════════════════════════════════════════════════════════════════
+
+const EXPORT_CONTENT_TYPES: Record<string, string> = {
+    html: 'text/html; charset=utf-8',
+    js: 'text/javascript; charset=utf-8',
+    mjs: 'text/javascript; charset=utf-8',
+    css: 'text/css; charset=utf-8',
+    json: 'application/json',
+    svg: 'image/svg+xml',
+    png: 'image/png',
+    jpg: 'image/jpeg',
+    jpeg: 'image/jpeg',
+    gif: 'image/gif',
+    webp: 'image/webp',
+    ico: 'image/x-icon',
+    woff: 'font/woff',
+    woff2: 'font/woff2',
+    ttf: 'font/ttf',
+    xml: 'application/xml',
+};
+
+/**
+ * Export the open project as a web site in the browser and serve the resulting files
+ * from `origin` through `page.route()`, so a test can open the export as a real
+ * TOP-LEVEL document (not the preview iframe) with `page.goto(`${origin}/index.html`)`.
+ * Reader-activated features such as Presentation mode only exist in that context.
+ *
+ * @returns the file names contained in the export
+ */
+export async function serveWebSiteExport(page: Page, origin: string): Promise<string[]> {
+    const files: Record<string, string> = await page.evaluate(async () => {
+        const bridge = (window as any).eXeLearning?.app?.project?._yjsBridge;
+        const exporters = (window as any).SharedExporters;
+        const fflate = (window as any).fflate;
+        if (!bridge?.documentManager || !exporters?.quickExport || !fflate?.unzipSync) {
+            throw new Error('Browser export dependencies are not available');
+        }
+        const exported = await exporters.quickExport(
+            'html5',
+            bridge.documentManager,
+            bridge.assetCache || null,
+            bridge.resourceFetcher || null,
+            {},
+            bridge.assetManager || null,
+        );
+        if (!exported.success || !exported.data) {
+            throw new Error(exported.error || 'html5 export failed');
+        }
+        const unzipped = fflate.unzipSync(new Uint8Array(exported.data)) as Record<string, Uint8Array>;
+        const encoded: Record<string, string> = {};
+        for (const [name, bytes] of Object.entries(unzipped)) {
+            let binary = '';
+            for (let i = 0; i < bytes.length; i += 0x8000) {
+                binary += String.fromCharCode.apply(null, Array.from(bytes.subarray(i, i + 0x8000)));
+            }
+            encoded[name] = btoa(binary);
+        }
+        return encoded;
+    });
+
+    await page.route(`${origin}/**`, async route => {
+        const pathname = decodeURIComponent(new URL(route.request().url()).pathname).replace(/^\//, '');
+        const body = files[pathname];
+        if (body === undefined) {
+            await route.fulfill({ status: 404, contentType: 'text/plain', body: `not in export: ${pathname}` });
+            return;
+        }
+        const extension = pathname.split('.').pop()?.toLowerCase() ?? '';
+        await route.fulfill({
+            status: 200,
+            contentType: EXPORT_CONTENT_TYPES[extension] ?? 'application/octet-stream',
+            body: Buffer.from(body, 'base64'),
+        });
+    });
+
+    return Object.keys(files);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// BROWSER CAPABILITIES
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Whether the page's browser can draw with the given WebGL version.
+ *
+ * Firefox has no WebGL on the GPU-less CI runners, so a test that needs a model or a molecule drawn
+ * checks first and skips there, with its reason, rather than timing out. `<model-viewer>` (GLB,
+ * GLTF) asks for WebGL 2 only; three.js r160 (STL) and 3Dmol fall back to WebGL 1.
+ *
+ * @param page - Any page of the browser under test
+ * @param version - The WebGL version the drawing needs
+ * @returns true when such a context can be created
+ */
+export async function hasWebGL(page: Page, version: 1 | 2 = 1): Promise<boolean> {
+    return page.evaluate(version => {
+        try {
+            const canvas = document.createElement('canvas');
+            const context =
+                version === 2
+                    ? canvas.getContext('webgl2')
+                    : canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+            // Contexts are scarce: give this one back rather than wait for it to be collected.
+            (context as WebGLRenderingContext | null)?.getExtension('WEBGL_lose_context')?.loseContext();
+            return Boolean(context);
+        } catch {
+            return false;
+        }
+    }, version);
+}

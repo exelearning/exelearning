@@ -9,6 +9,7 @@ import * as fs from 'fs-extra';
 import * as path from 'path';
 import { randomUUID } from 'crypto';
 import { safeFetch, SsrfBlockedError, type LookupFn } from '../utils/ssrf-guard';
+import { isWithinBase } from '../utils/safe-path';
 
 // =====================================================
 // Interfaces
@@ -222,6 +223,14 @@ export async function validateLink(url: string, options: ValidateLinkOptions): P
     if (url.startsWith('files/') || url.startsWith('files\\')) {
         try {
             const relativePath = url.substring(6);
+            // Reject traversal that escapes FILES_DIR. Without this, a crafted
+            // link such as 'files/../../../etc/passwd' turns this existence check
+            // into a host file-existence oracle (valid vs '404' reveals whether an
+            // arbitrary absolute path exists). isWithinBase still allows legitimate
+            // nested links like 'files/docs/file.pdf'.
+            if (!isWithinBase(filesDir, relativePath)) {
+                return '404';
+            }
             const fullPath = path.join(filesDir, relativePath);
             if (await fs.pathExists(fullPath)) {
                 return null;
@@ -282,6 +291,10 @@ export async function validateLink(url: string, options: ValidateLinkOptions): P
                     // refuse to accept.
                     'Accept-Encoding': 'identity',
                 },
+                // The body is discarded, so never decode it: a host is free to
+                // ignore Accept-Encoding and answer with any Content-Encoding,
+                // and the decoder would run on its bytes before cancel().
+                decompress: false,
             });
             try {
                 await response.body?.cancel();

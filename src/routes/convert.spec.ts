@@ -14,6 +14,7 @@ import { zipSync, strToU8 } from 'fflate';
 
 import { createConvertRoutes, type ConvertDependencies } from './convert';
 import type { Database } from '../db/types';
+import { getJwtSecret } from '../utils/jwt-secret';
 
 const testDir = path.join(process.cwd(), 'test', 'temp', 'convert-test');
 
@@ -31,9 +32,8 @@ const testUser = {
     updated_at: '2025-01-01 00:00:00',
 };
 
-// JWT secret for testing - must match getJwtSecret() fallback in convert.ts
-// We use the default fallback 'dev_secret_change_me' to avoid env var race conditions
-const JWT_SECRET = 'dev_secret_change_me';
+// Resolve the same process-local/configured secret used by the route.
+const JWT_SECRET = getJwtSecret();
 
 // Create mock database functions
 function createMockQueries() {
@@ -143,7 +143,7 @@ describe('Convert Routes', () => {
         // Create mock dependencies
         mockDeps = createMockDependencies();
 
-        // Create app with convert routes (uses 'dev_secret_change_me' as JWT secret)
+        // Create app with convert routes using the explicit test-only JWT secret.
         app = new Elysia().use(createConvertRoutes(mockDeps));
 
         // Generate auth token
@@ -949,5 +949,49 @@ describe('Convert Routes', () => {
             // Should reject as too large
             expect(res.status).toBe(400);
         });
+    });
+
+    describe('Path traversal protection', () => {
+        // An fs spy that records every write destination and aborts right after
+        // the upload write (readFile throws), so no real file is ever planted.
+        function createWriteSpyDeps(writePaths: string[]): ConvertDependencies {
+            const spyFs = {
+                ensureDir: async () => {},
+                writeFile: async (p: string) => {
+                    writePaths.push(p);
+                },
+                readFile: async () => {
+                    throw new Error('stop after upload write');
+                },
+                remove: async () => {},
+            };
+            return { ...mockDeps, fs: spyFs as unknown as ConvertDependencies['fs'] };
+        }
+
+        const traversalName = '../../../../../../tmp/exe_pwned.elp';
+
+        for (const url of ['http://localhost/api/convert/elp', 'http://localhost/api/convert/export/html5']) {
+            it(`writes uploads inside tempDir despite a traversal filename (${url})`, async () => {
+                const writePaths: string[] = [];
+                const spiedApp = new Elysia().use(createConvertRoutes(createWriteSpyDeps(writePaths)));
+
+                const elpBuffer = await createTestElpBuffer();
+                const formData = new FormData();
+                formData.append('file', new Blob([elpBuffer], { type: 'application/zip' }), traversalName);
+
+                await spiedApp.handle(
+                    new Request(url, {
+                        method: 'POST',
+                        headers: { Authorization: `Bearer ${authToken}` },
+                        body: formData,
+                    }),
+                );
+
+                // The blob must be written exactly once, inside the temp dir.
+                const tempRoot = path.resolve(path.join(testDir, 'tmp'));
+                expect(writePaths.length).toBe(1);
+                expect(path.resolve(writePaths[0]).startsWith(tempRoot + path.sep)).toBe(true);
+            });
+        }
     });
 });

@@ -175,6 +175,13 @@ deps: check-bun
 css: check-bun
 	@bun run css:node
 
+# Copy gitignored frontend libs from node_modules into public/libs.
+# Needed by host-side Playwright specs that read those files from disk
+# (the DB-matrix E2E targets never run `build:all`).
+.PHONY: vendor-libs
+vendor-libs: check-bun
+	@bun run bundle:vendor
+
 # Build TypeScript + bundle JS
 .PHONY: bundle
 bundle: deps
@@ -549,6 +556,10 @@ endif
 .PHONY: test
 test: check-env check-env test-unit test-integration test-frontend test-e2e   ## Run unit tests (src/) with coverage
 
+.PHONY: test-scripts
+test-scripts: check-bun ## Run scripts/ unit tests (build & vendor helpers)
+	$(TEST_ENV) bun test:scripts
+
 .PHONY: test-unit
 test-unit: check-bun check-tests check-env bundle ## Run unit tests (src/) with coverage and 90% threshold
 	@echo "Running unit tests with coverage..."
@@ -625,6 +636,12 @@ test-e2e-static: check-bun bundle build-static fail-on-windows ## Run E2E tests 
 #   make test-e2e-postgres   # Test with PostgreSQL
 #   make test-e2e-sqlite     # Test with SQLite
 
+# Generate isolated secrets for each database-matrix invocation. The deployment
+# Compose files remain production-like and never receive a published fixed key.
+E2E_API_JWT_SECRET := $(shell openssl rand -hex 32)
+E2E_APP_SECRET := $(shell openssl rand -hex 32)
+E2E_COMPOSE_SECRETS := API_JWT_SECRET=$(E2E_API_JWT_SECRET) APP_SECRET=$(E2E_APP_SECRET)
+
 # Helper to wait for app to be ready
 define wait_for_app
 	@echo "Waiting for app to be ready at http://localhost:8080..."
@@ -635,8 +652,8 @@ define wait_for_app
 		fi; \
 		if [ $$i -eq 30 ]; then \
 			echo "Timeout waiting for app"; \
-			docker compose -p $(1) -f doc/deploy/docker-compose.$(1).yml logs; \
-			docker compose -p $(1) -f doc/deploy/docker-compose.$(1).yml down -v; \
+			$(E2E_COMPOSE_SECRETS) docker compose -p $(1) --env-file doc/deploy/.env.e2e -f doc/deploy/docker-compose.$(1).yml logs; \
+			$(E2E_COMPOSE_SECRETS) docker compose -p $(1) --env-file doc/deploy/.env.e2e -f doc/deploy/docker-compose.$(1).yml down -v; \
 			exit 1; \
 		fi; \
 		echo "  Attempt $$i/30 - waiting..."; \
@@ -648,20 +665,20 @@ endef
 down-e2e:
 	@echo ""
 	@echo "Step 1: Cleaning up previous containers..."
-	-@docker compose -p sqlite -f doc/deploy/docker-compose.sqlite.yml down -v --remove-orphans
-	-@docker compose -p mariadb -f doc/deploy/docker-compose.mariadb.yml down -v --remove-orphans
-	-@docker compose -p postgres -f doc/deploy/docker-compose.postgres.yml down -v --remove-orphans
+	-@$(E2E_COMPOSE_SECRETS) docker compose -p sqlite --env-file doc/deploy/.env.e2e -f doc/deploy/docker-compose.sqlite.yml down -v --remove-orphans
+	-@$(E2E_COMPOSE_SECRETS) docker compose -p mariadb --env-file doc/deploy/.env.e2e -f doc/deploy/docker-compose.mariadb.yml down -v --remove-orphans
+	-@$(E2E_COMPOSE_SECRETS) docker compose -p postgres --env-file doc/deploy/.env.e2e -f doc/deploy/docker-compose.postgres.yml down -v --remove-orphans
 
 
 .PHONY: test-e2e-mariadb
-test-e2e-mariadb: check-docker check-env down-e2e ## Run E2E tests with MariaDB backend
+test-e2e-mariadb: check-docker check-env vendor-libs down-e2e ## Run E2E tests with MariaDB backend
 	@echo ""
 	@echo "============================================================"
 	@echo "  E2E Tests with MariaDB"
 	@echo "============================================================"
 	@echo ""
 	@echo "Step 2: Building and starting services..."
-	@docker compose -p mariadb --env-file doc/deploy/.env.e2e -f doc/deploy/docker-compose.mariadb.yml -f doc/deploy/docker-compose.e2e.yml up --build -d
+	@$(E2E_COMPOSE_SECRETS) docker compose -p mariadb --env-file doc/deploy/.env.e2e -f doc/deploy/docker-compose.mariadb.yml -f doc/deploy/docker-compose.e2e.yml up --build -d
 	@echo ""
 	@echo "Step 3: Waiting for services to be ready..."
 	$(call wait_for_app,mariadb)
@@ -672,7 +689,7 @@ test-e2e-mariadb: check-docker check-env down-e2e ## Run E2E tests with MariaDB 
 	test_exit=$$?; \
 	echo ""; \
 	echo "Step 5: Cleaning up..."; \
-	docker compose -p mariadb -f doc/deploy/docker-compose.mariadb.yml down -v; \
+	$(E2E_COMPOSE_SECRETS) docker compose -p mariadb --env-file doc/deploy/.env.e2e -f doc/deploy/docker-compose.mariadb.yml down -v; \
 	echo ""; \
 	if [ $$test_exit -eq 0 ]; then \
 		echo "============================================================"; \
@@ -686,14 +703,14 @@ test-e2e-mariadb: check-docker check-env down-e2e ## Run E2E tests with MariaDB 
 	exit $$test_exit
 
 .PHONY: test-e2e-postgres
-test-e2e-postgres: check-docker check-env down-e2e ## Run E2E tests with PostgreSQL backend
+test-e2e-postgres: check-docker check-env vendor-libs down-e2e ## Run E2E tests with PostgreSQL backend
 	@echo ""
 	@echo "============================================================"
 	@echo "  E2E Tests with PostgreSQL"
 	@echo "============================================================"
 	@echo ""
 	@echo "Step 2: Building and starting services..."
-	@docker compose -p postgres --env-file doc/deploy/.env.e2e -f doc/deploy/docker-compose.postgres.yml -f doc/deploy/docker-compose.e2e.yml up --build -d
+	@$(E2E_COMPOSE_SECRETS) docker compose -p postgres --env-file doc/deploy/.env.e2e -f doc/deploy/docker-compose.postgres.yml -f doc/deploy/docker-compose.e2e.yml up --build -d
 	@echo ""
 	@echo "Step 3: Waiting for services to be ready..."
 	$(call wait_for_app,postgres)
@@ -704,7 +721,7 @@ test-e2e-postgres: check-docker check-env down-e2e ## Run E2E tests with Postgre
 	test_exit=$$?; \
 	echo ""; \
 	echo "Step 5: Cleaning up..."; \
-	docker compose -p postgres -f doc/deploy/docker-compose.postgres.yml down -v; \
+	$(E2E_COMPOSE_SECRETS) docker compose -p postgres --env-file doc/deploy/.env.e2e -f doc/deploy/docker-compose.postgres.yml down -v; \
 	echo ""; \
 	if [ $$test_exit -eq 0 ]; then \
 		echo "============================================================"; \
@@ -718,14 +735,14 @@ test-e2e-postgres: check-docker check-env down-e2e ## Run E2E tests with Postgre
 	exit $$test_exit
 
 .PHONY: test-e2e-sqlite
-test-e2e-sqlite: check-docker check-env down-e2e ## Run E2E tests with SQLite backend
+test-e2e-sqlite: check-docker check-env vendor-libs down-e2e ## Run E2E tests with SQLite backend
 	@echo ""
 	@echo "============================================================"
 	@echo "  E2E Tests with SQLite"
 	@echo "============================================================"
 	@echo ""
 	@echo "Step 2: Building and starting services..."
-	@docker compose -p sqlite --env-file doc/deploy/.env.e2e -f doc/deploy/docker-compose.sqlite.yml -f doc/deploy/docker-compose.e2e.yml up --build -d
+	@$(E2E_COMPOSE_SECRETS) docker compose -p sqlite --env-file doc/deploy/.env.e2e -f doc/deploy/docker-compose.sqlite.yml -f doc/deploy/docker-compose.e2e.yml up --build -d
 	@echo ""
 	@echo "Step 3: Waiting for services to be ready..."
 	$(call wait_for_app,sqlite)
@@ -736,7 +753,7 @@ test-e2e-sqlite: check-docker check-env down-e2e ## Run E2E tests with SQLite ba
 	test_exit=$$?; \
 	echo ""; \
 	echo "Step 5: Cleaning up..."; \
-	docker compose -p sqlite -f doc/deploy/docker-compose.sqlite.yml down -v; \
+	$(E2E_COMPOSE_SECRETS) docker compose -p sqlite --env-file doc/deploy/.env.e2e -f doc/deploy/docker-compose.sqlite.yml down -v; \
 	echo ""; \
 	if [ $$test_exit -eq 0 ]; then \
 		echo "============================================================"; \
