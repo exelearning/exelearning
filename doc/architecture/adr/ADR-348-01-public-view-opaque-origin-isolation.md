@@ -1,7 +1,7 @@
 ---
 id: ADR-348-01
 title: "Isolate untrusted public viewer content in a server-served opaque origin"
-status: Proposed
+status: Accepted
 date: 2026-07-09
 tracking_issue: 348
 legacy_id: ADR-0017

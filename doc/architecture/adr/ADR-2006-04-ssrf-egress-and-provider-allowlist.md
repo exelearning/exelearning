@@ -1,7 +1,7 @@
 ---
 id: ADR-2006-04
 title: "SSRF egress policy: parsed-URL allow-list and per-hop egress filtering for outbound platform requests"
-status: Proposed
+status: Accepted
 date: 2026-07-09
 tracking_issue: 2006
 legacy_id: ADR-0023

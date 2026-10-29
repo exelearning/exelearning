@@ -1,7 +1,7 @@
 ---
 id: ADR-1858-04
 title: "Missing-asset resilience and accessibility strategy for attachments"
-status: Proposed
+status: Accepted
 date: 2026-07-09
 tracking_issue: 1858
 legacy_id: ADR-0038

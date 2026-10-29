@@ -1,7 +1,7 @@
 ---
 id: ADR-2374-01
 title: "Require human-authored first contributions"
-status: Proposed
+status: Accepted
 date: 2026-09-08
 tracking_issue: 2374
 deciders:

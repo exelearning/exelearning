@@ -1,7 +1,7 @@
 ---
 id: ADR-2006-03
 title: "Database-backed project authorization; in-memory sessions never grant access and fail closed"
-status: Proposed
+status: Accepted
 date: 2026-07-09
 tracking_issue: 2006
 legacy_id: ADR-0022

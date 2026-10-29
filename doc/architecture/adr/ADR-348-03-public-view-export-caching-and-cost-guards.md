@@ -1,7 +1,7 @@
 ---
 id: ADR-348-03
 title: "Cache the public export by Yjs document version and bound its cost, removing the unauthenticated bulk ZIP endpoint"
-status: Proposed
+status: Accepted
 date: 2026-07-09
 tracking_issue: 348
 legacy_id: ADR-0019

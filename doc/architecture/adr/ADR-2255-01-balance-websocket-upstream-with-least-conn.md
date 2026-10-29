@@ -1,7 +1,7 @@
 ---
 id: ADR-2255-01
 title: "Balance the WebSocket upstream with least_conn, not ip_hash"
-status: Proposed
+status: Accepted
 date: 2026-09-02
 tracking_issue: 2255
 deciders:

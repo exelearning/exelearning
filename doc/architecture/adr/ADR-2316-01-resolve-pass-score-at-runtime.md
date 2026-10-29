@@ -1,7 +1,7 @@
 ---
 id: ADR-2316-01
 title: "Minimum score to pass an activity, resolved at runtime"
-status: Proposed
+status: Accepted
 date: 2026-09-16
 tracking_issue: 2316
 deciders:

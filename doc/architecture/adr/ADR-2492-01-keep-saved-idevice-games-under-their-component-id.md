@@ -1,7 +1,7 @@
 ---
 id: ADR-2492-01
 title: "Keep each iDevice's saved game under its own component id, without carrying over games saved before"
-status: Proposed
+status: Accepted
 date: 2026-09-28
 tracking_issue: 2492
 deciders:

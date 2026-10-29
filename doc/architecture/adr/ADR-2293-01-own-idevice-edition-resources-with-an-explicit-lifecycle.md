@@ -1,7 +1,7 @@
 ---
 id: ADR-2293-01
 title: "Own iDevice edition resources with an explicit lifecycle"
-status: Proposed
+status: Accepted
 date: 2026-08-18
 tracking_issue: 2293
 deciders:
