@@ -11,7 +11,7 @@ import {
     waitForAppReady,
 } from '../../helpers/workarea-helpers';
 
-test('Padlock keeps its editors and settings in Activities and explains each setting inline', async ({
+test('Padlock keeps its editors in Activities, its settings in Options, and explains each setting inline', async ({
     authenticatedPage: page,
     createProject,
 }) => {
@@ -25,57 +25,66 @@ test('Padlock keeps its editors and settings in Activities and explains each set
     const id = await device.getAttribute('id');
     expect(id).toBeTruthy();
 
-    // Instructions, feedback, access code and settings share the Activities tab.
+    // Instructions, feedback and access code share the Activities tab; the settings have their own.
     const tabs = page.locator('#candadoIdeviceForm-tabs [data-exe-tab]');
-    await expect(tabs).toHaveCount(3);
+    await expect(tabs).toHaveCount(4);
     await expect(page.locator('#candadoIdeviceForm-tab-contents')).toHaveAttribute('aria-selected', 'true');
     await expect(page.locator('#candadoIdeviceForm-tab-instructions')).toHaveCount(0);
-    await expect(page.locator('#candadoIdeviceForm-tab-options')).toHaveCount(0);
+    const optionsTab = page.locator('#candadoIdeviceForm-tab-options');
+    const contentsTab = page.locator('#candadoIdeviceForm-tab-contents');
 
-    const help = page.locator('#candadoEPanel .exe-idevice-help:visible');
-    await expect(help).toHaveCount(6);
+    const sections = [
+        { tab: contentsTab, scope: '#candadoEPanel', count: 1 },
+        { tab: optionsTab, scope: '#candadoEOptions', count: 5 },
+    ];
     for (const width of [1280, 1024]) {
         await page.setViewportSize({ width, height: 900 });
-        for (const button of await help.all()) {
-            await button.hover();
-            await expect(page.getByRole('tooltip')).toHaveText('Information');
-            await expect(page.locator('#candadoEPanel .help-content:visible')).toHaveCount(0);
-            const sameLine = await button.evaluate(element => {
-                const row = element.closest('.d-flex')!;
-                const control = row.querySelector('input, select')!;
-                const a = element.getBoundingClientRect();
-                const b = control.getBoundingClientRect();
-                let previous = element.parentElement!.previousElementSibling!;
-                while (!previous.getClientRects().length) previous = previous.previousElementSibling!;
-                const gap = a.left - previous.getBoundingClientRect().right;
-                return a.top < b.bottom && b.top < a.bottom && gap >= 0 && gap <= 24;
-            });
-            expect(sameLine).toBe(true);
-            await button.click();
-            await expect(page.getByRole('tooltip')).toHaveCount(0);
-            const content = page.locator(`#${await button.getAttribute('aria-controls')}`);
-            await expect(content).toBeVisible();
-            const fitsInThePanel = await content.evaluate(element => {
-                const rect = element.getBoundingClientRect();
-                const icon = element.parentElement!.querySelector('button')!.getBoundingClientRect();
-                const panel = element.closest('.tab-pane')!.getBoundingClientRect();
-                return (
-                    Math.abs(rect.left - icon.left) < 2 &&
-                    rect.left >= panel.left &&
-                    rect.right <= Math.min(panel.right, window.innerWidth) &&
-                    element.scrollWidth <= element.clientWidth
-                );
-            });
-            expect(fitsInThePanel).toBe(true);
-            await page.locator('#candadoIdeviceForm-tab-contents').hover();
-            await expect(content).toBeVisible();
-            await expect(button).toHaveAttribute('aria-expanded', 'true');
-            await button.press('Escape');
-            await expect(content).toBeHidden();
+        for (const { tab, scope, count } of sections) {
+            await tab.click();
+            const help = page.locator(`${scope} .exe-idevice-help:visible`);
+            await expect(help).toHaveCount(count);
+            for (const button of await help.all()) {
+                await button.hover();
+                await expect(page.getByRole('tooltip')).toHaveText('Information');
+                await expect(page.locator(`${scope} .help-content:visible`)).toHaveCount(0);
+                const sameLine = await button.evaluate(element => {
+                    const row = element.closest('.d-flex')!;
+                    const control = row.querySelector('input, select')!;
+                    const a = element.getBoundingClientRect();
+                    const b = control.getBoundingClientRect();
+                    let previous = element.parentElement!.previousElementSibling!;
+                    while (!previous.getClientRects().length) previous = previous.previousElementSibling!;
+                    const gap = a.left - previous.getBoundingClientRect().right;
+                    return a.top < b.bottom && b.top < a.bottom && gap >= 0 && gap <= 24;
+                });
+                expect(sameLine).toBe(true);
+                await button.click();
+                await expect(page.getByRole('tooltip')).toHaveCount(0);
+                const content = page.locator(`#${await button.getAttribute('aria-controls')}`);
+                await expect(content).toBeVisible();
+                const fitsInThePanel = await content.evaluate(element => {
+                    const rect = element.getBoundingClientRect();
+                    const icon = element.parentElement!.querySelector('button')!.getBoundingClientRect();
+                    const panel = element.closest('.tab-pane')!.getBoundingClientRect();
+                    return (
+                        Math.abs(rect.left - icon.left) < 2 &&
+                        rect.left >= panel.left &&
+                        rect.right <= Math.min(panel.right, window.innerWidth) &&
+                        element.scrollWidth <= element.clientWidth
+                    );
+                });
+                expect(fitsInThePanel).toBe(true);
+                await tab.hover();
+                await expect(content).toBeVisible();
+                await expect(button).toHaveAttribute('aria-expanded', 'true');
+                await button.press('Escape');
+                await expect(content).toBeHidden();
+            }
         }
     }
 
     // Reading the help, or its open explanation, leaves the option as it was.
+    await optionsTab.click();
     const minimizeHelp = page
         .locator('#candadoEOptions .d-flex')
         .filter({ hasText: 'Show minimized' })
@@ -93,6 +102,7 @@ test('Padlock keeps its editors and settings in Activities and explains each set
     await page.locator('#candadoEShowMinimize').check();
 
     // One editor at a time: the switch shows the instructions or the feedback.
+    await contentsTab.click();
     const write = (editor: string, html: string) =>
         page.evaluate(([id, content]) => (window as any).tinymce.get(id).setContent(content), [editor, html]);
     const read = (editor: string) => page.evaluate(id => (window as any).tinymce.get(id).getContent(), editor);

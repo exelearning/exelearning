@@ -291,23 +291,37 @@ describe('padlock edition: shared form tabs', () => {
         document.body.innerHTML = '';
     });
 
-    it('lays the form out in Activities, Grading and Texts, with no Instructions or Options tab', () => {
-        expect(tabNames()).toEqual(['contents', 'grading', 'texts']);
+    it('lays the form out in Options, Activities, Grading and Texts, with no Instructions tab', () => {
+        expect(tabNames()).toEqual(['options', 'contents', 'grading', 'texts']);
         expect(panel('contents').classList.contains('active')).toBe(true);
     });
 
-    it('keeps the instructions, the feedback, the access code and the options together in Activities', () => {
-        expect(panel('contents').firstElementChild.textContent).toContain(
-            'Write the instructions, the feedback learners unlock and the access code that opens it'
+    it('keeps the instructions, the feedback and the access code together in Activities', () => {
+        expect(panel('contents').firstElementChild.textContent).toBe(
+            'Write the instructions, the feedback learners unlock and the access code that opens it.'
         );
         for (const id of ['candadoEDescription', 'candadoEFeedBack', 'candadoEDSolution']) {
             expect(panel('contents').querySelector(`#candadoEPanel #${id}`)).not.toBeNull();
         }
-        expect(panel('contents').querySelector('#candadoEOptions #candadoEDTime')).not.toBeNull();
-        expect(panel('contents').querySelector('#candadoEOptions #candadoEErrorMessage')).not.toBeNull();
+        expect(panel('contents').querySelector('#candadoEOptions')).toBeNull();
         expect(document.getElementById('eXeGameInstructions')).toBeNull();
         expect(panel('grading').querySelector('.exe-progress-report-wrapper')).not.toBeNull();
         expect(panel('texts').querySelector('#ci18n_msgSubmit')).not.toBeNull();
+    });
+
+    it('gathers every setting in Options, starting with the minimized view', () => {
+        const rows = [...panel('options').querySelectorAll('#candadoEOptions > div')];
+
+        expect(panel('options').firstElementChild.textContent).toBe(
+            'Choose how the activity works and how it is shown to the learners.'
+        );
+        expect(rows.map((row) => row.querySelector('input, select').id)).toEqual([
+            'candadoEShowMinimize',
+            'candadoEDTime',
+            'candadoEReboot',
+            'candadoEAttemps',
+            'candadoEErrorMessage',
+        ]);
     });
 
     it('shows one editor at a time, switching between the instructions and the feedback', () => {

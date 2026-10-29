@@ -114,6 +114,10 @@ var $exeDevice = {
             options = `
                 <div id="candadoEOptions">
                     <div class="mb-3 d-flex align-items-center gap-2 flex-nowrap">
+                        ${toggle('candadoEShowMinimize', msgs.msgEShowMinimize)}
+                        ${help(_('Start with the game collapsed. Learners can expand it when they are ready to play.'))}
+                    </div>
+                    <div class="mb-3 d-flex align-items-center gap-2 flex-nowrap">
                         <label id="candadolblEDTime" for="candadoEDTime" class="mb-0">${msgs.msgTime}:</label>
                         <select id="candadoEDTime" class="form-select form-select-sm">
                             <option value="0"></option>
@@ -135,10 +139,6 @@ var $exeDevice = {
                         ${help(_('Time learners have to find the access code. Leave it blank for no time limit.'))}
                     </div>
                     <div class="mb-3 d-flex align-items-center gap-2 flex-nowrap">
-                        ${toggle('candadoEShowMinimize', msgs.msgEShowMinimize)}
-                        ${help(_('Start with the game collapsed. Learners can expand it when they are ready to play.'))}
-                    </div>
-                    <div class="mb-3 d-flex align-items-center gap-2 flex-nowrap">
                         ${toggle('candadoEReboot', msgs.msgERebootActivity, true)}
                         ${help(_('Start again each time the page is opened, even once solved. Otherwise a solved padlock keeps showing its feedback.'))}
                     </div>
@@ -153,8 +153,8 @@ var $exeDevice = {
                         ${help(_('The message learners see after the wrong codes above, for example a clue.'))}
                     </div>
                 </div>`,
-            // Instructions, feedback, access code and options share one tab,
-            // with one editor shown at a time, as before the shared tabs.
+            // Instructions, feedback and access code share one tab, with one
+            // editor shown at a time, as before the shared tabs.
             contents = `
                 <div id="candadoEPanel">
                     <p class="candadoToggle" role="radiogroup" aria-label="${_('Choose the content to edit:')}">
@@ -176,7 +176,6 @@ var $exeDevice = {
                         <input type="text" id="candadoEDSolution" class="form-control" style="max-width:20ch" />
                         ${help(_('The code learners have to type to see the feedback.'))}
                     </div>
-                    ${options}
                 </div>`,
             html = `
             <div id="candadoIdeviceForm">
@@ -186,12 +185,13 @@ var $exeDevice = {
                 )}
                 ${edition.tabs.getHtml('candadoIdeviceForm', {
                     path: $exeDevice.idevicePath,
+                    options: options,
                     contents: contents,
                     grading: true,
                     texts: this.ci18n,
                     share: false,
                     info: {
-                        contents: _('Write the instructions, the feedback learners unlock and the access code that opens it, and choose how the padlock works.'),
+                        contents: _('Write the instructions, the feedback learners unlock and the access code that opens it.'),
                     },
                 })}
             </div>
