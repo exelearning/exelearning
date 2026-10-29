@@ -66,6 +66,12 @@ import {
     ServerYjsDocumentWrapper,
 } from '../shared/export';
 import { reconstructDocument } from '../websocket/yjs-persistence';
+import {
+    CLEANUP_LIMITS,
+    CLEANUP_SETTING_KEYS,
+    applyPersistedConfig as applyPersistedCleanupConfigDefault,
+    previewPersistedCleanup as previewPersistedCleanupDefault,
+} from '../services/cleanup-scheduler';
 
 type AppSettingsTable = {
     key: string;
@@ -119,6 +125,11 @@ export interface AdminDependencies {
     queries: AdminQueries;
     fileHelper?: FileHelper;
     getConnectedClientsDetail?: typeof getConnectedClientsDetail;
+    /** Project cleanup scheduler, injected so the admin API can be tested. */
+    cleanup?: {
+        applyPersistedConfig: typeof applyPersistedCleanupConfigDefault;
+        previewPersistedCleanup: typeof previewPersistedCleanupDefault;
+    };
 }
 
 // ============================================================================
@@ -155,6 +166,10 @@ const defaultDependencies: AdminDependencies = {
     },
     fileHelper: createFileHelper(),
     getConnectedClientsDetail: getConnectedClientsDetail,
+    cleanup: {
+        applyPersistedConfig: applyPersistedCleanupConfigDefault,
+        previewPersistedCleanup: previewPersistedCleanupDefault,
+    },
 };
 
 // ============================================================================
@@ -350,6 +365,38 @@ export function buildAdminTranslations(locale: string): Record<string, string> {
             {},
             locale,
         ),
+        // Settings — project cleanup
+        cleanup: trans('Project cleanup', {}, locale),
+        cleanup_settings: trans('Automatic project cleanup', {}, locale),
+        cleanup_enabled_desc: trans(
+            'Periodically deletes drafts that were never saved and projects owned by guest users.',
+            {},
+            locale,
+        ),
+        cleanup_warning: trans(
+            'Deletion is permanent: the projects, their version history and their files are removed and cannot be recovered. Only private projects without collaborators are eligible.',
+            {},
+            locale,
+        ),
+        cleanup_runs_immediately: trans(
+            'A first cleanup runs as soon as you enable this, and then once per interval.',
+            {},
+            locale,
+        ),
+        cleanup_interval_desc: trans('Hours between cleanup runs.', {}, locale),
+        cleanup_unsaved_desc: trans('Delete never-saved drafts after this many hours.', {}, locale),
+        cleanup_guest_desc: trans('Delete projects owned by guest users after this many days.', {}, locale),
+        cleanup_preview_title: trans('Projects eligible right now', {}, locale),
+        cleanup_preview_help: trans(
+            'Informational count with the saved settings. It is not a deletion and the number can change before the next run.',
+            {},
+            locale,
+        ),
+        cleanup_preview_refresh: trans('Refresh count', {}, locale),
+        cleanup_preview_unsaved: trans('Never-saved drafts', {}, locale),
+        cleanup_preview_guest: trans('Guest projects', {}, locale),
+        cleanup_preview_total: trans('Total', {}, locale),
+        cleanup_preview_error: trans('Could not read the count', {}, locale),
         // Settings — storage & quotas
         storage_and_quotas: trans('Storage and quotas', {}, locale),
         quota_mb: trans('Quota (MB)', {}, locale),
@@ -678,6 +725,17 @@ const ADMIN_SETTINGS_DEFAULTS: Record<
     APP_NAME: { value: '', type: 'string' },
     APP_FAVICON_PATH: { value: '', type: 'string' },
     MAINTENANCE_MODE: { value: process.env.MAINTENANCE_MODE ?? 'false', type: 'boolean' },
+    CLEANUP_ENABLED: { value: process.env.CLEANUP_ENABLED ?? 'false', type: 'boolean' },
+    CLEANUP_INTERVAL_HOURS: { value: process.env.CLEANUP_INTERVAL_HOURS ?? '24', type: 'number' },
+    CLEANUP_UNSAVED_AGE_HOURS: { value: process.env.CLEANUP_UNSAVED_AGE_HOURS ?? '24', type: 'number' },
+    CLEANUP_GUEST_AGE_DAYS: { value: process.env.CLEANUP_GUEST_AGE_DAYS ?? '7', type: 'number' },
+};
+
+/** Whole-number cleanup settings, with the range the scheduler accepts. */
+const CLEANUP_NUMERIC_SETTINGS: Record<string, { min: number; max: number; unit: string }> = {
+    [CLEANUP_SETTING_KEYS.intervalHours]: { ...CLEANUP_LIMITS.intervalHours, unit: 'hours' },
+    [CLEANUP_SETTING_KEYS.unsavedAgeHours]: { ...CLEANUP_LIMITS.unsavedAgeHours, unit: 'hours' },
+    [CLEANUP_SETTING_KEYS.guestAgeDays]: { ...CLEANUP_LIMITS.guestAgeDays, unit: 'days' },
 };
 
 // ============================================================================
@@ -689,6 +747,10 @@ const ADMIN_SETTINGS_DEFAULTS: Record<
  */
 export function createAdminRoutes(deps: AdminDependencies = defaultDependencies) {
     const { db, queries, fileHelper = createFileHelper() } = deps;
+    const cleanup = deps.cleanup ?? {
+        applyPersistedConfig: applyPersistedCleanupConfigDefault,
+        previewPersistedCleanup: previewPersistedCleanupDefault,
+    };
     const connectedClientsDetail = deps.getConnectedClientsDetail ?? getConnectedClientsDetail;
 
     return (
@@ -867,6 +929,22 @@ export function createAdminRoutes(deps: AdminDependencies = defaultDependencies)
                             }
                         }
 
+                        // Cleanup deletes projects for good: refuse anything that
+                        // is not a whole number inside the accepted range.
+                        const numericLimits = CLEANUP_NUMERIC_SETTINGS[setting.key];
+                        if (numericLimits) {
+                            const parsed = Number(setting.value);
+                            if (!Number.isInteger(parsed) || parsed < numericLimits.min || parsed > numericLimits.max) {
+                                set.status = 400;
+                                return {
+                                    error: 'Bad Request',
+                                    message:
+                                        `${setting.key} must be a whole number of ${numericLimits.unit} ` +
+                                        `between ${numericLimits.min} and ${numericLimits.max}`,
+                                };
+                            }
+                        }
+
                         try {
                             await queries.setSetting(
                                 db as unknown as AppSettingsDb,
@@ -890,10 +968,45 @@ export function createAdminRoutes(deps: AdminDependencies = defaultDependencies)
                         invalidateMaintenanceCache();
                     }
 
+                    // Apply cleanup changes to the running scheduler, so enabling,
+                    // disabling or re-scheduling it needs no restart.
+                    if (data.settings.some(s => s.key.startsWith('CLEANUP_'))) {
+                        try {
+                            await cleanup.applyPersistedConfig(db);
+                        } catch (error) {
+                            const errorMessage = error instanceof Error ? error.message : String(error);
+                            console.warn('[Admin] Failed to reconfigure the cleanup scheduler:', errorMessage);
+                        }
+                    }
+
                     return { success: true, sanitizedValues };
                 },
                 { body: updateSettingsSchema },
             )
+
+            // GET /api/admin/cleanup/preview - How many projects the next
+            // cleanup run would delete. Read-only: it deletes nothing, and the
+            // number can change before the run happens.
+            .get('/api/admin/cleanup/preview', async ({ set }) => {
+                try {
+                    const preview = await cleanup.previewPersistedCleanup(db);
+                    return {
+                        enabled: preview.config.enabled,
+                        unsavedAgeHours: preview.config.unsavedAgeHours,
+                        guestAgeDays: preview.config.guestAgeDays,
+                        unsaved: preview.unsaved,
+                        guest: preview.guest,
+                        total: preview.total,
+                        generatedAt: new Date().toISOString(),
+                    };
+                } catch (error) {
+                    set.status = 500;
+                    return {
+                        error: 'Internal Server Error',
+                        message: error instanceof Error ? error.message : String(error),
+                    };
+                }
+            })
 
             // =====================================================
             // USER MANAGEMENT

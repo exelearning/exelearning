@@ -1418,6 +1418,12 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                     maintenance: {
                         maintenance_mode: false,
                     },
+                    cleanup: {
+                        cleanup_enabled: parseBoolean(process.env.CLEANUP_ENABLED, false),
+                        cleanup_interval_hours: parseNumber(process.env.CLEANUP_INTERVAL_HOURS, 24),
+                        cleanup_unsaved_age_hours: parseNumber(process.env.CLEANUP_UNSAVED_AGE_HOURS, 24),
+                        cleanup_guest_age_days: parseNumber(process.env.CLEANUP_GUEST_AGE_DAYS, 7),
+                    },
                 };
 
                 const adminSettingsMap: Record<
@@ -1466,6 +1472,10 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                     APP_NAME: { path: ['presentation', 'app_name'], type: 'string' },
                     APP_FAVICON_PATH: { path: ['presentation', 'app_favicon_path'], type: 'string' },
                     MAINTENANCE_MODE: { path: ['maintenance', 'maintenance_mode'], type: 'boolean' },
+                    CLEANUP_ENABLED: { path: ['cleanup', 'cleanup_enabled'], type: 'boolean' },
+                    CLEANUP_INTERVAL_HOURS: { path: ['cleanup', 'cleanup_interval_hours'], type: 'number' },
+                    CLEANUP_UNSAVED_AGE_HOURS: { path: ['cleanup', 'cleanup_unsaved_age_hours'], type: 'number' },
+                    CLEANUP_GUEST_AGE_DAYS: { path: ['cleanup', 'cleanup_guest_age_days'], type: 'number' },
                 };
 
                 try {

@@ -15,6 +15,7 @@ import {
     deleteProjectWithRelatedData,
 } from '../db/queries/projects';
 import { getFilesDir, remove, fileExists } from './file-helper';
+import { getSettingBoolean, getSettingNumber } from './app-settings';
 import type { Kysely } from 'kysely';
 import type { Database } from '../db/types';
 import { getProjectAssetsDirCandidates } from '../utils/asset-paths';
@@ -42,6 +43,57 @@ export const DEFAULT_CONFIG: CleanupSchedulerConfig = {
     unsavedAgeHours: 24,
     guestAgeDays: 7,
 };
+
+/**
+ * Accepted range for each configurable value. Shared with the admin API so the
+ * UI, the API validation and the scheduler agree on what is a sane value.
+ */
+export const CLEANUP_LIMITS = {
+    intervalHours: { min: 1, max: 8760 },
+    unsavedAgeHours: { min: 1, max: 8760 },
+    guestAgeDays: { min: 1, max: 3650 },
+} as const;
+
+const HOUR_MS = 60 * 60 * 1000;
+const DAY_MS = 24 * HOUR_MS;
+
+/** Database/admin setting keys, which mirror the environment variable names. */
+export const CLEANUP_SETTING_KEYS = {
+    enabled: 'CLEANUP_ENABLED',
+    intervalHours: 'CLEANUP_INTERVAL_HOURS',
+    unsavedAgeHours: 'CLEANUP_UNSAVED_AGE_HOURS',
+    guestAgeDays: 'CLEANUP_GUEST_AGE_DAYS',
+} as const;
+
+function pickNumber(value: unknown, fallback: number, limits: { min: number; max: number }): number {
+    return typeof value === 'number' && Number.isFinite(value) && value >= limits.min && value <= limits.max
+        ? value
+        : fallback;
+}
+
+/**
+ * Complete a partial configuration with the defaults, ignoring missing or
+ * out-of-range values (#2670: an unset `CLEANUP_*` variable used to override
+ * the default with `undefined`, which produced a `setInterval` without delay
+ * and a `NaN` age cutoff).
+ */
+export function normalizeConfig(config: Partial<CleanupSchedulerConfig> = {}): CleanupSchedulerConfig {
+    return {
+        enabled: typeof config.enabled === 'boolean' ? config.enabled : DEFAULT_CONFIG.enabled,
+        // Any positive delay is accepted here (tests drive the timer with a few
+        // seconds); /admin validates whole hours against CLEANUP_LIMITS.
+        intervalMs: pickNumber(config.intervalMs, DEFAULT_CONFIG.intervalMs, {
+            min: 1,
+            max: CLEANUP_LIMITS.intervalHours.max * HOUR_MS,
+        }),
+        unsavedAgeHours: pickNumber(
+            config.unsavedAgeHours,
+            DEFAULT_CONFIG.unsavedAgeHours,
+            CLEANUP_LIMITS.unsavedAgeHours,
+        ),
+        guestAgeDays: pickNumber(config.guestAgeDays, DEFAULT_CONFIG.guestAgeDays, CLEANUP_LIMITS.guestAgeDays),
+    };
+}
 
 /**
  * Query functions for cleanup
@@ -278,7 +330,7 @@ export function startScheduler(
     // Stop existing scheduler if running
     stopScheduler();
 
-    state.config = { ...DEFAULT_CONFIG, ...config };
+    state.config = normalizeConfig(config);
     state.deps = { ...defaultDeps, ...deps };
 
     if (!state.config.enabled) {
@@ -373,4 +425,79 @@ export function getConfigFromEnv(): Partial<CleanupSchedulerConfig> {
             : undefined,
         guestAgeDays: process.env.CLEANUP_GUEST_AGE_DAYS ? Number(process.env.CLEANUP_GUEST_AGE_DAYS) : undefined,
     };
+}
+
+/**
+ * Read-only count of the projects the next run would delete.
+ *
+ * Uses the very same queries and deduplication as `runCleanup()`, so the number
+ * matches what a run right now would remove. It deletes nothing.
+ */
+export interface CleanupPreview {
+    unsaved: number;
+    guest: number;
+    total: number;
+}
+
+export async function previewCleanup(
+    deps: CleanupSchedulerDeps = state.deps,
+    config: CleanupSchedulerConfig = state.config,
+): Promise<CleanupPreview> {
+    const unsavedProjects = await deps.queries.findUnsavedProjectsOlderThan(deps.db, config.unsavedAgeHours * HOUR_MS);
+    const guestProjects = await deps.queries.findGuestProjectsOlderThan(deps.db, config.guestAgeDays * DAY_MS);
+
+    // A guest project can also be unsaved: count it once, as runCleanup does.
+    const unsavedIds = new Set(unsavedProjects.map(p => p.id));
+    const uniqueGuestProjects = guestProjects.filter(p => !unsavedIds.has(p.id));
+
+    return {
+        unsaved: unsavedProjects.length,
+        guest: uniqueGuestProjects.length,
+        total: unsavedProjects.length + uniqueGuestProjects.length,
+    };
+}
+
+/**
+ * Effective configuration: `app_settings` (set from /admin) takes precedence,
+ * the `CLEANUP_*` environment variables are the fallback, and `DEFAULT_CONFIG`
+ * applies when neither is configured.
+ */
+export async function getEffectiveConfig(db: Kysely<Database> = defaultDb): Promise<CleanupSchedulerConfig> {
+    const fromEnv = normalizeConfig(getConfigFromEnv());
+
+    const [enabled, intervalHours, unsavedAgeHours, guestAgeDays] = await Promise.all([
+        getSettingBoolean(db, CLEANUP_SETTING_KEYS.enabled, fromEnv.enabled),
+        getSettingNumber(db, CLEANUP_SETTING_KEYS.intervalHours, fromEnv.intervalMs / HOUR_MS),
+        getSettingNumber(db, CLEANUP_SETTING_KEYS.unsavedAgeHours, fromEnv.unsavedAgeHours),
+        getSettingNumber(db, CLEANUP_SETTING_KEYS.guestAgeDays, fromEnv.guestAgeDays),
+    ]);
+
+    return normalizeConfig({ enabled, intervalMs: intervalHours * HOUR_MS, unsavedAgeHours, guestAgeDays });
+}
+
+/**
+ * Start, stop or re-schedule the singleton scheduler from the effective
+ * configuration. Called at boot and again whenever an administrator saves the
+ * cleanup settings, so changes apply without restarting the application.
+ * `startScheduler()` clears the previous timer first, so no duplicate timers.
+ */
+export async function applyPersistedConfig(
+    db: Kysely<Database> = defaultDb,
+    deps: Partial<CleanupSchedulerDeps> = {},
+): Promise<CleanupSchedulerConfig> {
+    const config = await getEffectiveConfig(db);
+    startScheduler(config, deps);
+    return config;
+}
+
+/**
+ * Read-only preview for the effective (persisted) configuration.
+ */
+export async function previewPersistedCleanup(
+    db: Kysely<Database> = defaultDb,
+    deps: Partial<CleanupSchedulerDeps> = {},
+): Promise<CleanupPreview & { config: CleanupSchedulerConfig }> {
+    const config = await getEffectiveConfig(db);
+    const preview = await previewCleanup({ ...defaultDeps, db, ...deps }, config);
+    return { ...preview, config };
 }

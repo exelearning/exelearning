@@ -54,9 +54,8 @@ import { warnIfProviderUrlsMissing } from './utils/platform-jwt';
 import { isRedisEnabled, connectRedis, disconnectRedis } from './redis/client';
 import { initializeCrossInstanceHandler } from './websocket/room-manager';
 import {
-    startScheduler as startCleanupScheduler,
+    applyPersistedConfig as applyPersistedCleanupConfig,
     stopScheduler as stopCleanupScheduler,
-    getConfigFromEnv as getCleanupConfigFromEnv,
 } from './services/cleanup-scheduler';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -789,8 +788,9 @@ async function bootstrap() {
     app.listen(PORT);
     initWebSocket();
 
-    // 7. Start cleanup scheduler (for unsaved and guest projects)
-    startCleanupScheduler(getCleanupConfigFromEnv());
+    // 7. Start cleanup scheduler (for unsaved and guest projects) from the
+    // effective configuration: /admin settings first, CLEANUP_* env as fallback.
+    await applyPersistedCleanupConfig();
 
     // 7b. Start resource-bound sweepers: reap abandoned chunked uploads and
     // expired upload sessions so neither disk nor memory grows unbounded.

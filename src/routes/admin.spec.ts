@@ -1713,6 +1713,287 @@ describe('Admin Routes', () => {
     });
 
     // ========================================================================
+    // PROJECT CLEANUP SETTINGS TESTS (#2671)
+    // ========================================================================
+
+    describe('project cleanup settings', () => {
+        const createCleanupDeps = (
+            queryOverrides: Partial<AdminQueries> = {},
+            cleanupOverrides: Partial<NonNullable<AdminDependencies['cleanup']>> = {},
+        ): AdminDependencies => ({
+            ...createMockDeps(queryOverrides),
+            cleanup: {
+                applyPersistedConfig: async () => ({
+                    enabled: true,
+                    intervalMs: 24 * 60 * 60 * 1000,
+                    unsavedAgeHours: 24,
+                    guestAgeDays: 7,
+                }),
+                previewPersistedCleanup: async () => ({
+                    unsaved: 3,
+                    guest: 2,
+                    total: 5,
+                    config: {
+                        enabled: true,
+                        intervalMs: 24 * 60 * 60 * 1000,
+                        unsavedAgeHours: 24,
+                        guestAgeDays: 7,
+                    },
+                }),
+                ...cleanupOverrides,
+            },
+        });
+
+        it('should expose the cleanup settings with their defaults', async () => {
+            const token = await generateAdminToken();
+            const app = new Elysia().use(createAdminRoutes(createCleanupDeps({ getAllSettings: async () => [] })));
+
+            const response = await app.handle(
+                new Request('http://localhost/api/admin/settings', {
+                    method: 'GET',
+                    headers: { Authorization: `Bearer ${token}` },
+                }),
+            );
+
+            const data = await response.json();
+            expect(data.settings.CLEANUP_ENABLED).toEqual({
+                value: process.env.CLEANUP_ENABLED ?? 'false',
+                type: 'boolean',
+            });
+            expect(data.settings.CLEANUP_INTERVAL_HOURS.type).toBe('number');
+            expect(data.settings.CLEANUP_UNSAVED_AGE_HOURS.type).toBe('number');
+            expect(data.settings.CLEANUP_GUEST_AGE_DAYS.type).toBe('number');
+        });
+
+        it('should save the cleanup settings and reconfigure the running scheduler', async () => {
+            const token = await generateAdminToken();
+            const savedSettings: Array<{ key: string; value: string }> = [];
+            let reconfigured = 0;
+            const app = new Elysia().use(
+                createAdminRoutes(
+                    createCleanupDeps(
+                        {
+                            setSetting: async (_db, key, value) => {
+                                savedSettings.push({ key, value });
+                            },
+                        },
+                        {
+                            applyPersistedConfig: async () => {
+                                reconfigured++;
+                                return {
+                                    enabled: true,
+                                    intervalMs: 12 * 60 * 60 * 1000,
+                                    unsavedAgeHours: 48,
+                                    guestAgeDays: 14,
+                                };
+                            },
+                        },
+                    ),
+                ),
+            );
+
+            const response = await app.handle(
+                new Request('http://localhost/api/admin/settings', {
+                    method: 'PUT',
+                    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        settings: [
+                            { key: 'CLEANUP_ENABLED', value: 'true', type: 'boolean' },
+                            { key: 'CLEANUP_INTERVAL_HOURS', value: '12', type: 'number' },
+                            { key: 'CLEANUP_UNSAVED_AGE_HOURS', value: '48', type: 'number' },
+                            { key: 'CLEANUP_GUEST_AGE_DAYS', value: '14', type: 'number' },
+                        ],
+                    }),
+                }),
+            );
+
+            expect(response.status).toBe(200);
+            expect(savedSettings).toEqual([
+                { key: 'CLEANUP_ENABLED', value: 'true' },
+                { key: 'CLEANUP_INTERVAL_HOURS', value: '12' },
+                { key: 'CLEANUP_UNSAVED_AGE_HOURS', value: '48' },
+                { key: 'CLEANUP_GUEST_AGE_DAYS', value: '14' },
+            ]);
+            // One reconfiguration for the whole save, so no duplicate timers
+            expect(reconfigured).toBe(1);
+        });
+
+        it('should not touch the scheduler when no cleanup setting changed', async () => {
+            const token = await generateAdminToken();
+            let reconfigured = 0;
+            const app = new Elysia().use(
+                createAdminRoutes(
+                    createCleanupDeps(
+                        {},
+                        {
+                            applyPersistedConfig: async () => {
+                                reconfigured++;
+                                return {
+                                    enabled: false,
+                                    intervalMs: 24 * 60 * 60 * 1000,
+                                    unsavedAgeHours: 24,
+                                    guestAgeDays: 7,
+                                };
+                            },
+                        },
+                    ),
+                ),
+            );
+
+            await app.handle(
+                new Request('http://localhost/api/admin/settings', {
+                    method: 'PUT',
+                    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        settings: [{ key: 'ONLINE_THEMES_INSTALL', value: '1', type: 'boolean' }],
+                    }),
+                }),
+            );
+
+            expect(reconfigured).toBe(0);
+        });
+
+        it('should still save when reconfiguring the scheduler fails', async () => {
+            const token = await generateAdminToken();
+            const savedSettings: string[] = [];
+            const app = new Elysia().use(
+                createAdminRoutes(
+                    createCleanupDeps(
+                        {
+                            setSetting: async (_db, key) => {
+                                savedSettings.push(key);
+                            },
+                        },
+                        {
+                            applyPersistedConfig: async () => {
+                                throw new Error('Scheduler error');
+                            },
+                        },
+                    ),
+                ),
+            );
+
+            const response = await app.handle(
+                new Request('http://localhost/api/admin/settings', {
+                    method: 'PUT',
+                    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        settings: [{ key: 'CLEANUP_ENABLED', value: 'true', type: 'boolean' }],
+                    }),
+                }),
+            );
+
+            expect(response.status).toBe(200);
+            expect(savedSettings).toEqual(['CLEANUP_ENABLED']);
+        });
+
+        it.each([
+            ['CLEANUP_INTERVAL_HOURS', '0'],
+            ['CLEANUP_INTERVAL_HOURS', 'abc'],
+            ['CLEANUP_INTERVAL_HOURS', '1.5'],
+            ['CLEANUP_UNSAVED_AGE_HOURS', '-3'],
+            ['CLEANUP_GUEST_AGE_DAYS', '4000'],
+        ])('should reject %s = %s', async (key, value) => {
+            const token = await generateAdminToken();
+            const savedSettings: string[] = [];
+            const app = new Elysia().use(
+                createAdminRoutes(
+                    createCleanupDeps({
+                        setSetting: async (_db, settingKey) => {
+                            savedSettings.push(settingKey);
+                        },
+                    }),
+                ),
+            );
+
+            const response = await app.handle(
+                new Request('http://localhost/api/admin/settings', {
+                    method: 'PUT',
+                    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ settings: [{ key, value, type: 'number' }] }),
+                }),
+            );
+
+            expect(response.status).toBe(400);
+            const data = await response.json();
+            expect(data.message).toContain(key);
+            expect(savedSettings).toEqual([]);
+        });
+
+        it('should return the cleanup preview for administrators', async () => {
+            const token = await generateAdminToken();
+            const app = new Elysia().use(createAdminRoutes(createCleanupDeps()));
+
+            const response = await app.handle(
+                new Request('http://localhost/api/admin/cleanup/preview', {
+                    method: 'GET',
+                    headers: { Authorization: `Bearer ${token}` },
+                }),
+            );
+
+            expect(response.status).toBe(200);
+            const data = await response.json();
+            expect(data).toMatchObject({
+                enabled: true,
+                unsaved: 3,
+                guest: 2,
+                total: 5,
+                unsavedAgeHours: 24,
+                guestAgeDays: 7,
+            });
+        });
+
+        it('should reject the cleanup preview for non-administrators', async () => {
+            const token = await generateUserToken();
+            const app = new Elysia().use(createAdminRoutes(createCleanupDeps()));
+
+            const response = await app.handle(
+                new Request('http://localhost/api/admin/cleanup/preview', {
+                    method: 'GET',
+                    headers: { Authorization: `Bearer ${token}` },
+                }),
+            );
+
+            expect(response.status).toBe(403);
+        });
+
+        it('should reject the cleanup preview without a token', async () => {
+            const app = new Elysia().use(createAdminRoutes(createCleanupDeps()));
+
+            const response = await app.handle(new Request('http://localhost/api/admin/cleanup/preview'));
+
+            expect(response.status).toBe(401);
+        });
+
+        it('should report a preview failure as a server error', async () => {
+            const token = await generateAdminToken();
+            const app = new Elysia().use(
+                createAdminRoutes(
+                    createCleanupDeps(
+                        {},
+                        {
+                            previewPersistedCleanup: async () => {
+                                throw new Error('Database error');
+                            },
+                        },
+                    ),
+                ),
+            );
+
+            const response = await app.handle(
+                new Request('http://localhost/api/admin/cleanup/preview', {
+                    method: 'GET',
+                    headers: { Authorization: `Bearer ${token}` },
+                }),
+            );
+
+            expect(response.status).toBe(500);
+            const data = await response.json();
+            expect(data.message).toBe('Database error');
+        });
+    });
+
+    // ========================================================================
     // CUSTOM HEAD HTML SANITIZATION TESTS
     // ========================================================================
 
