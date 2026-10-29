@@ -73,6 +73,20 @@ test('A-Z quiz explains each options row without changing its controls', async (
         ).toEqual(before);
         await button.press('Escape');
         await expect(content).toBeHidden();
+        // Native keyboard activation must toggle once and keep the option unchanged.
+        for (const key of ['Enter', 'Space']) {
+            for (const expanded of [true, false]) {
+                await button.press(key);
+                await expect(content).toBeVisible({ visible: expanded });
+                await expect(button).toHaveAttribute('aria-expanded', String(expanded));
+                await expect(button).toBeFocused();
+                expect(
+                    await row
+                        .locator('input')
+                        .evaluateAll(inputs => inputs.map(input => [input.value, input.checked, input.disabled])),
+                ).toEqual(before);
+            }
+        }
     }
     const solutionsHelp = page.locator('.roscoShowSolutionRow .exe-idevice-help');
     const solutionsContent = page.locator(`#${await solutionsHelp.getAttribute('aria-controls')}`);

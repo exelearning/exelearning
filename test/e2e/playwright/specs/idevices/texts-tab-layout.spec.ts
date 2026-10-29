@@ -18,7 +18,12 @@ test('Texts tab wraps a long label inside its column and keeps each row of field
     const longLabel = page.locator('label[for="ci18n_msgScoreScorm"]');
     await expect(longLabel).toBeVisible();
 
-    for (const width of [1280, 1024]) {
+    for (const { width, columns, wraps } of [
+        { width: 1280, columns: 2, wraps: true },
+        { width: 1024, columns: 2, wraps: true },
+        { width: 767, columns: 1, wraps: false },
+        { width: 390, columns: 1, wraps: true },
+    ]) {
         await page.setViewportSize({ width, height: 900 });
         const layout = await fields.evaluateAll(columns =>
             columns.map(column => {
@@ -29,6 +34,7 @@ test('Texts tab wraps a long label inside its column and keeps each row of field
                 return {
                     id: input.id,
                     columnTop: Math.round(box.top),
+                    columnBottom: box.bottom,
                     columnLeft: box.left,
                     columnRight: box.right,
                     labelLeft: text.left,
@@ -36,26 +42,43 @@ test('Texts tab wraps a long label inside its column and keeps each row of field
                     labelLines: Math.round(text.height / Number.parseFloat(getComputedStyle(label).lineHeight)),
                     overflows: label.scrollWidth > label.clientWidth,
                     inputTop: Math.round(input.getBoundingClientRect().top),
+                    inputBottom: input.getBoundingClientRect().bottom,
+                    labelBottom: text.bottom,
                 };
             }),
         );
 
-        // Two columns: the test is meaningless if every field sat on a row of its own.
-        expect(new Set(layout.map(field => field.columnLeft)).size, `at ${width}px`).toBe(2);
+        // Bootstrap switches to one column below its md breakpoint.
+        expect(new Set(layout.map(field => field.columnLeft)).size, `at ${width}px`).toBe(columns);
         for (const field of layout) {
             expect(field.labelLeft, `${field.id} at ${width}px`).toBeGreaterThanOrEqual(field.columnLeft - 1);
             expect(field.labelRight, `${field.id} at ${width}px`).toBeLessThanOrEqual(field.columnRight + 1);
             expect(field.overflows, `${field.id} at ${width}px`).toBe(false);
+            expect(field.inputTop, `${field.id} below its label at ${width}px`).toBeGreaterThanOrEqual(
+                field.labelBottom - 1,
+            );
+            expect(field.inputBottom, `${field.id} inside its column at ${width}px`).toBeLessThanOrEqual(
+                field.columnBottom + 1,
+            );
         }
         const scorm = layout.find(field => field.id === 'ci18n_msgScoreScorm')!;
-        expect(scorm.labelLines, `the long label wraps at ${width}px`).toBeGreaterThan(1);
+        // A single wide column has room for the full label; narrow columns must wrap it.
+        expect(scorm.labelLines > 1, `the long label wraps only when needed at ${width}px`).toBe(wraps);
 
         // The fields of one row line up, however many lines each label takes.
         const rows = new Map<number, number[]>();
         for (const field of layout) rows.set(field.columnTop, [...(rows.get(field.columnTop) ?? []), field.inputTop]);
+        expect(rows.size, `number of rows at ${width}px`).toBe(Math.ceil(layout.length / columns));
         for (const [top, inputs] of rows) {
             const spread = Math.max(...inputs) - Math.min(...inputs);
             expect(spread, `row at ${top}px, ${width}px wide`).toBeLessThanOrEqual(1);
+        }
+        if (columns === 1) {
+            for (let index = 1; index < layout.length; index++) {
+                expect(layout[index].columnTop, `fields stack without overlap at ${width}px`).toBeGreaterThanOrEqual(
+                    layout[index - 1].columnBottom - 1,
+                );
+            }
         }
     }
 });
