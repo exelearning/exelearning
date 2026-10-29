@@ -61,6 +61,17 @@ test.describe('Workspace page title rename', () => {
         // (the `.nav-element-text` container also holds the icon node).
         await expect(page.locator(`.nav-element[nav-id="${firstId}"] .node-text-span`)).toHaveText('New page');
         await selectFirstPage(page);
+        // The title click no-ops until a page is selected. Wait for that, so a
+        // late nav re-render cannot eat the click on a slow Firefox run.
+        await page.waitForFunction(
+            () => {
+                const structure = (window as any).eXeLearning?.app?.project?.structure;
+                const id = structure?.getSelectNodeNavId?.();
+                return typeof id === 'string' && id.length > 0 && id !== 'root';
+            },
+            undefined,
+            { timeout: 15000 },
+        );
         // Force the workspace heading to render from the (updated) model.
         await page.evaluate(id => {
             (window as any).eXeLearning.app.project.idevices.setNodeContentPageTitle(id);

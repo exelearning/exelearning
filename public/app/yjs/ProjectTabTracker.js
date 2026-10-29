@@ -24,6 +24,8 @@ class ProjectTabTracker {
    * @param {Object} options - Configuration options
    * @param {number} [options.heartbeatInterval=5000] - Heartbeat interval in ms
    * @param {number} [options.staleThreshold=15000] - Threshold for stale entries in ms
+   * @param {string} [options.cleanupFlagKey] - localStorage key the callback sets
+   *        when this was the last tab. Other live tabs clear it.
    */
   constructor(projectId, onLastTabClosed, options = {}) {
     this.projectId = projectId;
@@ -35,13 +37,17 @@ class ProjectTabTracker {
 
     this.heartbeatInterval = options.heartbeatInterval || 5000; // 5 seconds
     this.staleThreshold = options.staleThreshold || 15000; // 15 seconds
+    this.cleanupFlagKey = options.cleanupFlagKey || null;
 
     this._intervalId = null;
     this._channel = null;
     this._started = false;
+    this._cleanupToken = 0;
+    this._revokeTimer = null;
     this._boundBeforeUnload = this._handleBeforeUnload.bind(this);
     this._boundPageHide = this._handlePageHide.bind(this);
     this._boundMessage = this._handleMessage.bind(this);
+    this._boundStorage = this._handleStorage.bind(this);
   }
 
   /**
@@ -77,6 +83,9 @@ class ProjectTabTracker {
     // Listen for tab close
     window.addEventListener('beforeunload', this._boundBeforeUnload);
     window.addEventListener('pagehide', this._boundPageHide);
+    if (this.cleanupFlagKey) {
+      window.addEventListener('storage', this._boundStorage);
+    }
 
     // Broadcast presence to other tabs
     if (this._channel) {
@@ -100,6 +109,12 @@ class ProjectTabTracker {
       this._intervalId = null;
     }
 
+    this._cleanupToken += 1;
+    if (this._revokeTimer) {
+      clearTimeout(this._revokeTimer);
+      this._revokeTimer = null;
+    }
+
     if (this._channel) {
       try {
         this._channel.postMessage({ type: 'TAB_CLOSING', tabId: this.tabId });
@@ -112,6 +127,9 @@ class ProjectTabTracker {
 
     window.removeEventListener('beforeunload', this._boundBeforeUnload);
     window.removeEventListener('pagehide', this._boundPageHide);
+    if (this.cleanupFlagKey) {
+      window.removeEventListener('storage', this._boundStorage);
+    }
 
     this._removeFromStorage();
     this._started = false;
@@ -289,9 +307,58 @@ class ProjectTabTracker {
           console.error('[ProjectTabTracker] Cleanup callback error:', e);
         }
       }
+      // Firefox can deliver pagehide to a tab that stays open (another tab in
+      // the same window just closed). A real close hides the document first,
+      // so a still-visible page must undo the flag and register itself again.
+      this._revokeCleanupIfStillVisible();
     } else {
       Logger.log(`[ProjectTabTracker] Tab closed, ${Object.keys(tabs).length} tab(s) remaining`);
     }
+  }
+
+  /**
+   * Undo a last-tab cleanup when this document is still on screen.
+   * No-op unless a cleanup flag key was configured. forceCleanup() does not
+   * come through here: an explicit cleanup must keep the flag.
+   * @private
+   */
+  _revokeCleanupIfStillVisible() {
+    if (!this.cleanupFlagKey) return;
+
+    const token = ++this._cleanupToken;
+    this._revokeTimer = setTimeout(() => {
+      this._revokeTimer = null;
+      if (token !== this._cleanupToken || !this._started) return;
+      const visibility = typeof document !== 'undefined' ? document.visibilityState : 'visible';
+      if (visibility && visibility !== 'visible') return;
+
+      try {
+        localStorage.removeItem(this.cleanupFlagKey);
+      } catch {
+        // localStorage might be full or disabled
+      }
+      this._sendHeartbeat();
+      Logger.log(`[ProjectTabTracker] Page still visible after unload, kept project ${this.projectId}`);
+    }, 0);
+  }
+
+  /**
+   * A sibling tab wrote the cleanup flag. This tab is still open, so the
+   * project must not be wiped on the next load.
+   * @param {StorageEvent} event
+   * @private
+   */
+  _handleStorage(event) {
+    if (!this._started || !this.cleanupFlagKey || !event) return;
+    if (event.key !== this.cleanupFlagKey || event.newValue !== 'true') return;
+
+    try {
+      localStorage.removeItem(this.cleanupFlagKey);
+    } catch {
+      // localStorage might be full or disabled
+    }
+    this._sendHeartbeat();
+    Logger.log(`[ProjectTabTracker] Cleared cleanup flag for project ${this.projectId}; this tab is still open`);
   }
 
   /**

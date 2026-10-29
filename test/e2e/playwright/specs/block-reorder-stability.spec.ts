@@ -151,6 +151,20 @@ async function readBlockOrderFromDom(page: Page): Promise<string[]> {
     }, BLOCK_SELECTOR);
 }
 
+/** The down-arrow handler exits without writing when the next sibling is not a box. */
+async function waitForNextBox(page: Page, blockId: string): Promise<void> {
+    await page.waitForFunction(
+        id => {
+            const button = document.getElementById(`moveDown${id}`);
+            const box = button?.closest('.box');
+            const next = box?.nextElementSibling;
+            return !!next && next.classList.contains('box');
+        },
+        blockId,
+        { timeout: 15000 },
+    );
+}
+
 async function clickMoveDown(page: Page, blockId: string): Promise<void> {
     const btn = page.locator(`#moveDown${blockId}`).first();
     await btn.waitFor({ state: 'attached', timeout: 5000 });
@@ -372,7 +386,15 @@ test.describe('Block reorder stability — issue #1665', () => {
         }
 
         // Click block A's down arrow. A must end up after B.
+        // The arrow stays disabled while the new iDevice is still settling.
+        // A click in that state never starts the move.
+        const moveDownA = page.locator(`#moveDown${blockAId}`).first();
+        await moveDownA.waitFor({ state: 'visible', timeout: 15000 });
+        await expect(moveDownA).toBeEnabled({ timeout: 15000 });
+        await waitForNextBox(page, blockAId);
         await clickMoveDown(page, blockAId);
+        // The handler asks the server whether the block is free, then writes
+        // Yjs. Wait for that order, with the same budget as closing the editor.
         await page.waitForFunction(
             ({ targetPageId, expectedFirst }) => {
                 const bridge = (window as any).eXeLearning?.app?.project?._yjsBridge;
@@ -380,7 +402,7 @@ test.describe('Block reorder stability — issue #1665', () => {
                 return blocks[0]?.id === expectedFirst || blocks[0]?.blockId === expectedFirst;
             },
             { targetPageId: sourcePageId, expectedFirst: blockBId },
-            { timeout: 5000 },
+            { timeout: 15000 },
         );
 
         const orderAfterDown = await readBlockOrderFromYjs(page, sourcePageId);
@@ -393,6 +415,9 @@ test.describe('Block reorder stability — issue #1665', () => {
         // Round-trip: click the now-first block B's down arrow (should
         // be a no-op since it's already at the top after A's move…
         // actually it's at index 0, so moving it down should swap back).
+        const moveDownB = page.locator(`#moveDown${blockBId}`).first();
+        await expect(moveDownB).toBeEnabled({ timeout: 15000 });
+        await waitForNextBox(page, blockBId);
         await clickMoveDown(page, blockBId);
         await page.waitForFunction(
             ({ targetPageId, expectedFirst }) => {
@@ -401,7 +426,7 @@ test.describe('Block reorder stability — issue #1665', () => {
                 return blocks[0]?.id === expectedFirst || blocks[0]?.blockId === expectedFirst;
             },
             { targetPageId: sourcePageId, expectedFirst: blockAId },
-            { timeout: 5000 },
+            { timeout: 15000 },
         );
 
         const orderAfterRoundTrip = await readBlockOrderFromYjs(page, sourcePageId);
