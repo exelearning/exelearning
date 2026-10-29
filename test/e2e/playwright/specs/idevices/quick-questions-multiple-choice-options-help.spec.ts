@@ -3,6 +3,7 @@ import {
     addIdevice,
     editIdevice,
     gotoWorkarea,
+    openLeftPanels,
     reloadPage,
     saveIdevice,
     saveProject,
@@ -100,6 +101,9 @@ test('Multiple Choice explains each option inline without changing its value', a
         .locator('#seleccionaEOptions > .d-flex')
         .filter({ has: page.locator('#seleccionaEShowSolution') })
         .locator('.exe-idevice-help');
+    // Below 1200px the panels collapse, which leaves the explanation room to reach its
+    // widest at 1024px: with them open it has to grow when the window does.
+    await openLeftPanels(page);
     await solutionHelp.click();
     const solutionContent = page.locator(`#${await solutionHelp.getAttribute('aria-controls')}`);
     const narrowWidth = (await solutionContent.boundingBox())!.width;

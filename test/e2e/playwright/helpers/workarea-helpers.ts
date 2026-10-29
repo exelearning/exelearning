@@ -636,6 +636,18 @@ export async function selectNavNode(page: Page, nodeId: string): Promise<void> {
 }
 
 /**
+ * Open the left panels (page tree and iDevices) if they are collapsed: below
+ * COLLAPSE_PANELS_BELOW (1200px) the editor loads with them collapsed, and
+ * collapses them when the window becomes that narrow.
+ */
+export async function openLeftPanels(page: Page): Promise<void> {
+    if (await page.evaluate(() => document.body.classList.contains('left-column-hidden'))) {
+        await page.locator('#exe-panels-toggler').click();
+        await page.waitForFunction(() => !document.body.classList.contains('left-column-hidden'));
+    }
+}
+
+/**
  * Select a non-root page (required before adding iDevices)
  * Selects the first available page if no page is currently selected
  */
@@ -648,11 +660,8 @@ export async function selectFirstPage(page: Page): Promise<void> {
         return;
     }
 
-    // Below COLLAPSE_PANELS_BELOW (1200px) the editor loads with the left panels
-    // collapsed, which leaves the page tree out of reach: open them first.
-    if (await page.evaluate(() => document.body.classList.contains('left-column-hidden'))) {
-        await page.locator('#exe-panels-toggler').click();
-    }
+    // The page tree is out of reach while the left panels are collapsed.
+    await openLeftPanels(page);
 
     for (let attempt = 0; attempt < 3; attempt += 1) {
         const firstNode = page.locator('.nav-element:not([nav-id="root"])').first();
