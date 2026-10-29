@@ -16008,27 +16008,27 @@
       </trans-unit>
       <trans-unit id="j9d7n3c" resname="Presentation mode">
         <source>Presentation mode</source>
-        <target></target>
+        <target>~Präsentationsmodus</target>
       </trans-unit>
       <trans-unit id="z7x6z35" resname="Activate presentation mode">
         <source>Activate presentation mode</source>
-        <target></target>
+        <target>~Präsentationsmodus aktivieren</target>
       </trans-unit>
       <trans-unit id="pvzo8rg" resname="Deactivate presentation mode">
         <source>Deactivate presentation mode</source>
-        <target></target>
+        <target>~Präsentationsmodus deaktivieren</target>
       </trans-unit>
       <trans-unit id="3blcdr7" resname="Keys: Left/Right change page, M menu, T teacher mode, F11 full screen">
         <source>Keys: Left/Right change page, M menu, T teacher mode, F11 full screen</source>
-        <target></target>
+        <target>~Tasten: Links/Rechts Seite wechseln, M Menü, T Lehrer-Modus, F11 Vollbild</target>
       </trans-unit>
       <trans-unit id="hyfn0ng" resname="Autonomous Communities">
         <source>Autonomous Communities</source>
-        <target></target>
+        <target>~Autonome Gemeinschaften</target>
       </trans-unit>
       <trans-unit id="kiqnit8" resname="Ministry-managed territory (MEFPD)">
         <source>Ministry-managed territory (MEFPD)</source>
-        <target></target>
+        <target>~Vom Ministerium verwaltetes Gebiet (MEFPD)</target>
       </trans-unit>
     </body>
   </file>
