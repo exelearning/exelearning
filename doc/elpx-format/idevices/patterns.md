@@ -198,9 +198,11 @@ Some games (`crossword`, `hidden-image`, `puzzle`, `beforeafter`, `dragdrop`, `p
 
 ### When it is used
 
-Used by `interactive-video` (and the related `quick-questions-video` in some export versions). The JSON data for interactive slides is embedded directly inside `<htmlView>` as the content of a specially identified element, rather than URI-encoded in a DataGame div.
+Used by the **legacy** `interactive-video` (and the related `quick-questions-video` in some export versions). The JSON data for interactive slides is embedded directly inside `<htmlView>` as the content of a specially identified element, rather than URI-encoded in a DataGame div.
 
-**Types using this pattern:** `interactive-video`
+> **Note (v2):** `interactive-video` has migrated to a `component-type=json` component that stores its versioned document in `jsonProperties` (Pattern 1). This embedded-island format is now a **legacy read source**: it is hydrated and migrated once, on open, then re-saved as `jsonProperties`. Already-exported packages still carry the island and keep working. See [catalog.md#interactive-video](catalog.md).
+
+**Types using this pattern (legacy read path):** `interactive-video`
 
 ### Structure
 
