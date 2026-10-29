@@ -654,7 +654,7 @@ The iDevice stores a JSON object in the Yjs document:
 ### Basic round-trip
 
 1. Add the iDevice to a page.
-2. Select dataset **LOMLOE — Islas Canarias** (default).
+2. Keep the default dataset **LOMLOE — Estado (España)**, or pick a concretion under *Autonomous Communities* / *Ministry-managed territory (MEFPD)*.
 3. Click **Educación Primaria** → **1º Primaria** → **Matemáticas**.
 4. In **Saberes Básicos** tab: check two items, set coverage to *Practicado*.
 5. Switch to **Competencias Específicas** tab: expand one competencia, check one criterio.
