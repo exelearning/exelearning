@@ -99,6 +99,7 @@ export {
     createSnapshot,
     updateSnapshot,
     upsertSnapshot,
+    replaceSnapshotIfVersion,
     deleteSnapshot,
     snapshotExists,
     findUpdatesByProjectId,

@@ -185,6 +185,13 @@ export interface SafeFetchOptions extends RequestInit {
     lookupFn?: LookupFn;
     /** Injectable fetch implementation (for tests). */
     fetchImpl?: typeof fetch;
+    /**
+     * Bun extension (not part of the Fetch standard): `false` leaves the
+     * response body as sent and never runs a content decoder on it. Use it
+     * for probes that discard the body, so a remote host's `Content-Encoding`
+     * cannot push attacker-controlled data through gzip/deflate/br/zstd.
+     */
+    decompress?: boolean;
 }
 
 /**

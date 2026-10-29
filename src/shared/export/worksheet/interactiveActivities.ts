@@ -13,7 +13,7 @@
  * an activity would replace it with a note.
  *
  * How an iDevice stores its data plays no part. A JSON iDevice is an activity when it has an
- * adapter, as the form does, and an HTML one is not without one, as the checklist is not.
+ * adapter, as the form does, and an HTML one is not without one, as the UDL content is not.
  *
  * Being an activity says printing should ask what to do with it. For the ones in
  * `NEVER_PRINTABLE` the answer is settled, and the note they carry says they are not available in
