@@ -55,7 +55,8 @@ var $azquizgame = {
     },
 
     loadGame: function () {
-        $azquizgame.options = [];
+        // Running activities keep their entry; each one is stored at its own index.
+        $azquizgame.options.length = $('.rosco-IDevice').length;
 
         $('.rosco-IDevice').each(function (i) {
             const dl = $('.rosco-DataGame', this);
@@ -79,7 +80,7 @@ var $azquizgame = {
             option.main = 'roscoMainContainer-' + i;
             option.idevice = 'rosco-IDevice';
 
-            $azquizgame.options.push(option);
+            $azquizgame.options[i] = option;
 
             const rosco = $azquizgame.createInterfaceRosco(i);
             dl.before(rosco).remove();

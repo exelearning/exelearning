@@ -34,7 +34,9 @@ import { createWebSocketRoutes, initialize as initWebSocket, stop as stopWebSock
 import { webSocketInfoRoutes } from './routes/websocket-info';
 import { yjsDebugRoutes } from './routes/yjs-debug';
 import { getAppVersion } from './utils/version';
+import { secretsBootError } from './utils/env';
 import { getFilesDir } from './services/file-helper';
+import { serveFilesDirFile } from './services/files-dir-response';
 import { db, closeDb } from './db/client';
 import { migrateToLatest } from './db/migrations';
 import { migrateAssetStorage } from './services/asset-storage-migration';
@@ -330,45 +332,8 @@ const app = new Elysia()
         }
 
         // Handle /files/tmp/* and /files/dist/* - serve from FILES_DIR
-        const filesMatch = pathname.match(/^\/files\/(tmp|dist)\/(.+)$/);
-        if (filesMatch) {
-            const filesDir = getFilesDir();
-            const subPath = filesMatch[1]; // 'tmp' or 'dist'
-            const relativePath = filesMatch[2]; // rest of the path
-
-            // Prevent path traversal
-            const cleanPath = relativePath.replace(/\.\./g, '');
-            const filePath = path.join(filesDir, subPath, cleanPath);
-
-            // Security: ensure path is within FILES_DIR
-            const resolvedPath = path.resolve(filePath);
-            const resolvedBase = path.resolve(filesDir);
-            if (!resolvedPath.startsWith(resolvedBase)) {
-                return new Response('Forbidden', { status: 403 });
-            }
-
-            if (fs.existsSync(filePath)) {
-                try {
-                    const stats = fs.statSync(filePath);
-                    if (stats.isFile()) {
-                        const content = fs.readFileSync(filePath);
-                        const ext = path.extname(filePath).toLowerCase();
-                        const contentType = MIME_TYPES[ext] || 'application/octet-stream';
-
-                        return new Response(content, {
-                            headers: {
-                                'Content-Type': contentType,
-                                'Content-Length': stats.size.toString(),
-                                'Cache-Control': 'public, max-age=3600', // 1 hour cache
-                            },
-                        });
-                    }
-                } catch (err) {
-                    console.error('[StaticFiles] Error serving file:', filePath, err);
-                }
-            }
-            // File not found - let it fall through to 404
-        }
+        const filesResponse = serveFilesDirFile(pathname, getFilesDir());
+        if (filesResponse) return filesResponse;
 
         // Match /v{version}/libs/* and rewrite to /libs/*
         const versionedLibsMatch = pathname.match(/^\/v[\d.]+[^/]*\/libs\/(.+)$/);
@@ -702,28 +667,26 @@ async function syncBuiltinThemes() {
 }
 
 /**
- * Refuse to boot in production if the JWT signing secret is still the
- * insecure default. Catches the case where a deployment forgets to set
- * `API_JWT_SECRET` / `JWT_SECRET` — without this check, tokens would be
- * forgeable by anyone who reads the open-source codebase.
+ * Refuse to boot in production if a security-critical secret is still the
+ * insecure default: the JWT signing secret (`API_JWT_SECRET`/`JWT_SECRET`) OR
+ * `APP_SECRET` (which verifies platform-integration JWTs). Without this check
+ * either would be forgeable by anyone who reads the open-source codebase.
  */
-function assertProductionJwtSecret(): void {
-    if (process.env.NODE_ENV !== 'production') return;
-    const secret = process.env.API_JWT_SECRET || process.env.JWT_SECRET || '';
-    if (!secret || secret === 'dev_secret_change_me' || secret === 'elysia-dev-secret-change-me') {
-        console.error(
-            '[SECURITY] Refusing to start: NODE_ENV=production but no API_JWT_SECRET/JWT_SECRET is set ' +
-                '(or it is still the in-repo default). Generate a long random string and export it as ' +
-                'API_JWT_SECRET before starting the server.',
-        );
+function assertProductionSecrets(): void {
+    // Keyed on BOTH APP_ENV=prod and NODE_ENV=production (see src/utils/env.ts)
+    // so the default-secret refusal also fires on non-Docker prod deploys that
+    // only set APP_ENV=prod, not just the Docker image that sets NODE_ENV.
+    const error = secretsBootError();
+    if (error) {
+        console.error(error);
         process.exit(1);
     }
 }
 
 // Bootstrap: run migrations, seed, and start server
 async function bootstrap() {
-    // 0. Production safety: do not start with the default JWT secret.
-    assertProductionJwtSecret();
+    // 0. Production safety: do not start with a default JWT secret or APP_SECRET.
+    assertProductionSecrets();
 
     // 1. Run migrations
     console.log('[DB] Running migrations...');

@@ -208,6 +208,14 @@ var $interactivevideo = {
         );
     },
 
+    /**
+     * iframe_api defines window.YT straight away as a stub and only adds
+     * YT.Player once the player script has loaded.
+     */
+    youtubeApiReady: function () {
+        return typeof YT !== 'undefined' && typeof YT.Player === 'function';
+    },
+
     enable: function () {
         this.isInExe = eXe.app.isInExe();
         // Create the required HTML elements:
@@ -508,7 +516,7 @@ var $interactivevideo = {
             }
 
             isYTready = setInterval(function () {
-                if (typeof YT !== 'undefined') {
+                if ($interactivevideo.youtubeApiReady()) {
                     onYouTubeIframeAPIReady = $interactivevideo.ready();
                     clearInterval(isYTready);
                 }
@@ -3079,7 +3087,11 @@ $(function () {
             // Try to find and parse the legacy script manually
             var container = document.querySelector('.exe-interactive-video');
             if (container) {
-                var legacyScript = container.querySelector('script[type="text/javascript"]');
+                // In the editor, sanitized content keeps this block as inert text
+                // (type="text/plain" data-exe-inert-script="text/javascript").
+                var legacyScript = container.querySelector(
+                    'script[type="text/javascript"], script[data-exe-inert-script="text/javascript"]'
+                );
                 if (legacyScript) {
                     var scriptContent = legacyScript.textContent || legacyScript.innerHTML || '';
                     // Remove CDATA markers and extract JSON

@@ -4,6 +4,10 @@ import * as path from 'path';
 
 test.describe('Save Detection - Static', () => {
     const FIXTURE_PATH = path.resolve(__dirname, '../../../fixtures/really-simple-test-project.elpx');
+    const ASSETS_FIXTURE_PATH = path.resolve(
+        __dirname,
+        '../../../fixtures/un-contenido-de-ejemplo-para-probar-estilos-y-catalogacion.elpx',
+    );
 
     test('static starts clean and does not prompt on New', async ({ staticPage }) => {
         test.skip(test.info().project.name !== 'static', 'Static-only tests');
@@ -138,6 +142,35 @@ test.describe('Save Detection - Static', () => {
 
         const saveButton = page.locator('#head-top-save-button');
         await expect(saveButton).toHaveClass(/unsaved/);
+    });
+
+    test('static opening ELPX with assets does not report them as unsaved (#2540)', async ({ staticPage }) => {
+        test.skip(test.info().project.name !== 'static', 'Static-only tests');
+        const page = staticPage;
+
+        await waitForAppReady(page);
+        await page.dispatchEvent('body', 'pointerdown');
+        await page.waitForFunction(() => (window as any).UnsavedChangesHelper?._beforeUnloadHandler != null);
+
+        await openElpFile(page, ASSETS_FIXTURE_PATH, 1);
+
+        const afterOpen = await page.evaluate(() => {
+            const bridge = (window as any).eXeLearning.app.project._yjsBridge;
+            const event = new Event('beforeunload', { cancelable: true }) as BeforeUnloadEvent;
+            window.dispatchEvent(event);
+            return {
+                hasAssets: bridge.assetManager.getAllAssetsMetadata().length > 0,
+                isDirty: bridge.documentManager.isDirty,
+                hasUnsavedAssets: bridge.assetManager.hasUnsavedAssets(),
+                defaultPrevented: event.defaultPrevented,
+            };
+        });
+        expect(afterOpen).toEqual({
+            hasAssets: true,
+            isDirty: false,
+            hasUnsavedAssets: false,
+            defaultPrevented: false,
+        });
     });
 
     test('static save with an asset clears every beforeunload state', async ({ staticPage }) => {

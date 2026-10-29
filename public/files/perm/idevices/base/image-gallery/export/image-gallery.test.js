@@ -106,4 +106,63 @@ describe('image-gallery iDevice export', () => {
       expect(code).toContain('possibleFolder === filename');
     });
   });
+
+  // simple-lightbox.min.js next to this file is an eXe-patched SimpleLightbox
+  // 2.10.3 (array captionsData + title/author/license caption links). Stock
+  // SimpleLightbox only reads a single attribute, so replacing the file with an
+  // upstream build silently drops author and license from every gallery.
+  describe('patched SimpleLightbox captions', () => {
+    let preloads;
+    let OriginalImage;
+
+    beforeEach(() => {
+      preloads = [];
+      OriginalImage = window.Image;
+      // Capture the lightbox's off-DOM preload image so the test can fire its
+      // load event (happy-dom does not fetch images).
+      window.Image = class extends OriginalImage {
+        constructor(...args) {
+          super(...args);
+          preloads.push(this);
+        }
+      };
+      // The lightbox writes #pid=N to the history; happy-dom's test URL
+      // origin rejects that, and it is irrelevant to caption rendering.
+      vi.spyOn(window.history, 'pushState').mockImplementation(() => {});
+      vi.spyOn(window.history, 'replaceState').mockImplementation(() => {});
+      (0, eval)(readFileSync(join(__dirname, 'simple-lightbox.min.js'), 'utf-8'));
+      (0, eval)(code);
+      document.body.innerHTML = `
+        <div id="gallery-1"><div class="imageGallery-IDevice">
+          <a title="Sunset" href="full.jpg" class="imageLink">
+            <img src="thumb.jpg" title="Sunset" alt="Sunset" titlelink=""
+              author="Jane Doe" authorlink="https://example.com/jane"
+              license="CC-BY" licenselink="http://creativecommons.org/licenses/"/>
+          </a>
+        </div></div>`;
+    });
+
+    afterEach(() => {
+      window.Image = OriginalImage;
+      vi.restoreAllMocks();
+      document.body.innerHTML = '';
+    });
+
+    it('renders title, author link and license link in the caption', () => {
+      window.$imagegallery.createSLightboxGallery('gallery-1');
+      document.querySelector('#gallery-1 a').click();
+      expect(preloads.length).toBeGreaterThan(0);
+      preloads.forEach(img => img.dispatchEvent(new Event('load')));
+
+      const caption = document.querySelector('.sl-wrapper .sl-caption');
+      expect(caption).not.toBeNull();
+      expect(caption.querySelector('.caption.title em').textContent).toBe('Sunset');
+      const author = caption.querySelector('a.caption.author');
+      expect(author.getAttribute('href')).toBe('https://example.com/jane');
+      expect(author.textContent).toBe('Jane Doe');
+      const license = caption.querySelector('.caption.license a[rel~="license"]');
+      expect(license.getAttribute('href')).toBe('http://creativecommons.org/licenses/');
+      expect(license.textContent).toBe('CC-BY');
+    });
+  });
 });

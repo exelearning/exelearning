@@ -846,6 +846,57 @@ describe('Folder Manager Service', () => {
             expect(result.extractedCount).toBe(1); // Only index.html
         });
 
+        it('should reject a ZIP that exceeds the decompression limits without extracting anything', async () => {
+            // Stored (uncompressed) entries, so nothing large is allocated. Each central-directory
+            // header then declares 1 GiB uncompressed, as a zip bomb does, above the 200 MiB entry cap.
+            const zipped = fflate.zipSync(
+                { 'index.html': new TextEncoder().encode('<html></html>'), 'a.txt': new Uint8Array(16) },
+                { level: 0 },
+            );
+            const view = new DataView(zipped.buffer, zipped.byteOffset, zipped.byteLength);
+            for (let i = 0; i + 4 <= zipped.length; i++) {
+                if (view.getUint32(i, true) === 0x02014b50) view.setUint32(i + 24, 1024 * 1024 * 1024, true);
+            }
+
+            const zipPath = path.join(tempDir, 'assets', testProjectUuid, 'bomb.zip');
+            await fs.ensureDir(path.dirname(zipPath));
+            await fs.writeFile(zipPath, Buffer.from(zipped));
+            const zipAsset = await assetQueries.createAsset(db, {
+                project_id: testProjectId,
+                filename: 'bomb.zip',
+                storage_path: zipPath,
+                folder_path: '',
+                mime_type: 'application/zip',
+                client_id: 'bomb-zip',
+            });
+
+            const result = await service.extractZipAsset(testProjectId, testProjectUuid, zipAsset.id, 'extracted');
+
+            expect(result.success).toBe(false);
+            expect(result.error).toContain('too large when decompressed');
+            expect(result.extractedCount).toBe(0);
+            expect(await assetQueries.findAssetByPath(db, testProjectId, 'extracted', 'index.html')).toBeUndefined();
+        });
+
+        it('should report a corrupted ZIP as invalid', async () => {
+            const zipPath = path.join(tempDir, 'assets', testProjectUuid, 'corrupted.zip');
+            await fs.ensureDir(path.dirname(zipPath));
+            await fs.writeFile(zipPath, 'not a zip archive');
+            const zipAsset = await assetQueries.createAsset(db, {
+                project_id: testProjectId,
+                filename: 'corrupted.zip',
+                storage_path: zipPath,
+                folder_path: '',
+                mime_type: 'application/zip',
+                client_id: 'corrupted-zip',
+            });
+
+            const result = await service.extractZipAsset(testProjectId, testProjectUuid, zipAsset.id, 'extracted');
+
+            expect(result.success).toBe(false);
+            expect(result.error).toContain('invalid or corrupted archive');
+        });
+
         it('should fail for non-ZIP asset', async () => {
             const pngAsset = await assetQueries.createAsset(db, {
                 project_id: testProjectId,
@@ -899,6 +950,50 @@ describe('Folder Manager Service', () => {
 
             expect(result.success).toBe(false);
             expect(result.error).toContain('Security error: invalid file paths detected');
+        });
+
+        it('rejects a decompression-bomb ZIP asset before inflating it (zip-bomb DoS guard)', async () => {
+            // 4 MB of zeros compresses to a few KB — a ~1000:1 bomb shape. With a
+            // 1 MB per-entry cap the service must refuse it BEFORE inflation, so the
+            // declared 4 MB is never materialised in memory or written to disk.
+            const bombService = createFolderManagerService({
+                db,
+                queries: assetQueries,
+                fs,
+                path,
+                fflate,
+                resolveAssetStoragePath: (storagePath: string) => resolveAssetStoragePathPure(tempDir, storagePath),
+                tryResolveAssetStoragePath: (storagePath: string) =>
+                    tryResolveAssetStoragePathPure(tempDir, storagePath),
+                zipLimits: { maxEntryBytes: 1 * 1024 * 1024 },
+            });
+
+            const zipped = fflate.zipSync({ 'bomb.bin': new Uint8Array(4 * 1024 * 1024) }, { level: 6 });
+            // Sanity: the crafted archive is tiny on disk (the DoS vector).
+            expect(zipped.length).toBeLessThan(64 * 1024);
+
+            const zipPath = path.join(tempDir, 'assets', testProjectUuid, 'bomb.zip');
+            await fs.ensureDir(path.dirname(zipPath));
+            await fs.writeFile(zipPath, Buffer.from(zipped));
+
+            const zipAsset = await assetQueries.createAsset(db, {
+                project_id: testProjectId,
+                filename: 'bomb.zip',
+                storage_path: zipPath,
+                folder_path: '',
+                mime_type: 'application/zip',
+                client_id: 'bomb-zip',
+            });
+
+            const result = await bombService.extractZipAsset(testProjectId, testProjectUuid, zipAsset.id, 'extracted');
+
+            expect(result.success).toBe(false);
+            expect(result.error).toMatch(/too large when decompressed/);
+            expect(result.extractedCount).toBe(0);
+
+            // The bomb must NOT have been written as an extracted asset.
+            const extracted = await assetQueries.findAssetByPath(db, testProjectId, 'extracted', 'bomb.bin');
+            expect(extracted).toBeFalsy();
         });
     });
 });
