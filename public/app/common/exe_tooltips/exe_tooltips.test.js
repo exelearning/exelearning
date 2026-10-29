@@ -400,6 +400,17 @@ describe('exe_tooltips (app/common)', () => {
         expect(config.content.text.attr('id')).toBe('t-myterm');
       });
 
+      it('does not abort the loop when a definition link has no id (Sentry: unrecognized expression: #)', () => {
+        document.body.innerHTML = `
+          <a class="exe-tooltip definition" title="Broken"></a>
+          <a class="exe-tooltip plain" title="Title | Text"></a>
+        `;
+        exeTooltips.links = $('a.exe-tooltip');
+        expect(() => exeTooltips.run()).not.toThrow();
+        expect(qtipMock).toHaveBeenCalledTimes(2);
+        expect(qtipMock.mock.calls[0][0].content.text.length).toBe(0);
+      });
+
       it('creates qtip for definition tooltip with button', () => {
         document.body.innerHTML = `
           <a class="exe-tooltip definition with-button" id="link-term" title="Term"></a>

@@ -1136,6 +1136,23 @@ describe('Translations Command', () => {
             // MathJax-like key should NOT be present
             expect(content).not.toContain('mathfontexe');
         });
+
+        it('should exclude the generated pdf.js files', async () => {
+            const pdfjsDir = path.join(testDir, 'public', 'libs', 'pdfjs');
+            await fs.ensureDir(pdfjsDir);
+            // Minified pdf.js embeds binary data that can contain a `_(` followed by a backtick
+            await fs.writeFile(path.join(pdfjsDir, 'pdf.worker.min.js'), 'var d=a)_(`f)Mwjmb(af)Mwjmb`;');
+            const libsDir = path.join(testDir, 'public', 'libs', 'exe_lib');
+            await fs.ensureDir(libsDir);
+            await fs.writeFile(path.join(libsDir, 'exe_lib.js'), `const msg = _('regular.lib.translation');`);
+
+            const { execute } = await import('./translations');
+            await execute([], { locale: 'es', 'extract-only': true });
+
+            const content = await fs.readFile(path.join(testTranslationsDir, 'messages.es.xlf'), 'utf-8');
+            expect(content).toContain('regular.lib.translation');
+            expect(content).not.toContain('Mwjmb');
+        });
     });
 
     describe('invalid key filtering', () => {
@@ -1216,6 +1233,110 @@ describe('Translations Command', () => {
             expect(content).toContain('valid.key.name');
             // Should not add just "key" as a translation
             expect(content).not.toMatch(/resname="key"/);
+        });
+
+        it('should exclude keys with characters that XML 1.0 does not allow', async () => {
+            const libDir = path.join(testDir, 'public', 'libs', 'minified');
+            await fs.ensureDir(libDir);
+            // Like the pdf.js worker: binary data inside a minified file that happens to hold `_(`
+            await fs.writeFile(
+                path.join(libDir, 'worker.min.js'),
+                `a=_('bin\u0004ary\u0005');b=_('nul\u0000');c=_('non\uFFFEchar');d=_('Valid key with emoji \u{1F600}');`,
+            );
+
+            const { execute } = await import('./translations');
+            await execute([], { locale: 'es', 'extract-only': true });
+
+            const content = await fs.readFile(path.join(testTranslationsDir, 'messages.es.xlf'), 'utf-8');
+            expect(content).toContain('Valid key with emoji \u{1F600}');
+            expect(content).not.toContain('bin');
+            expect(content).not.toContain('nul');
+            expect(content).not.toContain('non');
+            // Every character left in the file must be allowed by the XML 1.0 Char production
+            expect(content).not.toMatch(/[^\t\n\r\u0020-\uD7FF\uE000-\uFFFD\u{10000}-\u{10FFFF}]/u);
+        });
+
+        it('should keep keys with tabs and line breaks, which XML 1.0 allows', async () => {
+            const srcDir = path.join(testDir, 'src');
+            await fs.ensureDir(srcDir);
+            await fs.writeFile(path.join(srcDir, 'source.ts'), "const a = trans('Column\tvalue\nnext line');");
+
+            const { execute } = await import('./translations');
+            await execute([], { locale: 'es', 'extract-only': true });
+
+            const content = await fs.readFile(path.join(testTranslationsDir, 'messages.es.xlf'), 'utf-8');
+            expect(content).toContain('Column\tvalue\nnext line');
+        });
+    });
+
+    describe('duplicate trans-units', () => {
+        const duplicateXlf = `<?xml version="1.0" encoding="UTF-8"?>
+<xliff version="1.2" xmlns="urn:oasis:names:tc:xliff:document:1.2">
+  <file source-language="en" target-language="es" datatype="plaintext">
+    <body>
+      <trans-unit id="a1" resname="Being edited by">
+        <source>Being edited by</source>
+        <target>Lo está editando</target>
+      </trans-unit>
+      <trans-unit id="a2" resname="Sort by &quot;size&quot;">
+        <source>Sort by "size"</source>
+        <target>Ordenar por "tamaño"</target>
+      </trans-unit>
+      <trans-unit id="a3" resname="Being edited by ">
+        <source>Being edited by </source>
+        <target>Lo está editando </target>
+      </trans-unit>
+      <trans-unit id="a4" resname="Being edited by">
+        <source>Being edited by</source>
+        <target>Está siendo editado por</target>
+      </trans-unit>
+      <trans-unit id="a5" resname="Sort by &quot;size&quot;">
+        <source>Sort by "size"</source>
+        <target>Ordena por "tamaño"</target>
+      </trans-unit>
+    </body>
+  </file>
+</xliff>`;
+
+        it('should list each repeated key once, unescaped, in file order', async () => {
+            const { findDuplicateResnames } = await import('./translations');
+
+            expect(findDuplicateResnames(duplicateXlf)).toEqual(['Being edited by', 'Sort by "size"']);
+        });
+
+        it('should treat keys that differ only in surrounding spaces as different', async () => {
+            const { findDuplicateResnames } = await import('./translations');
+
+            expect(findDuplicateResnames(duplicateXlf)).not.toContain('Being edited by ');
+        });
+
+        it('should return nothing when every key has one trans-unit', async () => {
+            const { findDuplicateResnames } = await import('./translations');
+            const content = await fs.readFile(path.join(testTranslationsDir, 'messages.es.xlf'), 'utf-8');
+
+            expect(findDuplicateResnames(content)).toEqual([]);
+        });
+
+        it('should report duplicates without removing any trans-unit', async () => {
+            await fs.writeFile(path.join(testTranslationsDir, 'messages.es.xlf'), duplicateXlf);
+
+            const { execute } = await import('./translations');
+            const result = await execute([], { locale: 'es', 'clean-only': true });
+
+            expect(result.success).toBe(true);
+            expect(result.stats?.duplicates).toBe(2);
+            expect(result.message).toContain('2 keys have duplicate trans-units');
+
+            const content = await fs.readFile(path.join(testTranslationsDir, 'messages.es.xlf'), 'utf-8');
+            expect(content.match(/<trans-unit\b/g)).toHaveLength(5);
+        });
+
+        it('should not mention duplicates when there are none', async () => {
+            const { execute } = await import('./translations');
+            const result = await execute([], { locale: 'es', 'clean-only': true });
+
+            expect(result.stats?.duplicates).toBe(0);
+            expect(result.message).not.toContain('duplicate');
         });
     });
 });

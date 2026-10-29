@@ -39,7 +39,8 @@ var $eXeDragDrop = {
     },
 
     loadGame: function () {
-        $eXeDragDrop.options = [];
+        // Running activities keep their entry; each one is stored at its own index.
+        $eXeDragDrop.options.length = $eXeDragDrop.activities.length;
 
         $eXeDragDrop.activities.each(function (i) {
             const dl = $('.dragdrop-DataGame', this);
@@ -51,7 +52,7 @@ var $eXeDragDrop = {
             mOption.main = 'dadPMainContainer-' + i;
             mOption.idevice = 'dragdrop-IDevice';
 
-            $eXeDragDrop.options.push(mOption);
+            $eXeDragDrop.options[i] = mOption;
 
             const dadP = $eXeDragDrop.createInterfaceCards(i);
 

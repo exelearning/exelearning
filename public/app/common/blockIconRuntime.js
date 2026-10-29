@@ -166,6 +166,21 @@
     return { source: 'theme', value: resolveRenamedThemeIcon(name) };
   }
 
+  // Icon descriptors live in the shared Y.Doc, so a collaborator controls them:
+  // every value is escaped before it lands in an attribute.
+  function escapeHtmlAttribute(value) {
+    return String(value ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+  }
+
+  function renderIconImage(src, alt) {
+    return `<img src="${escapeHtmlAttribute(src)}" alt="${escapeHtmlAttribute(alt)}">`;
+  }
+
   function renderMaterialMaskIcon(iconName, options = {}) {
     const dataUri = getMaterialIconDataUri(iconName, options);
     if (dataUri) {
@@ -184,6 +199,7 @@
     resolveAppAssetUrl,
     resolveRenamedThemeIcon,
     deriveBlockIcon,
+    renderIconImage,
     renderMaterialMaskIcon,
     renderMaterialInlineIcon,
     getMaterialIconSymbol,

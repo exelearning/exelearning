@@ -30,8 +30,10 @@ export function isValidReturnUrl(url: string | undefined | null): boolean {
         return false;
     }
 
-    // No dangerous characters that could be used for header injection
-    if (url.includes('\n') || url.includes('\r') || url.includes('\\')) {
+    // No control characters or backslashes: browsers strip tab/newline and treat
+    // '\' as '/', which turns '/<TAB>/evil.com' or '/\evil.com' into '//evil.com'
+    // biome-ignore lint/suspicious/noControlCharactersInRegex: rejecting them is the point
+    if (/[\x00-\x1f\x7f\\]/.test(url)) {
         return false;
     }
 
@@ -39,14 +41,6 @@ export function isValidReturnUrl(url: string | undefined | null): boolean {
     const lowerUrl = url.toLowerCase();
     if (lowerUrl.includes('javascript:') || lowerUrl.includes('data:')) {
         return false;
-    }
-
-    // If BASE_PATH is set, validate the URL starts with it or is under root
-    const basePath = getBasePath();
-    if (basePath) {
-        // Allow paths that start with basePath or are at root (for assets, etc.)
-        // e.g., /exelearning/workarea or /workarea (both valid)
-        return true;
     }
 
     return true;

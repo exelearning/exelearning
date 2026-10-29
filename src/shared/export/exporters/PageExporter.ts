@@ -58,7 +58,7 @@ export class PageExporter extends Html5Exporter {
             let latexWasRendered = false;
 
             // 4. Fetch and add theme
-            const { themeFilesMap, faviconInfo } = await this.prepareThemeData(themeName);
+            const { themeFilesMap, themeRootFiles, faviconInfo } = await this.prepareThemeData(themeName);
             if (themeFilesMap) {
                 for (const [filePath, content] of themeFilesMap) {
                     this.zip.addFile(`theme/${filePath}`, content);
@@ -116,6 +116,7 @@ export class PageExporter extends Html5Exporter {
                 includeMathJax,
                 navLabels,
                 materialIconDataUris,
+                themeRootFiles,
             );
             this.zip.addFile('index.html', html);
 
@@ -199,6 +200,7 @@ export class PageExporter extends Html5Exporter {
                 includeMathJax,
                 navLabels,
                 materialIconDataUris,
+                themeRootFiles,
             );
 
             // Pre-render LaTeX to SVG+MathML when MathJax is not bundled, so
@@ -266,6 +268,7 @@ export class PageExporter extends Html5Exporter {
         addMathJax = false,
         navLabels?: { previous: string; next: string; page: string; license?: string },
         materialIconDataUris?: Map<string, string>,
+        themeFiles?: string[],
     ): string {
         return this.pageRenderer.renderSinglePage(pages, {
             projectTitle: meta.title || 'eXeLearning',
@@ -291,6 +294,8 @@ export class PageExporter extends Html5Exporter {
             // Pre-translated nav labels (resolved from XLF at export time)
             navLabels,
             materialIconDataUris,
+            // The style's own root files: an older style has content.css and default.js
+            themeFiles,
         });
     }
 

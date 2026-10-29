@@ -34,7 +34,7 @@ var $quickquestions = {
     image: '',
     widthImage: 0,
     heightImage: 0,
-    options: {},
+    options: [],
     videos: [],
     video: {
         player: '',
@@ -71,7 +71,8 @@ var $quickquestions = {
     },
 
     loadGame: function () {
-        $quickquestions.options = [];
+        // Running activities keep their entry; each one is stored at its own index.
+        $quickquestions.options.length = $quickquestions.activities.length;
         $quickquestions.activities.each(function (i) {
             const dl = $('.quext-DataGame', this);
             if (dl.length === 0) return; // Skip already initialized activities
@@ -91,7 +92,7 @@ var $quickquestions = {
             mOption.main = 'quextMainContainer-' + i;
             mOption.idevice = 'quext-IDevice';
 
-            $quickquestions.options.push(mOption);
+            $quickquestions.options[i] = mOption;
 
             const quext = $quickquestions.createInterfaceQuExt(i);
             dl.before(quext).remove();
@@ -1370,7 +1371,7 @@ var $quickquestions = {
         if (mQuestion.type === 1) {
             $quickquestions.showImageNeo(mQuestion.url, instance);
         } else if (mQuestion.type === 3) {
-            const text = unescape(mQuestion.eText);
+            const text = $exeDevices.iDevice.gamification.helpers.decodeStoredText(mQuestion.eText);
             $('#quextEText-' + instance)
                 .html(text)
                 .show();

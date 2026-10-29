@@ -8,8 +8,9 @@ import { describe, it, expect, beforeAll, beforeEach } from 'bun:test';
 import { Elysia } from 'elysia';
 import { SignJWT } from 'jose';
 import { idevicesRoutes } from './idevices';
+import { getJwtSecret } from '../utils/jwt-secret';
 
-const TEST_JWT_SECRET = 'dev_secret_change_me';
+const TEST_JWT_SECRET = getJwtSecret();
 
 async function signTestToken(sub: number, roles: string[] = ['ROLE_USER']): Promise<string> {
     const secret = new TextEncoder().encode(TEST_JWT_SECRET);
@@ -965,8 +966,9 @@ describe('iDevices Routes', () => {
                 // Only check JSON type iDevices - they wait for exportObject in ideviceInitExport()
                 if (idevice.componentType !== 'json') continue;
 
-                // Find the export JS file
-                const exportJsFile = idevice.exportJs[0];
+                // Find the iDevice's own export script: its libraries may be listed before it
+                const exportJsFile =
+                    idevice.exportJs.find((file: string) => file === `${idevice.id}.js`) ?? idevice.exportJs[0];
                 if (!exportJsFile) continue;
 
                 const scriptPath = path.join(
