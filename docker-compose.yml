@@ -18,9 +18,13 @@ services:
       # Persistent data only - no source code mounting
       - mnt-data:/mnt/data:rw         # Uploaded assets
       - ./data:/app/data:rw           # SQLite database persistence
-    # Always run in production mode (pre-compiled, no watchers)
+    # Runs the pre-compiled image without source watchers.
     # For development with hot reload, run locally: make up-local
     environment:
+      # This Compose file is for local development. Deployment examples in
+      # doc/deploy retain the image's production runtime settings.
+      NODE_ENV: development
+      APP_ENV: dev
       PRE_CONFIGURE_COMMANDS:
       POST_CONFIGURE_COMMANDS: |
         echo "this is a test line 1"
