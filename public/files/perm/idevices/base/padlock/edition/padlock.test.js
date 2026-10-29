@@ -420,18 +420,21 @@ describe('padlock edition: shared form tabs', () => {
     describe('saving', () => {
         let editors;
         let tinymceGet;
+        let focusEditor;
 
         beforeEach(() => {
             editors = {
                 candadoEDescription: '<p>Find the code</p>',
                 candadoEFeedBack: '<p>Well done</p>',
             };
+            focusEditor = vi.fn();
             tinymceGet = vi.spyOn(global.tinymce, 'get').mockImplementation((id) =>
                 id in editors
                     ? {
                           initialized: true,
                           getContent: () => editors[id],
                           setContent: (html) => (editors[id] = html),
+                          focus: () => focusEditor(id),
                       }
                     : null
             );
@@ -453,16 +456,118 @@ describe('padlock edition: shared form tabs', () => {
 
         it('asks for the instructions before saving', () => {
             editors.candadoEDescription = '';
+            $('#candadoERetro').trigger('click');
+            $('#candadoIdeviceForm-tab-options').trigger('click');
 
             expect(device.save()).toBe(false);
             expect(eXe.app.getLastAlert()).toBe('Please write the instructions.');
+            expect(panel('contents').classList.contains('active')).toBe(true);
+            expect(document.getElementById('candadoECandado').checked).toBe(true);
+            expect(document.getElementById('divCandadoInstructions').style.display).not.toBe('none');
+            expect(focusEditor).toHaveBeenCalledWith('candadoEDescription');
         });
 
         it('asks for the feedback before saving', () => {
             editors.candadoEFeedBack = '';
+            $('#candadoIdeviceForm-tab-options').trigger('click');
 
             expect(device.save()).toBe(false);
             expect(eXe.app.getLastAlert()).toBe('Please write the feedback.');
+            expect(panel('contents').classList.contains('active')).toBe(true);
+            expect(document.getElementById('candadoERetro').checked).toBe(true);
+            expect(document.getElementById('divCandadoFeebBack').style.display).not.toBe('none');
+            expect(focusEditor).toHaveBeenCalledWith('candadoEFeedBack');
+        });
+
+        it('reveals and focuses an empty access code from another tab', () => {
+            document.getElementById('candadoEDSolution').value = '';
+            $('#candadoIdeviceForm-tab-texts').trigger('click');
+
+            expect(device.save()).toBe(false);
+            expect(eXe.app.getLastAlert()).toBe(device.msgs.msgEnterCodeAccess);
+            expect(panel('contents').classList.contains('active')).toBe(true);
+            expect(document.activeElement.id).toBe('candadoEDSolution');
+        });
+
+        it('opens Options for a missing error message and saves once it is corrected', () => {
+            $('#candadoEAttemps').val('3').trigger('focusout');
+
+            expect(device.save()).toBe(false);
+            expect(eXe.app.getLastAlert()).toBe('Please write the error message.');
+            expect(panel('options').classList.contains('active')).toBe(true);
+            expect(document.activeElement.id).toBe('candadoEErrorMessage');
+
+            $('#candadoEErrorMessage').val('Try again');
+            expect(device.save()).toContain('"candadoErrorMessage":"Try again"');
+        });
+
+        it('opens Grading for an invalid report identifier', () => {
+            $('#eXeProgressReport').prop('checked', true).trigger('change');
+            $('#eXeProgressReportID').val('abc');
+
+            expect(device.save()).toBe(false);
+            expect(eXe.app.getLastAlert()).toBe('The report identifier must have at least 5 characters');
+            expect(panel('grading').classList.contains('active')).toBe(true);
+            expect(document.activeElement.id).toBe('eXeProgressReportID');
+        });
+
+        it('restores focus once after dismissing the alert', () => {
+            const modal = document.createElement('div');
+            modal.id = 'modalAlert';
+            modal.tabIndex = -1;
+            document.body.appendChild(modal);
+            editors.candadoEFeedBack = '';
+
+            expect(device.save()).toBe(false);
+            focusEditor.mockClear();
+            modal.focus();
+            modal.dispatchEvent(new Event('hidden.bs.modal'));
+            expect(focusEditor).toHaveBeenCalledExactlyOnceWith('candadoEFeedBack');
+            modal.dispatchEvent(new Event('hidden.bs.modal'));
+            expect(focusEditor).toHaveBeenCalledTimes(1);
+        });
+
+        it('does not focus an editor after its form was removed', () => {
+            const modal = document.createElement('div');
+            modal.id = 'modalAlert';
+            document.body.appendChild(modal);
+            editors.candadoEFeedBack = '';
+            expect(device.save()).toBe(false);
+            focusEditor.mockClear();
+            document.getElementById('padlockBody').remove();
+
+            modal.dispatchEvent(new Event('hidden.bs.modal'));
+            expect(focusEditor).not.toHaveBeenCalled();
+        });
+
+        it('keeps only the latest validation focus listener after repeated saves', () => {
+            const modal = document.createElement('div');
+            modal.id = 'modalAlert';
+            document.body.appendChild(modal);
+            const initialDisposers = device.$lifecycle.disposers.length;
+            editors.candadoEDescription = '';
+            expect(device.save()).toBe(false);
+            editors.candadoEDescription = '<p>Find the code</p>';
+            editors.candadoEFeedBack = '';
+            expect(device.save()).toBe(false);
+            expect(device.$lifecycle.disposers).toHaveLength(initialDisposers + 1);
+            focusEditor.mockClear();
+
+            modal.dispatchEvent(new Event('hidden.bs.modal'));
+            expect(focusEditor).toHaveBeenCalledExactlyOnceWith('candadoEFeedBack');
+        });
+
+        it('releases the alert listener when the edition closes', () => {
+            const modal = document.createElement('div');
+            modal.id = 'modalAlert';
+            document.body.appendChild(modal);
+            editors.candadoEFeedBack = '';
+            expect(device.save()).toBe(false);
+            focusEditor.mockClear();
+            device.$lifecycle.destroy();
+
+            modal.dispatchEvent(new Event('hidden.bs.modal'));
+            expect(focusEditor).not.toHaveBeenCalled();
         });
     });
 });

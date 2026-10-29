@@ -330,8 +330,32 @@ var $exeDevice = {
         return html;
     },
 
+    revealValidationField: function (tab, fieldId) {
+        $exeIDevicesEdition.iDevice.tabs.show('candadoIdeviceForm', tab);
+        if (fieldId === 'candadoEDescription') $('#candadoECandado').trigger('click');
+        else if (fieldId === 'candadoEFeedBack') $('#candadoERetro').trigger('click');
+
+        const field = document.getElementById(fieldId);
+        const editor = tinyMCE.get(fieldId);
+        const focus = function () {
+            if (!field.isConnected) return;
+            if (editor) editor.focus();
+            else field.focus();
+        };
+        focus();
+        // The alert traps focus while open. Restore it after dismissal, and
+        // let the edition lifecycle remove the listener if the form closes.
+        const modal = document.getElementById('modalAlert');
+        if (this.releaseValidationFocus) this.releaseValidationFocus();
+        if (modal) {
+            this.releaseValidationFocus = this.$lifecycle.addEventListener(modal, 'hidden.bs.modal', focus, { once: true });
+        }
+    },
+
     validateCandado: function () {
         let message = '',
+            tab = 'contents',
+            fieldId = '',
             candadoInstructions = tinyMCE
                 .get('candadoEDescription')
                 .getContent(),
@@ -348,7 +372,10 @@ var $exeDevice = {
         $exeDevice.candadoErrorMessage = $('#candadoEErrorMessage').val();
         const progressBar =
             $exeIDevicesEdition.iDevice.gamification.progressBar.getValues();
-        if (!progressBar) return false;
+        if (!progressBar) {
+            this.revealValidationField('grading', 'eXeProgressReportID');
+            return false;
+        }
         $exeDevice.evaluation = progressBar.evaluation;
         $exeDevice.evaluationID = progressBar.evaluationID;
         const passScore =
@@ -361,18 +388,24 @@ var $exeDevice = {
 
         if (candadoInstructions.length === 0) {
             message = $exeDevice.msgs.msgEIntrucctions;
+            fieldId = 'candadoEDescription';
         } else if (candadoRetro.length === 0) {
             message = $exeDevice.msgs.msgERetro;
+            fieldId = 'candadoEFeedBack';
         } else if ($exeDevice.candadoSolution.length === 0) {
             message = $exeDevice.msgs.msgEnterCodeAccess;
+            fieldId = 'candadoEDSolution';
         } else if (
             $exeDevice.candadoAttemps > 0 &&
             $exeDevice.candadoErrorMessage.length === 0
         ) {
             message = $exeDevice.msgs.msgEnterCustomMessage;
+            tab = 'options';
+            fieldId = 'candadoEErrorMessage';
         }
 
         if (message.length !== 0) {
+            this.revealValidationField(tab, fieldId);
             $exeDevice.showMessage(message);
             message = false;
         } else {
