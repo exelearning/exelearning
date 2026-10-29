@@ -153,6 +153,24 @@ describe('IdeviceConfig Service', () => {
             const config = getIdeviceConfig('my-idevice');
             expect(config.cssClass).toBe('my-idevice');
         });
+
+        // Issue #2543: 3dmol declares <css-class>dmole</css-class>, and exports linked idevices/dmole/
+        it('should use the folder name even when <css-class> differs from it', async () => {
+            const moleculeDir = path.join(idevicesDir, '3dmol');
+            await fs.ensureDir(moleculeDir);
+            await fs.writeFile(
+                path.join(moleculeDir, 'config.xml'),
+                `<idevice>
+                    <name>Molecules</name>
+                    <css-class>dmole</css-class>
+                </idevice>`,
+            );
+
+            loadIdeviceConfigs(idevicesDir);
+
+            expect(getIdeviceConfig('3dmol').cssClass).toBe('3dmol');
+            expect(getIdeviceConfig('Molecules').cssClass).toBe('3dmol');
+        });
     });
 
     describe('getIdeviceConfig', () => {
@@ -287,7 +305,6 @@ describe('IdeviceConfig Service', () => {
                 path.join(path1, 'idevice1', 'config.xml'),
                 `<idevice>
                     <name>idevice1</name>
-                    <css-class>dev1</css-class>
                     <component-type>json</component-type>
                 </idevice>`,
             );
@@ -299,22 +316,21 @@ describe('IdeviceConfig Service', () => {
                 path.join(path2, 'idevice2', 'config.xml'),
                 `<idevice>
                     <name>idevice2</name>
-                    <css-class>dev2</css-class>
-                    <component-type>html</component-type>
+                    <component-type>json</component-type>
                 </idevice>`,
             );
 
-            // Load from first path
+            // Load from first path ('json' only comes from config.xml; the fallback is 'html')
             loadIdeviceConfigs(path1);
-            expect(getIdeviceConfig('idevice1').cssClass).toBe('dev1');
+            expect(getIdeviceConfig('idevice1').componentType).toBe('json');
 
             // Change base path - should reset cache
             setIdevicesBasePath(path2);
 
             // Now should load from second path
-            expect(getIdeviceConfig('idevice2').cssClass).toBe('dev2');
+            expect(getIdeviceConfig('idevice2').componentType).toBe('json');
             // First iDevice should use fallback now
-            expect(getIdeviceConfig('idevice1').cssClass).toBe('idevice1');
+            expect(getIdeviceConfig('idevice1').componentType).toBe('html');
         });
     });
 

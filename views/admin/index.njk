@@ -3385,7 +3385,7 @@ window.$eXeLearningCustom = {
                         <td>${createdAt}</td>
                         <td>
                             ${isPublic ? `
-                            <a class="btn-admin-outline" href="/workarea?project=${project.uuid}" target="_blank" title="{{ t.view_project or 'View Project' }}">
+                            <a class="btn-admin-outline" href="/workarea?project=${escapeHtml(encodeURIComponent(project.uuid))}" target="_blank" title="{{ t.view_project or 'View Project' }}">
                                 <span class="mi mi-sm">open_in_new</span>
                             </a>
                             <button class="btn-admin-outline" onclick="downloadProjectElpx(${project.id})" title="{{ t.download_elpx or 'Download .elpx' }}">

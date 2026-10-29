@@ -7,6 +7,7 @@ import { Elysia } from 'elysia';
 import { SignJWT } from 'jose';
 import * as Y from 'yjs';
 import { createYjsRoutes, type YjsDependencies } from './yjs';
+import { getJwtSecret } from '../utils/jwt-secret';
 
 // A real Yjs update used to exercise the snapshot+updates reconstruction path
 // (a project whose server-side state lives only in yjs_updates, e.g. edited via
@@ -20,10 +21,7 @@ function buildUpdatesOnlyRows(): Array<{ update_data: Uint8Array; version: strin
 }
 const updatesOnlyRows = buildUpdatesOnlyRows();
 
-// Use the same fallback secret that getJwtSecret() returns when no env var is
-// set. We intentionally do NOT mutate process.env here — tests run in the same
-// process and clobbering API_JWT_SECRET would race with other suites.
-const TEST_SECRET = 'dev_secret_change_me';
+const TEST_SECRET = getJwtSecret();
 
 // Mock project data
 const mockProject = {
@@ -63,6 +61,8 @@ describe('Yjs Document Routes', () => {
     let app: Elysia;
     let savedSnapshots: Map<number, any>;
     let projectSavedFlag: boolean;
+    let replaceCalls: Array<{ projectId: number; expectedVersion: string }>;
+    let replaceFailuresLeft: number;
     let ownerToken: string;
     let strangerToken: string;
     let adminToken: string;
@@ -115,7 +115,30 @@ describe('Yjs Document Routes', () => {
                         project_id: projectId,
                         snapshot_data: data,
                         version,
+                        snapshot_version: version,
                     });
+                },
+                replaceSnapshotIfVersion: async (
+                    _db: any,
+                    projectId: number,
+                    data: Uint8Array,
+                    version: string,
+                    expectedVersion: string,
+                ) => {
+                    replaceCalls.push({ projectId, expectedVersion });
+                    const existing = savedSnapshots.get(projectId);
+                    if (!existing || existing.snapshot_version !== expectedVersion) return false;
+                    if (replaceFailuresLeft > 0) {
+                        replaceFailuresLeft -= 1;
+                        return false;
+                    }
+                    savedSnapshots.set(projectId, {
+                        ...existing,
+                        snapshot_data: data,
+                        version,
+                        snapshot_version: version,
+                    });
+                    return true;
                 },
                 updateProjectTitle: async (_db: any, _projectId: number, _title: string) => {
                     // Just update title, don't mark as saved
@@ -137,6 +160,8 @@ describe('Yjs Document Routes', () => {
     beforeEach(() => {
         savedSnapshots = new Map();
         projectSavedFlag = false;
+        replaceCalls = [];
+        replaceFailuresLeft = 0;
         const mockDeps = createMockDependencies();
         const routes = createYjsRoutes(mockDeps);
         app = new Elysia().use(routes);
@@ -545,6 +570,184 @@ describe('Yjs Document Routes', () => {
             expect(saved).toBeDefined();
             expect(saved.project_id).toBe(1);
             expect(saved.snapshot_data).toBeInstanceOf(Uint8Array);
+        });
+    });
+
+    describe('save validation against the stored version (#2615)', () => {
+        const URL = 'http://localhost/api/projects/uuid/no-snapshot-uuid/yjs-document';
+        const PROJECT_ID = 2;
+
+        /** Two states that share a common ancestor but diverge, like two browsers. */
+        function buildDivergentStates() {
+            const base = new Y.Doc();
+            base.getMap('metadata').set('title', 'Shared base');
+            const baseState = Y.encodeStateAsUpdate(base);
+
+            const server = new Y.Doc();
+            Y.applyUpdate(server, baseState);
+            server.getMap('metadata').set('author', 'Saved by B');
+            const serverState = Y.encodeStateAsUpdate(server);
+
+            const client = new Y.Doc();
+            Y.applyUpdate(client, baseState);
+            client.getMap('metadata').set('license', 'Edited by A');
+            const clientState = Y.encodeStateAsUpdate(client);
+
+            base.destroy();
+            server.destroy();
+            client.destroy();
+            return { baseState, serverState, clientState };
+        }
+
+        function decode(state: Uint8Array): Record<string, unknown> {
+            const doc = new Y.Doc();
+            Y.applyUpdate(doc, state);
+            const out = doc.getMap('metadata').toJSON();
+            doc.destroy();
+            return out;
+        }
+
+        function seedServer(state: Uint8Array, version = '1000') {
+            savedSnapshots.set(PROJECT_ID, {
+                id: 9,
+                project_id: PROJECT_ID,
+                snapshot_data: state,
+                version,
+                snapshot_version: version,
+            });
+        }
+
+        async function post(body: Uint8Array, extraHeaders: Record<string, string> = {}) {
+            return app.handle(
+                new Request(URL, { method: 'POST', body, headers: { ...authHeaders(ownerToken), ...extraHeaders } }),
+            );
+        }
+
+        it('GET exposes the stored version as X-Document-Version', async () => {
+            const { serverState } = buildDivergentStates();
+            seedServer(serverState, '4242');
+            const res = await app.handle(
+                new Request(URL, { method: 'GET', headers: { Authorization: `Bearer ${ownerToken}` } }),
+            );
+            expect(res.status).toBe(200);
+            expect(res.headers.get('X-Document-Version')).toBe('4242');
+        });
+
+        it('GET reports the newest incremental update as the version when it is newer than the snapshot', async () => {
+            const res = await app.handle(
+                new Request('http://localhost/api/projects/uuid/updates-only-uuid/yjs-document', {
+                    method: 'GET',
+                    headers: { Authorization: `Bearer ${ownerToken}` },
+                }),
+            );
+            expect(res.status).toBe(200);
+            expect(res.headers.get('X-Document-Version')).toBe(updatesOnlyRows[0].version);
+        });
+
+        it('replaces the snapshot as-is when X-Base-Version matches the stored version (fast path)', async () => {
+            const { serverState, clientState } = buildDivergentStates();
+            seedServer(serverState, '1000');
+
+            const res = await post(clientState, { 'X-Base-Version': '1000' });
+
+            expect(res.status).toBe(200);
+            const body = await res.json();
+            expect(body.merged).toBe(false);
+            expect(savedSnapshots.get(PROJECT_ID).snapshot_data).toEqual(clientState);
+            expect(replaceCalls).toEqual([{ projectId: PROJECT_ID, expectedVersion: '1000' }]);
+        });
+
+        it('merges a stale save on top of the stored state instead of overwriting it', async () => {
+            const { serverState, clientState } = buildDivergentStates();
+            seedServer(serverState, '1000');
+
+            // The client loaded version 900 (before B saved 1000) and now saves.
+            const res = await post(clientState, { 'X-Base-Version': '900' });
+
+            expect(res.status).toBe(200);
+            const body = await res.json();
+            expect(body.merged).toBe(true);
+            const stored = decode(savedSnapshots.get(PROJECT_ID).snapshot_data);
+            expect(stored.author).toBe('Saved by B'); // B's save survived
+            expect(stored.license).toBe('Edited by A'); // A's edit landed too
+            expect(stored.title).toBe('Shared base');
+            expect(savedSnapshots.get(PROJECT_ID).snapshot_version).toBe(body.version);
+        });
+
+        it('merges when no X-Base-Version is sent (older bundles, sendBeacon)', async () => {
+            const { serverState, clientState } = buildDivergentStates();
+            seedServer(serverState, '1000');
+
+            const res = await post(clientState);
+
+            const body = await res.json();
+            expect(body.merged).toBe(true);
+            const stored = decode(savedSnapshots.get(PROJECT_ID).snapshot_data);
+            expect(stored.author).toBe('Saved by B');
+            expect(stored.license).toBe('Edited by A');
+        });
+
+        it('stores the first save of a project as-is (nothing to merge with)', async () => {
+            const { clientState } = buildDivergentStates();
+
+            const res = await post(clientState);
+
+            const body = await res.json();
+            expect(body.merged).toBe(false);
+            expect(savedSnapshots.get(PROJECT_ID).snapshot_data).toEqual(clientState);
+            expect(replaceCalls).toEqual([]);
+        });
+
+        it('retries the compare-and-set when a concurrent save landed in between', async () => {
+            const { serverState, clientState } = buildDivergentStates();
+            seedServer(serverState, '1000');
+            replaceFailuresLeft = 1; // first CAS loses the race
+
+            const res = await post(clientState, { 'X-Base-Version': '1000' });
+
+            const body = await res.json();
+            expect(body.success).toBe(true);
+            expect(replaceCalls.length).toBe(2);
+            expect(savedSnapshots.get(PROJECT_ID).snapshot_version).toBe(body.version);
+        });
+
+        it('falls back to a merged replace after exhausting the compare-and-set attempts', async () => {
+            const { serverState, clientState } = buildDivergentStates();
+            seedServer(serverState, '1000');
+            replaceFailuresLeft = 10; // every CAS loses
+
+            const res = await post(clientState, { 'X-Base-Version': '1000' });
+
+            const body = await res.json();
+            expect(body.success).toBe(true);
+            expect(body.merged).toBe(true);
+            expect(replaceCalls.length).toBe(3);
+            const stored = decode(savedSnapshots.get(PROJECT_ID).snapshot_data);
+            expect(stored.author).toBe('Saved by B');
+            expect(stored.license).toBe('Edited by A');
+        });
+
+        it('a stale save cannot delete content it never saw: the stored node survives', async () => {
+            // Server: base + a navigation page added by B. Client: base only (never saw the page).
+            const base = new Y.Doc();
+            base.getMap('metadata').set('title', 'T');
+            const baseState = Y.encodeStateAsUpdate(base);
+            const server = new Y.Doc();
+            Y.applyUpdate(server, baseState);
+            const page = new Y.Map();
+            page.set('id', 'page-from-b');
+            server.getArray('navigation').push([page]);
+            seedServer(Y.encodeStateAsUpdate(server), '1000');
+
+            const res = await post(baseState, { 'X-Base-Version': '500' });
+
+            expect((await res.json()).merged).toBe(true);
+            const doc = new Y.Doc();
+            Y.applyUpdate(doc, savedSnapshots.get(PROJECT_ID).snapshot_data);
+            expect(doc.getArray('navigation').length).toBe(1);
+            base.destroy();
+            server.destroy();
+            doc.destroy();
         });
     });
 });

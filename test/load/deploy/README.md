@@ -30,6 +30,8 @@ rsync -a test/load/deploy/ deploy@sut-host:/home/deploy/exenew-ha/
 
 # on the system-under-test host:
 cd /home/deploy/exenew-ha
+export APP_SECRET="$(openssl rand -base64 48)"
+export API_JWT_SECRET="$(openssl rand -base64 48)"
 docker compose -f docker-compose.ha.yml up -d              # 2 instances
 docker compose -f docker-compose.ha.yml --profile ha4 up -d # 4 instances
 docker compose -f docker-compose.ha.yml down -v             # full reset

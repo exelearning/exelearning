@@ -14,7 +14,7 @@
 services:
 
   moodle:
-    image: erseco/alpine-moodle:v5.0.7
+    image: erseco/alpine-moodle:v5.0.11
     restart: unless-stopped
     environment:
       LANG: en_US.UTF-8

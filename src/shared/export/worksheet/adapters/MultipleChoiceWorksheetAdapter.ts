@@ -20,7 +20,7 @@
  *   here the share of questions is applied to it like any other.
  */
 
-import { extractDataGame, extractDivContent, extractMediaLinks } from '../dataGameReader';
+import { decodeStoredText, extractDataGame, extractDivContent, extractMediaLinks } from '../dataGameReader';
 import {
     buildAnswerBoxes,
     indexedQuestions,
@@ -168,7 +168,8 @@ function buildItem(
     }
 
     if (question.type === QUESTION_TYPE_RICH_TEXT && question.eText) {
-        const extraText = sanitizeHtml(unescape(question.eText));
+        // Read as the runtime reads it.
+        const extraText = sanitizeHtml(decodeStoredText(question.eText));
         if (extraText) item.extraText = extraText;
     }
 
