@@ -635,9 +635,7 @@ var $exeDevice = {
 						<label>' +
             _('Button text') +
             ': </label>\
-						<input type="text" value="' +
-            btnTxt +
-            '" placeholder="' +
+						<input type="text" value="" placeholder="' +
             _('Empty = No button') +
             '" />\
 						<span class="udlContentFormBlockButtonTxtOptions"' +
@@ -691,13 +689,9 @@ var $exeDevice = {
             _('Button text') +
             ': </strong><span class="sr-only-explanation" title="' +
             _('Accessible hidden content') +
-            '">' +
-            txtA +
-            '</span> <span title="' +
+            '"></span> <span title="' +
             _('Visible') +
-            '">' +
-            txtB +
-            '</span>\
+            '"></span>\
 					</p>\
 					<div class="udlContentFormBlockTxt udlContentField">\
 						<label class="sr-av">' +
@@ -728,26 +722,33 @@ var $exeDevice = {
             '</a></li>\
 							</ul>\
 						</div>\
-						<textarea cols="30" rows="10" class="udlContentEditor">' +
-            contMain +
-            '</textarea>\
-						<textarea cols="30" rows="1" class="udlContentEditorContent">' +
-            contMain +
-            '</textarea>\
-						<textarea cols="30" rows="1" class="udlContentEditorContent">' +
-            contAlt1 +
-            '</textarea>\
-						<textarea cols="30" rows="1" class="udlContentEditorContent">' +
-            contAlt2 +
-            '</textarea>\
-						<textarea cols="30" rows="1" class="udlContentEditorContent">' +
-            contAlt3 +
-            '</textarea>\
+						<textarea cols="30" rows="10" class="udlContentEditor"></textarea>\
+						<textarea cols="30" rows="1" class="udlContentEditorContent"></textarea>\
+						<textarea cols="30" rows="1" class="udlContentEditorContent"></textarea>\
+						<textarea cols="30" rows="1" class="udlContentEditorContent"></textarea>\
+						<textarea cols="30" rows="1" class="udlContentEditorContent"></textarea>\
 					</div>\
 				</div>\
 			</article>\
 		';
         $('#udlContentFormBlocks').append(html);
+        // Fill the fields through the DOM, not the markup: the parser decodes the
+        // escaped code inside a TEXTAREA (&lt;div&gt; becomes <div>), and a quote in
+        // the button text would end its value attribute
+        var form = $('#udlContentFormBlocks .udlContentFormBlock').last();
+        $("input[type='text']", form).eq(0).val(btnTxt);
+        var explanation = $(
+            '.udlContentFormBlockButtonTxtExplanation span',
+            form
+        );
+        explanation.eq(0).text(txtA);
+        explanation.eq(1).text(txtB);
+        var editors = $('textarea', form);
+        editors.eq(0).val(contMain);
+        editors.eq(1).val(contMain);
+        editors.eq(2).val(contAlt1);
+        editors.eq(3).val(contAlt2);
+        editors.eq(4).val(contAlt3);
     },
 
     // After creating a form, add IDs to the elements so you can get the data and have no accessibility problems
