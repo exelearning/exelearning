@@ -3,6 +3,23 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import ModalFilemanager from './modalFileManager.js';
 
+// The modal reads display URLs through these AssetManager methods (#2621); over a
+// mock they fall back to the mock's caches, or create one from the blob.
+function displayUrlMethods() {
+  const cached = (am, id) => am.getBlobURLSynced?.(id) ?? am.blobURLCache?.get(id);
+  return {
+    getDisplayBlobURLSync(asset) {
+      return cached(this, asset.id) ?? (asset.blob ? URL.createObjectURL(asset.blob) : undefined);
+    },
+    async resolveAssetURL(assetUrl) {
+      return cached(this, String(assetUrl).replace(/^asset:\/\//, '').split(/[./]/)[0]) ?? null;
+    },
+    async resolveViewerURL(assetId) {
+      return cached(this, assetId) ?? null;
+    },
+  };
+}
+
 // The upload <input> lives in the server-rendered Nunjucks view, not in this
 // module, so the most direct way to catch a regression here is to read the
 // real template source (see AGENTS.md -- no view-rendering harness exists on
@@ -48,6 +65,7 @@ describe('ModalFilemanager', () => {
             odeId: 'proj-123',
             _yjsBridge: {
                 assetManager: {
+                    ...displayUrlMethods(),
                     getProjectAssets: vi.fn().mockResolvedValue([]),
                     formatFileSize: vi.fn(b => `${b} bytes`),
                     insertImage: vi.fn().mockResolvedValue(),
@@ -1290,21 +1308,21 @@ it('should filter by accept=3d for 3D models', () => {
   });
 
   describe('insertSelectedAsset', () => {
-    it('should call onSelect callback and close', () => {
+    it('should call onSelect callback and close', async () => {
       modal.selectedAsset = { id: '1', filename: 'a.png', mime: 'image/png', blob: new Blob(['x']) };
       const cb = vi.fn();
       const closeSpy = vi.spyOn(modal, 'close');
       modal.onSelectCallback = cb;
-      modal.insertSelectedAsset();
+      await modal.insertSelectedAsset();
       expect(cb).toHaveBeenCalledWith(expect.objectContaining({ assetUrl: 'asset://1.png' }));
       expect(closeSpy).toHaveBeenCalled();
     });
 
-    it('should insert into editor when available', () => {
+    it('should insert into editor when available', async () => {
       window.tinymce = { activeEditor: { insertContent: vi.fn() } };
       modal.selectedAsset = { id: '1', filename: 'a.png', mime: 'image/png', blob: new Blob(['x']) };
       const closeSpy = vi.spyOn(modal, 'close');
-      modal.insertSelectedAsset();
+      await modal.insertSelectedAsset();
       expect(window.tinymce.activeEditor.insertContent).toHaveBeenCalled();
       expect(closeSpy).toHaveBeenCalled();
     });
@@ -1312,11 +1330,11 @@ it('should filter by accept=3d for 3D models', () => {
     it('should copy to clipboard when no editor', async () => {
       window.tinymce = null;
       modal.selectedAsset = { id: '1', filename: 'a.txt', mime: 'text/plain' };
-      modal.insertSelectedAsset();
+      await modal.insertSelectedAsset();
       expect(navigator.clipboard.writeText).toHaveBeenCalledWith('asset://1.txt');
     });
 
-    it('should insert HTML as iframe with data-mce-html attribute', () => {
+    it('should insert HTML as iframe with data-mce-html attribute', async () => {
       window.tinymce = { activeEditor: { insertContent: vi.fn() } };
       modal.selectedAsset = {
         id: 'abc12345-def6-7890-abcd-ef1234567890',
@@ -1325,7 +1343,7 @@ it('should filter by accept=3d for 3D models', () => {
         blob: new Blob(['<html><body>Test</body></html>'], { type: 'text/html' }),
       };
 
-      modal.insertSelectedAsset();
+      await modal.insertSelectedAsset();
 
       // HTML files should be inserted as iframe with data-mce-html attribute
       expect(window.tinymce.activeEditor.insertContent).toHaveBeenCalledWith(
@@ -1339,7 +1357,7 @@ it('should filter by accept=3d for 3D models', () => {
       );
     });
 
-    it('should detect HTML by file extension for .htm files', () => {
+    it('should detect HTML by file extension for .htm files', async () => {
       window.tinymce = { activeEditor: { insertContent: vi.fn() } };
       modal.selectedAsset = {
         id: 'def56789-0abc-1234-5678-90abcdef1234',
@@ -1348,14 +1366,14 @@ it('should filter by accept=3d for 3D models', () => {
         blob: new Blob(['<html><body>HTM file</body></html>'], { type: 'text/html' }),
       };
 
-      modal.insertSelectedAsset();
+      await modal.insertSelectedAsset();
 
       expect(window.tinymce.activeEditor.insertContent).toHaveBeenCalledWith(
         expect.stringContaining('data-mce-html="true"')
       );
     });
 
-    it('should not add data-mce-html for non-HTML files', () => {
+    it('should not add data-mce-html for non-HTML files', async () => {
       window.tinymce = { activeEditor: { insertContent: vi.fn() } };
       modal.selectedAsset = {
         id: 'pdf-uuid-1234',
@@ -1364,7 +1382,7 @@ it('should filter by accept=3d for 3D models', () => {
         blob: new Blob(['PDF content'], { type: 'application/pdf' }),
       };
 
-      modal.insertSelectedAsset();
+      await modal.insertSelectedAsset();
 
       // PDF files should not have data-mce-html attribute
       expect(window.tinymce.activeEditor.insertContent).not.toHaveBeenCalledWith(
@@ -2720,6 +2738,7 @@ describe('getMimeTypeFromFilename', () => {
     beforeEach(() => {
       modal.initElements();
       modal.assetManager = {
+        ...displayUrlMethods(),
         getAssetUrl: vi.fn((id, filename) => `asset://${id}`),
         getBlobURLSynced: vi.fn(() => 'blob:test-url'),
         blobURLCache: new Map([['asset1', 'blob:cached-url']]),
@@ -2741,40 +2760,30 @@ describe('getMimeTypeFromFilename', () => {
         expect(appendSpy).not.toHaveBeenCalled();
       });
 
-      it('should download asset using blob URL from getBlobURLSynced', () => {
+      it('downloads the stored bytes, never the cached display copy (#2621)', () => {
+        modal.assetManager.blobURLCache.set('asset1', 'blob:display-copy');
+        const original = new Blob(['<svg onload="x()"/>'], { type: 'image/svg+xml' });
+        modal.selectedAsset.blob = original;
+        const createURLSpy = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:original');
+        const revokeSpy = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
         const appendSpy = vi.spyOn(document.body, 'appendChild');
         const removeSpy = vi.spyOn(document.body, 'removeChild');
+        vi.useFakeTimers();
 
-        modal.downloadSelectedAsset();
+        try {
+          modal.downloadSelectedAsset();
 
-        expect(appendSpy).toHaveBeenCalled();
-        expect(removeSpy).toHaveBeenCalled();
-        const link = appendSpy.mock.calls[0][0];
-        expect(link.download).toBe('test-image.jpg');
-      });
-
-      it('should use blobURLCache if getBlobURLSynced not available', () => {
-        modal.assetManager.getBlobURLSynced = undefined;
-        modal.assetManager.blobURLCache.set('asset1', 'blob:from-cache');
-
-        const appendSpy = vi.spyOn(document.body, 'appendChild');
-        modal.downloadSelectedAsset();
-
-        expect(appendSpy).toHaveBeenCalled();
-      });
-
-      it('should create blob URL from asset.blob if no cached URL', () => {
-        modal.assetManager.getBlobURLSynced = vi.fn(() => null);
-        modal.assetManager.blobURLCache = new Map();
-        modal.selectedAsset.blob = new Blob(['test'], { type: 'image/jpeg' });
-
-        const createURLSpy = vi.spyOn(URL, 'createObjectURL');
-        const appendSpy = vi.spyOn(document.body, 'appendChild');
-
-        modal.downloadSelectedAsset();
-
-        expect(createURLSpy).toHaveBeenCalled();
-        expect(appendSpy).toHaveBeenCalled();
+          expect(createURLSpy).toHaveBeenCalledWith(original);
+          const link = appendSpy.mock.calls[0][0];
+          expect(link.href).toBe('blob:original');
+          expect(link.download).toBe('test-image.jpg');
+          expect(removeSpy).toHaveBeenCalledWith(link);
+          expect(revokeSpy).not.toHaveBeenCalled();
+          vi.advanceTimersByTime(60000);
+          expect(revokeSpy).toHaveBeenCalledWith('blob:original');
+        } finally {
+          vi.useRealTimers();
+        }
       });
 
       it('should not download if no blob URL available', () => {
@@ -2826,8 +2835,11 @@ describe('getMimeTypeFromFilename', () => {
     });
 
     describe('viewFullSize', () => {
+      let viewer;
+
       beforeEach(() => {
-        window.open = vi.fn();
+        viewer = { location: { href: 'about:blank' }, close: vi.fn() };
+        window.open = vi.fn(() => viewer);
       });
 
       it('should do nothing if no asset selected', () => {
@@ -2838,41 +2850,36 @@ describe('getMimeTypeFromFilename', () => {
         expect(window.open).not.toHaveBeenCalled();
       });
 
-      it('should open asset in new tab', () => {
-        modal.viewFullSize();
+      it('opens the tab before resolving, then shows the viewer URL (#2621)', async () => {
+        let resolve;
+        modal.assetManager.resolveViewerURL = vi.fn(() => new Promise(r => (resolve = r)));
+        modal.selectedAsset.blob = new Blob(['<script>parent.x=1</script>'], { type: 'text/html' });
+        const createURLSpy = vi.spyOn(URL, 'createObjectURL');
 
-        expect(window.open).toHaveBeenCalledWith('blob:test-url', '_blank');
+        const pending = modal.viewFullSize();
+        // Still inside the click: a later window.open would be blocked as a popup
+        expect(window.open).toHaveBeenCalledWith('', '_blank');
+        resolve('blob:opaque-page');
+        await pending;
+
+        expect(modal.assetManager.resolveViewerURL).toHaveBeenCalledWith('asset1');
+        expect(createURLSpy).not.toHaveBeenCalled();
+        expect(viewer.location.href).toBe('blob:opaque-page');
       });
 
-      it('should use blobURLCache if getBlobURLSynced not available', () => {
-        modal.assetManager.getBlobURLSynced = undefined;
+      it('closes the tab if no viewer URL is available', async () => {
+        modal.assetManager.resolveViewerURL = vi.fn().mockResolvedValue(null);
 
-        modal.viewFullSize();
+        await modal.viewFullSize();
 
-        expect(window.open).toHaveBeenCalledWith('blob:cached-url', '_blank');
+        expect(viewer.close).toHaveBeenCalled();
+        expect(viewer.location.href).toBe('about:blank');
       });
 
-      it('should create blob URL from asset.blob if no cached URL', () => {
-        modal.assetManager.getBlobURLSynced = vi.fn(() => null);
-        modal.assetManager.blobURLCache = new Map();
-        modal.selectedAsset.blob = new Blob(['test'], { type: 'image/jpeg' });
+      it('does not fail when the popup is blocked', async () => {
+        window.open = vi.fn(() => null);
 
-        const createURLSpy = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:created-url');
-
-        modal.viewFullSize();
-
-        expect(createURLSpy).toHaveBeenCalled();
-        expect(window.open).toHaveBeenCalledWith('blob:created-url', '_blank');
-      });
-
-      it('should not open if no blob URL available', () => {
-        modal.assetManager.getBlobURLSynced = vi.fn(() => null);
-        modal.assetManager.blobURLCache = new Map();
-        modal.selectedAsset.blob = null;
-
-        modal.viewFullSize();
-
-        expect(window.open).not.toHaveBeenCalled();
+        await expect(modal.viewFullSize()).resolves.toBeUndefined();
       });
     });
   });
@@ -3251,6 +3258,7 @@ describe('getMimeTypeFromFilename', () => {
     beforeEach(() => {
       modal.initElements();
       modal.assetManager = {
+        ...displayUrlMethods(),
         renameFolder: vi.fn().mockResolvedValue(),
         renameAsset: vi.fn().mockResolvedValue(),
         getAssetUrl: vi.fn((id) => `asset://${id}`),
@@ -3502,6 +3510,7 @@ describe('getMimeTypeFromFilename', () => {
       ];
       modal.isSearchMode = false;
       modal.assetManager = {
+        ...displayUrlMethods(),
         blobURLCache: new Map(),
         reverseBlobCache: new Map(),
         getBlobURLSynced: vi.fn(() => 'blob:test'),
@@ -3549,6 +3558,7 @@ describe('getMimeTypeFromFilename', () => {
       modal.currentPath = '';
       modal.assets = [];
       modal.assetManager = {
+        ...displayUrlMethods(),
         formatFileSize: vi.fn(() => '1 KB'),
         blobURLCache: new Map(),
         reverseBlobCache: new Map(),
@@ -3768,6 +3778,7 @@ describe('getMimeTypeFromFilename', () => {
       modal.folderPicker = document.createElement('div');
       modal.folderPicker.style.display = 'flex';
       modal.assetManager = {
+        ...displayUrlMethods(),
         moveFolder: vi.fn().mockResolvedValue(),
         updateAssetFolderPath: vi.fn().mockResolvedValue(),
       };
@@ -3950,6 +3961,7 @@ describe('getMimeTypeFromFilename', () => {
         { id: 'a3', filename: 'photo-backup.jpg', folderPath: 'backup', mime: 'image/jpeg' },
       ];
       modal.assetManager = {
+        ...displayUrlMethods(),
         blobURLCache: new Map(),
         reverseBlobCache: new Map(),
         getBlobURLSynced: vi.fn(() => 'blob:test'),
@@ -3986,6 +3998,7 @@ describe('getMimeTypeFromFilename', () => {
       modal.listContainer = document.createElement('div');
       modal.listTbody = document.createElement('tbody');
       modal.assetManager = {
+        ...displayUrlMethods(),
         blobURLCache: new Map(),
         reverseBlobCache: new Map(),
         getBlobURLSynced: vi.fn(() => 'blob:test'),
@@ -4024,6 +4037,7 @@ describe('getMimeTypeFromFilename', () => {
       modal.initElements();
       modal.listTbody = document.createElement('tbody');
       modal.assetManager = {
+        ...displayUrlMethods(),
         blobURLCache: new Map(),
         reverseBlobCache: new Map(),
         getBlobURLSynced: vi.fn(() => 'blob:test'),
@@ -4099,6 +4113,7 @@ describe('getMimeTypeFromFilename', () => {
     beforeEach(() => {
       modal.initElements();
       modal.assetManager = {
+        ...displayUrlMethods(),
         formatFileSize: vi.fn((bytes) => `${bytes} bytes`),
       };
       modal.locationRow = document.createElement('div');
@@ -4124,6 +4139,7 @@ describe('getMimeTypeFromFilename', () => {
     beforeEach(() => {
       modal.initElements();
       modal.assetManager = {
+        ...displayUrlMethods(),
         blobURLCache: new Map(),
         reverseBlobCache: new Map(),
         getBlobURLSynced: vi.fn(() => 'blob:test'),
@@ -4180,12 +4196,31 @@ describe('getMimeTypeFromFilename', () => {
 
       expect(row).not.toBeNull();
     });
+
+    it('marks a not-yet-sanitized SVG thumbnail so the DOM update can swap it (#2621)', () => {
+      modal.assetManager.getDisplayBlobURLSync = vi.fn(() => undefined);
+      const row = modal.createListRow({ id: 's1', filename: 'a.svg', mime: 'image/svg+xml', blob: new Blob(['<svg/>']) });
+      const img = row.querySelector('.col-thumb img');
+
+      expect(img.getAttribute('src')).toBe('placeholder');
+      expect(img.dataset.assetId).toBe('s1');
+      expect(img.dataset.assetLoading).toBe('true');
+    });
+
+    it('does not mark a ready thumbnail as loading', () => {
+      const row = modal.createListRow({ id: 'a1', filename: 'photo.jpg', mime: 'image/jpeg' });
+      const img = row.querySelector('.col-thumb img');
+
+      expect(img.getAttribute('src')).toBe('blob:test');
+      expect(img.hasAttribute('data-asset-loading')).toBe(false);
+    });
   });
 
   describe('createGridItem', () => {
     beforeEach(() => {
       modal.initElements();
       modal.assetManager = {
+        ...displayUrlMethods(),
         blobURLCache: new Map(),
         reverseBlobCache: new Map(),
         getBlobURLSynced: vi.fn(() => 'blob:test-url'),
@@ -4205,6 +4240,26 @@ describe('getMimeTypeFromFilename', () => {
       expect(item.classList.contains('media-library-item')).toBe(true);
       expect(item.dataset.assetId).toBe('a1');
       expect(item.dataset.filename).toBe('photo.jpg');
+    });
+
+    it('marks a local SVG still being sanitized as loading without a peer fetch (#2621)', () => {
+      modal.assetManager.getDisplayBlobURLSync = vi.fn(() => undefined);
+      const fetchSpy = vi.spyOn(modal, 'triggerAssetFetch').mockImplementation(() => {});
+      const item = modal.createGridItem({ id: 's1', filename: 'a.svg', mime: 'image/svg+xml', blob: new Blob(['<svg/>']) });
+      const img = item.querySelector('img');
+
+      expect(img.dataset.assetId).toBe('s1');
+      expect(img.dataset.assetLoading).toBe('true');
+      expect(fetchSpy).not.toHaveBeenCalled();
+    });
+
+    it('fetches from peers when the asset has no local blob', () => {
+      modal.assetManager.getBlobURLSynced = vi.fn(() => undefined);
+      const fetchSpy = vi.spyOn(modal, 'triggerAssetFetch').mockImplementation(() => {});
+
+      modal.createGridItem({ id: 'r1', filename: 'remote.jpg', mime: 'image/jpeg' });
+
+      expect(fetchSpy).toHaveBeenCalledWith('r1');
     });
 
     it('should create grid item for video asset with icon', () => {
@@ -4598,6 +4653,7 @@ describe('getMimeTypeFromFilename', () => {
   describe('duplicateSelectedAsset edge cases', () => {
     beforeEach(() => {
       modal.assetManager = {
+        ...displayUrlMethods(),
         getAsset: vi.fn(),
         insertImage: vi.fn().mockResolvedValue(),
         formatFileSize: vi.fn(() => '1 KB'),
@@ -4643,6 +4699,7 @@ describe('getMimeTypeFromFilename', () => {
   describe('renameSelectedAsset edge cases', () => {
     beforeEach(() => {
       modal.assetManager = {
+        ...displayUrlMethods(),
         renameAsset: vi.fn().mockResolvedValue(true),
         formatFileSize: vi.fn(() => '1 KB'),
         blobURLCache: new Map(),
