@@ -67,6 +67,10 @@ $preview-transition: 0.3s ease;
             padding: 16px 20px;
             border-bottom: 1px solid #EAECF0;
             flex-shrink: 0;
+            // Lets the active-content pill drop its label when the header is
+            // narrow. A viewport query would not do: pinned mode is a narrow
+            // column on a wide screen.
+            container: preview-header / inline-size;
 
             .preview-title {
                 font-size: 18px;
@@ -133,6 +137,9 @@ $preview-transition: 0.3s ease;
         border-bottom: 1px solid #EAECF0;
         flex-shrink: 0;
         background-color: var(--gray-50);
+        // Same container as the panel header: pinned is the narrow case even on
+        // a wide screen, so the pill collapses to its shield here first.
+        container: preview-header / inline-size;
 
         .preview-pinned-title {
             font-size: 14px;
@@ -256,6 +263,118 @@ $preview-transition: 0.3s ease;
 .mobile-icon::before {
     content: "smartphone";
     font-family: var(--icons-ff);
+}
+
+// Security affordance for third-party scripts in the preview (Word "enable
+// macros"-style pill: shield icon + very short label, shown only when the
+// preview holds custom active content). Two states, per the design:
+//   · blocked (default) — AMBER, shield-with-"!": "security + pending decision"
+//     (attention, not alarm; the user opts in on purpose).
+//   · active — brand TEAL, shield-with-check: "elevated permission ON". NEVER
+//     green: green reads as "safe/approved", but the user accepted a risk, not
+//     resolved a problem. Clicking it re-opens the dialog to revoke.
+.preview-active-content-button:not([hidden]) {
+    display: inline-flex;
+    align-items: center;
+    padding-inline: 10px;
+    border: 1.5px solid #e0a94a;
+    background-color: #fdf7e8;
+    color: #6f531c;
+    // Active-state hover only fades the fill darker (design: no shadow, no scale).
+    transition: background-color 0.5s ease;
+
+    // Keep the pill's own palette on hover/focus: the shared `.button-tertiary`
+    // hover paints a grey fill (`background-color: … !important`) that washes out
+    // the amber/teal and hides the white text of the active state — so we must
+    // override its fill with !important too.
+    &:hover,
+    &:focus-visible {
+        background-color: #fbeecb !important;
+        border-color: #d49b3a;
+        color: #6f531c;
+    }
+
+    .active-content-icon {
+        flex: none;
+    }
+    // Default (blocked): shield-with-"!" only; the other glyphs are hidden.
+    .active-content-icon--active,
+    .active-content-icon--revoke {
+        display: none;
+    }
+
+    .active-content-label,
+    .active-content-hover-label {
+        font-size: 12px;
+        font-weight: 600;
+        line-height: 1;
+        white-space: nowrap;
+    }
+    // "Block them again" only surfaces on the active pill's hover.
+    .active-content-hover-label {
+        display: none;
+    }
+
+    &.is-active {
+        border-color: #066d6d;
+        background-color: #078e8e;
+        color: #fff;
+
+        .active-content-icon--blocked {
+            display: none;
+        }
+        .active-content-icon--active {
+            display: inline-flex;
+        }
+
+        // Hover = the "block external scripts" action: the fill DARKENS to a
+        // deeper teal (never grey, never lighter — that reads as disabled), and
+        // the label + shield swap to "Block them again" (crossed shield) to
+        // preview what the click will do.
+        &:hover,
+        &:focus-visible {
+            background-color: #066d6d !important;
+            border-color: #054d4d;
+            color: #fff;
+
+            .active-content-icon--active {
+                display: none;
+            }
+            .active-content-icon--revoke {
+                display: inline-flex;
+            }
+            .active-content-label {
+                display: none;
+            }
+            .active-content-hover-label {
+                display: inline-flex;
+            }
+        }
+    }
+
+    // Narrow header — the pinned column, or the panel on a small viewport: keep
+    // the shield, drop the words. The button already carries the full sentence
+    // in `title`/`aria-label` (kept in sync with the state), which is what a
+    // screen reader announces anyway, so only pixels are lost. Placed last so it
+    // also overrides the `.is-active:hover` label swap above, which it ties with
+    // on specificity.
+    @container preview-header (max-width: 30rem) {
+        padding-inline: 7px;
+
+        .active-content-label,
+        .active-content-hover-label {
+            display: none;
+        }
+
+        // Hover still swaps the glyph to the crossed shield; with no label to
+        // swap, that is the whole preview of what the click does.
+        &.is-active:hover,
+        &.is-active:focus-visible {
+            .active-content-hover-label {
+                display: none;
+            }
+        }
+    }
 }
 
 // Estado activo (modo móvil): el botón se queda claramente "pulsado".

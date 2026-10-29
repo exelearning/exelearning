@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, afterEach } from 'vitest';
 import { Capabilities } from './Capabilities.js';
 import { RuntimeConfig } from './RuntimeConfig.js';
 
