@@ -685,9 +685,12 @@ window.$exeExport = {
         document.body.classList.add('has-print-button');
         if (btn.dataset.printBound) return;
         btn.dataset.printBound = 'true';
+        // One notice however many attempts fail, removed once one succeeds.
+        var notice = null;
         btn.addEventListener('click', async function (event) {
             event.preventDefault();
             btn.disabled = true;
+            var added = [];
             try {
                 if (!window.ExePrintPreview) {
                     var root = new URL(btn.dataset.printRoot || './', window.location.href).href;
@@ -695,6 +698,7 @@ window.$exeExport = {
                     style.rel = 'stylesheet';
                     style.href = new URL('libs/exe_print/preview.css', root).href;
                     document.head.appendChild(style);
+                    added.push(style);
                     var load = function (path) {
                         return new Promise(function (resolve, reject) {
                             var script = document.createElement('script');
@@ -703,17 +707,26 @@ window.$exeExport = {
                             script.onload = resolve;
                             script.onerror = function () { script.remove(); reject(new Error('Print preview not available')); };
                             document.head.appendChild(script);
+                            added.push(script);
                         });
                     };
                     await load('libs/exe_print/data.js');
                     await load('libs/exe_print/runtime.js');
                 }
                 await window.ExePrintPreview.open(btn);
+                if (notice) {
+                    notice.remove();
+                    notice = null;
+                }
             } catch (error) {
-                var notice = document.createElement('p');
-                notice.setAttribute('role', 'alert');
+                // Without the runtime the next attempt loads everything again: drop what this one added.
+                if (!window.ExePrintPreview) added.forEach(function (node) { node.remove(); });
+                if (!notice) {
+                    notice = document.createElement('p');
+                    notice.setAttribute('role', 'alert');
+                    btn.parentElement.appendChild(notice);
+                }
                 notice.textContent = getI18nText('printPreviewUnavailable', 'Print preview not available');
-                btn.parentElement.appendChild(notice);
             } finally {
                 btn.disabled = false;
             }

@@ -218,6 +218,66 @@ test.describe('Export print button project property (addPrintButton)', () => {
         }
     });
 
+    test('keeps one notice while the preview cannot load and clears it once it opens', async ({
+        authenticatedPage: page,
+        createProject,
+        browser,
+    }) => {
+        const uuid = await createProject(page, 'Print notice');
+        await gotoWorkarea(page, uuid);
+        await waitForAppReady(page);
+        await page.evaluate(() => {
+            const bridge = (window as any).eXeLearning.app.project._yjsBridge;
+            bridge.documentManager.getMetadata().set('language', 'en');
+            const binding = bridge.structureBinding;
+            const node = binding.createPage('Notice');
+            const block = binding.createBlock(node.id, 'Notice');
+            binding.createComponent(node.id, block, 'text', { htmlContent: '<p>Printable text</p>' });
+        });
+        const files = await exportPackage(page, 'html5', true);
+        const context = await browser.newContext();
+        const exported = await context.newPage();
+        let unavailable = true;
+        await context.route('https://print-notice.test/**', async route => {
+            const name = decodeURIComponent(new URL(route.request().url()).pathname.slice('/course/'.length));
+            if (!files[name] || (unavailable && name === 'libs/exe_print/data.js')) {
+                await route.fulfill({ status: 404 });
+                return;
+            }
+            const types: Record<string, string> = {
+                '.html': 'text/html',
+                '.js': 'text/javascript',
+                '.css': 'text/css',
+            };
+            await route.fulfill({
+                body: Buffer.from(files[name]),
+                contentType: types[path.extname(name)] || 'application/octet-stream',
+            });
+        });
+        try {
+            await exported.goto('https://print-notice.test/course/index.html');
+            const button = exported.locator('#exe-print-btn');
+            const notice = exported.getByRole('alert').filter({ hasText: 'Print preview not available' });
+            // The click disables the button until the attempt ends, so count once it is enabled again.
+            for (let attempt = 0; attempt < 3; attempt++) {
+                await button.click();
+                await expect(button).toBeEnabled();
+                await expect(notice).toHaveCount(1);
+            }
+            // Nor does a failed attempt leave its stylesheet behind for the next one to repeat.
+            const stylesheet = exported.locator('head link[href$="libs/exe_print/preview.css"]');
+            await expect(stylesheet).toHaveCount(0);
+
+            unavailable = false;
+            await button.click();
+            await expect(exported.locator('.print-preview-close-btn')).toBeVisible();
+            await expect(notice).toHaveCount(0);
+            await expect(stylesheet).toHaveCount(1);
+        } finally {
+            await context.close();
+        }
+    });
+
     test('uses the editor options in a nested web path and offline from print.html', async ({
         authenticatedPage: page,
         createProject,

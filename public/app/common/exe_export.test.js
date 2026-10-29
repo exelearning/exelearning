@@ -1817,6 +1817,51 @@ describe('exe_export.js', () => {
       expect(document.querySelector('[role="alert"]').textContent).toContain('Print preview not available');
       append.mockRestore();
     });
+
+    it('keeps a single notice and no leftover resources across failed attempts until one succeeds', async () => {
+      document.body.innerHTML = '<div><button id="exe-print-btn">Print</button></div>';
+      // The snapshot loads and the runtime fails, so a failed attempt leaves both kinds of node behind.
+      let fail = true;
+      const append = vi.spyOn(document.head, 'appendChild').mockImplementation(node => {
+        HTMLElement.prototype.appendChild.call(document.head, node);
+        if (node.tagName === 'SCRIPT') {
+          const runtime = node.src.endsWith('runtime.js');
+          if (!fail && runtime) window.ExePrintPreview = { open: vi.fn().mockResolvedValue() };
+          queueMicrotask(() => (fail && runtime ? node.onerror() : node.onload()));
+        }
+        return node;
+      });
+      const leftovers = () => document.head.querySelectorAll('link[href*="exe_print"], script[src*="exe_print"]');
+      window.$exeExport.initPrintButton();
+      const btn = document.getElementById('exe-print-btn');
+      for (let attempt = 0; attempt < 3; attempt++) {
+        btn.click();
+        await vi.waitFor(() => expect(btn.disabled).toBe(false));
+        expect(document.querySelectorAll('[role="alert"]')).toHaveLength(1);
+        expect(leftovers()).toHaveLength(0);
+      }
+      const notice = document.querySelector('[role="alert"]');
+
+      fail = false;
+      btn.click();
+      await vi.waitFor(() => expect(window.ExePrintPreview?.open).toHaveBeenCalledTimes(1));
+      await vi.waitFor(() => expect(btn.disabled).toBe(false));
+      expect(document.querySelectorAll('[role="alert"]')).toHaveLength(0);
+      expect(notice.isConnected).toBe(false);
+      expect([...leftovers()].map(node => new URL(node.href || node.src).pathname)).toEqual([
+        '/libs/exe_print/preview.css',
+        '/libs/exe_print/data.js',
+        '/libs/exe_print/runtime.js',
+      ]);
+
+      // Once the runtime is there, a failure to open leaves it in place for the next attempt.
+      window.ExePrintPreview.open.mockRejectedValueOnce(new Error('open failed'));
+      btn.click();
+      await vi.waitFor(() => expect(document.querySelectorAll('[role="alert"]')).toHaveLength(1));
+      await vi.waitFor(() => expect(btn.disabled).toBe(false));
+      expect(leftovers()).toHaveLength(3);
+      append.mockRestore();
+    });
   });
 
   describe('addClassJsExecutedToExeContent', () => {
