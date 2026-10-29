@@ -321,6 +321,40 @@ describe('print frame', () => {
         },
     );
 
+    it('keeps a followed link from replacing the printed document', async () => {
+        const { host, dispose } = frame(host => {
+            host.document.body.insertAdjacentHTML('beforeend',
+                '<a id="web" href="https://example.org/lesson"><span>Lesson</span></a>' +
+                '<a id="place" href="#contents">Contents</a>' +
+                '<a id="page" href="html/next.html">Next</a>' +
+                '<a id="script" href="javascript:void(0)">Run</a>');
+        });
+        await flush();
+        host.parent.postMessage.mockClear();
+        const click = (id) => {
+            const link = host.document.getElementById(id);
+            const event = new MouseEvent('click', { bubbles: true, cancelable: true });
+            (link.firstElementChild || link).dispatchEvent(event);
+            return event.defaultPrevented;
+        };
+        // An author's handler that stops the click cannot let the frame navigate.
+        host.document.getElementById('web').addEventListener('click', event => event.stopPropagation());
+
+        expect(click('web')).toBe(true);
+        expect(host.parent.postMessage).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({
+            channel: 'exe-print', token: 'token', type: 'open', value: 'https://example.org/lesson',
+        }), '*');
+        // A place in the document is still reached; other links lead nowhere a preview can go.
+        expect(click('place')).toBe(false);
+        expect(click('page')).toBe(true);
+        expect(click('script')).toBe(true);
+        expect(host.parent.postMessage).toHaveBeenCalledOnce();
+
+        dispose();
+        expect(click('web')).toBe(false);
+        expect(host.parent.postMessage).toHaveBeenCalledOnce();
+    });
+
     it('cancels stalled MathJax without creating image listeners later', async () => {
         const math = deferred();
         const { host, dispose } = frame(host => { host.MathJax = { startup: { promise: math.promise } }; });

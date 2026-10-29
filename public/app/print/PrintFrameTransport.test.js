@@ -43,6 +43,24 @@ describe('opaque print frame transport', () => {
         expect(await snapshot).toBe('<html>Copy</html>');
     });
 
+    it('opens only the web links followed in the current frame, in a tab without access back', () => {
+        host.open = vi.fn();
+        const loading = transport.load('<html><body>Print</body></html>');
+        reply(transport, iframe, { type: 'open', value: 'https://example.org/lesson?a=1#part' });
+        expect(host.open).toHaveBeenCalledExactlyOnceWith('https://example.org/lesson?a=1#part', '_blank', 'noopener');
+        // The frame holds author content: nothing but a web address, and only from this frame.
+        for (const value of ['javascript:alert(1)', 'data:text/html,<p>x</p>', 'file:///C:/secret', 'not a url', null]) {
+            reply(transport, iframe, { type: 'open', value });
+        }
+        reply(transport, iframe, { type: 'open', value: 'https://example.org/other' }, {});
+        reply(transport, iframe, { type: 'open', value: 'https://example.org/other', token: 'stale' });
+        expect(host.open).toHaveBeenCalledOnce();
+        // Opening a link answers no request of the host.
+        expect(transport.pending.size).toBe(1);
+        transport.clear();
+        return loading;
+    });
+
     it('loads the bridge from the supplied blob resource map', async () => {
         transport.resourceUrls = { 'libs/exe_print/frame.js': 'blob:frame-script' };
         const ready = transport.load('<body></body>');

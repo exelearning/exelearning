@@ -14,12 +14,32 @@ export default class PrintFrameTransport {
     receive(event) {
         const data = event.data;
         if (event.source !== this.iframe.contentWindow || !data || data.channel !== 'exe-print' || data.token !== this.token) return;
+        if (data.type === 'open') {
+            this.openLink(data.value);
+            return;
+        }
         const pending = this.pending.get(data.id);
         if (!pending || data.type !== pending.type) return;
         clearTimeout(pending.timer);
         this.pending.delete(data.id);
         if (data.error) pending.reject(new Error(data.error));
         else pending.resolve(data.value);
+    }
+
+    /**
+     * Open a link the reader followed in the preview, in a tab of its own. The frame holds author
+     * content, so only a web address is opened, and without access back to this page.
+     *
+     * @param {unknown} address - The address the frame asked for
+     */
+    openLink(address) {
+        let url;
+        try {
+            url = new URL(String(address));
+        } catch {
+            return;
+        }
+        if (url.protocol === 'http:' || url.protocol === 'https:') this.host.open(url.href, '_blank', 'noopener');
     }
 
     wait(id, type, timeout) {

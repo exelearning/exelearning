@@ -78,6 +78,17 @@ export function bindPrintFrame(token, host = window) {
             catch (error) { reply(data.id, 'snapshot', null, String(error)); }
         }
     };
+    // A link followed here would replace the printed document: Print would print that page, and
+    // the embedding page's messages would no longer reach this one. A place in the document still
+    // works. A web address opens in a tab of its own, which the sandbox leaves to the embedding page.
+    // Captured first, so an author's handler cannot let the frame navigate.
+    const followLink = (event) => {
+        const link = event.target?.closest?.('a[href]');
+        const href = link?.getAttribute('href') ?? '';
+        if (!link || href.startsWith('#')) return;
+        event.preventDefault();
+        if (/^https?:\/\//i.test(href)) reply(null, 'open', href);
+    };
     const cleanupLifecycle = () => {
         host.document.removeEventListener('readystatechange', onStateChange);
         host.document.removeEventListener('DOMContentLoaded', onStateChange);
@@ -144,9 +155,11 @@ export function bindPrintFrame(token, host = window) {
         host.removeEventListener('message', receive);
         host.removeEventListener('beforeprint', started);
         host.removeEventListener('pagehide', dispose);
+        host.document.removeEventListener('click', followLink, true);
         printId = null;
     };
     host.addEventListener('message', receive);
+    host.document.addEventListener('click', followLink, true);
     host.addEventListener('beforeprint', started);
     host.addEventListener('pagehide', dispose);
     host.document.addEventListener('readystatechange', onStateChange);

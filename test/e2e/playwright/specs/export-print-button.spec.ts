@@ -353,6 +353,48 @@ test.describe('Export print button project property (addPrintButton)', () => {
         }
     });
 
+    test('keeps the print preview in its frame and opens a followed web link in a tab', async ({
+        authenticatedPage: page,
+        createProject,
+        browser,
+    }) => {
+        const uuid = await createProject(page, 'Print links');
+        await gotoWorkarea(page, uuid);
+        await waitForAppReady(page);
+        await page.evaluate(() => {
+            const bridge = (window as any).eXeLearning.app.project._yjsBridge;
+            bridge.documentManager.getMetadata().set('language', 'en');
+            const binding = bridge.structureBinding;
+            const node = binding.createPage('Links');
+            binding.createComponent(node.id, binding.createBlock(node.id, 'Links'), 'text', {
+                htmlContent: '<p>Read the <a href="https://example.org/lesson">lesson</a> first.</p>',
+            });
+        });
+        const files = await exportPackage(page, 'html5', true);
+        const context = await browser.newContext();
+        try {
+            await servePackage(context, 'https://print-links.test', files);
+            await context.route('https://example.org/**', route =>
+                route.fulfill({ contentType: 'text/html', body: '<title>Lesson</title><p>Lesson page</p>' }),
+            );
+            const exported = await context.newPage();
+            await exported.goto('https://print-links.test/course/print.html');
+            const print = exported.locator('.print-preview-print-btn');
+            await expect(print).toBeEnabled({ timeout: 30_000 });
+            const frame = exported.frameLocator('.print-preview-iframe');
+
+            const opened = context.waitForEvent('page');
+            await frame.locator('a[href="https://example.org/lesson"]').click();
+            await expect(await opened).toHaveURL('https://example.org/lesson');
+            // The frame still holds the course, which can still be printed.
+            await expect(frame.locator('body')).toContainText('Read the lesson first.');
+            await expect(frame.locator('body')).not.toContainText('Lesson page');
+            await expect(print).toBeEnabled();
+        } finally {
+            await context.close();
+        }
+    });
+
     test('packages MathJax when only a game holds a formula and prints that exercise rendered', async ({
         authenticatedPage: page,
         createProject,
