@@ -28,6 +28,7 @@
   - Non-Docker deployments using `APP_ENV=prod` must use HTTPS because session cookies are now marked `Secure`
 - Project properties: export options are now arranged in aligned columns, with the global font on its own row
 - Project properties: the preview image panel now explains what the image is used for, above the recommendations
+- LOMLOE iDevice: the state curriculum is now used by default; regional curricula are grouped under Autonomous Communities, with the Ministry-managed territory (MEFPD) in its own group
 - Printing: the print preview now matches the printed page, including styles, icons, margins, links and code
 - Link validator: links that cannot be checked because of timeouts, rate limits or server errors are now reported as "unavailable" rather than broken; requests to the same site are spaced out and retried once
 - Collaborative editing: while you edit an iDevice, other users' moves, reorders and deletions on the same page are applied when you finish editing
