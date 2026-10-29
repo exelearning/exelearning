@@ -54,19 +54,20 @@ export default class ShareProjectButton {
 
         this.currentVisibility = visibility;
 
-        if (visibility === 'public') {
-            this.visibilityIcon.classList.remove('share-icon');
-            this.visibilityIcon.classList.add('shared-icon');
-            if (this.shareText) {
-                this.shareText.textContent = _('Shared');
-            }
-        } else {
-            this.visibilityIcon.classList.remove('shared-icon');
-            this.visibilityIcon.classList.add('share-icon');
-            if (this.shareText) {
-                this.shareText.textContent = _('Share');
-            }
+        const isPublic = visibility === 'public';
+        const label = isPublic ? _('Shared') : _('Share');
+        this.visibilityIcon.classList.remove(isPublic ? 'share-icon' : 'shared-icon');
+        this.visibilityIcon.classList.add(isPublic ? 'shared-icon' : 'share-icon');
+        if (this.shareText) {
+            this.shareText.textContent = label;
         }
+        // The aria-label overrides the text and the text may be hidden: keep both in step (#2650)
+        this.shareButton.setAttribute('aria-label', label);
+        // Once Bootstrap's tooltip exists it reads data-bs-original-title, not title
+        const titleAttribute = this.shareButton.hasAttribute('data-bs-original-title')
+            ? 'data-bs-original-title'
+            : 'title';
+        this.shareButton.setAttribute(titleAttribute, label);
     }
 
     /**

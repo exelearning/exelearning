@@ -1022,6 +1022,8 @@ describe('AssetWebSocketHandler', () => {
     let originalLocation;
 
     beforeEach(() => {
+      // The redirect runs in a setTimeout; keep it from firing after the test ends
+      vi.useFakeTimers();
       // Mock window.location
       originalLocation = global.window?.location;
       delete global.window;
@@ -1032,6 +1034,8 @@ describe('AssetWebSocketHandler', () => {
     });
 
     afterEach(() => {
+      vi.clearAllTimers();
+      vi.useRealTimers();
       if (originalLocation) {
         global.window.location = originalLocation;
       }
@@ -1059,25 +1063,23 @@ describe('AssetWebSocketHandler', () => {
       });
     });
 
-    it('redirects to access-denied page', async () => {
+    it('redirects to access-denied page', () => {
       mockWsProvider.disconnect = mock(() => undefined);
 
       handler._handleAccessRevoked({ reason: 'visibility_changed', revokedAt: '2025-01-01T00:00:00Z' });
 
-      // Wait for setTimeout
-      await new Promise((resolve) => setTimeout(resolve, 150));
+      vi.advanceTimersByTime(100);
 
       expect(global.window.location.href).toBe('/access-denied');
     });
 
-    it('uses basePath in redirect URL', async () => {
+    it('uses basePath in redirect URL', () => {
       mockWsProvider.disconnect = mock(() => undefined);
       global.window.eXeLearning = { config: { basePath: '/web/exelearning' } };
 
       handler._handleAccessRevoked({ reason: 'visibility_changed', revokedAt: '2025-01-01T00:00:00Z' });
 
-      // Wait for setTimeout
-      await new Promise((resolve) => setTimeout(resolve, 150));
+      vi.advanceTimersByTime(100);
 
       expect(global.window.location.href).toBe('/web/exelearning/access-denied');
     });
