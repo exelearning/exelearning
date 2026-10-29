@@ -12,11 +12,11 @@
 - Project properties: added a project-wide minimum passing score in a new Grading tab; scoring iDevices use it unless they define their own minimum
 - SCORM: added an option requiring every activity on a page to meet its own minimum score; learners can also see the score needed to pass each page
 - Web site exports: added a Presentation mode, enabled by adding `?exe-presentation=1` to the URL, that lets you navigate between pages using the keyboard or a presenter remote
-- eXeLearning Cloud: projects can now be shared through an unlisted read-only link that displays their content as it would appear when exported as a website, without requiring sign-in (disabled by default; admins can enable it)
+- Sharing: online installations now support unlisted, read-only links to view projects as exported websites without signing in (disabled by default; admins can enable it)
 - Desktop app (Windows and Linux): you can now choose spell-checking languages in Preferences, displayed in the interface language, or use the system default
 - TinyMCE: added the `exe-block-download` class to highlight blocks containing download links
 - Documentation: added English and Spanish plugin guides for Moodle, Nextcloud, WordPress, Omeka S, Google Drive and OneDrive, plus a unified Spanish manual on the documentation site
-- Translations: reviewed and completed Spanish (ES), Galician (GL), Italian (IT) and Valencian (VA)
+- Translations: reviewed Spanish (ES) and completed Galician (GL), Italian (IT) and Valencian (VA)
 - Translations: added automatic placeholder translations for new strings in incomplete translations
 
 ### Changed
@@ -28,7 +28,7 @@
   - Non-Docker deployments using `APP_ENV=prod` must use HTTPS because session cookies are now marked `Secure`
 - Project properties: export options are now arranged in aligned columns, with the global font on its own row
 - Project properties: the preview image panel now explains what the image is used for, above the recommendations
-- LOMLOE iDevice: the state curriculum is now used by default; regional curricula are grouped under Autonomous Communities, with the Ministry-managed territory (MEFPD) in its own group
+- LOMLOE iDevice: new iDevices now use the state curriculum by default; regional curricula are grouped by Autonomous Community, with the Ministry-managed territory (MEFPD) in a separate group
 - Printing: the print preview now matches the printed page, including styles, icons, margins, links and code
 - Link validator: links that cannot be checked because of timeouts, rate limits or server errors are now reported as "unavailable" rather than broken; requests to the same site are spaced out and retried once
 - Collaborative editing: while you edit an iDevice, other users' moves, reorders and deletions on the same page are applied when you finish editing
@@ -43,7 +43,7 @@
 - Preview: the first preview after opening a project now loads without the previous delay of about five seconds; the preview also recovers automatically if its worker stops responding
 - Preview: images no longer disappear when a block uses a custom icon
 - Preview: theme icons, buttons and fonts now appear even when the preview cannot use its service worker
-- Math: inline formulas are no longer cut off at the first `=`, `+` or space in previews and exports
+- Math: inline formulas are no longer cut off at the first `=`, `+`, `\mid` or thin space (`\,`) in previews and exports
 - Collaborative editing: unsaved work in an iDevice is no longer lost when another user adds or moves an iDevice on the same page
 - Collaborative editing: offline tabs and tabs with outdated project copies no longer overwrite changes saved by other users; saves are merged with the stored project
 - Collaborative editing: music notation and games such as A-Z Quiz, Guess and GeoGebra now render for other users without requiring a page reload
@@ -77,7 +77,7 @@
 - Security: exports and project deletion can no longer read or delete files outside their own folders
 - Security: content written by collaborators is sanitized in the editor so it cannot run scripts in other users' sessions
 - Security: uploaded HTML, SVG and XML files are served in an isolated sandbox that cannot access the visitor's session
-- Security: the file manager now checks import size limits before extracting ZIP archives
+- Security: the server's ZIP extraction endpoint now checks project import limits before extracting
 - Security: the desktop app now reads only files opened by the user
 - Security: exporting to a folder in the desktop app can no longer write files outside the selected folder
 - Security: the link validator no longer decompresses responses from the sites it checks
@@ -90,7 +90,7 @@
 - electron: 44.2.0 → 45.0.0
 - abcjs: 6.0.4 → 6.7.2
 - bootstrap: 5.3.6 → 5.3.8
-- dompurify: 3.3.1 (browser) / 3.4.14 (server) → 3.4.17
+- dompurify: 3.3.1 → 3.4.17
 - interactjs: 1.10.11 → 1.10.28
 - jquery-ui: 1.14.1 → 1.14.2
 - @material-symbols/svg-400: 0.47.0 → 0.48.0
@@ -102,8 +102,9 @@
 - jsdom: 30.0.1 → 30.1.3
 - kysely: 0.29.5 → 0.29.7
 - lib0: 0.2.117 → 0.2.119
+- mermaid: 11.12.0 → 11.17.2
 - mysql2: 3.23.4 → 3.24.6
-- pdfjs-dist: 6.3.289 → 6.4.299
+- pdf.js (PDF viewer): 4.10.38 → 6.4.299
 - uuid: 14.0.2 → 14.0.3
 - ws: 8.21.3 → 8.22.0
 - yjs: 13.6.32 → 13.6.33
@@ -119,10 +120,6 @@
 - vite: 8.2.2 → 8.3.4
 - vitest: 4.1.11 → 5.0.5
 - wait-on: 9.1.0 → 9.5.1
-
-### Removed
-
-- Removed the File → Print iDevices menu entry; you can now choose to print only activities from the print options panel
 
 ---
 
