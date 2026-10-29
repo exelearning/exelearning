@@ -1010,7 +1010,7 @@ var $exeDevice = {
         } else if (p.type === 3) {
             const textEditor = tinyMCE.get('seleccionaEText');
             if (textEditor) {
-                textEditor.setContent(unescape(p.eText));
+                textEditor.setContent($exeDevices.iDevice.gamification.helpers.decodeStoredText(p.eText));
             }
         }
 
@@ -3529,7 +3529,7 @@ var $exeDevice = {
             }
 
             if (p.type === 3) {
-                p.eText = unescape(p.eText);
+                p.eText = $exeDevices.iDevice.gamification.helpers.decodeStoredText(p.eText);
             }
 
             p.audio = cuestion.audio || '';

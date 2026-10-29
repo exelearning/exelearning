@@ -162,12 +162,12 @@ describe('ChecklistWorksheetAdapter', () => {
         expect(list.items[1].points).toBe('(5 pts &amp; más)');
     });
 
-    it('carries the heading and the footer, keeping the footer’s text but not its links', () => {
+    it('carries the heading and the footer, keeping the footer’s link for print to write its address', () => {
         const list = listOf();
 
         expect(list.title).toBe('Somos artistas');
         expect(list.subtitle).toBe('Lista de cotejo de la unidad');
-        expect(list.footer).toBe('Del Proyecto CREA');
+        expect(list.footer).toBe('Del <a href="https://crea.educarex.es">Proyecto CREA</a>');
     });
 
     it('leaves out a heading or a footer the author left empty', () => {

@@ -14,7 +14,7 @@
  * - `eText` is stored escape()'d, matching guess/export/guess.js:1149.
  */
 
-import { extractDataGame, extractDivContent, extractMediaLinks } from '../dataGameReader';
+import { decodeStoredText, extractDataGame, extractDivContent, extractMediaLinks } from '../dataGameReader';
 import { buildAnswerBoxes, indexedQuestions, type RandomSource, selectQuestions } from '../questionSelection';
 import { escapeText, htmlToText, sanitizeHtml } from '../sanitizeHtml';
 import type { PrintableActivity, PrintableItem, WorksheetAdapter, WorksheetAdapterOptions } from '../types';
@@ -98,9 +98,8 @@ function buildItem(
     }
 
     if (question.type === QUESTION_TYPE_RICH_TEXT && question.eText) {
-        // Mirrors the runtime, which unescapes before injecting. On payloads that were never
-        // escaped this is a no-op, so both eras of stored data read correctly.
-        const extraText = sanitizeHtml(unescape(question.eText));
+        // Read as the runtime reads it, so both eras of stored data come out as they show.
+        const extraText = sanitizeHtml(decodeStoredText(question.eText));
         if (extraText) item.extraText = extraText;
     }
 

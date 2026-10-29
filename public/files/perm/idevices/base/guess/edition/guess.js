@@ -668,7 +668,7 @@ var $exeDevice = {
                 $exeDevice.showVideoQuestion();
             }
         } else if (p.type == 3) {
-            tinyMCE.get('adivinaEText').setContent(unescape(p.eText));
+            tinyMCE.get('adivinaEText').setContent($exeDevices.iDevice.gamification.helpers.decodeStoredText(p.eText));
         }
 
         $exeIDevicesEdition.iDevice.gamification.helpers.stopSound();
