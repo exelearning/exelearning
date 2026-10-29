@@ -345,15 +345,15 @@ describe('Generate JWT Command', () => {
             expect(result.token).toBeDefined();
         });
 
-        it('should use APP_SECRET as last fallback', async () => {
+        it('should not use APP_SECRET for internal API tokens', async () => {
             delete process.env.API_JWT_SECRET;
             delete process.env.JWT_SECRET;
             process.env.APP_SECRET = 'app-secret-fallback';
 
             const result = await execute(['user@test.com'], { 'raw-sub': true });
 
-            expect(result.success).toBe(true);
-            expect(result.token).toBeDefined();
+            expect(result.success).toBe(false);
+            expect(result.message).toContain('JWT secret not configured');
         });
     });
 

@@ -18,6 +18,7 @@ import * as fs from 'fs-extra';
 import * as path from 'path';
 import { randomUUID } from 'crypto';
 import { buildContentDisposition } from '../shared/http/headers';
+import { safeJoin, sanitizeFileExtension } from '../utils/safe-path';
 import type { Kysely } from 'kysely';
 
 import { db as defaultDb } from '../db/client';
@@ -46,6 +47,7 @@ import {
 import { ElpxImporter, FileSystemAssetHandler } from '../shared/import';
 import * as Y from 'yjs';
 import { getAppVersion } from '../utils/version';
+import { getJwtSecret } from '../utils/jwt-secret';
 
 // =============================================================================
 // Types and Interfaces
@@ -125,11 +127,6 @@ const defaultDeps: ConvertDependencies = {
     fs: fs,
 };
 
-// Get JWT secret from environment
-const getJwtSecret = (): string => {
-    return process.env.API_JWT_SECRET || process.env.JWT_SECRET || 'dev_secret_change_me';
-};
-
 // =============================================================================
 // Factory Function
 // =============================================================================
@@ -179,11 +176,17 @@ export function createConvertRoutes(deps: ConvertDependencies = defaultDeps) {
     }
 
     /**
-     * Write uploaded file to disk
+     * Write an uploaded file into the per-conversion temp dir under a
+     * server-generated name, so the client-supplied filename can never traverse
+     * out of it. safeJoin validates the segment and asserts containment. Returns
+     * the on-disk path the export pipeline should read.
      */
-    async function writeUploadedFile(file: File | Blob, destPath: string): Promise<void> {
+    async function writeUploadedFile(file: File | Blob, tempDirPath: string): Promise<string> {
+        const ext = sanitizeFileExtension((file as FileWithName).name) || '.elp';
+        const uploadPath = safeJoin(tempDirPath, `upload-${randomUUID()}${ext}`);
         const buffer = Buffer.from(await file.arrayBuffer());
-        await fs.writeFile(destPath, buffer);
+        await fs.writeFile(uploadPath, buffer);
+        return uploadPath;
     }
 
     /**
@@ -354,10 +357,8 @@ export function createConvertRoutes(deps: ConvertDependencies = defaultDeps) {
                         // Create temp directory
                         tempDirPath = await createTempDir();
 
-                        // Write uploaded file
-                        const filename = (data.file as FileWithName).name || 'upload.elp';
-                        const uploadPath = path.join(tempDirPath, filename);
-                        await writeUploadedFile(data.file, uploadPath);
+                        // Write uploaded file under a server-generated, contained name.
+                        const uploadPath = await writeUploadedFile(data.file, tempDirPath);
 
                         // Run ELPX export (conversion)
                         const result = await runExport(uploadPath, 'elpx');
@@ -447,10 +448,8 @@ export function createConvertRoutes(deps: ConvertDependencies = defaultDeps) {
                         // Create temp directory
                         tempDirPath = await createTempDir();
 
-                        // Write uploaded file
-                        const filename = (data.file as FileWithName).name || 'upload.elp';
-                        const uploadPath = path.join(tempDirPath, filename);
-                        await writeUploadedFile(data.file, uploadPath);
+                        // Write uploaded file under a server-generated, contained name.
+                        const uploadPath = await writeUploadedFile(data.file, tempDirPath);
 
                         // Run export
                         const result = await runExport(uploadPath, format, { baseUrl, theme });

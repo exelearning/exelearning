@@ -386,6 +386,22 @@ describe('PageExporter', () => {
             resources.fetchLibraryFiles = async files => new Map(files.map(file => [file, Buffer.from('// mock lib')]));
         };
 
+        it("links an older style's content.css and default.js, the files it has", async () => {
+            resources.fetchTheme = async () =>
+                new Map([
+                    ['content.css', Buffer.from('/* older style */')],
+                    ['default.js', Buffer.from('// older style')],
+                    ['img/logo.png', Buffer.from('')],
+                ]);
+
+            await exporter.export();
+
+            const indexHtml = zip.files.get('index.html') as string;
+            expect(indexHtml).toContain('<link rel="stylesheet" href="theme/content.css">');
+            expect(indexHtml).toContain('<script src="theme/default.js"> </script>');
+            expect(indexHtml).not.toContain('theme/style.css');
+        });
+
         it('references the toolbar JS and CSS in the page head when enabled', async () => {
             document = new MockDocument({ addAccessibilityToolbar: true }, samplePages);
             exporter = new PageExporter(document, resources, assets, zip);

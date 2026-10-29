@@ -3,6 +3,7 @@
  * Handles login, logout, session checks, and guest access
  */
 import { Elysia, t } from 'elysia';
+import { isProductionEnv } from '../utils/env';
 import { jwt } from '@elysiajs/jwt';
 import type { Kysely } from 'kysely';
 import { db as defaultDb } from '../db/client';
@@ -25,6 +26,7 @@ import { getPostLoginTarget } from '../services/maintenance';
 import { logActivity } from '../services/activity-logger';
 import { resolveOidcEndpoints, type ResolvedOidcEndpoints } from '../services/oidc-discovery';
 import { verifyPassword } from '../services/password';
+import { getJwtSecret } from '../utils/jwt-secret';
 
 // Domain for temporary emails (CAS, OIDC, Guest users without real email)
 const TEMP_EMAIL_DOMAIN = process.env.AUTH_TEMP_EMAIL_DOMAIN || 'domain.local';
@@ -110,11 +112,6 @@ export interface JwtPayload {
     exp?: number;
 }
 
-// Get JWT secret from environment
-const getJwtSecret = (): string => {
-    return process.env.API_JWT_SECRET || process.env.JWT_SECRET || 'dev_secret_change_me';
-};
-
 const getRequestClientIp = (request: Request): string | null => {
     const forwardedFor = request.headers.get('x-forwarded-for');
     if (forwardedFor) {
@@ -129,6 +126,36 @@ const loginSchema = t.Object({
     email: t.String({ format: 'email' }),
     password: t.String({ minLength: 1 }),
 });
+
+/**
+ * Pre-computed bcrypt hash (cost factor 10, matching real user passwords) of a
+ * random secret that intentionally corresponds to no real account. It is used
+ * as a decoy so password verification always performs one `verifyPassword`
+ * call — even when the email does not exist — keeping the response time of a
+ * failed login constant and closing the username-enumeration timing oracle.
+ *
+ * Verification goes through `src/services/password.ts` (`Bun.password.verify`),
+ * not bcryptjs, so this dummy compare stays off the JS event loop (ADR-2255-02).
+ */
+const DUMMY_PASSWORD_HASH = '$2b$10$pWMhak8HjxajRfmz7mkS8O99xR2ozkUT89L1IFMeKMaE3ERN0huYm';
+
+/**
+ * Verify a plaintext password against a (possibly missing) user in constant time.
+ *
+ * When `user` is null/undefined we still run `verifyPassword` against
+ * DUMMY_PASSWORD_HASH so an attacker cannot use the response latency to tell
+ * whether the email exists. Returns true only when the user exists AND the
+ * password matches. Shared by both password-login entry points so the
+ * comparison behaviour lives in a single place.
+ */
+export async function verifyUserPassword(
+    user: { password?: string | null } | null | undefined,
+    password: string,
+): Promise<boolean> {
+    const hash = user?.password || DUMMY_PASSWORD_HASH;
+    const matches = await verifyPassword(password, hash);
+    return Boolean(user) && matches;
+}
 
 /**
  * Factory function to create auth routes with dependency injection
@@ -206,13 +233,11 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                     const { email, password } = body;
 
                     const user = await findUserByEmail(db, email);
-                    if (!user) {
-                        set.status = 401;
-                        return { error: 'Unauthorized', message: 'Invalid credentials' };
-                    }
-
-                    const isValid = await verifyPassword(password, user.password);
-                    if (!isValid) {
+                    // Always run one verifyPassword (see verifyUserPassword) so an
+                    // unknown email and a wrong password take the same time and
+                    // cannot be distinguished via response latency.
+                    const passwordValid = await verifyUserPassword(user, password);
+                    if (!user || !passwordValid) {
                         set.status = 401;
                         return { error: 'Unauthorized', message: 'Invalid credentials' };
                     }
@@ -235,7 +260,7 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                     cookie.auth.set({
                         value: token,
                         httpOnly: true,
-                        secure: process.env.NODE_ENV === 'production',
+                        secure: isProductionEnv(),
                         sameSite: 'lax',
                         maxAge: 7 * 24 * 60 * 60,
                         path: '/',
@@ -312,7 +337,7 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                 cookie.auth.set({
                     value: originalToken,
                     httpOnly: true,
-                    secure: process.env.NODE_ENV === 'production',
+                    secure: isProductionEnv(),
                     sameSite: 'lax',
                     maxAge: 7 * 24 * 60 * 60,
                     path: '/',
@@ -411,16 +436,11 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                 }
 
                 const user = await findUserByEmail(db, email);
-                if (!user) {
-                    // Redirect back to login with error
-                    return Response.redirect(
-                        `${url.origin}${loginUrl}?error=${encodeURIComponent('Invalid credentials')}`,
-                        302,
-                    );
-                }
-
-                const isValid = await verifyPassword(password, user.password);
-                if (!isValid) {
+                // Always run one verifyPassword (see verifyUserPassword) so an
+                // unknown email and a wrong password take the same time and
+                // cannot be distinguished via response latency.
+                const passwordValid = await verifyUserPassword(user, password);
+                if (!user || !passwordValid) {
                     // Redirect back to login with error
                     return Response.redirect(
                         `${url.origin}${loginUrl}?error=${encodeURIComponent('Invalid credentials')}`,
@@ -448,7 +468,7 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                 cookie.auth.set({
                     value: token,
                     httpOnly: true,
-                    secure: process.env.NODE_ENV === 'production',
+                    secure: isProductionEnv(),
                     sameSite: 'lax',
                     maxAge: 7 * 24 * 60 * 60,
                     path: '/',
@@ -583,7 +603,7 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                 const returnUrl = query.returnUrl as string | undefined;
                 const headers: [string, string][] = [['Location', loginUrl]];
                 if (returnUrl && isValidReturnUrl(returnUrl)) {
-                    const isSecure = process.env.NODE_ENV === 'production';
+                    const isSecure = isProductionEnv();
                     headers.push([
                         'Set-Cookie',
                         `sso_return_url=${encodeURIComponent(returnUrl)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=600${isSecure ? '; Secure' : ''}`,
@@ -701,7 +721,7 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                     cookie.auth.set({
                         value: token,
                         httpOnly: true,
-                        secure: process.env.NODE_ENV === 'production',
+                        secure: isProductionEnv(),
                         sameSite: 'lax',
                         maxAge: 7 * 24 * 60 * 60,
                         path: '/',
@@ -789,7 +809,7 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                 });
 
                 // Build cookies to set (OIDC state + optional returnUrl)
-                const isSecure = process.env.NODE_ENV === 'production';
+                const isSecure = isProductionEnv();
                 const cookies: string[] = [
                     `oidc_state=${encodeURIComponent(oidcState)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=600${isSecure ? '; Secure' : ''}`,
                 ];
@@ -846,24 +866,28 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                     ?.split(';')
                     .find(c => c.trim().startsWith('oidc_state='));
 
-                let codeVerifier = '';
-                let expectedNonce = '';
-                if (oidcStateCookie) {
-                    try {
-                        const stateJson = decodeURIComponent(oidcStateCookie.split('=')[1]);
-                        const stateData = JSON.parse(stateJson);
-                        codeVerifier = stateData.codeVerifier || '';
-                        expectedNonce = stateData.nonce || '';
-
-                        // Verify state matches
-                        if (query.state && stateData.state !== query.state) {
-                            set.status = 400;
-                            return { error: 'Bad Request', message: 'Invalid state parameter.' };
-                        }
-                    } catch {
-                        // Ignore parse errors
-                    }
+                // The state cookie set by GET /login/openid is mandatory: without it the
+                // callback cannot be bound to a login this browser started (CSRF/login fixation).
+                let stateData: { codeVerifier?: unknown; state?: unknown; nonce?: unknown } | undefined;
+                try {
+                    stateData = oidcStateCookie
+                        ? JSON.parse(decodeURIComponent(oidcStateCookie.split('=')[1]))
+                        : undefined;
+                } catch {
+                    stateData = undefined;
                 }
+                if (
+                    typeof stateData?.state !== 'string' ||
+                    typeof stateData.nonce !== 'string' ||
+                    !stateData.state ||
+                    !stateData.nonce ||
+                    stateData.state !== query.state
+                ) {
+                    set.status = 400;
+                    return { error: 'Bad Request', message: 'Invalid state parameter.' };
+                }
+                const codeVerifier = typeof stateData.codeVerifier === 'string' ? stateData.codeVerifier : '';
+                const expectedNonce = stateData.nonce;
 
                 const { tokenEndpoint, userinfoEndpoint, jwksUri } = await getResolvedOidcConfig(db);
                 if (!tokenEndpoint) {
@@ -899,7 +923,14 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                         }),
                     });
 
-                    const tokenJson = (await tokenResponse.json()) as Record<string, unknown>;
+                    const tokenJson = (await tokenResponse.json().catch(() => ({}))) as Record<string, unknown>;
+                    if (!tokenResponse.ok || tokenJson.error) {
+                        console.warn(
+                            `[auth/openid] token exchange failed (HTTP ${tokenResponse.status}): ${String(tokenJson.error ?? '')}`,
+                        );
+                        set.status = 401;
+                        return { error: 'Unauthorized', message: 'OpenID authentication failed.' };
+                    }
                     const accessToken = tokenJson.access_token as string | undefined;
                     const idToken = tokenJson.id_token as string | undefined;
 
@@ -958,15 +989,12 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                                 (idTokenPayload.email as string) || (idTokenPayload.preferred_username as string);
                             subject = idTokenPayload.sub as string | undefined;
 
-                            // Nonce binding: if our authorize request set a
-                            // nonce, the returned id_token must echo it.
-                            if (expectedNonce) {
-                                const tokenNonce = idTokenPayload.nonce as string | undefined;
-                                if (tokenNonce !== expectedNonce) {
-                                    console.warn('[auth/openid] id_token nonce mismatch');
-                                    set.status = 401;
-                                    return { error: 'Unauthorized', message: 'OpenID authentication failed.' };
-                                }
+                            // Nonce binding: the returned id_token must echo the
+                            // nonce our authorize request set.
+                            if (idTokenPayload.nonce !== expectedNonce) {
+                                console.warn('[auth/openid] id_token nonce mismatch');
+                                set.status = 401;
+                                return { error: 'Unauthorized', message: 'OpenID authentication failed.' };
                             }
                         }
                     }
@@ -987,14 +1015,15 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                         }
                     }
 
+                    if (!userEmail && !subject) {
+                        // Never synthesize an account when the provider vouched for no identity
+                        console.warn('[auth/openid] token exchange yielded no subject or email');
+                        set.status = 401;
+                        return { error: 'Unauthorized', message: 'OpenID authentication failed.' };
+                    }
                     if (!userEmail) {
-                        if (subject?.includes('@')) {
-                            // subject is already an email address
-                            userEmail = subject;
-                        } else {
-                            // Generate fallback email with temp email domain
-                            userEmail = `${subject || randomBytes(8).toString('hex')}@${TEMP_EMAIL_DOMAIN}`;
-                        }
+                        // subject may already be an email address; otherwise use the temp email domain
+                        userEmail = subject?.includes('@') ? subject : `${subject}@${TEMP_EMAIL_DOMAIN}`;
                     }
 
                     // Find or create user in database
@@ -1037,7 +1066,7 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                     cookie.auth.set({
                         value: token,
                         httpOnly: true,
-                        secure: process.env.NODE_ENV === 'production',
+                        secure: isProductionEnv(),
                         sameSite: 'lax',
                         maxAge: 7 * 24 * 60 * 60,
                         path: '/',
@@ -1072,7 +1101,7 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                         'sso_return_url=; Path=/; HttpOnly; Max-Age=0', // Clear returnUrl cookie
                     ];
                     if (idToken) {
-                        const isSecure = process.env.NODE_ENV === 'production';
+                        const isSecure = isProductionEnv();
                         setCookieHeaders.push(
                             `oidc_id_token=${idToken}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${7 * 24 * 60 * 60}${isSecure ? '; Secure' : ''}`,
                         );
@@ -1154,7 +1183,7 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                 cookie.auth.set({
                     value: token,
                     httpOnly: true,
-                    secure: process.env.NODE_ENV === 'production',
+                    secure: isProductionEnv(),
                     sameSite: 'lax',
                     maxAge: 24 * 60 * 60,
                     path: '/',
