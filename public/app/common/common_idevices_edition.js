@@ -3116,7 +3116,7 @@ var $exeIDevicesEdition = {
                     case 'options':
                         return {
                             title: _('Options'),
-                            info: _('Choose how the activity works: its score, its time, its lives and the rest of its settings.'),
+                            info: _('Choose how the activity works and how it is shown to the learners.'),
                             content: html,
                         };
                     case 'contents':

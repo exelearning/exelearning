@@ -1028,7 +1028,9 @@ describe('common_idevices_edition.js', () => {
 
         expect(panel('contents').firstElementChild.innerHTML).toBe('Write a <b>word</b> for each letter.');
         expect(panel('contents').textContent).not.toContain('Add the questions');
-        expect(panel('options').firstElementChild.textContent).toContain('Choose how the activity works');
+        expect(panel('options').firstElementChild.textContent).toBe(
+          'Choose how the activity works and how it is shown to the learners.',
+        );
 
         render({ contents: '', info: null });
         expect(panel('contents').firstElementChild.textContent).toContain('Add the questions');
