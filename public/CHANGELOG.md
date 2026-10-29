@@ -89,7 +89,7 @@
 - electron: 44.2.0 → 45.0.0
 - abcjs: 6.0.4 → 6.7.2
 - bootstrap: 5.3.6 → 5.3.8
-- dompurify: 3.3.1 → 3.4.17
+- dompurify: 3.3.1 (browser) / 3.4.14 (server) → 3.4.17
 - interactjs: 1.10.11 → 1.10.28
 - jquery-ui: 1.14.1 → 1.14.2
 - @material-symbols/svg-400: 0.47.0 → 0.48.0

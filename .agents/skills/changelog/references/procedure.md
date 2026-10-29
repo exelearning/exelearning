@@ -145,11 +145,12 @@ gh issue view NNN --repo exelearning/exelearning --json title,body
 
 ### B.3 Classify each change
 
-Map every individual change (one PR may yield several entries) to one of four sections:
+Map every individual change (one PR may yield several entries) to one of five sections:
 
 | Section | What goes here |
 |---------|----------------|
 | **Added** | New features, new iDevices, new CLI commands, new UI options, new documentation |
+| **Changed** | Behaviour or UI changes to existing features, reworked workflows, default changes |
 | **Fixed** | Bug fixes, presentation corrections, performance improvements, security fixes |
 | **Upgraded** | Dependency version bumps, computed against the last published release (see [Upgraded section](#upgraded-section-compare-against-the-last-published-release)), never from PR titles |
 | **Removed** | Features, options or files that no longer exist |
@@ -253,7 +254,7 @@ After inserting the block, tell the user:
 
 Never assume how many PRs were merged after a date or release, and never stop at the PRs that look relevant. Prove that the list is complete:
 
-1. Count the merged PRs with `gh pr list --state merged --base main --search "merged:>TIMESTAMP" --json number --limit 1000`. If the count equals the `--limit`, raise the limit or split the date range and repeat.
+1. Count the merged PRs with `gh pr list --state merged --base main --search "merged:>TIMESTAMP" --json number --limit 1000`. If the count reaches 1000 (GitHub's search cap), split the date range and repeat.
 2. List the first-parent commits on `origin/main` in the same range: `git log --first-parent --format=%s <REL or cut-off commit>..origin/main`. Extract the last `(#NNN)` of each subject.
 3. Compare both sets. Investigate every PR that appears on only one side and every commit without a PR reference (direct pushes, merges from other branches) before writing entries.
 4. Give every PR a disposition: an entry (new or already in the draft, by section), part of the recomputed `### Upgraded` section, or skipped with a reason. Check entries already in the draft by meaning, not by searching for the PR number, because entries do not cite PRs.
