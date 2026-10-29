@@ -18,7 +18,7 @@ import { IdeviceRenderer } from '../renderers/IdeviceRenderer';
 import { PageRenderer } from '../renderers/PageRenderer';
 import { generateI18nScript } from '../generators/I18nGenerator';
 import { AssetUrlResolver } from '../utils/AssetUrlResolver';
-import { markLinksShowingTheirUrl } from '../utils/linkUrls';
+import { LINK_URLS_CSS, markLinksShowingTheirUrl } from '../utils/linkUrls';
 import { ThemeFileUrlResolver } from '../utils/ThemeFileUrlResolver';
 import { visibleWorksheetPages } from '../utils/visibility';
 import { WORKSHEET_ACTIVITY_STYLES } from '../worksheet/WorksheetRenderer';
@@ -417,17 +417,8 @@ export class PrintPreviewExporter {
         // base.css's own `!important`; outside @media print, it holds on screen as well.
         const linkUrlsCss = showLinkUrls
             ? `
-/* Show URLs inline after external links (screen and print, so the preview matches) */
-a[href^="http"]::after {
-    content: " [" attr(href) "]";
-    font-size: 0.85em;
-    word-break: break-all;
-    color: #666;
-}
-/* Don't show URL for links whose text IS the URL (marked by markLinksShowingTheirUrl) */
-a[href^="http"][data-exe-text-is-url]::after { content: none; }
-/* Don't show URL for image-only links */
-a[href^="http"]:has(img:only-child)::after { content: none; }
+/* Show URLs inline after external links, except where the link's text is its URL or it holds only a picture */
+${LINK_URLS_CSS}
 /* Show external iframe source URLs in print */
 .external-iframe-src { display: block !important; font-size: 0.85em; color: #666; }
 /* Its link text already is the URL */

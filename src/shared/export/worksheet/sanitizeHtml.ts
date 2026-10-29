@@ -49,6 +49,10 @@ const STRIPPED_WITH_CONTENT = new Set([
 ]);
 /** Content embedded from elsewhere, and the attribute holding where it comes from. */
 const EMBEDDED_CONTENT: Record<string, string> = { iframe: 'src', embed: 'src', object: 'data' };
+/** The class of the line saying where content embedded from the web can be found. */
+export const EMBED_ADDRESS_CLASS = 'worksheet-embed-address';
+/** Elements whose text stands apart from the words round it: each starts a line of its own. */
+const LINE_ELEMENTS = new Set(['p', 'div', 'br', 'li', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'tr']);
 const VOID_TAGS = new Set(['br', 'hr', 'img']);
 type HtmlNode = DefaultTreeAdapterMap['childNode'];
 
@@ -107,7 +111,7 @@ function embeddedAddress(address: string, insideLink: boolean): string {
     // An embed can sit inside an author link. Nesting a second anchor would make the browser
     // close the first early, separating it from any answer gap whose link must be removed.
     const content = insideLink ? url : `<a href="${url}">${url}</a>`;
-    return `<span class="worksheet-embed-address">${content}</span>`;
+    return `<span class="${EMBED_ADDRESS_CLASS}">${content}</span>`;
 }
 
 /**
@@ -130,7 +134,17 @@ function showsSomething(html: string): boolean {
     return /<(?:img|hr)\b/i.test(html) || html.replace(/<[^>]*>/g, '').trim() !== '';
 }
 
-function renderNode(node: HtmlNode, insideLink = false): Rendered {
+/** How a fragment is sanitised. */
+export interface SanitizeOptions {
+    /**
+     * Keep the author's links to the web, whose addresses print after them (the default). A clue to
+     * a word the reader has to find leaves them out, keeping only what each held: a link there
+     * usually leads to that word, and ".../wiki/An%C3%A9lido" printed after it answers the clue.
+     */
+    links?: boolean;
+}
+
+function renderNode(node: HtmlNode, options: SanitizeOptions, insideLink = false): Rendered {
     if ('value' in node) return { html: escapeText(node.value), stripped: false };
     if (!('tagName' in node)) return { html: '', stripped: false };
     if (STRIPPED_WITH_CONTENT.has(node.tagName)) {
@@ -143,8 +157,8 @@ function renderNode(node: HtmlNode, insideLink = false): Rendered {
         return source ? { html: embeddedAddress(source, insideLink), stripped: false } : { html: '', stripped: true };
     }
 
-    const href = node.tagName === 'a' ? webAddress(attributeOf(node, 'href')) : null;
-    const parts = node.childNodes.map(child => renderNode(child, insideLink || href !== null));
+    const href = node.tagName === 'a' && options.links !== false ? webAddress(attributeOf(node, 'href')) : null;
+    const parts = node.childNodes.map(child => renderNode(child, options, insideLink || href !== null));
     const children = parts.map(part => part.html).join('');
     const stripped = parts.some(part => part.stripped);
 
@@ -152,7 +166,8 @@ function renderNode(node: HtmlNode, insideLink = false): Rendered {
 
     // A link is kept for an address on the web, which print writes after it, and only round
     // something to read: round nothing, the address would be printed on its own. Any other link
-    // leads nowhere a reader holding the paper can go, and only what it held is kept.
+    // leads nowhere a reader holding the paper can go, and only what it held is kept, as it is of
+    // every link when links are left out.
     if (node.tagName === 'a' && (!href || !showsSomething(children))) return { html: children, stripped };
 
     // An element left with nothing to show, because what was in it could not be printed, goes with
@@ -175,12 +190,12 @@ function renderNode(node: HtmlNode, insideLink = false): Rendered {
 }
 
 /** Keep safe formatting, discarding executable elements and rebuilding allowed attributes. */
-export function sanitizeHtml(html: string | null | undefined): string {
+export function sanitizeHtml(html: string | null | undefined, options: SanitizeOptions = {}): string {
     if (typeof html !== 'string' || !html) return '';
     // NUL is dropped before parsing: browsers treat it inconsistently inside markup.
     // biome-ignore lint/suspicious/noControlCharactersInRegex: removing NUL is deliberate
     return parseFragment(html.replace(/\u0000/g, ''))
-        .childNodes.map(node => renderNode(node).html)
+        .childNodes.map(node => renderNode(node, options).html)
         .join('')
         .trim();
 }
@@ -191,11 +206,24 @@ export function nodeText(node: DefaultTreeAdapterMap['node']): string {
     return 'childNodes' in node ? node.childNodes.map(nodeText).join('') : '';
 }
 
+/** Whether an element is the line saying where embedded content can be found. */
+export function isEmbedAddress(node: DefaultTreeAdapterMap['node']): boolean {
+    return 'tagName' in node && node.tagName === 'span' && attributeOf(node, 'class') === EMBED_ADDRESS_CLASS;
+}
+
+/** Visible text of a parsed fragment, with a space round the text of each line of its own. */
+function spacedText(node: DefaultTreeAdapterMap['node']): string {
+    if ('value' in node) return node.value;
+    if (!('childNodes' in node)) return '';
+    const text = node.childNodes.map(spacedText).join('');
+    return 'tagName' in node && (LINE_ELEMENTS.has(node.tagName) || isEmbedAddress(node)) ? ` ${text} ` : text;
+}
+
 /** Convert safe HTML to decoded text, preserving spacing between block-level fragments. */
 export function htmlToText(html: string | null | undefined): string {
-    const safe = sanitizeHtml(html);
-    const spaced = safe.replace(/<\/?(?:p|div|br|li|h[1-6]|tr)\b[^>]*>/gi, ' ');
-    return nodeText(parseFragment(spaced)).replace(/\s+/g, ' ').trim();
+    return spacedText(parseFragment(sanitizeHtml(html)))
+        .replace(/\s+/g, ' ')
+        .trim();
 }
 
 /** Images are printable content even when a fragment contains no text. */
