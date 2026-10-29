@@ -20,6 +20,8 @@ export interface PrintPackage {
     translations: Record<string, string>;
     i18n: string;
     navLabels?: PageRenderOptions['navLabels'];
+    /** Whether the package carries MathJax: the preview never loads it otherwise. */
+    mathJax?: boolean;
 }
 
 /** A separate, read-only snapshot; hidden ancestors, blocks and components never reach it. */

@@ -357,7 +357,7 @@ export class ElpxExporter extends Html5Exporter {
 
             // ELPX also contains a runnable website; include the shared print runtime
             // before building its download manifest, just as in the HTML5 export.
-            await this.addPrintPreviewFiles(pages, meta, themeFilesMap, addFile);
+            await this.addPrintPreviewFiles(pages, meta, themeFilesMap, addFile, options);
 
             // 1.10 Add HTML pages to ZIP (with manifest script on pages that have download-source-file).
             // The ELPX download manifest itself is generated LAST (Section 2.4) — after the content.xml /

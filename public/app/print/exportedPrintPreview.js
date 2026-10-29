@@ -5,7 +5,6 @@ import { WorksheetExporter } from '../../../src/shared/export/exporters/Workshee
 import { listInteractiveActivities, hasTeacherOnlyContent } from '../../../src/shared/export/exporters/printActivityModes';
 import { resolvePrintResourceUrls } from '../../../src/shared/export/printPackage';
 import LatexPreRenderer from '../common/LatexPreRenderer.js';
-import MermaidPreRenderer from '../common/MermaidPreRenderer.js';
 import MoleculeCapture from '../common/MoleculeCapture.js';
 
 export const PREPARATION_TIMEOUT_MS = 25000;
@@ -110,19 +109,17 @@ export function createExportedPrintPreview(data, root, resourceUrls = {}) {
             throw error;
         }
     };
+    // The export packages MathJax only when the printed content can have formulas, and
+    // pre-renders the Mermaid diagrams, so neither library is loaded otherwise.
     const hooks = signal => ({
         resolveResourceUrls,
         preRenderLatex: async html => {
-            if (LatexPreRenderer.hasLatex(html)) await math(signal);
+            if (data.mathJax && LatexPreRenderer.hasLatex(html)) await math(signal);
             return LatexPreRenderer.preRender(html);
         },
         preRenderDataGameLatex: async html => {
-            if (/DataGame/i.test(html)) await math(signal);
+            if (data.mathJax && /DataGame/i.test(html)) await math(signal);
             return LatexPreRenderer.preRenderDataGameLatex(html);
-        },
-        preRenderMermaid: async html => {
-            if (/class=["'][^"']*mermaid/.test(html)) await loadScript(resourceUrl('libs/mermaid/mermaid.min.js'));
-            return MermaidPreRenderer.preRender(html);
         },
         captureMolecule: async view => {
             await loadScript(resourceUrl('idevices/3dmol/3Dmol-min.js'));
@@ -139,7 +136,7 @@ export function createExportedPrintPreview(data, root, resourceUrls = {}) {
         signal.addEventListener('abort', cancelLoads, { once: true });
         const timer = setTimeout(() => controller.abort(new Error('PRINT_RESOURCES_TIMEOUT')), PREPARATION_TIMEOUT_MS);
         const preparationHooks = hooks(signal);
-        for (const key of ['preRenderLatex', 'preRenderDataGameLatex', 'preRenderMermaid', 'captureMolecule']) {
+        for (const key of ['preRenderLatex', 'preRenderDataGameLatex', 'captureMolecule']) {
             const hook = preparationHooks[key];
             preparationHooks[key] = async (...args) => {
                 try {

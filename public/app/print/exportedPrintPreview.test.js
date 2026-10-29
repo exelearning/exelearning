@@ -21,7 +21,6 @@ vi.mock('../common/LatexPreRenderer.js', () => ({ default: {
     hasLatex: html => html.includes('formula'), preRender: vi.fn(async html => ({ html, success: true })),
     preRenderDataGameLatex: vi.fn(async html => ({ html, success: true })),
 } }));
-vi.mock('../common/MermaidPreRenderer.js', () => ({ default: { preRender: vi.fn(async html => ({ html, success: true })) } }));
 vi.mock('../common/MoleculeCapture.js', () => ({ default: { capture: vi.fn(async () => 'data:image/png;base64,capture') } }));
 import { createExportedPrintPreview, PREPARATION_TIMEOUT_MS } from './exportedPrintPreview.js';
 
@@ -34,13 +33,12 @@ describe('exported print preview adapter', () => {
         document.getElementById('opener').focus();
         preview = createExportedPrintPreview({ metadata: { title: 'Course' }, pages: [],
             translations: { 'Print preview': 'Vista previa' }, assetPaths: [['image', 'figure.png']], themeFiles: ['style.css'],
-            materialIcons: [], i18n: '', navLabels: { licenseLabel: 'Licencia' } }, 'https://example.test/html/course/');
+            materialIcons: [], i18n: '', navLabels: { licenseLabel: 'Licencia' }, mathJax: true }, 'https://example.test/html/course/');
     });
     afterEach(() => { preview.destroy(); vi.restoreAllMocks(); vi.useRealTimers(); delete window.MathJax; });
 
     it.each([
         ['preRenderLatex', 'formula'],
-        ['preRenderMermaid', '<div class="mermaid">graph</div>'],
         ['captureMolecule', {}],
     ])('bounds stalled %s loading, rejects incomplete output and permits retry', async (hook, input) => {
         vi.useFakeTimers();
@@ -119,8 +117,8 @@ describe('exported print preview adapter', () => {
     it('removes a failed script and allows another load', async () => {
         vi.spyOn(console, 'error').mockImplementation(() => {});
         doubles.document.mockImplementation(async options => {
-            await options.preRenderMermaid('<div class="mermaid">graph</div>');
-            return { success: true, html: '<html><body>Diagram</body></html>' };
+            await options.captureMolecule({});
+            return { success: true, html: '<html><body>Molecule</body></html>' };
         });
         const append = vi.spyOn(document.head, 'append').mockImplementation(script => queueMicrotask(() => script.onerror()));
         await preview.open();
@@ -197,19 +195,33 @@ describe('exported print preview adapter', () => {
         expect(loaded).toEqual([]);
         await hooks.preRenderLatex('formula');
         await hooks.preRenderDataGameLatex('DataGame');
-        await hooks.preRenderMermaid('<div class="mermaid">graph</div>');
         await hooks.captureMolecule({});
         expect(loaded).toEqual([
             'https://example.test/html/course/libs/exe_math/tex-mml-svg.js',
-            'https://example.test/html/course/libs/mermaid/mermaid.min.js',
             'https://example.test/html/course/idevices/3dmol/3Dmol-min.js',
         ]);
+        // Diagrams arrive pre-rendered by the export: there is no hook to load a library for them.
+        expect(hooks.preRenderMermaid).toBeUndefined();
+    });
+
+    it('never loads MathJax from a package that does not carry it', async () => {
+        preview.destroy();
+        preview = createExportedPrintPreview({ metadata: { title: 'No maths' }, pages: [], translations: {},
+            assetPaths: [], themeFiles: [], materialIcons: [], i18n: '', mathJax: false }, 'https://example.test/course/');
+        await preview.open();
+        const hooks = doubles.document.mock.calls.at(-1)[0];
+        const append = vi.spyOn(document.head, 'append');
+        await expect(hooks.preRenderLatex('formula')).resolves.toEqual({ html: 'formula', success: true });
+        await expect(hooks.preRenderDataGameLatex('DataGame')).resolves.toEqual({ html: 'DataGame', success: true });
+        expect(append).not.toHaveBeenCalled();
+        expect(window.MathJax).toBeUndefined();
+        expect(preview.controller.ready).toBe(true);
     });
 
     it('loads math extensions from the blob map and keeps assets local', async () => {
         preview.destroy();
         preview = createExportedPrintPreview({ metadata: { title: 'Blob course' }, pages: [], translations: {},
-            assetPaths: [], themeFiles: [], materialIcons: [], i18n: '' }, 'https://example.test/blob-course/', {
+            assetPaths: [], themeFiles: [], materialIcons: [], i18n: '', mathJax: true }, 'https://example.test/blob-course/', {
             'libs/exe_math/tex-mml-svg.js': 'blob:math-engine',
             'libs/exe_math/input/tex/extensions/color.js': 'blob:math-color',
             'content/resources/rabbit.svg': 'blob:rabbit',

@@ -240,8 +240,12 @@ export class PageExporter extends Html5Exporter {
             // 7. Add project assets
             await this.addAssetsToZipWithResourcePath();
 
-            await this.addPrintPreviewFiles(pages, meta, themeFilesMap, (path, content) =>
-                this.zip.addFile(path, content),
+            await this.addPrintPreviewFiles(
+                pages,
+                meta,
+                themeFilesMap,
+                (path, content) => this.zip.addFile(path, content),
+                options,
             );
 
             // 8. Generate ZIP buffer

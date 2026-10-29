@@ -329,10 +329,16 @@ export class ImsExporter extends Html5Exporter {
                 commonFiles.push('content.xml', ODE_DTD_FILENAME);
             }
 
-            await this.addPrintPreviewFiles(pages, meta, themeFilesMap, (path, content) => {
-                addFile(path, content);
-                commonFiles.push(path);
-            });
+            await this.addPrintPreviewFiles(
+                pages,
+                meta,
+                themeFilesMap,
+                (path, content) => {
+                    addFile(path, content);
+                    commonFiles.push(path);
+                },
+                options,
+            );
 
             // 9. Generate ELPX manifest file if download-source-file is used
             if (needsElpxDownload && fileList) {

@@ -366,10 +366,16 @@ export class Scorm12Exporter extends Html5Exporter {
             // 9. Add project assets (with tracking for ELPX manifest)
             await this.addAssetsToZipWithResourcePath(fileList);
 
-            await this.addPrintPreviewFiles(pages, meta, themeFilesMap, (path, content) => {
-                addFile(path, content);
-                commonFiles.push(path);
-            });
+            await this.addPrintPreviewFiles(
+                pages,
+                meta,
+                themeFilesMap,
+                (path, content) => {
+                    addFile(path, content);
+                    commonFiles.push(path);
+                },
+                options,
+            );
 
             // 10. Generate ELPX manifest file if download-source-file is used
             if (needsElpxDownload && fileList) {

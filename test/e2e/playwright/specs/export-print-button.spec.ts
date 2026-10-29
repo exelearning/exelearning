@@ -4,7 +4,7 @@ import { mkdtemp, mkdir, writeFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import type { Page } from '@playwright/test';
+import type { BrowserContext, Page } from '@playwright/test';
 import { test, expect } from '../fixtures/auth.fixture';
 import {
     gotoWorkarea,
@@ -273,6 +273,117 @@ test.describe('Export print button project property (addPrintButton)', () => {
             await expect(exported.locator('.print-preview-close-btn')).toBeVisible();
             await expect(notice).toHaveCount(0);
             await expect(stylesheet).toHaveCount(1);
+        } finally {
+            await context.close();
+        }
+    });
+
+    /** Serve an exported package at `origin`/course/, recording every file the browser asks for. */
+    async function servePackage(context: BrowserContext, origin: string, files: Record<string, Uint8Array>) {
+        const requested: string[] = [];
+        const types: Record<string, string> = {
+            '.html': 'text/html',
+            '.js': 'text/javascript',
+            '.css': 'text/css',
+            '.svg': 'image/svg+xml',
+            '.woff2': 'font/woff2',
+        };
+        await context.route(`${origin}/**`, async route => {
+            const name = decodeURIComponent(new URL(route.request().url()).pathname.slice('/course/'.length));
+            requested.push(name);
+            if (!files[name]) {
+                await route.fulfill({ status: 404 });
+                return;
+            }
+            await route.fulfill({
+                body: Buffer.from(files[name]),
+                contentType: types[path.extname(name)] || 'application/octet-stream',
+            });
+        });
+        return requested;
+    }
+
+    test('packages no rendering library without formulas and prints the diagrams already drawn', async ({
+        authenticatedPage: page,
+        createProject,
+        browser,
+    }) => {
+        const uuid = await createProject(page, 'Print diagram');
+        await gotoWorkarea(page, uuid);
+        await waitForAppReady(page);
+        await page.evaluate(() => {
+            const bridge = (window as any).eXeLearning.app.project._yjsBridge;
+            bridge.documentManager.getMetadata().set('language', 'en');
+            const binding = bridge.structureBinding;
+            const node = binding.createPage('Diagram');
+            const block = binding.createBlock(node.id, 'Diagram');
+            binding.createComponent(node.id, block, 'text', {
+                htmlContent: '<p>Prices from $5 to $9</p><pre class="mermaid">graph LR; Start-->Finish</pre>',
+            });
+        });
+        const files = await exportPackage(page, 'html5', true);
+        expect(Object.keys(files).filter(name => /exe_math|mermaid\./.test(name))).toEqual([]);
+        const data = new TextDecoder().decode(files['libs/exe_print/data.js']);
+        expect(data).toContain('"mathJax":false');
+        expect(data).toContain('exe-mermaid-rendered');
+
+        const context = await browser.newContext();
+        try {
+            const requested = await servePackage(context, 'https://print-diagram.test', files);
+            const exported = await context.newPage();
+            await exported.goto('https://print-diagram.test/course/print.html');
+            await expect(exported.locator('.print-preview-print-btn')).toBeEnabled({ timeout: 30_000 });
+            const frame = exported.frameLocator('.print-preview-iframe');
+            await expect(frame.locator('.exe-mermaid-rendered svg')).toHaveCount(1);
+            await expect(frame.locator('pre.mermaid')).toHaveCount(0);
+            await expect(frame.locator('body')).toContainText('Prices from $5 to $9');
+            expect(requested.filter(name => /exe_math|mermaid/.test(name))).toEqual([]);
+        } finally {
+            await context.close();
+        }
+    });
+
+    test('packages MathJax when only a game holds a formula and prints that exercise rendered', async ({
+        authenticatedPage: page,
+        createProject,
+        browser,
+    }) => {
+        const uuid = await createProject(page, 'Print game formula');
+        await gotoWorkarea(page, uuid);
+        await waitForAppReady(page);
+        const game =
+            '<div class="adivina-IDevice"><div class="adivina-DataGame js-hidden">' +
+            encryptDataGame(
+                JSON.stringify({
+                    wordsGame: [{ word: 'nine', definition: 'The value of \\(x^2\\) when x is 3', type: 0 }],
+                    percentajeQuestions: 100,
+                }),
+            ) +
+            '</div></div>';
+        await page.evaluate(guess => {
+            const bridge = (window as any).eXeLearning.app.project._yjsBridge;
+            bridge.documentManager.getMetadata().set('language', 'en');
+            const binding = bridge.structureBinding;
+            const node = binding.createPage('Riddle');
+            binding.createComponent(node.id, binding.createBlock(node.id, 'Riddle'), 'guess', { htmlContent: guess });
+        }, game);
+        const files = await exportPackage(page, 'html5', true);
+        // The formula is only in the game's encrypted data, which the pages' own detection does not read.
+        expect(files['libs/exe_math/tex-mml-svg.js']).toBeDefined();
+        expect(new TextDecoder().decode(files['libs/exe_print/data.js'])).toContain('"mathJax":true');
+
+        const context = await browser.newContext();
+        try {
+            const requested = await servePackage(context, 'https://print-game-formula.test', files);
+            const exported = await context.newPage();
+            await exported.goto('https://print-game-formula.test/course/print.html');
+            await expect(exported.locator('.print-preview-print-btn')).toBeEnabled({ timeout: 30_000 });
+            const frame = exported.frameLocator('.print-preview-iframe');
+            const exercise = frame.locator('.worksheet-activity');
+            await expect(exercise).toContainText('when x is 3');
+            await expect(exercise.locator('.exe-math-rendered svg')).toHaveCount(1);
+            await expect(exercise).not.toContainText('\\(x^2\\)');
+            expect(requested).toContain('libs/exe_math/tex-mml-svg.js');
         } finally {
             await context.close();
         }

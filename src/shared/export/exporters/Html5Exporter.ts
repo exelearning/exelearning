@@ -292,7 +292,7 @@ export class Html5Exporter extends BaseExporter {
                 addFile('search_index.js', searchIndexContent);
             }
 
-            await this.addPrintPreviewFiles(pages, meta, themeFilesMap, addFile);
+            await this.addPrintPreviewFiles(pages, meta, themeFilesMap, addFile, options);
 
             // 3. Add content.xml (ODE format for re-import) - only when editable source is enabled
             this.addEditableContentXml(pages, meta, addFile, options);
@@ -750,7 +750,7 @@ export class Html5Exporter extends BaseExporter {
                 addFile('search_index.js', searchIndexContent);
             }
 
-            await this.addPrintPreviewFiles(pages, meta, themeFilesMap, addFile);
+            await this.addPrintPreviewFiles(pages, meta, themeFilesMap, addFile, options);
 
             // 3. Add content.xml (ODE format for re-import) when editable source is enabled.
             // Registered via addFile, so it is automatically listed in the ELPX manifest below.

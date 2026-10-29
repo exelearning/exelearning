@@ -1215,7 +1215,8 @@ describe('ElpxExporter', () => {
                     expect(manifest.includes(name)).toBe(enabled);
                 }
                 expect(new TextDecoder().decode(entries['index.html']).includes('id="exe-print-btn"')).toBe(enabled);
-                if (enabled) expect(entries['libs/exe_math/tex-mml-svg.js']).toBeDefined();
+                // A course without formulas or diagrams gets no rendering library for printing.
+                expect(Object.keys(entries).some(name => /exe_math|mermaid\./.test(name))).toBe(false);
             },
         );
 
