@@ -74,7 +74,7 @@ We will import a `.idevice` file into the block the user chose, grouping the Yjs
 5. **The transaction re-resolves the page and the block**, so a collaborator deleting either while the file is read causes a clean `"Target block not found"` instead of a silent write into a detached subtree (review #2474, point 2).
 6. **Orders follow `max existing order + 1 + i`**, not the array length.
 7. **Assets are extracted before the component Y.Maps are built**, so the `{{context_path}}` conversion reaches the Y.Doc. A failure before or during extraction stores nothing; a failure after extraction leaves assets unreferenced (review #2474, point 4, see Follow-up work).
-8. **Untrusted text from the file is not interpolated into user-facing messages.** The malformed-XML error is a generic string; the parser's detail goes to `console.error` (review #2474, point 1).
+8. **Untrusted text from the file is not interpolated into user-facing messages.** The malformed-XML error is a generic string; the parser's detail goes to `console.error` (review #2474, point 1). The import handler in `blockNode.js` applies the same rule at the display layer: its `catch` shows a fixed message (`"An error occurred while importing the component."`) instead of `error.message` and logs the detail to `console.error`, so whatever the importer returns in `error` never reaches `modals.alert.show({ body })` on this flow (review #2474, point 1; sink tracked in #2653).
 9. **The pre-existing `importComponent` flow keeps its historical, unlimited behaviour.** This is deliberate, documented here, and pinned by four compatibility tests in `ComponentImporter.test.js`; the shared `readComponentZip(file, { withLimits })` helper makes the future hardening a one-line flip (review #2474, point 5).
 
 ## Consequences
@@ -120,7 +120,7 @@ We will import a `.idevice` file into the block the user chose, grouping the Yjs
 ## Validation
 
 - `ComponentImporter.test.js` covers the guard order, invalid ZIPs and malformed XML, page and block resolution, fresh ids, sparse orders, `clientID` transaction, no asset extraction on user-data failures, no write when a component fails to build, preflight and tier resolution, a forged central directory, the re-resolved page, `findBlockInArray` with divergent ids, and real fflate against the vendored bundle.
-- `blockNode.test.js` covers availability refusal and rejection, one-shot input cleanup, empty and detached inputs, two independent clicks, and refresh-failure reporting.
+- `blockNode.test.js` covers availability refusal and rejection, one-shot input cleanup, empty and detached inputs, two independent clicks, refresh-failure reporting, the fixed import-error message on every failure path, and a regression test in which an importer error containing `<img src=x onerror=…>` never reaches the alert body (#2653).
 - `importPolicy.spec.ts` pins `COMPONENT_IMPORT_LIMITS` and keeps the project tiers untouched.
 - `test/e2e/import-content-into-block.spec.ts` covers no new block, image resolved, menu entry visible, and invalid ZIP showing "Import error" with the project unchanged.
 - Compatibility: four tests in `ComponentImporter.test.js` pin the unlimited `importComponent` flow.
