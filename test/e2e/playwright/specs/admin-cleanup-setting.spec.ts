@@ -33,6 +33,13 @@ test.describe('Admin project cleanup settings', () => {
         await expect(previewLoaded).resolves.toBeTruthy();
         await expect(section.locator('#cleanupPreviewResult')).toContainText('Total:');
 
+        // Remember what this server was configured with, to put it back below.
+        const before = {
+            interval: await section.locator('#cleanupIntervalInput').inputValue(),
+            unsaved: await section.locator('#cleanupUnsavedInput').inputValue(),
+            guest: await section.locator('#cleanupGuestInput').inputValue(),
+        };
+
         // Retention values are saved; the feature itself stays disabled
         await section.locator('#cleanupIntervalInput').fill('12');
         await section.locator('#cleanupUnsavedInput').fill('48');
@@ -62,6 +69,19 @@ test.describe('Admin project cleanup settings', () => {
         await expect(page.locator('#cleanupUnsavedInput')).toHaveValue('48');
         await expect(page.locator('#cleanupGuestInput')).toHaveValue('14');
         await expect(page.locator('#cleanupEnabledToggle')).not.toBeChecked();
+
+        // Restore the rows this test wrote. Once app_settings holds a cleanup
+        // key it permanently outranks the environment, so leaving 12/48/14
+        // behind would change what every later run of the suite -- and any
+        // manual check on this server -- sees as the configured retention.
+        const restore = page.waitForResponse(
+            res => res.url().includes('/api/admin/settings') && res.request().method() === 'PUT',
+        );
+        await page.locator('#cleanupIntervalInput').fill(String(before.interval));
+        await page.locator('#cleanupUnsavedInput').fill(String(before.unsaved));
+        await page.locator('#cleanupGuestInput').fill(String(before.guest));
+        await page.locator('#cleanupSaveBtn').click();
+        expect((await restore).ok()).toBeTruthy();
     });
 
     test('rejects an invalid retention value', async ({ page }, testInfo) => {

@@ -15,7 +15,8 @@ import {
     deleteProjectWithRelatedData,
 } from '../db/queries/projects';
 import { getFilesDir, remove, fileExists } from './file-helper';
-import { getSettingBoolean, getSettingNumber } from './app-settings';
+import { parseBoolean, parseNumber } from './app-settings';
+import { getAllSettings } from '../db/queries/admin';
 import type { Kysely } from 'kysely';
 import type { Database } from '../db/types';
 import { getProjectAssetsDirCandidates } from '../utils/asset-paths';
@@ -49,7 +50,12 @@ export const DEFAULT_CONFIG: CleanupSchedulerConfig = {
  * UI, the API validation and the scheduler agree on what is a sane value.
  */
 export const CLEANUP_LIMITS = {
-    intervalHours: { min: 1, max: 8760 },
+    // setInterval takes a 32-bit signed delay: anything above 2^31-1 ms is
+    // silently clamped to 1 ms by the runtime, which turns the scheduler into
+    // a tight loop (#2670). 596 h is the largest whole hour that still fits,
+    // and it only bounds how often the sweep runs, not how long projects are
+    // kept -- that is unsavedAgeHours / guestAgeDays.
+    intervalHours: { min: 1, max: 596 },
     unsavedAgeHours: { min: 1, max: 8760 },
     guestAgeDays: { min: 1, max: 3650 },
 } as const;
@@ -217,6 +223,24 @@ async function cleanupProjectAssets(
 /**
  * Run cleanup task
  */
+/**
+ * The projects a run would delete, already deduplicated.
+ *
+ * `runCleanup()` and `previewCleanup()` both go through here so the number the
+ * admin panel shows can never drift from what a run removes.
+ */
+async function findProjectsToClean(
+    deps: CleanupSchedulerDeps,
+    config: CleanupSchedulerConfig,
+): Promise<{ unsaved: Array<{ id: string }>; guests: Array<{ id: string }> }> {
+    const unsaved = await deps.queries.findUnsavedProjectsOlderThan(deps.db, config.unsavedAgeHours * HOUR_MS);
+    const guestProjects = await deps.queries.findGuestProjectsOlderThan(deps.db, config.guestAgeDays * DAY_MS);
+
+    // A guest project can also be unsaved: count and delete it once.
+    const unsavedIds = new Set(unsaved.map(p => p.id));
+    return { unsaved, guests: guestProjects.filter(p => !unsavedIds.has(p.id)) };
+}
+
 export async function runCleanup(
     deps: CleanupSchedulerDeps = state.deps,
     config: CleanupSchedulerConfig = state.config,
@@ -239,16 +263,7 @@ export async function runCleanup(
     };
 
     try {
-        const unsavedAgeMs = config.unsavedAgeHours * 60 * 60 * 1000;
-        const guestAgeMs = config.guestAgeDays * 24 * 60 * 60 * 1000;
-
-        // Find projects to delete
-        const unsavedProjects = await deps.queries.findUnsavedProjectsOlderThan(deps.db, unsavedAgeMs);
-        const guestProjects = await deps.queries.findGuestProjectsOlderThan(deps.db, guestAgeMs);
-
-        // Deduplicate (guest project might also be unsaved)
-        const unsavedIds = new Set(unsavedProjects.map(p => p.id));
-        const uniqueGuestProjects = guestProjects.filter(p => !unsavedIds.has(p.id));
+        const { unsaved: unsavedProjects, guests: uniqueGuestProjects } = await findProjectsToClean(deps, config);
 
         console.log(
             `[CleanupScheduler] Found ${unsavedProjects.length} unsaved and ${uniqueGuestProjects.length} guest projects to delete`,
@@ -327,6 +342,8 @@ export function startScheduler(
     config: Partial<CleanupSchedulerConfig> = {},
     deps: Partial<CleanupSchedulerDeps> = {},
 ): void {
+    const wasEnabled = state.config.enabled && state.timer !== null;
+
     // Stop existing scheduler if running
     stopScheduler();
 
@@ -346,16 +363,34 @@ export function startScheduler(
             `(unsaved: ${state.config.unsavedAgeHours}h, guest: ${state.config.guestAgeDays}d)`,
     );
 
-    // Run immediately on startup
-    cleanupRunner(state.deps, state.config).catch(err => {
-        console.error('[CleanupScheduler] Initial cleanup failed:', err);
-    });
-
-    // Schedule periodic runs
-    state.timer = timers.setInterval(() => {
+    // Sweep at once only when cleanup has just been turned on (or at boot with
+    // it already on). Re-saving the settings re-schedules the timer, and it
+    // must not delete projects on every click of Save.
+    if (!wasEnabled) {
         cleanupRunner(state.deps, state.config).catch(err => {
-            console.error('[CleanupScheduler] Scheduled cleanup failed:', err);
+            console.error('[CleanupScheduler] Initial cleanup failed:', err);
         });
+    }
+
+    // Schedule periodic runs. Each tick re-reads the persisted configuration,
+    // so an instance that did not serve the save (another replica behind the
+    // load balancer) still stops deleting once an administrator turns cleanup
+    // off. A failed read leaves the previous configuration in place.
+    state.timer = timers.setInterval(() => {
+        void (async () => {
+            try {
+                state.config = await getEffectiveConfig(state.deps.db);
+            } catch (err) {
+                console.error('[CleanupScheduler] Could not re-read the cleanup settings:', err);
+            }
+            if (!state.config.enabled) {
+                console.log('[CleanupScheduler] Cleanup is disabled in the settings, skipping this run');
+                return;
+            }
+            await cleanupRunner(state.deps, state.config).catch(err => {
+                console.error('[CleanupScheduler] Scheduled cleanup failed:', err);
+            });
+        })();
     }, state.config.intervalMs);
 
     console.log('[CleanupScheduler] Scheduler started');
@@ -415,15 +450,20 @@ export function resetSchedulerState(): void {
  * Get configuration from environment variables
  */
 export function getConfigFromEnv(): Partial<CleanupSchedulerConfig> {
+    // parseBoolean/parseNumber are the same parsers the settings reads and the
+    // admin form use. Parsing the environment any other way lets /admin show a
+    // state the scheduler is not in (CLEANUP_ENABLED=1 used to read as off here
+    // and as on in the panel).
+    const hours = process.env.CLEANUP_INTERVAL_HOURS;
     return {
-        enabled: process.env.CLEANUP_ENABLED === 'true',
-        intervalMs: process.env.CLEANUP_INTERVAL_HOURS
-            ? Number(process.env.CLEANUP_INTERVAL_HOURS) * 60 * 60 * 1000
-            : undefined,
+        enabled: parseBoolean(process.env.CLEANUP_ENABLED, DEFAULT_CONFIG.enabled),
+        intervalMs: hours ? parseNumber(hours, DEFAULT_CONFIG.intervalMs / HOUR_MS) * HOUR_MS : undefined,
         unsavedAgeHours: process.env.CLEANUP_UNSAVED_AGE_HOURS
-            ? Number(process.env.CLEANUP_UNSAVED_AGE_HOURS)
+            ? parseNumber(process.env.CLEANUP_UNSAVED_AGE_HOURS, DEFAULT_CONFIG.unsavedAgeHours)
             : undefined,
-        guestAgeDays: process.env.CLEANUP_GUEST_AGE_DAYS ? Number(process.env.CLEANUP_GUEST_AGE_DAYS) : undefined,
+        guestAgeDays: process.env.CLEANUP_GUEST_AGE_DAYS
+            ? parseNumber(process.env.CLEANUP_GUEST_AGE_DAYS, DEFAULT_CONFIG.guestAgeDays)
+            : undefined,
     };
 }
 
@@ -443,18 +483,8 @@ export async function previewCleanup(
     deps: CleanupSchedulerDeps = state.deps,
     config: CleanupSchedulerConfig = state.config,
 ): Promise<CleanupPreview> {
-    const unsavedProjects = await deps.queries.findUnsavedProjectsOlderThan(deps.db, config.unsavedAgeHours * HOUR_MS);
-    const guestProjects = await deps.queries.findGuestProjectsOlderThan(deps.db, config.guestAgeDays * DAY_MS);
-
-    // A guest project can also be unsaved: count it once, as runCleanup does.
-    const unsavedIds = new Set(unsavedProjects.map(p => p.id));
-    const uniqueGuestProjects = guestProjects.filter(p => !unsavedIds.has(p.id));
-
-    return {
-        unsaved: unsavedProjects.length,
-        guest: uniqueGuestProjects.length,
-        total: unsavedProjects.length + uniqueGuestProjects.length,
-    };
+    const { unsaved, guests } = await findProjectsToClean(deps, config);
+    return { unsaved: unsaved.length, guest: guests.length, total: unsaved.length + guests.length };
 }
 
 /**
@@ -465,14 +495,18 @@ export async function previewCleanup(
 export async function getEffectiveConfig(db: Kysely<Database> = defaultDb): Promise<CleanupSchedulerConfig> {
     const fromEnv = normalizeConfig(getConfigFromEnv());
 
-    const [enabled, intervalHours, unsavedAgeHours, guestAgeDays] = await Promise.all([
-        getSettingBoolean(db, CLEANUP_SETTING_KEYS.enabled, fromEnv.enabled),
-        getSettingNumber(db, CLEANUP_SETTING_KEYS.intervalHours, fromEnv.intervalMs / HOUR_MS),
-        getSettingNumber(db, CLEANUP_SETTING_KEYS.unsavedAgeHours, fromEnv.unsavedAgeHours),
-        getSettingNumber(db, CLEANUP_SETTING_KEYS.guestAgeDays, fromEnv.guestAgeDays),
-    ]);
+    // One query for the four keys, and no catch: a failed read must not look
+    // like "nothing configured", because that silently reconfigures the
+    // scheduler from the environment. Callers decide what to do when it throws.
+    const rows = await getAllSettings(db as Parameters<typeof getAllSettings>[0]);
+    const stored = new Map(rows.map(row => [row.key, row.value]));
 
-    return normalizeConfig({ enabled, intervalMs: intervalHours * HOUR_MS, unsavedAgeHours, guestAgeDays });
+    return normalizeConfig({
+        enabled: parseBoolean(stored.get(CLEANUP_SETTING_KEYS.enabled), fromEnv.enabled),
+        intervalMs: parseNumber(stored.get(CLEANUP_SETTING_KEYS.intervalHours), fromEnv.intervalMs / HOUR_MS) * HOUR_MS,
+        unsavedAgeHours: parseNumber(stored.get(CLEANUP_SETTING_KEYS.unsavedAgeHours), fromEnv.unsavedAgeHours),
+        guestAgeDays: parseNumber(stored.get(CLEANUP_SETTING_KEYS.guestAgeDays), fromEnv.guestAgeDays),
+    });
 }
 
 /**
@@ -486,7 +520,9 @@ export async function applyPersistedConfig(
     deps: Partial<CleanupSchedulerDeps> = {},
 ): Promise<CleanupSchedulerConfig> {
     const config = await getEffectiveConfig(db);
-    startScheduler(config, deps);
+    // Read the configuration from one connection and delete through another is
+    // how the injection seam turns into a lie; pass the caller's db on.
+    startScheduler(config, { db, ...deps });
     return config;
 }
 

@@ -16,6 +16,7 @@ import {
     previewPersistedCleanup,
     normalizeConfig,
     DEFAULT_CONFIG,
+    CLEANUP_LIMITS,
     type CleanupSchedulerDeps,
 } from './cleanup-scheduler';
 import type { Kysely } from 'kysely';
@@ -448,6 +449,103 @@ describe('Cleanup Scheduler', () => {
             expect(mockTimers._intervals[0].interval).toBe(60000);
         });
 
+        // #2670: setInterval takes a 32-bit signed delay. Bun clamps anything
+        // larger to 1 ms, which turns the scheduler into a tight loop.
+        it('never schedules a delay a 32-bit timer cannot hold', () => {
+            const mockTimers = createMockTimers();
+
+            startScheduler(
+                { enabled: true, intervalMs: CLEANUP_LIMITS.intervalHours.max * 60 * 60 * 1000 },
+                {
+                    db: {} as Kysely<Database>,
+                    queries: createMockQueries(),
+                    fileHelper: createMockFileHelper(),
+                    timers: mockTimers,
+                },
+            );
+
+            expect(mockTimers._intervals[0].interval).toBeLessThanOrEqual(2 ** 31 - 1);
+        });
+
+        it('falls back to the default interval when asked for more than the maximum', () => {
+            const overTheMax = (CLEANUP_LIMITS.intervalHours.max + 1) * 60 * 60 * 1000;
+            expect(normalizeConfig({ intervalMs: overTheMax }).intervalMs).toBe(DEFAULT_CONFIG.intervalMs);
+        });
+
+        it('sweeps at once when cleanup is turned on', () => {
+            const mockTimers = createMockTimers();
+            const runCleanupMock = mock(async () => ({
+                success: true,
+                unsavedDeleted: 0,
+                guestDeleted: 0,
+                diskCleaned: 0,
+                errors: [],
+            }));
+
+            startScheduler(
+                { enabled: true, intervalMs: 60000 },
+                {
+                    db: {} as Kysely<Database>,
+                    queries: createMockQueries(),
+                    fileHelper: createMockFileHelper(),
+                    timers: mockTimers,
+                    runCleanup: runCleanupMock,
+                },
+            );
+
+            expect(runCleanupMock).toHaveBeenCalledTimes(1);
+        });
+
+        // Saving the settings re-schedules the timer. Deleting projects on
+        // every click of Save would be a destructive surprise.
+        it('does not sweep again when it is re-scheduled while already enabled', () => {
+            const mockTimers = createMockTimers();
+            const runCleanupMock = mock(async () => ({
+                success: true,
+                unsavedDeleted: 0,
+                guestDeleted: 0,
+                diskCleaned: 0,
+                errors: [],
+            }));
+            const deps = {
+                db: {} as Kysely<Database>,
+                queries: createMockQueries(),
+                fileHelper: createMockFileHelper(),
+                timers: mockTimers,
+                runCleanup: runCleanupMock,
+            };
+
+            startScheduler({ enabled: true, intervalMs: 60000 }, deps);
+            startScheduler({ enabled: true, intervalMs: 120000 }, deps);
+
+            expect(runCleanupMock).toHaveBeenCalledTimes(1);
+            expect(mockTimers._intervals.length).toBe(1);
+        });
+
+        it('sweeps again after cleanup is turned off and back on', () => {
+            const mockTimers = createMockTimers();
+            const runCleanupMock = mock(async () => ({
+                success: true,
+                unsavedDeleted: 0,
+                guestDeleted: 0,
+                diskCleaned: 0,
+                errors: [],
+            }));
+            const deps = {
+                db: {} as Kysely<Database>,
+                queries: createMockQueries(),
+                fileHelper: createMockFileHelper(),
+                timers: mockTimers,
+                runCleanup: runCleanupMock,
+            };
+
+            startScheduler({ enabled: true, intervalMs: 60000 }, deps);
+            startScheduler({ enabled: false }, deps);
+            startScheduler({ enabled: true, intervalMs: 60000 }, deps);
+
+            expect(runCleanupMock).toHaveBeenCalledTimes(2);
+        });
+
         it('should catch errors from initial and scheduled cleanup runs', async () => {
             const mockTimers = createMockTimers();
             const runCleanupMock = mock(async () => {
@@ -571,6 +669,19 @@ describe('Cleanup Scheduler', () => {
     });
 
     describe('getConfigFromEnv', () => {
+        // The admin form reads CLEANUP_ENABLED with parseBoolean. Parsing it
+        // any other way here lets /admin show "Active" with cleanup off.
+        it.each(['1', 'yes', 'on', 'TRUE'])('accepts %s as enabled, like the settings reader does', value => {
+            const saved = process.env.CLEANUP_ENABLED;
+            process.env.CLEANUP_ENABLED = value;
+            try {
+                expect(getConfigFromEnv().enabled).toBe(true);
+            } finally {
+                if (saved === undefined) delete process.env.CLEANUP_ENABLED;
+                else process.env.CLEANUP_ENABLED = saved;
+            }
+        });
+
         it('should return empty config when no env vars set', () => {
             // Save and clear env vars
             const saved = {
@@ -718,14 +829,27 @@ describe('Cleanup Scheduler', () => {
             CLEANUP_GUEST_AGE_DAYS: process.env.CLEANUP_GUEST_AGE_DAYS,
         };
 
-        /** Minimal Kysely stand-in for the app_settings lookups. */
-        const settingsDb = (stored: Record<string, string>): Kysely<Database> =>
+        /**
+         * Minimal Kysely stand-in for the app_settings lookups. `execute()`
+         * backs the single getAllSettings() read, `where().executeTakeFirst()`
+         * the per-key readers other services still use. Passing `failWith`
+         * makes the read reject, as a database blip would.
+         */
+        const settingsDb = (stored: Record<string, string>, failWith?: Error): Kysely<Database> =>
             ({
                 selectFrom: () => ({
                     selectAll: () => ({
+                        execute: async () => {
+                            if (failWith) throw failWith;
+                            return Object.entries(stored).map(([key, value]) => ({ key, value, type: 'string' }));
+                        },
                         where: (_column: string, _op: string, key: string) => ({
-                            executeTakeFirst: async () =>
-                                stored[key] === undefined ? undefined : { key, value: stored[key], type: 'string' },
+                            executeTakeFirst: async () => {
+                                if (failWith) throw failWith;
+                                return stored[key] === undefined
+                                    ? undefined
+                                    : { key, value: stored[key], type: 'string' };
+                            },
                         }),
                     }),
                 }),
@@ -817,7 +941,65 @@ describe('Cleanup Scheduler', () => {
             expect(queries._deletedProjectIds).toEqual([]);
         });
 
+        // A read failure must not look like "nothing configured": falling back
+        // to the environment there can silently re-enable a cleanup an admin
+        // has just switched off.
+        it('propagates a settings read failure instead of falling back', async () => {
+            const boom = new Error('connection reset');
+            await expect(getEffectiveConfig(settingsDb({}, boom))).rejects.toThrow('connection reset');
+        });
+
         describe('applyPersistedConfig', () => {
+            // Reading the configuration from one connection and deleting
+            // through another (the module-level default) makes the injection
+            // seam a lie, and would delete from the wrong database.
+            it('deletes through the database it read the configuration from', async () => {
+                const mockTimers = createMockTimers();
+                const db = settingsDb({ CLEANUP_ENABLED: 'true', CLEANUP_INTERVAL_HOURS: '2' });
+                let usedDb: unknown = null;
+
+                await applyPersistedConfig(db, {
+                    queries: createMockQueries(),
+                    fileHelper: createMockFileHelper(),
+                    timers: mockTimers,
+                    runCleanup: async deps => {
+                        usedDb = deps.db;
+                        return { success: true, unsavedDeleted: 0, guestDeleted: 0, diskCleaned: 0, errors: [] };
+                    },
+                });
+
+                expect(usedDb).toBe(db);
+            });
+
+            // Only the replica that serves the save re-reads app_settings, so
+            // every other one has to notice at its next tick.
+            it('stops deleting at the next tick once the stored setting disables it', async () => {
+                const mockTimers = createMockTimers();
+                const runCleanupMock = mock(async () => ({
+                    success: true,
+                    unsavedDeleted: 0,
+                    guestDeleted: 0,
+                    diskCleaned: 0,
+                    errors: [],
+                }));
+                const stored: Record<string, string> = { CLEANUP_ENABLED: 'true', CLEANUP_INTERVAL_HOURS: '2' };
+
+                await applyPersistedConfig(settingsDb(stored), {
+                    queries: createMockQueries(),
+                    fileHelper: createMockFileHelper(),
+                    timers: mockTimers,
+                    runCleanup: runCleanupMock,
+                });
+                expect(runCleanupMock).toHaveBeenCalledTimes(1); // the enable sweep
+
+                // Another instance turns cleanup off in the database.
+                stored.CLEANUP_ENABLED = 'false';
+                mockTimers.triggerInterval(mockTimers._intervals[0].id);
+                await new Promise(resolve => setTimeout(resolve, 0));
+
+                expect(runCleanupMock).toHaveBeenCalledTimes(1);
+            });
+
             it('should start the scheduler when the stored setting enables it', async () => {
                 const mockTimers = createMockTimers();
 

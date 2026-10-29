@@ -2155,24 +2155,24 @@ window.$eXeLearningCustom = {
                                 <div class="admin-field">
                                     <label for="cleanupEnabledToggle">CLEANUP_ENABLED</label>
                                     <div class="form-check-custom">
-                                        <input type="checkbox" id="cleanupEnabledToggle" data-setting-key="CLEANUP_ENABLED" data-setting-type="boolean" {% if adminSettings.cleanup.cleanup_enabled %}checked{% endif %}>
+                                        <input type="checkbox" id="cleanupEnabledToggle" data-cleanup-setting-key="CLEANUP_ENABLED" data-setting-type="boolean" {% if adminSettings.cleanup.cleanup_enabled %}checked{% endif %}>
                                         <span>{{ t.active or 'Active' }}</span>
                                     </div>
                                     <small>{{ t.cleanup_enabled_desc or 'Periodically deletes drafts that were never saved and projects owned by guest users.' }}</small>
                                 </div>
                                 <div class="admin-field">
                                     <label for="cleanupIntervalInput">CLEANUP_INTERVAL_HOURS</label>
-                                    <input id="cleanupIntervalInput" class="admin-input" type="number" min="1" max="8760" step="1" data-setting-key="CLEANUP_INTERVAL_HOURS" data-setting-type="number" value="{{ adminSettings.cleanup.cleanup_interval_hours }}">
+                                    <input id="cleanupIntervalInput" class="admin-input" type="number" min="{{ cleanupLimits.intervalHours.min }}" max="{{ cleanupLimits.intervalHours.max }}" step="1" data-cleanup-setting-key="CLEANUP_INTERVAL_HOURS" data-setting-type="number" value="{{ adminSettings.cleanup.cleanup_interval_hours }}">
                                     <small>{{ t.cleanup_interval_desc or 'Hours between cleanup runs.' }}</small>
                                 </div>
                                 <div class="admin-field">
                                     <label for="cleanupUnsavedInput">CLEANUP_UNSAVED_AGE_HOURS</label>
-                                    <input id="cleanupUnsavedInput" class="admin-input" type="number" min="1" max="8760" step="1" data-setting-key="CLEANUP_UNSAVED_AGE_HOURS" data-setting-type="number" value="{{ adminSettings.cleanup.cleanup_unsaved_age_hours }}">
+                                    <input id="cleanupUnsavedInput" class="admin-input" type="number" min="{{ cleanupLimits.unsavedAgeHours.min }}" max="{{ cleanupLimits.unsavedAgeHours.max }}" step="1" data-cleanup-setting-key="CLEANUP_UNSAVED_AGE_HOURS" data-setting-type="number" value="{{ adminSettings.cleanup.cleanup_unsaved_age_hours }}">
                                     <small>{{ t.cleanup_unsaved_desc or 'Delete never-saved drafts after this many hours.' }}</small>
                                 </div>
                                 <div class="admin-field">
                                     <label for="cleanupGuestInput">CLEANUP_GUEST_AGE_DAYS</label>
-                                    <input id="cleanupGuestInput" class="admin-input" type="number" min="1" max="3650" step="1" data-setting-key="CLEANUP_GUEST_AGE_DAYS" data-setting-type="number" value="{{ adminSettings.cleanup.cleanup_guest_age_days }}">
+                                    <input id="cleanupGuestInput" class="admin-input" type="number" min="{{ cleanupLimits.guestAgeDays.min }}" max="{{ cleanupLimits.guestAgeDays.max }}" step="1" data-cleanup-setting-key="CLEANUP_GUEST_AGE_DAYS" data-setting-type="number" value="{{ adminSettings.cleanup.cleanup_guest_age_days }}">
                                     <small>{{ t.cleanup_guest_desc or 'Delete projects owned by guest users after this many days.' }}</small>
                                 </div>
                             </div>
@@ -2665,12 +2665,21 @@ window.$eXeLearningCustom = {
                     const intervalInput = document.getElementById('cleanupIntervalInput');
                     const unsavedInput = document.getElementById('cleanupUnsavedInput');
                     const guestInput = document.getElementById('cleanupGuestInput');
+                    // Send what the form holds. The old per-field fallbacks
+                    // restated the defaults a fourth time, and a missing input
+                    // is a template bug, not a reason to save a guessed value.
                     const settings = [
                         { key: 'CLEANUP_ENABLED', value: toggle && toggle.checked ? 'true' : 'false', type: 'boolean' },
-                        { key: 'CLEANUP_INTERVAL_HOURS', value: intervalInput ? intervalInput.value : '24', type: 'number' },
-                        { key: 'CLEANUP_UNSAVED_AGE_HOURS', value: unsavedInput ? unsavedInput.value : '24', type: 'number' },
-                        { key: 'CLEANUP_GUEST_AGE_DAYS', value: guestInput ? guestInput.value : '7', type: 'number' },
                     ];
+                    for (const input of [intervalInput, unsavedInput, guestInput]) {
+                        if (input) {
+                            settings.push({
+                                key: input.getAttribute('data-cleanup-setting-key'),
+                                value: input.value,
+                                type: 'number',
+                            });
+                        }
+                    }
                     const res = await fetch(`${API_BASE}/settings`, {
                         method: 'PUT',
                         headers: { 'Content-Type': 'application/json' },

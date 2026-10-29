@@ -10,6 +10,7 @@ import * as bcrypt from 'bcryptjs';
 import { db as defaultDb } from '../db/client';
 import { buildContentDisposition } from '../shared/http/headers';
 import { invalidateMaintenanceCache } from '../services/maintenance';
+import { parseNumber } from '../services/app-settings';
 import type { Kysely } from 'kysely';
 import type { Database, User } from '../db/types';
 import { parseRoles } from '../db/types';
@@ -384,8 +385,16 @@ export function buildAdminTranslations(locale: string): Record<string, string> {
             locale,
         ),
         cleanup_interval_desc: trans('Hours between cleanup runs.', {}, locale),
-        cleanup_unsaved_desc: trans('Delete never-saved drafts after this many hours.', {}, locale),
-        cleanup_guest_desc: trans('Delete projects owned by guest users after this many days.', {}, locale),
+        cleanup_unsaved_desc: trans(
+            'Delete never-saved drafts this many hours after they were created, even if they are still being edited.',
+            {},
+            locale,
+        ),
+        cleanup_guest_desc: trans(
+            'Delete projects owned by guest users after this many days without changes.',
+            {},
+            locale,
+        ),
         cleanup_preview_title: trans('Projects eligible right now', {}, locale),
         cleanup_preview_help: trans(
             'Informational count with the saved settings. It is not a deletion and the number can change before the next run.',
@@ -894,6 +903,12 @@ export function createAdminRoutes(deps: AdminDependencies = defaultDependencies)
                     const data = body as { settings: Array<{ key: string; value: string; type: string }> };
                     const sanitizedValues: Record<string, string> = {};
 
+                    // Validate the whole payload before writing anything. The
+                    // panel sends the cleanup keys together, and a half-applied
+                    // save used to leave CLEANUP_ENABLED=true persisted behind a
+                    // 400 the administrator read as "nothing was saved".
+                    const validated: Array<{ key: string; value: string; type: string }> = [];
+
                     for (const setting of data.settings) {
                         const def = ADMIN_SETTINGS_DEFAULTS[setting.key];
                         if (!def) {
@@ -930,11 +945,19 @@ export function createAdminRoutes(deps: AdminDependencies = defaultDependencies)
                         }
 
                         // Cleanup deletes projects for good: refuse anything that
-                        // is not a whole number inside the accepted range.
+                        // is not a whole number inside the accepted range. Parse
+                        // with parseNumber, the same parser the scheduler reads
+                        // with, and store what it produced -- Number() would
+                        // accept "1e2" as 100 where the reader sees 1.
                         const numericLimits = CLEANUP_NUMERIC_SETTINGS[setting.key];
                         if (numericLimits) {
-                            const parsed = Number(setting.value);
-                            if (!Number.isInteger(parsed) || parsed < numericLimits.min || parsed > numericLimits.max) {
+                            const parsed = parseNumber(setting.value, Number.NaN);
+                            if (
+                                !Number.isInteger(parsed) ||
+                                parsed < numericLimits.min ||
+                                parsed > numericLimits.max ||
+                                String(parsed) !== String(setting.value).trim()
+                            ) {
                                 set.status = 400;
                                 return {
                                     error: 'Bad Request',
@@ -943,8 +966,13 @@ export function createAdminRoutes(deps: AdminDependencies = defaultDependencies)
                                         `between ${numericLimits.min} and ${numericLimits.max}`,
                                 };
                             }
+                            setting.value = String(parsed);
                         }
 
+                        validated.push(setting);
+                    }
+
+                    for (const setting of validated) {
                         try {
                             await queries.setSetting(
                                 db as unknown as AppSettingsDb,

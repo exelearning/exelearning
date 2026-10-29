@@ -1920,6 +1920,98 @@ describe('Admin Routes', () => {
             expect(savedSettings).toEqual([]);
         });
 
+        // The panel always PUTs the four cleanup keys in one payload. Writing
+        // them as they are validated left CLEANUP_ENABLED=true persisted behind
+        // a 400, so the next restart started deleting projects.
+        it('writes nothing when a later setting in the payload is invalid', async () => {
+            const token = await generateAdminToken();
+            const savedSettings: string[] = [];
+            const app = new Elysia().use(
+                createAdminRoutes(
+                    createCleanupDeps({
+                        setSetting: async (_db, settingKey) => {
+                            savedSettings.push(settingKey);
+                        },
+                    }),
+                ),
+            );
+
+            const response = await app.handle(
+                new Request('http://localhost/api/admin/settings', {
+                    method: 'PUT',
+                    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        settings: [
+                            { key: 'CLEANUP_ENABLED', value: 'true', type: 'boolean' },
+                            { key: 'CLEANUP_INTERVAL_HOURS', value: '0', type: 'number' },
+                        ],
+                    }),
+                }),
+            );
+
+            expect(response.status).toBe(400);
+            expect(savedSettings).toEqual([]);
+        });
+
+        // Validation used Number() while every read path uses parseInt, so
+        // "1e2" was accepted as 100 and applied as 1 hour.
+        it.each(['1e2', '0x18', '12abc'])(
+            'rejects %s, which the settings reader would parse differently',
+            async value => {
+                const token = await generateAdminToken();
+                const savedSettings: string[] = [];
+                const app = new Elysia().use(
+                    createAdminRoutes(
+                        createCleanupDeps({
+                            setSetting: async (_db, settingKey) => {
+                                savedSettings.push(settingKey);
+                            },
+                        }),
+                    ),
+                );
+
+                const response = await app.handle(
+                    new Request('http://localhost/api/admin/settings', {
+                        method: 'PUT',
+                        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            settings: [{ key: 'CLEANUP_UNSAVED_AGE_HOURS', value, type: 'number' }],
+                        }),
+                    }),
+                );
+
+                expect(response.status).toBe(400);
+                expect(savedSettings).toEqual([]);
+            },
+        );
+
+        it('stores a padded number in the form the reader will parse', async () => {
+            const token = await generateAdminToken();
+            const saved: Array<{ key: string; value: string }> = [];
+            const app = new Elysia().use(
+                createAdminRoutes(
+                    createCleanupDeps({
+                        setSetting: async (_db, key, value) => {
+                            saved.push({ key, value });
+                        },
+                    }),
+                ),
+            );
+
+            const response = await app.handle(
+                new Request('http://localhost/api/admin/settings', {
+                    method: 'PUT',
+                    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        settings: [{ key: 'CLEANUP_UNSAVED_AGE_HOURS', value: ' 12 ', type: 'number' }],
+                    }),
+                }),
+            );
+
+            expect(response.status).toBe(200);
+            expect(saved).toEqual([{ key: 'CLEANUP_UNSAVED_AGE_HOURS', value: '12' }]);
+        });
+
         it('should return the cleanup preview for administrators', async () => {
             const token = await generateAdminToken();
             const app = new Elysia().use(createAdminRoutes(createCleanupDeps()));
