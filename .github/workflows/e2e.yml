@@ -70,6 +70,8 @@ jobs:
             public/files/perm/idevices/base/progress-report/export/html2canvas.js
             public/files/perm/idevices/base/checklist/export/html2canvas.js
             public/files/perm/idevices/base/rubric/export/html2canvas.js
+            public/files/perm/idevices/base/image-gallery/export/simple-lightbox.min.js
+            public/files/perm/idevices/base/image-gallery/export/simple-lightbox.min.css
 
       - name: Upload static distribution (static project)
         uses: actions/upload-artifact@v7

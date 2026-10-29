@@ -69,6 +69,22 @@ describe('LibraryDetector', () => {
             expect(result.files).toContain('exe_lightbox/exe_lightbox.js');
         });
 
+        it('should detect exe_lightbox for legacy eXe 2 galleries (exeImageGallery)', () => {
+            const html = '<ul class="exeImageGallery" id="g1"><li><a href="a.jpg">A</a></li></ul>';
+            const result = detector.detectLibraries(html);
+
+            expect(result.libraries.map(l => l.name)).toContain('exe_lightbox_gallery');
+        });
+
+        it('should not load prettyPhoto for the image-gallery iDevice (imageGallery-IDevice)', () => {
+            // That iDevice ships its own SimpleLightbox; prettyPhoto would be dead weight.
+            const html =
+                '<div class="imageGallery-IDevice"><a class="imageLink" href="a.jpg"><img src="t.jpg"></a></div>';
+            const result = detector.detectLibraries(html);
+
+            expect(result.files).not.toContain('exe_lightbox/exe_lightbox.js');
+        });
+
         it('should detect exe_tooltips by class pattern', () => {
             const html = '<span class="exe-tooltip" title="Tooltip text">Hover</span>';
             const result = detector.detectLibraries(html);

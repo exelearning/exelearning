@@ -23,7 +23,7 @@ describe('common_i18n.js', () => {
       'fullSize', 'search', 'accessibility_tools', 'close_toolbar',
       'default_font', 'increase_text_size', 'decrease_text_size', 'read',
       'stop_reading', 'translate', 'drag_and_drop', 'reset', 'mode_toggler',
-      'teacher_mode'
+      'teacher_mode', 'license'
     ];
 
     keys.forEach(key => {
