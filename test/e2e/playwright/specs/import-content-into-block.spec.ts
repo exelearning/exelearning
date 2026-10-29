@@ -177,9 +177,7 @@ test.describe('Import iDevice into an existing block (.idevice)', () => {
         // The real cause is logged, not shown: it must be the invalid-ZIP rejection
         // (and not, e.g., "ComponentImporter not loaded" or "No page selected",
         // which would produce the very same modal).
-        await expect
-            .poll(() => consoleErrors.join('\n'), { timeout: 5000 })
-            .toContain('Invalid ZIP file');
+        await expect.poll(() => consoleErrors.join('\n'), { timeout: 5000 }).toContain('Invalid ZIP file');
 
         // 4. Dismiss the alert.
         await alertModal.locator('.modal-footer button.btn-secondary').click();
