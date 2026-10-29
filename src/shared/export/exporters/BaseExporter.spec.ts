@@ -410,6 +410,26 @@ describe('BaseExporter', () => {
                 }
             });
 
+            it('pre-renders nested JSON properties without changing the editing document', async () => {
+                const diagram = '<pre class="mermaid">graph LR; Start-->Finish</pre>';
+                const properties = {
+                    history: diagram,
+                    activities: [{ text: diagram, feedback: ['Plain text', diagram, null, 7, false] }],
+                };
+                const pages = [page([{ ...text('case', '', properties), type: 'casestudy' }])];
+                const snapshot = JSON.stringify(pages);
+                const svg = '<div class="exe-mermaid-rendered"><svg><text>Start</text></svg></div>';
+                const files = await exporter.testPrintPackage({ addPrintButton: true }, pages, {
+                    preRenderMermaid: async () => ({ html: svg, mermaidRendered: true, count: 1 }),
+                });
+                expect(packageData(files).pages[0].blocks[0].components[0].properties).toEqual({
+                    history: svg,
+                    activities: [{ text: svg, feedback: ['Plain text', svg, null, 7, false] }],
+                });
+                expect(JSON.stringify(pages)).toBe(snapshot);
+                expect(requested.some(file => file.includes('mermaid'))).toBe(false);
+            });
+
             it.each([
                 ['an HTML fragment', [page([text('c', '<p>\\(x^2\\)</p>')])], {}],
                 ['a property of a JSON activity', [page([text('c', '', { question: { stem: '$$x$$' } })])], {}],

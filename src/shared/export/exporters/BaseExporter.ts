@@ -359,15 +359,32 @@ export abstract class BaseExporter {
         const preRenderMermaid = options?.preRenderMermaid;
         if (!preRenderMermaid) return pages;
         const render = async (component: ExportComponent): Promise<ExportComponent> => {
-            const content = component.content;
-            if (!content || !/class=["'][^"']*\bmermaid\b/i.test(content)) return component;
-            try {
-                const result = await preRenderMermaid(content);
-                return result.mermaidRendered ? { ...component, content: result.html } : component;
-            } catch (error) {
-                console.warn(`[BaseExporter] Mermaid pre-render error for component ${component.id}:`, error);
-                return component;
-            }
+            // JSON iDevices rebuild their HTML from properties, including nested arrays. Render
+            // every string there as well, without changing the author's editing data.
+            const renderValue = async (value: unknown): Promise<unknown> => {
+                if (typeof value === 'string' && /class=["'][^"']*\bmermaid\b/i.test(value)) {
+                    try {
+                        const result = await preRenderMermaid(value);
+                        return result.mermaidRendered ? result.html : value;
+                    } catch (error) {
+                        console.warn(`[BaseExporter] Mermaid pre-render error for component ${component.id}:`, error);
+                    }
+                } else if (Array.isArray(value)) {
+                    const items = [];
+                    for (const item of value) items.push(await renderValue(item));
+                    return items;
+                } else if (value && typeof value === 'object') {
+                    const entries = [];
+                    for (const [key, item] of Object.entries(value)) entries.push([key, await renderValue(item)]);
+                    return Object.fromEntries(entries);
+                }
+                return value;
+            };
+            return {
+                ...component,
+                content: (await renderValue(component.content)) as ExportComponent['content'],
+                properties: (await renderValue(component.properties)) as ExportComponent['properties'],
+            };
         };
         const rendered: ExportPage[] = [];
         for (const page of pages) {

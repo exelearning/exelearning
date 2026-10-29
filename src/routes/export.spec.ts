@@ -20,6 +20,7 @@ import {
     type ExportSystemDeps,
 } from './export';
 import type { YjsExportStructure } from './types/request-payloads';
+import type { ExportOptions } from '../shared/export/interfaces';
 
 const testDir = path.join(process.cwd(), 'test', 'temp', 'export-test');
 const testSessionId = '20250116testexport';
@@ -395,6 +396,25 @@ describe('Export Routes', () => {
             expect(res.headers.get('content-disposition')).toContain('attachment');
             expect(res.headers.get('content-disposition')).toContain('html5.zip');
         });
+
+        it('supplies a working server diagram renderer to downloadable exports', async () => {
+            let rendered = '';
+            mockDeps.exportSystem!.Html5Exporter = class extends createMockExporter() {
+                export = async (options: ExportOptions) => {
+                    const result = await options.preRenderMermaid!('<pre class="mermaid">graph LR; A-->B</pre>');
+                    rendered = result.html;
+                    return { success: true, data: new Uint8Array([0x50, 0x4b]), filename: 'test.zip' };
+                };
+            } as any;
+            const target = new Elysia().use(createExportRoutes(mockDeps));
+            const res = await handleWith(
+                target,
+                new Request(`http://localhost/api/export/${testSessionId}/html5/download`),
+            );
+            expect(res.status).toBe(200);
+            expect(rendered).toContain('<svg');
+            expect(rendered).not.toContain('<pre class="mermaid"');
+        }, 60_000);
 
         it('should include project name in filename', async () => {
             const res = await handle(new Request(`http://localhost/api/export/${testSessionId}/html5/download`));

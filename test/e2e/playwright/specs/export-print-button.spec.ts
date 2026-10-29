@@ -323,6 +323,12 @@ test.describe('Export print button project property (addPrintButton)', () => {
             binding.createComponent(node.id, block, 'text', {
                 htmlContent: '<p>Prices from $5 to $9</p><pre class="mermaid">graph LR; Start-->Finish</pre>',
             });
+            binding.createComponent(node.id, binding.createBlock(node.id, 'Case'), 'casestudy', {
+                jsonProperties: {
+                    history: '<pre class="mermaid">graph LR; CaseStart-->CaseFinish</pre>',
+                    activities: [],
+                },
+            });
         });
         const files = await exportPackage(page, 'html5', true);
         expect(Object.keys(files).filter(name => /exe_math|mermaid\./.test(name))).toEqual([]);
@@ -337,7 +343,8 @@ test.describe('Export print button project property (addPrintButton)', () => {
             await exported.goto('https://print-diagram.test/course/print.html');
             await expect(exported.locator('.print-preview-print-btn')).toBeEnabled({ timeout: 30_000 });
             const frame = exported.frameLocator('.print-preview-iframe');
-            await expect(frame.locator('.exe-mermaid-rendered svg')).toHaveCount(1);
+            await expect(frame.locator('.exe-mermaid-rendered svg')).toHaveCount(2);
+            await expect(frame.locator('.CSP-History .exe-mermaid-rendered svg')).toHaveCount(1);
             await expect(frame.locator('pre.mermaid')).toHaveCount(0);
             await expect(frame.locator('body')).toContainText('Prices from $5 to $9');
             expect(requested.filter(name => /exe_math|mermaid/.test(name))).toEqual([]);

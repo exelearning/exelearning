@@ -228,6 +228,7 @@ export class ServerMermaidPreRenderer implements ServerMermaidPreRendererInterfa
     private dom: JSDOM | null = null;
     private initialized = false;
     private initializationFailed = false;
+    private previousGlobals = new Map<string, PropertyDescriptor | undefined>();
 
     /**
      * Check if HTML contains Mermaid diagrams
@@ -250,7 +251,6 @@ export class ServerMermaidPreRenderer implements ServerMermaidPreRendererInterfa
             mermaidDom = new jsdom.JSDOM(
                 '<!DOCTYPE html><html><head></head><body><div id="mermaid-container"></div></body></html>',
                 {
-                    runScripts: 'dangerously',
                     pretendToBeVisual: true,
                     url: 'http://localhost',
                 },
@@ -275,23 +275,21 @@ export class ServerMermaidPreRenderer implements ServerMermaidPreRendererInterfa
             };
         }
 
-        // Set up minimal browser globals that Mermaid expects
-        // @ts-expect-error - Adding globals for Mermaid compatibility
-        global.window = window;
-        // @ts-expect-error - Adding globals for Mermaid compatibility
-        global.document = window.document;
-        // @ts-expect-error - Adding globals for Mermaid compatibility
-        global.navigator = window.navigator;
-        // @ts-expect-error - Adding globals for Mermaid compatibility
-        global.Element = window.Element;
-        // @ts-expect-error - Adding globals for Mermaid compatibility
-        global.HTMLElement = window.HTMLElement;
-        // @ts-expect-error - Adding globals for Mermaid compatibility
-        global.SVGElement = window.SVGElement;
-        // Mermaid builds each diagram's styles in a constructed stylesheet; without it every
-        // diagram fails to render and the export keeps the source instead.
-        // @ts-expect-error - Adding globals for Mermaid compatibility
-        global.CSSStyleSheet = window.CSSStyleSheet;
+        // Mermaid needs a DOM but does not need jsdom to execute author scripts. In Bun,
+        // jsdom's script-enabled Window proxy also breaks EventTarget method receivers.
+        // Restore the host's own globals after rendering, including native navigator getters.
+        for (const [name, value] of Object.entries({
+            window,
+            document: window.document,
+            navigator: window.navigator,
+            Element: window.Element,
+            HTMLElement: window.HTMLElement,
+            SVGElement: window.SVGElement,
+            CSSStyleSheet: window.CSSStyleSheet,
+        })) {
+            this.previousGlobals.set(name, Object.getOwnPropertyDescriptor(globalThis, name));
+            Object.defineProperty(globalThis, name, { configurable: true, writable: true, value });
+        }
 
         try {
             // Import mermaid from npm package (cached for subsequent initializations)
@@ -528,21 +526,11 @@ export class ServerMermaidPreRenderer implements ServerMermaidPreRendererInterfa
         this.mermaid = null;
         this.initialized = false;
 
-        // Clean up global references
-        // @ts-expect-error - Cleaning up globals
-        delete global.window;
-        // @ts-expect-error - Cleaning up globals
-        delete global.document;
-        // @ts-expect-error - Cleaning up globals
-        delete global.navigator;
-        // @ts-expect-error - Cleaning up globals
-        delete global.Element;
-        // @ts-expect-error - Cleaning up globals
-        delete global.HTMLElement;
-        // @ts-expect-error - Cleaning up globals
-        delete global.SVGElement;
-        // @ts-expect-error - Cleaning up globals
-        delete global.CSSStyleSheet;
+        for (const [name, descriptor] of this.previousGlobals) {
+            if (descriptor) Object.defineProperty(globalThis, name, descriptor);
+            else Reflect.deleteProperty(globalThis, name);
+        }
+        this.previousGlobals.clear();
     }
 }
 
