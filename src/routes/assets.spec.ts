@@ -27,6 +27,7 @@ import {
     resolveAssetStoragePath as resolveAssetStoragePathPure,
     tryResolveAssetStoragePath as tryResolveAssetStoragePathPure,
 } from '../utils/asset-paths';
+import { getJwtSecret } from '../utils/jwt-secret';
 
 const testDir = path.join(process.cwd(), 'test', 'temp', 'assets-test');
 const testProjectId = 'test-project-123';
@@ -34,8 +35,8 @@ const testProjectId = 'test-project-123';
 // here with absolute storage_path values to exercise the legacy read fallback.
 const legacyProjectDir = path.join(testDir, 'assets', testProjectId);
 const OWNER_USER_ID = 42;
-// Match the fallback in getJwtSecret() so we don't have to mutate process.env.
-const TEST_JWT_SECRET = 'dev_secret_change_me';
+// Resolve the same process-local/configured secret used by the route.
+const TEST_JWT_SECRET = getJwtSecret();
 
 async function signTestToken(sub: number, roles: string[] = ['ROLE_USER']): Promise<string> {
     const secret = new TextEncoder().encode(TEST_JWT_SECRET);
