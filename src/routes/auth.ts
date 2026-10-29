@@ -15,7 +15,7 @@ import {
     createUser as createUserDefault,
 } from '../db/queries';
 import { endImpersonationAuditSession } from '../db/queries/impersonation';
-import { randomBytes, createHash } from 'crypto';
+import { randomBytes, createHash, createHmac } from 'crypto';
 import * as bcrypt from 'bcryptjs';
 import { isValidReturnUrl, getSafeRedirectUrl } from '../utils/redirect-validator.util';
 import { getBasePath, prefixPath } from '../utils/basepath.util';
@@ -108,8 +108,22 @@ export interface JwtPayload {
     isImpersonated?: boolean;
     impersonatedBy?: number;
     impersonationSessionId?: string;
+    /** Fingerprint of the password hash at sign time (see passwordFingerprint). */
+    pwh?: string;
     iat?: number;
     exp?: number;
+}
+
+/**
+ * Keyed fingerprint of a stored password hash, carried in session tokens as
+ * `pwh`. Any password change alters the hash, so tokens signed before it stop
+ * matching (same idea as Django's session auth hash).
+ */
+export function passwordFingerprint(passwordHash: string | null | undefined): string {
+    return createHmac('sha256', getJwtSecret())
+        .update(passwordHash || '')
+        .digest('hex')
+        .slice(0, 32);
 }
 
 const getRequestClientIp = (request: Request): string | null => {
@@ -253,6 +267,7 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                         roles: parseRoles(user.roles),
                         isGuest: false,
                         authMethod: 'local',
+                        pwh: passwordFingerprint(user.password),
                     };
 
                     const token = await jwt.sign(payload);
@@ -461,6 +476,7 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                     roles: parseRoles(user.roles),
                     isGuest: false,
                     authMethod: 'local',
+                    pwh: passwordFingerprint(user.password),
                 };
 
                 const token = await jwt.sign(payload);
@@ -707,6 +723,11 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                         });
                     }
 
+                    if (!user.is_active) {
+                        set.status = 403;
+                        return { error: 'Forbidden', message: 'Account deactivated' };
+                    }
+
                     // Create JWT token
                     const payload: Omit<JwtPayload, 'iat' | 'exp'> = {
                         sub: user.id,
@@ -714,6 +735,7 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                         roles: parseRoles(user.roles),
                         isGuest: false,
                         authMethod: 'cas',
+                        pwh: passwordFingerprint(user.password),
                     };
 
                     const token = await jwt.sign(payload);
@@ -1052,6 +1074,11 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                         });
                     }
 
+                    if (!user.is_active) {
+                        set.status = 403;
+                        return { error: 'Forbidden', message: 'Account deactivated' };
+                    }
+
                     // Create JWT token
                     const payload: Omit<JwtPayload, 'iat' | 'exp'> = {
                         sub: user.id,
@@ -1059,6 +1086,7 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                         roles: parseRoles(user.roles),
                         isGuest: false,
                         authMethod: 'openid',
+                        pwh: passwordFingerprint(user.password),
                     };
 
                     const token = await jwt.sign(payload);
@@ -1176,6 +1204,7 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
                     roles: parseRoles(user.roles),
                     isGuest: true,
                     authMethod: 'guest',
+                    pwh: passwordFingerprint(user.password),
                 };
 
                 const token = await jwt.sign(payload);
@@ -1247,6 +1276,7 @@ export async function verifyToken(token: string): Promise<JwtPayload | null> {
                     ? parseInt(payload.impersonatedBy, 10)
                     : (payload.impersonatedBy as number | undefined),
             impersonationSessionId: payload.impersonationSessionId as string | undefined,
+            pwh: payload.pwh as string | undefined,
             iat: payload.iat,
             exp: payload.exp,
         };
