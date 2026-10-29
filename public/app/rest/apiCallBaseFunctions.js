@@ -49,7 +49,7 @@ export default class ApiCallBaseFunctions {
                 });
             }
             setTimeout(() => {
-                window.location.href = basePath + '/workarea';
+                window.location.href = basePath + '/projects';
             }, 2000);
             return true;
         }
