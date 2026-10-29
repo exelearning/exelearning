@@ -3293,8 +3293,7 @@ describe('IdeviceBlockNode', () => {
 
         // Revisión #2474: cuando el box lo tiene otro colaborador, se muestra
         // el alert y se sale con `return`, sin llegar a `checkOpenIdevice` ni
-        // a abrir el file picker. Este test verifica explícitamente que
-        // `checkOpenIdevice` NO se llama, lo que cubre la línea del `return`.
+        // a abrir el file picker.
         it('shows an alert and returns early when the box is held by another collaborator (#2474)', async () => {
             const originalIsAvailable = eXeLearning.app.project.isAvalaibleOdeComponent;
             const originalCheckOpen = eXeLearning.app.project.checkOpenIdevice;
@@ -3321,6 +3320,46 @@ describe('IdeviceBlockNode', () => {
             );
             // El `return` de la rama de error corta la ejecución: ni se
             // comprueba si hay un iDevice abierto, ni se abre el file picker.
+            expect(checkOpenSpy).not.toHaveBeenCalled();
+            expect(appendSpy).not.toHaveBeenCalled();
+
+            eXeLearning.app.project.isAvalaibleOdeComponent = originalIsAvailable;
+            eXeLearning.app.project.checkOpenIdevice = originalCheckOpen;
+        });
+
+        // Revisión #2474, punto 6: si `isAvalaibleOdeComponent` rechaza
+        // (servidor caído, offline), el handler antes dejaba al usuario sin
+        // feedback: ni modal, ni apertura del picker, solo una promesa
+        // rechazada sin manejar en consola. El `.catch` ahora muestra el
+        // mismo alert estándar y corta la ejecución.
+        it('shows an alert when the availability check rejects (review #2474, point 6)', async () => {
+            const originalIsAvailable = eXeLearning.app.project.isAvalaibleOdeComponent;
+            const originalCheckOpen = eXeLearning.app.project.checkOpenIdevice;
+            eXeLearning.app.project.isAvalaibleOdeComponent = vi
+                .fn()
+                .mockRejectedValue(new Error('server hiccup'));
+            const checkOpenSpy = vi.fn(() => false);
+            eXeLearning.app.project.checkOpenIdevice = checkOpenSpy;
+            const appendSpy = vi.spyOn(document.body, 'appendChild');
+
+            block.addBehaviourImportIdeviceButton();
+            importButton.click();
+            await flushAvailabilityCheck();
+            // Let the .catch handler run.
+            await new Promise((r) => setTimeout(r, 0));
+
+            expect(
+                eXeLearning.app.project.isAvalaibleOdeComponent
+            ).toHaveBeenCalledWith(block.blockId, null);
+            expect(eXeLearning.app.modals.alert.show).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    title: 'iDevice error',
+                    body: 'Could not check the box availability',
+                    contentId: 'error',
+                }),
+            );
+            // The catch must stop the flow: neither checkOpenIdevice nor the
+            // picker should run after a rejected availability check.
             expect(checkOpenSpy).not.toHaveBeenCalled();
             expect(appendSpy).not.toHaveBeenCalled();
 
@@ -3930,17 +3969,10 @@ describe('IdeviceBlockNode', () => {
             errorSpy.mockRestore();
         });
 
-        // ---------------------------------------------------------------
-        // Review #2474, point 2: "import failed" vs "import succeeded but the
-        // view could not refresh". Retrying after the second would duplicate
-        // content that is already in the shared Y.Doc.
-        // ---------------------------------------------------------------
         describe('refresh failure after a successful insert (review #2474, point 2)', () => {
             const REFRESH_BODY =
                 'The iDevice was imported, but the page could not be refreshed. Reload the page to see the imported content. Do not import the file again, as it would duplicate the content.';
 
-            // Importer double that really "inserts": every call appends one
-            // component to an in-memory block, so duplicates are observable.
             const setupInsertingImporter = () => {
                 const insertedComponents = [];
                 const importMock = vi.fn(async () => {
@@ -3971,17 +4003,12 @@ describe('IdeviceBlockNode', () => {
 
                 await expect(block.importIdeviceFileIntoBlock(file)).resolves.toBeUndefined();
 
-                // The insert happened first and exactly once...
                 expect(order).toEqual(['insert', 'refresh']);
                 expect(importMock).toHaveBeenCalledTimes(1);
                 expect(importMock).toHaveBeenCalledWith(file, 'page-1', block.blockId);
                 expect(insertedComponents).toEqual(['imported-1']);
-                // ...the refresh was attempted with the force flag...
                 expect(loadIdevicesMock).toHaveBeenCalledTimes(1);
                 expect(loadIdevicesMock).toHaveBeenCalledWith(true);
-                // ...and the user gets exactly ONE alert: the refresh message,
-                // which tells them not to import again. The raw error stays in
-                // the console and is not an "import failed" message.
                 expect(eXeLearning.app.modals.alert.show).toHaveBeenCalledTimes(1);
                 expect(eXeLearning.app.modals.alert.show).toHaveBeenCalledWith(
                     expect.objectContaining({ title: 'Page refresh error', body: REFRESH_BODY }),

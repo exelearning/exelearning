@@ -1446,22 +1446,33 @@ export default class IdeviceBlockNode {
         this.blockButtons
             .querySelector('#dropdownBlockMore-button-import-idevice' + this.blockId)
             .addEventListener('click', () => {
-                // Check odeComponent flag, like the other box-menu actions:
-                // refuse when another collaborator holds the box (review
-                // #2474, point 8)
                 eXeLearning.app.project
                     .isAvalaibleOdeComponent(this.blockId, null)
                     .then((response) => {
-                        if (response.responseMessage !== 'OK') {
+                        if (!response || response.responseMessage !== 'OK') {
                             eXeLearning.app.modals.alert.show({
                                 title: _('iDevice error'),
-                                body: _(response.responseMessage),
+                                body: _(
+                                    (response && response.responseMessage) ||
+                                        'Could not check the box availability'
+                                ),
                                 contentId: 'error',
                             });
                             return;
                         }
                         if (eXeLearning.app.project.checkOpenIdevice()) return;
                         this.openImportIdeviceFilePicker();
+                    })
+                    .catch((error) => {
+                        Logger.error?.(
+                            '[BlockNode] Could not check box availability before importing:',
+                            error
+                        );
+                        eXeLearning.app.modals.alert.show({
+                            title: _('iDevice error'),
+                            body: _('Could not check the box availability'),
+                            contentId: 'error',
+                        });
                     });
             });
     }

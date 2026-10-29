@@ -13,6 +13,14 @@
  *   }
  */
 
+// The `_()` translator is provided by the Locale, which is constructed at
+// app.js:74 inside the workarea. This module advertises CommonJS use
+// (`module.exports = ComponentImporter` at the bottom) and is loaded as a
+// plain browser script, so it can be imported outside the workarea where `_`
+// would be a ReferenceError (YjsProjectBridge.js:4120 does the same).
+// Review #2474, point 8.
+const _ = window._ || ((s) => s);
+
 /**
  * Maximum size (compressed) accepted for a .idevice ZIP file imported through
  * importIdeviceIntoBlock. Rejecting oversized files before reading them into
@@ -181,6 +189,19 @@ class ComponentImporter {
    * the parsed component(s) to the `components` Y.Array of an existing block.
    * Only .idevice files are accepted; .block files are rejected.
    *
+   * Order of operations (review #2474): every check that can fail on user data
+   * (file size, ZIP, XML, target page/block, parsed components) runs BEFORE any
+   * asset is stored. Assets are then extracted BEFORE the component Y.Maps are
+   * built, because {{context_path}} references must be converted to asset://
+   * references (which needs the asset map) before the Y.Maps copy the strings.
+   *
+   * Known limitation: the page/block are re-resolved inside the transaction
+   * (a collaborator may delete them while the assets are being stored). If that
+   * happens the import fails with "Target block not found", but the assets
+   * already stored stay in the project as unreferenced files. Storing them
+   * after the insert is NOT an option: the inserted Y.Maps would keep the
+   * unconverted {{context_path}} references and the images would not render.
+   *
    * @param {File} file - The .idevice file to import
    * @param {string} pageId - Page ID that contains the target block
    * @param {string} blockId - Target block ID
@@ -209,11 +230,10 @@ class ComponentImporter {
 
       // Resolve the target page and block BEFORE extracting or storing any
       // asset (review #2474): extractAssetsFromZip writes every file through
-      // putAsset, so if either resolution fails (for example a collaborator
-      // deleted the box while the menu was open) the import must fail without
-      // leaving unreferenced assets behind. importComponent checks the page
-      // before reading the file; this flow validates page, block and parsed
-      // components before any side effect.
+      // putAsset, so if either resolution fails here (for example a
+      // collaborator deleted the box while the menu was open) the import fails
+      // without storing anything. A deletion that happens later, during asset
+      // extraction, is caught by the re-resolve inside the transaction.
       const targetPage = this.findPage(pageId);
       if (!targetPage) {
         return { success: false, error: _('Target page not found') };
@@ -238,9 +258,10 @@ class ComponentImporter {
       // Generate fresh IDs for the components
       this.regenerateComponentIds(blockData);
 
-      // Assets are stored last: every check that can fail on user data has
-      // already passed, so a failed import no longer leaves unreferenced
-      // assets behind (review #2474).
+      // Store the assets and convert the {{context_path}} references in the
+      // parsed components. This MUST run before createComponentYMap: the
+      // Y.Maps copy the strings, so a conversion applied afterwards would
+      // never reach the Y.Doc and the imported images would not render.
       if (this.assetManager) {
         this.assetMap = await this.assetManager.extractAssetsFromZip(zip);
         Logger.log(`[ComponentImporter] Imported ${this.assetMap.size} assets`);
@@ -257,9 +278,15 @@ class ComponentImporter {
       let inserted = false;
 
       ydoc.transact(() => {
-        // Re-resolve the block inside the transaction: a collaborator may
-        // have removed it while the assets were being extracted.
-        const blocksArray = targetPage.get('blocks');
+        // Re-resolve the page AND the block inside the transaction: a
+        // collaborator may have removed either while the file was being read
+        // or its assets were being stored (review #2474, point 2). Re-resolving the page — not just
+        // the block — is what closes the race the block re-resolve alone left
+        // open: a detached page's blocks array would still match.
+        const page = this.findPage(pageId);
+        if (!page) return;
+
+        const blocksArray = page.get('blocks');
         if (!blocksArray) return;
 
         const blockMap = this.findBlockInArray(blocksArray, blockId);
@@ -389,6 +416,16 @@ class ComponentImporter {
    * Shared by both import flows (review #2474 cleanup): content.xml lookup,
    * XML parsing and the odeComponentsResources marker check live here once.
    *
+   * Review #2474, point 1: the XML parse error message is NOT interpolated
+   * into the returned string. `parseError.textContent` contains a fragment of
+   * the offending XML source (Firefox emits a `<sourcetext>` line), and this
+   * string becomes `error.message`, which blockNode.js:1541 hands to
+   * `modals.alert.show({ body })`, and Modal.setBody does
+   * `innerHTML = body` (modal.js:411). A `.idevice` with a deliberately
+   * malformed `content.xml` around `<img src=x onerror=...>` would therefore
+   * execute that attribute in the workarea origin. The technical detail stays
+   * in the console; the user sees a generic message.
+   *
    * @param {Object} zip - Result of readComponentZip (path -> Uint8Array)
    * @returns {{xmlDoc?: Document, error?: string}} Parsed XML document, or an error
    */
@@ -402,10 +439,13 @@ class ComponentImporter {
     const parser = new DOMParser();
     const xmlDoc = parser.parseFromString(contentXml, 'text/xml');
 
-    // Check for parsing errors
+    // Check for parsing errors. The error text is logged for diagnostics
+    // but never interpolated into the user-facing message (XSS sink,
+    // review #2474, point 1).
     const parseError = xmlDoc.querySelector('parsererror');
     if (parseError) {
-      return { error: _('XML parsing error: %1').replace('%1', parseError.textContent) };
+      console.error('[ComponentImporter] XML parsing error:', parseError.textContent);
+      return { error: _('The component XML is not valid') };
     }
 
     // Verify this is a component export (has odeComponentsResources marker)
@@ -902,6 +942,12 @@ class ComponentImporter {
    * Validate the compressed size of a component file, returning an error
    * message when the file exceeds the tier's maxFileBytes, or null otherwise.
    *
+   * Uses Math.ceil (review #2474, point 7): Math.round would report a
+   * 52,500,000-byte file as "50 MB" (the exact maximum), which reads as a
+   * contradiction. Math.ceil reports it as "51 MB", which is unambiguous.
+   * The label says "MB" while the arithmetic is MiB; formatBytes from
+   * window.ExeImportPolicy is the preferred fix if it ever needs to change.
+   *
    * @param {File} file
    * @returns {string|null}
    */
@@ -909,8 +955,8 @@ class ComponentImporter {
     const { maxFileBytes } = this.resolveComponentLimits();
     if (typeof file.size === 'number' && file.size > maxFileBytes) {
       return _('Component file is too large (%1 MB). Maximum allowed is %2 MB.')
-        .replace('%1', Math.round(file.size / (1024 * 1024)))
-        .replace('%2', maxFileBytes / (1024 * 1024));
+        .replace('%1', Math.ceil(file.size / (1024 * 1024)))
+        .replace('%2', Math.ceil(maxFileBytes / (1024 * 1024)));
     }
     return null;
   }
@@ -932,6 +978,13 @@ class ComponentImporter {
    * degraded path — but createDeclaredSizeFilter() counts entries itself, so
    * the cap still applies in degraded mode (review #2474, point 6).
    *
+   * Review #2474, point 3: the message is now chosen from
+   * `ZipLimitError.details.kind`. Before, every `ZipLimitError` was mapped to
+   * the size message, so a `.idevice` with 20,000 tiny entries — exactly the
+   * DoS case point 6 was about — told the user the file was too large. The
+   * kind-aware message matches what createDeclaredSizeFilter emits for the
+   * same condition in degraded mode.
+   *
    * @param {Uint8Array} uint8Data - Raw ZIP bytes
    * @returns {string|null} Error message when the preflight rejects, null otherwise
    */
@@ -948,13 +1001,32 @@ class ComponentImporter {
       policy.assertInspectionWithinLimits(inspection, limits, 'Component file');
     } catch (e) {
       if (e && (e.name === 'ZipLimitError' || (policy.ZipLimitError && e instanceof policy.ZipLimitError))) {
-        return _('Component file expands beyond the allowed size (%1 MB uncompressed).')
-          .replace('%1', limits.maxTotalBytes / (1024 * 1024));
+        return this.buildPreflightErrorMessage(e, limits);
       }
       // Inspection failed for another reason (e.g. malformed central
       // directory): fall through and let unzipSync report the specific error.
     }
     return null;
+  }
+
+  /**
+   * Build the user-facing message for a ZipLimitError, honouring its
+   * `details.kind` (review #2474, point 3). Shared by validateZipPreflight
+   * and the backstop so all three sources of a limit error produce the same
+   * wording for the same condition.
+   *
+   * @param {Error & { details?: { kind?: string } }} error - The caught ZipLimitError
+   * @param {{ maxTotalBytes: number, maxEntries: number }} limits - Resolved tier
+   * @returns {string}
+   */
+  buildPreflightErrorMessage(error, limits) {
+    const kind = error?.details?.kind;
+    if (kind === 'entry-count') {
+      return _('Component file has too many entries (maximum allowed is %1).')
+        .replace('%1', limits.maxEntries);
+    }
+    return _('Component file expands beyond the allowed size (%1 MB uncompressed).')
+      .replace('%1', Math.ceil(limits.maxTotalBytes / (1024 * 1024)));
   }
 
   /**
@@ -973,7 +1045,8 @@ class ComponentImporter {
       if (entry && typeof entry.byteLength === 'number') {
         totalBytes += entry.byteLength;
         if (totalBytes > maxTotalBytes) {
-          return _('Component file expands beyond the allowed size (%1 MB uncompressed).').replace('%1', maxTotalBytes / (1024 * 1024));
+          return _('Component file expands beyond the allowed size (%1 MB uncompressed).')
+            .replace('%1', Math.ceil(maxTotalBytes / (1024 * 1024)));
         }
       }
     }
@@ -1024,7 +1097,8 @@ class ComponentImporter {
           : 0;
       totalBytes += declaredBytes;
       if (totalBytes > maxTotalBytes) {
-        violation.error = _('Component file expands beyond the allowed size (%1 MB uncompressed).').replace('%1', maxTotalBytes / (1024 * 1024));
+        violation.error = _('Component file expands beyond the allowed size (%1 MB uncompressed).')
+          .replace('%1', Math.ceil(maxTotalBytes / (1024 * 1024)));
         return false;
       }
       if (entryCount > maxEntries) {
