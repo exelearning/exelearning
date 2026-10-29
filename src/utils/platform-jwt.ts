@@ -10,6 +10,7 @@
 import { jwtVerify } from 'jose';
 import { isIP } from 'node:net';
 import { isBlockedAddress, isTrustedPrivateAddress } from './ssrf-guard';
+import { getAppSecret } from './jwt-secret';
 
 /**
  * Payload structure for platform JWT tokens
@@ -85,8 +86,8 @@ export function getProviderSecret(providerId?: string): string {
         }
     }
 
-    // Fallback to APP_SECRET
-    return process.env.APP_SECRET || '';
+    // Fallback to APP_SECRET (validated in production)
+    return getAppSecret();
 }
 
 /**
@@ -500,6 +501,61 @@ export function buildIntegrationUrl(returnUrl: string, operation: 'set' | 'get')
     }
 
     return null;
+}
+
+/**
+ * Course module of a platform site that a project is bound to.
+ */
+export interface PlatformBinding {
+    /** Base URL of the platform site, e.g. `https://example.com/moodle`. */
+    site: string;
+    /** Course module id, as a string (Moodle sends it as a JSON number). */
+    cmid: string;
+}
+
+// Module paths that mark where the platform site ends in a return URL. Same
+// markers as buildIntegrationUrl, which derives the callbacks from that base.
+const PLATFORM_MODULE_PATHS = ['/mod/exescorm', '/mod/exeweb', '/course/section'];
+
+// Column sizes of projects.platform_site and projects.platform_id.
+const MAX_PLATFORM_SITE_LENGTH = 255;
+const MAX_PLATFORM_ID_LENGTH = 64;
+
+/**
+ * Identify the platform activity a JWT was issued for.
+ *
+ * A cmid is only unique within one Moodle site, so the binding pairs it with the
+ * site that serves the module callbacks, normalized so the same site always
+ * yields the same key. Returns null when the token does not identify one
+ * activity: no cmid, or a return URL outside the known module paths.
+ *
+ * @param payload - Verified platform JWT payload
+ * @returns The binding, or null when the activity cannot be identified
+ */
+export function getPlatformBinding(payload: PlatformJWTPayload): PlatformBinding | null {
+    const cmid = payload.cmid == null ? '' : String(payload.cmid);
+    if (!cmid || cmid.length > MAX_PLATFORM_ID_LENGTH) {
+        return null;
+    }
+
+    let parsed: URL;
+    try {
+        parsed = new URL(payload.returnurl);
+    } catch {
+        return null;
+    }
+
+    const markers = PLATFORM_MODULE_PATHS.map(marker => parsed.pathname.indexOf(marker)).filter(index => index >= 0);
+    if (markers.length === 0) {
+        return null;
+    }
+
+    const site = `${parsed.protocol}//${parsed.host}${parsed.pathname.slice(0, Math.min(...markers))}`;
+    if (site.length > MAX_PLATFORM_SITE_LENGTH) {
+        return null;
+    }
+
+    return { site, cmid };
 }
 
 /**

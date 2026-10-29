@@ -10,7 +10,7 @@ import createTooltip from '../../../../common/app_tooltip.js';
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import NavbarFile from './navbarFile.js';
+import NavbarFile, { COLLAPSE_PANELS_BELOW } from './navbarFile.js';
 
 describe('NavbarFile', () => {
     let mockMenu;
@@ -1651,6 +1651,14 @@ describe('NavbarFile', () => {
             expect(window.location.href).toBe('/workarea?project=proj-3');
         });
 
+        it('makeRecentProjecList should render project titles as text, not HTML', () => {
+            const title = '<img src=x onerror="alert(1)">';
+            const list = navbarFile.makeRecentProjecList([{ odeId: 'proj-4', title }]);
+            const link = list.querySelector('a');
+            expect(link.textContent).toBe(title);
+            expect(link.querySelector('img')).toBeNull();
+        });
+
         it('makeRecentProjecList should show empty message when list is empty', () => {
             const list = navbarFile.makeRecentProjecList([]);
             expect(list.textContent).toContain('No recent projects');
@@ -2365,6 +2373,61 @@ describe('NavbarFile', () => {
             expect(window.location.replace).toHaveBeenCalledWith('http://platform/return');
         });
 
+        // The next edit of the activity may reopen this project as it is, maybe
+        // from another browser, so its assets must be on the server too (#2550).
+        describe('saving the project before sending it to the platform', () => {
+            async function finish(save) {
+                window.location.search = '?jwt_token=ignored';
+                window.SharedExporters = {
+                    quickExport: vi
+                        .fn()
+                        .mockResolvedValue({ success: true, data: new Uint8Array([0x50, 0x4b]), filename: 'p.zip' }),
+                };
+                eXeLearning.app.project._yjsBridge = {
+                    save,
+                    getDocumentManager: () => ({ saveToServer: vi.fn().mockResolvedValue() }),
+                    documentManager: { id: 'doc' },
+                    assetManager: { id: 'asset' },
+                };
+                const fetchMock = vi.fn().mockResolvedValue({
+                    ok: true,
+                    status: 200,
+                    json: async () => ({ responseMessage: 'OK', returnUrl: 'http://platform/return' }),
+                });
+                const originalFetch = global.fetch;
+                global.fetch = fetchMock;
+                try {
+                    await navbarFile.uploadPlatformEvent();
+                } finally {
+                    global.fetch = originalFetch;
+                    delete window.SharedExporters;
+                }
+                return fetchMock.mock.calls[0][1].body;
+            }
+
+            it('uploads the assets with the document and says the project is saved', async () => {
+                const save = vi.fn().mockResolvedValue({ success: true });
+
+                const body = await finish(save);
+
+                expect(save).toHaveBeenCalledWith({ showProgress: false });
+                expect(body.get('projectSaved')).toBe('1');
+                expect(window.location.replace).toHaveBeenCalledWith('http://platform/return');
+            });
+
+            it('still sends the package when the project could not be saved', async () => {
+                const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+                const failed = await finish(vi.fn().mockResolvedValue({ success: false }));
+                const thrown = await finish(vi.fn().mockRejectedValue(new Error('quota')));
+
+                expect(failed.get('projectSaved')).toBeNull();
+                expect(thrown.get('projectSaved')).toBeNull();
+                expect(window.location.replace).toHaveBeenCalledTimes(2);
+                warn.mockRestore();
+            });
+        });
+
         it('uploadPlatformEvent surfaces export failures from SharedExporters', async () => {
             window.location.search = '?jwt_token=ignored';
             const quickExport = vi.fn().mockResolvedValue({ success: false, error: 'no document' });
@@ -2689,8 +2752,16 @@ describe('NavbarFile', () => {
     });
 
     describe('mobile layout helpers', () => {
+        let innerWidth;
+
         beforeEach(() => {
+            innerWidth = window.innerWidth;
             navbarFile = new NavbarFile(mockMenu);
+            document.body.classList.remove('left-column-hidden');
+        });
+
+        afterEach(() => {
+            window.innerWidth = innerWidth;
             document.body.classList.remove('left-column-hidden');
         });
 
@@ -2700,15 +2771,55 @@ describe('NavbarFile', () => {
             expect(document.body.classList.contains('left-column-hidden')).toBe(true);
         });
 
+        it('initMobileLayout should collapse on tablets, where the toolbar does not fit beside the sidebar', () => {
+            window.innerWidth = 1199;
+            navbarFile.initMobileLayout();
+            expect(document.body.classList.contains('left-column-hidden')).toBe(true);
+        });
+
+        it('initMobileLayout should keep the sidebar open from 1200px', () => {
+            expect(COLLAPSE_PANELS_BELOW).toBe(1200);
+            window.innerWidth = 1200;
+            navbarFile.initMobileLayout();
+            expect(document.body.classList.contains('left-column-hidden')).toBe(false);
+        });
+
         it('handleResponsiveLayout should toggle state on resize', () => {
             window.innerWidth = 500;
             navbarFile.handleResponsiveLayout();
             expect(navbarFile._wasResizedToMobile).toBe(true);
             expect(document.body.classList.contains('left-column-hidden')).toBe(true);
 
-            window.innerWidth = 900;
+            window.innerWidth = 1300;
             navbarFile.handleResponsiveLayout();
             expect(navbarFile._wasResizedToMobile).toBe(false);
+        });
+
+        it('handleResponsiveLayout should collapse once when a wide viewport becomes a tablet one', () => {
+            window.innerWidth = 1366;
+            navbarFile.handleResponsiveLayout();
+            expect(document.body.classList.contains('left-column-hidden')).toBe(false);
+
+            window.innerWidth = 1024;
+            navbarFile.handleResponsiveLayout();
+            expect(document.body.classList.contains('left-column-hidden')).toBe(true);
+
+            // Reopened by hand, the panels stay open while the viewport stays narrow
+            document.body.classList.remove('left-column-hidden');
+            window.innerWidth = 1000;
+            navbarFile.handleResponsiveLayout();
+            expect(document.body.classList.contains('left-column-hidden')).toBe(false);
+        });
+
+        it('handleResponsiveLayout should not close panels reopened by hand after a tablet load', () => {
+            window.innerWidth = 810;
+            navbarFile.initMobileLayout();
+            expect(document.body.classList.contains('left-column-hidden')).toBe(true);
+
+            document.body.classList.remove('left-column-hidden');
+            window.innerWidth = 1080;
+            navbarFile.handleResponsiveLayout();
+            expect(document.body.classList.contains('left-column-hidden')).toBe(false);
         });
 
         it('initMobileBackdropClose should hide sidebar on outside click', () => {
@@ -3396,11 +3507,11 @@ describe('NavbarFile printing with interactive activities', () => {
     });
 
     describe('when the project has them', () => {
-        it('opens the preview at once, with the activities printed in an appendix', () => {
+        it('opens the preview at once, with the activities printed where the author put them', () => {
             navbarFile.startPrint();
 
             expect(printPreview.show).toHaveBeenCalledTimes(1);
-            expect(printPreview.show).toHaveBeenCalledWith('document', 'appendix', null, ACTIVITIES);
+            expect(printPreview.show).toHaveBeenCalledWith('document', 'in-place', null, ACTIVITIES);
         });
 
         it('lists the activities of the project', () => {

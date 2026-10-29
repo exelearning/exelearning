@@ -1969,6 +1969,56 @@ describe('IdeviceRenderer', () => {
         });
     });
 
+    // Issue #2543: 3dmol's config.xml declares <css-class>dmole</css-class>, but the export packages
+    // the iDevice under idevices/3dmol/ and its export JS looks the node up as .idevice_node.3dmol.
+    describe('3dmol real iDevice (issue #2543)', () => {
+        const realIdevicesPath = path.join(process.cwd(), 'public/files/perm/idevices/base');
+
+        beforeEach(() => {
+            resetIdeviceConfigCache();
+            setIdevicesBasePath(realIdevicesPath);
+            loadIdeviceConfigs(realIdevicesPath);
+            renderer = new IdeviceRenderer();
+        });
+
+        it('names the node and its export path after the 3dmol folder', () => {
+            const html = renderer.render(
+                { id: 'mol-1', type: '3dmol', order: 0, content: '<div class="dmole-IDevice"></div>' },
+                { basePath: '../', includeDataAttributes: true },
+            );
+
+            expect(html).toContain(
+                'class="idevice_node 3dmol" data-idevice-path="../idevices/3dmol/" data-idevice-type="3dmol"',
+            );
+            expect(html).not.toContain('idevices/dmole/');
+        });
+
+        it('links its CSS and JS from the 3dmol folder', () => {
+            expect(renderer.getCssLinks(['3dmol'], '../')).toContain(
+                '<link rel="stylesheet" href="../idevices/3dmol/3dmol.css">',
+            );
+            expect(renderer.getJsScripts(['3dmol'], '../')).toContain(
+                '<script src="../idevices/3dmol/3dmol.js"></script>',
+            );
+            expect(renderer.getCssLinkInfo(['3dmol'], '').map(link => link.href)).toContain('idevices/3dmol/3dmol.css');
+            expect(renderer.getJsScriptInfo(['3dmol'], '').map(script => script.src)).toContain(
+                'idevices/3dmol/3dmol.js',
+            );
+        });
+
+        it('keeps resolving a legacy alias to the folder it names', () => {
+            const html = renderer.render(
+                { id: 'dl-1', type: 'download-package', order: 0, content: '<p>x</p>' },
+                { basePath: '', includeDataAttributes: true },
+            );
+
+            expect(html).toContain('data-idevice-path="idevices/download-source-file/"');
+            expect(renderer.getJsScripts(['download-package'], '')).toContain(
+                '<script src="idevices/download-source-file/download-source-file.js"></script>',
+            );
+        });
+    });
+
     describe('addReferrerPolicyToEmbeds', () => {
         it('adds referrerpolicy to a YouTube iframe that lacks it', () => {
             const html = '<p>x</p><iframe src="https://www.youtube.com/embed/abc" allowfullscreen></iframe>';
