@@ -197,6 +197,43 @@ describe('print frame', () => {
         expectReady(host, undefined, { skippedImages: 1 });
     });
 
+    it.each(['src', 'srcset', 'picture'])('releases a stalled %s image that prevents document completion', async source => {
+        let image;
+        const { host } = frame(host => {
+            setState(host, 'interactive');
+            image = addImage(host, source === 'picture' ? '' : 'stalled.svg', source === 'srcset' ? 'srcset' : 'src');
+            if (source === 'picture') {
+                host.document.body.insertAdjacentHTML('beforeend', '<picture><source srcset="stalled.svg"></picture>');
+                host.document.querySelector('picture').append(image);
+            }
+        });
+        await vi.advanceTimersByTimeAsync(25000);
+        expect(isLeftOut(image)).toBe(true);
+        expect(image.src).toMatch(/^data:image\/gif;base64,/);
+        expect(image.hasAttribute('srcset')).toBe(false);
+        expect(host.document.querySelector('source[srcset]')).toBeNull();
+        expect(host.parent.postMessage).not.toHaveBeenCalled();
+        // The browser finishes loading after the replacement, with the rest of the document intact.
+        completeImage(image, 1);
+        setState(host, 'complete');
+        host.dispatchEvent(new Event('load'));
+        await flush();
+        expectReady(host, undefined, { skippedImages: 1 });
+        expect(host.document.querySelector('input').value).toBe('Original');
+        expect(vi.getTimerCount()).toBe(0);
+    });
+
+    it('still bounds a stalled document without images and cancels the finalization deadline on disposal', async () => {
+        const first = frame(host => setState(host, 'interactive'));
+        await vi.advanceTimersByTimeAsync(25000);
+        expectReady(first.host, 'Error: PRINT_RESOURCES_TIMEOUT');
+        const second = frame(host => { setState(host, 'interactive'); addImage(host); });
+        await vi.advanceTimersByTimeAsync(25000);
+        second.dispose();
+        await vi.advanceTimersByTimeAsync(3000);
+        expect(second.host.parent.postMessage).not.toHaveBeenCalled();
+    });
+
     it.each(['fonts', 'MathJax'])('waits for slow %s and reports rejection', async resource => {
         const loading = deferred();
         const { host, send } = frame(host => {
@@ -246,14 +283,16 @@ describe('print frame', () => {
             await vi.advanceTimersByTimeAsync(24999);
             expect(host.parent.postMessage).not.toHaveBeenCalled();
             await vi.advanceTimersByTimeAsync(1);
-            expectReady(host, 'Error: PRINT_RESOURCES_TIMEOUT');
+            expect(host.parent.postMessage).not.toHaveBeenCalled();
+            await vi.advanceTimersByTimeAsync(3000);
+            expectReady(host, 'Error: PRINT_RESOURCES_TIMEOUT', { skippedImages: 1 });
             expect(vi.getTimerCount()).toBe(0);
             loading.resolve();
             if (image) completeImage(image);
             setState(host, 'complete');
             host.dispatchEvent(new Event('load'));
             await flush();
-            expectReady(host, 'Error: PRINT_RESOURCES_TIMEOUT');
+            expectReady(host, 'Error: PRINT_RESOURCES_TIMEOUT', { skippedImages: 1 });
         },
     );
 

@@ -189,9 +189,12 @@ test.describe('Export print button project property (addPrintButton)', () => {
             await exported.goto('https://print-recovery.test/course/print.html', { waitUntil: 'domcontentloaded' });
             await expect.poll(() => held.length).toBe(1);
             await exported.clock.fastForward(25001);
-            await expect(exported.locator('.print-preview-error')).toContainText(
-                'Print resources did not finish loading',
-            );
+            // The package has no icon font: the icon is drawn, never its name written out.
+            const errorBox = exported.locator('.print-preview-error');
+            await expect(errorBox).toHaveText('Print resources did not finish loading. Please try again.');
+            const errorIcon = errorBox.locator('svg.print-preview-error-icon');
+            await expect(errorIcon).toBeVisible();
+            expect(await errorIcon.boundingBox()).toMatchObject({ width: 48, height: 48 });
             await expect(exported.locator('.print-preview-print-btn')).toBeDisabled();
             await exported.locator('.print-preview-close-btn').click();
             await exported.locator('#printPreviewLaunch').click();
@@ -637,20 +640,18 @@ test.describe('Export print button project property (addPrintButton)', () => {
             await expect(frame.locator('img[alt="Rabbit"]')).toBeHidden();
             await overlay.locator('.print-preview-close-btn').click();
 
-            // An image that never answers keeps the document itself from finishing loading, and
-            // printing before its scripts run is not safe: that one still stops the printout.
+            // An eager image can keep document.readyState at interactive forever. At the image
+            // deadline its request is cancelled so the rest of the document can finish loading.
             imageMode = 'hold';
             await exported.locator('#exe-print-btn').click();
             await expect.poll(() => heldImages.length).toBeGreaterThan(0);
             await expect.poll(() => frame.locator('html').evaluate(() => document.readyState)).toBe('interactive');
             await exported.clock.fastForward(25001);
-            // The package has no icon font: the icon is drawn, never its name written out.
-            const errorBox = overlay.locator('.print-preview-error');
-            await expect(errorBox).toHaveText('Print resources did not finish loading. Please try again.');
-            const errorIcon = errorBox.locator('svg.print-preview-error-icon');
-            await expect(errorIcon).toBeVisible();
-            expect(await errorIcon.boundingBox()).toMatchObject({ width: 48, height: 48 });
-            await expect(overlay.locator('.print-preview-print-btn')).toBeDisabled();
+            await expect(overlay.locator('.print-preview-print-btn')).toBeEnabled();
+            await expect(skippedNotice).toBeVisible();
+            await expect(overlay.locator('.print-preview-error')).toHaveCount(0);
+            await expect(frame.locator('body')).toContainText('A star');
+            await expect(frame.locator('img[alt="Rabbit"]')).toBeHidden();
             await overlay.locator('.print-preview-close-btn').click();
             releaseImages();
 

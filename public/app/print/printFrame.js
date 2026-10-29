@@ -2,6 +2,13 @@ import { printPreviewSnapshot } from '../workarea/modals/modals/pages/printPrevi
 
 // Leave time for the host's 30-second deadline to receive the frame's answer.
 const RESOURCE_TIMEOUT_MS = 25000;
+const FINALIZATION_TIMEOUT_MS = 3000;
+const EMPTY_IMAGE = 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=';
+
+function hasImageSource(image) {
+    return image.currentSrc || image.getAttribute('src') || image.getAttribute('srcset') ||
+        image.closest('picture')?.querySelector('source[srcset]');
+}
 
 /**
  * Wait for an image to load. One that fails or comes back zero-sized is passed to `skip`
@@ -9,8 +16,7 @@ const RESOURCE_TIMEOUT_MS = 25000;
  */
 function waitForImage(image, cancellations, skip) {
     // Empty placeholders are common in interactive activities.
-    if (!image.currentSrc && !image.getAttribute('src') && !image.getAttribute('srcset') &&
-        !image.closest('picture')?.querySelector('source[srcset]')) return Promise.resolve();
+    if (!hasImageSource(image)) return Promise.resolve();
     return new Promise(resolve => {
         const finish = (leaveOut) => {
             image.removeEventListener('load', loaded);
@@ -41,12 +47,11 @@ export function bindPrintFrame(token, host = window) {
     const cancellations = new Set();
     // Images that failed, or were still loading at the deadline: the rest of the page still prints.
     const skipped = new Set();
+    let finalizationDeadline;
     const skip = (image) => {
         skipped.add(image);
         image.style.setProperty('display', 'none', 'important');
     };
-    // Set once the document, MathJax and fonts are ready and only images are left.
-    let waitingForImages = false;
     let cancelWaiting;
     const cancelled = new Promise(resolve => { cancelWaiting = resolve; });
     const reply = (id, type, value, error) => {
@@ -82,6 +87,7 @@ export function bindPrintFrame(token, host = window) {
     const cleanupReadiness = () => {
         cleanupLifecycle();
         clearTimeout(deadline);
+        clearTimeout(finalizationDeadline);
         cancelWaiting();
         for (const cancel of cancellations) cancel();
     };
@@ -103,19 +109,29 @@ export function bindPrintFrame(token, host = window) {
             const loading = images.map(image => waitForImage(image, cancellations, skip));
             await Promise.race([host.document.fonts?.ready, cancelled]);
             if (disposed || settled) return;
-            waitingForImages = true;
             await Promise.race([Promise.all(loading), cancelled]);
             finishReadiness();
         } catch (error) { finishReadiness(error); }
     };
     const expire = () => {
-        if (!waitingForImages) {
+        const pendingImages = Array.from(host.document.querySelectorAll('img'))
+            .filter(image => !image.complete && hasImageSource(image));
+        if (!pendingImages.length) {
             finishReadiness(new Error('PRINT_RESOURCES_TIMEOUT'));
             return;
         }
-        // Only images are missing: leave out the ones still loading rather than the whole printout.
+        // An eager image also delays document.complete. Replacing its request releases that
+        // load blocker without bypassing scripts, styles, MathJax or fonts that are still pending.
+        // Keep the final deadline inside the transport's 30-second timeout.
+        finalizationDeadline = setTimeout(() => finishReadiness(new Error('PRINT_RESOURCES_TIMEOUT')), FINALIZATION_TIMEOUT_MS);
+        for (const image of pendingImages) {
+            skip(image);
+            image.closest('picture')?.querySelectorAll('source[srcset]').forEach(source => source.removeAttribute('srcset'));
+            image.removeAttribute('srcset');
+            image.src = EMPTY_IMAGE;
+        }
         for (const cancel of [...cancellations]) cancel(true);
-        finishReadiness();
+        onStateChange();
     };
     const onStateChange = () => {
         // Wait for scripts and styles too. Interactive/DOMContentLoaded is too early for
