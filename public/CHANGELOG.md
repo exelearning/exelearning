@@ -23,6 +23,7 @@
 
 - Security: strengthened backend protections; some deployment settings must be updated when upgrading (see `UPGRADE.md`):
   - Production environments (`NODE_ENV=production` or `APP_ENV=prod`) must set `API_JWT_SECRET` and `APP_SECRET` to real values before the application can start
+  - `.env.dist` now defaults to `APP_ENV=dev`; production installs must set `APP_ENV=prod` and remove the `TEST_USER_EMAIL` and `TEST_USER_PASSWORD` variables
   - Moodle integrations (`exescorm` and `exeweb`) must explicitly list permitted callback hosts in `PROVIDER_URLS`; an empty value blocks all callbacks
   - Moodle sites on private networks (intranet, VPN or `localhost`) must also set `PROVIDER_ALLOW_PRIVATE_NETWORK=true`; callbacks no longer follow redirects
   - Non-Docker deployments using `APP_ENV=prod` must use HTTPS because session cookies are now marked `Secure`
@@ -92,11 +93,12 @@
 - bootstrap: 5.3.6 → 5.3.8
 - dompurify: 3.3.1 → 3.4.17
 - interactjs: 1.10.11 → 1.10.28
-- jquery-ui: 1.14.1 → 1.14.2
+- jquery-ui: 1.14.1 (JS) / 1.13.2 (CSS) → 1.14.2
 - @material-symbols/svg-400: 0.47.0 → 0.48.0
 - dotenv: 17.4.2 → 18.0.8
 - elysia: 1.4.29 → 1.4.30
 - fast-xml-parser: 5.11.1 → 5.11.2
+- fflate: 0.8.2 → 0.8.3
 - fs-extra: 11.4.0 → 11.4.1
 - jose: 6.2.10 → 6.2.12
 - jsdom: 30.0.1 → 30.1.3
@@ -104,10 +106,11 @@
 - lib0: 0.2.117 → 0.2.119
 - mermaid: 11.12.0 → 11.17.2
 - mysql2: 3.23.4 → 3.24.6
-- pdf.js (PDF viewer): 4.10.38 → 6.4.299
+- pdfjs-dist: 4.10.38 → 6.4.299
 - uuid: 14.0.2 → 14.0.3
 - ws: 8.21.3 → 8.22.0
 - yjs: 13.6.32 → 13.6.33
+- y-websocket: 3.0.0 → 3.1.0
 - @biomejs/biome: 2.5.11 → 2.5.15
 - @electron/notarize: 3.1.1 → 3.1.2
 - @types/node: 26.2.0 → 26.6.5
