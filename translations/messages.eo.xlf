@@ -16006,6 +16006,30 @@
         <source>System default uses the operating system language. It is also used when no language is checked.</source>
         <target>~La defaŭlta opcio uzas la lingvon de la operaciumo. Ĝi ankaŭ estas uzata, kiam neniu lingvo estas markita.</target>
       </trans-unit>
+      <trans-unit id="j2abct9" resname="Presentation mode">
+        <source>Presentation mode</source>
+        <target>~Prezenta reĝimo</target>
+      </trans-unit>
+      <trans-unit id="cozax7n" resname="Activate presentation mode">
+        <source>Activate presentation mode</source>
+        <target>~Aktivigi prezentan reĝimon</target>
+      </trans-unit>
+      <trans-unit id="ni3rvs6" resname="Deactivate presentation mode">
+        <source>Deactivate presentation mode</source>
+        <target>~Malaktivigi prezentan reĝimon</target>
+      </trans-unit>
+      <trans-unit id="ujvtbt6" resname="Keys: Left/Right change page, M menu, T teacher mode, F11 full screen">
+        <source>Keys: Left/Right change page, M menu, T teacher mode, F11 full screen</source>
+        <target>~Klavoj: Maldekstren/Dekstren ŝanĝas paĝon, M menuo, T instrustila reĝimo, F11 plena ekrano</target>
+      </trans-unit>
+      <trans-unit id="pwqev9n" resname="Autonomous Communities">
+        <source>Autonomous Communities</source>
+        <target>~Aŭtonomaj komunumoj</target>
+      </trans-unit>
+      <trans-unit id="w3pg2ky" resname="Ministry-managed territory (MEFPD)">
+        <source>Ministry-managed territory (MEFPD)</source>
+        <target>~Teritorio administrata de la Ministerio (MEFPD)</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>
