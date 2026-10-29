@@ -95,7 +95,7 @@ test.describe('Print preview', () => {
         expect(await page.evaluate(() => (window as any).__opened)).toBeUndefined();
     });
 
-    test('does not offer link URLs for the worksheet, which has no links to show', async ({
+    test('does not offer link URLs for the worksheet, which always prints them', async ({
         authenticatedPage: page,
         createProject,
     }) => {
@@ -108,6 +108,7 @@ test.describe('Print preview', () => {
         await expect(overlay).toHaveAttribute('data-visible', 'true');
 
         await expect(page.locator('#printOptLinkUrls')).toBeDisabled();
+        await expect(page.locator('#printOptLinkUrls')).toBeChecked();
     });
 
     test('does not write the address again after a link whose text already is it', async ({

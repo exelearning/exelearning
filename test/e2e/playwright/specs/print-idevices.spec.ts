@@ -658,6 +658,141 @@ test.describe('Print iDevices', () => {
         });
     }
 
+    test('prints where to find what a challenge embedded, and where each of its links goes', async ({
+        authenticatedPage: page,
+        createProject,
+    }) => {
+        // Issue #2634: each challenge pointed at a Genially, and the paper showed a blank instead.
+        const uuid = await createProject(page, 'Printable challenge');
+        await gotoWorkarea(page, uuid);
+        await waitForAppReady(page);
+        const genially = 'https://view.genial.ly/5bb353835b64ad591a0c0924';
+        const article = 'https://es.wikipedia.org/wiki/Gusto';
+        const html =
+            '<div class="desafio-IDevice"><div class="desafio-ChallengeDescription">' +
+            `<p>Revisa la siguiente información:</p><div><iframe src="${genially}" width="1200" height="675"></iframe></div>` +
+            `<p>Lee <a href="${article}">este artículo</a></p></div>` +
+            '<div class="desafio-DataGame js-hidden">' +
+            encryptDataGame(
+                JSON.stringify({
+                    typeGame: 'desafio',
+                    desafioTitle: 'Pandemia',
+                    desafioDescription: '<p>Averigua qué pandemia fue</p>',
+                    desafioSolution: 'Gripe',
+                    challengesGame: [{ title: 'Primer reto', description: '', solution: 'Dulce' }],
+                    msgs: { msgChallenge: 'Reto' },
+                }),
+            ) +
+            '</div></div>';
+        await page.evaluate(html => {
+            const binding = (window as any).eXeLearning.app.project._yjsBridge.structureBinding;
+            const parent = binding.createPage('Printable challenge');
+            binding.createComponent(parent.id, binding.createBlock(parent.id), 'challenge', { htmlContent: html });
+        }, html);
+
+        // Chromium resolves attr(href); Firefox reports the declared value unresolved.
+        const showsArticle = /\[(https:\/\/es\.wikipedia\.org\/wiki\/Gusto|" attr\(href\) ")\]/;
+        const afterContent = (anchor: Locator) =>
+            anchor.evaluate(a => getComputedStyle(a, '::after').content).catch(() => null);
+
+        await openPrintPanel(page);
+        const { frame } = await choosePrintOption(page, 'in-place');
+        const exercise = frame.locator('.worksheet-activity[data-idevice="challenge"]');
+        const embed = exercise.locator('.worksheet-embed-address');
+        const link = exercise.locator(`a[href="${article}"]`);
+        // The address stands where the Genially was, and is not written after itself again.
+        await expect(embed).toHaveText(genially);
+        await expect(embed).toBeVisible();
+        expect(await afterContent(embed.locator('a'))).toBe('none');
+        await expect(link).toHaveText('este artículo');
+        expect(await afterContent(link)).toMatch(showsArticle);
+
+        // Show link URLs takes the address off the link, but not the one the Genially left, which
+        // is all there is of it.
+        const linkUrls = page.locator('#printOptLinkUrls');
+        await linkUrls.uncheck();
+        await expect.poll(() => afterContent(link), { timeout: 30000 }).toBe('none');
+        await waitForPreview(page);
+        await expect(embed).toHaveText(genially);
+        await expect(embed).toBeVisible();
+
+        // The worksheet has no such option and writes both out, as the box, ticked, says too.
+        const { frame: sheet } = await choosePrintOption(page, 'idevices');
+        await expect(linkUrls).toBeDisabled();
+        await expect(linkUrls).toBeChecked();
+        const sheetEmbed = sheet.locator('.worksheet-activity[data-idevice="challenge"] .worksheet-embed-address');
+        await expect(sheetEmbed).toHaveText(genially);
+        await expect(sheetEmbed).toBeVisible();
+        expect(await afterContent(sheetEmbed.locator('a'))).toBe('none');
+        expect(await afterContent(sheet.locator(`a[href="${article}"]`))).toMatch(showsArticle);
+
+        // Back in the document, the box is the user's choice again.
+        await choosePrintOption(page, 'in-place');
+        await expect(linkUrls).toBeEnabled();
+        await expect(linkUrls).not.toBeChecked();
+    });
+
+    test('keeps linked answers hidden when an embed precedes a gap', async ({
+        authenticatedPage: page,
+        createProject,
+    }) => {
+        const uuid = await createProject(page, 'Linked answer print regression');
+        await gotoWorkarea(page, uuid);
+        await waitForAppReady(page);
+        const source = 'https://example.org/map';
+        const sentence = (answer: string) =>
+            `<p>Capital: <a href="https://es.wikipedia.org/wiki/Toledo">` +
+            `<iframe src="${source}"></iframe>${answer}</a>.</p>`;
+        const components = [
+            {
+                type: 'form',
+                html: '',
+                properties: { questionsData: [{ activityType: 'fill', baseText: sentence('<u>Toledo</u>') }] },
+            },
+            {
+                type: 'complete',
+                html:
+                    '<div class="completa-IDevice"><div class="completa-DataGame js-hidden">' +
+                    encryptDataGame(
+                        JSON.stringify({ typeGame: 'Completa', type: 0, textText: escape(sentence('@@Toledo@@')) }),
+                    ) +
+                    '</div></div>',
+                properties: {},
+            },
+        ];
+        await page.evaluate(components => {
+            const binding = (window as any).eXeLearning.app.project._yjsBridge.structureBinding;
+            const parent = binding.createPage('Linked answer regression');
+            for (const component of components) {
+                binding.createComponent(parent.id, binding.createBlock(parent.id), component.type, {
+                    htmlContent: component.html,
+                    jsonProperties: JSON.stringify(component.properties),
+                });
+            }
+        }, components);
+
+        await openPrintPanel(page);
+        for (const mode of ['in-place', 'appendix', 'idevices']) {
+            const { frame } = await choosePrintOption(page, mode);
+            for (const media of ['screen', 'print'] as const) {
+                await page.emulateMedia({ media });
+                for (const type of ['form', 'complete']) {
+                    // In the appendix the body keeps a pointer to the exercise, with the same type.
+                    const exercise = frame.locator(
+                        `.worksheet-activity[data-idevice="${type}"]:not(.worksheet-activity-reference)`,
+                    );
+                    await expect(exercise.locator('.worksheet-gap')).toHaveCount(1);
+                    await expect(exercise.locator('.worksheet-embed-address')).toHaveText(source);
+                    await expect(exercise.locator('.worksheet-embed-address')).toBeVisible();
+                    // An empty anchor still prints its href through ::after, so text alone is insufficient.
+                    await expect(exercise.locator('a')).toHaveCount(0);
+                    await expect(exercise).not.toContainText('Toledo');
+                }
+            }
+            await page.emulateMedia({ media: null });
+        }
+    });
+
     test('waits for real molecule surfaces and reuses the viewer across print previews', async ({
         authenticatedPage: page,
         createProject,

@@ -11,6 +11,7 @@
 import { parseFragment, serialize, type DefaultTreeAdapterMap } from 'parse5';
 import { PRERENDERED_LATEX_CSS } from '../constants';
 import { renderPrintContextScript } from '../printContext';
+import { markLinksShowingTheirUrl } from '../utils/linkUrls';
 import { accentOutline, readColor } from './cardColors';
 import { renderMatchingLayoutScript } from './matchingLayout';
 import { escapeText } from './sanitizeHtml';
@@ -115,6 +116,23 @@ body {
     border-bottom: 1px solid #999;
     font-size: 14pt;
 }
+
+/* Paper cannot follow a link, so the sheet writes the address after each one to the web: always,
+   as there is no document option here to turn it off. Not after one whose text already is the
+   address, nor after a picture. */
+a[href^="http"] {
+    color: inherit;
+}
+a[href^="http"]::after {
+    content: " [" attr(href) "]";
+    font-size: 0.85em;
+    word-break: break-all;
+    color: #666;
+}
+a[href^="http"][data-exe-text-is-url]::after,
+a[href^="http"]:has(img:only-child)::after {
+    content: none;
+}
 `;
 
 /**
@@ -138,6 +156,16 @@ export const WORKSHEET_ACTIVITY_STYLES = `
 
 .worksheet-activity {
     margin-bottom: 8mm;
+}
+
+/* Where content embedded from the web can be found. It is all paper can give of that content, so
+   it stands on a line of its own where the content was, whatever the print options say, and the
+   same on screen as on paper. A long address breaks anywhere rather than run out of a column. */
+.worksheet-embed-address {
+    display: block;
+    font-size: 0.85em;
+    color: #666;
+    overflow-wrap: anywhere;
 }
 
 /* The number an appendix entry carries, so the pointer in the body can be followed to it. It is
@@ -1596,6 +1624,23 @@ export function renderInlineGap(characters: number, options?: string[]): string 
 }
 
 /**
+ * Take the links off the gaps in a sentence, keeping what was in them.
+ *
+ * Print writes the address of each link after it, and a link the author put round a hidden word
+ * usually leads to that word: a gap followed by ".../wiki/Toledo" answers the question it asks.
+ * Links reach here only as the sanitiser writes them, `<a href="…">` and nothing else, never one
+ * inside another, and no author markup can carry the gap's class, so both are recognised exactly.
+ *
+ * @param html - Sanitised HTML with its gaps already in it
+ * @returns The same HTML, with no link round a gap
+ */
+export function unlinkGaps(html: string): string {
+    return html.replace(/<a href="[^"]*">((?:(?!<\/a>)[\s\S])*?)<\/a>/g, (link, content: string) =>
+        content.includes('<span class="worksheet-gap"') ? content : link,
+    );
+}
+
+/**
  * Render one card of a two-column exercise: the picture first, with any text underneath it.
  *
  * A card the author coloured opens with a band in that colour. It is drawn as a child of the card
@@ -2199,7 +2244,8 @@ export function renderWorksheet(model: WorksheetModel, labels: WorksheetLabels =
 
     const body = pages || `<p class="worksheet-empty">${escapeText(text.empty)}</p>`;
 
-    return `<!DOCTYPE html>
+    // The sheet writes each link's address after it, except where the link's text already is it.
+    return markLinksShowingTheirUrl(`<!DOCTYPE html>
 <html lang="${escapeText(model.language || 'en')}">
 <head>
 <meta charset="utf-8" />
@@ -2222,5 +2268,5 @@ ${body}
 ${renderUnsupported(model, text)}
 </div>
 </body>
-</html>`;
+</html>`);
 }

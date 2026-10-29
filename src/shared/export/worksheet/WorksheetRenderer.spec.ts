@@ -5,6 +5,7 @@ import {
     renderActivityFragment,
     renderInlineGap,
     renderWorksheet,
+    unlinkGaps,
 } from './WorksheetRenderer';
 import type { CharacterBoxGroup, PrintableActivity, WorksheetModel } from './types';
 
@@ -473,6 +474,59 @@ describe('renderWorksheet', () => {
 
             expect(html).not.toContain('onerror="alert(1)"');
             expect(html).toContain('&quot;');
+        });
+    });
+
+    describe('links', () => {
+        /** A sheet whose one question holds this prompt. */
+        const sheetWith = (prompt: string) =>
+            renderWorksheet(
+                model({
+                    pages: [
+                        {
+                            pageId: 'p1',
+                            title: 'Página',
+                            activities: [
+                                activity({
+                                    items: [{ prompt, answer: { kind: 'characterBoxes', groups: emptyBoxes(1) } }],
+                                }),
+                            ],
+                        },
+                    ],
+                }),
+            );
+
+        it('writes the address after each link to the web, there being no option to turn it off', () => {
+            const html = sheetWith('<a href="https://x/doc">esto</a>');
+
+            expect(html).toMatch(/a\[href\^="http"\]::after \{\s*content: " \[" attr\(href\) "\]";/);
+            expect(html).toContain('<a href="https://x/doc">esto</a>');
+        });
+
+        it('does not write it twice after a link whose text already is the address', () => {
+            const genially = 'https://view.genial.ly/5bb353835b64ad591a0c0924';
+            const html = sheetWith(
+                `<span class="worksheet-embed-address"><a href="${genially}">${genially}</a></span>` +
+                    '<a href="https://x/doc">esto</a>',
+            );
+
+            expect(html).toContain(`<a data-exe-text-is-url href="${genially}">${genially}</a>`);
+            expect(html).toContain('<a href="https://x/doc">esto</a>');
+            expect(html).toMatch(/a\[href\^="http"\]\[data-exe-text-is-url\]::after,[^{]*\{\s*content: none;/);
+        });
+
+        it('leaves the links of a converted document to the document’s own option', () => {
+            // The activity styles go into the printed document too, where Show link URLs decides.
+            expect(WORKSHEET_ACTIVITY_STYLES).not.toContain('a[href^="http"]');
+            expect(WORKSHEET_ACTIVITY_STYLES).not.toContain('.external-iframe-src');
+        });
+
+        it('sets the address of embedded content on a line of its own, in the sheet and the document alike', () => {
+            // In the activity styles, which both carry, so it reads the same on screen and on paper.
+            const rule = WORKSHEET_ACTIVITY_STYLES.split('.worksheet-embed-address {')[1].split('}')[0];
+
+            expect(rule).toContain('display: block;');
+            expect(rule).toContain('overflow-wrap: anywhere;');
         });
     });
 });
@@ -1244,5 +1298,33 @@ describe('the printing context in the worksheet document', () => {
 
     it('sets it in the head, before anything in the body can run', () => {
         expect(html.indexOf('runtime.printing')).toBeLessThan(html.indexOf('</head>'));
+    });
+});
+
+describe('unlinkGaps', () => {
+    const gap = renderInlineGap(6);
+
+    it('takes the link off a gap, keeping the gap', () => {
+        expect(unlinkGaps(`Es <a href="https://es.wikipedia.org/wiki/Toledo">${gap}</a>.`)).toBe(`Es ${gap}.`);
+    });
+
+    it('keeps what else the link held, and the choices offered for the gap', () => {
+        const choices = renderInlineGap(6, ['Toledo', 'Madrid']);
+
+        expect(unlinkGaps(`<a href="https://x/Toledo"><b>la ciudad</b> ${choices}</a>`)).toBe(
+            `<b>la ciudad</b> ${choices}`,
+        );
+    });
+
+    it('leaves the links that hold no gap', () => {
+        const html = `<a href="https://x/a">A</a> ${gap} <a href="https://x/b">B</a>`;
+
+        expect(unlinkGaps(html)).toBe(html);
+    });
+
+    it('takes no notice of the words of a gap written as text, which the sanitiser escapes', () => {
+        const html = '<a href="https://x">&lt;span class=&quot;worksheet-gap&quot;&gt;</a>';
+
+        expect(unlinkGaps(html)).toBe(html);
     });
 });
