@@ -8,12 +8,16 @@
  */
 
 // Setup global mocks BEFORE importing the module
-global.window = global.window || {};
-window.AppLogger = {
-    log: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn(),
-};
+// vi.hoisted runs BEFORE the (hoisted) static imports, so blockNode.js sees
+// window.AppLogger when it evaluates `const Logger = window.AppLogger || console`.
+vi.hoisted(() => {
+    globalThis.window = globalThis.window || {};
+    window.AppLogger = {
+        log: vi.fn(),
+        warn: vi.fn(),
+        error: vi.fn(),
+    };
+});
 
 // Mock eXeLearning global object
 global.eXeLearning = {
@@ -1381,7 +1385,7 @@ describe('IdeviceBlockNode', () => {
     describe('test method', () => {
         it('logs click message', () => {
             block.test();
-            expect(global.Logger.log).toHaveBeenCalledWith('click');
+            expect(window.AppLogger.log).toHaveBeenCalledWith('click');
         });
     });
 
@@ -3314,7 +3318,7 @@ describe('IdeviceBlockNode', () => {
             expect(eXeLearning.app.modals.alert.show).toHaveBeenCalledWith(
                 expect.objectContaining({
                     title: 'iDevice error',
-                    body: 'iDevice locked',
+                    body: 'Could not check the box availability',
                     contentId: 'error',
                 }),
             );
@@ -3529,6 +3533,10 @@ describe('IdeviceBlockNode', () => {
     // importIdeviceFileIntoBlock
     // -------------------------------------------------------------------------
     describe('importIdeviceFileIntoBlock', () => {
+        // The catch block shows a fixed, user-facing message and logs the real
+        // error with console.error; it does not surface error.message.
+        const IMPORT_ERROR_BODY = 'An error occurred while importing the component.';
+
         let originalBridge;
         let originalComponentImporter;
         let originalMenuNodeSelected;
@@ -3594,7 +3602,7 @@ describe('IdeviceBlockNode', () => {
             await block.importIdeviceFileIntoBlock(file);
 
             expect(eXeLearning.app.modals.alert.show).toHaveBeenCalledWith(
-                expect.objectContaining({ title: 'Import error', body: 'boom' }),
+                expect.objectContaining({ title: 'Import error', body: IMPORT_ERROR_BODY }),
             );
         });
 
@@ -3611,7 +3619,7 @@ describe('IdeviceBlockNode', () => {
             expect(eXeLearning.app.modals.alert.show).toHaveBeenCalledWith(
                 expect.objectContaining({
                     title: 'Import error',
-                    body: 'Yjs document manager not available',
+                    body: IMPORT_ERROR_BODY,
                 }),
             );
         });
@@ -3629,7 +3637,7 @@ describe('IdeviceBlockNode', () => {
             expect(eXeLearning.app.modals.alert.show).toHaveBeenCalledWith(
                 expect.objectContaining({
                     title: 'Import error',
-                    body: 'ComponentImporter not loaded',
+                    body: IMPORT_ERROR_BODY,
                 }),
             );
         });
@@ -3651,7 +3659,7 @@ describe('IdeviceBlockNode', () => {
             expect(eXeLearning.app.modals.alert.show).toHaveBeenCalledWith(
                 expect.objectContaining({
                     title: 'Import error',
-                    body: 'No page selected',
+                    body: IMPORT_ERROR_BODY,
                 }),
             );
         });
@@ -3674,7 +3682,7 @@ describe('IdeviceBlockNode', () => {
             expect(eXeLearning.app.modals.alert.show).toHaveBeenCalledWith(
                 expect.objectContaining({
                     title: 'Import error',
-                    body: 'Import failed',
+                    body: IMPORT_ERROR_BODY,
                 }),
             );
         });
@@ -3743,6 +3751,23 @@ describe('IdeviceBlockNode', () => {
 
         const makeFile = () => new File([new Uint8Array([1, 2, 3])], 'test.idevice');
 
+        // exelearning#2653: Modal.setBody assigns to innerHTML, so the alert body
+        // must never carry text coming from the imported file or the importer.
+        it('never forwards importer error text (possible markup) to the alert body (#2653)', async () => {
+            const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+            const payload = '<img src=x onerror="window.__xss=1">';
+            setupBridge({ importResult: { success: false, error: payload } });
+
+            await block.importIdeviceFileIntoBlock(makeFile());
+
+            const { body } = eXeLearning.app.modals.alert.show.mock.calls[0][0];
+            expect(body).toBe(IMPORT_ERROR_BODY);
+            expect(body).not.toContain('<');
+            // The real error is still available for debugging, via the console only.
+            expect(errSpy).toHaveBeenCalled();
+            errSpy.mockRestore();
+        });
+
         it('shows an alert when the Yjs bridge is not available', async () => {
             eXeLearning.app.project._yjsBridge = null;
             window.ComponentImporter = class {};
@@ -3752,7 +3777,7 @@ describe('IdeviceBlockNode', () => {
             expect(eXeLearning.app.modals.alert.show).toHaveBeenCalledWith(
                 expect.objectContaining({
                     title: 'Import error',
-                    body: 'Yjs document manager not available',
+                    body: IMPORT_ERROR_BODY,
                 }),
             );
         });
@@ -3765,7 +3790,7 @@ describe('IdeviceBlockNode', () => {
 
             expect(eXeLearning.app.modals.alert.show).toHaveBeenCalledWith(
                 expect.objectContaining({
-                    body: 'Yjs document manager not available',
+                    body: IMPORT_ERROR_BODY,
                 }),
             );
         });
@@ -3855,7 +3880,7 @@ describe('IdeviceBlockNode', () => {
 
             expect(importMock).not.toHaveBeenCalled();
             expect(eXeLearning.app.modals.alert.show).toHaveBeenCalledWith(
-                expect.objectContaining({ body: 'No page selected' }),
+                expect.objectContaining({ body: IMPORT_ERROR_BODY }),
             );
         });
 
@@ -3865,7 +3890,7 @@ describe('IdeviceBlockNode', () => {
             await block.importIdeviceFileIntoBlock(makeFile());
 
             expect(eXeLearning.app.modals.alert.show).toHaveBeenCalledWith(
-                expect.objectContaining({ title: 'Import error', body: 'Import failed' }),
+                expect.objectContaining({ title: 'Import error', body: IMPORT_ERROR_BODY }),
             );
         });
 
@@ -4050,7 +4075,7 @@ describe('IdeviceBlockNode', () => {
                 expect(loadIdevicesMock).not.toHaveBeenCalled();
                 expect(eXeLearning.app.modals.alert.show).toHaveBeenCalledTimes(1);
                 expect(eXeLearning.app.modals.alert.show).toHaveBeenCalledWith(
-                    expect.objectContaining({ title: 'Import error', body: 'Target block not found' }),
+                    expect.objectContaining({ title: 'Import error', body: IMPORT_ERROR_BODY }),
                 );
                 expect(eXeLearning.app.modals.alert.show).not.toHaveBeenCalledWith(
                     expect.objectContaining({ body: REFRESH_BODY }),

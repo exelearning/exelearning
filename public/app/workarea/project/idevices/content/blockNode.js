@@ -1452,10 +1452,7 @@ export default class IdeviceBlockNode {
                         if (!response || response.responseMessage !== 'OK') {
                             eXeLearning.app.modals.alert.show({
                                 title: _('iDevice error'),
-                                body: _(
-                                    (response && response.responseMessage) ||
-                                        'Could not check the box availability'
-                                ),
+                                body: _('Could not check the box availability'),
                                 contentId: 'error',
                             });
                             return;
@@ -1551,9 +1548,7 @@ export default class IdeviceBlockNode {
             console.error('[BlockNode] Import iDevice failed:', error);
             eXeLearning.app.modals.alert.show({
                 title: _('Import error'),
-                body:
-                    error.message ||
-                    _('An error occurred while importing the component.'),
+                body: _('An error occurred while importing the component.'),
                 contentId: 'error',
             });
             return;
