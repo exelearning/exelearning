@@ -648,6 +648,12 @@ export async function selectFirstPage(page: Page): Promise<void> {
         return;
     }
 
+    // Below COLLAPSE_PANELS_BELOW (1200px) the editor loads with the left panels
+    // collapsed, which leaves the page tree out of reach: open them first.
+    if (await page.evaluate(() => document.body.classList.contains('left-column-hidden'))) {
+        await page.locator('#exe-panels-toggler').click();
+    }
+
     for (let attempt = 0; attempt < 3; attempt += 1) {
         const firstNode = page.locator('.nav-element:not([nav-id="root"])').first();
         try {
