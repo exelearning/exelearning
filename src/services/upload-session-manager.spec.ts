@@ -11,11 +11,11 @@ import {
     startCleanupScheduler,
     stopCleanupScheduler,
 } from './upload-session-manager';
+import { getJwtSecret } from '../utils/jwt-secret';
 
 // Helper to get JWT secret as Uint8Array (for test token generation)
 const getJwtSecretEncoded = (): Uint8Array => {
-    const secret = process.env.API_JWT_SECRET || process.env.JWT_SECRET || 'dev_secret_change_me';
-    return new TextEncoder().encode(secret);
+    return new TextEncoder().encode(getJwtSecret());
 };
 
 describe('UploadSessionManager', () => {

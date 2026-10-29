@@ -21,10 +21,17 @@ export default defineConfig({
         // Rejection" and fails the whole run even though every test passed.
         // Disabling file loading removes the async task entirely and resolves
         // the element as a successful (no-op) load. See HTMLLinkElement.#loadStyleSheet.
+        //
+        // happy-dom 21 disables iframe page loading by default and replaces the
+        // deprecated `disableCSSFileLoading` with `enableCSSFileLoading`. TinyMCE
+        // renders its editor inside an `about:blank` iframe and writes to its
+        // `contentDocument`, which no longer exists unless iframe loading is
+        // enabled, so keep the happy-dom 20 iframe behaviour explicitly.
         environmentOptions: {
             happyDOM: {
                 settings: {
-                    disableCSSFileLoading: true,
+                    enableCSSFileLoading: false,
+                    enableIframePageLoading: true,
                     disableJavaScriptFileLoading: true,
                     handleDisabledFileLoadingAsSuccess: true,
                 },

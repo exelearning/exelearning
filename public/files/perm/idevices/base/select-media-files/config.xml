@@ -3,6 +3,10 @@
     <title>Select media files</title>
     <css-class>select-media-files</css-class>
     <category>Assessment and tracking</category>
+    <export-js>
+        <filename>mansory-jq.js</filename>
+        <filename>select-media-files.js</filename>
+    </export-js>
     <icon>
         <name>select-media-files-icon</name>
         <url>select-media-files-icon.svg</url>

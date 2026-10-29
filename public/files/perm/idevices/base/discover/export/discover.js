@@ -50,7 +50,8 @@ var $eXeDescubre = {
     },
 
     loadGame: function () {
-        $eXeDescubre.options = [];
+        // Running activities keep their entry; each one is stored at its own index.
+        $eXeDescubre.options.length = $eXeDescubre.activities.length;
         $eXeDescubre.activities.each(function (i) {
             const dl = $('.descubre-DataGame', this);
             if (dl.length === 0) return; // Skip already initialized activities
@@ -86,7 +87,7 @@ var $eXeDescubre = {
             mOption.main = 'descubreMainContainer-' + i;
             mOption.idevice = 'descubre-IDevice';
 
-            $eXeDescubre.options.push(mOption);
+            $eXeDescubre.options[i] = mOption;
 
             const descubre = $eXeDescubre.createInterfaceDescubre(i);
 

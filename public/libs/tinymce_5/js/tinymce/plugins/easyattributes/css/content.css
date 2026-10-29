@@ -9,11 +9,14 @@ p.exe-block-danger{padding:1em}
 p.exe-block-info{padding:1em}
 .exe-block-success{background:#E5F3E0;color:#336634;border:1px solid #DEEDD1;padding:0 1em;border-radius:4px}
 p.exe-block-success{padding:1em}
+.exe-block-download{background:#E7EEFB;color:#2C4A86;border:1px solid #D3DFF5;padding:0 1em;border-radius:4px}
+p.exe-block-download{padding:1em}
 .exe-block-warning a{color:#4F360A}
 .exe-block-alert a{color:#5B2600}
 .exe-block-danger a{color:#6D1211}
 .exe-block-info a{color:#063853}
 .exe-block-success a{color:#093C0A}
+.exe-block-download a{color:#051640}
 /* In TinyMCE, hidden elements are shown */
 body .exe-hidden{display:inherit;filter:alpha(opacity=40);opacity:0.4;margin:0.5em;padding-left:25px;background:url(../img/exe_hidden.png) no-repeat 0 0}
 body .exe-hidden-accessible{position:static;overflow:visible;clip:auto;height:auto;filter:alpha(opacity=40);opacity:0.4;margin:0.5em;padding-left:25px;background:url(../img/exe_hidden_accessible.png) no-repeat 0 0}

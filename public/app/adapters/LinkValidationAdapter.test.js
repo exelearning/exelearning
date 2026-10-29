@@ -320,6 +320,14 @@ describe('LinkValidationAdapter', () => {
                 expect(result).toEqual({ status: 'broken', error: '404' });
             });
 
+            it('should pass through an unavailable server (#2502)', async () => {
+                checkLink.mockResolvedValue({ status: 'unavailable', error: 'Timeout' });
+
+                const result = await adapter.validateLink('https://pxhere.com/photo/1');
+
+                expect(result).toEqual({ status: 'unavailable', error: 'Timeout' });
+            });
+
             it('should normalize protocol-relative URLs before delegating', async () => {
                 checkLink.mockResolvedValue({ status: 'valid', error: null });
 

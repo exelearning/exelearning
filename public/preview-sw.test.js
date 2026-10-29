@@ -40,7 +40,7 @@ describe('Preview Service Worker', () => {
 
     describe('Constants', () => {
         it('should have SW_VERSION defined', () => {
-            expect(SW_VERSION).toBe('1.2.0');
+            expect(SW_VERSION).toBe('1.2.1');
         });
 
         it('should report the app version as unversioned when no version query is present', () => {
@@ -154,7 +154,9 @@ describe('Preview Service Worker', () => {
             // Should render to canvas
             expect(PDF_EMBED_HANDLER_SCRIPT).toContain("createElement('canvas')");
             expect(PDF_EMBED_HANDLER_SCRIPT).toContain("getContext('2d')");
-            expect(PDF_EMBED_HANDLER_SCRIPT).toContain('getDocument(src)');
+            // pdf.js 6 rejects a plain string; the parameter object is required.
+            expect(PDF_EMBED_HANDLER_SCRIPT).toContain('getDocument({ url: src })');
+            expect(PDF_EMBED_HANDLER_SCRIPT).not.toContain('getDocument(src)');
             // Should have toolbar with navigation, zoom, and download
             expect(PDF_EMBED_HANDLER_SCRIPT).toContain('exe-pdf-tb');
             expect(PDF_EMBED_HANDLER_SCRIPT).toContain('class="ep"');
@@ -538,6 +540,13 @@ describe('Preview Service Worker', () => {
             expect(response.headers.get('Content-Type')).toBe('text/html; charset=utf-8');
         });
 
+        it('should HTML-escape the file path', async () => {
+            const response = createNotFoundResponse('<img src=x onerror="alert(1)">&\'.html');
+            const text = await response.text();
+            expect(text).not.toContain('<img');
+            expect(text).toContain('&lt;img src=x onerror=&quot;alert(1)&quot;&gt;&amp;&#39;.html');
+        });
+
         it('should include the file path in message', async () => {
             const response = createNotFoundResponse('path/to/missing.html');
             const text = await response.text();
@@ -596,7 +605,8 @@ describe('Preview Service Worker', () => {
         it('should use window.location.href as PDF source', async () => {
             const response = createPdfViewerResponse('content/resources/doc.pdf', '/viewer/content/resources/doc.pdf', '/');
             const text = await response.text();
-            expect(text).toContain('getDocument(window.location.href)');
+            expect(text).toContain('getDocument({ url: window.location.href })');
+            expect(text).not.toContain('getDocument(window.location.href)');
         });
 
         it('should contain canvas-based rendering elements', async () => {

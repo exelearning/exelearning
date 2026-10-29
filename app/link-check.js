@@ -29,6 +29,7 @@
  * Result contract (also the `app:checkLink` IPC contract):
  *   { status: 'valid' }                    — the requested host answered 2xx/3xx-resolved
  *   { status: 'broken', error }            — proven dead (HTTP error code or network failure)
+ *   { status: 'unavailable', error }       — the server timed out, rate limited us (429) or failed (5xx)
  *   { status: 'unknown', reason, detail? } — needs a manual review; the renderer
  *                                            maps `reason` to a translated message
  */
@@ -202,9 +203,29 @@ async function rangedGet(fetchImpl, url, timeout) {
  *
  * @param {string} url - http(s) or protocol-relative URL
  * @param {{ fetchImpl: typeof fetch, fallbackFetchImpl?: typeof fetch, timeout?: number }} options
- * @returns {Promise<{status: 'valid'|'broken'|'unknown', reason?: string, detail?: string, error: string|null}>}
+ * @returns {Promise<{status: 'valid'|'broken'|'unavailable'|'unknown', reason?: string, detail?: string, error: string|null}>}
  */
-async function checkExternalLink(url, { fetchImpl, fallbackFetchImpl, timeout = DEFAULT_TIMEOUT }) {
+async function checkExternalLink(url, options) {
+    const result = await probeExternalLink(url, options);
+    // Timeout, rate limiting and 5xx are the server's trouble, not proof the
+    // link is wrong: report them apart from broken links (#2502).
+    if (result.status === 'broken' && isTransientError(result.error)) {
+        return { status: 'unavailable', error: result.error };
+    }
+    return result;
+}
+
+/**
+ * True for failures caused by a slow, overloaded or rate-limiting server.
+ * Mirrors isTransientLinkError() in src/services/link-validator.ts.
+ * @param {string|null} error
+ * @returns {boolean}
+ */
+function isTransientError(error) {
+    return error === 'Timeout' || error === '429' || /^5\d\d$/.test(error || '');
+}
+
+async function probeExternalLink(url, { fetchImpl, fallbackFetchImpl, timeout = DEFAULT_TIMEOUT }) {
     const normalizedUrl = url.startsWith('//') ? `https:${url}` : url;
     try {
         new URL(normalizedUrl);

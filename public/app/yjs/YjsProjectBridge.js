@@ -2283,7 +2283,7 @@ class YjsProjectBridge {
       if (icon.source === 'asset') {
         const assetManager = window.eXeLearning?.app?.project?._yjsBridge?.assetManager;
         const resolvedAssetUrl = assetManager?.resolveAssetURLSync?.(icon.value) || icon.value;
-        iconEl.innerHTML = `<img src="${resolvedAssetUrl}" alt="${icon.value}">`;
+        iconEl.innerHTML = blockIconRuntime.renderIconImage(resolvedAssetUrl, icon.value);
         iconEl.classList.remove('exe-no-icon');
         return;
       }
@@ -2300,7 +2300,7 @@ class YjsProjectBridge {
 
       if (themeIcon && themeIcon.value) {
         if (currentIconSrc !== themeIcon.value || iconEl.classList.contains('exe-no-icon')) {
-          iconEl.innerHTML = `<img src="${themeIcon.value}" alt="${themeIcon.title || icon.value}">`;
+          iconEl.innerHTML = blockIconRuntime.renderIconImage(themeIcon.value, themeIcon.title || icon.value);
           iconEl.classList.remove('exe-no-icon');
           Logger.log(`[YjsProjectBridge] Synced block icon: ${blockId} -> ${icon.value}`);
         }
@@ -3413,8 +3413,12 @@ class YjsProjectBridge {
     }
     if (!window.html2canvas) return null;
 
-    // Create hidden iframe for rendering
+    // Create hidden iframe for rendering. The HTML is built from collaborator-
+    // controlled project content, so scripting is disabled in the frame (set
+    // before it is attached): inline handlers and javascript: URLs cannot run.
+    // allow-same-origin stays so html2canvas can read the frame's DOM.
     const iframe = document.createElement('iframe');
+    iframe.sandbox = 'allow-same-origin'; // DOMTokenList with PutForwards=value
     iframe.style.cssText = 'position:fixed;left:-9999px;top:-9999px;width:1280px;height:900px;border:none;opacity:0;';
     document.body.appendChild(iframe);
 
@@ -3534,11 +3538,13 @@ class YjsProjectBridge {
             const saveBufferStartElapsed = trace
               ? Math.round(this.getElpxExportDebugNow() - trace.startedMs)
               : 0;
-            this.logElpxExportPhase('bridge:electron:save-buffer:start', {
+            // The Electron phases below are derived from this one reading, so the starts
+            // use it too: a second read could be a millisecond later and shorten them.
+            this.appendElpxExportPhaseEntry('bridge:electron:save-buffer:start', saveBufferStartElapsed, {
               filename: exportFilename,
               bytes: uint8Array.byteLength,
             }, trace);
-            this.logElpxExportPhase('bridge:electron:dialog:start', {
+            this.appendElpxExportPhaseEntry('bridge:electron:dialog:start', saveBufferStartElapsed, {
               filename: exportFilename,
             }, trace);
             // saveBuffer returns false when the user cancels the OS save dialog
@@ -3779,7 +3785,7 @@ class YjsProjectBridge {
       `<p>${_('The project was not imported.')}</p>` +
       `<p>${_('To reduce its size, open the File Manager and:')}</p>` +
       `<ul>` +
-      `<li>${_('Sort by "Largest first" and review each asset\'s references.')}</li>` +
+      `<li>${_(`Sort by "Largest first" and review each asset's references.`)}</li>` +
       `<li>${_('Remove an unused older version of a large asset.')}</li>` +
       `<li>${_('Optimise, replace, or remove the large file.')}</li>` +
       `</ul>`;
@@ -3963,6 +3969,11 @@ class YjsProjectBridge {
     }
 
     if (clearExisting) {
+      // Without server storage (Electron, static) assets are never uploaded:
+      // the file just opened already holds them, so they are not unsaved (#2540).
+      if (window.eXeLearning?.app?.capabilities?.storage?.remote === false) {
+        this.assetManager?.markAssetsSavedLocally?.();
+      }
       if (typeof this.documentManager?.markClean === 'function') {
         this.documentManager.markClean();
       }

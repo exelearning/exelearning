@@ -47,11 +47,19 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Check an external link from the main process (no CORS) so the link
   // validation report can show real HTTP statuses, like online mode does.
   checkLink: (url) => ipcRenderer.invoke('app:checkLink', { url }),
+  // Return the native print result, including failures after beforeprint and cancellation.
+  printPreview: (url) => ipcRenderer.invoke('app:printPreview', { url }),
+  // Save the print preview as a PDF from the main process, which makes it from the preview's own
+  // frame (named frameName) and asks where to put it. Works without a printer.
+  savePrintPreviewAsPdf: (frameName, title) =>
+    ipcRenderer.invoke('app:savePrintPreviewAsPdf', { frameName, title }),
   // Close the current window (File > Close). The existing close guard in the
   // main process still prompts for unsaved changes.
   closeCurrentWindow: () => ipcRenderer.invoke('app:closeCurrentWindow'),
   readFile: (filePath) => ipcRenderer.invoke('app:readFile', { filePath }),
   getMemoryUsage: () => ipcRenderer.invoke('app:getMemoryUsage'),
+  getSpellCheckerSettings: () => ipcRenderer.invoke('app:getSpellCheckerSettings'),
+  setSpellCheckerLanguages: (languages) => ipcRenderer.invoke('app:setSpellCheckerLanguages', languages),
   notifyRendererReadyForOpenFile: () => ipcRenderer.send('app:renderer-ready-for-open-file'),
   onDownloadProgress: (cb) => ipcRenderer.on('download-progress', (_e, data) => cb && cb(data)),
   onDownloadDone: (cb) => ipcRenderer.on('download-done', (_e, data) => cb && cb(data)),
