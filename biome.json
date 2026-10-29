@@ -1,5 +1,5 @@
 {
-    "$schema": "https://biomejs.dev/schemas/2.3.10/schema.json",
+    "$schema": "https://biomejs.dev/schemas/2.6.4/schema.json",
     "vcs": {
         "enabled": true,
         "clientKind": "git",
@@ -25,7 +25,10 @@
             "!**/idevices/**/OrbitControls.js",
             "!**/*.d.ts",
             "!**/tmp",
-            "!**/test/fixtures"
+            "!**/test/fixtures",
+            "!**/*.md",
+            "!**/*.yml",
+            "!**/*.yaml"
         ]
     },
     "formatter": {
@@ -56,7 +59,7 @@
     "linter": {
         "enabled": true,
         "rules": {
-            "recommended": true,
+            "preset": "recommended",
             "suspicious": {
                 "noExplicitAny": "warn",
                 "noDebugger": "error",
