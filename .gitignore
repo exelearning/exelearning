@@ -184,3 +184,6 @@ test/e2e/moodle/plugins/*
 /test/load/data/*
 !/test/load/data/.gitkeep
 /fuzz/dist
+
+# Bun profiler output (make profile-*)
+/profiles
