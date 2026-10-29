@@ -3984,11 +3984,11 @@ describe('IdeviceBlockNode', () => {
             await block.importIdeviceFileIntoBlock(makeFile());
 
             expect(errorSpy).toHaveBeenCalledWith(
-                '[BlockNode] iDevice imported but the page failed to refresh:',
+                expect.stringContaining('[BlockNode] iDevice imported but the page failed to refresh'),
                 expect.objectContaining({ message: 'reload failed' }),
             );
             expect(errorSpy).not.toHaveBeenCalledWith(
-                '[BlockNode] Import iDevice failed:',
+                expect.stringContaining('[BlockNode] Import iDevice failed'),
                 expect.anything(),
             );
             errorSpy.mockRestore();
@@ -4105,7 +4105,7 @@ describe('IdeviceBlockNode', () => {
             await block.importIdeviceFileIntoBlock(makeFile());
 
             expect(errorSpy).toHaveBeenCalledWith(
-                '[BlockNode] Import iDevice failed:',
+                expect.stringContaining('[BlockNode] Import iDevice failed'),
                 expect.objectContaining({ message: 'boom' }),
             );
             errorSpy.mockRestore();

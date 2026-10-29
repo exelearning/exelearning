@@ -1545,7 +1545,14 @@ export default class IdeviceBlockNode {
                 throw new Error((result && result.error) || _('Import failed'));
             }
         } catch (error) {
-            console.error('[BlockNode] Import iDevice failed:', error);
+            // Include the message in the string so console captures (Playwright,
+            // browsers) show the real cause, not just the "Error" constructor name.
+            // The Error object stays as the second arg so debugging tools can
+            // inspect the stack.
+            console.error(
+                `[BlockNode] Import iDevice failed: ${error?.message || error}`,
+                error
+            );
             eXeLearning.app.modals.alert.show({
                 title: _('Import error'),
                 body: _('An error occurred while importing the component.'),
@@ -1564,7 +1571,7 @@ export default class IdeviceBlockNode {
             await eXeLearning.app.project.idevices.loadApiIdevicesInPage(true);
         } catch (error) {
             console.error(
-                '[BlockNode] iDevice imported but the page failed to refresh:',
+                `[BlockNode] iDevice imported but the page failed to refresh: ${error?.message || error}`,
                 error
             );
             eXeLearning.app.modals.alert.show({
