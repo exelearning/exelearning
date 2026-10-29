@@ -15,7 +15,7 @@
 - eXeLearning Cloud: projects can now be shared through an unlisted read-only link that displays their content as it would appear when exported as a website, without requiring sign-in (disabled by default; admins can enable it)
 - Desktop app (Windows and Linux): you can now choose spell-checking languages in Preferences, displayed in the interface language, or use the system default
 - TinyMCE: added the `exe-block-download` class to highlight blocks containing download links
-- Documentation: added English and Spanish plugin guides for Moodle, Nextcloud, WordPress, Omeka S, Google Drive and OneDrive, plus a unified Spanish manual
+- Documentation: added English and Spanish plugin guides for Moodle, Nextcloud, WordPress, Omeka S, Google Drive and OneDrive, plus a unified Spanish manual on the documentation site
 - Translations: reviewed and completed Spanish (ES), Galician (GL), Italian (IT) and Valencian (VA)
 - Translations: added automatic placeholder translations for new strings in incomplete translations
 
