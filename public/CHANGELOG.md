@@ -100,7 +100,7 @@ abcjs, bootstrap, dompurify, fflate, interactjs, jquery-ui, mermaid, pdfjs-dist 
 - dompurify: 3.3.1 → 3.4.17
 - fflate: 0.8.2 → 0.8.3
 - interactjs: 1.10.11 → 1.10.28
-- jquery-ui: 1.14.1 → 1.14.2
+- jquery-ui: 1.14.1 (JS) / 1.13.2 (CSS) → 1.14.2
 - mermaid: 11.12.0 → 11.17.2
 - pdfjs-dist: 4.10.38 → 6.4.299
 - y-websocket: 3.0.0 → 3.1.0
