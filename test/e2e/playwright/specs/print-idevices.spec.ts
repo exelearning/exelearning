@@ -527,6 +527,137 @@ test.describe('Print iDevices', () => {
         });
     }
 
+    for (const mode of ['idevices', 'in-place', 'appendix']) {
+        test(`prints a checklist as a list to fill in by hand in ${mode} mode`, async ({
+            authenticatedPage: page,
+            createProject,
+        }) => {
+            const uuid = await createProject(page, 'Printable checklist');
+            await gotoWorkarea(page, uuid);
+            await waitForAppReady(page);
+            const longCriterion =
+                'Explain the steps followed and check that every part of the activity is complete. '.repeat(5);
+            const picture =
+                'data:image/svg+xml,' +
+                encodeURIComponent(
+                    '<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="200"><rect width="1400" height="200" fill="gray"/></svg>',
+                );
+            // Each item kind, including long wording and an oversized illustration. An unreadable
+            // criterion must be reported and must not add points to the printed score.
+            const html =
+                '<div class="listacotejo-IDevice"><div class="listacotejo-DataGame js-hidden">' +
+                encryptDataGame(
+                    JSON.stringify({
+                        typeGame: 'Cotejo',
+                        title: 'Unit checklist',
+                        userData: true,
+                        useScore: true,
+                        saveData: true,
+                        levels: [
+                            { type: '3', nivel: '0', item: 'Heading item', points: '' },
+                            { type: '0', nivel: '1', item: longCriterion, points: '5' },
+                            {
+                                type: '1',
+                                nivel: '1',
+                                item: `${longCriterion}<img src="${picture}" width="1400" height="200">`,
+                                points: '',
+                            },
+                            { type: '2', nivel: '1', item: 'Selection item', points: '10' },
+                            { type: '0', nivel: '1', item: '<math><mi>x</mi></math>', points: '100' },
+                        ],
+                        msgs: {
+                            msgName: 'Learner name',
+                            msgDate: 'Checklist date',
+                            msgScore: 'Score',
+                            msgPoints: 'points',
+                            msgDone: 'Done',
+                            msgInProgress: 'In progress',
+                            msgUnrealized: 'Not completed',
+                            msgSave: 'Download',
+                            msgReboot: 'Restart',
+                        },
+                    }),
+                ) +
+                '</div></div>';
+            await page.evaluate(html => {
+                const binding = (window as any).eXeLearning.app.project._yjsBridge.structureBinding;
+                const parent = binding.createPage('Printable checklist');
+                binding.createComponent(parent.id, binding.createBlock(parent.id), 'checklist', { htmlContent: html });
+            }, html);
+
+            await openPrintPanel(page);
+            const { frame } = await choosePrintOption(page, mode);
+
+            const checklist = frame.locator('.worksheet-checklist');
+            await expect(checklist.locator('.worksheet-checklist-title')).toHaveText('Unit checklist');
+            const items = checklist.locator('.worksheet-checklist-item');
+            await expect(items).toHaveCount(4);
+            // The heading marks nothing; the box and the text item get a box; the selection one its
+            // states written out, each with a dotted blank before it to write in.
+            await expect(items.nth(0).locator('.worksheet-option-box')).toHaveCount(0);
+            await expect(items.nth(1).locator('.worksheet-option-box')).toHaveCount(1);
+            await expect(items.nth(1)).toContainText('(5 points)');
+            await expect(items.nth(2).locator('.worksheet-checklist-line')).toBeVisible();
+            await expect(items.nth(3).locator('.worksheet-checklist-state')).toHaveText([
+                'Done',
+                'In progress',
+                'Not completed',
+            ]);
+            await expect(items.nth(3).locator('.worksheet-option-box')).toHaveCount(0);
+            const blanks = items.nth(3).locator('.worksheet-checklist-state .worksheet-checklist-blank');
+            await expect(blanks).toHaveCount(3);
+            for (const blank of await blanks.all()) {
+                await expect(blank).toHaveCSS('border-bottom-style', 'dotted');
+                expect((await blank.boundingBox())?.width).toBeGreaterThan(30);
+            }
+            await expect(checklist.locator('.worksheet-checklist-score')).toContainText('Score:');
+            await expect(checklist.locator('.worksheet-checklist-score')).toContainText('/ 15');
+            await expect(frame.locator('.worksheet-unsupported')).toContainText('Invalid or empty activity data');
+            await expect(frame.locator('.worksheet-unsupported')).toContainText('(1)');
+
+            // Check actual geometry in both preview and print media. A long criterion must wrap
+            // beside its box, and an image must fit the available width without distortion.
+            for (const media of ['screen', 'print'] as const) {
+                await page.emulateMedia({ media });
+                for (const index of [1, 2]) {
+                    const geometry = await items.nth(index).evaluate(row => {
+                        const box = row.querySelector('.worksheet-option-box')!.getBoundingClientRect();
+                        const text = row.querySelector('.worksheet-checklist-text')!;
+                        const bounds = text.getBoundingClientRect();
+                        return {
+                            boxRight: box.right,
+                            boxTop: box.top,
+                            boxBottom: box.bottom,
+                            textLeft: bounds.left,
+                            textTop: bounds.top,
+                            lineHeight: Number.parseFloat(getComputedStyle(text).lineHeight),
+                        };
+                    });
+                    expect(geometry.boxRight).toBeLessThanOrEqual(geometry.textLeft);
+                    expect(geometry.boxBottom).toBeGreaterThan(geometry.textTop);
+                    expect(Math.abs(geometry.boxTop - geometry.textTop)).toBeLessThan(geometry.lineHeight);
+                }
+                const illustration = await items
+                    .nth(2)
+                    .locator('img')
+                    .evaluate(img => {
+                        const bounds = img.getBoundingClientRect();
+                        const row = img.closest('.worksheet-checklist-item')!.getBoundingClientRect();
+                        return { right: bounds.right, rowRight: row.right, ratio: bounds.width / bounds.height };
+                    });
+                expect(illustration.right).toBeLessThanOrEqual(illustration.rowRight + 1);
+                expect(illustration.ratio).toBeCloseTo(7, 1);
+            }
+            await page.emulateMedia({ media: 'screen' });
+            // The worksheet asks for the name and date in its own header, so there the checklist asks
+            // for neither.
+            const fields = checklist.locator('.worksheet-checklist-field:not(.worksheet-checklist-score)');
+            await expect(fields).toHaveText(mode === 'idevices' ? [] : ['Learner name:', 'Checklist date:']);
+            // Nothing of the on-screen checklist is left to print: no switches, drop-down or buttons.
+            await expect(frame.locator('.CTJP-MainContainer, .toggle-input, select, .CTJP-Capture')).toHaveCount(0);
+        });
+    }
+
     test('waits for real molecule surfaces and reuses the viewer across print previews', async ({
         authenticatedPage: page,
         createProject,
@@ -983,16 +1114,16 @@ test.describe('Print iDevices', () => {
 
         const { frame } = await openWorksheet(page);
 
-        // The fixture's four activities — a rubric, two forms and the Guess — sit on four pages,
-        // and each page prints its own heading.
+        // The fixture's five activities — a rubric, a checklist, two forms and the Guess — sit on
+        // five pages, and each page prints its own heading.
         const pageTitles = frame.locator('.worksheet-page-title');
-        await expect(pageTitles).toHaveCount(4);
+        await expect(pageTitles).toHaveCount(5);
         for (const title of await pageTitles.all()) await expect(title).not.toBeEmpty();
 
         // What this is really here for: no activity floats outside a page section. Counting both
         // ways keeps that true however many activities a new adapter adds to the sheet.
         const activities = await frame.locator('.worksheet-activity').count();
-        expect(activities).toBe(4);
+        expect(activities).toBe(5);
         await expect(frame.locator('.worksheet-page .worksheet-activity')).toHaveCount(activities);
     });
 
@@ -2515,22 +2646,22 @@ test.describe('Print: choosing what happens to the interactive activities', () =
         // its own.
         const exercise = '.worksheet-activity[data-idevice="guess"]';
         await expect(frame.locator(exercise)).toHaveCount(1);
-        // The fixture holds four activities with a paper form — a rubric, two forms and the Guess —
-        // and a download button, which has none and never will. Unless its title is asked for, it
-        // is left out without even a note.
+        // The fixture holds five activities with a paper form — a rubric, a checklist, two forms and
+        // the Guess — and a download button, which has none and never will. Unless its title is
+        // asked for, it is left out without even a note.
         const converted = '.worksheet-activity:not(.worksheet-activity-reference):not(.worksheet-activity-unprintable)';
-        await expect(frame.locator(converted)).toHaveCount(4);
+        await expect(frame.locator(converted)).toHaveCount(5);
         await expect(frame.locator('.worksheet-activity-unprintable')).toHaveCount(0);
         await expect(frame.locator('.exe-download-package-link')).toHaveCount(0);
         await expect(frame.locator('.worksheet-box')).toHaveCount(EXPECTED_BOXES);
         await expect(frame.locator('.adivina-DataGame')).toHaveCount(0);
         await expect(frame.locator(`.exe-single-page ${exercise}`)).toHaveCount(1);
-        await expect(frame.locator(`.exe-single-page ${converted}`)).toHaveCount(4);
+        await expect(frame.locator(`.exe-single-page ${converted}`)).toHaveCount(5);
 
         // The exercise sits inside the component the activity occupied, and the wrapper does not
         // answer to the same class the exercise does.
         await expect(frame.locator(`.idevice_node.printable-activity ${exercise}`)).toHaveCount(1);
-        await expect(frame.locator(`.idevice_node.printable-activity ${converted}`)).toHaveCount(4);
+        await expect(frame.locator(`.idevice_node.printable-activity ${converted}`)).toHaveCount(5);
     });
 
     test('points into an appendix and prints the exercise there', async ({ authenticatedPage, createProject }) => {
@@ -2648,11 +2779,11 @@ test.describe('Print: choosing which interactive activities to print', () => {
         await panel.waitFor({ state: 'visible', timeout: 15000 });
         const selection = panel.locator('.print-activities-selection');
 
-        // A rubric, two forms and the Guess, each ticked, and the download button: it can never be
-        // printed, so it is listed cleared and marked as printing its title only.
+        // A rubric, a checklist, two forms and the Guess, each ticked, and the download button: it
+        // can never be printed, so it is listed cleared and marked as printing its title only.
         await expect(selection).toBeVisible();
-        await expect(selection.locator(SELECTED)).toHaveCount(5);
-        await expect(selection.locator(`${SELECTED}:checked`)).toHaveCount(4);
+        await expect(selection.locator(SELECTED)).toHaveCount(6);
+        await expect(selection.locator(`${SELECTED}:checked`)).toHaveCount(5);
         const cleared = selection.locator(`${SELECTED}:not(:checked)`);
         await expect(cleared).toHaveCount(1);
         await expect(cleared).toHaveAccessibleDescription('Title only');
@@ -2722,10 +2853,10 @@ test.describe('Print: choosing which interactive activities to print', () => {
         // Neither the game, nor its exercise, nor a pointer to one.
         await expect(frame.locator('.worksheet-activity[data-idevice="guess"]')).toHaveCount(0);
         await expect(frame.locator('.adivina-DataGame')).toHaveCount(0);
-        // The other three that can be printed are numbered from one without a gap.
+        // The other four that can be printed are numbered from one without a gap.
         const references = frame.locator('.worksheet-reference');
-        await expect(references).toHaveCount(3);
-        for (let index = 0; index < 3; index++) await expect(references.nth(index)).toContainText(String(index + 1));
+        await expect(references).toHaveCount(4);
+        for (let index = 0; index < 4; index++) await expect(references.nth(index)).toContainText(String(index + 1));
     });
 
     test('leaves off the worksheet an activity left unticked', async ({ authenticatedPage, createProject }) => {
