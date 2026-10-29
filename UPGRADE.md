@@ -24,8 +24,18 @@ This document describes breaking changes and migration steps between major versi
 - Production hosts must export a real `API_JWT_SECRET` **and** `APP_SECRET`
   (e.g. `openssl rand -hex 32` each) before starting the server. See
   `doc/development/authentication.md` and `doc/development/environment.md`.
-- No action for local development or the Docker image beyond providing secrets
-  in production compose/env as documented.
+- No action for local development or the Docker image run with the
+  `doc/deploy/` Compose examples (they set `APP_ENV=prod`) beyond providing
+  secrets in production compose/env as documented.
+- An install whose environment comes from `.env.dist` (a `.env` copied from it,
+  or the root `docker-compose.yml`, which loads `.env.dist` before `.env` and so
+  overrides the image's `APP_ENV=prod`) now runs with `APP_ENV=dev` unless it
+  sets `APP_ENV=prod`. With `APP_ENV=dev` the server creates the
+  `TEST_USER_EMAIL` account (`user@exelearning.net` / `1234`) and, unless
+  `NODE_ENV=production` is set, skips the secret check and the `Secure` cookie
+  flag. Set `APP_ENV=prod` in production, and delete that account if a
+  production install has already started in `dev` mode; it is not removed
+  automatically.
 - The same production signal now sets the `Secure` attribute on the session and
   SSO cookies. A non-Docker deployment with `APP_ENV=prod` that is served over
   plain HTTP (not `localhost`) used to get non-`Secure` cookies; browsers now
