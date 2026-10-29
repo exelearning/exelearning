@@ -16082,6 +16082,30 @@
         <source>The isolated preview could not be loaded, so external scripts stay blocked and the filtered preview is shown instead.</source>
         <target>No se pudo cargar la vista previa aislada, por lo que los scripts externos siguen bloqueados y se muestra la vista previa filtrada.</target>
       </trans-unit>
+      <trans-unit id="kpqc6km" resname="Presentation mode">
+        <source>Presentation mode</source>
+        <target>Modo presentación</target>
+      </trans-unit>
+      <trans-unit id="ykntmga" resname="Activate presentation mode">
+        <source>Activate presentation mode</source>
+        <target>Activar el modo presentación</target>
+      </trans-unit>
+      <trans-unit id="137nbtz" resname="Deactivate presentation mode">
+        <source>Deactivate presentation mode</source>
+        <target>Desactivar el modo presentación</target>
+      </trans-unit>
+      <trans-unit id="sk4t04p" resname="Keys: Left/Right change page, M menu, T teacher mode, F11 full screen">
+        <source>Keys: Left/Right change page, M menu, T teacher mode, F11 full screen</source>
+        <target>Teclas: Izquierda/Derecha cambian de página, M menú, T modo docente, F11 pantalla completa</target>
+      </trans-unit>
+      <trans-unit id="ozdhd3b" resname="Autonomous Communities">
+        <source>Autonomous Communities</source>
+        <target>Comunidades autónomas</target>
+      </trans-unit>
+      <trans-unit id="o0hb1ge" resname="Ministry-managed territory (MEFPD)">
+        <source>Ministry-managed territory (MEFPD)</source>
+        <target>Ámbito de gestión del Ministerio (MEFPD)</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

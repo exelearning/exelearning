@@ -5,10 +5,9 @@ import { describe, it, expect, beforeAll } from 'bun:test';
 import { Elysia } from 'elysia';
 import { SignJWT, jwtVerify } from 'jose';
 import { createYjsDebugRoutes, type YjsDebugDependencies } from './yjs-debug';
+import { getJwtSecret } from '../utils/jwt-secret';
 
-// Match getJwtSecret()'s fallback so we don't have to mutate process.env
-// (which would race with other test suites in the same Bun process).
-const TEST_SECRET = 'dev_secret_change_me';
+const TEST_SECRET = getJwtSecret();
 
 async function signToken(sub: number, roles: string[]): Promise<string> {
     const secret = new TextEncoder().encode(TEST_SECRET);

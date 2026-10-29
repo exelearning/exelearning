@@ -1371,7 +1371,7 @@ var $quickquestions = {
         if (mQuestion.type === 1) {
             $quickquestions.showImageNeo(mQuestion.url, instance);
         } else if (mQuestion.type === 3) {
-            const text = unescape(mQuestion.eText);
+            const text = $exeDevices.iDevice.gamification.helpers.decodeStoredText(mQuestion.eText);
             $('#quextEText-' + instance)
                 .html(text)
                 .show();

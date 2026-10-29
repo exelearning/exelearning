@@ -16006,6 +16006,30 @@
         <source>System default uses the operating system language. It is also used when no language is checked.</source>
         <target>~Aukera lehenetsiak sistema eragilearen hizkuntza erabiltzen du. Hizkuntzarik markatzen ez denean ere erabiltzen da.</target>
       </trans-unit>
+      <trans-unit id="l3yve6o" resname="Presentation mode">
+        <source>Presentation mode</source>
+        <target>~Aurkezpen modua</target>
+      </trans-unit>
+      <trans-unit id="x688djl" resname="Activate presentation mode">
+        <source>Activate presentation mode</source>
+        <target>~Aurkezpen modua aktibatu</target>
+      </trans-unit>
+      <trans-unit id="yjqyt2u" resname="Deactivate presentation mode">
+        <source>Deactivate presentation mode</source>
+        <target>~Aurkezpen modua desaktibatu</target>
+      </trans-unit>
+      <trans-unit id="h54sgj5" resname="Keys: Left/Right change page, M menu, T teacher mode, F11 full screen">
+        <source>Keys: Left/Right change page, M menu, T teacher mode, F11 full screen</source>
+        <target>~Teklak: Ezkerra/Eskuina orria aldatu, M menua, T irakasle modua, F11 pantaila osoa</target>
+      </trans-unit>
+      <trans-unit id="m9fs5sr" resname="Autonomous Communities">
+        <source>Autonomous Communities</source>
+        <target>~Autonomia-erkidegoak</target>
+      </trans-unit>
+      <trans-unit id="04m4lws" resname="Ministry-managed territory (MEFPD)">
+        <source>Ministry-managed territory (MEFPD)</source>
+        <target>~Ministerioaren kudeaketa-eremua (MEFPD)</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

@@ -136,15 +136,16 @@ a row draws it once, and Print is disabled while the preview is being drawn.
 worksheet adapter turns into an exercise, or one listed as never printable (see below), each entry
 with its reason. Everything else prints as it always has: content iDevices, and any type the code
 does not know, such as one an administrator installed. How an iDevice stores its data plays no
-part: the form stores JSON and is an activity, the checklist is HTML and is not.
+part: the form stores JSON and is an activity, the UDL content is HTML and is not.
 
 The first cut derived the rule from the storage format instead: every `html` iDevice counted unless
 a list said otherwise, so that a new one was classified the day it was added. Review showed the
 cost. An administrator's own content iDevice is HTML like the games, so it counted too, and the
 appendix replaced its content with a pointer to a note saying it could not be printed. With
 the allow-list, a new game added without an adapter prints as its HTML until it gets one, which is
-how everything printed before this decision and loses nothing. For the 52 iDevices shipped today the
-two rules give the same 40 activities.
+how everything printed before this decision and loses nothing. For the 52 iDevices shipped when this
+was decided the two rules gave the same 40 activities. The checklist became the 41st when it was
+given an adapter (#2633): it had printed as its HTML, switches, drop-downs and buttons included.
 
 **Everything that asks "is this an activity?" asks the same code.** The panel's list, the
 document's modes and the worksheet's own list of what it could not print all go through the
@@ -167,7 +168,7 @@ document should not be the quieter way to lose content.
 
 **An activity without a printed form still prints.** A line stands in for it — in place, or in the
 appendix where it also takes a number. An exercise that could not be built must never turn into a
-silent hole in the handout. Every activity has either an adapter (29) or a settled answer (11), so
+silent hole in the handout. Every activity has either an adapter (30) or a settled answer (11), so
 the line is left for data an adapter cannot read.
 
 **No line says "not yet".** An activity with no printed form either has data its adapter could not

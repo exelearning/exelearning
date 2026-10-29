@@ -1401,6 +1401,12 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
                     return { responseMessage: 'UNAUTHORIZED', detail: 'Authentication required' };
                 }
 
+                // The uuid names on-disk session directories later on, so it must be a single safe segment.
+                if (!isSafePathSegment(uuid)) {
+                    set.status = 400;
+                    return { responseMessage: 'BAD_REQUEST', detail: 'Invalid project uuid' };
+                }
+
                 let project = await findProjectByUuid(db, uuid);
 
                 // If project doesn't exist in DB, create it with current user as owner
@@ -1841,10 +1847,9 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
                 // Delete project (cascades to assets, yjs_documents, etc.)
                 await hardDeleteProject(db, project.id);
 
-                // Clean up session files if they exist
-                const sessionPath = getOdeSessionTempDir(uuid);
+                // Clean up session files if they exist (getOdeSessionTempDir throws for unsafe uuids)
                 try {
-                    await fs.remove(sessionPath);
+                    await fs.remove(getOdeSessionTempDir(uuid));
                 } catch {
                     // Ignore cleanup errors
                 }
