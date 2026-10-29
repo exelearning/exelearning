@@ -333,6 +333,197 @@ describe('YjsDocumentManager', () => {
     });
   });
 
+  describe('server snapshot merge on open and reconnect (issue #2615)', () => {
+    function makeOnlineManager() {
+      const m = new YjsDocumentManager('test-project-123', {
+        wsUrl: 'ws://localhost:3001/yjs',
+        apiUrl: '/api',
+        token: 'test-token',
+        offline: false,
+      });
+      spyOn(m, '_validateIndexedDb').mockResolvedValue(true);
+      return m;
+    }
+
+    it('merges the server snapshot on every online open, even when a local copy exists', async () => {
+      await manager.destroy();
+      manager = makeOnlineManager();
+      const loadSpy = spyOn(manager, 'loadFromServer').mockResolvedValue(undefined);
+      // Pretend IndexedDB already holds content (stale local copy).
+      const OriginalIdb = global.window.IndexeddbPersistence;
+      global.window.IndexeddbPersistence = class extends OriginalIdb {
+        constructor(name, ydoc) {
+          super(name, ydoc);
+          ydoc.getArray('navigation').push([new global.window.Y.Map()]);
+        }
+      };
+      try {
+        await manager.initialize();
+      } finally {
+        global.window.IndexeddbPersistence = OriginalIdb;
+      }
+      expect(manager.getNavigation().length).toBeGreaterThan(0);
+      expect(loadSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not consult the server in offline mode', async () => {
+      const loadSpy = spyOn(manager, 'loadFromServer').mockResolvedValue(undefined);
+      await manager.initialize();
+      expect(loadSpy).not.toHaveBeenCalled();
+    });
+
+    it('applies the server state with the initial origin so a merge never marks the document dirty, and records the version', async () => {
+      await manager.destroy();
+      manager = makeOnlineManager();
+      await manager.initialize();
+      manager.captureBaselineState();
+      expect(manager.isDirty).toBe(false);
+
+      const Y = global.window.Y;
+      const serverDoc = new Y.Doc();
+      serverDoc.getMap('metadata').set('author', 'Someone Else');
+      const serverState = Y.encodeStateAsUpdate(serverDoc);
+      global.fetch = mock(() =>
+        Promise.resolve({
+          ok: true,
+          status: 200,
+          headers: { get: (name) => (name === 'X-Document-Version' ? '1700000000000' : null) },
+          arrayBuffer: () => Promise.resolve(serverState.buffer),
+        })
+      );
+
+      await manager.loadFromServer();
+
+      expect(manager.getMetadata().get('author')).toBe('Someone Else');
+      expect(manager.isDirty).toBe(false);
+      expect(manager.serverVersion).toBe('1700000000000');
+    });
+
+    it('keeps the previous version when the server response carries no version header', async () => {
+      await manager.initialize();
+      manager.serverVersion = '42';
+      global.fetch = mock(() => Promise.resolve({ ok: true, status: 200, arrayBuffer: () => Promise.resolve(new ArrayBuffer(0)) }));
+      await manager.loadFromServer();
+      expect(manager.serverVersion).toBe('42');
+    });
+
+    it('merges the server snapshot again after a reconnection, before announcing the connection', async () => {
+      await manager.destroy();
+      manager = makeOnlineManager();
+      await manager.initialize();
+      const loadSpy = spyOn(manager, 'loadFromServer').mockResolvedValue(undefined);
+      const events = [];
+      manager.on('connectionChange', (data) => events.push(data.connected));
+
+      manager.wsProvider.connect();
+      expect(loadSpy).not.toHaveBeenCalled();
+      expect(events).toEqual([true]);
+
+      manager.wsProvider.disconnect();
+      expect(events).toEqual([true, false]);
+      manager.wsProvider.connect();
+      expect(loadSpy).toHaveBeenCalledTimes(1);
+      await Promise.resolve();
+      await Promise.resolve();
+      expect(events).toEqual([true, false, true]);
+    });
+
+    it('announces the reconnection even when the merge fails', async () => {
+      await manager.destroy();
+      manager = makeOnlineManager();
+      await manager.initialize();
+      spyOn(manager, 'loadFromServer').mockRejectedValue(new Error('offline again'));
+      const events = [];
+      manager.on('connectionChange', (data) => events.push(data.connected));
+
+      manager.wsProvider.connect();
+      manager.wsProvider.disconnect();
+      manager.wsProvider.connect();
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+      expect(events).toEqual([true, false, true]);
+    });
+
+    it('deduplicates concurrent server merges into one request', async () => {
+      await manager.initialize();
+      let resolveFetch;
+      global.fetch = mock(
+        () => new Promise((resolve) => {
+          resolveFetch = resolve;
+        })
+      );
+      const first = manager.loadFromServer();
+      const second = manager.loadFromServer();
+      expect(global.fetch).toHaveBeenCalledTimes(1);
+      resolveFetch({ ok: false, status: 404 });
+      await Promise.all([first, second]);
+      global.fetch = mock(() => Promise.resolve({ ok: false, status: 404 }));
+      await manager.loadFromServer();
+      expect(global.fetch).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('saveToServer sends the base version and converges on a merged save (issue #2615)', () => {
+    beforeEach(async () => {
+      manager.config.offline = false;
+      await manager.initialize();
+      manager.captureBaselineState();
+    });
+
+    function okJson(body) {
+      return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(body) });
+    }
+
+    it('sends X-Base-Version when a server version is known', async () => {
+      manager.serverVersion = '1111';
+      global.fetch = mock(() => okJson({ success: true, version: '2222', merged: false }));
+
+      await manager.saveToServer({ silent: true });
+
+      const post = global.fetch.mock.calls.find((c) => c[1]?.method === 'POST');
+      expect(post).toBeDefined();
+      expect(post[1].headers['X-Base-Version']).toBe('1111');
+      expect(manager.serverVersion).toBe('2222');
+    });
+
+    it('omits X-Base-Version when no server version is known yet', async () => {
+      manager.serverVersion = null;
+      global.fetch = mock(() => okJson({ success: true, version: '2222' }));
+
+      await manager.saveToServer({ silent: true });
+
+      const post = global.fetch.mock.calls.find((c) => c[1]?.method === 'POST');
+      expect('X-Base-Version' in post[1].headers).toBe(false);
+    });
+
+    it('reloads the merged document when the server reports merged=true', async () => {
+      manager.serverVersion = '1111';
+      global.fetch = mock(() => okJson({ success: true, version: '3333', merged: true }));
+      const loadSpy = spyOn(manager, 'loadFromServer').mockResolvedValue(undefined);
+
+      await manager.saveToServer({ silent: true });
+
+      expect(loadSpy).toHaveBeenCalledTimes(1);
+      expect(manager.isDirty).toBe(false);
+    });
+
+    it('does not reload when the save was stored as-is', async () => {
+      global.fetch = mock(() => okJson({ success: true, version: '3333', merged: false }));
+      const loadSpy = spyOn(manager, 'loadFromServer').mockResolvedValue(undefined);
+
+      await manager.saveToServer({ silent: true });
+
+      expect(loadSpy).not.toHaveBeenCalled();
+    });
+
+    it('tolerates a response without a JSON body', async () => {
+      global.fetch = mock(() => Promise.resolve({ ok: true, status: 200 }));
+      const result = await manager.saveToServer({ silent: true });
+      expect(result.success).toBe(true);
+    });
+  });
+
   describe('generateId', () => {
     it('generates unique UUIDs', () => {
       const id1 = manager.generateId();

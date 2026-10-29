@@ -213,6 +213,12 @@ describe('ModalProperties', () => {
         expect(list.querySelector('.multiselect-option[value="__system_default__"]')).toBeNull();
       });
 
+      it('falls back to a generic label for the custom choice', () => {
+        const { customLabel, ...property } = makeProperty([]);
+        const el = modal.makeRowValueElement('id', 'name', property);
+        expect(el.querySelector('.multiselect-mode option[value="custom"]').textContent).toBe('Choose');
+      });
+
       it('shows the list only while choosing languages', () => {
         const el = modal.makeRowValueElement('id', 'name', makeProperty(['es']));
         const mode = el.querySelector('.multiselect-mode');

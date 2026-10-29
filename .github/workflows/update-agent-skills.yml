@@ -25,7 +25,7 @@ jobs:
           persist-credentials: false
 
       - id: update
-        uses: devantler-tech/actions/update-agent-skills@v13.10.12
+        uses: erseco/update-agent-skills@v1
         with:
           dir: .agents/skills
 

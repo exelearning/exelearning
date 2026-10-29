@@ -1005,7 +1005,7 @@ var $exeDevice = {
                 }
             }
         } else if (p.type === 3) {
-            tinyMCE.get('seleccionaEText').setContent(unescape(p.eText));
+            tinyMCE.get('seleccionaEText').setContent($exeDevices.iDevice.gamification.helpers.decodeStoredText(p.eText));
         }
 
         $('.SLCNE-EAnwersOptions').each(function (j) {
@@ -3574,7 +3574,7 @@ var $exeDevice = {
             }
 
             if (p.type === 3) {
-                p.eText = unescape(p.eText);
+                p.eText = $exeDevices.iDevice.gamification.helpers.decodeStoredText(p.eText);
             }
 
             p.audio = cuestion.audio || '';
