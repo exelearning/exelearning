@@ -412,6 +412,32 @@ h2 { color: red !important; }
 .exe-content h2 { color: red !important; }
 ```
 
+### Hiding text accessibly
+
+To hide a text that screen readers must still read (the label of an icon button, for example), add
+the `sr-av` class in markup you build, or use the full pattern in CSS for markup you don't control,
+such as the `span` inside `.box-toggle`:
+
+```css
+.box-toggle span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+```
+
+`clip` alone is not enough: the element keeps its width, and near the right edge it adds a
+horizontal scrollbar, more so in languages with longer labels (#2636). Do not use `display: none`
+or `visibility: hidden`, which hide the text from screen readers too. If a media query shows the
+text again, reset what the pattern sets (`width`, `height`, `margin`, `overflow`, `clip` and
+`white-space`).
+
 ---
 
 ## Effects (FX)
@@ -676,6 +702,26 @@ Common functionality found in built-in eXe styles:
   // Themes can still trigger the (opt-in) toggle setup explicitly:
   $exeExport.teacherMode.init();
   ```
+- **Presentation mode**. Opening a web site export with `?exe-presentation=1` collapses the
+  menu, adds a "Presentation mode" toggle button (`#exe-presentation-toggler`, next to
+  `#made-with-eXe`, its state in `aria-pressed`) and lets the reader present with the keyboard: `←`/`PageUp` and
+  `→`/`PageDown` change page, `M` shows/hides the menu and `T` toggles Teacher Mode where its
+  toggle exists. The runtime drives the style's own controls, so a style only has to keep
+  them where it expects:
+  - The menu toggler is `#siteNavToggler`, and its click handler must update
+    `aria-expanded` **synchronously**: the runtime reads it right after clicking to know the
+    new state.
+  - Previous/next are `a.nav-button-left` / `a.nav-button-right`.
+  - `html.mode-presentation` and `#exe-presentation-toggler` are the hooks to restyle the
+    mode and its button. The label never changes (the state is in `aria-pressed`) and sits
+    in `#exe-presentation-toggler span` together with its on/off dot (`::before`), so hiding
+    that span accessibly (as `.sr-av` does) leaves room for a style's own icon.
+  - A style that offers a light/dark mode switch should give `#exe-presentation-toggler`
+    the same treatment as `#made-with-eXe a` (for example, in the same
+    `html.exe-dark-mode` rule), so the two badges side by side keep matching.
+  - Do not bind `←`/`→`/`PageUp`/`PageDown`/`M`/`T` on `document`. The mode only yields to a
+    handler that calls `preventDefault()`, so an unconditional handler would change the page
+    twice.
 
 ### Knowing whether the page is being printed
 
@@ -736,8 +782,8 @@ given, so encode it yourself when it needs it (the export's own search does
 `encodeURIComponent(this.query)` for `q`).
 
 **Why it matters:** those URLs are a shared channel. Through them travel `exe-teacher` /
-`teacher-mode`, the search term `q`, `print=1`, and the xAPI launch parameters `endpoint`,
-`auth`, `actor` and `registration`. Wiping the query breaks LMS tracking and teacher mode,
+`teacher-mode`, `exe-presentation`, the search term `q`, `print=1`, and the xAPI launch
+parameters `endpoint`, `auth`, `actor` and `registration`. Wiping the query breaks LMS tracking and teacher mode,
 and nothing on screen says so. The three broken patterns all survive a casual test, because
 sample content usually has no other parameter:
 
@@ -747,12 +793,19 @@ e.href = ref + (cond ? '&' : '?') + 'nav=false';  // guesses the separator; a se
 window.location = this.href + '?nav=false';       // lands inside the fragment if there is a #ancla
 ```
 
-Two more rules that go with it:
+More rules that go with it:
 
 - **Operate on `getAttribute('href')`, not the `.href` property**, which absolutises the
   relative links the export writes.
 - **Read the current value with `URLSearchParams`**, not by searching the string:
   `indexOf('nav=false')` also matches `?xnav=false` and any fragment containing that text.
+- **`nav` can also be `true`.** While presenting, the runtime writes `nav=true` or
+  `nav=false` with the menu state the reader chose. Keep testing
+  `get('nav') === 'false'`, never "any `nav`", and do not strip a `nav=true` you did not add.
+- **Copy menu links when they are used, not in `init()`.** The runtime adds `exe-teacher`
+  and `exe-presentation` to the menu and previous/next links after the style's `init()`. A
+  link the style builds from a menu `href` (breadcrumbs, a title link to the home page)
+  should reread that `href` on `mousedown`/`click`, as `universal` and `cedec` do.
 
 `base` is the reference implementation — detection in `init()`, and one `params()` helper
 that both adds and removes:
