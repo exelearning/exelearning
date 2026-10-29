@@ -1,10 +1,11 @@
 /**
- * Edition lifecycle tests for the sort iDevice.
+ * Edition tests for the sort iDevice.
  *
- * Two resources here outlive the edition form: the audio preview created with
- * `new Audio()`, and the workarea-wide upload overlay that `lockScreen()` puts
- * up and a timer takes back down. Closing the editor mid-upload used to leave
- * the overlay covering the whole application with nothing left to remove it.
+ * The author-prefill wiring is declared on cards that `addCard` renders
+ * dynamically, so the selector has to interpolate the card id. The lifecycle
+ * tests cover the two resources that outlive the edition form: the audio
+ * preview created with `new Audio()`, and the workarea-wide upload overlay
+ * that `lockScreen()` puts up and a timer takes back down.
  */
 
 /* eslint-disable no-undef */
@@ -14,6 +15,26 @@ import { dirname, join } from 'path';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
+
+describe('sort iDevice edition', () => {
+  describe('author prefill wiring (data-author-target)', () => {
+    it('declares the per-card image picker target inside the card author/alt block', () => {
+      const filePath = join(__dirname, 'sort.js');
+      const code = readFileSync(filePath, 'utf-8');
+      // Dynamic rows: the selector interpolates the card id so the shared
+      // handler (seedDeclaredTargets) resolves the freshly rendered row.
+      expect(code).toContain(
+        'id="ordenaEURLImage-${$exeDevice.activeID}" data-author-target="#ordenaEAuthorAlt-${$exeDevice.activeID} .ODNE-EAuthor"'
+      );
+    });
+
+    it('keeps the activity-level author field un-wired (it is not per-media)', () => {
+      const filePath = join(__dirname, 'sort.js');
+      const code = readFileSync(filePath, 'utf-8');
+      expect(code).not.toMatch(/data-author-target="#ordenaEAuthor"/);
+    });
+  });
+});
 
 /** Audio double: happy-dom's element cannot actually play anything. */
 class FakeAudio {

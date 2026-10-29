@@ -395,7 +395,7 @@ var $exeDevice = {
                                 </p>
                                 <div class="d-flex align-items-center gap-2 mb-4 w-100" style="width:100%">
                                     <label for="mapaURLImageMap" class="m-0">${_('Image')}:</label>
-                                    <input type="text" id="mapaURLImageMap" class="form-control exe-file-picker me-0" style="flex:1 1 auto; min-width:0;" />
+                                    <input type="text" id="mapaURLImageMap" data-author-target="#mapaAuthorImageMap" class="form-control exe-file-picker me-0" style="flex:1 1 auto; min-width:0;" />
                                     <a href="#" id="mapaShowImageMap" class="MQE-ENavigationButton MQE-EActivo MQE-Play flex-shrink-0" title="${_('Show image')}"></a>
                                     <a href="#" id="mapaMoreImageMap" class="MQE-ENavigationButton MQE-EActivo MQE-More flex-shrink-0" title="${_('More')}"></a>
                                 </div>
@@ -654,7 +654,7 @@ var $exeDevice = {
                     <div id="mapaPDataImage" class="mb-3">
                         <div class="d-flex align-items-center mb-3 flex-nowrap gap-2">
                             <label for="mapaPURLImage">${_('Image')}:</label>
-                            <input type="text" id="mapaPURLImage" class="form-control exe-file-picker me-0" />
+                            <input type="text" id="mapaPURLImage" data-author-target="#mapaPAuthorImage" class="form-control exe-file-picker me-0" />
                             <a href="#" id="mapaPShowImage" class="MQE-ENavigationButton MQE-EActivo MQE-Play" title="${_('Show image')}"></a>
                         </div>
                         <div class="d-flex align-items-center flex-nowrap gap-2">
@@ -705,7 +705,7 @@ var $exeDevice = {
                     <div id="mapaSDataImage">
                         <div class="d-flex align-items-center mb-3 gap-2">
                             <label for="mapaSURLImage">${_('Image')}:</label>
-                            <input type="text" id="mapaSURLImage" class="form-control exe-file-picker me-0" />
+                            <input type="text" id="mapaSURLImage" data-author-target="#mapaSAuthorImage" class="form-control exe-file-picker me-0" />
                             <a href="#" id="mapaSShowImage" class="MQE-ENavigationButton MQE-EActivo MQE-Play" title="${_('Show image')}"></a>
                         </div>
                         <div class="d-flex align-items-center  gap-2 mb-3">

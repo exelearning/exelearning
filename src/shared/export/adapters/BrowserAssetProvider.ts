@@ -16,7 +16,8 @@
  * ```
  */
 
-import type { AssetProvider, ExportAsset } from '../interfaces';
+import type { AssetProvider, AssetExportMetadata, ExportAsset } from '../interfaces';
+import { pickAssetExportMetadata } from '../asset-metadata';
 import { deriveFilenameFromMime } from '../../../config';
 
 /**
@@ -57,6 +58,12 @@ interface AssetManagerInterface {
         mime?: string;
         size?: number;
         hash?: string;
+        description?: string;
+        title?: string;
+        license?: string;
+        author?: string;
+        authorUrl?: string;
+        sourceUrl?: string;
     }>;
     getAssetMetadata?(assetId: string): {
         id: string;
@@ -249,6 +256,21 @@ export class BrowserAssetProvider implements AssetProvider {
      */
     async getProjectAssets(): Promise<ExportAsset[]> {
         return this.getAllAssets();
+    }
+
+    /**
+     * Build the centralized metadata map (assetId → metadata) from the Yjs assets
+     * map. Only assets that carry at least one non-empty field are included.
+     * @returns Map of asset id to its export metadata
+     */
+    async getExportMetadataMap(): Promise<Map<string, AssetExportMetadata>> {
+        const map = new Map<string, AssetExportMetadata>();
+        if (!this.assetManager?.getAllAssetsMetadata) return map;
+        for (const meta of this.assetManager.getAllAssetsMetadata()) {
+            const picked = pickAssetExportMetadata(meta as Record<string, unknown>);
+            if (picked) map.set(meta.id, picked);
+        }
+        return map;
     }
 
     /**

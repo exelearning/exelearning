@@ -1,0 +1,29 @@
+<?xml version="1.0"?>
+<idevice>
+    <name>resource-report</name>
+    <title>Resource report</title>
+    <css-class>resource-report</css-class>
+    <category>Information and presentation</category>
+    <icon>
+        <name>resource-report-icon</name>
+        <url>resource-report-icon.svg</url>
+        <type>img</type>
+    </icon>
+    <version>1.0</version>
+    <api-version>3.0</api-version>
+    <component-type>json</component-type>
+    <edition-js>
+        <filename>resource-report.js</filename>
+    </edition-js>
+    <edition-css>
+        <filename>resource-report.css</filename>
+    </edition-css>
+    <export-js>
+        <filename>resource-report.js</filename>
+    </export-js>
+    <export-css>
+        <filename>resource-report.css</filename>
+    </export-css>
+    <description>Lists project resources (files) with their centralized metadata: title, description, author, license and view/download links.</description>
+    <downloadable>0</downloadable>
+</idevice>
