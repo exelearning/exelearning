@@ -41,8 +41,9 @@ var $exeIDevicesEdition = {
             },
             helpTooltipId: 0,
             /**
-             * Inline information button: a short hover label and a persistent
-             * explanation on click, using the editor's help window styling.
+             * Inline information button: a short hover label and an explanation
+             * that a click opens and a second click closes, using the editor's
+             * help window styling.
              * Pass localized text, e.g. getHelpTooltip(_('Explain this option.')).
              * tabs.bind initializes it automatically; forms without shared tabs
              * call initHelpTooltips after inserting their HTML.
@@ -104,6 +105,11 @@ var $exeIDevicesEdition = {
                     $(button).on('click.exeHelpTooltip', function (event) {
                         event.stopPropagation();
                         tooltip.hide();
+                        // A second click on the icon closes it, as in the project properties.
+                        if (!content.classList.contains('help-hidden')) {
+                            hide();
+                            return;
+                        }
                         content.classList.remove('help-hidden');
                         button.setAttribute('aria-expanded', 'true');
                         fitContent();

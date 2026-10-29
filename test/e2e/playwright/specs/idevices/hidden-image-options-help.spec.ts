@@ -84,9 +84,18 @@ test('Hidden image explains options inline without changing their values', async
         .filter({ hasText: 'Show minimized' })
         .locator('.exe-idevice-help');
     await minimizeHelp.click();
-    await page.locator(`#${await minimizeHelp.getAttribute('aria-controls')}`).click();
+    const minimizeNote = page.locator(`#${await minimizeHelp.getAttribute('aria-controls')}`);
+    await minimizeNote.click();
     await expect(page.locator('#hiEShowMinimize')).not.toBeChecked();
     await minimizeHelp.press('Escape');
+
+    // A second click on its icon closes the explanation, as in the project properties.
+    await minimizeHelp.click();
+    await expect(minimizeNote).toBeVisible();
+    await minimizeHelp.click();
+    await expect(minimizeNote).toBeHidden();
+    await expect(minimizeHelp).toHaveAttribute('aria-expanded', 'false');
+    await expect(page.locator('#hiEShowMinimize')).not.toBeChecked();
 
     await page.locator('#hiEShowMinimize').check();
     await page.locator('#hiERevealTime').fill('5');

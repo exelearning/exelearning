@@ -171,7 +171,7 @@ describe('common_idevices_edition.js', () => {
         expect(document.querySelector('.help-content').classList.contains('help-hidden')).toBe(true);
       });
 
-      it('keeps the explanation open until another icon or any other point is clicked', () => {
+      it('keeps the explanation open until its icon, another icon or any other point is clicked', () => {
         document.body.innerHTML = common().getHelpTooltip('First option') + common().getHelpTooltip('Second option');
         common().initHelpTooltips(document.body);
         const [first, second] = document.querySelectorAll('button');
@@ -179,8 +179,14 @@ describe('common_idevices_edition.js', () => {
         first.querySelector('span').click();
         first.dispatchEvent(new MouseEvent('mouseleave'));
         expect(firstNote.classList.contains('help-hidden')).toBe(false);
+        // A second click on the same icon closes it, as in the project properties, and a third opens it again.
+        first.querySelector('span').click();
+        expect(firstNote.classList.contains('help-hidden')).toBe(true);
+        expect(first.getAttribute('aria-expanded')).toBe('false');
+        expect(instances.get(first).hide).toHaveBeenCalledTimes(2);
         first.click();
         expect(firstNote.classList.contains('help-hidden')).toBe(false);
+        expect(first.getAttribute('aria-expanded')).toBe('true');
         second.click();
         expect(firstNote.classList.contains('help-hidden')).toBe(true);
         expect(secondNote.classList.contains('help-hidden')).toBe(false);
@@ -366,9 +372,13 @@ describe('common_idevices_edition.js', () => {
       expect(note.classList.contains('help-hidden')).toBe(false);
       expect(button.getAttribute('aria-expanded')).toBe('true');
       button.dispatchEvent(new MouseEvent('mouseleave'));
+      expect(note.classList.contains('help-hidden')).toBe(false);
+      button.click();
+      expect(note.classList.contains('help-hidden')).toBe(true);
+      expect(button.getAttribute('aria-expanded')).toBe('false');
+      expect(grading().scorm.getValues()).toEqual(before);
       button.click();
       expect(note.classList.contains('help-hidden')).toBe(false);
-      expect(grading().scorm.getValues()).toEqual(before);
       button.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
       expect(note.classList.contains('help-hidden')).toBe(true);
       expect(button.getAttribute('aria-expanded')).toBe('false');

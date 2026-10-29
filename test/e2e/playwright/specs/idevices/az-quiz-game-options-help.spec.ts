@@ -60,6 +60,10 @@ test('A-Z quiz explains each options row without changing its controls', async (
         expect(opensToTheRight).toBe(true);
         await optionsTab.hover();
         await expect(content).toBeVisible();
+        // A second click on the icon closes it, as in the project properties.
+        await button.click();
+        await expect(content).toBeHidden();
+        await expect(button).toHaveAttribute('aria-expanded', 'false');
         await button.click();
         await expect(content).toBeVisible();
         expect(

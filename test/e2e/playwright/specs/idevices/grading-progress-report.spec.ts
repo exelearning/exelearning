@@ -45,6 +45,10 @@ for (const device of [
             await information.locator('.info-icon-solid-green').click();
             await expect(help).toBeVisible();
             await expect(information).toHaveAttribute('aria-expanded', 'true');
+            // A second click on the icon closes it, as in the project properties.
+            await information.click();
+            await expect(help).toBeHidden();
+            await expect(information).toHaveAttribute('aria-expanded', 'false');
             await information.click();
             await expect(help).toBeVisible();
             await information.press('Escape');

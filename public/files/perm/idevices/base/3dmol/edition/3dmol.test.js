@@ -64,7 +64,7 @@ describe('3dmol iDevice edition', () => {
             ['icon', '.exe-progress-report-wrapper .info-icon-solid-green', false],
             ['button', '.exe-progress-report-wrapper .exe-idevice-help', true],
             ['icon', '.exe-progress-report-wrapper .info-icon-solid-green', true],
-        ])('opens information through the %s (%s), reporting enabled=%s', (_target, selector, enabled) => {
+        ])('opens and closes information through the %s (%s), reporting enabled=%s', (_target, selector, enabled) => {
             const checkbox = $('#eXeProgressReport').prop('checked', enabled).trigger('change');
             const identifier = $('#eXeProgressReportID');
             const note = $('.exe-progress-report-wrapper .help-content');
@@ -72,6 +72,8 @@ describe('3dmol iDevice edition', () => {
             expect(note.hasClass('help-hidden')).toBe(true);
             document.querySelector(selector).click();
             expect(note.hasClass('help-hidden')).toBe(false);
+            document.querySelector(selector).click();
+            expect(note.hasClass('help-hidden')).toBe(true);
             document.querySelector(selector).click();
             expect(note.hasClass('help-hidden')).toBe(false);
             document.body.click();
