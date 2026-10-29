@@ -11,6 +11,14 @@ import * as path from 'path';
  */
 
 test.describe('Save Detection - ELPX Upload', () => {
+    // Issue #2615: autosave now runs in every online session. These tests exercise
+    // the manual dirty/save flows, so push the idle autosave out of the way.
+    test.beforeEach(async ({ authenticatedPage }) => {
+        await authenticatedPage.addInitScript(() => {
+            (window as any).__EXE_COLLAB_AUTOSAVE_IDLE_MS__ = 10 * 60 * 1000;
+        });
+    });
+
     const FIXTURE_PATH = path.resolve(__dirname, '../../../fixtures/really-simple-test-project.elpx');
 
     test('opening ELPX should start with saved status', async ({ authenticatedPage, createProject }) => {

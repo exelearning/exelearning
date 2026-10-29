@@ -8,7 +8,7 @@ eXeLearning implements a **stateless relay architecture**:
 
 - **No Y.Doc on server**: The server doesn't maintain document state in memory
 - **Client is the source of truth**: Each client holds the authoritative Y.Doc in memory + IndexedDB
-- **Explicit saves only**: Content persists to server only when user clicks save
+- **Explicit save path**: Content reaches the server only through `SaveManager.save()`. In online mode that path runs on a manual Save and automatically after a short idle period (`CollaborativeAutosaveManager`, issues #1592 and #2615); static/offline/Electron keep the file-based Save
 - **Convergence with the stored snapshot**: every online open and every WebSocket reconnection merge the stored snapshot into the local Y.Doc (the relay holds no document state, so this is the only way a tab that was offline while others saved catches up before it saves)
 - **Validated saves**: `GET /yjs-document` returns `X-Document-Version`; the client echoes it as `X-Base-Version` on save. A save built on the current version replaces the snapshot as-is; a stale or header-less save is merged on top of the stored state and answered with `merged: true`, so no save can erase what others stored meanwhile (ADR-2615-01)
 - **Binary Yjs protocol**: Efficient sync using Yjs encoding
@@ -281,6 +281,8 @@ const SERVER_CONFIG = {
 - Yjs uses CRDT, conflicts are auto-resolved
 - Check IndexedDB for local state
 - Use `manager.saveToServer()` to persist
+- Every online open and every WebSocket reconnection merge the stored server snapshot into the local Y.Doc (the relay holds no document state, so this is the only way a tab that was offline while others saved converges before its next save)
+- Online sessions autosave after an idle period and keep retrying (capped backoff, immediate retry on reconnection) until the save succeeds; if the last tab closes with unsaved work the local IndexedDB copy is kept, merged with the server snapshot on the next open and autosaved. The `beforeunload` `sendBeacon` fallback is best-effort only and silently fails for documents above 64 KiB, so never rely on it
 
 ### Asset Loading
 

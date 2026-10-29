@@ -1929,6 +1929,41 @@ describe('NavbarFile', () => {
             global.URL.revokeObjectURL = vi.fn();
         });
 
+        it('persists unsaved edits before exporting (issue #2615)', async () => {
+            const order = [];
+            eXeLearning.app.project._yjsBridge.flushPendingSave = vi.fn(async (reason) => {
+                order.push(`flush:${reason}`);
+                return { saved: true };
+            });
+            window.SharedExporters.quickExport = vi.fn(async () => {
+                order.push('export');
+                return { success: true, data: new Uint8Array([1]), filename: 'export.zip' };
+            });
+
+            const result = await navbarFile.exportViaYjs('HTML5', 'html5');
+
+            expect(result).toBe(true);
+            expect(order).toEqual(['flush:pre-export', 'export']);
+        });
+
+        it('still exports when the pre-export save reports a failure', async () => {
+            eXeLearning.app.project._yjsBridge.flushPendingSave = vi.fn(async () => ({ saved: false, success: false }));
+
+            const result = await navbarFile.exportViaYjs('HTML5', 'html5');
+
+            expect(result).toBe(true);
+            expect(window.SharedExporters.quickExport).toHaveBeenCalledTimes(1);
+        });
+
+        it('exports normally when the bridge has no flushPendingSave (older bridge)', async () => {
+            delete eXeLearning.app.project._yjsBridge.flushPendingSave;
+
+            const result = await navbarFile.exportViaYjs('HTML5', 'html5');
+
+            expect(result).toBe(true);
+            expect(window.SharedExporters.quickExport).toHaveBeenCalledTimes(1);
+        });
+
         it('should return false when Yjs is disabled', async () => {
             eXeLearning.app.project._yjsEnabled = false;
             const result = await navbarFile.exportViaYjs('HTML5', 'html5');

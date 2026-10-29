@@ -5323,6 +5323,45 @@ describe('YjsProjectBridge', () => {
       await bridge.initialize(123, 'test-token');
     });
 
+    it('persists unsaved edits before building the package (issue #2615)', async () => {
+      const order = [];
+      bridge.documentManager._updateVersionMetadata = mock(async () => {
+        order.push('version');
+      });
+      spyOn(bridge, 'ensureScreenshotForExport').mockImplementation(async () => {
+        order.push('screenshot');
+      });
+      spyOn(bridge, 'flushPendingSave').mockImplementation(async (reason) => {
+        order.push(`flush:${reason}`);
+        return { saved: true };
+      });
+      global.window.SharedExporters = {
+        createExporter: mock(() => ({
+          export: mock(async () => {
+            order.push('export');
+            return { success: true, data: new ArrayBuffer(8), filename: 'test.elpx' };
+          }),
+        })),
+      };
+      global.URL.createObjectURL = mock(() => 'blob:test');
+      global.URL.revokeObjectURL = mock(() => {});
+      global.document.createElement = mock(() => ({ href: '', download: '', click: mock(() => {}) }));
+      global.document.body = { appendChild: mock(() => {}), removeChild: mock(() => {}) };
+
+      await bridge.exportToElpx();
+
+      // The metadata written for the export is saved with it.
+      expect(order).toEqual(['version', 'screenshot', 'flush:pre-export', 'export']);
+    });
+
+    it('does not pre-save when the desktop compatibility check is cancelled', async () => {
+      const flushSpy = spyOn(bridge, 'flushPendingSave').mockImplementation(async () => ({ saved: true }));
+      spyOn(bridge, '_checkDesktopExportCompatibility').mockImplementation(async () => 'cancelled');
+
+      expect(await bridge.exportToElpx()).toEqual({ saved: false });
+      expect(flushSpy).not.toHaveBeenCalled();
+    });
+
     it('throws when SharedExporters unavailable', async () => {
       global.window.SharedExporters = null;
 
@@ -8099,6 +8138,35 @@ describe('YjsProjectBridge', () => {
       expect(mockMetadata.set).toHaveBeenCalledWith('screenshot', 'data:image/png;base64,fakeScreenshot');
     });
 
+    function setUpScreenshotCapture(isDirty) {
+      const encoder = new TextEncoder();
+      bridge.documentManager = {
+        isDirty,
+        getMetadata: mock(() => mockMetadata),
+        markClean: mock(() => true),
+      };
+      window.SharedExporters = {
+        generatePreviewForSW: mock(async () => ({
+          success: true,
+          files: { 'index.html': encoder.encode('<html><body>content</body></html>').buffer },
+        })),
+      };
+      bridge._captureHtmlAsScreenshot = mock(async () => 'data:image/png;base64,fakeScreenshot');
+    }
+
+    it('re-marks an already clean document as clean after writing the screenshot', async () => {
+      setUpScreenshotCapture(false);
+      await bridge.generateScreenshotFromFirstPage();
+      expect(bridge.documentManager.markClean).toHaveBeenCalledTimes(1);
+    });
+
+    it('keeps a document dirty when it was edited during the save (#2615)', async () => {
+      setUpScreenshotCapture(true);
+      await bridge.generateScreenshotFromFirstPage();
+      expect(mockMetadata.set).toHaveBeenCalledWith('screenshot', 'data:image/png;base64,fakeScreenshot');
+      expect(bridge.documentManager.markClean).not.toHaveBeenCalled();
+    });
+
     it('inlines CSS link tags as style tags in the HTML passed to capture', async () => {
       const encoder = new TextEncoder();
       let capturedHtml = '';
@@ -8443,6 +8511,19 @@ describe('YjsProjectBridge', () => {
       expect(bridge.collaborativeAutosave.options.idleDelayMs).toBeUndefined();
     });
 
+    it('passes the retry base override from window.__EXE_COLLAB_AUTOSAVE_RETRY_MS__ (issue #2615)', () => {
+      global.window.__EXE_COLLAB_AUTOSAVE_RETRY_MS__ = 700;
+      bridge.enableAutoSync();
+      expect(bridge.collaborativeAutosave.options.retryBaseMs).toBe(700);
+      delete global.window.__EXE_COLLAB_AUTOSAVE_RETRY_MS__;
+    });
+
+    it('uses the default retry base when no override is set', () => {
+      delete global.window.__EXE_COLLAB_AUTOSAVE_RETRY_MS__;
+      bridge.enableAutoSync();
+      expect(bridge.collaborativeAutosave.options.retryBaseMs).toBeUndefined();
+    });
+
     it('destroys and clears the autosave manager on disconnect', async () => {
       bridge.enableAutoSync();
       const manager = bridge.collaborativeAutosave;
@@ -8474,6 +8555,100 @@ describe('YjsProjectBridge', () => {
 
       expect(instances[0].destroy).toHaveBeenCalled();
       expect(bridge._collabStatusView).toBeNull();
+    });
+  });
+
+  describe('flushPendingSave (issue #2615)', () => {
+    beforeEach(async () => {
+      await bridge.initialize(123, 'test-token');
+      bridge.app = { capabilities: { storage: { remote: true } } };
+      bridge.documentManager.hasUnsavedChanges = mock(() => true);
+      bridge.saveManager = {
+        isSaving: false,
+        save: mock(async () => ({ success: true, bytes: 42 })),
+      };
+    });
+
+    it('saves silently with the given reason when the document is dirty', async () => {
+      const result = await bridge.flushPendingSave('pre-export');
+      expect(bridge.saveManager.save).toHaveBeenCalledWith({
+        showProgress: false,
+        silent: true,
+        reason: 'pre-export',
+      });
+      expect(result).toEqual({ success: true, bytes: 42, saved: true });
+    });
+
+    it('defaults the reason to pre-export', async () => {
+      await bridge.flushPendingSave();
+      expect(bridge.saveManager.save.mock.calls[0][0].reason).toBe('pre-export');
+    });
+
+    it('does nothing when the document is clean', async () => {
+      bridge.documentManager.hasUnsavedChanges = mock(() => false);
+      expect(await bridge.flushPendingSave()).toEqual({ saved: false });
+      expect(bridge.saveManager.save).not.toHaveBeenCalled();
+    });
+
+    it('falls back to documentManager.isDirty when hasUnsavedChanges is unavailable', async () => {
+      delete bridge.documentManager.hasUnsavedChanges;
+      bridge.documentManager.isDirty = true;
+      await bridge.flushPendingSave();
+      expect(bridge.saveManager.save).toHaveBeenCalledTimes(1);
+    });
+
+    it('does nothing without remote storage (static/Electron keep the file-based flow)', async () => {
+      bridge.app = { capabilities: { storage: { remote: false } } };
+      expect(await bridge.flushPendingSave()).toEqual({ saved: false });
+      expect(bridge.saveManager.save).not.toHaveBeenCalled();
+    });
+
+    it('does nothing when capabilities are missing', async () => {
+      bridge.app = {};
+      expect(await bridge.flushPendingSave()).toEqual({ saved: false });
+    });
+
+    it('does nothing when the save manager is missing', async () => {
+      bridge.saveManager = null;
+      expect(await bridge.flushPendingSave()).toEqual({ saved: false });
+    });
+
+    it('waits for a save already in flight, then saves what it did not cover', async () => {
+      bridge.saveManager.isSaving = true;
+      setTimeout(() => {
+        bridge.saveManager.isSaving = false;
+      }, 5);
+      const result = await bridge.flushPendingSave('pre-export', { pollMs: 1 });
+      expect(bridge.saveManager.save).toHaveBeenCalledTimes(1);
+      expect(result.saved).toBe(true);
+    });
+
+    it('does not save again when the in-flight save left the document clean', async () => {
+      bridge.saveManager.isSaving = true;
+      setTimeout(() => {
+        bridge.saveManager.isSaving = false;
+        bridge.documentManager.hasUnsavedChanges = mock(() => false);
+      }, 5);
+      expect(await bridge.flushPendingSave('pre-export', { pollMs: 1 })).toEqual({ saved: false });
+      expect(bridge.saveManager.save).not.toHaveBeenCalled();
+    });
+
+    it('gives up waiting and never overlaps a save that does not finish', async () => {
+      bridge.saveManager.isSaving = true;
+      expect(await bridge.flushPendingSave('pre-export', { waitMs: 5, pollMs: 1 })).toEqual({ saved: false });
+      expect(bridge.saveManager.save).not.toHaveBeenCalled();
+    });
+
+    it('reports saved=false when the save resolves unsuccessfully', async () => {
+      bridge.saveManager.save = mock(async () => ({ success: false, error: 'quota' }));
+      expect(await bridge.flushPendingSave()).toEqual({ success: false, error: 'quota', saved: false });
+    });
+
+    it('never throws: a rejected save is reported, not propagated', async () => {
+      bridge.saveManager.save = mock(async () => {
+        throw new Error('network down');
+      });
+      expect(await bridge.flushPendingSave()).toEqual({ saved: false, success: false, error: 'network down' });
     });
   });
 

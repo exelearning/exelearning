@@ -72,6 +72,9 @@ class YjsDocumentManager {
 
     // Stateless relay architecture: track dirty state for explicit saves
     this.isDirty = false;
+    // Issue #2615: bumped on every tracked edit, so a save can tell whether the
+    // document changed after it took its snapshot (see markClean()).
+    this._changeSeq = 0;
     // Issue #2615: the stored document version this client last loaded or
     // saved (X-Document-Version / save response). Echoed back as X-Base-Version
     // so the server can detect a stale save and merge instead of overwriting.
@@ -174,7 +177,17 @@ class YjsDocumentManager {
     if (needsCleanup) {
       Logger.log(`[YjsDocumentManager] Found pending cleanup flag for project ${this.projectId}, hasTabSession=${hasTabSession}`);
 
-      if (!hasTabSession) {
+      const hasUnsavedLocalWork = (() => {
+        try { return localStorage.getItem(this._dirtyStateKey) === 'true'; } catch (_) { return false; }
+      })();
+      if (!hasTabSession && hasUnsavedLocalWork && !this.config.offline) {
+        // Issue #2615: the last tab closed with edits the server never received
+        // (autosave still pending or failed). Wiping IndexedDB here would be the
+        // one remaining way to lose them, so keep the local copy and the dirty
+        // flag; the server snapshot is merged in below like on every online
+        // open, and the restored dirty state is autosaved once connected.
+        Logger.log(`[YjsDocumentManager] Keeping local copy with unsaved work for project ${this.projectId} (skipping deferred cleanup)`);
+      } else if (!hasTabSession) {
         // New tab session after the previous last-tab close — perform full cleanup now.
         Logger.log(`[YjsDocumentManager] Performing deferred cleanup (deleting IndexedDB and dirty state)...`);
         await new Promise((resolve) => {
@@ -343,9 +356,9 @@ class YjsDocumentManager {
     // Merge the server snapshot in online mode, whether or not IndexedDB had a
     // local copy (issue #2615). The WebSocket is a pure relay with no document
     // state, so a local copy that missed saves made elsewhere (laptop asleep,
-    // restored tab) would otherwise be shown as current and the next save would
-    // overwrite the server with it. Yjs merges are idempotent, so this only adds
-    // what the local copy lacks.
+    // restored tab, kept unsaved work) would otherwise be shown as current and
+    // the next save would overwrite the server with it. Yjs merges are
+    // idempotent, so this only adds what the local copy lacks.
     if (!this.config.offline) {
       await this.loadFromServer();
     }
@@ -400,7 +413,7 @@ class YjsDocumentManager {
       // 'initial' - initial sync from server
       // 'system' - blank project structure, programmatic changes
       if (origin === 'initial' || origin === 'system') return;
-      this.markDirty();
+      this.markDirty(origin);
     });
 
     // Setup beforeunload handler for auto-save on close
@@ -857,8 +870,8 @@ class YjsDocumentManager {
         if (this._wasDisconnected) {
           // Issue #2615: while this tab was offline other clients may have
           // saved. The relay has no document state to hand us, so merge the
-          // server snapshot before this tab's next save can run; the
-          // 'connectionChange' event is emitted after the merge.
+          // server snapshot before this tab's next (auto)save can run; the
+          // 'connectionChange' event that re-arms autosave is emitted after.
           this._wasDisconnected = false;
           const announce = () => this.emit('connectionChange', { connected: true });
           // loadFromServer() swallows its own errors; the rejection branch only
@@ -1252,19 +1265,25 @@ class YjsDocumentManager {
    * @returns {Promise<void>}
    */
   async _updateVersionMetadata() {
+    // Writing an unchanged value would still be a Yjs update and leave the
+    // document with unsaved changes after every export (#2615).
+    const setVersion = (version) => {
+      const metadata = this.getMetadata();
+      if (metadata.get('exelearning_version') !== version) {
+        metadata.set('exelearning_version', version);
+      }
+    };
     try {
       const runtimeVersion = window.eXeLearning?.version;
       if (runtimeVersion) {
-        const metadata = this.getMetadata();
-        metadata.set('exelearning_version', runtimeVersion);
+        setVersion(runtimeVersion);
         return;
       }
 
       const response = await fetch(`${this.config.apiUrl}/version`);
       if (response.ok) {
         const { version } = await response.json();
-        const metadata = this.getMetadata();
-        metadata.set('exelearning_version', version);
+        setVersion(version);
       }
     } catch (error) {
       console.warn('[YjsDocumentManager] Could not fetch app version:', error);
@@ -1448,13 +1467,16 @@ class YjsDocumentManager {
    * - _initialized is true (initial load complete)
    * - _suppressDirtyTracking is false
    * This prevents false positives during initial load and import operations.
+   * @param {*} [origin] - Origin of the Yjs update that triggered the call.
    */
-  markDirty() {
+  markDirty(origin) {
     // Don't mark dirty during initial load or when suppressed
     if (!this._initialized || this._suppressDirtyTracking) {
       return;
     }
 
+    // The save's own bookkeeping (uploaded flags) is not a new edit.
+    if (origin !== 'asset-upload') this._changeSeq += 1;
     if (!this.isDirty) {
       this.isDirty = true;
       this._persistDirtyState(true);
@@ -1466,12 +1488,33 @@ class YjsDocumentManager {
   /**
    * Mark document as clean (no unsaved changes).
    * Also persists the clean state to localStorage.
+   * @param {number} [savedChangeSeq] - getChangeSeq() taken when the saved
+   *   snapshot was encoded. Edits made after it were not uploaded, so the
+   *   document stays dirty and the 'dirty' status is re-emitted.
+   * @returns {boolean} Whether the document is now clean.
    */
-  markClean() {
+  markClean(savedChangeSeq) {
+    if (typeof savedChangeSeq === 'number' && savedChangeSeq !== this._changeSeq) {
+      this.lastSavedAt = new Date();
+      this.isDirty = true;
+      this._persistDirtyState(true);
+      this.emit('saveStatus', { status: 'dirty', isDirty: true });
+      return false;
+    }
     this.isDirty = false;
     this.lastSavedAt = new Date();
     this._persistDirtyState(false);
     this.emit('saveStatus', { status: 'saved', isDirty: false, savedAt: this.lastSavedAt });
+    return true;
+  }
+
+  /**
+   * Counter of tracked edits (issue #2615). Read it before encoding a snapshot
+   * and pass it to markClean() so edits made during the save are not lost.
+   * @returns {number}
+   */
+  getChangeSeq() {
+    return this._changeSeq;
   }
 
   /**

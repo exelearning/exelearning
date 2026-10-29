@@ -10,9 +10,8 @@ declare global {
 
 /**
  * Wait until this client's Yjs awareness reports at least one other (remote)
- * collaborator. The collaborative autosave only activates once a collaborator
- * has been present, so this makes the autosave deterministic instead of racing
- * awareness propagation.
+ * collaborator, so the test exercises a genuine collaborative session (since
+ * issue #2615 autosave no longer depends on it, but the scenario does).
  */
 async function waitForCollaboratorPresent(page: import('@playwright/test').Page): Promise<void> {
     await page.waitForFunction(
@@ -88,11 +87,11 @@ test.describe('Collaborative autosave', () => {
         // The compact Save-button badge settles on the "clean" state once the
         // idle autosave has persisted the change to the server, and the
         // visually-hidden live region announces it to screen readers.
-        const badge = authenticatedPage.locator('#head-top-save-button .collab-autosave-badge');
-        await expect(badge).toBeVisible({ timeout: 15000 });
-        await expect(badge).toHaveAttribute('data-collab-phase', 'clean', { timeout: 20000 });
+        // In cloud mode the toolbar control is the status chip (issue #2615).
+        const badge = authenticatedPage.locator('#head-top-save-button');
+        await expect(badge).toHaveAttribute('data-cloud-phase', 'clean', { timeout: 20000 });
         const liveRegion = authenticatedPage.locator('#exe-collab-save-status .content');
-        await expect(liveRegion).toHaveText('All collaborative changes are saved.');
+        await expect(liveRegion).toHaveText('All changes are saved.');
 
         // Both editors leave WITHOUT clicking Save.
         await secondAuthenticatedPage.close();
@@ -130,16 +129,15 @@ test.describe('Collaborative autosave', () => {
 
         // The compact badge shows the "pending" state and the visually-hidden
         // live region carries the full explanation for screen readers.
-        const badge = authenticatedPage.locator('#head-top-save-button .collab-autosave-badge');
-        await expect(badge).toBeVisible({ timeout: 15000 });
-        await expect(badge).toHaveAttribute('data-collab-phase', 'pending', { timeout: 15000 });
+        const badge = authenticatedPage.locator('#head-top-save-button');
+        await expect(badge).toHaveAttribute('data-cloud-phase', 'pending', { timeout: 15000 });
         const liveRegion = authenticatedPage.locator('#exe-collab-save-status .content');
-        await expect(liveRegion).toHaveText('Collaborative changes are shared live and will be saved automatically.');
+        await expect(liveRegion).toHaveText('Changes will be saved automatically.');
 
         // Responsive: the compact indicator must stay reachable and not vanish
         // at a narrow (mobile) width, where the Save button collapses to an icon.
         await authenticatedPage.setViewportSize({ width: 375, height: 720 });
         await expect(authenticatedPage.locator('#head-top-save-button')).toBeVisible();
-        await expect(badge).toBeVisible();
+        await expect(authenticatedPage.locator('#head-top-save-button .cloud-save-icon')).toBeVisible();
     });
 });

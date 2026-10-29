@@ -2340,6 +2340,13 @@ export default class NavbarFile {
         let toast = eXeLearning.app.toasts.createToast(toastData);
 
         try {
+            // Issue #2615: exports are built from the browser Y.Doc; persist any
+            // unsaved edits first so the published package never runs ahead of
+            // the server snapshot (no-op without remote storage).
+            if (typeof yjsBridge.flushPendingSave === 'function') {
+                await yjsBridge.flushPendingSave('pre-export');
+            }
+
             // Get the document manager and asset managers from YjsBridge
             const documentManager = yjsBridge.documentManager;
             // Note: assetManager (new) contains actual imported assets in 'exelearning-assets-v2' database
