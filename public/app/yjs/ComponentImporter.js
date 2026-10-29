@@ -145,6 +145,7 @@ class ComponentImporter {
       // Insert block into target page
       const ydoc = this.manager.getDoc();
       const navigation = this.manager.getNavigation();
+      let inserted = false;
 
       ydoc.transact(() => {
         // Find page in navigation
@@ -168,11 +169,18 @@ class ComponentImporter {
             const blockYMap = this.createBlockYMap(blockData);
             blocksArray.push([blockYMap]);
 
+            inserted = true;
             Logger.log(`[ComponentImporter] Block inserted at order ${newOrder}`);
             break;
           }
         }
       }, ydoc.clientID);
+
+      // The page may have been removed by a collaborator between the validation
+      // above and this transaction: report it instead of a false success.
+      if (!inserted) {
+        return { success: false, error: _('Target page not found') };
+      }
 
       Logger.log(`[ComponentImporter] Import complete: ${newBlockId}`);
       return { success: true, blockId: newBlockId };
@@ -711,57 +719,6 @@ class ComponentImporter {
     }
 
     return Object.keys(structureProperties).length > 0 ? structureProperties : undefined;
-  }
-
-  /**
-   * Convert asset:// URLs with original UUIDs to new asset UUIDs
-   * Supports both formats:
-   * - New format: asset://uuid.ext
-   * - Legacy format: asset://uuid/path/filename
-   * @param {string} content - HTML content with asset:// URLs
-   * @returns {string} Content with converted URLs (always new format)
-   */
-  convertAssetPaths(content) {
-    if (!content || typeof content !== 'string') return content;
-
-    // Match both formats:
-    // - New format: asset://uuid.ext
-    // - Legacy format: asset://uuid/path/filename
-    // UUID pattern matches both standard UUIDs and test IDs like "old-uuid-123"
-    const assetPattern = /asset:\/\/([a-zA-Z0-9_-]+)(\.[a-z0-9]+|\/[^"'\s)]+)?/gi;
-    let match;
-    const replacements = new Map();
-
-    while ((match = assetPattern.exec(content)) !== null) {
-      const oldUuid = match[1];
-      const suffix = match[2] || '';
-
-      // Find the new asset ID for this old UUID
-      // assetMap is: originalPath -> newAssetId
-      // originalPath is like "content/resources/uuid/filename" or "uuid/filename"
-      for (const [originalPath, newAssetId] of this.assetMap.entries()) {
-        // Check if this originalPath contains our old UUID
-        if (originalPath.includes(oldUuid)) {
-          // Extract filename from originalPath to get extension
-          const parts = originalPath.split('/');
-          const filename = parts[parts.length - 1];
-          // Generate new format URL: asset://uuid.ext
-          const ext = filename?.includes('.') ? filename.split('.').pop().toLowerCase() : '';
-          const newUrl = ext ? `asset://${newAssetId}.${ext}` : `asset://${newAssetId}`;
-          // Map old URL (any format) to new URL
-          replacements.set(`asset://${oldUuid}${suffix || ''}`, newUrl);
-          break;
-        }
-      }
-    }
-
-    // Apply all replacements
-    let result = content;
-    for (const [oldUrl, newUrl] of replacements) {
-      result = result.split(oldUrl).join(newUrl);
-    }
-
-    return result;
   }
 
   /**

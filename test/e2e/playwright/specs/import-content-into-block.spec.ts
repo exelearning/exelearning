@@ -151,6 +151,16 @@ test.describe('Import iDevice into an existing block (.idevice)', () => {
 
         // 2. A .idevice-named buffer that is not a ZIP at all: the importer
         // must reject it (unzipSync failure) instead of importing anything.
+        //
+        // The modal shows a FIXED message on purpose (blockNode.js never exposes
+        // error.message: Modal.setBody uses innerHTML, review #2474 point 1), so the
+        // specific cause ("Invalid ZIP file") is only visible in the console. Start
+        // listening BEFORE triggering the import so the log is not missed.
+        const consoleErrors: string[] = [];
+        page.on('console', msg => {
+            if (msg.type() === 'error') consoleErrors.push(msg.text());
+        });
+
         await importIdeviceIntoBlock(page, blockId, {
             name: 'invalid.idevice',
             mimeType: 'application/zip',
@@ -158,11 +168,18 @@ test.describe('Import iDevice into an existing block (.idevice)', () => {
         });
 
         // 3. The failure surfaces as the "Import error" alert (not a partial
-        // import, not a crash).
+        // import, not a crash) with the generic, user-facing body.
         const alertModal = page.locator('#modalAlert');
         await expect(alertModal).toBeVisible({ timeout: 15000 });
         await expect(alertModal).toContainText('Import error');
-        await expect(alertModal).toContainText('Invalid ZIP file');
+        await expect(alertModal).toContainText('An error occurred while importing the component.');
+
+        // The real cause is logged, not shown: it must be the invalid-ZIP rejection
+        // (and not, e.g., "ComponentImporter not loaded" or "No page selected",
+        // which would produce the very same modal).
+        await expect
+            .poll(() => consoleErrors.join('\n'), { timeout: 5000 })
+            .toContain('Invalid ZIP file');
 
         // 4. Dismiss the alert.
         await alertModal.locator('.modal-footer button.btn-secondary').click();
