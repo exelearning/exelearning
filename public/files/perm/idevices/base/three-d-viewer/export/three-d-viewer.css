@@ -119,3 +119,11 @@
 .three-d-viewer-nav-up { grid-column: 2; grid-row: 1; }
 .three-d-viewer-nav-down { grid-column: 2; grid-row: 2; }
 .three-d-viewer-nav-right { grid-column: 3; grid-row: 2; }
+
+/* On paper the viewer is a picture of the model: one sheet holds all of it. */
+@media print {
+    .three-d-viewer-wrapper {
+        break-inside: avoid;
+        page-break-inside: avoid;
+    }
+}
