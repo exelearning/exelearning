@@ -26,6 +26,8 @@ describe('ShareProjectButton', () => {
 
     mockButton = {
       addEventListener: vi.fn(),
+      setAttribute: vi.fn(),
+      hasAttribute: vi.fn(() => false),
       querySelector: vi.fn((selector) => {
         if (selector === '.share-visibility-indicator .medium-icon') return mockVisibilityIcon;
         if (selector === '.button-share-text') return mockShareText;
@@ -200,6 +202,27 @@ describe('ShareProjectButton', () => {
       shareButton.updateVisibilityPill('private');
       expect(window._).toHaveBeenCalledWith('Share');
       expect(mockShareText.textContent).toBe('Share');
+    });
+
+    it('should name the button Shared, for screen readers and the tooltip, when public', () => {
+      shareButton.updateVisibilityPill('public');
+      expect(mockButton.setAttribute).toHaveBeenCalledWith('aria-label', 'Shared');
+      expect(mockButton.setAttribute).toHaveBeenCalledWith('title', 'Shared');
+    });
+
+    it('should name the button Share again when back to private', () => {
+      shareButton.updateVisibilityPill('public');
+      mockButton.setAttribute.mockClear();
+      shareButton.updateVisibilityPill('private');
+      expect(mockButton.setAttribute).toHaveBeenCalledWith('aria-label', 'Share');
+      expect(mockButton.setAttribute).toHaveBeenCalledWith('title', 'Share');
+    });
+
+    it('should update the Bootstrap tooltip text, without a native title, once the tooltip exists', () => {
+      mockButton.hasAttribute.mockImplementation((name) => name === 'data-bs-original-title');
+      shareButton.updateVisibilityPill('public');
+      expect(mockButton.setAttribute).toHaveBeenCalledWith('data-bs-original-title', 'Shared');
+      expect(mockButton.setAttribute).not.toHaveBeenCalledWith('title', expect.anything());
     });
 
     it('should return early if visibilityIcon is null', () => {

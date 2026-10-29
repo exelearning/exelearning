@@ -1,5 +1,5 @@
 import { test, expect } from '../../fixtures/auth.fixture';
-import { waitForAppReady, reloadPage, gotoWorkarea } from '../../helpers/workarea-helpers';
+import { waitForAppReady, reloadPage, gotoWorkarea, editIdevice } from '../../helpers/workarea-helpers';
 import { WorkareaPage } from '../../pages/workarea.page';
 import type { Page } from '@playwright/test';
 
@@ -290,6 +290,51 @@ test.describe('UDL Content iDevice', () => {
             // Verify UDL type class is applied
             const udlContainer = page.locator('.exe-udlContent').first();
             await expect(udlContainer).toHaveClass(/exe-udlContent-engagement/, { timeout: 10000 });
+        });
+
+        test('should keep code inserted as text and the button text when edited again', async ({
+            authenticatedPage,
+            createProject,
+        }) => {
+            const page = authenticatedPage;
+
+            const projectUuid = await createProject(page, 'UDL Content Re-edit Test');
+            await gotoWorkarea(page, projectUuid);
+            await waitForAppReady(page);
+
+            await addUdlContentIdeviceFromPanel(page);
+            await enterEditMode(page);
+
+            // What "Insert HTML as text" leaves in the editor (#2646)
+            const escapedCode = '&lt;div&gt;Hola&lt;/div&gt;';
+            const buttonText = 'Open "the code"';
+            await setButtonText(page, buttonText);
+            await typeInTinyMCE(page, `<pre><code>${escapedCode}</code></pre>`);
+            await saveIdevice(page);
+
+            const udlIdevice = page.locator('#node-content article .idevice_node.udl-content').first();
+            const code = udlIdevice.locator('.exe-udlContent-content-main pre code');
+            await expect(code).toHaveText('<div>Hola</div>');
+
+            await editIdevice(page, (await udlIdevice.getAttribute('id'))!);
+            await enterEditMode(page);
+
+            await expect
+                .poll(() =>
+                    page.evaluate(() => {
+                        const editor = (window as any).tinymce?.get('udlContentFormTxt-0');
+                        return editor?.initialized ? editor.getContent() : '';
+                    }),
+                )
+                .toBe(`<pre><code>${escapedCode}</code></pre>`);
+            await expect(page.locator('.udlContentFormBlockButtonTxt input[type="text"]').first()).toHaveValue(
+                buttonText,
+            );
+
+            // Saving it again keeps the code as code, not as rendered markup
+            await saveIdevice(page);
+            await expect(code).toHaveText('<div>Hola</div>');
+            await expect(udlIdevice.locator('.exe-udlContent-content-main div')).toHaveCount(0);
         });
     });
 
