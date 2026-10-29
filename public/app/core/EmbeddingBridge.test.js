@@ -1,5 +1,32 @@
 import EmbeddingBridge from './EmbeddingBridge.js';
 
+/**
+ * Dirty tracking that matches YjsDocumentManager: markDirty emits only on the
+ * clean → dirty transition, and markClean emits saved.
+ * @param {Object} documentManager
+ * @returns {Object}
+ */
+function installSaveStatus(documentManager) {
+    const listeners = new Set();
+    documentManager.isDirty = false;
+    documentManager.on = vi.fn((event, callback) => {
+        if (event === 'saveStatus') listeners.add(callback);
+    });
+    documentManager.off = vi.fn((event, callback) => {
+        if (event === 'saveStatus') listeners.delete(callback);
+    });
+    documentManager.markDirty = () => {
+        if (documentManager.isDirty) return;
+        documentManager.isDirty = true;
+        for (const callback of listeners) callback({ status: 'dirty', isDirty: true });
+    };
+    documentManager.markClean = () => {
+        documentManager.isDirty = false;
+        for (const callback of listeners) callback({ status: 'saved', isDirty: false });
+    };
+    return documentManager;
+}
+
 describe('EmbeddingBridge', () => {
     let bridge;
     let mockApp;
@@ -571,9 +598,46 @@ describe('EmbeddingBridge', () => {
             );
         });
 
+        it('should fall back to the shared ELPX exporter when the project has no export method', async () => {
+            mockApp.project.exportToElpxBlob = undefined;
+            mockApp.project._yjsBridge.exporter = undefined;
+            window.SharedExporters = {
+                quickExport: vi.fn().mockResolvedValue({
+                    success: true,
+                    data: new Uint8Array([1, 2, 3]),
+                    filename: 'shared.elpx',
+                }),
+            };
+
+            await messageHandler({
+                origin: 'https://parent.com',
+                data: { type: 'REQUEST_SAVE', requestId: 'req-save' },
+            });
+
+            expect(window.SharedExporters.quickExport).toHaveBeenCalledWith(
+                'elpx',
+                mockApp.project._yjsBridge.documentManager,
+                null,
+                undefined,
+                {},
+                undefined,
+            );
+            expect(window.parent.postMessage).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    type: 'SAVE_FILE',
+                    requestId: 'req-save',
+                    filename: 'shared.elpx',
+                    size: 3,
+                }),
+                'https://parent.com'
+            );
+            delete window.SharedExporters;
+        });
+
         it('should throw error if no export method available', async () => {
             mockApp.project.exportToElpxBlob = undefined;
             mockApp.project._yjsBridge.exporter = undefined;
+            mockApp.project._yjsBridge.documentManager.markClean = vi.fn();
 
             await messageHandler({
                 origin: 'https://parent.com',
@@ -590,6 +654,37 @@ describe('EmbeddingBridge', () => {
                 }),
                 'https://parent.com'
             );
+            expect(mockApp.project._yjsBridge.documentManager.markClean).not.toHaveBeenCalled();
+        });
+
+        it('emits PROJECT_SAVED after SAVE_FILE and PROJECT_DIRTY again on the next edit', async () => {
+            const documentManager = installSaveStatus(mockApp.project._yjsBridge.documentManager);
+            window.eXeLearning.documentReady = Promise.resolve();
+
+            bridge.init();
+            bridge.parentOrigin = 'https://parent.com';
+            await new Promise(resolve => setTimeout(resolve, 0));
+            window.parent.postMessage.mockClear();
+
+            documentManager.markDirty();
+            await messageHandler({
+                origin: 'https://parent.com',
+                data: { type: 'REQUEST_SAVE', requestId: 'req-save' },
+            });
+            documentManager.markDirty();
+
+            const events = window.parent.postMessage.mock.calls.map(([message]) => message);
+            expect(events).toEqual([
+                { type: 'EXELEARNING_EVENT', event: 'PROJECT_DIRTY', data: { isDirty: true } },
+                expect.objectContaining({
+                    type: 'SAVE_FILE',
+                    requestId: 'req-save',
+                    filename: 'test-project.elpx',
+                }),
+                { type: 'EXELEARNING_EVENT', event: 'PROJECT_SAVED', data: { isDirty: false } },
+                { type: 'EXELEARNING_EVENT', event: 'PROJECT_DIRTY', data: { isDirty: true } },
+            ]);
+            expect(documentManager.isDirty).toBe(true);
         });
     });
 
@@ -1152,6 +1247,49 @@ describe('EmbeddingBridge', () => {
                 },
                 'https://parent.com'
             );
+        });
+    });
+
+    describe('dirty state notifications', () => {
+        it('relays saveStatus transitions as PROJECT_DIRTY / PROJECT_SAVED events', async () => {
+            const listeners = {};
+            mockApp.project._yjsBridge.documentManager.on = vi.fn((event, callback) => {
+                listeners[event] = callback;
+            });
+            window.eXeLearning.documentReady = Promise.resolve();
+
+            bridge.init();
+            bridge.parentOrigin = 'https://parent.com';
+            await new Promise(resolve => setTimeout(resolve, 0));
+
+            listeners.saveStatus({ status: 'dirty', isDirty: true });
+            listeners.saveStatus({ status: 'saving', isDirty: true });
+            listeners.saveStatus({ status: 'saved', isDirty: false });
+
+            const events = window.parent.postMessage.mock.calls
+                .map(([message]) => message)
+                .filter(message => message.type === 'EXELEARNING_EVENT');
+            expect(events).toEqual([
+                { type: 'EXELEARNING_EVENT', event: 'PROJECT_DIRTY', data: { isDirty: true } },
+                { type: 'EXELEARNING_EVENT', event: 'PROJECT_SAVED', data: { isDirty: false } },
+            ]);
+        });
+
+        it('subscribes once per document manager and unsubscribes on switch and destroy', () => {
+            const first = { on: vi.fn(), off: vi.fn() };
+            const second = { on: vi.fn(), off: vi.fn() };
+
+            bridge._watchDirtyState(first);
+            bridge._watchDirtyState(first);
+            expect(first.on).toHaveBeenCalledTimes(1);
+            const firstHandler = first.on.mock.calls[0][1];
+
+            bridge._watchDirtyState(second);
+            expect(first.off).toHaveBeenCalledWith('saveStatus', firstHandler);
+            const secondHandler = second.on.mock.calls[0][1];
+
+            bridge.destroy();
+            expect(second.off).toHaveBeenCalledWith('saveStatus', secondHandler);
         });
     });
 

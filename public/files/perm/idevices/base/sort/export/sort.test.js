@@ -987,6 +987,26 @@ describe('sort iDevice export', () => {
             expect($('#ordenaStartGame-0').css('display')).toBe('none');
         });
 
+        it('keeps a running board and files a new one under its own index', () => {
+            const mOption = setupLoad();
+            // The first board is already running (its DataGame was consumed);
+            // only the second one is rendered again, e.g. after an undo.
+            document.body.innerHTML = `
+                <div class="ordena-IDevice"><div class="ordena-running"></div></div>
+                <div class="ordena-IDevice"><div class="ordena-DataGame">encoded</div></div>`;
+            $eXeOrdena.activities = $('.ordena-IDevice');
+            const running = { msgs: {}, gameStarted: true };
+            $eXeOrdena.options = [running];
+            // The real interface reads its own options by index.
+            $eXeOrdena.createInterfaceOrdena.mockImplementation(
+                (i) => `<div id="ordenaMainContainer-${i}">${$eXeOrdena.options[i].idevice}</div>`
+            );
+
+            expect(() => $eXeOrdena.loadGame()).not.toThrow();
+            expect($eXeOrdena.options[0]).toBe(running);
+            expect($eXeOrdena.options[1]).toBe(mOption);
+        });
+
         it('leaves a timed board for the learner to start', () => {
             setupLoad({ type: 0, time: 2 });
 
@@ -1001,6 +1021,55 @@ describe('sort iDevice export', () => {
             $eXeOrdena.loadGame();
 
             expect($eXeOrdena.startGame).not.toHaveBeenCalled();
+        });
+    });
+
+    // Older or hand-edited activities can carry cards without some of their
+    // fields, and an image link without href. loadDataGame used to read
+    // url.length and eText.trim() straight away and threw (#2627).
+    describe('reading the data of a board', () => {
+        function loadData(game, links = '') {
+            document.body.innerHTML = `
+                <div class="ordena-IDevice">
+                    <div class="ordena-DataGame">encoded</div>${links}
+                </div>`;
+            const helpers = $exeDevices.iDevice.gamification.helpers;
+            helpers.decrypt = vi.fn((text) => text);
+            helpers.isJsonString = vi.fn(() => game);
+            const sthis = $('.ordena-IDevice')[0];
+            return $eXeOrdena.loadDataGame($('.ordena-DataGame', sthis), sthis);
+        }
+
+        afterEach(() => {
+            document.body.innerHTML = '';
+            delete $exeDevices.iDevice.gamification.helpers.decrypt;
+            delete $exeDevices.iDevice.gamification.helpers.isJsonString;
+        });
+
+        it('fills in the fields a card does not have', () => {
+            const mOptions = loadData({
+                type: 1,
+                phrasesGame: [{ cards: [{ eText: 'Only text' }, { url: 'images/a.png' }, {}] }],
+            });
+
+            const cards = mOptions.phrasesGame[0].cards;
+            expect(cards.map((card) => card.type)).toEqual([1, 0, 0]);
+            expect(cards[2]).toMatchObject({ url: '', eText: '', audio: '', order: 2 });
+        });
+
+        it('keeps a card whose image or audio link has no href', () => {
+            const mOptions = loadData(
+                { type: 1, phrasesGame: [{ cards: [{ url: '', eText: 'Text', audio: '' }] }] },
+                '<a class="ordena-LinkImages-0">0</a><a class="ordena-LinkAudios-0">0</a>'
+            );
+
+            expect(mOptions.phrasesGame[0].cards[0]).toMatchObject({ url: '', audio: '', type: 1 });
+        });
+
+        it('reads a round without cards as an empty one', () => {
+            const mOptions = loadData({ type: 0, phrasesGame: [{ phrase: 'A sentence' }] });
+
+            expect(mOptions.phrasesGame[0].cards).toEqual([]);
         });
     });
 

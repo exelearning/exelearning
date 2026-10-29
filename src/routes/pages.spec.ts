@@ -18,6 +18,7 @@ import {
     type PagesSettingsDeps,
 } from './pages';
 import { zipSync, strToU8 } from 'fflate';
+import { SignJWT } from 'jose';
 import { configurePublicViewContent, resetPublicViewContent, type ExportResult } from '../services/public-view-content';
 import { PUBLIC_VIEW_SANDBOX } from '../shared/security/publicViewSandbox';
 
@@ -74,6 +75,17 @@ function createMockQueries(): PagesQueriesDeps {
             }
             return undefined;
         },
+        findOwnedProjectByPlatformBinding: async (_db: any, ownerId: number, site: string, platformId: string) => {
+            return [...mockProjects.values()]
+                .filter(
+                    project =>
+                        project.owner_id === ownerId &&
+                        project.platform_site === site &&
+                        project.platform_id === platformId &&
+                        project.status !== 'inactive',
+                )
+                .sort((a, b) => b.updated_at - a.updated_at)[0];
+        },
         checkProjectAccess: async (_db: any, project: any, userId?: number) => {
             // Check owner (support both ownerId and owner_id)
             if (userId && (project.ownerId === userId || project.owner_id === userId)) {
@@ -106,7 +118,9 @@ function createMockQueries(): PagesQueriesDeps {
                 author: null,
                 license: null,
                 last_accessed_at: Date.now(),
-                platform_id: null,
+                platform_id: data.platform_id ?? null,
+                platform_site: data.platform_site ?? null,
+                platform_package_hash: null,
             };
             mockProjects.set(uuid, project);
             return project;
@@ -1314,6 +1328,171 @@ describe('Pages Routes', () => {
 
             // Should render workarea with the found project (not create new)
             expect(res.status).toBe(200);
+        });
+    });
+
+    describe('platform integration (one project per user and activity)', () => {
+        const site = 'https://moodle.example.com/moodle';
+
+        beforeEach(() => {
+            process.env.APP_SECRET = 'platform-secret-for-testing';
+            process.env.PROVIDER_URLS = 'https://moodle.example.com';
+        });
+
+        async function signInAs(userId: number): Promise<string> {
+            const jwt = await import('@elysiajs/jwt');
+            const tempApp = new Elysia().use(jwt.jwt({ name: 'jwt', secret: 'test-secret-for-testing-only' }));
+            if (!mockUsers.has(userId)) {
+                mockUsers.set(userId, { id: userId, email: `user${userId}@test.com`, roles: '["ROLE_USER"]' });
+            }
+            return tempApp.decorator.jwt.sign({
+                sub: userId,
+                email: `user${userId}@test.com`,
+                roles: ['ROLE_USER'],
+                isGuest: false,
+            });
+        }
+
+        // Shape of the token mod_exescorm signs: cmid is a JSON number.
+        function platformToken(payload: Record<string, unknown> = {}): Promise<string> {
+            return new SignJWT({
+                action: '/new_ode',
+                cmid: 1234,
+                pkgtype: 'scorm',
+                returnurl: `${site}/mod/exescorm/view.php?id=1234&forceview=1`,
+                userid: '5678',
+                provider: { name: 'Moodle', version: '5.0' },
+                ...payload,
+            })
+                .setProtectedHeader({ alg: 'HS256' })
+                .setIssuedAt()
+                .setExpirationTime('1h')
+                .sign(new TextEncoder().encode(process.env.APP_SECRET));
+        }
+
+        function bindProject(uuid: string, fields: Record<string, unknown> = {}): void {
+            mockProjects.set(uuid, {
+                id: mockProjects.size + 100,
+                uuid,
+                owner_id: 1,
+                status: 'active',
+                visibility: 'private',
+                platform_id: '1234',
+                platform_site: site,
+                updated_at: 1000,
+                ...fields,
+            });
+        }
+
+        async function openWorkarea(query: string, userId = 1): Promise<Response> {
+            return app.handle(
+                new Request(`http://localhost/workarea?${query}`, {
+                    headers: { Cookie: `auth=${await signInAs(userId)}` },
+                }),
+            );
+        }
+
+        function redirectParams(res: Response): URLSearchParams {
+            return new URL(res.headers.get('location') || '', 'http://localhost').searchParams;
+        }
+
+        it('creates a project bound to the activity on the first edit', async () => {
+            const token = await platformToken();
+
+            const res = await openWorkarea(`newOde=new&jwt_token=${encodeURIComponent(token)}`);
+
+            expect(res.status).toBe(302);
+            const params = redirectParams(res);
+            const created = mockProjects.get(params.get('project') || '');
+            expect(created).toMatchObject({ owner_id: 1, platform_id: '1234', platform_site: site });
+            expect(params.get('jwt_token')).toBe(token);
+            expect(params.get('fetchPlatformElp')).toBe('1');
+        });
+
+        it("reopens the user's project for the activity instead of creating another one", async () => {
+            bindProject('my-activity-project');
+            const token = await platformToken();
+
+            const res = await openWorkarea(`newOde=new&jwt_token=${encodeURIComponent(token)}`);
+
+            expect(res.status).toBe(302);
+            const params = redirectParams(res);
+            expect(params.get('project')).toBe('my-activity-project');
+            expect(params.get('jwt_token')).toBe(token);
+            expect(params.get('fetchPlatformElp')).toBe('1');
+            expect(mockProjects.size).toBe(1);
+        });
+
+        it('opens a project of its own for a teacher whose colleague saved the activity last (/edit_ode, #2498)', async () => {
+            bindProject('colleague-project', { owner_id: 2 });
+            bindProject('colleague-legacy-project', { owner_id: 2, platform_site: null });
+            const token = await platformToken({ action: '/edit_ode' });
+
+            const res = await openWorkarea(`odeId=1234&jwt_token=${encodeURIComponent(token)}`);
+
+            expect(res.status).toBe(302);
+            const created = mockProjects.get(redirectParams(res).get('project') || '');
+            expect(created).toMatchObject({ owner_id: 1, platform_id: '1234', platform_site: site });
+        });
+
+        it('does not reuse a project bound to the same cmid on another platform site', async () => {
+            bindProject('other-site-project', { platform_site: 'https://other.example.com' });
+            const token = await platformToken();
+
+            const res = await openWorkarea(`newOde=new&jwt_token=${encodeURIComponent(token)}`);
+
+            expect(res.status).toBe(302);
+            expect(redirectParams(res).get('project')).not.toBe('other-site-project');
+            expect(mockProjects.size).toBe(2);
+        });
+
+        it('keeps the previous lookup when odeId is not the cmid of the platform token', async () => {
+            bindProject('colleague-project', { owner_id: 2, platform_id: '999', platform_site: null });
+            const token = await platformToken();
+
+            const res = await openWorkarea(`odeId=999&jwt_token=${encodeURIComponent(token)}`);
+
+            expect(res.status).toBe(403);
+            expect(mockProjects.size).toBe(1);
+        });
+
+        it('does not bind a project when the platform token cannot be verified', async () => {
+            const token = await platformToken();
+            process.env.APP_SECRET = 'another-secret';
+
+            const res = await openWorkarea(`newOde=new&jwt_token=${encodeURIComponent(token)}`);
+
+            expect(res.status).toBe(302);
+            const created = mockProjects.get(redirectParams(res).get('project') || '');
+            expect(created).toMatchObject({ owner_id: 1, platform_id: null, platform_site: null });
+        });
+
+        it('falls back to an unbound project when the bound one cannot be created', async () => {
+            const createdUnbound: unknown[] = [];
+            const customApp = new Elysia().use(
+                createPagesRoutes({
+                    ...mockDeps,
+                    queries: {
+                        ...createMockQueries(),
+                        createProject: async (db: any, data: any) => {
+                            if (data.platform_id) throw new Error('insert failed');
+                            createdUnbound.push(data);
+                            return createMockQueries().createProject(db, data);
+                        },
+                    },
+                }),
+            );
+            const token = await platformToken();
+
+            const res = await customApp.handle(
+                new Request(`http://localhost/workarea?newOde=new&jwt_token=${encodeURIComponent(token)}`, {
+                    headers: { Cookie: `auth=${await signInAs(1)}` },
+                }),
+            );
+
+            expect(res.status).toBe(302);
+            expect(redirectParams(res).get('fetchPlatformElp')).toBe('1');
+            expect(createdUnbound).toHaveLength(1);
         });
     });
 

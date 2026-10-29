@@ -48,7 +48,6 @@ const THIRD_PARTY_LIBS = new Set([
   'jquery',
   'jquery-ui',
   'showdown',
-  'simplelightbox',
   'tinymce_5',
   'yjs',
 ]);
