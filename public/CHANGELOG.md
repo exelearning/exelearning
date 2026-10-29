@@ -22,7 +22,7 @@
 ### Changed
 
 - Security: strengthened backend protections; some deployment settings must be updated when upgrading (see `UPGRADE.md`):
-  - Production environments (`NODE_ENV=production` or `APP_ENV=prod`) must set `API_JWT_SECRET` and `APP_SECRET` to real values before the application can start
+  - Production environments (`NODE_ENV=production` or `APP_ENV=prod`) must set `API_JWT_SECRET` (at least 32 bytes) and `APP_SECRET` to private values before the application can start; the Docker Compose examples in `doc/deploy/` no longer provide default values
   - `.env.dist` now defaults to `APP_ENV=dev`; production installs that use it, including the root `docker-compose.yml`, which loads it, must set `APP_ENV=prod`
   - With `APP_ENV=dev`, the server creates the test account `user@exelearning.net` and, unless `NODE_ENV=production` is set, skips the `API_JWT_SECRET` and `APP_SECRET` check and the `Secure` cookie flag; delete that account if a production install has already started this way
   - Moodle integrations (`exescorm` and `exeweb`) must explicitly list permitted callback hosts in `PROVIDER_URLS`; an empty value blocks all callbacks
@@ -79,6 +79,7 @@
 - Security: strengthened backend protections against path traversal, cross-site scripting, server-side request forgery, broken access control and decompression bombs
 - Security: OpenID Connect sign-in now rejects callbacks without a valid token exchange and state, preventing account creation without signing in through the identity provider
 - Security: crafted sign-in links can no longer redirect users to another site after login
+- Security: tokens signed with a published default secret are no longer accepted (GHSA-5p92-q7pw-7247)
 - Security: exports and project deletion can no longer read or delete files outside their own folders
 - Security: content written by collaborators is sanitized in the editor so it cannot run scripts in other users' sessions
 - Security: uploaded HTML, SVG and XML files are served in an isolated sandbox that cannot access the visitor's session
