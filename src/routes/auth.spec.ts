@@ -2027,12 +2027,16 @@ describe('Auth Routes', () => {
                 .execute();
 
             const idTokenPayload = Buffer.from(
-                JSON.stringify({ sub: 'disabled-oidc@example.com', iat: Math.floor(Date.now() / 1000) }),
+                JSON.stringify({
+                    nonce: OIDC_TEST_NONCE,
+                    sub: 'disabled-oidc@example.com',
+                    iat: Math.floor(Date.now() / 1000),
+                }),
             ).toString('base64url');
             globalThis.fetch = async () =>
                 new Response(JSON.stringify({ access_token: 'a', id_token: `header.${idTokenPayload}.signature` }));
 
-            const response = await app.handle(new Request('http://localhost/login/openid/callback?code=disabled'));
+            const response = await app.handle(oidcCallbackRequest('code=disabled'));
 
             process.env.APP_AUTH_METHODS = prevMethods;
             if (prevTokenEndpoint) process.env.OIDC_TOKEN_ENDPOINT = prevTokenEndpoint;
