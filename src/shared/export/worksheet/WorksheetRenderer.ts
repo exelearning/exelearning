@@ -8,8 +8,10 @@
  * the same approach PrintPreviewExporter takes for its own injected styles.
  */
 
+import { parseFragment, serialize, type DefaultTreeAdapterMap } from 'parse5';
 import { PRERENDERED_LATEX_CSS } from '../constants';
 import { renderPrintContextScript } from '../printContext';
+import { markLinksShowingTheirUrl } from '../utils/linkUrls';
 import { accentOutline, readColor } from './cardColors';
 import { renderMatchingLayoutScript } from './matchingLayout';
 import { escapeText } from './sanitizeHtml';
@@ -24,6 +26,8 @@ import type {
     PrintableAnswer,
     PrintableActivity,
     PrintableBoard,
+    PrintableChecklist,
+    PrintableChecklistItem,
     PrintableElementCard,
     PrintableItem,
     PrintableRubric,
@@ -112,6 +116,23 @@ body {
     border-bottom: 1px solid #999;
     font-size: 14pt;
 }
+
+/* Paper cannot follow a link, so the sheet writes the address after each one to the web: always,
+   as there is no document option here to turn it off. Not after one whose text already is the
+   address, nor after a picture. */
+a[href^="http"] {
+    color: inherit;
+}
+a[href^="http"]::after {
+    content: " [" attr(href) "]";
+    font-size: 0.85em;
+    word-break: break-all;
+    color: #666;
+}
+a[href^="http"][data-exe-text-is-url]::after,
+a[href^="http"]:has(img:only-child)::after {
+    content: none;
+}
 `;
 
 /**
@@ -135,6 +156,16 @@ export const WORKSHEET_ACTIVITY_STYLES = `
 
 .worksheet-activity {
     margin-bottom: 8mm;
+}
+
+/* Where content embedded from the web can be found. It is all paper can give of that content, so
+   it stands on a line of its own where the content was, whatever the print options say, and the
+   same on screen as on paper. A long address breaks anywhere rather than run out of a column. */
+.worksheet-embed-address {
+    display: block;
+    font-size: 0.85em;
+    color: #666;
+    overflow-wrap: anywhere;
 }
 
 /* The number an appendix entry carries, so the pointer in the body can be followed to it. It is
@@ -221,6 +252,21 @@ export const WORKSHEET_ACTIVITY_STYLES = `
 .worksheet-option-label img {
     max-width: 100%;
     height: auto;
+}
+
+/* A question's number sits on its first line. When that line is a picture, in a paragraph of its
+   own or in a table cell beside the words, a picture sitting on the line like a letter drops the
+   line to its foot, and the number hung there under it. Pictures alone on their line, which the
+   renderer marks as illustrations, hang from the top instead, and table cells line up on their
+   first line, so the number stays level with the top of the question. A picture among words keeps
+   its baseline, as the author set it in the sentence. */
+.worksheet-prompt td,
+.worksheet-prompt th {
+    vertical-align: baseline;
+}
+
+.worksheet-prompt .worksheet-illustration {
+    vertical-align: top;
 }
 
 .worksheet-media {
@@ -786,8 +832,9 @@ export const WORKSHEET_ACTIVITY_STYLES = `
     margin: 0 0 4mm;
 }
 
-/* The fields the teacher fills in, above the table, each a label and a rule. */
-.worksheet-rubric-field {
+/* The fields filled in above a rubric's table or a checklist's items, each a label and a rule. */
+.worksheet-rubric-field,
+.worksheet-checklist-field {
     display: flex;
     align-items: baseline;
     gap: 2mm;
@@ -795,7 +842,8 @@ export const WORKSHEET_ACTIVITY_STYLES = `
     font-weight: 600;
 }
 
-.worksheet-rubric-field .worksheet-line {
+.worksheet-rubric-field .worksheet-line,
+.worksheet-checklist-field .worksheet-line {
     flex: 1;
     height: 5mm;
 }
@@ -854,6 +902,106 @@ export const WORKSHEET_ACTIVITY_STYLES = `
 .worksheet-rubric-notes {
     margin: 3mm 0 0;
     font-weight: 600;
+}
+
+/* A checklist, in the order the activity lays it out: its heading, the fields, the score, then one
+   row per item, indented to its level and marked as the activity marks it on screen. */
+.worksheet-checklist {
+    margin: 0 0 4mm;
+}
+
+.worksheet-checklist-title {
+    margin: 0;
+    font-weight: bold;
+}
+
+.worksheet-checklist-subtitle {
+    margin: 1mm 0 0;
+}
+
+.worksheet-checklist-title + .worksheet-checklist-field,
+.worksheet-checklist-subtitle + .worksheet-checklist-field {
+    margin-top: 3mm;
+}
+
+/* The score is a number out of the total, so its line is only as long as a number needs. */
+.worksheet-checklist-score .worksheet-line {
+    flex: 0 0 15mm;
+}
+
+.worksheet-checklist-items {
+    margin: 3mm 0 0;
+    padding: 0;
+    list-style: none;
+}
+
+/* Keep the box beside the first line of its criterion. Only the content beside it can wrap. */
+.worksheet-checklist-item {
+    display: flex;
+    align-items: baseline;
+    gap: 2mm;
+    margin-bottom: 2mm;
+    page-break-inside: avoid;
+    break-inside: avoid;
+}
+
+.worksheet-checklist-content {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 1mm 2mm;
+}
+
+.worksheet-checklist-text {
+    min-width: 0;
+    max-width: 100%;
+    overflow-wrap: anywhere;
+}
+
+.worksheet-checklist-text img {
+    max-width: 100%;
+    height: auto;
+}
+
+.worksheet-checklist-text > p {
+    margin: 0;
+}
+
+.worksheet-checklist-points {
+    white-space: nowrap;
+}
+
+/* What a Text item asks for is written on the rest of its row, or on a row of its own when the
+   words leave too little of it. */
+.worksheet-checklist-line {
+    flex: 1 0 30mm;
+    border-bottom: 1px solid #1a1a1a;
+}
+
+/* A Selection item's states, after its words, each with a dotted blank before it to write in. */
+.worksheet-checklist-states {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1mm 4mm;
+}
+
+.worksheet-checklist-state {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 1.5mm;
+}
+
+.worksheet-checklist-blank {
+    flex: 0 0 12mm;
+    width: 12mm;
+    border-bottom: 1px dotted #1a1a1a;
+}
+
+.worksheet-checklist-footer {
+    margin: 3mm 0 0;
+    font-size: 9pt;
 }
 
 /* A grid of letters with the answers hidden in it. Square cells and no rules between them, as the
@@ -1310,6 +1458,7 @@ function renderBoard(board: PrintableBoard, labels: Required<WorksheetLabels>): 
     if (board.kind === 'wordGrid') return renderWordGrid(board.rows);
     if (board.kind === 'operationTable') return renderOperationTable(board.rows, labels);
     if (board.kind === 'rubricTable') return renderRubricTable(board.table);
+    if (board.kind === 'checklist') return renderChecklist(board.list);
     if (board.kind === 'elementCards') return renderElementCards(board.cards);
 
     return renderCrosswordGrid(board);
@@ -1395,6 +1544,64 @@ function renderRubricTable(table: PrintableRubric): string {
     return `${html}</div>`;
 }
 
+/** A box to tick, as a multiple-choice option draws it. */
+const CHECKLIST_BOX = '<span class="worksheet-option-box"></span>';
+
+/** A dotted blank to write in, before each state a Selection item offers. */
+const CHECKLIST_BLANK = '<span class="worksheet-checklist-blank"></span>';
+
+/**
+ * Render a checklist: its heading, the fields and the score to fill in, then its items.
+ *
+ * Each item is drawn as the activity draws it, with what paper cannot carry replaced by what a pen
+ * can fill in: a box for a switch, a line for a text field, and each state a drop-down offers
+ * written out with a dotted blank before it. An item that is not marked has nothing beside it, as
+ * on screen: it heads the ones under it.
+ */
+function renderChecklist(list: PrintableChecklist): string {
+    let html = '<div class="worksheet-checklist">';
+
+    if (list.title) html += `<p class="worksheet-checklist-title">${list.title}</p>`;
+    if (list.subtitle) html += `<p class="worksheet-checklist-subtitle">${list.subtitle}</p>`;
+
+    for (const field of list.fields) {
+        html += `<p class="worksheet-checklist-field"><span>${field}:</span><span class="worksheet-line"></span></p>`;
+    }
+
+    if (list.score) {
+        html +=
+            `<p class="worksheet-checklist-field worksheet-checklist-score"><span>${list.score.label}:</span>` +
+            `<span class="worksheet-line"></span><span>/ ${list.score.total}</span></p>`;
+    }
+
+    html += `<ul class="worksheet-checklist-items">${list.items
+        .map(item => renderChecklistItem(item, list.states))
+        .join('')}</ul>`;
+
+    if (list.footer) html += `<div class="worksheet-checklist-footer">${list.footer}</div>`;
+
+    return `${html}</div>`;
+}
+
+/** Render one checklist item, indented to its level. */
+function renderChecklistItem(item: PrintableChecklistItem, states: string[]): string {
+    // A computed number, never author content, so it is safe in a style attribute.
+    const level = Number.isFinite(item.level) ? Math.max(0, Math.floor(item.level)) : 0;
+    const indent = level > 0 ? ` style="margin-left: ${level * CHECKLIST_INDENT_MM}mm"` : '';
+    const box = item.marker === 'box' || item.marker === 'boxAndLine' ? CHECKLIST_BOX : '';
+
+    let html = `<li class="worksheet-checklist-item"${indent}>${box}<div class="worksheet-checklist-content"><span class="worksheet-checklist-text">${item.text}</span>`;
+    if (item.points) html += `<span class="worksheet-checklist-points">${item.points}</span>`;
+    if (item.marker === 'boxAndLine') html += '<span class="worksheet-checklist-line"></span>';
+    if (item.marker === 'states') {
+        html += `<span class="worksheet-checklist-states">${states
+            .map(state => `<span class="worksheet-checklist-state">${CHECKLIST_BLANK}${state}</span>`)
+            .join('')}</span>`;
+    }
+
+    return `${html}</div></li>`;
+}
+
 /**
  * Render a gap to write one word into, inline in a sentence.
  *
@@ -1414,6 +1621,23 @@ export function renderInlineGap(characters: number, options?: string[]): string 
         ? `<span class="worksheet-gap-options"> (${options.map(escapeText).join(' / ')})</span>`
         : '';
     return `<span class="worksheet-gap" style="width: ${width.toFixed(1)}mm"></span>${choices}`;
+}
+
+/**
+ * Take the links off the gaps in a sentence, keeping what was in them.
+ *
+ * Print writes the address of each link after it, and a link the author put round a hidden word
+ * usually leads to that word: a gap followed by ".../wiki/Toledo" answers the question it asks.
+ * Links reach here only as the sanitiser writes them, `<a href="…">` and nothing else, never one
+ * inside another, and no author markup can carry the gap's class, so both are recognised exactly.
+ *
+ * @param html - Sanitised HTML with its gaps already in it
+ * @returns The same HTML, with no link round a gap
+ */
+export function unlinkGaps(html: string): string {
+    return html.replace(/<a href="[^"]*">((?:(?!<\/a>)[\s\S])*?)<\/a>/g, (link, content: string) =>
+        content.includes('<span class="worksheet-gap"') ? content : link,
+    );
 }
 
 /**
@@ -1516,6 +1740,9 @@ const WRITING_LINE_HEIGHT_MM = 5;
 
 /** Room left under a rubric for the assessor's notes, in millimetres. */
 const RUBRIC_NOTES_HEIGHT_MM = 14;
+
+/** How far each level of a checklist is indented under the one above it, in millimetres. */
+const CHECKLIST_INDENT_MM = 6;
 
 /** Split a list into chunks of at most `size`. */
 function chunk<T>(items: T[], size: number): T[][] {
@@ -1723,6 +1950,89 @@ function renderWordBank(words: string[]): string {
     return `<ul class="worksheet-word-bank">${items}</ul>`;
 }
 
+/** Elements that end the line before them and start a new one, as a block or a line break does. */
+const LINE_BREAKING_TAGS = new Set([
+    'p',
+    'div',
+    'blockquote',
+    'pre',
+    'ul',
+    'ol',
+    'li',
+    'h1',
+    'h2',
+    'h3',
+    'h4',
+    'h5',
+    'h6',
+    'table',
+    'thead',
+    'tbody',
+    'tfoot',
+    'tr',
+    'td',
+    'th',
+    'hr',
+    'br',
+]);
+
+/**
+ * Mark the pictures that stand alone on their line, so the stylesheet can hang them from the top.
+ *
+ * A picture among words is part of the sentence, as a formula drawn as an image is, and keeps its
+ * place on the line. One with no words beside it is an illustration. Telling the two apart means
+ * reading the text around the picture, which a stylesheet cannot do. A line ends at a block or a
+ * line break, and a gap left to write in counts as a word.
+ */
+function renderPrompt(prompt: string): string {
+    if (!/<img\b/i.test(prompt)) return prompt;
+
+    const fragment = parseFragment(prompt);
+    let images: DefaultTreeAdapterMap['element'][] = [];
+    let words = false;
+    let changed = false;
+
+    const endLine = () => {
+        if (!words) {
+            for (const image of images) {
+                const classes = image.attrs.find(attr => attr.name === 'class');
+                if (classes) classes.value += ' worksheet-illustration';
+                else image.attrs.push({ name: 'class', value: 'worksheet-illustration' });
+                changed = true;
+            }
+        }
+        images = [];
+        words = false;
+    };
+
+    const visit = (node: DefaultTreeAdapterMap['node']) => {
+        if ('value' in node) {
+            if (node.value.trim() !== '') words = true;
+            return;
+        }
+        if (!('tagName' in node)) {
+            if ('childNodes' in node) node.childNodes.forEach(visit);
+            return;
+        }
+        if (node.tagName === 'img') {
+            images.push(node);
+            return;
+        }
+        if (node.attrs.some(attr => attr.name === 'class' && attr.value.split(/\s+/).includes('worksheet-gap'))) {
+            words = true;
+            return;
+        }
+        const breaksLine = LINE_BREAKING_TAGS.has(node.tagName);
+        if (breaksLine) endLine();
+        node.childNodes.forEach(visit);
+        if (breaksLine) endLine();
+    };
+
+    visit(fragment);
+    endLine();
+    return changed ? serialize(fragment) : prompt;
+}
+
 /**
  * Render one question: prompt, optional picture, optional extra text, answer space.
  *
@@ -1734,7 +2044,7 @@ function renderItem(item: PrintableItem): string {
     let html = `<li class="worksheet-item"${value}>`;
 
     if (item.prompt) {
-        html += `<div class="worksheet-prompt">${item.prompt}</div>`;
+        html += `<div class="worksheet-prompt">${renderPrompt(item.prompt)}</div>`;
     }
 
     if (item.media) {
@@ -1934,7 +2244,8 @@ export function renderWorksheet(model: WorksheetModel, labels: WorksheetLabels =
 
     const body = pages || `<p class="worksheet-empty">${escapeText(text.empty)}</p>`;
 
-    return `<!DOCTYPE html>
+    // The sheet writes each link's address after it, except where the link's text already is it.
+    return markLinksShowingTheirUrl(`<!DOCTYPE html>
 <html lang="${escapeText(model.language || 'en')}">
 <head>
 <meta charset="utf-8" />
@@ -1957,5 +2268,5 @@ ${body}
 ${renderUnsupported(model, text)}
 </div>
 </body>
-</html>`;
+</html>`);
 }

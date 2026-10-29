@@ -200,7 +200,7 @@ describe('Save / restore round-trip', () => {
         $exeDevice.init(el, null);
         await new Promise(r => setTimeout(r, 50));
         const data = $exeDevice.save();
-        expect(data.lomloeDataset).toBe('ES-CN');
+        expect(data.lomloeDataset).toBe('ES');
     });
 
     it('init() restores selections from previousData and migrates old fields', async () => {
@@ -978,6 +978,41 @@ describe('Dataset configuration', () => {
         expect(dsSelect).not.toBeNull();
         expect(dsSelect.options.length).toBeGreaterThanOrEqual(1);
         el3.remove();
+        vi.restoreAllMocks();
+    });
+
+    // Issue #2631: the state curriculum is the default and the common base;
+    // the regional concretions and the MEFPD territory hang below it.
+    it('preselects the state curriculum and groups the territorial concretions under it', async () => {
+        const el4 = buildMockElement();
+        globalThis.fetch = vi.fn(() => Promise.resolve({ ok: true, json: () => Promise.resolve(SAMPLE_DATA) }));
+        $exeDevice.init(el4, null);
+        await new Promise(r => setTimeout(r, 50));
+        const dsSelect = el4.querySelector('select[id*="lomloe-ds-"]');
+        // happy-dom 21 misreports select.value for a `selected` option past the
+        // second one, so assert the generated markup instead.
+        const preselected = select => select.querySelector('option[selected]').value;
+
+        expect(preselected(dsSelect)).toBe('ES');
+        expect(dsSelect.children[0].tagName).toBe('OPTION');
+        expect(dsSelect.children[0].value).toBe('ES');
+
+        const groups = Array.from(dsSelect.querySelectorAll('optgroup'));
+        expect(groups.map(g => g.label)).toEqual(['Autonomous Communities', 'Ministry-managed territory (MEFPD)']);
+        const regional = Array.from(groups[0].querySelectorAll('option'));
+        expect(regional.map(o => o.value)).toContain('ES-CN');
+        expect(regional.map(o => o.value)).not.toContain('ES-EFP');
+        const names = regional.map(o => o.textContent);
+        expect(names).toEqual([...names].sort((a, b) => a.localeCompare(b)));
+        expect(Array.from(groups[1].querySelectorAll('option')).map(o => o.value)).toEqual(['ES-EFP']);
+        el4.remove();
+
+        // A saved regional iDevice still reopens on its own dataset inside the group.
+        const el5 = buildMockElement();
+        $exeDevice.init(el5, { lomloeDataset: 'ES-VC', lomloeSelections: [] });
+        await new Promise(r => setTimeout(r, 50));
+        expect(preselected(el5.querySelector('select[id*="lomloe-ds-"]'))).toBe('ES-VC');
+        el5.remove();
         vi.restoreAllMocks();
     });
 });
