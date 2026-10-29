@@ -24,7 +24,7 @@
 - Security: strengthened backend protections; some deployment settings must be updated when upgrading (see `UPGRADE.md`):
   - Production environments (`NODE_ENV=production` or `APP_ENV=prod`) must set `API_JWT_SECRET` and `APP_SECRET` to real values before the application can start
   - `.env.dist` now defaults to `APP_ENV=dev`; production installs that use it, including the root `docker-compose.yml`, which loads it, must set `APP_ENV=prod`
-  - With `APP_ENV=dev` the server creates the test account `user@exelearning.net` and, unless `NODE_ENV=production` is set, skips the secret check above and the `Secure` cookie flag; delete that account if a production install has already started this way
+  - With `APP_ENV=dev`, the server creates the test account `user@exelearning.net` and, unless `NODE_ENV=production` is set, skips the `API_JWT_SECRET` and `APP_SECRET` check and the `Secure` cookie flag; delete that account if a production install has already started this way
   - Moodle integrations (`exescorm` and `exeweb`) must explicitly list permitted callback hosts in `PROVIDER_URLS`; an empty value blocks all callbacks
   - Moodle sites on private networks (intranet, VPN or `localhost`) must also set `PROVIDER_ALLOW_PRIVATE_NETWORK=true`; callbacks no longer follow redirects
   - Non-Docker deployments using `APP_ENV=prod` must use HTTPS because session cookies are now marked `Secure`
@@ -64,8 +64,8 @@
 - Sort iDevice: activities no longer fail to start when cards have no image, text or audio
 - Checklist iDevice: Text items can be ticked and counted again; after Restart, new ticks are saved, counted and scored again
 - LOMLOE iDevice: Mathematics for 1st–3rd ESO no longer includes 4th ESO evaluation criteria or basic knowledge; changing the curriculum also clears the previous criteria from the screen
-- Guess, Test and Select iDevices: links whose address contains accented letters now work in the text shown with a question and are no longer garbled when the iDevice is edited again
-- UDL Content iDevice: code inserted with "Insert HTML as text", or any `<`, `>` or `&` written as text, is no longer turned into markup when the iDevice is edited again; button texts with quotes are no longer cut short
+- Guess, Test and Select iDevices: links with accented characters in their URLs now work in question text and are no longer garbled when the iDevice is edited
+- UDL Content iDevice: code inserted with "Insert HTML as text", or `<`, `>` and `&` entered as text, is no longer turned into markup when the iDevice is edited; button text containing quotes is no longer cut short
 - TinyMCE: the ABC music notation dialog preview now works on sites that serve pages without the `.html` extension
 - Interface: highlighted buttons now retain readable text contrast when focused with the keyboard
 - Interface: the editor toolbar and content now fit on tablet screens; the left panels are collapsed by default on screens narrower than 1200px
@@ -90,7 +90,7 @@
 
 ### Upgraded
 
-abcjs, bootstrap, dompurify, fflate, interactjs, jquery-ui, mermaid, pdfjs-dist and y-websocket now reach the browser from their npm packages instead of copies kept in the repository. Their first version below is the copy that v4.0.5 shipped to the browser; for mermaid, pdfjs-dist and y-websocket it is older than the npm version listed in the v4.0.5 notes.
+abcjs, bootstrap, dompurify, fflate, interactjs, jquery-ui, mermaid, pdfjs-dist and y-websocket now use their npm packages instead of repository copies. For these, the first version below is the copy v4.0.5 shipped to the browser; for mermaid, pdfjs-dist and y-websocket, it is older than the version listed in the v4.0.5 notes.
 
 - bun (Docker image): 1.3 → 1.4
 - mariadb (Docker Compose example): 12.3 → 13.0
