@@ -577,6 +577,12 @@ export interface ExportResult {
     filename?: string;
     data?: Uint8Array | Blob;
     error?: string;
+    /**
+     * Asset references the export could not resolve to a bundled file, set only
+     * when there are any. The package ships a dangling URL for each of them, and
+     * until now only whoever imported it later found out (#2681).
+     */
+    unresolvedAssets?: string[];
 }
 
 // =============================================================================

@@ -464,10 +464,16 @@ export class ElpxExporter extends Html5Exporter {
                 storedBytes: zipStats?.storedBytes ?? null,
             });
 
+            // A reference the export could not resolve means the package ships a
+            // URL with no file behind it. Hand it back so the author hears about
+            // it while the file is still theirs to fix (#2681).
+            const unresolvedAssets = this.getUnresolvedAssetRefs();
+
             return {
                 success: true,
                 filename: exportFilename,
                 data: buffer,
+                ...(unresolvedAssets.length > 0 && { unresolvedAssets }),
             };
         } catch (error) {
             return {
