@@ -1,11 +1,13 @@
 /**
- * Regression coverage for #2223 and #2242.
+ * Regression coverage for #2223, #2242 and #2681.
  *
  * `missing-asset-refs.elpx` is a Classify activity whose package carries no
  * `content/resources/` at all, so its eight references have nothing to resolve
  * against. The importer preserves them on purpose, which used to leave the
  * author reading raw `{{context_path}}/…` placeholders in the form fields with
- * nothing saying a file was missing. The import must now say so.
+ * nothing saying a file was missing. The import must now say so, naming each
+ * file whole: one of the eight has spaces, and #2681 was that such a name
+ * reached the notice cut at the first space.
  */
 import * as path from 'path';
 import { expect, test } from '../fixtures/auth.fixture';
@@ -33,6 +35,6 @@ test.describe('Missing asset notice', () => {
         );
         await expect(modal).toContainText(`iDevice 1 (${title}) on page "Classify content"`);
         await expect(modal.locator('li strong')).not.toHaveText('classify');
-        await expect(modal).toContainText('rabbit.svg');
+        await expect(modal).toContainText('Programaci_n sensor movimiento.png');
     });
 });

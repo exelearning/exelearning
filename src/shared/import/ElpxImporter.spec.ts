@@ -347,6 +347,8 @@ describe('ElpxImporter', () => {
          * #2223. `missing-asset-refs.elpx` is a Classify activity whose package
          * carries no `content/resources/` at all, so its eight references have
          * nothing to resolve against and reach the editor as raw placeholders.
+         * One of them has spaces in its name: #2681 reported that such a name
+         * reached the notice cut at the first space.
          */
         it('should report the activities whose asset references the package cannot satisfy', async () => {
             const elpPath = path.join(process.cwd(), 'test/fixtures/missing-asset-refs.elpx');
@@ -362,11 +364,11 @@ describe('ElpxImporter', () => {
             expect(result.missingAssets).toHaveLength(1);
             expect(result.missingAssets![0].ideviceType).toBe('classify');
             expect(result.missingAssets![0].paths.sort()).toEqual([
+                'Programaci_n sensor movimiento.png',
                 'ardilla.svg',
                 'chipmunk_name.mp3',
                 'leon.svg',
                 'lion_name.mp3',
-                'rabbit.svg',
                 'rabbit_name.mp3',
                 'tiger_name.mp3',
                 'tigre.svg',
