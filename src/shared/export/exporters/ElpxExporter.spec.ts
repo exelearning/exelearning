@@ -326,6 +326,54 @@ describe('ElpxExporter', () => {
         exporter = new ElpxExporter(document, resources, assets, zip);
     });
 
+    describe('unresolved asset references (#2681)', () => {
+        const UUID = '12345678-1234-1234-1234-123456789abc';
+
+        function pageReferencing(assetUrl: string): ExportPage[] {
+            return [
+                {
+                    id: 'page-missing-asset',
+                    title: 'Page',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'block-missing-asset',
+                            name: 'Content Block',
+                            order: 0,
+                            components: [
+                                {
+                                    id: 'comp-missing-asset',
+                                    type: 'FreeTextIdevice',
+                                    order: 0,
+                                    content: `<p><img src="${assetUrl}"></p>`,
+                                    properties: {},
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ];
+        }
+
+        it('reports a reference the package could not resolve', async () => {
+            document = new MockDocument({}, pageReferencing(`asset://${UUID}.png`));
+            exporter = new ElpxExporter(document, resources, assets, zip);
+
+            const result = await exporter.export();
+
+            expect(result.success).toBe(true);
+            expect(result.unresolvedAssets).toEqual([UUID]);
+        });
+
+        it('says nothing when the content references no asset at all', async () => {
+            const result = await exporter.export();
+
+            expect(result.success).toBe(true);
+            expect(result.unresolvedAssets).toBeUndefined();
+        });
+    });
+
     describe('MathJax when explicitly requested (addMathJax)', () => {
         beforeAll(() => {
             resetIdeviceConfigCache(); // discard any base path leaked by another spec
