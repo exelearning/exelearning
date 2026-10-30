@@ -3,7 +3,7 @@ import { expect, test } from '../fixtures/auth.fixture';
 import { gotoWorkarea, openElpFile, waitForAppReady } from '../helpers/workarea-helpers';
 
 /**
- * Regression coverage for #2177 and #2190.
+ * Regression coverage for #2177, #2190 and #2611.
  *
  * Both scenarios use a trueorfalse iDevice on purpose: it renders through its
  * export script, whose legacy migration branch reads questionsData off the
@@ -12,13 +12,16 @@ import { gotoWorkarea, openElpFile, waitForAppReady } from '../helpers/workarea-
  */
 const FIXTURE = path.join(__dirname, '../../../fixtures/damaged-trueorfalse-json.elpx');
 const FIXTURE_PAGE_ID = 'page-damaged-json-repro';
+// Same package with the damaged payload complete, which the import can repair (#2611).
+const REPAIRABLE_FIXTURE = path.join(__dirname, '../../../fixtures/repairable-trueorfalse-json.elpx');
 
 const MALFORMED_JSON = '{"questionsData":[{"baseText":"<audio src=\\""><a href=\\"">audio.webm</a></audio>"}]}';
 
 // The damaged payload persisted verbatim inside the fixture (#2177 corruption
-// shape: lost escape backslashes leave raw quotes inside a JSON string).
+// shape: lost escape backslashes leave raw quotes inside a JSON string; also
+// cut short before its closing brace, so the #2611 import repair cannot read it).
 const FIXTURE_DAMAGED_JSON =
-    '{"ideviceId":"idevice-damaged-malformed","typeGame":"TrueOrFalse","questionsData":[{"baseText":"<audio controls="controls" src=""><a href="">audio.webm</a></audio>","answer":"True"}]}';
+    '{"ideviceId":"idevice-damaged-malformed","typeGame":"TrueOrFalse","questionsData":[{"baseText":"<audio controls="controls" src=""><a href="">audio.webm</a></audio>","answer":"True"}]';
 
 const TRUEORFALSE_HTML = `<div class="exe-trueorfalse-container">
     <div class="TOFP-instructions"><p>Previously rendered activity</p></div>
@@ -74,6 +77,45 @@ test.describe('Damaged iDevice JSON', () => {
 
         // Catches the render-time TypeError raised by the legacy migration branch
         // when the properties carry no questionsData.
+        expect(pageErrors).toEqual([]);
+    });
+
+    /**
+     * #2611. The same #2177 shape, complete this time: the import repairs it,
+     * tells the author to check it, and the activity can be edited again.
+     */
+    test('repairable damaged activities become editable and are reported', async ({ authenticatedPage }) => {
+        const page = authenticatedPage;
+
+        const pageErrors: string[] = [];
+        page.on('pageerror', error => pageErrors.push(error.message));
+
+        await openElpFile(page, REPAIRABLE_FIXTURE);
+        await waitForAppReady(page);
+
+        const alertModal = page.locator('#modalAlert');
+        await expect(alertModal).toBeVisible({ timeout: 30000 });
+        await expect(alertModal).toContainText('repaired automatically');
+        await expect(alertModal).toContainText('trueorfalse');
+        await alertModal.locator('.modal-footer button.btn-secondary').click();
+        await expect(page.locator('#modalAlert[data-open="true"]')).toHaveCount(0);
+
+        // The stored payload is valid JSON now, with the markup kept intact.
+        const stored = await page.evaluate(() => {
+            const bridge = (window as any).eXeLearning?.app?.project?._yjsBridge;
+            return bridge?.structureBinding?.getComponent('idevice-damaged-malformed')?.jsonProperties;
+        });
+        expect(JSON.parse(stored).questionsData[0].baseText).toBe(
+            '<audio controls="controls" src=""><a href="">audio.webm</a></audio>',
+        );
+
+        await page.locator(`#menu_nav_content .nav-element[nav-id="${FIXTURE_PAGE_ID}"]`).click();
+        await page.locator('#editIdeviceidevice-damaged-malformed').click();
+
+        await expect(page.locator('.idevice_node#idevice-damaged-malformed')).toHaveAttribute('mode', 'edition');
+        await expect(page.locator('#modalAlert')).not.toContainText(
+            'cannot be edited because its saved data is damaged',
+        );
         expect(pageErrors).toEqual([]);
     });
 
