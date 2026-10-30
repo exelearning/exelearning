@@ -36,6 +36,8 @@ import { ALLOWED_EXTENSIONS } from '../config';
 import { buildConfigParams } from './config-params';
 import { API_ROUTES, prefixRoutesWithBasePath } from './api-routes';
 import { buildParameterResponse } from './parameter-response';
+import { loadAiConfig, toPublicAiConfig } from '../services/ai';
+import type { PublicAiConfig } from '../services/ai';
 
 /**
  * Available licenses for content dropdown
@@ -74,9 +76,28 @@ async function buildThemesMap(): Promise<Record<string, string>> {
  * (admin uploads/disables), so we resolve them at request time instead of
  * caching at module load.
  */
-async function getConfigParams() {
+async function getConfigParams(includeDefaultAI = true) {
     const THEMES = await buildThemesMap();
-    return buildConfigParams({ TRANS_PREFIX, LICENSES, PACKAGE_LOCALES, LOCALES, THEMES });
+    return buildConfigParams({
+        TRANS_PREFIX,
+        LICENSES,
+        PACKAGE_LOCALES,
+        LOCALES,
+        THEMES,
+        INCLUDE_DEFAULT_AI: includeDefaultAI,
+    });
+}
+
+/**
+ * Resolve the safe public AI capability object and whether the public AI
+ * assistant selector (`defaultAI`) should be offered. `defaultAI` is shown only
+ * when AI features are enabled AND the provider is `external`.
+ */
+async function getAiState(): Promise<{ publicAi: PublicAiConfig; includeDefaultAI: boolean }> {
+    const aiConfig = await loadAiConfig(defaultDb);
+    const publicAi = toPublicAiConfig(aiConfig);
+    const includeDefaultAI = publicAi.enabled && publicAi.mode === 'external';
+    return { publicAi, includeDefaultAI };
 }
 
 /**
@@ -211,8 +232,11 @@ export const configRoutes = new Elysia({ name: 'config-routes' })
             parseNumber(process.env.PERMANENT_SAVE_AUTOSAVE_TIME_INTERVAL, 600),
         );
 
+        // Resolve AI capability flags and whether the public AI selector is offered.
+        const { publicAi, includeDefaultAI } = await getAiState();
+
         // Translate all config params for the requested locale
-        const translatedParams = translateObject(await getConfigParams(), locale);
+        const translatedParams = translateObject(await getConfigParams(includeDefaultAI), locale);
 
         return buildParameterResponse({
             configParams: translatedParams,
@@ -224,6 +248,7 @@ export const configRoutes = new Elysia({ name: 'config-routes' })
                 autosaveIntervalTime,
                 generateNewItemKey: `item_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
             },
+            ai: publicAi,
         });
     })
 
@@ -285,10 +310,12 @@ export const configRoutes = new Elysia({ name: 'config-routes' })
 
         // Return the parameters with TRANSLATABLE_TEXT: values translated
         // Return translated config params only (no routes or app settings)
-        const translatedParams = translateObject(await getConfigParams(), locale);
+        const { publicAi, includeDefaultAI } = await getAiState();
+        const translatedParams = translateObject(await getConfigParams(includeDefaultAI), locale);
         return buildParameterResponse({
             configParams: translatedParams,
             routes: {},
+            ai: publicAi,
         });
     })
 
