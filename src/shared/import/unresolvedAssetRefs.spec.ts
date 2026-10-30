@@ -33,6 +33,24 @@ describe('collectUnresolvedAssetRefs', () => {
         expect(collectUnresolvedAssetRefs('{"url":"{{context_path}}/rabbit.svg\\"}')).toEqual(['rabbit.svg']);
     });
 
+    it('keeps a name with spaces whole when the reference sits in an attribute', () => {
+        const html = '<img src="{{context_path}}/content/resources/Programaci_n sensor movimiento.png">';
+
+        expect(collectUnresolvedAssetRefs(html)).toEqual(['content/resources/Programaci_n sensor movimiento.png']);
+    });
+
+    it('keeps a name with spaces whole in a serialized JSON payload', () => {
+        expect(collectUnresolvedAssetRefs('{"url":"{{context_path}}/Crear variable.jpg\\"}')).toEqual([
+            'Crear variable.jpg',
+        ]);
+    });
+
+    it('still ends the path at whitespace when the reference is loose in text', () => {
+        expect(collectUnresolvedAssetRefs('missing {{context_path}}/rabbit.svg in this activity')).toEqual([
+            'rabbit.svg',
+        ]);
+    });
+
     it('ignores a bare placeholder with no path', () => {
         expect(collectUnresolvedAssetRefs('{{context_path}} and {{context_path}}/')).toEqual([]);
     });
