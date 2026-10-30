@@ -27,7 +27,9 @@ import {
     FileSystemResourceProvider,
     FflateZipProvider,
     ServerLatexPreRenderer,
+    MermaidPreRenderer,
 } from '../../../shared/export';
+import { render as renderMermaid } from 'pele';
 import { reconstructDocument } from '../../../websocket/yjs-persistence';
 import { getAppVersion } from '../../../utils/version';
 import {
@@ -265,14 +267,16 @@ export const exportRoutes = new Elysia({ prefix: '/export' })
                             return errorResponse('INVALID_FORMAT', `Unsupported format: ${format}`);
                     }
 
-                    // Run the export with server-side LaTeX pre-render hooks.
+                    // Run the export with server-side LaTeX and Mermaid pre-render hooks.
                     // This keeps behavior consistent with the main export routes.
                     const latexRenderer = new ServerLatexPreRenderer();
+                    const mermaidRenderer = new MermaidPreRenderer(renderMermaid);
                     const result = await exporter.export({
                         // Stamp the SCORM 1.2 runtime with the release doing the exporting.
                         runtimeVersion: getAppVersion(),
                         preRenderLatex: async (html: string) => latexRenderer.preRender(html),
                         preRenderDataGameLatex: async (html: string) => latexRenderer.preRenderDataGameLatex(html),
+                        preRenderMermaid: async (html: string) => mermaidRenderer.preRender(html),
                     });
 
                     if (!result.success || !result.data) {

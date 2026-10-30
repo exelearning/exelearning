@@ -25,31 +25,28 @@ const diagrams = [
     },
 ];
 
-test.describe('Server-rendered Mermaid labels', () => {
+test.describe('Server-rendered Mermaid labels (Pele)', () => {
     let rendered: string[];
 
     test.beforeAll(() => {
-        // Use the same Bun renderer as CLI exports, in a separate process: its jsdom globals
-        // must not replace the Playwright worker's globals. The browser then measures the saved
-        // SVG with real font metrics, independently of the server's estimated bounding boxes.
+        // Use the same Bun renderer as CLI and server exports (Pele's npm package), in a Bun
+        // process like they do. The browser then measures the saved SVG with real font metrics,
+        // independently of the sizes Pele computed for the labels.
         rendered = JSON.parse(
             execFileSync(
                 'bun',
                 [
                     '-e',
-                    `import { ServerMermaidPreRenderer } from './src/shared/export/prerender/ServerMermaidPreRenderer.ts';
-                    const renderer = new ServerMermaidPreRenderer();
-                    try {
-                        const html = [];
-                        for (const code of JSON.parse(await Bun.stdin.text())) {
-                            const result = await renderer.preRender('<pre class="mermaid">' + code + '</pre>');
-                            if (!result.mermaidRendered) throw new Error('Server did not render the diagram');
-                            html.push(result.html);
-                        }
-                        process.stdout.write(JSON.stringify(html));
-                    } finally {
-                        renderer.destroy();
-                    }`,
+                    `import { render } from 'pele';
+                    import { MermaidPreRenderer } from './src/shared/export/prerender/MermaidPreRenderer.ts';
+                    const renderer = new MermaidPreRenderer(render);
+                    const html = [];
+                    for (const code of JSON.parse(await Bun.stdin.text())) {
+                        const result = await renderer.preRender('<pre class="mermaid">' + code + '</pre>');
+                        if (!result.mermaidRendered) throw new Error('Server did not render the diagram');
+                        html.push(result.html);
+                    }
+                    process.stdout.write(JSON.stringify(html));`,
                 ],
                 {
                     cwd: path.resolve(__dirname, '../../../..'),
@@ -65,8 +62,9 @@ test.describe('Server-rendered Mermaid labels', () => {
         test(`keeps every label visible with ${diagram.name}`, async ({ page }) => {
             await page.setContent(rendered[index]);
             await page.evaluate(() => document.fonts.ready);
+            // Labels must be SVG text, never HTML in a <foreignObject>, whatever the diagram asks.
             await expect(page.locator('svg foreignObject')).toHaveCount(0);
-            await expect(page.locator('g.node text')).toHaveText(diagram.labels);
+            await expect(page.locator('g.pele-node text')).toHaveText(diagram.labels);
 
             const geometry = await page.locator('svg').evaluate((svg: SVGSVGElement) => {
                 const view = svg.viewBox.baseVal;
@@ -79,9 +77,9 @@ test.describe('Server-rendered Mermaid labels', () => {
                         right: contents.x + contents.width,
                         bottom: contents.y + contents.height,
                     },
-                    nodes: Array.from(svg.querySelectorAll('g.node'), node => {
+                    nodes: Array.from(svg.querySelectorAll('g.pele-node'), node => {
                         const text = node.querySelector('text')!.getBoundingClientRect();
-                        const box = node.querySelector('rect.label-container')!.getBoundingClientRect();
+                        const box = node.querySelector(':scope > rect')!.getBoundingClientRect();
                         return {
                             text: { left: text.left, top: text.top, right: text.right, bottom: text.bottom },
                             box: { left: box.left, top: box.top, right: box.right, bottom: box.bottom },

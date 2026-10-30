@@ -35,7 +35,9 @@ import {
     FileSystemResourceProvider,
     FflateZipProvider,
     ServerLatexPreRenderer,
+    MermaidPreRenderer,
 } from '../shared/export';
+import { render as renderMermaid } from 'pele';
 
 export interface ExportResult {
     success: boolean;
@@ -86,11 +88,13 @@ export async function buildHtml5PreviewExport(project: Project): Promise<ExportR
         singlePage: false,
     });
 
-    // Run the export with server-side LaTeX pre-render hooks.
+    // Run the export with server-side LaTeX and Mermaid pre-render hooks.
     const latexRenderer = new ServerLatexPreRenderer();
+    const mermaidRenderer = new MermaidPreRenderer(renderMermaid);
     return exporter.export({
         preRenderLatex: async (html: string) => latexRenderer.preRender(html),
         preRenderDataGameLatex: async (html: string) => latexRenderer.preRenderDataGameLatex(html),
+        preRenderMermaid: async (html: string) => mermaidRenderer.preRender(html),
     });
 }
 

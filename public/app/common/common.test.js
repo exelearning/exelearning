@@ -166,71 +166,207 @@ describe('common.js $exe helpers', () => {
   });
 
   describe('$exe.mermaid', () => {
+    let render;
+
+    beforeAll(async () => {
+      ({ render } = await import('pele'));
+    });
+
     beforeEach(() => {
-      global.$exe.mermaid.loading = false;
+      global.$exe.mermaid.loading = null;
+      delete window.pele;
     });
 
-    it('has engine property', () => {
-      expect(global.$exe.mermaid.engine).toBeDefined();
+    afterEach(() => {
+      delete window.pele;
+      global.$exe.mermaid.loading = null;
     });
 
-    it('init does not throw when no mermaid elements', () => {
-      expect(() => global.$exe.mermaid.init()).not.toThrow();
-    });
-
-    it('loadMermaid creates script element when mermaid not loaded', () => {
-      delete global.mermaid;
-      const appendChildSpy = vi.spyOn(document.head, 'appendChild').mockImplementation(() => {});
-      global.$exe.mermaid.loadMermaid();
-      expect(appendChildSpy).toHaveBeenCalled();
-    });
-
-    it('loadMermaid does not inject the script twice while it is still loading', () => {
-      delete global.mermaid;
-      const appendChildSpy = vi.spyOn(document.head, 'appendChild').mockImplementation(() => {});
-      global.$exe.mermaid.loadMermaid();
-      global.$exe.mermaid.loadMermaid();
-      expect(appendChildSpy).toHaveBeenCalledTimes(1);
-      expect(global.$exe.mermaid.loading).toBe(true);
-    });
-
-    it('loadMermaid clears the loading flag when the download fails, allowing a retry', () => {
-      delete global.mermaid;
-      let injected;
-      const appendChildSpy = vi.spyOn(document.head, 'appendChild').mockImplementation((el) => {
-        injected = el;
+    describe('enginePath', () => {
+      it('points at the vendored build in static and offline installations', () => {
+        global.eXeLearning = { config: { isStaticMode: true } };
+        expect(global.$exe.mermaid.enginePath()).toBe('./app/common/pele/pele.global.js');
+        global.eXeLearning = { config: JSON.stringify({ isOfflineInstallation: true }) };
+        expect(global.$exe.mermaid.enginePath()).toBe('./app/common/pele/pele.global.js');
       });
-      global.$exe.mermaid.loadMermaid();
-      injected.onerror();
-      expect(global.$exe.mermaid.loading).toBe(false);
-      global.$exe.mermaid.loadMermaid();
-      expect(appendChildSpy).toHaveBeenCalledTimes(2);
-    });
 
-    it('loadMermaid clears the loading flag once the library is loaded', () => {
-      const originalInitialized = global.$exe.mermaid.initialized;
-      delete global.mermaid;
-      let injected;
-      vi.spyOn(document.head, 'appendChild').mockImplementation((el) => {
-        injected = el;
+      it('uses the versioned path on a server', () => {
+        global.eXeLearning = { config: { baseURL: 'https://exe.test', basePath: '/web' }, version: 'v4.1.0' };
+        expect(global.$exe.mermaid.enginePath()).toBe('https://exe.test/web/v4.1.0/app/common/pele/pele.global.js');
       });
-      vi.spyOn(global.$exe.mermaid, 'renderDiagrams').mockImplementation(() => {});
-      global.$exe.mermaid.loadMermaid();
-      global.mermaid = { initialize: vi.fn(), run: vi.fn() };
-      injected.onload();
-      expect(global.$exe.mermaid.loading).toBe(false);
-      expect(global.$exe.mermaid.initialized).toBe(true);
-      global.$exe.mermaid.initialized = originalInitialized;
+
+      it('has no engine in exported content', () => {
+        delete global.eXeLearning;
+        expect(global.$exe.mermaid.enginePath()).toBeNull();
+      });
     });
 
-    it('a save right after opening the dialog does not download the library twice', () => {
-      // Dialog open preloads, then the editor deactivates and init() renders
-      delete global.mermaid;
-      document.body.innerHTML = '<div class="mermaid">graph TD; A-->B;</div>';
-      const appendChildSpy = vi.spyOn(document.head, 'appendChild').mockImplementation(() => {});
-      global.$exe.mermaid.loadMermaid();
-      global.$exe.mermaid.init();
-      expect(appendChildSpy).toHaveBeenCalledTimes(1);
+    describe('load', () => {
+      beforeEach(() => {
+        global.eXeLearning = { config: { isStaticMode: true } };
+      });
+
+      it('injects the script once while it is loading', () => {
+        const appendChildSpy = vi.spyOn(document.head, 'appendChild').mockImplementation(() => {});
+        const first = global.$exe.mermaid.load();
+        const second = global.$exe.mermaid.load();
+        expect(second).toBe(first);
+        expect(appendChildSpy).toHaveBeenCalledTimes(1);
+        expect(appendChildSpy.mock.calls[0][0].src).toContain('app/common/pele/pele.global.js');
+      });
+
+      it('resolves with window.pele once the script has loaded', async () => {
+        let injected;
+        vi.spyOn(document.head, 'appendChild').mockImplementation((el) => {
+          injected = el;
+        });
+        const loading = global.$exe.mermaid.load();
+        window.pele = { render };
+        injected.onload();
+        await expect(loading).resolves.toBe(window.pele);
+      });
+
+      it('rejects and allows a retry when the download fails', async () => {
+        let injected;
+        const appendChildSpy = vi.spyOn(document.head, 'appendChild').mockImplementation((el) => {
+          injected = el;
+        });
+        const loading = global.$exe.mermaid.load();
+        injected.onerror();
+        await expect(loading).rejects.toThrow('Could not load');
+        expect(global.$exe.mermaid.loading).toBeNull();
+        global.$exe.mermaid.load().catch(() => {});
+        expect(appendChildSpy).toHaveBeenCalledTimes(2);
+      });
+
+      it('rejects when the script loads without defining Pele', async () => {
+        let injected;
+        vi.spyOn(document.head, 'appendChild').mockImplementation((el) => {
+          injected = el;
+        });
+        const loading = global.$exe.mermaid.load();
+        injected.onload();
+        await expect(loading).rejects.toThrow('Pele did not load');
+      });
+
+      it('does not load anything in exported content', async () => {
+        delete global.eXeLearning;
+        const appendChildSpy = vi.spyOn(document.head, 'appendChild');
+        await expect(global.$exe.mermaid.load()).rejects.toThrow('only be rendered in the editor');
+        expect(appendChildSpy).not.toHaveBeenCalled();
+      });
+
+      it('returns Pele immediately when it is already loaded', async () => {
+        window.pele = { render };
+        await expect(global.$exe.mermaid.load()).resolves.toBe(window.pele);
+      });
+    });
+
+    describe('renderDiagrams', () => {
+      beforeEach(() => {
+        window.pele = { render };
+      });
+
+      it('renders each diagram to an SVG inside its <pre>', () => {
+        document.body.innerHTML =
+          '<pre class="mermaid">flowchart LR\n  A --&gt; B</pre><pre class="mermaid">pie\n  "a" : 1</pre>';
+        global.$exe.mermaid.renderDiagrams();
+        const pres = document.querySelectorAll('pre.mermaid');
+        for (const pre of pres) {
+          expect(pre.getAttribute('data-processed')).toBe('true');
+          const svg = pre.querySelector('svg.pele');
+          expect(svg).not.toBeNull();
+          expect(Number(svg.getAttribute('width'))).toBeGreaterThan(0);
+        }
+        expect(pres[0].querySelector('svg').getAttribute('style')).toContain('trebuchet ms');
+      });
+
+      it('reads line breaks that TinyMCE stores as <br>', () => {
+        document.body.innerHTML = '<pre class="mermaid">flowchart LR<br>  A --&gt; B<br/>  B --&gt; C</pre>';
+        global.$exe.mermaid.renderDiagrams();
+        expect(document.querySelectorAll('pre.mermaid .pele-node')).toHaveLength(3);
+      });
+
+      it('does not render a diagram twice', () => {
+        document.body.innerHTML = '<pre class="mermaid">graph TD\n A--&gt;B</pre>';
+        global.$exe.mermaid.renderDiagrams();
+        const svg = document.querySelector('pre.mermaid svg');
+        global.$exe.mermaid.renderDiagrams();
+        expect(document.querySelector('pre.mermaid svg')).toBe(svg);
+      });
+
+      it('leaves code blocks highlighted as Mermaid alone', () => {
+        document.body.innerHTML = '<pre class="language-mermaid">graph TD\n A--&gt;B</pre>';
+        global.$exe.mermaid.renderDiagrams();
+        expect(document.querySelector('svg')).toBeNull();
+      });
+
+      it('keeps the source of an invalid diagram and explains the error', () => {
+        document.body.innerHTML = '<pre class="mermaid">flowchart LR\n  A --&gt;</pre>';
+        global.$exe.mermaid.renderDiagrams();
+        const pre = document.querySelector('pre.mermaid');
+        expect(pre.getAttribute('data-processed')).toBe('error');
+        expect(pre.textContent).toBe('flowchart LR\n  A -->');
+        const message = pre.nextElementSibling;
+        expect(message.className).toBe('exe-mermaid-error');
+        expect(message.getAttribute('role')).toBe('alert');
+        expect(message.textContent).toContain('Parse error on line 3');
+
+        global.$exe.mermaid.renderDiagrams();
+        expect(document.querySelectorAll('.exe-mermaid-error')).toHaveLength(1);
+      });
+    });
+
+    describe('init', () => {
+      it('does not load Pele when the page has no diagrams', () => {
+        const loadSpy = vi.spyOn(global.$exe.mermaid, 'load');
+        global.$exe.mermaid.init();
+        expect(loadSpy).not.toHaveBeenCalled();
+      });
+
+      it('does not load Pele when every diagram is already rendered', () => {
+        document.body.innerHTML =
+          '<div class="exe-mermaid-rendered" data-mermaid="graph TD"><svg></svg></div>' +
+          '<pre class="mermaid" data-processed="true"><svg></svg></pre>';
+        const loadSpy = vi.spyOn(global.$exe.mermaid, 'load');
+        global.$exe.mermaid.init();
+        expect(loadSpy).not.toHaveBeenCalled();
+      });
+
+      it('loads Pele and renders the diagrams', async () => {
+        document.body.innerHTML = '<pre class="mermaid">graph TD\n A--&gt;B</pre>';
+        const loading = Promise.resolve({ render });
+        vi.spyOn(global.$exe.mermaid, 'load').mockImplementation(() => {
+          window.pele = { render };
+          return loading;
+        });
+        global.$exe.mermaid.init();
+        await loading;
+        await Promise.resolve();
+        expect(document.querySelector('pre.mermaid svg.pele')).not.toBeNull();
+      });
+
+      it('warns when Pele cannot be loaded', async () => {
+        document.body.innerHTML = '<pre class="mermaid">graph TD\n A--&gt;B</pre>';
+        const failure = Promise.reject(new Error('offline'));
+        failure.catch(() => {});
+        vi.spyOn(global.$exe.mermaid, 'load').mockReturnValue(failure);
+        const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+        global.$exe.mermaid.init();
+        await failure.catch(() => {});
+        await Promise.resolve();
+        expect(warnSpy).toHaveBeenCalledWith('[$exe.mermaid]', 'offline');
+      });
+
+      it('a save right after opening the dialog does not download Pele twice', () => {
+        // Dialog open preloads, then the editor deactivates and init() renders
+        global.eXeLearning = { config: { isStaticMode: true } };
+        document.body.innerHTML = '<pre class="mermaid">graph TD; A-->B;</pre>';
+        const appendChildSpy = vi.spyOn(document.head, 'appendChild').mockImplementation(() => {});
+        global.$exe.mermaid.load().catch(() => {});
+        global.$exe.mermaid.init();
+        expect(appendChildSpy).toHaveBeenCalledTimes(1);
+      });
     });
   });
 
@@ -1528,146 +1664,6 @@ describe('common.js $exe helpers', () => {
       const mathLinks = document.querySelector('.exe-math-links');
       // Links are only added when there's an image or when not using mathjax
       expect(mathLinks).toBeNull();
-    });
-  });
-
-  describe('$exe.mermaid edge cases', () => {
-    beforeEach(() => {
-      global.$exe.mermaid.loading = false;
-    });
-
-    it('init loads mermaid when mermaid nodes exist', () => {
-      document.body.innerHTML = '<div class="mermaid">graph TD; A-->B;</div>';
-      const loadSpy = vi.spyOn(global.$exe.mermaid, 'loadMermaid').mockImplementation(() => {});
-      global.$exe.mermaid.init();
-      expect(loadSpy).toHaveBeenCalled();
-    });
-
-    it('loadMermaid reloads mermaid when already loaded and initialized', () => {
-      global.mermaid = { run: vi.fn() };
-      global.$exe.mermaid.reload_pending = false;
-      global.$exe.mermaid.initialized = true;
-      global.$exe.mermaid.loadMermaid();
-      expect(global.$exe.mermaid.reload_pending).toBe(true);
-    });
-
-    it('loadMermaid does not reload when mermaid not initialized', () => {
-      global.mermaid = { run: vi.fn() };
-      global.$exe.mermaid.reload_pending = false;
-      global.$exe.mermaid.initialized = false;
-      global.$exe.mermaid.loadMermaid();
-      expect(global.$exe.mermaid.reload_pending).toBe(false);
-    });
-
-    it('renderDiagrams calls mermaid.run for visible elements with width', () => {
-      document.body.innerHTML = '<div class="mermaid">graph TD; A-->B</div>';
-      // Mock jQuery methods since happy-dom doesn't support layout
-      const originalWidth = $.fn.width;
-      const originalIs = $.fn.is;
-      $.fn.width = function() { return 100; };
-      $.fn.is = function(selector) {
-        if (selector === ':visible') return true;
-        return originalIs.call(this, selector);
-      };
-      global.mermaid = { run: vi.fn() };
-      global.$exe.mermaid.renderDiagrams(0);
-      expect(global.mermaid.run).toHaveBeenCalled();
-      $.fn.width = originalWidth;
-      $.fn.is = originalIs;
-    });
-
-    it('renderDiagrams skips already processed elements', () => {
-      document.body.innerHTML = '<div class="mermaid" data-processed="true" style="width: 100px;">graph TD; A-->B</div>';
-      global.mermaid = { run: vi.fn() };
-      global.$exe.mermaid.renderDiagrams(0);
-      expect(global.mermaid.run).not.toHaveBeenCalled();
-    });
-
-    it('renderDiagrams does not call mermaid.run for elements without width', () => {
-      document.body.innerHTML = '<div class="mermaid" style="width: 0; display: block;">graph TD; A-->B</div>';
-      global.mermaid = { run: vi.fn() };
-      global.$exe.mermaid.renderDiagrams(10); // maxRetries reached
-      expect(global.mermaid.run).not.toHaveBeenCalled();
-    });
-
-    it('init skips loading mermaid when all diagrams are pre-rendered', () => {
-      // Only pre-rendered mermaid content, no raw mermaid elements
-      document.body.innerHTML = '<div class="exe-mermaid-rendered" data-mermaid="graph TD; A-->B"><svg></svg></div>';
-      const loadSpy = vi.spyOn(global.$exe.mermaid, 'loadMermaid').mockImplementation(() => {});
-      global.$exe.mermaid.init();
-      // loadMermaid should NOT be called when only pre-rendered content exists
-      expect(loadSpy).not.toHaveBeenCalled();
-    });
-
-    it('init loads mermaid when there are unprocessed mermaid elements alongside pre-rendered', () => {
-      // Both pre-rendered and raw mermaid elements
-      document.body.innerHTML = `
-        <div class="exe-mermaid-rendered" data-mermaid="graph TD; A-->B"><svg></svg></div>
-        <div class="mermaid">graph TD; C-->D</div>
-      `;
-      const loadSpy = vi.spyOn(global.$exe.mermaid, 'loadMermaid').mockImplementation(() => {});
-      global.$exe.mermaid.init();
-      // loadMermaid SHOULD be called when there are raw mermaid elements
-      expect(loadSpy).toHaveBeenCalled();
-    });
-
-    it('init loads mermaid when elements have data-processed="pending" (failed previous render)', () => {
-      // Element with pending status (failed previous render attempt)
-      document.body.innerHTML = '<div class="mermaid" data-processed="pending">graph TD; A-->B</div>';
-      const loadSpy = vi.spyOn(global.$exe.mermaid, 'loadMermaid').mockImplementation(() => {});
-      global.$exe.mermaid.init();
-      // loadMermaid SHOULD be called to retry rendering
-      expect(loadSpy).toHaveBeenCalled();
-    });
-
-    it('renderDiagrams includes elements with data-processed="pending" for retry', () => {
-      document.body.innerHTML = '<div class="mermaid" data-processed="pending" style="width: 100px; display: block;">graph TD; A-->B</div>';
-      const originalIs = $.fn.is;
-      $.fn.is = function(selector) {
-        if (selector === ':visible') return true;
-        return originalIs.call(this, selector);
-      };
-      global.mermaid = { run: vi.fn() };
-      global.$exe.mermaid.renderDiagrams(0);
-      // mermaid.run SHOULD be called for pending elements
-      expect(global.mermaid.run).toHaveBeenCalled();
-      $.fn.is = originalIs;
-    });
-
-    it('renderDiagrams removes data-processed attribute before calling mermaid.run', () => {
-      document.body.innerHTML = '<div class="mermaid" data-processed="pending" style="width: 100px; display: block;">graph TD; A-->B</div>';
-      const originalIs = $.fn.is;
-      $.fn.is = function(selector) {
-        if (selector === ':visible') return true;
-        return originalIs.call(this, selector);
-      };
-      global.mermaid = { run: vi.fn() };
-      global.$exe.mermaid.renderDiagrams(0);
-      const element = document.querySelector('.mermaid');
-      // data-processed should be removed so mermaid.run can process it
-      expect(element.getAttribute('data-processed')).toBeNull();
-      $.fn.is = originalIs;
-    });
-
-    it('renderDiagrams handles mix of new and pending elements', () => {
-      document.body.innerHTML = `
-        <div class="mermaid" style="width: 100px; display: block;">graph TD; A-->B</div>
-        <div class="mermaid" data-processed="pending" style="width: 100px; display: block;">graph TD; C-->D</div>
-      `;
-      const originalIs = $.fn.is;
-      $.fn.is = function(selector) {
-        if (selector === ':visible') return true;
-        return originalIs.call(this, selector);
-      };
-      global.mermaid = { run: vi.fn() };
-      global.$exe.mermaid.renderDiagrams(0);
-      expect(global.mermaid.run).toHaveBeenCalled();
-      // Both elements should have data-processed removed
-      const elements = document.querySelectorAll('.mermaid');
-      elements.forEach(el => {
-        expect(el.getAttribute('data-processed')).toBeNull();
-      });
-      $.fn.is = originalIs;
     });
   });
 

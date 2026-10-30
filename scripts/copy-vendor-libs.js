@@ -101,9 +101,6 @@ const COPIES = [
     { src: nm('pdfjs-dist/legacy/build/pdf.min.mjs'), dest: pub('libs/pdfjs/pdf.min.js') },
     { src: nm('pdfjs-dist/legacy/build/pdf.worker.min.mjs'), dest: pub('libs/pdfjs/pdf.worker.min.js') },
 
-    // mermaid: single minified bundle
-    { src: nm('mermaid/dist/mermaid.min.js'), dest: pub('app/common/mermaid/mermaid.min.js') },
-
     // jquery 3.x
     { src: nm('jquery/dist/jquery.min.js'), dest: pub('libs/jquery/jquery.min.js') },
 

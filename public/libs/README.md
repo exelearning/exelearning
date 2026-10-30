@@ -176,9 +176,6 @@
 *   Package: mathjax
     *   Copyright: MathJax Consortium
     *   License: Apache-2.0
-*   Package: mermaid
-    *   Copyright: Knut Sveidqvist
-    *   License: MIT
 *   Package: mime-types
     *   Copyright: Douglas Christopher Wilson, Jeremiah Senkpiel, Jonathan Ong
     *   License: MIT
@@ -194,6 +191,9 @@
 *   Package: pdfjs-dist
     *   Copyright: Mozilla Foundation
     *   License: Apache-2.0
+*   Package: pele
+    *   Copyright: kepano
+    *   License: MIT
 *   Package: sass
     *   Copyright: Natalie Weizenbaum
     *   License: MIT

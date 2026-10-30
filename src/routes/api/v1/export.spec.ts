@@ -7,6 +7,7 @@ import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'bun:test'
 import { Elysia } from 'elysia';
 import * as bcrypt from 'bcryptjs';
 import * as Y from 'yjs';
+import { strFromU8, unzipSync } from 'fflate';
 import { db, resetClientCacheForTesting } from '../../../db/client';
 import { up } from '../../../db/migrations/001_initial';
 import { up as up008 } from '../../../db/migrations/008_project_public_view_id';
@@ -414,6 +415,45 @@ describe('Export API v1', () => {
             // Verify it's a valid ZIP by checking the body exists and has content
             const body = await response.arrayBuffer();
             expect(body.byteLength).toBeGreaterThan(0);
+        });
+
+        it('should pre-render Mermaid diagrams in an HTML5 export', async () => {
+            const projectUuid = 'mermaid-export-project';
+            const projectResult = await db
+                .insertInto('projects')
+                .values({ uuid: projectUuid, title: 'Mermaid Export', owner_id: userId, created_at: now() })
+                .executeTakeFirst();
+
+            const ydoc = createMinimalYjsDocument(projectUuid);
+            const rootPage = ydoc.getArray('navigation').get(0) as Y.Map<unknown>;
+            const component = new Y.Map();
+            component.set('id', 'component-1');
+            component.set('type', 'text');
+            component.set('htmlContent', '<pre class="mermaid">flowchart LR\n    A --&gt; B</pre>');
+            const components = new Y.Array();
+            components.push([component]);
+            const block = new Y.Map();
+            block.set('id', 'block-1');
+            block.set('components', components);
+            const blocks = new Y.Array();
+            blocks.push([block]);
+            rootPage.set('blocks', blocks);
+            await saveFullState(db, Number(projectResult.insertId), Y.encodeStateAsUpdate(ydoc));
+
+            const response = await app.handle(
+                new Request(`http://localhost/export/projects/${projectUuid}/export/html5`, {
+                    headers: { Authorization: `Bearer ${userToken}` },
+                }),
+            );
+
+            expect(response.status).toBe(200);
+            const files = unzipSync(new Uint8Array(await response.arrayBuffer()));
+            const html = Object.keys(files)
+                .filter(name => name.endsWith('.html'))
+                .map(name => strFromU8(files[name]))
+                .join('\n');
+            expect(html).toContain('<div class="exe-mermaid-rendered" data-mermaid="flowchart LR');
+            expect(html).not.toContain('<pre class="mermaid">');
         });
     });
 });

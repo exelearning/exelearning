@@ -151,11 +151,12 @@ export type { PrintPreviewOptions, PrintPreviewResult } from './exporters/PrintP
 export { ComponentExporter } from './exporters/ComponentExporter';
 export type { ComponentExportResult, ComponentExportOptions } from './exporters/ComponentExporter';
 
-// Server-side Pre-renderers (for CLI export)
-export { ServerLatexPreRenderer, ServerMermaidPreRenderer } from './prerender';
+// Pre-renderers (LaTeX on the server; Mermaid in the browser and on the server)
+export { ServerLatexPreRenderer, MermaidPreRenderer, MERMAID_FONT_FAMILY } from './prerender';
 export type {
     ServerLatexPreRendererInterface,
-    ServerMermaidPreRendererInterface,
+    MermaidPreRendererInterface,
+    MermaidRenderFunction,
     LatexPreRenderResult,
     MermaidPreRenderResult,
 } from './prerender';
