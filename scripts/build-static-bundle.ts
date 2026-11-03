@@ -827,6 +827,7 @@ export function generateModalsHtml(): string {
         'pages/openuserodefiles.njk',
         'pages/templateselection.njk',
         'pages/modalShare.njk',
+        'pages/modalActivity.njk',
         'pages/printpreview.njk',
         'pages/imageoptimizer.njk',
         'pages/globalsearch.njk',
