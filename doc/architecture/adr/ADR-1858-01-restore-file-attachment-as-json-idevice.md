@@ -1,7 +1,7 @@
 ---
 id: ADR-1858-01
 title: "Restore File Attachment as a JSON api-v3 Media-Library-backed iDevice"
-status: Proposed
+status: Accepted
 date: 2026-07-09
 tracking_issue: 1858
 legacy_id: ADR-0035

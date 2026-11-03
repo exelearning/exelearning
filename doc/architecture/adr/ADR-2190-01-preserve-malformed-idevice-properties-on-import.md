@@ -1,7 +1,7 @@
 ---
 id: ADR-2190-01
 title: "Preserve malformed iDevice properties on import"
-status: Proposed
+status: Accepted
 date: 2026-08-15
 tracking_issue: 2190
 deciders:

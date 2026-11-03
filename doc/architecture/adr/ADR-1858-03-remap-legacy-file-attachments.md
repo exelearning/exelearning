@@ -1,7 +1,7 @@
 ---
 id: ADR-1858-03
 title: "Remap legacy File Attachment iDevices to file-attachment instead of text"
-status: Proposed
+status: Accepted
 date: 2026-07-09
 tracking_issue: 1858
 legacy_id: ADR-0037

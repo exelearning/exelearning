@@ -1,7 +1,7 @@
 ---
 id: ADR-1247-04
 title: "Dual icon rendering: currentColor-masked Material glyphs vs img style/asset icons, tinted per theme"
-status: Proposed
+status: Accepted
 date: 2026-07-09
 tracking_issue: 1247
 legacy_id: ADR-0016

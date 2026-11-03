@@ -1,7 +1,7 @@
 ---
 id: ADR-1247-03
 title: "Ship Material icons as a single sprite with on-demand extraction"
-status: Proposed
+status: Accepted
 date: 2026-07-09
 tracking_issue: 1247
 legacy_id: ADR-0015

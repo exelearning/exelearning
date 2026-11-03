@@ -1,7 +1,7 @@
 ---
 id: ADR-2209-02
 title: "Track SCORM 1.2 page completion through a central activity registry"
-status: Proposed
+status: Accepted
 date: 2026-08-04
 tracking_issue: 2209
 legacy_id: ADR-0043

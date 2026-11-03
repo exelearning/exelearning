@@ -1,7 +1,7 @@
 ---
 id: ADR-2510-01
 title: "Apply shared enhancements to each iDevice after it renders"
-status: Proposed
+status: Accepted
 date: 2026-10-06
 tracking_issue: 2510
 deciders:
