@@ -2,7 +2,8 @@ import { describe, expect, it, beforeAll, afterAll } from 'bun:test';
 import { execute, printHelp, VALID_FORMATS } from './elp-export';
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import { zipSync, unzipSync, strToU8 } from 'fflate';
+import { zipSync, unzipSync, strToU8, strFromU8 } from 'fflate';
+import { convertLegacyMindmapCode } from '../../shared/import/legacyMindmap';
 
 // Create a minimal test ELP file for integration tests
 const TEST_DIR = '/tmp/elp-export-test';
@@ -618,6 +619,90 @@ describe('elp:export command', () => {
                 .then(() => true)
                 .catch(() => false);
             expect(written).toBe(false);
+        });
+    });
+    describe('execute - legacy and converted mind maps', () => {
+        const MINDMAP_DIR = '/tmp/elp-export-mindmap-test';
+        const FIXTURE = path.resolve(import.meta.dir, '../../../test/fixtures/legacy-mindmaps.elpx');
+        let input: string;
+        let simpleCaptions: string[];
+
+        // The legacy fixture with its simple map converted the way the exemindmap plugin does it
+        beforeAll(async () => {
+            const zip = unzipSync(new Uint8Array(await fs.readFile(FIXTURE)));
+            let xml = strFromU8(zip['content.xml']);
+            const legacy =
+                /<div class="exe-mind-map">\s*<figure class="exe-figure exe-image position-center" style="width: 825px;">(<img[^>]*\/>)([\s\S]*?<\/figure>)\s*(<p class="exe-mindmap-code">([\s\S]*?)<\/p>)/;
+            const match = legacy.exec(xml);
+            if (!match) throw new Error('simple map not found in the fixture');
+            const { source } = convertLegacyMindmapCode(match[4]);
+            simpleCaptions = [...match[4].matchAll(/"caption":"([^"]*)"/g)].map(m => m[1]);
+            const pre = `<pre class="mermaid">${source.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</pre>`;
+            xml = xml.replace(
+                legacy,
+                `<div class="exe-mindmap-converted"><figure class="exe-figure position-center">${pre}${match[2]}${match[3]}`,
+            );
+            await fs.mkdir(MINDMAP_DIR, { recursive: true });
+            input = path.join(MINDMAP_DIR, 'mixed.elpx');
+            await fs.writeFile(input, Buffer.from(zipSync({ ...zip, 'content.xml': strToU8(xml) })));
+        });
+
+        afterAll(async () => {
+            await fs.rm(MINDMAP_DIR, { recursive: true, force: true });
+        });
+
+        for (const format of ['html5', 'html5-sp', 'scorm12', 'scorm2004', 'ims', 'epub3']) {
+            it(`shows the legacy PNG maps and the converted map as SVG in a ${format} export`, async () => {
+                const outputPath = path.join(MINDMAP_DIR, `${format}.zip`);
+                const result = await execute([input, outputPath, format], {});
+                expect(result.success).toBe(true);
+
+                const zip = unzipSync(new Uint8Array(await fs.readFile(outputPath)));
+                const html = Object.keys(zip)
+                    .filter(name => /\.x?html$/.test(name))
+                    .map(name => strFromU8(zip[name]))
+                    .join('\n');
+
+                // Unconverted maps: their image, caption and source data, unchanged
+                for (const [image, title] of [
+                    ['blobid0.png', 'Mapa rico heredado'],
+                    ['blobid2.png', 'Mapa grande heredado'],
+                ]) {
+                    expect(html).toMatch(
+                        new RegExp(`<img src="[^"]*${image}" width="\\d+" height="\\d+" alt="${title}"`),
+                    );
+                    expect(Object.keys(zip).some(name => name.endsWith(`resources/${image}`))).toBe(true);
+                    expect(html).toContain(`<em>${title}</em>`);
+                }
+                expect(html.match(/<div class="exe-mind-map">/g)).toHaveLength(2);
+                expect(html.match(/<p class="exe-mindmap-code">\{/g)).toHaveLength(3);
+                expect(html).toContain('}</clima></p>');
+
+                // The converted map: pre-rendered by Pele, with every node and its caption
+                expect(html).not.toContain('<pre class="mermaid">');
+                const rendered =
+                    /<div class="exe-mindmap-converted"><figure class="exe-figure position-center"><div class="exe-mermaid-rendered" data-mermaid="mindmap[^"]*">(<svg[\s\S]*?<\/svg>)<\/div>/.exec(
+                        html,
+                    );
+                expect(rendered).not.toBeNull();
+                const svg = rendered?.[1] ?? '';
+                expect(svg.match(/class="pele-node /g)).toHaveLength(simpleCaptions.length);
+                for (const caption of simpleCaptions) expect(svg).toContain(caption);
+                expect(html).toContain('<em>Mapa sencillo heredado</em>');
+            });
+        }
+
+        it('keeps both maps and all the source data in an elpx export', async () => {
+            const outputPath = path.join(MINDMAP_DIR, 'mixed-out.elpx');
+            const result = await execute([input, outputPath, 'elpx'], {});
+            expect(result.success).toBe(true);
+
+            const zip = unzipSync(new Uint8Array(await fs.readFile(outputPath)));
+            const xml = strFromU8(zip['content.xml']);
+            expect(xml).toContain('<pre class="mermaid">mindmap');
+            expect(xml.match(/<div class="exe-mind-map">/g)).toHaveLength(2);
+            expect(xml.match(/<p class="exe-mindmap-code">\{/g)).toHaveLength(3);
+            expect(Object.keys(zip).filter(name => /blobid[02]\.png$/.test(name))).toHaveLength(2);
         });
     });
 });
