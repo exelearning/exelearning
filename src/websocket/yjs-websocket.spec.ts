@@ -157,6 +157,8 @@ describe('Yjs WebSocket Service', () => {
             sessionManager: createMockSessionManager(),
             auth: createMockAuth(),
             assetCoordinator: createMockAssetCoordinator(),
+            // Activity recorder stub (issue #2689): the session tests below inject their own.
+            activity: { recordSessionOpened: async () => {} } as any,
         });
     });
 

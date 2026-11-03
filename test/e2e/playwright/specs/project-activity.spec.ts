@@ -1,17 +1,16 @@
 import { test, expect, skipInStaticMode } from '../fixtures/collaboration.fixture';
 import { ShareModalPage } from '../pages/share-modal.page';
+import { NavigationPage } from '../pages/navigation.page';
+import { WorkareaPage } from '../pages/workarea.page';
 import { waitForYjsSync } from '../helpers/sync-helpers';
+import { fillTextIdeviceEditor, getTextIdeviceId } from '../helpers/idevice-collab-helpers';
 import {
-    addIdevice,
-    addPage,
     deleteIdevice,
     editIdevice,
-    getFirstBlockAndIdeviceIds,
     saveIdevice,
     saveProject,
-    selectFirstPage,
     waitForAppReady,
-    waitForTinyMceReady,
+    waitForTinyMCEReady,
 } from '../helpers/workarea-helpers';
 
 /**
@@ -77,14 +76,18 @@ test.describe('Project activity log', () => {
         await collaboratorPage.goto(`/workarea?project=${projectUuid}`);
         await waitForAppReady(collaboratorPage);
         await waitForYjsSync(collaboratorPage);
-        await addPage(collaboratorPage, XSS_PAGE_TITLE);
-        await selectFirstPage(collaboratorPage);
-        await addIdevice(collaboratorPage, 'text');
-        await waitForTinyMceReady(collaboratorPage);
-        const { ideviceId } = await getFirstBlockAndIdeviceIds(collaboratorPage);
+        const collaboratorNav = new NavigationPage(collaboratorPage);
+        const collaboratorWorkarea = new WorkareaPage(collaboratorPage);
+        await collaboratorNav.createNodeAtRoot(XSS_PAGE_TITLE);
+        await collaboratorNav.selectNodeByTitle(XSS_PAGE_TITLE);
+        await collaboratorWorkarea.waitForContentReady(XSS_PAGE_TITLE);
+        await collaboratorWorkarea.addTextIdevice();
+        const ideviceId = await getTextIdeviceId(collaboratorPage);
+        await fillTextIdeviceEditor(collaboratorPage, 'Activity test content');
         await saveIdevice(collaboratorPage, ideviceId);
         await editIdevice(collaboratorPage, ideviceId);
-        await waitForTinyMceReady(collaboratorPage);
+        await waitForTinyMCEReady(collaboratorPage);
+        await fillTextIdeviceEditor(collaboratorPage, 'Activity test content, edited');
         await saveIdevice(collaboratorPage, ideviceId);
         await deleteIdevice(collaboratorPage, ideviceId);
         await saveProject(collaboratorPage);
@@ -208,7 +211,7 @@ test.describe('Project activity log', () => {
         await collaboratorPage.reload({ waitUntil: 'domcontentloaded' });
         await waitForAppReady(collaboratorPage);
         await waitForYjsSync(collaboratorPage);
-        await addPage(collaboratorPage, 'After reconnection');
+        await new NavigationPage(collaboratorPage).createNodeAtRoot('After reconnection');
         await expect
             .poll(
                 async () => {
