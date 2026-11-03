@@ -142,3 +142,16 @@
         gap: 0;
     }
 }
+
+/* Entry point in the Share modal footer */
+#share-activity-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+
+    .auto-icon {
+        font-size: 18px;
+        line-height: 1;
+    }
+}
