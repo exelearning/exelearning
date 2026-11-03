@@ -5,7 +5,6 @@ import { WorkareaPage } from '../pages/workarea.page';
 import { waitForYjsSync } from '../helpers/sync-helpers';
 import { fillTextIdeviceEditor, getTextIdeviceId } from '../helpers/idevice-collab-helpers';
 import {
-    deleteIdevice,
     editIdevice,
     saveIdevice,
     saveProject,
@@ -32,7 +31,20 @@ test.describe('Project activity log', () => {
 
     const ADMIN_EMAIL = 'admin@exelearning.test';
     const ADMIN_PASSWORD = 'AdminPass123!';
+    const PAGE_TITLE = 'Collaborator page';
+    // Hostile label stored verbatim by the server; the UI must render it as text.
+    // Applied through a rename so the page objects never build a CSS selector from it.
     const XSS_PAGE_TITLE = '<img src=x onerror="window.__activityXss=1">';
+
+    /** Delete an iDevice from its toolbar, confirming only if the build shows a dialog. */
+    async function deleteIdeviceFromToolbar(page: import('@playwright/test').Page, ideviceId: string) {
+        await page.locator(`.idevice_node[id="${ideviceId}"] .btn-delete-idevice`).click();
+        // The confirmation opens after an asynchronous edit-flag check.
+        const confirm = page.locator('#modalConfirm .confirm, #modalConfirm .btn-primary').first();
+        await confirm.waitFor({ state: 'visible', timeout: 15000 });
+        await confirm.click();
+        await page.waitForFunction(id => !document.getElementById(id), ideviceId, { timeout: 15000 });
+    }
 
     async function openActivityFromShare(page: import('@playwright/test').Page) {
         const shareModal = new ShareModalPage(page);
@@ -53,6 +65,15 @@ test.describe('Project activity log', () => {
         createProject,
         browser,
     }) => {
+        // Keep the collaborative autosave out of the iDevice editing window (it would
+        // interrupt the editor with an "unsaved changes" notice); the manual Save at
+        // the end of the collaborator's work is the save this journey asserts on.
+        for (const page of [ownerPage, collaboratorPage]) {
+            await page.addInitScript(() => {
+                (window as Window & { __EXE_COLLAB_AUTOSAVE_IDLE_MS__?: number }).__EXE_COLLAB_AUTOSAVE_IDLE_MS__ =
+                    120000;
+            });
+        }
         const projectTitle = `Activity project ${Date.now()}`;
         const projectUuid = await createProject(ownerPage, projectTitle);
         const collaboratorEmail = await collaboratorPage
@@ -78,9 +99,10 @@ test.describe('Project activity log', () => {
         await waitForYjsSync(collaboratorPage);
         const collaboratorNav = new NavigationPage(collaboratorPage);
         const collaboratorWorkarea = new WorkareaPage(collaboratorPage);
-        await collaboratorNav.createNodeAtRoot(XSS_PAGE_TITLE);
-        await collaboratorNav.selectNodeByTitle(XSS_PAGE_TITLE);
-        await collaboratorWorkarea.waitForContentReady(XSS_PAGE_TITLE);
+        // createNodeAtRoot() already selects the new page; selecting it again would
+        // start the inline title rename, which the editor's focus change would re-trigger.
+        await collaboratorNav.createNodeAtRoot(PAGE_TITLE);
+        await collaboratorWorkarea.waitForContentReady(PAGE_TITLE);
         await collaboratorWorkarea.addTextIdevice();
         const ideviceId = await getTextIdeviceId(collaboratorPage);
         await fillTextIdeviceEditor(collaboratorPage, 'Activity test content');
@@ -89,7 +111,16 @@ test.describe('Project activity log', () => {
         await waitForTinyMCEReady(collaboratorPage);
         await fillTextIdeviceEditor(collaboratorPage, 'Activity test content, edited');
         await saveIdevice(collaboratorPage, ideviceId);
-        await deleteIdevice(collaboratorPage, ideviceId);
+        await deleteIdeviceFromToolbar(collaboratorPage, ideviceId);
+        // Rename through the structure binding (the same path the title editor uses).
+        await collaboratorPage.evaluate(
+            ({ title, newTitle }) => {
+                const bridge = (window as any).eXeLearning?.app?.project?._yjsBridge;
+                const page = bridge.structureBinding.getPages().find((p: { pageName: string }) => p.pageName === title);
+                bridge.structureBinding.updatePage(page.id, { pageName: newTitle });
+            },
+            { title: PAGE_TITLE, newTitle: XSS_PAGE_TITLE },
+        );
         await saveProject(collaboratorPage);
 
         // Pending browser reports are flushed before the save; give the last batch a moment to land.
@@ -109,6 +140,7 @@ test.describe('Project activity log', () => {
                     'session.opened',
                     'save.manual',
                     'page.created',
+                    'page.renamed',
                     'idevice.created',
                 ]),
             );
@@ -120,18 +152,26 @@ test.describe('Project activity log', () => {
         const byCollaborator = apiLog.events.filter(
             (e: { actor: { email: string } | null }) => e.actor?.email === collaboratorEmail,
         );
+        // Deleting the last iDevice of a box with "Also delete associated box" removes the
+        // box; the log records that as one block.deleted (the iDevice inside is part of it).
         expect(byCollaborator.map((e: { type: string }) => e.type)).toEqual(
             expect.arrayContaining([
                 'session.opened',
                 'save.manual',
                 'page.created',
+                'page.renamed',
                 'idevice.created',
-                'idevice.deleted',
+                'idevice.edited',
+                'block.deleted',
             ]),
         );
+        expect(byCollaborator.some((e: { type: string }) => e.type === 'idevice.deleted')).toBe(false);
         const createdPage = apiLog.events.find((e: { type: string }) => e.type === 'page.created');
-        expect(createdPage.target.label).toBe(XSS_PAGE_TITLE);
+        expect(createdPage.target.label).toBe(PAGE_TITLE);
         expect(createdPage.provenance).toBe('client');
+        const renamedPage = apiLog.events.find((e: { type: string }) => e.type === 'page.renamed');
+        expect(renamedPage.target.id).toBe(createdPage.target.id);
+        expect(renamedPage.target.label).toBe(XSS_PAGE_TITLE);
         const invite = apiLog.events.find((e: { type: string }) => e.type === 'access.collaborator_added');
         expect(invite.provenance).toBe('server');
         expect(invite.target.label).toBe(collaboratorEmail);
@@ -141,7 +181,7 @@ test.describe('Project activity log', () => {
         const entries = modal.locator('.activity-log-entry');
         await expect(entries.first()).toBeVisible();
         expect(await entries.count()).toBeGreaterThanOrEqual(5);
-        await expect(modal.locator('.activity-log-entry', { hasText: 'Created page' })).toContainText(XSS_PAGE_TITLE);
+        await expect(modal.locator('.activity-log-entry', { hasText: 'Renamed page' })).toContainText(XSS_PAGE_TITLE);
         // The hostile title rendered as text: no element was created and the handler never ran.
         await expect(modal.locator('.activity-log-list img')).toHaveCount(0);
         expect(
@@ -185,8 +225,12 @@ test.describe('Project activity log', () => {
             data: { email: ADMIN_EMAIL, password: ADMIN_PASSWORD },
         });
         expect(adminLogin.ok()).toBeTruthy();
-        const projectInfo = await (await adminPage.request.get(`/api/projects/uuid/${projectUuid}/sharing`)).json();
-        const projectId = projectInfo.project.id;
+        // Administrators are not project members: resolve the numeric id through the admin listing.
+        const listing = await (
+            await adminPage.request.get(`/api/admin/projects?title=${encodeURIComponent(projectTitle)}&limit=50`)
+        ).json();
+        const projectId = listing.projects.find((p: { uuid: string }) => p.uuid === projectUuid)?.id;
+        expect(projectId).toBeTruthy();
         const adminApi = await adminPage.request.get(`/api/admin/projects/${projectId}/activity?limit=100`);
         expect(adminApi.ok()).toBeTruthy();
         const adminBody = await adminApi.json();
