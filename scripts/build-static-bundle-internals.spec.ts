@@ -437,6 +437,27 @@ describe('menu and modal HTML generation', () => {
         expect(missing).toEqual([]);
     });
 
+    it('inlines the media library previews without an empty src (issue #2691)', () => {
+        // Firefox resolves src="" against the document base URL, requests it and
+        // aborts the request (NS_BINDING_ABORTED). In a static build the base URL
+        // can be the embedding script named by <base href>, which then receives a
+        // request for a path it does not serve.
+        const html = generateModalsHtml();
+
+        for (const className of [
+            'media-library-preview-img',
+            'media-library-preview-video',
+            'media-library-preview-audio',
+        ]) {
+            const tag = html.match(new RegExp(`<[a-z]+[^>]*class="${className}"[^>]*>`));
+            expect(tag).not.toBeNull();
+            expect(tag?.[0] ?? '').not.toMatch(/\ssrc=/);
+        }
+
+        // The Nunjucks comment that documents the omission must not survive either.
+        expect(html).not.toContain('#2691');
+    });
+
     it('carries the print preview and the options panel beside it', () => {
         // The print preview finds its elements by id instead of through the base Modal, so the
         // check above passes it over; without this markup File → Print would silently do nothing.
