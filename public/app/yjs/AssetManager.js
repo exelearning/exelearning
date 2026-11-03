@@ -895,6 +895,11 @@ class AssetManager {
    * Every `blobURLCache` population site must go through here so no path can
    * cache the un-converted `.srt` blob URL first (cache-first lookups would
    * then keep serving it). Single source of truth (AGENTS.md).
+   *
+   * A blob: URL shares the editor's origin, so an asset whose type can run
+   * script as a document (HTML, XML, SVG) is never exposed as-is: any
+   * collaborator can upload one and embed or link it (#2621). See
+   * _inertDisplayBlob.
    * @param {{mime?: string, filename?: string, blob: Blob}} asset
    * @returns {Promise<string>} blob: (or data:) URL
    */
@@ -914,7 +919,74 @@ class AssetManager {
         console.warn('[AssetManager] Failed to convert .srt subtitle to WebVTT for display:', e);
       }
     }
-    return this.createBlobURL(asset && asset.blob ? asset.blob : asset);
+    return this.createBlobURL(await this._inertDisplayBlob(asset && asset.blob ? asset.blob : asset, asset && asset.mime));
+  }
+
+  /**
+   * Types a browser never renders as a scriptable document when the blob: URL
+   * is framed, embedded or opened: one strict type/subtype, so no comma list
+   * (a browser takes its last valid type) and no XML. SVG is handled apart
+   * because <img> needs it.
+   * @private
+   */
+  static INERT_DISPLAY_TYPE =
+    /^(?:(?:image|audio|video|font)\/(?!.*xml$)[a-z0-9][a-z0-9!#$&^_.+-]*|application\/pdf|text\/(?:plain|vtt|css))$/;
+
+  /**
+   * The display copy of a blob, safe to hand to any element. Only inert types
+   * pass, re-typed to their bare type/subtype; anything else, untyped blobs
+   * included, becomes application/octet-stream (no HTML sniffing). SVG is
+   * sanitized so it still works as an image. An untyped blob takes the asset's
+   * recorded MIME type first. Both come from Yjs metadata that any
+   * collaborator can write (#2621). Returns null only for SVG, which needs the
+   * async sanitizer. The stored blob is never changed.
+   * @param {Blob} blob
+   * @param {string} [mime] - Asset MIME type, used when the blob has none
+   * @returns {Blob|null}
+   * @private
+   */
+  _inertDisplayBlobSync(blob, mime) {
+    if (!(blob instanceof Blob)) return blob;
+    const type = (blob.type || mime || '').split(';')[0].trim().toLowerCase();
+    if (type === 'image/svg+xml') return null;
+    if (!AssetManager.INERT_DISPLAY_TYPE.test(type)) return new Blob([blob], { type: 'application/octet-stream' });
+    return blob.type === type ? blob : new Blob([blob], { type });
+  }
+
+  /**
+   * @param {Blob} blob
+   * @param {string} [mime]
+   * @returns {Promise<Blob>}
+   * @private
+   */
+  async _inertDisplayBlob(blob, mime) {
+    return this._inertDisplayBlobSync(blob, mime) ?? this._sanitizedSvgBlob(blob);
+  }
+
+  /**
+   * Remove everything scriptable from an SVG with DOMPurify. The SVG is parsed
+   * as XML and only its root element is serialized, so processing instructions
+   * (xml-stylesheet/XSLT) are dropped and the namespaces survive. Without
+   * DOMPurify, or for SVG that does not parse, the copy is text/plain.
+   * @param {Blob} blob
+   * @returns {Promise<Blob>}
+   * @private
+   */
+  async _sanitizedSvgBlob(blob) {
+    const purify = typeof window !== 'undefined' ? window.DOMPurify : null;
+    if (purify && typeof purify.sanitize === 'function') {
+      try {
+        const doc = new window.DOMParser().parseFromString(await blob.text(), 'image/svg+xml');
+        const root = doc.documentElement;
+        if (root.namespaceURI === 'http://www.w3.org/2000/svg' && !doc.getElementsByTagName('parsererror').length) {
+          purify.sanitize(root, { IN_PLACE: true, USE_PROFILES: { svg: true, svgFilters: true } });
+          return new Blob([new window.XMLSerializer().serializeToString(root)], { type: 'image/svg+xml' });
+        }
+      } catch (e) {
+        console.warn('[AssetManager] Failed to sanitize SVG for display:', e);
+      }
+    }
+    return new Blob([blob], { type: 'text/plain' });
   }
 
   /**
@@ -1921,16 +1993,17 @@ class AssetManager {
   }
 
   /**
-   * Resolve an HTML asset with all its internal relative URLs converted to blob URLs
+   * Resolve an HTML asset for display in an editor iframe.
    *
    * This method:
    * 1. Fetches the HTML content from the asset
    * 2. Parses it and finds all relative URLs (src, href)
-   * 3. Resolves each to a blob URL
-   * 4. Returns a new blob URL with the resolved HTML
+   * 3. Inlines each as a data URL
+   * 4. Returns a blob URL of a page that hosts the result in an opaque-origin
+   *    frame (see _opaqueFramePageURL)
    *
    * @param {string} assetId - HTML asset UUID
-   * @returns {Promise<string>} Blob URL of resolved HTML
+   * @returns {Promise<string>} Blob URL of the hosting page
    */
   async resolveHtmlWithAssets(assetId) {
     // 1. Get HTML asset metadata
@@ -1987,18 +2060,18 @@ class AssetManager {
 
         const asset = this.findAssetByRelativePath(baseFolder, url);
         if (asset) {
-          const blobUrl = await this.resolveAssetURL(`asset://${asset.id}`);
-          if (blobUrl) {
-            resolvedUrls.set(url, blobUrl);
+          // data: rather than blob: — the opaque frame cannot load the editor's blob: URLs
+          const dataUrl = await this._getAssetAsDataUrl(asset.id);
+          if (dataUrl) {
+            resolvedUrls.set(url, dataUrl);
           }
         }
       })
     );
 
     // 4.5 Process external CSS files BEFORE replacing URLs
-    // This must happen BEFORE step 5 because once URLs are replaced with blob://,
+    // This must happen BEFORE step 5 because once URLs are replaced with data:,
     // we can't resolve relative url() references inside the CSS files.
-    // External CSS files loaded via <link> can't resolve relative url() from blob:// URLs
     // So we fetch them, resolve internal URLs, and convert to inline <style>
     const processedCssLinks = new Set();
     for (const { element, attr, url } of urlsToResolve) {
@@ -2021,7 +2094,7 @@ class AssetManager {
         const cssFolder = cssAsset.folderPath || '';
 
         // Resolve url() references in the CSS content
-        const resolvedCss = await this._resolveUrlsInCss(cssText, cssFolder, new Map());
+        const resolvedCss = await this._resolveUrlsInCssAsDataUrls(cssText, cssFolder);
 
         // Replace <link> with <style> containing resolved CSS
         const styleEl = doc.createElement('style');
@@ -2065,13 +2138,13 @@ class AssetManager {
 
     // Process inline styles with url() references
     for (const styleEl of styleElements) {
-      styleEl.textContent = await this._resolveUrlsInCss(styleEl.textContent, baseFolder, resolvedUrls);
+      styleEl.textContent = await this._resolveUrlsInCssAsDataUrls(styleEl.textContent, baseFolder);
     }
 
     for (const el of inlineStyleElements) {
       const style = el.getAttribute('style');
       if (style && style.includes('url(')) {
-        el.setAttribute('style', await this._resolveUrlsInCss(style, baseFolder, resolvedUrls));
+        el.setAttribute('style', await this._resolveUrlsInCssAsDataUrls(style, baseFolder));
       }
     }
 
@@ -2098,12 +2171,43 @@ class AssetManager {
       resolvedHtml = '<!DOCTYPE html>\n';
     }
     resolvedHtml += doc.documentElement.outerHTML;
-    const resolvedBlob = new Blob([resolvedHtml], { type: 'text/html' });
-    const resolvedBlobUrl = URL.createObjectURL(resolvedBlob);
+    const resolvedBlobUrl = this._opaqueFramePageURL(resolvedHtml, metadata.filename || '');
 
     Logger.log(`[AssetManager] resolveHtmlWithAssets: Resolved ${resolvedUrls.size} URLs for ${assetId}`);
 
     return resolvedBlobUrl;
+  }
+
+  /**
+   * Sandbox tokens for author HTML shown in the editor; the same set as
+   * PUBLIC_VIEW_SANDBOX (src/shared/security/publicViewSandbox.ts). Without
+   * `allow-same-origin` the frame gets an opaque origin: no editor session,
+   * storage or parent DOM.
+   */
+  static HTML_ASSET_SANDBOX = 'allow-scripts allow-popups allow-forms allow-downloads allow-popups-to-escape-sandbox';
+
+  /**
+   * Blob URL of a page that only hosts `html` in a sandboxed srcdoc frame. The
+   * page itself is same-origin but carries no author code; it relays the
+   * framed link handler's requests so the editor sees them coming from the
+   * iframe it owns (see asset_url_resolver.js).
+   * @param {string} html - Author HTML
+   * @param {string} title - Accessible frame title
+   * @returns {string} blob: URL
+   * @private
+   */
+  _opaqueFramePageURL(html, title) {
+    // Quoted-attribute escaping: & and " are all that can end or alter the value.
+    const attr = (value) => value.replace(/&/g, '&amp;').replace(/"/g, '&quot;');
+    const page =
+      '<!DOCTYPE html>\n<html><head><meta charset="utf-8">' +
+      '<style>html,body{margin:0;height:100%;overflow:hidden}iframe{display:block;border:0;width:100%;height:100%}</style>' +
+      `</head><body><iframe sandbox="${AssetManager.HTML_ASSET_SANDBOX}" title="${attr(title)}" srcdoc="${attr(html)}"></iframe>` +
+      "<script>var frame = document.querySelector('iframe');" +
+      "addEventListener('message', function (event) {" +
+      "if (event.source === frame.contentWindow && event.data && event.data.type === 'exe-resolve-html-link') parent.postMessage(event.data, '*');" +
+      '});</script></body></html>';
+    return URL.createObjectURL(new Blob([page], { type: 'text/html' }));
   }
 
   /**
@@ -2495,47 +2599,6 @@ class AssetManager {
     return html + navScript;
   }
 
-  /**
-   * Resolve url() references in CSS content
-   * @param {string} cssText - CSS text content
-   * @param {string} baseFolder - Base folder for resolution
-   * @param {Map} resolvedUrls - Map of already resolved URLs
-   * @returns {Promise<string>} CSS with resolved URLs
-   * @private
-   */
-  async _resolveUrlsInCss(cssText, baseFolder, resolvedUrls) {
-    const urlPattern = /url\(["']?([^"')]+)["']?\)/g;
-    let result = cssText;
-    let match;
-
-    while ((match = urlPattern.exec(cssText)) !== null) {
-      const url = match[1];
-
-      // Skip absolute URLs and data URLs
-      if (url.match(/^(https?:|data:|blob:|asset:|\/\/)/i)) {
-        continue;
-      }
-
-      let blobUrl = resolvedUrls.get(url);
-
-      if (!blobUrl) {
-        const asset = this.findAssetByRelativePath(baseFolder, url);
-        if (asset) {
-          blobUrl = await this.resolveAssetURL(`asset://${asset.id}`);
-          if (blobUrl) {
-            resolvedUrls.set(url, blobUrl);
-          }
-        }
-      }
-
-      if (blobUrl) {
-        result = result.replace(match[0], `url("${blobUrl}")`);
-      }
-    }
-
-    return result;
-  }
-
   // =========================================================================
   // Hash and Deduplication
   // =========================================================================
@@ -2919,6 +2982,50 @@ class AssetManager {
       Logger.log(`[AssetManager] Synced reverseBlobCache for ${assetId.substring(0, 8)}...`);
     }
     return blobUrl;
+  }
+
+  /**
+   * Cached display URL for an asset, created on the spot for synchronous UI
+   * code. Goes through the same inert display copy as _displayBlobURLForAsset.
+   * An SVG needs the async sanitizer: this returns undefined, so the caller
+   * marks its element as loading (data-asset-id), and one sanitize pass per
+   * asset then updates those elements through updateDomImagesForAsset.
+   * @param {{id: string, mime?: string, blob?: Blob}} asset
+   * @returns {string|undefined} URL, or undefined when it is not ready yet
+   */
+  getDisplayBlobURLSync(asset) {
+    const cached = this.getBlobURLSynced(asset.id);
+    if (cached || !asset.blob) return cached;
+    const inert = this._inertDisplayBlobSync(asset.blob, asset.mime);
+    if (!inert) {
+      if (!this.pendingDisplayURLs.has(asset.id)) {
+        this.pendingDisplayURLs.add(asset.id);
+        this.updateDomImagesForAsset(asset.id)
+          .catch(() => {})
+          .finally(() => this.pendingDisplayURLs.delete(asset.id));
+      }
+      return undefined;
+    }
+    const blobUrl = this.createBlobURLSync(inert);
+    if (blobUrl) {
+      this.blobURLCache.set(asset.id, blobUrl);
+      this.reverseBlobCache.set(blobUrl, asset.id);
+    }
+    return blobUrl;
+  }
+
+  /**
+   * URL to open an asset on its own (new tab): HTML gets the opaque-frame page,
+   * anything else its display URL.
+   * @param {string} assetId
+   * @returns {Promise<string|null>}
+   */
+  async resolveViewerURL(assetId) {
+    const metadata = this.getAssetMetadata(assetId);
+    if (metadata && this._isHtmlAsset(metadata.mime, metadata.filename)) {
+      return this.resolveHtmlWithAssets(assetId);
+    }
+    return this.resolveAssetURL(`asset://${assetId}`);
   }
 
   /**
@@ -4135,6 +4242,9 @@ class AssetManager {
    * @type {Set<string>}
    */
   pendingFetches = new Set();
+
+  /** Asset IDs whose SVG display copy is being sanitized (see getDisplayBlobURLSync) */
+  pendingDisplayURLs = new Set();
 
   /**
    * Update all images in the DOM that reference a specific asset
