@@ -27,6 +27,7 @@ export async function createTestDb(): Promise<Kysely<Database>> {
  */
 export async function cleanTestDb(db: Kysely<Database>): Promise<void> {
     // Delete in reverse FK order
+    await db.deleteFrom('project_activity').execute();
     await db.deleteFrom('yjs_updates').execute();
     await db.deleteFrom('yjs_documents').execute();
     await db.deleteFrom('assets').execute();

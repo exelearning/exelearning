@@ -2057,4 +2057,92 @@ describe('Yjs WebSocket Service', () => {
             expect(unregisterSpy).toHaveBeenCalledWith('unregister-uuid', 'unregister-client');
         });
     });
+
+    describe('Session activity (issue #2689)', () => {
+        const SESSION_UUID = 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee';
+        const SESSION_DOC = `project-${SESSION_UUID}`;
+        let sessions: Array<{ projectId: number; userId: number; sessionId?: string }>;
+
+        beforeEach(() => {
+            sessions = [];
+            mockProjects.set(SESSION_UUID, { id: 77, uuid: SESSION_UUID, owner_id: 1, visibility: 'private' });
+            configure({
+                db: mockDb,
+                queries: createMockQueries(),
+                sessionManager: createMockSessionManager(),
+                auth: createMockAuth(),
+                assetCoordinator: createMockAssetCoordinator(),
+                activity: {
+                    recordSessionOpened: async (_db: any, input: any) => {
+                        sessions.push(input);
+                    },
+                } as any,
+            });
+        });
+
+        it('exposes the persisted project id with a granted access check', async () => {
+            const access = await checkWebSocketProjectAccess(SESSION_UUID, 1);
+            expect(access).toEqual({ hasAccess: true, projectId: 77 });
+            const denied = await checkWebSocketProjectAccess(SESSION_UUID, 2);
+            expect(denied.hasAccess).toBe(false);
+            expect(denied.projectId).toBeUndefined();
+        });
+
+        it('records one session.opened with the server-confirmed project id and the client session id', async () => {
+            const ws = createMockWebSocket();
+            const result = await handleWebSocketOpen(ws, SESSION_DOC, 'valid-token-user-1', 'session-abcdefgh');
+            expect(result.success).toBe(true);
+            await new Promise(resolve => setTimeout(resolve, 0));
+            expect(sessions).toEqual([{ projectId: 77, userId: 1, sessionId: 'session-abcdefgh' }]);
+        });
+
+        it('passes an absent session id through unchanged', async () => {
+            const ws = createMockWebSocket();
+            await handleWebSocketOpen(ws, SESSION_DOC, 'valid-token-user-1');
+            await new Promise(resolve => setTimeout(resolve, 0));
+            expect(sessions).toEqual([{ projectId: 77, userId: 1, sessionId: undefined }]);
+        });
+
+        it('records nothing for rejected connections or in-memory projects without a database row', async () => {
+            const denied = await handleWebSocketOpen(
+                createMockWebSocket(),
+                SESSION_DOC,
+                'valid-token-user-2',
+                'session-abcdefgh',
+            );
+            expect(denied.success).toBe(false);
+
+            mockProjects.delete(SESSION_UUID);
+            mockSessions.set(SESSION_UUID, { userId: 1 });
+            const inMemory = await handleWebSocketOpen(
+                createMockWebSocket(),
+                SESSION_DOC,
+                'valid-token-user-1',
+                'session-abcdefgh',
+            );
+            expect(inMemory.success).toBe(true);
+            await new Promise(resolve => setTimeout(resolve, 0));
+            expect(sessions).toEqual([]);
+        });
+
+        it('does not let a failing recorder break the connection', async () => {
+            configure({
+                db: mockDb,
+                queries: createMockQueries(),
+                sessionManager: createMockSessionManager(),
+                auth: createMockAuth(),
+                assetCoordinator: createMockAssetCoordinator(),
+                activity: {
+                    recordSessionOpened: async () => {
+                        throw new Error('db down');
+                    },
+                } as any,
+            });
+            const ws = createMockWebSocket();
+            const result = await handleWebSocketOpen(ws, SESSION_DOC, 'valid-token-user-1', 'session-abcdefgh');
+            expect(result.success).toBe(true);
+            await new Promise(resolve => setTimeout(resolve, 0));
+            expect(ws.closeArgs).toEqual([]);
+        });
+    });
 });

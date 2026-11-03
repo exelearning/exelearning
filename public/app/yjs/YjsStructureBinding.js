@@ -17,6 +17,25 @@ class YjsStructureBinding {
   }
 
   /**
+   * Tell the activity reporter (issue #2689) the exact semantics of the
+   * transaction that just ran: clones, moves and deletes cannot be told apart
+   * from the raw Yjs events alone. Must be called synchronously after the
+   * transaction. No-op when no reporter is attached (static/Electron).
+   * @param {Object} hint - { type, targetId, label?, details?, descendantIds? }
+   * @private
+   */
+  _noteActivity(hint) {
+    const manager = this.manager;
+    if (manager && typeof manager.noteActivity === 'function') {
+      try {
+        manager.noteActivity(hint);
+      } catch (_) {
+        // activity capture must never break an edit
+      }
+    }
+  }
+
+  /**
    * Serialize jsonProperties and verify that the result can be parsed.
    * @param {*} value - Object or JSON string supplied by an iDevice
    * @returns {string} Valid JSON string
@@ -249,10 +268,13 @@ class YjsStructureBinding {
   deletePage(pageId) {
     const navigation = this.manager.getNavigation();
     let deleted = false;
+    const deletedLabel = this.getPageMap(pageId)?.get('pageName') ?? null;
+    let descendantIds = [];
 
     this.manager.getDoc().transact(() => {
       // First, collect all page IDs to delete (this page and all descendants)
       const pageIdsToDelete = this._collectDescendantIds(pageId, navigation);
+      descendantIds = pageIdsToDelete.slice();
       pageIdsToDelete.push(pageId); // Add the page itself
 
       Logger.log(
@@ -279,6 +301,16 @@ class YjsStructureBinding {
         console.warn(`[YjsStructureBinding] Page ${pageId} NOT FOUND for deletion`);
       }
     }, this.manager.getDoc().clientID);
+
+    if (deleted) {
+      this._noteActivity({
+        type: 'page.deleted',
+        targetId: pageId,
+        label: deletedLabel,
+        descendantIds,
+        details: descendantIds.length > 0 ? { descendants: descendantIds.length } : null,
+      });
+    }
 
     return deleted;
   }
@@ -383,6 +415,7 @@ class YjsStructureBinding {
     }, this.manager.getDoc().clientID);
 
     Logger.log(`[YjsStructureBinding] Cloned page ${pageId} to ${newPageId}`);
+    this._noteActivity({ type: 'page.cloned', targetId: newPageId, label: pageName, details: { sourceId: pageId } });
 
     // Recursively clone all child pages
     this.cloneChildPages(pageId, newPageId);
@@ -527,6 +560,12 @@ class YjsStructureBinding {
       }, this.manager.getDoc().clientID);
 
       Logger.log(`[YjsStructureBinding] Moved page ${pageId} to parent ${normalizedParentId}, index ${newIndex}`);
+      this._noteActivity({
+        type: 'page.moved',
+        targetId: pageId,
+        label: pageMap.get('pageName'),
+        details: { toParentId: normalizedParentId || null },
+      });
       return true;
     } catch (error) {
       console.error(`[YjsStructureBinding] Error moving page ${pageId}:`, error);
@@ -710,6 +749,9 @@ class YjsStructureBinding {
     }, this.manager.getDoc().clientID);
 
     Logger.log(`[YjsStructureBinding] Group moved up: ${selectedIds.join(', ')}`);
+    for (const movedId of selectedIds) {
+      this._noteActivity({ type: 'page.moved', targetId: movedId, label: this.getPageMap(movedId)?.get('pageName') ?? null });
+    }
     return true;
   }
 
@@ -778,6 +820,9 @@ class YjsStructureBinding {
     }, this.manager.getDoc().clientID);
 
     Logger.log(`[YjsStructureBinding] Group moved down: ${selectedIds.join(', ')}`);
+    for (const movedId of selectedIds) {
+      this._noteActivity({ type: 'page.moved', targetId: movedId, label: this.getPageMap(movedId)?.get('pageName') ?? null });
+    }
     return true;
   }
 
@@ -858,6 +903,9 @@ class YjsStructureBinding {
     Logger.log(
       `[YjsStructureBinding] Group moved right under ${targetParentId}: ${orderedSelected.join(', ')}`
     );
+    for (const movedId of selectedIds) {
+      this._noteActivity({ type: 'page.moved', targetId: movedId, label: this.getPageMap(movedId)?.get('pageName') ?? null });
+    }
     return true;
   }
 
@@ -936,6 +984,9 @@ class YjsStructureBinding {
     Logger.log(
       `[YjsStructureBinding] Group moved left to parent ${grandparentId}: ${orderedSelected.join(', ')}`
     );
+    for (const movedId of selectedIds) {
+      this._noteActivity({ type: 'page.moved', targetId: movedId, label: this.getPageMap(movedId)?.get('pageName') ?? null });
+    }
     return true;
   }
 
@@ -964,6 +1015,7 @@ class YjsStructureBinding {
     }, this.manager.getDoc().clientID);
 
     Logger.log(`[YjsStructureBinding] Moved page ${pageId} up (swapped with ${previous.id})`);
+    this._noteActivity({ type: 'page.moved', targetId: pageId, label: current.pageMap.get('pageName') });
     return true;
   }
 
@@ -992,6 +1044,7 @@ class YjsStructureBinding {
     }, this.manager.getDoc().clientID);
 
     Logger.log(`[YjsStructureBinding] Moved page ${pageId} down (swapped with ${next.id})`);
+    this._noteActivity({ type: 'page.moved', targetId: pageId, label: current.pageMap.get('pageName') });
     return true;
   }
 
@@ -1040,6 +1093,7 @@ class YjsStructureBinding {
     }, this.manager.getDoc().clientID);
 
     Logger.log(`[YjsStructureBinding] Moved page ${pageId} left (to parent ${grandparentId})`);
+    this._noteActivity({ type: 'page.moved', targetId: pageId, label: this.getPageMap(pageId)?.get('pageName') ?? null });
     return true;
   }
 
@@ -1081,6 +1135,7 @@ class YjsStructureBinding {
     }, this.manager.getDoc().clientID);
 
     Logger.log(`[YjsStructureBinding] Moved page ${pageId} right (now child of ${newParent.id})`);
+    this._noteActivity({ type: 'page.moved', targetId: pageId, label: this.getPageMap(pageId)?.get('pageName') ?? null });
     return true;
   }
 
@@ -1147,6 +1202,12 @@ class YjsStructureBinding {
     }, this.manager.getDoc().clientID);
 
     Logger.log(`[YjsStructureBinding] Moved page ${pageId} to target ${targetId}`);
+    this._noteActivity({
+      type: 'page.moved',
+      targetId: pageId,
+      label: pageMap.get('pageName'),
+      details: { toParentId: pageMap.get('parentId') || null },
+    });
     return true;
   }
 
@@ -1585,6 +1646,9 @@ class YjsStructureBinding {
           const blockMap = blocks.get(j);
           // Search by both id and blockId for robustness
           if (blockMap.get('id') === blockId || blockMap.get('blockId') === blockId) {
+            const deletedLabel = blockMap.get('blockName') ?? null;
+            const deletedPageId = pageMap.get('id') || pageMap.get('pageId') || null;
+            const deletedPageLabel = pageMap.get('pageName') ?? null;
             this.manager.getDoc().transact(() => {
               blocks.delete(j, 1);
               // Update order of remaining blocks
@@ -1593,6 +1657,12 @@ class YjsStructureBinding {
               }
             }, this.manager.getDoc().clientID);
             Logger.log(`[YjsStructureBinding] Deleted block: ${blockId}`);
+            this._noteActivity({
+              type: 'block.deleted',
+              targetId: blockId,
+              label: deletedLabel,
+              details: { pageId: deletedPageId, pageLabel: deletedPageLabel },
+            });
             return true;
           }
         }
@@ -1726,6 +1796,12 @@ class YjsStructureBinding {
             }, this.manager.getDoc().clientID);
 
             Logger.log(`[YjsStructureBinding] Reordered block ${blockId} from ${currentIndex} to ${newOrder}`);
+            this._noteActivity({
+              type: 'block.moved',
+              targetId: blockId,
+              label: blocks.get(Math.min(Math.max(0, newOrder), blocks.length - 1))?.get('blockName') ?? null,
+              details: { pageId: pageMap.get('id') || pageMap.get('pageId') || null },
+            });
             return true;
           }
         }
@@ -1854,6 +1930,12 @@ class YjsStructureBinding {
 
     const newBlockId = clonedBlock.get('id');
     Logger.log(`[YjsStructureBinding] Cloned block ${blockId} to ${newBlockId}`);
+    this._noteActivity({
+      type: 'block.cloned',
+      targetId: newBlockId,
+      label: clonedBlock.get('blockName'),
+      details: { sourceId: blockId, pageId },
+    });
 
     return {
       id: newBlockId,
@@ -1906,6 +1988,12 @@ class YjsStructureBinding {
 
     const newCompId = clonedComp.get('id');
     Logger.log(`[YjsStructureBinding] Cloned component ${componentId} to ${newCompId}`);
+    this._noteActivity({
+      type: 'idevice.cloned',
+      targetId: newCompId,
+      label: blockMap.get('blockName'),
+      details: { sourceId: componentId, ideviceType: clonedComp.get('ideviceType'), pageId, blockId },
+    });
 
     return this.mapToComponent(clonedComp, clonedComp.get('order'));
   }
@@ -2214,6 +2302,9 @@ class YjsStructureBinding {
               // Don't do anything if already at the target position
               if (currentIndex === newOrder) return true;
 
+              // Captured before the move: the original map is unreadable once deleted.
+              const movedIdeviceType = compMap.get('ideviceType') ?? null;
+
               this.manager.getDoc().transact(() => {
                 // Clone the component before removing (Y.Maps can't be reused after deletion)
                 const clonedComp = this.cloneComponentMapForMove(compMap);
@@ -2234,6 +2325,16 @@ class YjsStructureBinding {
               }, this.manager.getDoc().clientID);
 
               Logger.log(`[YjsStructureBinding] Reordered component ${componentId} from index ${currentIndex} to ${newOrder}`);
+              this._noteActivity({
+                type: 'idevice.moved',
+                targetId: componentId,
+                label: blockMap.get('blockName'),
+                details: {
+                  ideviceType: movedIdeviceType,
+                  pageId: pageMap.get('id') || pageMap.get('pageId') || null,
+                  blockId: blockMap.get('id') || blockMap.get('blockId') || null,
+                },
+              });
               return true;
             }
           }
@@ -2310,6 +2411,9 @@ class YjsStructureBinding {
         return true;
       }
 
+      // Captured before the move: the original map is unreadable once deleted.
+      const movedIdeviceType = compMap.get('ideviceType') ?? null;
+
       this.manager.getDoc().transact(() => {
         // Clone component before removing (Yjs can't reuse deleted Y.Maps)
         const clonedComp = this.cloneComponentMapForMove(compMap);
@@ -2343,6 +2447,16 @@ class YjsStructureBinding {
       }, this.manager.getDoc().clientID);
 
       Logger.log(`[YjsStructureBinding] Moved component ${componentId} to block ${targetBlockId}`);
+      this._noteActivity({
+        type: 'idevice.moved',
+        targetId: componentId,
+        label: targetBlockMap.get('blockName'),
+        details: {
+          ideviceType: movedIdeviceType,
+          fromBlockId: sourceBlockMap.get('id') || sourceBlockMap.get('blockId') || null,
+          toBlockId: targetBlockId,
+        },
+      });
       return true;
     } catch (error) {
       console.error(`[YjsStructureBinding] Error moving component to block:`, error);
@@ -2451,6 +2565,12 @@ class YjsStructureBinding {
       }, this.manager.getDoc().clientID);
 
       Logger.log(`[YjsStructureBinding] Moved component ${componentId} to page ${targetPageId} in new block ${newBlockId}`);
+      this._noteActivity({
+        type: 'idevice.moved',
+        targetId: componentId,
+        label: blockName,
+        details: { pageId: targetPageId, toBlockId: newBlockId },
+      });
       return { blockId: newBlockId, componentId };
     } catch (error) {
       console.error(`[YjsStructureBinding] Error moving component to page:`, error);
@@ -2553,6 +2673,11 @@ class YjsStructureBinding {
       }, this.manager.getDoc().clientID);
 
       Logger.log(`[YjsStructureBinding] Moved block ${blockId} to page ${targetPageId}`);
+      this._noteActivity({
+        type: 'block.moved',
+        targetId: blockId,
+        details: { fromPageId: sourcePageId, toPageId: targetPageId },
+      });
       return true;
     } catch (error) {
       console.error(`[YjsStructureBinding] Error moving block to page:`, error);
@@ -2592,11 +2717,27 @@ class YjsStructureBinding {
             if (!compMap) continue;
 
             if (compMap.get('id') === componentId) {
+              const deletedType = compMap.get('ideviceType') ?? null;
+              const deletedLabel = blockMap.get('blockName') ?? null;
+              const deletedPageId = pageMap.get('id') || pageMap.get('pageId') || null;
+              const deletedPageLabel = pageMap.get('pageName') ?? null;
+              const deletedBlockId = blockMap.get('id') || blockMap.get('blockId') || null;
               // Use transaction with clientID origin for UndoManager tracking
               this.manager.getDoc().transact(() => {
                 components.delete(k, 1);
               }, this.manager.getDoc().clientID);
               Logger.log(`[YjsStructureBinding] Deleted component: ${componentId}`);
+              this._noteActivity({
+                type: 'idevice.deleted',
+                targetId: componentId,
+                label: deletedLabel,
+                details: {
+                  ideviceType: deletedType,
+                  pageId: deletedPageId,
+                  pageLabel: deletedPageLabel,
+                  blockId: deletedBlockId,
+                },
+              });
               return true;
             }
           }

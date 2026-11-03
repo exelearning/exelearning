@@ -146,6 +146,13 @@
                      aria-atomic="true"></div>
             </div>
             <div class="modal-footer">
+                {# Activity log entry point (issue #2689): shown only when the server reports the caller may read it #}
+                <button type="button"
+                        id="share-activity-button"
+                        class="btn btn-secondary me-auto d-none">
+                    <div class="auto-icon" aria-hidden="true">history</div>
+                    <span>{{ 'Activity' | trans }}</span>
+                </button>
                 <button type="button"
                         class="btn btn-primary close"
                         data-dismiss="modal">

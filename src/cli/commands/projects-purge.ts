@@ -31,6 +31,7 @@ export interface ProjectsPurgeResult {
         yjsUpdates: number;
         yjsVersions: number;
         collaborators: number;
+        activity: number;
         diskRemoved: number;
         diskMissing: number;
         diskFailures: string[];
@@ -109,15 +110,23 @@ export async function execute(
     const projects = await database.selectFrom('projects').select('uuid').execute();
     const projectUuids = projects.map(project => project.uuid);
 
-    const [projectsCount, assetsCount, yjsDocumentsCount, yjsUpdatesCount, yjsVersionsCount, collaboratorsCount] =
-        await Promise.all([
-            countTable(database, 'projects'),
-            countTable(database, 'assets'),
-            countTable(database, 'yjs_documents'),
-            countTable(database, 'yjs_updates'),
-            countTable(database, 'yjs_version_history'),
-            countTable(database, 'project_collaborators'),
-        ]);
+    const [
+        projectsCount,
+        assetsCount,
+        yjsDocumentsCount,
+        yjsUpdatesCount,
+        yjsVersionsCount,
+        collaboratorsCount,
+        activityCount,
+    ] = await Promise.all([
+        countTable(database, 'projects'),
+        countTable(database, 'assets'),
+        countTable(database, 'yjs_documents'),
+        countTable(database, 'yjs_updates'),
+        countTable(database, 'yjs_version_history'),
+        countTable(database, 'project_collaborators'),
+        countTable(database, 'project_activity'),
+    ]);
 
     const assetsRoot = path.join(fileHelper.getFilesDir(), 'assets');
 
@@ -134,6 +143,7 @@ export async function execute(
                 yjsUpdates: yjsUpdatesCount,
                 yjsVersions: yjsVersionsCount,
                 collaborators: collaboratorsCount,
+                activity: activityCount,
                 diskRemoved: 0,
                 diskMissing: 0,
                 diskFailures: [],
@@ -142,6 +152,7 @@ export async function execute(
     }
 
     await database.transaction().execute(async trx => {
+        await trx.deleteFrom('project_activity').execute();
         await trx.deleteFrom('yjs_version_history').execute();
         await trx.deleteFrom('yjs_updates').execute();
         await trx.deleteFrom('yjs_documents').execute();
@@ -182,6 +193,7 @@ export async function execute(
             yjsUpdates: yjsUpdatesCount,
             yjsVersions: yjsVersionsCount,
             collaborators: collaboratorsCount,
+            activity: activityCount,
             diskRemoved: diskStats.removed,
             diskMissing: diskStats.missing,
             diskFailures: diskStats.failures,

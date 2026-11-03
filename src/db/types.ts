@@ -22,6 +22,7 @@ export interface Database {
     templates: TemplatesTable;
     impersonation_audit_logs: ImpersonationAuditLogsTable;
     activity_log: ActivityLogTable;
+    project_activity: ProjectActivityTable;
     // Kysely internal migration tables
     kysely_migration: KyselyMigrationTable;
     kysely_migration_lock: KyselyMigrationLockTable;
@@ -201,6 +202,27 @@ interface ActivityLogTable {
     created_at: number; // Unix timestamp in milliseconds
 }
 
+/**
+ * Per-project activity log (issue #2689, ADR-2689-01).
+ * One row is one event or one aggregated run of the same event on the same target.
+ */
+interface ProjectActivityTable {
+    id: Generated<number>;
+    project_id: number;
+    user_id: number | null; // NULL after the actor's account is deleted
+    event_type: string; // Stable event code, e.g. 'page.edited'
+    target_type: string | null; // 'project' | 'page' | 'block' | 'idevice' | 'user'
+    target_id: string | null;
+    target_label: string | null; // Short historical label (truncated)
+    details: string | null; // JSON stored as text (allow-listed keys only)
+    session_id: string | null; // Client editor-session correlation id
+    dedupe_key: string | null; // Unique per project; makes retried client batches idempotent
+    event_count: Generated<number>; // Aggregated occurrences (default 1)
+    first_occurred_at: number; // Unix timestamp in milliseconds
+    occurred_at: number; // Last occurrence, Unix timestamp in milliseconds (ordering key)
+    created_at: number; // Server insert time, Unix timestamp in milliseconds
+}
+
 // Kysely internal migration tables
 interface KyselyMigrationTable {
     name: string;
@@ -271,6 +293,11 @@ export type ImpersonationAuditLogUpdate = Updateable<ImpersonationAuditLogsTable
 // Audit events
 export type ActivityEvent = Selectable<ActivityLogTable>;
 export type NewActivityEvent = Insertable<ActivityLogTable>;
+
+// Project activity log
+export type ProjectActivity = Selectable<ProjectActivityTable>;
+export type NewProjectActivity = Insertable<ProjectActivityTable>;
+export type ProjectActivityUpdate = Updateable<ProjectActivityTable>;
 
 // ============================================================================
 // HELPER TYPES

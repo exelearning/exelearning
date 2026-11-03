@@ -44,6 +44,7 @@ window.YjsModules = {
   YjsStructureTreeAdapter: window.YjsStructureTreeAdapter,
   YjsProjectManagerMixin: window.YjsProjectManagerMixin,
   YjsPropertiesBinding: window.YjsPropertiesBinding,
+  ProjectActivityReporter: window.ProjectActivityReporter,
 
   // Active instances (populated at runtime)
   _bridge: null,

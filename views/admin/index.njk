@@ -1574,7 +1574,7 @@
                                     <th>{{ t.status or 'Status' }}</th>
                                     <th>{{ t.visibility or 'Visibility' }}</th>
                                     <th>{{ t.created or 'Created' }}</th>
-                                    <th style="width: 180px;">{{ t.actions or 'Actions' }}</th>
+                                    <th style="width: 220px;">{{ t.actions or 'Actions' }}</th>
                                 </tr>
                             </thead>
                             <tbody id="projectsTableBody">
@@ -2120,6 +2120,25 @@ window.$eXeLearningCustom = {
     </main>
 
     <!-- Create User Modal -->
+    <!-- Project activity modal (issue #2689) -->
+    <div class="modal fade" id="projectActivityModal" tabindex="-1" aria-labelledby="projectActivityTitle" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="projectActivityTitle">{{ t.activity or 'Activity' }}</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{{ t.close or 'Close' }}"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-muted" style="font-size: 14px;">{{ t.activity_intro or 'Who shared, opened, saved, edited or imported content in this project, and when. Content changes are reported by the browser that made them and validated by the server.' }}</p>
+                    <div id="projectActivityContainer"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-admin-outline" data-bs-dismiss="modal">{{ t.close or 'Close' }}</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="modal fade" id="createUserModal" tabindex="-1">
         <div class="modal-dialog">
             <div class="modal-content">
@@ -2302,6 +2321,21 @@ window.$eXeLearningCustom = {
             dashboard: '{{ t.dashboard or "Dashboard" }}',
             users: '{{ t.users or "Users" }}',
             projects: '{{ t.projects or "Projects" }}',
+            activity: '{{ t.activity or "Activity" }}',
+            'User': '{{ t.activity_user or "User" }}',
+            'All users': '{{ t.activity_all_users or "All users" }}',
+            'Deleted user': '{{ t.activity_deleted_user or "Deleted user" }}',
+            'From': '{{ t.activity_from or "From" }}',
+            'To': '{{ t.activity_to or "To" }}',
+            'Apply filters': '{{ t.activity_apply_filters or "Apply filters" }}',
+            'Clear': '{{ t.clear_selection or "Clear" }}',
+            'Load more': '{{ t.activity_load_more or "Load more" }}',
+            'Loading...': '{{ t.loading or "Loading..." }}',
+            'No activity recorded yet.': '{{ t.activity_empty or "No activity recorded yet." }}',
+            'The activity could not be loaded.': '{{ t.activity_error or "The activity could not be loaded." }}',
+            'Activity recording is disabled on this site. Existing entries remain visible.': '{{ t.activity_disabled or "Activity recording is disabled on this site. Existing entries remain visible." }}',
+            'Entries are kept for {days} days.': '{{ t.activity_retention or "Entries are kept for {days} days." }}',
+            'reported by the editor': '{{ t.activity_reported_by_editor or "reported by the editor" }}',
             extensions: '{{ t.extensions or "Extensions" }}',
             settings: '{{ t.settings or "Settings" }}',
             sharing: '{{ t.sharing or "Sharing" }}',
@@ -3392,6 +3426,9 @@ window.$eXeLearningCustom = {
                                 <span class="mi mi-sm">download</span>
                             </button>
                             ` : ''}
+                            <button class="btn-admin-outline" type="button" data-action="project-activity" data-project-id="${project.id}" data-project-title="${escapeHtml(project.title || '')}" title="{{ t.activity or 'Activity' }}" aria-label="{{ t.activity or 'Activity' }}">
+                                <span class="mi mi-sm">history</span>
+                            </button>
                             <button class="btn-admin-outline" onclick="updateProjectStatus(${project.id}, '${nextStatus}')" title="${toggleLabel}">
                                 <span class="mi mi-sm">${toggleIcon}</span>
                             </button>
@@ -4388,5 +4425,6 @@ window.$eXeLearningCustom = {
         loadSystemInfo();
     </script>
     <script type="module" src="{{ basePath }}/app/admin/dashboard.js"></script>
+    <script type="module" src="{{ basePath }}/app/admin/project-activity.js"></script>
 </body>
 </html>

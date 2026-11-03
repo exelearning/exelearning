@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## Unreleased (draft)
+
+### Added
+
+- Sharing: online installations now keep a per-project activity log that shows who invited or removed editors, changed access, opened the project, saved it (manually or automatically), created, edited, moved, cloned or deleted pages, boxes and iDevices, and imported content; owners open it from the Share dialog ("Activity"), administrators from `/admin` > Projects, and invited editors can be allowed with `PROJECT_ACTIVITY_EDITOR_ACCESS=true`; entries are kept for `PROJECT_ACTIVITY_RETENTION_DAYS` days (default 90; `0` disables recording)
+
 ## v4.0.6 – 2026-10-29
 
 ### Added
