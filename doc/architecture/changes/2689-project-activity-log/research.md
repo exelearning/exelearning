@@ -64,6 +64,6 @@ in PR #2164.
 
 ## Measurements
 
-Reproduction commands and results are recorded in `tasks.md` under "Performance" once the implementation
-lands (save route latency with and without the recorder, insert throughput, paginated query latency with
-50k rows, retention batch throughput).
+See `tasks.md`, section "Performance": insert throughput, autosave coalescing cost, paginated query latency
+with ~50k rows, retention batch throughput and save-route latency with the recorder disabled and enabled,
+with the method used to obtain them.
