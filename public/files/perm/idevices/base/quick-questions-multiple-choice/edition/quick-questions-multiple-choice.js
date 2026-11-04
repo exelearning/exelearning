@@ -1417,13 +1417,7 @@ var $exeDevice = {
                                 ${edition.common.getHelpTooltip(_('Enter a YouTube URL to show an introductory video before starting the activity.'))}
                             </div>
                             <div class="d-flex align-items-center flex-wrap mb-3 gap-2">
-                                <div class="toggle-item toggle-related m-0" data-target="seleccionaEPercentajeQuestions">
-                                    <span class="toggle-control">
-                                        <input type="checkbox" class="toggle-input" id="seleccionaEPercentajeQuestions" checked>
-                                        <span class="toggle-visual"></span>
-                                    </span>
-                                    <label class="toggle-label" for="seleccionaEPercentajeQuestions">%${_('Questions')}:</label>
-                                </div>
+                                <label for="seleccionaEPercentajeQuestionsValue" class="mb-0">%${_('Questions')}:</label>
                                 <input type="number" name="seleccionaEPercentajeQuestionsValue" id="seleccionaEPercentajeQuestionsValue" value="100" min="1" max="100" class="form-control" />
                                 <span id="seleccionaENumeroPercentaje" class="ms-2">1/1</span>
                                 ${edition.common.getHelpTooltip(_('Choose the percentage of questions included in each game. The counter shows how many questions will be used.'))}

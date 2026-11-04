@@ -766,6 +766,14 @@ describe('quick-questions-multiple-choice edition: shared form tabs and feedback
         );
     });
 
+    it('names the share of questions without a switch that does nothing', () => {
+        const value = document.getElementById('seleccionaEPercentajeQuestionsValue');
+
+        expect(document.getElementById('seleccionaEPercentajeQuestions')).toBeNull();
+        expect(value.closest('.toggle-item')).toBeNull();
+        expect([...value.labels].map((label) => label.textContent)).toEqual(['%Questions:']);
+    });
+
     it('explains every control in each combined options row', () => {
         const groups = [
             ['seleccionaEOrderLinear', 'Default', 'Random', 'Tree'],
