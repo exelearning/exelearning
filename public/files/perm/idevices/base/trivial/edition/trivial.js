@@ -1799,6 +1799,9 @@ var $exeDevice = {
             modeBoard: game.modeBoard,
             evaluation: game.evaluation,
             evaluationID: game.evaluationID,
+            passScoreMode: game.passScoreMode,
+            passScoreCustom: game.passScoreCustom,
+            globalTime: game.globalTime,
             id: game.id,
         };
         return JSON.stringify(data);
@@ -1853,6 +1856,9 @@ var $exeDevice = {
             modeBoard: game.modeBoard,
             evaluation: game.evaluation,
             evaluationID: game.evaluationID,
+            passScoreMode: game.passScoreMode,
+            passScoreCustom: game.passScoreCustom,
+            globalTime: game.globalTime,
             id: game.id,
         };
         return data;

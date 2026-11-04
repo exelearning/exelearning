@@ -675,6 +675,29 @@ describe('trivial edition: shared form tabs', () => {
         expect(global.$exeIDevicesEdition.iDevice.gamification.itinerary.getValues()).toEqual(itinerary);
     });
 
+    it('keeps a customised minimum score and the time per question once saved', () => {
+        const saved = { numeroTemas: 0, nombresTemas: [], temas: [], passScoreMode: 'custom', passScoreCustom: 7.5, globalTime: 3 };
+        const stored = device.Decrypt(JSON.parse(device.Encrypt(saved)));
+
+        device.updateFieldGame({
+            ...stored,
+            numeroTemas: 3,
+            nombresTemas: ['One', 'Two', 'Three', '', '', ''],
+            temas: device.temas,
+            itinerary: global.$exeIDevicesEdition.iDevice.gamification.itinerary.getValues(),
+            isScorm: 0,
+            textButtonScorm: 'Save score',
+            repeatActivity: true,
+        });
+
+        expect(stored).toMatchObject({ passScoreMode: 'custom', passScoreCustom: 7.5, globalTime: 3 });
+        expect(global.$exeIDevicesEdition.iDevice.gamification.passScore.getValues()).toEqual({
+            passScoreMode: 'custom',
+            passScoreCustom: 7.5,
+        });
+        expect(document.getElementById('trivialEGlobalTimes').value).toBe('3');
+    });
+
     it('keeps the changes made to the question on screen after copying it', () => {
         // Each editor stands on its own textarea.
         vi.spyOn(global.tinymce, 'get').mockImplementation((id) => ({
