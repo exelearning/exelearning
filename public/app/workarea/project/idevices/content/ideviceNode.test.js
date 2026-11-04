@@ -3177,6 +3177,32 @@ describe('IdeviceNode', () => {
             vi.useRealTimers();
         });
 
+        it('adds no error to a refusal the iDevice explained, even once its reason is closed', async () => {
+            vi.useFakeTimers();
+            const { alert, confirm } = eXeLearning.app.modals;
+            const previous = { alert: alert.showRequests, confirm: confirm.showRequests };
+            // The iDevice says why in the alert window, and the author closes it at once.
+            idevice.saveIdeviceProcess.mockImplementation(async () => {
+                alert.showRequests = (alert.showRequests || 0) + 1;
+                return false;
+            });
+            idevice.toogleIdeviceButtonsState = vi.fn();
+            alert.modal = { _isShown: false };
+            confirm.modal = { _isShown: false };
+            alert.show.mockClear();
+
+            try {
+                await idevice.save(false);
+                vi.advanceTimersByTime(500);
+
+                expect(alert.show).not.toHaveBeenCalled();
+            } finally {
+                alert.showRequests = previous.alert;
+                confirm.showRequests = previous.confirm;
+                vi.useRealTimers();
+            }
+        });
+
         it('releases lock in Yjs when enabled', async () => {
             eXeLearning.app.project._yjsEnabled = true;
             idevice.yjsComponentId = 'yjs-comp';
