@@ -581,10 +581,9 @@ var $exeDevice = {
             img = `<a href="${img}" class="js-hidden crucigrama-LinkBack" alt="Back" />Background</a>`;
         }
 
-        let textAfter =
-            tinyMCE.get('eXeIdeviceTextAfter')?.getContent() ||
-            $('#eXeIdeviceTextAfter').val() ||
-            '';
+        let textAfter = $exeIDevicesEdition.iDevice.common.getEditorContent(
+            'eXeIdeviceTextAfter'
+        );
         if (textAfter !== '') {
             textAfter = `<div class="crucigrama-extra-content">${textAfter}</div>`;
         }
@@ -702,15 +701,14 @@ var $exeDevice = {
         $exeIDevicesEdition.iDevice.gamification.helpers.stopSound();
 
         const instructions =
-                tinyMCE.get('eXeGameInstructions')?.getContent() ||
-                $('#eXeGameInstructions').val() ||
-                '',
+                $exeIDevicesEdition.iDevice.common.getEditorContent(
+                    'eXeGameInstructions'
+                ),
             feedback =
                 $exeIDevicesEdition.iDevice.gamification.feedback.getValues(),
-            textAfter =
-                tinyMCE.get('eXeIdeviceTextAfter')?.getContent() ||
-                $('#eXeIdeviceTextAfter').val() ||
-                '',
+            textAfter = $exeIDevicesEdition.iDevice.common.getEditorContent(
+                'eXeIdeviceTextAfter'
+            ),
             time = $('#ccgmETime').val(),
             difficulty = $('#ccgmEDifficulty').val(),
             showMinimize = $('#ccgmEShowMinimize').is(':checked'),

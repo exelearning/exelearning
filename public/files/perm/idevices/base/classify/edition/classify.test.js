@@ -900,6 +900,23 @@ describe('classify edition: shared form tabs and feedback', () => {
             expect(savedHtml).toContain('clasifica-extra-content');
         });
 
+        it('saves an emptied Instructions or After editor as empty', () => {
+            device.updateFieldGame(game({ feedBack: true, percentajeFB: 80 }));
+            device.showQuestion(0);
+            edition().gamification.feedback.setText('<p>Feedback message</p>');
+            // TinyMCE does not write back to its textarea, which keeps what the form was loaded with.
+            $('#eXeGameInstructions').val('<p>Old instructions</p>');
+            $('#eXeIdeviceTextAfter').val('<p>Old extra info</p>');
+            editors.eXeGameInstructions = '';
+            editors.eXeIdeviceTextAfter = '';
+
+            const data = device.validateData();
+
+            expect(data.instructions).toBe('');
+            expect(data.textAfter).toBe('');
+            expect(device.save()).not.toContain('Old');
+        });
+
         it('keeps the author of the activity apart from the author of each card', () => {
             device.updateFieldGame(
                 game({

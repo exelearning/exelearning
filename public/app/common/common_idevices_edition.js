@@ -158,6 +158,24 @@ var $exeIDevicesEdition = {
                 const id = position === 'before' ? 'eXeIdeviceTextBefore' : 'eXeIdeviceTextAfter';
                 return `<label for="${id}" class="visually-hidden">${title}</label>
                         <textarea id="${id}" class="exe-html-editor"></textarea>`;
+            },
+            /**
+             * The HTML of a rich-text editor: from TinyMCE once it has
+             * started, also when the author has emptied it, and from its
+             * textarea before. TinyMCE does not write back to the textarea,
+             * which keeps what the form was loaded with: falling back to it
+             * whenever the editor is empty would save again what the author
+             * has just deleted.
+             *
+             * @param {string} id The textarea's id, e.g. eXeGameInstructions.
+             * @returns {string}
+             */
+            getEditorContent: function (id) {
+                const editor =
+                    typeof tinymce !== 'undefined' && typeof tinymce.get === 'function' ? tinymce.get(id) : null;
+                if (editor && editor.initialized) return editor.getContent();
+                const textarea = document.getElementById(id);
+                return textarea ? textarea.value : '';
             }
         },
         // Gamification

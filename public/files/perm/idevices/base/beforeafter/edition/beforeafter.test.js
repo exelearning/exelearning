@@ -285,6 +285,22 @@ describe('beforeafter edition: shared form tabs', () => {
             expect(unescape(data.textAfter)).toBe('<p>Extra info</p>');
             expect(device.save()).toContain('<div class="beforeafter-extra-content"><p>Extra info</p></div>');
         });
+
+        it('saves an emptied Instructions or After editor as empty', () => {
+            device.updateFieldGame(game());
+            device.showCard(0);
+            // TinyMCE does not write back to its textarea, which keeps what the form was loaded with.
+            $('#eXeGameInstructions').val('<p>Old instructions</p>');
+            $('#eXeIdeviceTextAfter').val('<p>Old extra info</p>');
+            editors.eXeGameInstructions = '';
+            editors.eXeIdeviceTextAfter = '';
+
+            const data = device.validateData();
+
+            expect(data.instructions).toBe('');
+            expect(data.textAfter).toBe('');
+            expect(device.save()).not.toContain('Old');
+        });
     });
 
     it('keeps the changes made to the card on screen after copying it', () => {

@@ -1093,6 +1093,23 @@ describe('discover edition: shared form tabs, options tooltips, and feedback', (
             expect(savedHtml).toContain('descubre-extra-content');
         });
 
+        it('saves an emptied Instructions or After editor as empty', () => {
+            device.updateFieldGame(game());
+            device.showQuestion(0);
+            $exeIDevicesEdition.iDevice.gamification.feedback.setText('<p>Feedback message</p>');
+            // TinyMCE does not write back to its textarea, which keeps what the form was loaded with.
+            $('#eXeGameInstructions').val('<p>Old instructions</p>');
+            $('#eXeIdeviceTextAfter').val('<p>Old extra info</p>');
+            editors.eXeGameInstructions = '';
+            editors.eXeIdeviceTextAfter = '';
+
+            const data = device.validateData();
+
+            expect(data.instructions).toBe('');
+            expect(data.textAfter).toBe('');
+            expect(device.save()).not.toContain('Old');
+        });
+
         it('saves only what the form edits', () => {
             device.updateFieldGame(game());
             device.showQuestion(0);

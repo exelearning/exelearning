@@ -446,7 +446,8 @@ describe('dragdrop edition: shared form tabs, options tooltips, and saving', () 
             tinymceGet.mockRestore();
         });
 
-        it('saves valid data and outputs expected HTML structure', () => {
+        // A valid activity, with its card on screen.
+        const loadGame = () => {
             device.updateFieldGame({
                 showMinimize: true,
                 percentajeCards: 100,
@@ -476,6 +477,10 @@ describe('dragdrop edition: shared form tabs, options tooltips, and saving', () 
                 ],
             });
             $('#dadEDefinition').val('target definition');
+        };
+
+        it('saves valid data and outputs expected HTML structure', () => {
+            loadGame();
 
             const data = device.validateData();
             expect(data).not.toBe(false);
@@ -488,6 +493,21 @@ describe('dragdrop edition: shared form tabs, options tooltips, and saving', () 
             expect(savedHtml).toContain('dragdrop-instructions');
             expect(savedHtml).toContain('dragdrop-DataGame');
             expect(savedHtml).toContain('dragdrop-extra-content');
+        });
+
+        it('saves an emptied Instructions or After editor as empty', () => {
+            loadGame();
+            // TinyMCE does not write back to its textarea, which keeps what the form was loaded with.
+            $('#eXeGameInstructions').val('<p>Old instructions</p>');
+            $('#eXeIdeviceTextAfter').val('<p>Old extra info</p>');
+            editors.eXeGameInstructions = '';
+            editors.eXeIdeviceTextAfter = '';
+
+            const data = device.validateData();
+
+            expect(data.instructions).toBe('');
+            expect(data.textAfter).toBe('');
+            expect(device.save()).not.toContain('Old');
         });
     });
 

@@ -649,9 +649,9 @@ var $exeDevice = {
         html += `<div class="game-evaluation-ids js-hidden" data-id="${$exeDevice.getIdeviceID()}" data-evaluationb="${dataGame.evaluation}" data-evaluationid="${dataGame.evaluationID}"></div>`;
         html += `${divContent}<div class="dragdrop-DataGame js-hidden">${json}</div>${linksMedias}`;
         const textAfter =
-            tinyMCE?.get('eXeIdeviceTextAfter')?.getContent() ||
-            $('#eXeIdeviceTextAfter').val() ||
-            '';
+            $exeIDevicesEdition.iDevice.common.getEditorContent(
+                'eXeIdeviceTextAfter'
+            );
         if (textAfter) {
             html += `<div class="dragdrop-extra-content">${textAfter}</div>`;
         }
@@ -715,14 +715,12 @@ var $exeDevice = {
 
     validateData: function () {
         const clear = $exeDevice.removeTags,
-            instructions =
-                tinyMCE?.get('eXeGameInstructions')?.getContent() ||
-                $('#eXeGameInstructions').val() ||
-                '',
-            textAfter =
-                tinyMCE?.get('eXeIdeviceTextAfter')?.getContent() ||
-                $('#eXeIdeviceTextAfter').val() ||
-                '',
+            instructions = $exeIDevicesEdition.iDevice.common.getEditorContent(
+                'eXeGameInstructions'
+            ),
+            textAfter = $exeIDevicesEdition.iDevice.common.getEditorContent(
+                'eXeIdeviceTextAfter'
+            ),
             showMinimize = $('#dadEShowMinimize').is(':checked'),
             showSolution = $('#dadEShowSolution').is(':checked'),
             timeShowSolution = parseInt(

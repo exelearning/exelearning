@@ -814,9 +814,9 @@ var $exeDevice = {
         html += imgCard;
 
         const textAfter =
-            tinyMCE.get('eXeIdeviceTextAfter')?.getContent() ||
-            $('#eXeIdeviceTextAfter').val() ||
-            '';
+            $exeIDevicesEdition.iDevice.common.getEditorContent(
+                'eXeIdeviceTextAfter'
+            );
         if (textAfter !== '') {
             html += `<div class="clasifica-extra-content">${textAfter}</div>`;
         }
@@ -913,16 +913,14 @@ var $exeDevice = {
 
     validateData: function () {
         const clear = $exeDevice.removeTags,
-            instructions =
-                tinyMCE.get('eXeGameInstructions')?.getContent() ||
-                $('#eXeGameInstructions').val() ||
-                '',
+            instructions = $exeIDevicesEdition.iDevice.common.getEditorContent(
+                'eXeGameInstructions'
+            ),
             feedback =
                 $exeIDevicesEdition.iDevice.gamification.feedback.getValues(),
-            textAfter =
-                tinyMCE.get('eXeIdeviceTextAfter')?.getContent() ||
-                $('#eXeIdeviceTextAfter').val() ||
-                '',
+            textAfter = $exeIDevicesEdition.iDevice.common.getEditorContent(
+                'eXeIdeviceTextAfter'
+            ),
             showMinimize = $('#clasificaEShowMinimize').is(':checked'),
             itinerary =
                 $exeIDevicesEdition.iDevice.gamification.itinerary.getValues(),

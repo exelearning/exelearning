@@ -303,6 +303,50 @@ describe('common_idevices_edition.js', () => {
       });
     });
 
+    describe('getEditorContent', () => {
+      const getEditorContent = (id) => globalThis.$exeIDevicesEdition.iDevice.common.getEditorContent(id);
+      const withEditor = (editor, run) => {
+        const previous = globalThis.tinymce;
+        globalThis.tinymce = { majorVersion: 5, get: vi.fn((id) => (id === 'eXeGameInstructions' ? editor : null)) };
+        try {
+          run();
+        } finally {
+          globalThis.tinymce = previous;
+        }
+      };
+
+      beforeEach(() => {
+        // TinyMCE does not write back to its textarea: it keeps what the form was loaded with.
+        document.body.innerHTML = '<textarea id="eXeGameInstructions"></textarea>';
+        document.getElementById('eXeGameInstructions').value = '<p>Loaded</p>';
+      });
+
+      it('reads a started editor', () => {
+        withEditor({ initialized: true, getContent: () => '<p>Edited</p>' }, () => {
+          expect(getEditorContent('eXeGameInstructions')).toBe('<p>Edited</p>');
+        });
+      });
+
+      it('keeps an editor the author has emptied empty, rather than reading its textarea', () => {
+        withEditor({ initialized: true, getContent: () => '' }, () => {
+          expect(getEditorContent('eXeGameInstructions')).toBe('');
+        });
+      });
+
+      it('reads the textarea while the editor is still starting', () => {
+        withEditor({ initialized: false, getContent: () => '' }, () => {
+          expect(getEditorContent('eXeGameInstructions')).toBe('<p>Loaded</p>');
+        });
+      });
+
+      it('reads the textarea when there is no editor, and gives "" without either', () => {
+        withEditor(null, () => {
+          expect(getEditorContent('eXeGameInstructions')).toBe('<p>Loaded</p>');
+          expect(getEditorContent('eXeIdeviceTextAfter')).toBe('');
+        });
+      });
+    });
+
     it('getIdeviceDescription returns Bootstrap dismissible alert markup', () => {
       const result = globalThis.$exeIDevicesEdition.iDevice.common.getIdeviceDescription(
         'Description text',

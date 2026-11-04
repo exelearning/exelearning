@@ -932,7 +932,8 @@ describe('flipcards edition: shared form tabs, options tooltips, and saving', ()
             tinymceGet.mockRestore();
         });
 
-        it('saves valid data and outputs expected HTML structure', () => {
+        // A valid activity, with its card on screen.
+        const loadGame = () => {
             device.updateFieldGame({
                 showMinimize: true,
                 percentajeCards: 100,
@@ -965,6 +966,10 @@ describe('flipcards edition: shared form tabs, options tooltips, and saving', ()
             });
             $('#flipcardsEText').val('front card text');
             $('#flipcardsETextBack').val('back card text');
+        };
+
+        it('saves valid data and outputs expected HTML structure', () => {
+            loadGame();
 
             const data = device.validateData();
             expect(data).not.toBe(false);
@@ -977,6 +982,21 @@ describe('flipcards edition: shared form tabs, options tooltips, and saving', ()
             expect(savedHtml).toContain('flipcards-instructions');
             expect(savedHtml).toContain('flipcards-DataGame');
             expect(savedHtml).toContain('flipcards-extra-content');
+        });
+
+        it('saves an emptied Instructions or After editor as empty', () => {
+            loadGame();
+            // TinyMCE does not write back to its textarea, which keeps what the form was loaded with.
+            $('#eXeGameInstructions').val('<p>Old instructions</p>');
+            $('#eXeIdeviceTextAfter').val('<p>Old extra info</p>');
+            editors.eXeGameInstructions = '';
+            editors.eXeIdeviceTextAfter = '';
+
+            const data = device.validateData();
+
+            expect(data.instructions).toBe('');
+            expect(data.textAfter).toBe('');
+            expect(device.save()).not.toContain('Old');
         });
 
         describe('sharing the cards as text', () => {

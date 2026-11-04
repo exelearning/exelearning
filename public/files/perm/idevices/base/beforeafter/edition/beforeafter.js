@@ -619,9 +619,9 @@ var $exeDevice = {
         let html = `<div class="beforeafter-IDevice">${divContent}<div class="beforeafter-DataGame js-hidden">${json}</div>${linksMedias}`;
         html += `<div class="game-evaluation-ids js-hidden" data-id="${$exeDevice.getIdeviceID()}" data-evaluationb="${dataGame.evaluation}" data-evaluationid="${dataGame.evaluationID}"></div>`;
         const textAfter =
-            tinyMCE.get('eXeIdeviceTextAfter')?.getContent() ||
-            $('#eXeIdeviceTextAfter').val() ||
-            '';
+            $exeIDevicesEdition.iDevice.common.getEditorContent(
+                'eXeIdeviceTextAfter'
+            );
         if (textAfter)
             html += `<div class="beforeafter-extra-content">${textAfter}</div>`;
         html += `<div class="beforeafter-bns js-hidden">${$exeDevice.msgs.msgNoSuportBrowser}</div></div>`;
@@ -679,13 +679,12 @@ var $exeDevice = {
 
     validateData: function () {
         const instructions =
-            tinyMCE.get('eXeGameInstructions')?.getContent() ||
-            $('#eXeGameInstructions').val() ||
-            '',
-            textAfter =
-                tinyMCE.get('eXeIdeviceTextAfter')?.getContent() ||
-                $('#eXeIdeviceTextAfter').val() ||
-                '',
+            $exeIDevicesEdition.iDevice.common.getEditorContent(
+                'eXeGameInstructions'
+            ),
+            textAfter = $exeIDevicesEdition.iDevice.common.getEditorContent(
+                'eXeIdeviceTextAfter'
+            ),
             author = $('#bfafEAuthory').val(),
             cardsGame = $exeDevice.cardsGame,
             id = $exeDevice.getIdeviceID(),

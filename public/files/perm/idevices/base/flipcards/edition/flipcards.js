@@ -963,7 +963,7 @@ var $exeDevice = {
         html += linksMedias;
         html += imgCard;
 
-        const textAfter = tinyMCE.get('eXeIdeviceTextAfter')?.getContent() || $('#eXeIdeviceTextAfter').val() || '';
+        const textAfter = $exeIDevicesEdition.iDevice.common.getEditorContent('eXeIdeviceTextAfter');
         if (textAfter != '') {
             html +=
                 '<div class="flipcards-extra-content">' + textAfter + '</div>';
@@ -1033,14 +1033,12 @@ var $exeDevice = {
 
     validateData: function () {
         const clear = $exeDevice.removeTags,
-            instructions =
-                tinyMCE.get('eXeGameInstructions')?.getContent() ||
-                $('#eXeGameInstructions').val() ||
-                '',
-            textAfter =
-                tinyMCE.get('eXeIdeviceTextAfter')?.getContent() ||
-                $('#eXeIdeviceTextAfter').val() ||
-                '',
+            instructions = $exeIDevicesEdition.iDevice.common.getEditorContent(
+                'eXeGameInstructions'
+            ),
+            textAfter = $exeIDevicesEdition.iDevice.common.getEditorContent(
+                'eXeIdeviceTextAfter'
+            ),
             randomCards = $('#flipcardsERandomCards').is(':checked'),
             showMinimize = $('#flipcardsEShowMinimize').is(':checked'),
             showSolution = $('#flipcardsEShowSolution').is(':checked'),

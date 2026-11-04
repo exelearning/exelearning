@@ -887,7 +887,7 @@ var $exeDevice = {
         html += linksAudios;
         html += imgCard;
 
-        const textAfter = tinyMCE.get('eXeIdeviceTextAfter')?.getContent() || $('#eXeIdeviceTextAfter').val() || '';
+        const textAfter = $exeIDevicesEdition.iDevice.common.getEditorContent('eXeIdeviceTextAfter');
         if (textAfter != '') {
             html +=
                 '<div class="descubre-extra-content">' + textAfter + '</div>';
@@ -1043,8 +1043,8 @@ var $exeDevice = {
 
     validateData: function () {
         const clear = $exeDevice.removeTags,
-            instructions = tinyMCE.get('eXeGameInstructions')?.getContent() || $('#eXeGameInstructions').val() || '',
-            textAfter = tinyMCE.get('eXeIdeviceTextAfter')?.getContent() || $('#eXeIdeviceTextAfter').val() || '',
+            instructions = $exeIDevicesEdition.iDevice.common.getEditorContent('eXeGameInstructions'),
+            textAfter = $exeIDevicesEdition.iDevice.common.getEditorContent('eXeIdeviceTextAfter'),
             showMinimize = $('#descubreEShowMinimize').is(':checked'),
             itinerary =
                 $exeIDevicesEdition.iDevice.gamification.itinerary.getValues(),

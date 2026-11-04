@@ -727,6 +727,22 @@ describe('crossword edition: shared form tabs and feedback', () => {
       expect(device.save()).toContain('<div class="crucigrama-feedback-game"><p>Bravo</p></div>');
     });
 
+    it('saves an emptied Instructions or After editor as empty', () => {
+      device.updateFieldGame(game({ wordsGame: device.wordsGame }));
+      vi.spyOn(device, 'validateQuestion').mockReturnValue(true);
+      // TinyMCE does not write back to its textarea, which keeps what the form was loaded with.
+      $('#eXeGameInstructions').val('<p>Old instructions</p>');
+      $('#eXeIdeviceTextAfter').val('<p>Old extra info</p>');
+      editors.eXeGameInstructions = '';
+      editors.eXeIdeviceTextAfter = '';
+
+      const data = device.validateData();
+
+      expect(data.instructions).toBe('');
+      expect(data.textAfter).toBe('');
+      expect(device.save()).not.toContain('Old');
+    });
+
     it('requires feedback message if feedback is enabled and text is empty', () => {
       device.updateFieldGame(game({ wordsGame: device.wordsGame, feedBack: true }));
       editors.eXeGameFeedBackEditor = '';
