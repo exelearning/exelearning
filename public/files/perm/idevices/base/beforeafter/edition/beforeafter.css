@@ -415,13 +415,3 @@
 .BFAFE-ECoord {
 	display: none;
 }
-
-#bfafEOptions > div,
-#bfafEOptions .toggle-item,
-#bfafEOptions .form-check-inline {
-	flex-wrap: nowrap;
-}
-
-#bfafEOptions .form-check-inline {
-	white-space: nowrap;
-}

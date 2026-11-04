@@ -119,25 +119,11 @@ var $exeDevice = {
     createForm: function () {
         const path = $exeDevice.idevicePath,
             edition = $exeIDevicesEdition.iDevice,
-            options = `
-                <div id="bfafEOptions">
-                    <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
-                        <span class="toggle-item">
-                            <span class="toggle-control">
-                                <input type="checkbox" class="toggle-input" id="bfafEShowMinimize" />
-                                <span class="toggle-visual" aria-hidden="true"></span>
-                            </span>
-                            <label class="toggle-label" for="bfafEShowMinimize">${_('Show minimized.')}</label>
-                        </span>
-                        ${edition.common.getHelpTooltip(_('Start with the activity collapsed. Learners can expand it when they are ready.'))}
-                    </div>
-                    <div class="d-none align-items-center gap-2 flex-nowrap mb-3">
-                        <label for="bfafEAuthory">${_('Authorship')}: </label>
-                        <input id="bfafEAuthory" type="text" class="form-control" />
-                    </div>
-                </div>
-            `,
             cardsHtml = `
+                <div class="d-none align-items-center gap-2 flex-nowrap mb-3">
+                    <label for="bfafEAuthory">${_('Authorship')}: </label>
+                    <input id="bfafEAuthory" type="text" class="form-control" />
+                </div>
                 <div class="BFAFE-EPanel" id="bfafEPanel">
                     <div id="bfafEArrowsDiv">
                         <div class="BFAFE-Description d-flex align-items-center gap-2 mb-3">
@@ -282,7 +268,6 @@ var $exeDevice = {
                 ${edition.tabs.getHtml('beforeAfterQIdeviceForm', {
                     path: path,
                     instructions: c_('Slide to reveal the differences between the images.'),
-                    options: options,
                     contents: cardsHtml,
                     passwords: true,
                     after: true,
@@ -702,7 +687,6 @@ var $exeDevice = {
                 $('#eXeIdeviceTextAfter').val() ||
                 '',
             author = $('#bfafEAuthory').val(),
-            showMinimize = $('#bfafEShowMinimize').is(':checked'),
             cardsGame = $exeDevice.cardsGame,
             id = $exeDevice.getIdeviceID(),
             itinerary =
@@ -718,7 +702,6 @@ var $exeDevice = {
         return {
             typeGame: 'BeforeAfter',
             author,
-            showMinimize,
             instructions,
             isScorm: scorm.isScorm,
             textButtonScorm: scorm.textButtonScorm,
@@ -895,11 +878,6 @@ var $exeDevice = {
         $exeDevice.active = 0;
         $exeDevice.id = $exeDevice.getIdeviceID();
         $('#bfafEAuthory').val(game.author);
-        const showMinimize =
-            typeof game.showMinimize !== 'undefined'
-                ? !!game.showMinimize
-                : false;
-        $('#bfafEShowMinimize').prop('checked', showMinimize);
         game.evaluation =
             typeof game.evaluation !== 'undefined' ? game.evaluation : false;
         game.evaluationID =

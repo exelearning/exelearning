@@ -10,7 +10,7 @@ import {
     waitForAppReady,
 } from '../../helpers/workarea-helpers';
 
-test('BeforeAfter explains options and card settings inline without changing their values', async ({
+test('BeforeAfter explains its card settings inline without changing their values, and has no Options tab', async ({
     authenticatedPage: page,
     createProject,
 }) => {
@@ -24,22 +24,25 @@ test('BeforeAfter explains options and card settings inline without changing the
     const id = await device.getAttribute('id');
     expect(id).toBeTruthy();
 
+    // As in main, there is nothing to set in Options, so the tab is not offered.
+    await expect(page.locator('#beforeAfterQIdeviceForm-tab-options')).toHaveCount(0);
+    await expect(page.locator('#bfafEShowMinimize')).toHaveCount(0);
+
     // Fill minimum card data so the activity is valid for saving
     await page.locator('#bfafEDescription').fill('City view comparison');
     await page.locator('#bfafEURLImageBack').fill('before.jpg');
     await page.locator('#bfafEURLImage').fill('after.jpg');
 
-    // Test the option help in Options tab
-    await page.locator('#beforeAfterQIdeviceForm-tab-options').click();
-    const optionHelp = page.locator('#bfafEOptions .exe-idevice-help:visible');
-    await expect(optionHelp).toHaveCount(1);
+    // Card settings help buttons (Vertical orientation and Position)
+    const cardHelp = page.locator('#bfafEPanel .exe-idevice-help:visible');
+    await expect(cardHelp).toHaveCount(2);
 
     for (const width of [1280, 1024]) {
         await page.setViewportSize({ width, height: 900 });
-        for (const button of await optionHelp.all()) {
+        for (const button of await cardHelp.all()) {
             await button.hover();
             await expect(page.getByRole('tooltip')).toHaveText('Information');
-            await expect(page.locator('#bfafEOptions .help-content:visible')).toHaveCount(0);
+            await expect(page.locator('#bfafEPanel .help-content:visible')).toHaveCount(0);
             const sameLine = await button.evaluate(element => {
                 const row = element.closest('.toggle-item, .form-check, .d-flex')!;
                 const control = row.querySelector('input, select')!;
@@ -66,7 +69,7 @@ test('BeforeAfter explains options and card settings inline without changing the
                 );
             });
             expect(opensToTheRight).toBe(true);
-            await page.locator('#beforeAfterQIdeviceForm-tab-options').hover();
+            await page.locator('#beforeAfterQIdeviceForm-tab-contents').hover();
             await expect(content).toBeVisible();
             await expect(button).toHaveAttribute('aria-expanded', 'true');
             await button.press('Escape');
@@ -74,32 +77,11 @@ test('BeforeAfter explains options and card settings inline without changing the
         }
     }
 
-    // Verify clicking help does not toggle Show minimize
-    const minimizeHelp = optionHelp.first();
-    await minimizeHelp.click();
-    await expect(page.locator('#bfafEShowMinimize')).not.toBeChecked();
-    const minimizeContent = page.locator(`#${await minimizeHelp.getAttribute('aria-controls')}`);
-    await expect(minimizeContent).toBeVisible();
-    await minimizeHelp.press('Escape');
-    await expect(minimizeContent).toBeHidden();
-
-    // Check Show minimize and switch to contents (cards) tab
-    await page.locator('#bfafEShowMinimize').check();
-    await page.locator('#beforeAfterQIdeviceForm-tab-contents').click();
-
-    // Verify card settings help buttons (Vertical orientation and Position)
-    const cardHelp = page.locator('#bfafEPanel .exe-idevice-help:visible');
-    await expect(cardHelp).toHaveCount(2);
-
-    for (const button of await cardHelp.all()) {
-        await button.hover();
-        await expect(page.getByRole('tooltip')).toHaveText('Information');
-        await button.click();
-        const content = page.locator(`#${await button.getAttribute('aria-controls')}`);
-        await expect(content).toBeVisible();
-        await button.press('Escape');
-        await expect(content).toBeHidden();
-    }
+    // Clicking the help of Vertical orientation does not toggle it
+    const verticalHelp = cardHelp.first();
+    await verticalHelp.click();
+    await expect(page.locator('#bfafEVertical')).not.toBeChecked();
+    await verticalHelp.press('Escape');
 
     // Save iDevice and verify clean output without help controls
     await saveIdevice(page, id!);
@@ -112,15 +94,12 @@ test('BeforeAfter explains options and card settings inline without changing the
     expect(stored.html).toContain('beforeafter-DataGame');
     expect(stored.html).not.toContain('exe-idevice-help');
 
-    // Reload and verify persistence of settings
+    // Reload and verify persistence of the card
     await saveProject(page);
     await reloadPage(page);
     await selectFirstPage(page);
     await editIdevice(page, id!);
 
-    await page.locator('#beforeAfterQIdeviceForm-tab-options').click();
-    await expect(page.locator('#bfafEShowMinimize')).toBeChecked();
-
-    await page.locator('#beforeAfterQIdeviceForm-tab-contents').click();
+    await expect(page.locator('#beforeAfterQIdeviceForm-tab-options')).toHaveCount(0);
     await expect(page.locator('#bfafEDescription')).toHaveValue('City view comparison');
 });

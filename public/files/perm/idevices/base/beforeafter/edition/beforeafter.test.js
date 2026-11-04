@@ -77,7 +77,6 @@ describe('beforeafter edition: shared form tabs', () => {
     const game = (overrides = {}) => ({
         typeGame: 'BeforeAfter',
         author: 'Author Name',
-        showMinimize: false,
         cardsGame: [
             {
                 url: 'img1.png',
@@ -172,18 +171,6 @@ describe('beforeafter edition: shared form tabs', () => {
         expect(document.querySelectorAll('[role="switch"], [aria-checked]')).toHaveLength(0);
     });
 
-    it('keeps the "Show minimized" switch working after unchecking it', () => {
-        const input = document.getElementById('bfafEShowMinimize');
-
-        input.click();
-        input.click();
-        expect(input.checked).toBe(false);
-        expect(input.style.display).not.toBe('none');
-
-        input.click();
-        expect(input.checked).toBe(true);
-    });
-
     it('stores the orientation in the card on screen', () => {
         device.cardsGame = [{ vertical: false }];
         device.active = 0;
@@ -193,23 +180,19 @@ describe('beforeafter edition: shared form tabs', () => {
         expect(device.cardsGame[0].vertical).toBe(true);
     });
 
-    it('lays the form out in the shared tabs, and opens on its questions (contents)', () => {
-        expect(tabNames()).toEqual([
-            'instructions',
-            'options',
-            'contents',
-            'passwords',
-            'after',
-            'grading',
-            'texts',
-        ]);
+    it('lays the form out in the shared tabs, without Options, and opens on its questions (contents)', () => {
+        expect(tabNames()).toEqual(['instructions', 'contents', 'passwords', 'after', 'grading', 'texts']);
         expect(document.getElementById('beforeAfterQIdeviceForm-tab-contents').textContent.trim()).toBe('Activities');
         expect(panel('contents').classList.contains('active')).toBe(true);
     });
 
+    it('offers no "Show minimized" option, as before', () => {
+        expect(document.getElementById('bfafEShowMinimize')).toBeNull();
+        expect(document.getElementById('bfafEOptions')).toBeNull();
+    });
+
     it('puts each part of the form in its tab', () => {
         expect(panel('instructions').querySelector('#eXeGameInstructions').value).toContain('Slide to reveal');
-        expect(panel('options').querySelector('#bfafEOptions')).not.toBeNull();
         expect(panel('contents').querySelector('#bfafEPanel')).not.toBeNull();
         expect(panel('passwords').querySelector('#eXeGameShowClue')).not.toBeNull();
         expect(panel('after').querySelector('#eXeIdeviceTextAfter')).not.toBeNull();
@@ -217,16 +200,13 @@ describe('beforeafter edition: shared form tabs', () => {
         expect(panel('texts').querySelector('#ci18n_msgYouScore').value).toBe('Your score');
     });
 
-    it('provides accessible help tooltips for options and card controls', () => {
-        const optionHelp = panel('options').querySelector('#bfafEOptions .exe-idevice-help');
-        expect(optionHelp).not.toBeNull();
-        expect(optionHelp.tagName).toBe('BUTTON');
-        expect(optionHelp.type).toBe('button');
-        expect(optionHelp.title).toBe('Information');
-
+    it('provides accessible help tooltips for the card controls', () => {
         const cardHelpButtons = [...panel('contents').querySelectorAll('#bfafEPanel .exe-idevice-help')];
         expect(cardHelpButtons.length).toBeGreaterThanOrEqual(2);
-        for (const help of [optionHelp, ...cardHelpButtons]) {
+        for (const help of cardHelpButtons) {
+            expect(help.tagName).toBe('BUTTON');
+            expect(help.type).toBe('button');
+            expect(help.title).toBe('Information');
             expect(document.getElementById(help.getAttribute('aria-controls')).textContent.length).toBeGreaterThan(10);
             const row = help.closest('.d-flex');
             expect(row).not.toBeNull();
@@ -256,16 +236,15 @@ describe('beforeafter edition: shared form tabs', () => {
     });
 
     it('switches tabs when one is clicked', () => {
-        document.getElementById('beforeAfterQIdeviceForm-tab-options').click();
+        document.getElementById('beforeAfterQIdeviceForm-tab-instructions').click();
 
-        expect(panel('options').classList.contains('active')).toBe(true);
+        expect(panel('instructions').classList.contains('active')).toBe(true);
         expect(panel('contents').classList.contains('active')).toBe(false);
     });
 
-    it('restores showMinimize and author when updating field game', () => {
-        device.updateFieldGame(game({ showMinimize: true, author: 'New Author' }));
+    it('restores the author when updating field game', () => {
+        device.updateFieldGame(game({ author: 'New Author' }));
 
-        expect(document.getElementById('bfafEShowMinimize').checked).toBe(true);
         expect(document.getElementById('bfafEAuthory').value).toBe('New Author');
     });
 
@@ -295,12 +274,12 @@ describe('beforeafter edition: shared form tabs', () => {
             tinymceGet.mockRestore();
         });
 
-        it('saves the form values including showMinimize', () => {
+        it('saves the form values, and no "Show minimized" option', () => {
             device.updateFieldGame(game({ showMinimize: true }));
             device.showCard(0);
             const data = device.validateData();
 
-            expect(data.showMinimize).toBe(true);
+            expect(data).not.toHaveProperty('showMinimize');
             expect(data.author).toBe('Author Name');
             expect(data.instructions).toBe('<p>Instructions</p>');
             expect(unescape(data.textAfter)).toBe('<p>Extra info</p>');
