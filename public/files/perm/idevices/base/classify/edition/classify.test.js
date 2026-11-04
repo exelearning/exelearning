@@ -900,6 +900,24 @@ describe('classify edition: shared form tabs and feedback', () => {
             expect(savedHtml).toContain('clasifica-extra-content');
         });
 
+        it('keeps the author of the activity apart from the author of each card', () => {
+            device.updateFieldGame(
+                game({
+                    author: 'Activity author',
+                    wordsGame: [{ ...game().wordsGame[0], type: 0, eText: '', url: 'images/lion.png', author: 'Card author' }],
+                })
+            );
+            device.active = 0;
+            device.showQuestion(0);
+
+            expect(document.getElementById('clasificaEAuthor').value).toBe('Card author');
+            document.getElementById('clasificaEAuthor').value = 'New card author';
+            device.validateQuestion();
+
+            expect(device.wordsGame[0].author).toBe('New card author');
+            expect(device.validateData().author).toBe('Activity author');
+        });
+
         describe('exporting', () => {
             let downloadBlob;
             let validateQuestion;
@@ -988,6 +1006,69 @@ describe('classify edition: shared form tabs and feedback', () => {
 
             expect(device.wordsGame.map((entry) => entry.eText)).toEqual(['Dog', 'Cow']);
             expect(alerts).toEqual([]);
+        });
+    });
+
+    describe('importing lines into an activity', () => {
+        const card = (group, eText) => ({ ...game().wordsGame[0], group, eText });
+        const numberOfGroups = () => document.getElementById('clasificaENumGroups').value;
+        const cards = () => device.wordsGame.map((entry) => `${entry.group}#${entry.eText}`);
+        let validateQuestion;
+
+        beforeEach(() => {
+            // happy-dom cannot read the selected group of the card on screen back.
+            validateQuestion = vi.spyOn(device, 'validateQuestion').mockReturnValue(true);
+        });
+
+        afterEach(() => {
+            validateQuestion.mockRestore();
+        });
+
+        const open = (overrides) => {
+            device.updateFieldGame(game(overrides));
+            device.active = 0;
+            device.showQuestion(0);
+        };
+
+        it('adds the lines to its groups without removing any', () => {
+            open({
+                numberGroups: 3,
+                groups: ['Mammals', 'Birds', 'Fish'],
+                wordsGame: [card(0, 'Lion'), card(1, 'Eagle'), card(2, 'Shark')],
+            });
+
+            device.insertWords(['0#Cow', '1#Owl']);
+
+            expect(numberOfGroups()).toBe('3');
+            expect(cards()).toEqual(['0#Lion', '1#Eagle', '2#Shark', '0#Cow', '1#Owl']);
+        });
+
+        it('reads back an export whose texts are all in one group', () => {
+            open();
+
+            device.insertWords(['0#Rabbit']);
+
+            expect(numberOfGroups()).toBe('2');
+            expect(cards()).toEqual(['0#Card 1', '0#Rabbit']);
+        });
+
+        it('adds the group that follows the last one', () => {
+            open();
+
+            device.insertWords(['2#Eagle']);
+
+            expect(numberOfGroups()).toBe('3');
+            expect(cards()).toEqual(['0#Card 1', '2#Eagle']);
+        });
+
+        it('refuses a file that skips a group after the last one', () => {
+            open();
+
+            device.insertWords(['0#Cow', '3#Eagle']);
+
+            expect(eXe.app.getLastAlert()).toBe('Incorrect group number');
+            expect(numberOfGroups()).toBe('2');
+            expect(cards()).toEqual(['0#Card 1']);
         });
     });
 });

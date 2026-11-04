@@ -307,8 +307,8 @@ var $exeDevice = {
                     )}
                 </div>
                 <div class="d-none align-items-center gap-2 mb-3 flex-wrap">
-                    <label for="clasificaEAuthor" class="mb-0">${_('Authorship')}:</label>
-                    <input id="clasificaEAuthor" type="text" class="form-control" />
+                    <label for="clasificaEGameAuthor" class="mb-0">${_('Authorship')}:</label>
+                    <input id="clasificaEGameAuthor" type="text" class="form-control" />
                 </div>
                 <div id="clasificaEBackDiv">
                     <div class="CQE-EInputImageBack d-flex align-items-center gap-2 mb-3">
@@ -931,7 +931,7 @@ var $exeDevice = {
                 clear($('#clasificaEPercentajeQuestions').val())
             ),
             time = parseInt(clear($('#clasificaETime').val())),
-            author = $('#clasificaEAuthor').val(),
+            author = $('#clasificaEGameAuthor').val(),
             numberGroups = parseInt($('#clasificaENumGroups').val()),
             gameLevel = parseInt($('input[name=qtxgamelevel]:checked').val()),
             progressBar =
@@ -1720,7 +1720,7 @@ var $exeDevice = {
         });
         $('#clasificaEPercentajeQuestions').val(game.percentajeQuestions);
         $('#clasificaETime').val(game.time);
-        $('#clasificaEAuthor').val(game.author);
+        $('#clasificaEGameAuthor').val(game.author);
 
         $('#clasificaENumGroups').val(game.numberGroups);
         $('#clasificaECustomMessages').prop('checked', game.customMessages);
@@ -1812,7 +1812,13 @@ var $exeDevice = {
             }
         });
 
-        const numgroups = $exeDevice.validateGroups(valids);
+        // The lines join the groups the activity already has: a file may add
+        // groups after the last one, but never takes any away.
+        const current = parseInt($('#clasificaENumGroups').val(), 10) || 2,
+            numgroups = $exeDevice.validateGroups([
+                ...Array.from({ length: current }, (empty, group) => `${group}#`),
+                ...valids,
+            ]);
         if (numgroups) {
             $exeDevice.numberGroups = numgroups;
             $('#clasificaENumGroups').val(numgroups);
