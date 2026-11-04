@@ -1202,8 +1202,15 @@ var $exeDevice = {
             $exeDevice.active = 0;
             $exeDevice.questionsGame = dataGame.questionsGame;
 
+            // Each question keeps its id, so saving without changes stores
+            // the same content. One missing or repeated gets a new one: the
+            // id finds the question again once they are sorted by time.
+            const ids = new Set();
             $exeDevice.questionsGame.forEach((question) => {
-                question.id = $exeDevice.getId();
+                if (!question.id || ids.has(question.id)) {
+                    question.id = $exeDevice.getId();
+                }
+                ids.add(question.id);
             });
 
             if (dataGame.videoType > 0) {

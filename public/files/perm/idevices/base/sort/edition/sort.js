@@ -479,7 +479,14 @@ var $exeDevice = {
     },
 
     jsonToCard: function (p, inload) {
-        const $card = $exeDevice.addCard(!inload);
+        // A card keeps its id, so saving without changes stores the same
+        // content. One missing, not a number or already on screen gets a new one.
+        const id =
+            /^\d+$/.test(String(p?.id ?? '')) &&
+            !document.getElementById(`ordenaEDatosCarta-${p.id}`)
+                ? p.id
+                : undefined;
+        const $card = $exeDevice.addCard(!inload, id);
         // Valores por defecto seguros para versiones antiguas sin color/fondo
         const safe = {
             x: typeof p.x === 'number' ? p.x : 0,
@@ -621,8 +628,8 @@ var $exeDevice = {
         };
     },
 
-    addCard: function (clone) {
-        $exeDevice.activeID = $exeDevice.getID();
+    addCard: function (clone, id) {
+        $exeDevice.activeID = id || $exeDevice.getID();
         $('#ordenaEPhrase')
             .find('div.ODNE-EDatosCarta')
             .removeClass('ODNE-EActive');

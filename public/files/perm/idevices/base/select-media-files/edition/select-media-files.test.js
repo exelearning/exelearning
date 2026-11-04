@@ -951,6 +951,24 @@ describe('select-media-files edition: shared form tabs and feedback', () => {
             expect(html).not.toContain('exe-idevice-help');
         });
 
+        it('keeps the id of each card, so saving it again changes nothing', () => {
+            const cards = [
+                { ...card('Cat', true), id: 111 },
+                { ...card('Car'), id: 222 },
+                { ...card('Cup'), id: 222 },
+                { ...card('Cow'), id: '' },
+            ];
+            device.updateFieldGame(game({ phrasesGame: [phrase({ cards })] }));
+            device.showPhrase(0, true);
+
+            const ids = [...document.querySelectorAll('.SLCME-EDatosCarta')].map((element) => $(element).data('id'));
+
+            expect(ids.slice(0, 2)).toEqual([111, 222]);
+            // A repeated or missing id gets a new one of its own.
+            expect(new Set(ids).size).toBe(4);
+            expect(ids.slice(2).every((id) => /^\d+$/.test(String(id)))).toBe(true);
+        });
+
         it('does not save when the feedback is on without a message', () => {
             device.updateFieldGame(game({ feedBack: true }));
 

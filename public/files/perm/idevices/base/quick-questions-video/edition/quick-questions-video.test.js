@@ -814,6 +814,27 @@ describe('quick-questions-video edition: shared form tabs and feedback', () => {
         expect(feedback().getText()).toBe('<p>Well done</p>');
     });
 
+    it('keeps the id of each question, so saving it again changes nothing', () => {
+        const questions = [
+            { ...question(), id: 'first' },
+            { ...question(), id: 'second' },
+            { ...question(), id: 'second' },
+            { ...question(), id: '' },
+        ];
+        device.idevicePreviousData = `
+            <div class="vquext-IDevice">
+                <div class="vquext-DataGame js-hidden">${JSON.stringify(game({ questionsGame: questions }))}</div>
+            </div>`;
+
+        device.loadPreviousValues();
+        const ids = device.questionsGame.map((item) => item.id);
+
+        expect(ids.slice(0, 2)).toEqual(['first', 'second']);
+        // A repeated or missing id gets a new one of its own.
+        expect(new Set(ids).size).toBe(4);
+        expect(ids.every(Boolean)).toBe(true);
+    });
+
     describe('saving', () => {
         let editors;
 

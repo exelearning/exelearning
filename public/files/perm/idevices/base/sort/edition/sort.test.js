@@ -442,6 +442,35 @@ describe('sort edition: shared form tabs and feedback', () => {
             expect(eXe.app.getLastAlert()).toBe('Message to display when passing the game');
         });
 
+        it('keeps the id of each card, so saving it again changes nothing', () => {
+            const cards = [
+                { ...card('One'), id: 111 },
+                { ...card('Two'), id: 222 },
+                { ...card('Three'), id: 222 },
+                { ...card('Four'), id: '' },
+            ];
+            device.updateFieldGame(game({ phrasesGame: [phrase({ cards })] }));
+            device.showPhrase(0, true);
+
+            const ids = [...document.querySelectorAll('.ODNE-EDatosCarta')].map((element) => $(element).data('id'));
+
+            expect(ids.slice(0, 2)).toEqual([111, 222]);
+            // A repeated or missing id gets a new one of its own.
+            expect(new Set(ids).size).toBe(4);
+            expect(ids.slice(2).every((id) => /^\d+$/.test(String(id)))).toBe(true);
+        });
+
+        it('gives a pasted copy the id the edition then works on', () => {
+            device.updateFieldGame(game({ phrasesGame: [phrase({ cards: [{ ...card('One'), id: 111 }] })] }));
+            device.showPhrase(0, true);
+            device.activeID = 111;
+
+            device.copyCard();
+            device.pasteCard();
+
+            expect(document.getElementById(`ordenaEDatosCarta-${device.activeID}`)).not.toBeNull();
+        });
+
         it('keeps the access code and the clue when saving', () => {
             const itinerary = {
                 showClue: true,
