@@ -3772,7 +3772,9 @@ describe('common_idevices_edition.js', () => {
         /(\w+)\s*=\s*\$exeI?DevicesEdition\.iDevice\.gamification\.progressBar\.getValues\(\)/
       );
       expect(assignment).not.toBeNull();
-      expect(source).toMatch(new RegExp(`if\\s*\\(!${assignment[1]}\\)\\s*return false;`));
+      // Either `if (!x) return false;` or a block that does something first,
+      // such as showing the field, and then returns false.
+      expect(source).toMatch(new RegExp(`if\\s*\\(!${assignment[1]}\\)\\s*(?:\\{[^{}]*?)?return false;`));
     });
   });
 
