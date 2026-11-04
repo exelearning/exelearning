@@ -1011,6 +1011,43 @@ describe('discover edition: shared form tabs, options tooltips, and feedback', (
         expect(document.querySelector('input[name="qtxgamemode"][value="0"]').checked).toBe(true);
     });
 
+    it('offers to import txt files only, without Moodle xml or json', () => {
+        const modal = document.getElementById('eXeShareModal-import');
+
+        expect(modal.querySelector('.modal-body').firstElementChild.textContent).toBe(
+            'You can import questions compatible with this activity from txt files.'
+        );
+        expect(modal.querySelector('.exe-field-instructions').textContent).toBe('Supported formats: txt');
+        expect(document.getElementById('eXeGameImportGame').getAttribute('accept')).toBe('.txt');
+    });
+
+    it.each([
+        ['questions.xml', 'text/xml'],
+        ['activity.json', 'application/json'],
+    ])('refuses %s before reading it', (name, type) => {
+        const read = vi.spyOn(FileReader.prototype, 'readAsText');
+        const input = document.getElementById('eXeGameImportGame');
+        Object.defineProperty(input, 'files', {
+            configurable: true,
+            value: [new File(['{}'], name, { type })],
+        });
+
+        jq(input).trigger('change');
+
+        expect(read).not.toHaveBeenCalled();
+        expect(global.eXe.app.getLastAlert()).toBe('Please select a text file (.txt)');
+        read.mockRestore();
+    });
+
+    it('does not import the cards of a Moodle xml', () => {
+        const before = device.wordsGame;
+
+        device.importGame('<quiz><question type="shortanswer"></question></quiz>', 'text/xml');
+
+        expect(device.wordsGame).toBe(before);
+        expect(global.eXe.app.getLastAlert()).toBe('Sorry, wrong file format');
+    });
+
     describe('saving and validation', () => {
         let editors;
         let tinymceGet;

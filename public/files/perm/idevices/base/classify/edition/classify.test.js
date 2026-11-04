@@ -774,6 +774,31 @@ describe('classify edition: shared form tabs and feedback', () => {
         expect(links.map((link) => link.getAttribute('data-exe-share'))).toEqual(['import', 'export', 'ai']);
     });
 
+    it('offers to import txt files only, without the Moodle xml it does not read', () => {
+        const modal = document.getElementById('eXeShareModal-import');
+
+        expect(modal.querySelector('.modal-body').firstElementChild.textContent).toBe(
+            'You can import questions compatible with this activity from txt files.'
+        );
+        expect(modal.querySelector('.exe-field-instructions').textContent).toBe('Supported formats: txt');
+        expect(document.getElementById('eXeGameImportGame').getAttribute('accept')).toBe('.txt');
+    });
+
+    it('refuses a Moodle xml file before reading it', () => {
+        const read = vi.spyOn(FileReader.prototype, 'readAsText');
+        const input = document.getElementById('eXeGameImportGame');
+        Object.defineProperty(input, 'files', {
+            configurable: true,
+            value: [new File(['<quiz></quiz>'], 'questions.xml', { type: 'text/xml' })],
+        });
+
+        $(input).trigger('change');
+
+        expect(read).not.toHaveBeenCalled();
+        expect(global.eXe.app.getLastAlert()).toBe('Please select a text file (.txt)');
+        read.mockRestore();
+    });
+
     it('provides accessible help tooltips for option rows', () => {
         const optionHelps = [...panel('options').querySelectorAll('#clasificaEOptions .exe-idevice-help')];
         expect(optionHelps.length).toBe(7);

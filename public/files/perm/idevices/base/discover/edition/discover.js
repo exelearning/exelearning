@@ -369,6 +369,8 @@ var $exeDevice = {
             texts: this.ci18n,
             share: {
                 importQuestions: true,
+                // It reads txt files only, not Moodle xml.
+                importInfo: _('You can import questions compatible with this activity from txt files.'),
                 exportQuestions: true,
                 type: 0,
             },
@@ -1334,26 +1336,14 @@ var $exeDevice = {
         ) {
             $('#eXeGameExportImport .exe-field-instructions')
                 .eq(0)
-                .text(_('Supported formats') + ': json, txt');
+                .text(_('Supported formats') + ': txt');
             $('#eXeGameExportImport').show();
-            $('#eXeGameImportGame').attr('accept', '.txt, .json, .xml');
+            $('#eXeGameImportGame').attr('accept', '.txt');
 
             $('#eXeGameImportGame').on('change', e => {
                 const file = e.target.files[0];
-                if (!file) {
-                    eXe.app.alert(_('Select a file') + ' (txt, json)');
-                    return;
-                }
-                if (
-                    !file.type ||
-                    !(
-                        file.type.match('text/plain') ||
-                        file.type.match('application/json') ||
-                        file.type.match('application/xml') ||
-                        file.type.match('text/xml')
-                    )
-                ) {
-                    eXe.app.alert(_('Select a file') + ' (txt, json)');
+                if (!file || !file.type || !file.type.match('text/plain')) {
+                    eXe.app.alert(_('Please select a text file (.txt)'));
                     return;
                 }
                 const reader = new FileReader();
@@ -1688,82 +1678,6 @@ var $exeDevice = {
             }
             $exeDevice.addCards(questions);
         }
-    },
-
-    importMoodle(xmlString) {
-        const xmlDoc = $.parseXML(xmlString),
-            $xml = $(xmlDoc);
-        if ($xml.find('GLOSSARY').length > 0) {
-            $exeDevice.importGlosary(xmlString);
-        } else if ($xml.find('quiz').length > 0) {
-            $exeDevice.importCuestionaryXML(xmlString);
-        } else {
-            eXe.app.alert(_('Sorry, wrong file format'));
-        }
-    },
-
-    importCuestionaryXML(xmlText) {
-        const parser = new DOMParser(),
-            xmlDoc = parser.parseFromString(xmlText, 'text/xml'),
-            $xml = $(xmlDoc),
-            $quiz = $xml.find('quiz').first();
-
-        if ($xml.find('parsererror').length > 0 || $quiz.length === 0)
-            return false;
-
-        const cardsJson = $quiz
-            .find('question')
-            .map((_, question) => {
-                const $question = $(question);
-                if ($question.attr('type') !== 'shortanswer') return null;
-
-                let eText = '',
-                    maxFraction = -1;
-                $question.find('answer').each((_, answer) => {
-                    const $answer = $(answer),
-                        answerText = $answer.find('text').eq(0).text(),
-                        currentFraction = parseInt($answer.attr('fraction'));
-
-                    if (currentFraction > maxFraction) {
-                        maxFraction = currentFraction;
-                        eText = answerText;
-                    }
-                });
-                const bktext = {
-                    eTextBk: $exeDevice.removeTags(
-                        $question.find('questiontext').first().text().trim()
-                    ),
-                    eText: $exeDevice.removeTags(eText),
-                };
-                return eText ? bktext : null;
-            })
-            .get();
-        $exeDevice.insertCards(cardsJson);
-    },
-
-    importGlosary(xmlText) {
-        const parser = new DOMParser(),
-            xmlDoc = parser.parseFromString(xmlText, 'text/xml'),
-            $xml = $(xmlDoc),
-            $entries = $xml.find('ENTRIES').first();
-
-        if ($xml.find('parsererror').length > 0 || $entries.length === 0)
-            return false;
-
-        const cardsJson = $entries
-            .find('ENTRY')
-            .map((_, entry) => {
-                const concept = $(entry).find('CONCEPT').text(),
-                    definition = $(entry)
-                        .find('DEFINITION')
-                        .text()
-                        .replace(/<[^>]*>/g, '');
-                return concept && definition
-                    ? { eText: concept, eTextBk: definition }
-                    : null;
-            })
-            .get();
-        $exeDevice.insertCards(cardsJson);
     },
 
     addCards: function (cards) {
@@ -2161,11 +2075,8 @@ var $exeDevice = {
         } else if (!game && content) {
             if (filetype.match('text/plain')) {
                 $exeDevice.importText(content);
-            } else if (
-                filetype.match('application/xml') ||
-                filetype.match('text/xml')
-            ) {
-                $exeDevice.importMoodle(content);
+            } else {
+                $exeDevice.showMessage(_('Sorry, wrong file format'));
             }
         } else {
             $exeDevice.showMessage($exeDevice.msgs.msgESelectFile);
