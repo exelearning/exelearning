@@ -415,6 +415,9 @@ var $exeDevice = {
                         }
                     }
                 }
+                // A changed text kept on the iDevice, with or without its content.
+                var savedText = $('.exe-udlContent', wrapper).eq(0).attr('data-udl-' + i);
+                if (savedText) $('#ci18n_' + i).val(savedText);
             }
             // Remove those elements (they are no longer required)
             $(
@@ -967,7 +970,29 @@ var $exeDevice = {
 
         var css =
             'exe-udlContent-' + $("input[name='udlContentType']:checked").val();
-        html = '<div class="exe-udlContent ' + css + '">' + html + '</div>';
+        // A text changed in the Texts tab is also kept here: the title of an
+        // alternative content is only written where that content exists, so
+        // without one it would be lost.
+        var texts = '';
+        for (var key in this.ci18n) {
+            var text = $('#ci18n_' + key).val() || '';
+            if (text != '' && text != _(this.ci18n[key])) {
+                texts +=
+                    ' data-udl-' +
+                    key +
+                    '="' +
+                    $exeIDevicesEdition.iDevice.common.escapeHtml(text) +
+                    '"';
+            }
+        }
+        html =
+            '<div class="exe-udlContent ' +
+            css +
+            '"' +
+            texts +
+            '>' +
+            html +
+            '</div>';
 
         // Return the HTML to save
         return html;

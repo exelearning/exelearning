@@ -253,6 +253,28 @@ describe('udl-content edition: shared form tabs', () => {
         expect(html).toContain('<button class="exe-udlContent-alt-content-hide">Shut</button>');
     });
 
+    it('keeps a changed title of an alternative content that no block has', () => {
+        open();
+        // The main content, in the editor of the block.
+        document.getElementById('udlContentFormTxt-0').value = 'Main';
+        document.getElementById('ci18n_audio').value = 'Listen "now" & here';
+
+        const html = device.save();
+
+        expect(html).not.toContain('exe-udlContent-content-audio');
+        // Only what was changed: the other texts keep their defaults.
+        expect(html).toContain('data-udl-audio="Listen &quot;now&quot; &amp; here"');
+        expect(html).not.toContain('data-udl-simplified');
+
+        device.$lifecycle.destroy();
+        document.body.innerHTML = '<div id="activeIdevice"><input type="text" /></div><div id="udlBody"></div>';
+        device = global.loadIdevice(join(__dirname, 'udl-content.js'));
+        open(html);
+
+        expect(document.getElementById('ci18n_audio').value).toBe('Listen "now" & here');
+        expect(document.getElementById('ci18n_simplified').value).toBe('Easier to read');
+    });
+
     it('keeps markup, literal angle brackets and quotes through a reopening', () => {
         open(
             '<div class="exe-udlContent exe-udlContent-engagement"><section class="exe-udlContent-block js-hidden">' +
