@@ -1082,6 +1082,59 @@ describe('PrintPreviewExporter', () => {
             expect(result.html).toContain('<svg>Mock SVG</svg>');
             expect(result.html).not.toContain('<div class="mermaid">graph TD; A-->B;</div>');
         });
+
+        // "Include MathJax" leaves formulas to MathJax in the exports, but the printed page carries
+        // no MathJax script and prints from a copy without scripts: unrendered, they print as source.
+        for (const addMathJax of [false, true]) {
+            it(`pre-renders LaTeX when the project ${addMathJax ? 'includes' : 'does not include'} MathJax`, async () => {
+                const doc = createMockDocument(
+                    [
+                        {
+                            id: 'p1',
+                            title: 'Page',
+                            parentId: null,
+                            order: 0,
+                            blocks: [
+                                {
+                                    id: 'b1',
+                                    name: 'Block 1',
+                                    order: 0,
+                                    components: [
+                                        {
+                                            id: 'c1',
+                                            order: 0,
+                                            properties: {},
+                                            type: 'text',
+                                            content: '<p>\\( x^2 - 4 \\)</p>',
+                                        },
+                                    ],
+                                },
+                            ],
+                            properties: {},
+                        },
+                    ],
+                    { addMathJax },
+                );
+                const preRenderLatex = async (html: string) => ({
+                    html: html.replace('\\( x^2 - 4 \\)', '<span class="exe-math-rendered"><svg></svg></span>'),
+                    hasLatex: true,
+                    latexRendered: true,
+                    count: 1,
+                });
+                let dataGameCalls = 0;
+                const preRenderDataGameLatex = async (html: string) => {
+                    dataGameCalls++;
+                    return { html, count: 0 };
+                };
+
+                const exp = new PrintPreviewExporter(doc, mockResourceProvider);
+                const result = await exp.generatePreview({ preRenderLatex, preRenderDataGameLatex });
+
+                expect(result.html).toContain('<span class="exe-math-rendered"><svg></svg></span>');
+                expect(result.html).not.toContain('\\( x^2 - 4 \\)');
+                expect(dataGameCalls).toBe(1);
+            });
+        }
     });
 
     describe('iDevice handling', () => {
