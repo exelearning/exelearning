@@ -390,8 +390,9 @@ var $exeDevice = {
             $exeDevice.renderTikzPreview();
         }
 
-        if (activityMode === 'show') return;
-
+        // Show mode hides the quiz fields, but they still hold the question:
+        // saving there, or going back to Test, keeps it. Only their layout is
+        // left for Test mode, as it would show fields that Show mode hides.
         if (p.typeSelect !== 2) {
             let numOptions = 0;
             $('.ELCE-EAnwersOptions').each(function (j) {
@@ -407,8 +408,10 @@ var $exeDevice = {
             $('#elceDefinitionWord').val(p.quextion);
         }
 
-        $exeDevice.showTypeQuestion(p.typeSelect);
-        $exeDevice.showOptions(p.numberOptions);
+        if (activityMode !== 'show') {
+            $exeDevice.showTypeQuestion(p.typeSelect);
+            $exeDevice.showOptions(p.numberOptions);
+        }
         $('#elceQuestion').val(p.quextion);
 
         $('.ELCE-EAnwersOptions').each(function (j) {
@@ -1998,10 +2001,18 @@ var $exeDevice = {
     },
 
     exportQuestions: function () {
+        // Store the question on screen first, as saving does.
+        if (!$exeDevice.validateQuestion()) return false;
         const dataGame = this.validateData();
         if (!dataGame) return false;
 
         const lines = this.getLinesQuestions(dataGame.selectsGame);
+        if (lines.length === 0) {
+            eXe.app.alert(
+                _('Sorry, there are no questions for this type of activity.')
+            );
+            return false;
+        }
         const fileContent = lines.join('\n');
         const newBlob = new Blob([fileContent], { type: 'text/plain' });
         if (window.navigator && window.navigator.msSaveOrOpenBlob) {
@@ -2026,25 +2037,40 @@ var $exeDevice = {
         }, 100);
     },
 
+    /**
+     * The lines Import and the AI read back (parseAIQuestions):
+     * "Description#TikZ#Solution#Question#OptionA#OptionB[#OptionC][#OptionD]",
+     * or "Word#Definition" for a word question. A question that the format
+     * cannot hold -- without its question, options or answer, or with a "#"
+     * in its circuit -- has no line.
+     */
     getLinesQuestions: function (questions) {
-        let linequestions = [];
-        for (let i = 0; i < questions.length; i++) {
-            let q = questions[i];
-            let question = '';
-            if (q.typeSelect !== 2) {
-                question = `${q.solution}#${q.quextion}`;
-                for (let j = 0; j < q.options.length; j++) {
-                    if (q.options[j]) {
-                        question += `#${q.options[j]}`;
-                    }
-                }
-            } else {
-                question = `${q.solutionQuestion}#${q.quextion}`;
+        const plain = (text) => (text || '').replace(/[#\s]+/g, ' ').trim(),
+            lines = [];
+        questions.forEach((q) => {
+            if (q.typeSelect == 2) {
+                const word = plain(q.solutionQuestion),
+                    definition = plain(q.quextion);
+                if (word && definition) lines.push(`${word}#${definition}`);
+                return;
             }
-
-            linequestions.push(question);
-        }
-        return linequestions;
+            const tikzCode = (q.tikzCode || '').trim(),
+                question = plain(q.quextion),
+                options = q.options.slice(0, q.numberOptions).map(plain);
+            if (
+                tikzCode.includes('#') ||
+                !question ||
+                !/^[ABCD]{1,4}$/.test(q.solution || '') ||
+                options.length < 2 ||
+                options.some((option) => !option)
+            ) {
+                return;
+            }
+            lines.push(
+                [plain(q.description), tikzCode, q.solution, question, ...options].join('#')
+            );
+        });
+        return lines;
     },
 
     validateData: function () {
@@ -2236,7 +2262,17 @@ var $exeDevice = {
 
         // Activity mode (Test / Show)
         $('#elceModeTest, #elceModeShow').on('click', function () {
-            $exeDevice.toggleActivityMode($(this).val());
+            const mode = $(this).val();
+            $exeDevice.toggleActivityMode(mode);
+            // Back in Test, lay the quiz fields out for the question on screen.
+            if (mode !== 'show') {
+                $exeDevice.showTypeQuestion(
+                    parseInt($('input[name=slctypeselect]:checked').val(), 10)
+                );
+                $exeDevice.showOptions(
+                    parseInt($('input[name=slcnumber]:checked').val(), 10)
+                );
+            }
         });
 
         // Toggle switch delegation
@@ -2742,8 +2778,9 @@ var $exeDevice = {
     // and the lines that matched no supported format.
     parseAIQuestions: function (lines) {
         // Format: Description#TikzCode#Solution#Question#OptionA#OptionB[#OptionC][#OptionD]
+        // A question may have no description or no circuit, as Export writes it.
         const lineFormat =
-                /^([^#]+)#([^#]+)#([0-3]|[ABCD]{1,4})#([^#]+)#([^#]+)#([^#]+)(#([^#]*))?(#([^#]*))?$/i,
+                /^([^#]*)#([^#]*)#([0-3]|[ABCD]{1,4})#([^#]+)#([^#]+)#([^#]+)(#([^#]*))?(#([^#]*))?$/i,
             lineFormat1 = /^([^#]+)#([^#]+)$/;
         const questions = [],
             sourceLines = [],
@@ -2799,13 +2836,18 @@ var $exeDevice = {
         return { questions, lines: sourceLines, invalidLines };
     },
 
+    // File import. A question is only saved with its circuit drawn, so the
+    // circuits are drawn as they come in, as the AI does.
     insertQuestions: function (lines) {
-        const { questions } = $exeDevice.parseAIQuestions(lines);
-        $exeDevice.addQuestions(questions);
+        if ($exeDevice.parseAIQuestions(lines).questions.length === 0) {
+            $exeDevice.addQuestions([]);
+            return;
+        }
+        return $exeDevice.insertAIQuestions(lines);
     },
 
-    // Callback for the AI "save questions" button. Unlike insertQuestions (used
-    // by file import), it renders every circuit before inserting: a blocking
+    // Callback for the AI "save questions" button, and the file import. It
+    // renders every circuit before inserting: a blocking
     // "please wait" modal is shown while each TikZ code is compiled to SVG, and a
     // question whose circuit cannot be generated is discarded. The rejected lines
     // (verbatim, plus any that had an invalid format) are returned as

@@ -458,14 +458,11 @@ describe('electrical-circuits iDevice edition', () => {
         }
     });
 
-    it('insertQuestions normalizes AI-generated TikZ before adding questions', () => {
-        const addQuestions = vi.spyOn($exeDevice, 'addQuestions').mockImplementation(() => {});
+    it('parseAIQuestions normalizes AI-generated TikZ', () => {
         const line =
             'Circuito#\\begin{circuitikz}\\draw (0,0) to[battery1,l={$5,\\mathrm{V}$}] (0,2) to[R,l={$220,\\Omega$}] (2,2) to[lD] (2,0) -- (0,0);\\end{circuitikz}#A#Question#Correct#Wrong';
 
-        $exeDevice.insertQuestions([line]);
-
-        expect(addQuestions).toHaveBeenCalledWith([
+        expect($exeDevice.parseAIQuestions([line]).questions).toEqual([
             expect.objectContaining({
                 tikzCode:
                     '\\begin{circuitikz}\\draw (0,0) to[battery1,l={$5\\,\\mathrm{V}$}] (0,2) to[R,l={$220\\,\\Omega$}] (2,2) to[leD] (2,0) -- (0,0);\\end{circuitikz}',
@@ -473,14 +470,11 @@ describe('electrical-circuits iDevice edition', () => {
         ]);
     });
 
-    it('insertQuestions converts visible TeX units to Unicode without changing TikZ rules', () => {
-        const addQuestions = vi.spyOn($exeDevice, 'addQuestions').mockImplementation(() => {});
+    it('parseAIQuestions converts visible TeX units to Unicode without changing TikZ rules', () => {
         const line =
             'Circuito \\Omega#\\begin{circuitikz}\\draw (0,0) to[R,l={$220\\,\\Omega$}] (2,0);\\end{circuitikz}#A#Valor de \\Omega#{$1{,}22,\\mathrm{k}\\Omega$}#220 \\Omega#100\\,\\mu\\mathrm{F}';
 
-        $exeDevice.insertQuestions([line]);
-
-        expect(addQuestions).toHaveBeenCalledWith([
+        expect($exeDevice.parseAIQuestions([line]).questions).toEqual([
             expect.objectContaining({
                 description: 'Circuito Ω',
                 tikzCode:
@@ -489,6 +483,29 @@ describe('electrical-circuits iDevice edition', () => {
                 options: ['1,22 kΩ', '220 Ω', '100 µF', ''],
             }),
         ]);
+    });
+
+    it('insertQuestions draws the circuits of an imported file before adding them, as the AI does', async () => {
+        vi.spyOn($exeDevice, 'showCircuitGenerationModal').mockImplementation(() => {});
+        vi.spyOn($exeDevice, 'hideCircuitGenerationModal').mockImplementation(() => {});
+        const addQuestions = vi.spyOn($exeDevice, 'addQuestions').mockImplementation(() => {});
+        const render = vi.spyOn($exeDevice, 'renderTikzCodeToSvg').mockResolvedValue('<svg></svg>');
+        const line = 'Desc#\\begin{circuitikz}\\draw (0,0);\\end{circuitikz}#A#Q#Opt A#Opt B';
+
+        await $exeDevice.insertQuestions([line, '']);
+
+        expect(render).toHaveBeenCalledTimes(1);
+        expect(addQuestions.mock.calls[0][0]).toEqual([expect.objectContaining({ tikzSvg: '<svg></svg>' })]);
+        expect(eXe.app.getLastAlert()).toBe($exeDevice.msgs.msgQuestionsAdded);
+    });
+
+    it('insertQuestions tells the author when the file has no question', () => {
+        const render = vi.spyOn($exeDevice, 'renderTikzCodeToSvg');
+
+        $exeDevice.insertQuestions(['not a question', '']);
+
+        expect(render).not.toHaveBeenCalled();
+        expect(eXe.app.getLastAlert()).toBe('Sorry, there are no questions for this type of activity.');
     });
 
     it('round-trips tikzCode and tikzSvg without tikzSvgHash', () => {
@@ -712,6 +729,79 @@ describe('electrical-circuits iDevice edition', () => {
             questions: [],
             lines: [],
             invalidLines: [],
+        });
+    });
+
+    describe('exported lines', () => {
+        const circuit = '\\begin{circuitikz}\\draw (0,0) to[R] (2,0);\\end{circuitikz}';
+        const question = (fields) => ({ ...$exeDevice.getCuestionDefault(), ...fields });
+        // What a line holds: a word question has no circuit in the format.
+        const fields = (q) =>
+            q.typeSelect === 2
+                ? { typeSelect: q.typeSelect, quextion: q.quextion, solutionQuestion: q.solutionQuestion }
+                : {
+                      typeSelect: q.typeSelect,
+                      description: q.description,
+                      tikzCode: q.tikzCode,
+                      solution: q.solution,
+                      quextion: q.quextion,
+                      options: q.options,
+                      numberOptions: q.numberOptions,
+                  };
+
+        it('are read back by Import and the AI as the same questions', () => {
+            const questions = [
+                question({
+                    description: 'A resistor',
+                    tikzCode: circuit,
+                    solution: 'B',
+                    quextion: 'What is shown?',
+                    options: ['A lamp', 'A resistor', 'A battery', ''],
+                    numberOptions: 3,
+                }),
+                question({ description: '', tikzCode: '', solution: 'AC', quextion: 'Which conduct?', options: ['Copper', 'Glass', 'Iron', 'Wood'] }),
+                question({ typeSelect: 2, quextion: 'Unit of resistance', solutionQuestion: 'Ohm' }),
+            ];
+
+            const lines = $exeDevice.getLinesQuestions(questions);
+            const parsed = $exeDevice.parseAIQuestions(lines);
+            const formats = $exeIDevicesEdition.iDevice.gamification.share.getAllowedFormats(11);
+
+            expect(lines).toEqual([
+                `A resistor#${circuit}#B#What is shown?#A lamp#A resistor#A battery`,
+                '##AC#Which conduct?#Copper#Glass#Iron#Wood',
+                'Ohm#Unit of resistance',
+            ]);
+            expect(lines.every((line) => formats.allowRegex.test(line))).toBe(true);
+            expect(parsed.invalidLines).toEqual([]);
+            expect(parsed.questions.map(fields)).toEqual(questions.map(fields));
+        });
+
+        it('turn the separator and line breaks of the texts into spaces', () => {
+            const lines = $exeDevice.getLinesQuestions([
+                question({
+                    description: 'Lamp\n#1',
+                    tikzCode: '',
+                    quextion: 'On #or off?',
+                    options: ['On', 'Off', '', ''],
+                    numberOptions: 2,
+                    solution: 'A',
+                }),
+            ]);
+
+            expect(lines).toEqual(['Lamp 1##A#On or off?#On#Off']);
+        });
+
+        it('leave out the questions the format cannot hold', () => {
+            const lines = $exeDevice.getLinesQuestions([
+                question({ quextion: '', options: ['On', 'Off', '', ''], numberOptions: 2, solution: 'A' }),
+                question({ quextion: 'On or off?', options: ['On', '', '', ''], numberOptions: 2, solution: 'A' }),
+                question({ quextion: 'On or off?', options: ['On', 'Off', '', ''], numberOptions: 2, solution: '' }),
+                question({ tikzCode: '\\def\\x#1{#1}', quextion: 'On or off?', options: ['On', 'Off', '', ''], numberOptions: 2, solution: 'A' }),
+                question({ typeSelect: 2, quextion: 'Unit of resistance', solutionQuestion: '' }),
+            ]);
+
+            expect(lines).toEqual([]);
         });
     });
 
@@ -1215,10 +1305,22 @@ describe('electrical-circuits iDevice edition', () => {
         });
 
         describe('exportQuestions', () => {
+            it('stores the question on screen, and tells the author when no question can be written', () => {
+                const validateQuestion = vi.spyOn($exeDevice, 'validateQuestion').mockReturnValue(true);
+                vi.spyOn($exeDevice, 'validateData').mockReturnValue({ selectsGame: [] });
+                const createObjectURL = vi.spyOn(window.URL, 'createObjectURL');
+
+                expect($exeDevice.exportQuestions()).toBe(false);
+                expect(validateQuestion).toHaveBeenCalled();
+                expect(createObjectURL).not.toHaveBeenCalled();
+                expect(eXe.app.getLastAlert()).toBe('Sorry, there are no questions for this type of activity.');
+            });
+
             it('revokes the download object URL when the edition closes first', () => {
                 vi.useFakeTimers();
                 document.body.innerHTML =
                     '<div id="electricalCircuitsIdeviceForm"></div>';
+                vi.spyOn($exeDevice, 'validateQuestion').mockReturnValue(true);
                 vi.spyOn($exeDevice, 'validateData').mockReturnValue({
                     selectsGame: [],
                 });
@@ -1716,6 +1818,41 @@ describe('electrical-circuits edition: shared form tabs and feedback', () => {
 
             expect(device.validateData()).toBe(false);
             expect(global.eXe.app.alert).toHaveBeenCalledWith('Message to display when passing the game');
+        });
+    });
+
+    describe('Show mode', () => {
+        const hidden = (id) => document.getElementById(id).classList.contains('d-none');
+        const openInShowMode = () => {
+            device.updateFieldGame(game({ activityMode: 'show' }));
+            device.active = 0;
+            device.showQuestion(0);
+        };
+
+        it('keeps the question, though its fields are hidden', () => {
+            openInShowMode();
+
+            expect(hidden('elceContents')).toBe(true);
+            expect(hidden('elceInputNumbers')).toBe(true);
+            expect(device.validateQuestion()).toBe(true);
+            expect(device.selectsGame[0]).toMatchObject({
+                quextion: 'What circuit is shown?',
+                options: ['A', 'B', 'C', 'D'],
+                solution: 'A',
+            });
+        });
+
+        it('gives the question back when the activity becomes a test again', () => {
+            openInShowMode();
+
+            document.getElementById('elceModeTest').click();
+
+            expect(hidden('elceContents')).toBe(false);
+            expect(hidden('elceInputNumbers')).toBe(false);
+            expect(hidden('elcePercentageSpan')).toBe(true);
+            expect(document.getElementById('elceQuestion').value).toBe('What circuit is shown?');
+            expect(device.validateQuestion()).toBe(true);
+            expect(device.selectsGame[0].quextion).toBe('What circuit is shown?');
         });
     });
 
