@@ -2748,21 +2748,45 @@ describe('common_idevices_edition.js', () => {
       expect(result).not.toContain('Invalid');
     });
 
-    it('exportGame creates download link', () => {
+    it('exportGame downloads the game as a JSON file named after the activity', async () => {
       const container = document.createElement('div');
       container.id = 'test-idevice';
       document.body.appendChild(container);
 
-      const urlSpy = vi.spyOn(window.URL, 'createObjectURL').mockReturnValue('blob:test');
+      let exported = null;
+      const urlSpy = vi.spyOn(window.URL, 'createObjectURL').mockImplementation((blob) => {
+        exported = blob;
+        return 'blob:test';
+      });
       const revokeSpy = vi.spyOn(window.URL, 'revokeObjectURL').mockImplementation(() => {});
+      // The click is what starts the download: record the link it was made on.
+      const clicked = [];
+      const clickSpy = vi.spyOn(window.HTMLAnchorElement.prototype, 'click').mockImplementation(function () {
+        clicked.push({ href: this.getAttribute('href'), download: this.download, parent: this.parentNode });
+      });
 
       vi.useFakeTimers();
-      globalThis.$exeIDevicesEdition.iDevice.gamification.share.exportGame({ data: 'test' }, 'test-idevice', 'TestGame');
-      vi.runAllTimers();
-      vi.useRealTimers();
+      try {
+        const started = globalThis.$exeIDevicesEdition.iDevice.gamification.share.exportGame(
+          { data: 'test' },
+          'test-idevice',
+          'TestGame'
+        );
 
-      urlSpy.mockRestore();
-      revokeSpy.mockRestore();
+        expect(started).toBe(true);
+        expect(clicked).toEqual([{ href: 'blob:test', download: 'Activity-TestGame.json', parent: container }]);
+
+        vi.runAllTimers();
+        expect(revokeSpy).toHaveBeenCalledWith('blob:test');
+        expect(container.querySelector('a')).toBeNull();
+      } finally {
+        vi.useRealTimers();
+        urlSpy.mockRestore();
+        revokeSpy.mockRestore();
+        clickSpy.mockRestore();
+        container.remove();
+      }
+      expect(await exported.text()).toBe('{"data":"test"}');
     });
 
     it('exportGame returns false for null data', () => {
@@ -3756,6 +3780,25 @@ describe('common_idevices_edition.js', () => {
       )
       .filter(({ source }) => source.includes('gamification.progressBar.getValues()'));
 
+    // `if (!x) return false;`, or a block of plain statements -- such as
+    // showing the field -- that ends returning false. An `if` or a `return`
+    // inside the block could skip that return and let the save go through.
+    const guards = (source, name) =>
+      new RegExp(
+        `if\\s*\\(!${name}\\)\\s*(?:return false;|\\{(?:(?!\\bif\\b|\\breturn\\b)[^{}])*return false;\\s*\\})`
+      ).test(source);
+
+    it('accepts only a guard that always returns false', () => {
+      expect(guards('if (!p) return false;', 'p')).toBe(true);
+      expect(guards("if (!p) {\n    show('grading', 'id');\n    return false;\n}", 'p')).toBe(true);
+      expect(guards('if (!p) {\n    if (false) return false;\n}', 'p')).toBe(false);
+      expect(guards('if (!p) {\n    show();\n    if (ready) return false;\n}', 'p')).toBe(false);
+      expect(guards('if (!p) {\n    return true;\n    return false;\n}', 'p')).toBe(false);
+      expect(guards('if (!p) {\n    show();\n}\nreturn false;', 'p')).toBe(false);
+      expect(guards('if (!p) {\n    return false;\n    show();\n}', 'p')).toBe(false);
+      expect(guards('use(p);\nreturn false;', 'p')).toBe(false);
+    });
+
     it('finds the iDevices that read the shared progress report', () => {
       // A guard rail for the scan itself: a rename that made the filter match
       // nothing would leave every assertion below vacuously green.
@@ -3772,9 +3815,7 @@ describe('common_idevices_edition.js', () => {
         /(\w+)\s*=\s*\$exeI?DevicesEdition\.iDevice\.gamification\.progressBar\.getValues\(\)/
       );
       expect(assignment).not.toBeNull();
-      // Either `if (!x) return false;` or a block that does something first,
-      // such as showing the field, and then returns false.
-      expect(source).toMatch(new RegExp(`if\\s*\\(!${assignment[1]}\\)\\s*(?:\\{[^{}]*?)?return false;`));
+      expect(guards(source, assignment[1])).toBe(true);
     });
   });
 
@@ -4007,6 +4048,36 @@ describe('common_idevices_edition.js', () => {
     });
 
     describe('downloadBlob', () => {
+      it('starts the download by clicking a link to the object URL in the given container', () => {
+        vi.useFakeTimers();
+        const container = document.createElement('div');
+        container.id = 'download-host';
+        document.body.appendChild(container);
+        const blob = new Blob(['data'], { type: 'text/plain' });
+        const createSpy = vi
+          .spyOn(window.URL, 'createObjectURL')
+          .mockReturnValue('blob:clicked-download');
+        const revokeSpy = vi.spyOn(window.URL, 'revokeObjectURL').mockImplementation(() => {});
+        const clicked = [];
+        const clickSpy = vi.spyOn(window.HTMLAnchorElement.prototype, 'click').mockImplementation(function () {
+          clicked.push({ href: this.getAttribute('href'), download: this.download, parent: this.parentNode });
+        });
+
+        try {
+          openEdition();
+          expect(iDevice().gamification.share.downloadBlob(blob, 'game.json', 'download-host')).toBe(true);
+
+          expect(createSpy).toHaveBeenCalledWith(blob);
+          expect(clicked).toEqual([{ href: 'blob:clicked-download', download: 'game.json', parent: container }]);
+        } finally {
+          clickSpy.mockRestore();
+          createSpy.mockRestore();
+          revokeSpy.mockRestore();
+          vi.useRealTimers();
+          container.remove();
+        }
+      });
+
       it('revokes the object URL and removes the anchor when the editor closes first', () => {
         vi.useFakeTimers();
         const createSpy = vi
@@ -4392,21 +4463,34 @@ describe('common_idevices_edition.js', () => {
           window.dispatchEvent(new window.Event('pagehide'));
           const alreadyBound = cleanupAll.mock.calls.length;
 
-          openEdition();
-          recorder.bindCleanupHandlers();
-          expect(recorder._cleanupBound).toBe(true);
+          // Each edition binds its own handlers and observer, and closing it
+          // releases both, so the next edition can bind them again.
+          const editions = [];
+          for (let i = 0; i < 2; i += 1) {
+            openEdition();
+            recorder.bindCleanupHandlers();
+            expect(recorder._cleanupBound).toBe(true);
+            const observer = recorder._detachObserver;
+            expect(observer).not.toBeNull();
+            expect(editions.map((edition) => edition.observer)).not.toContain(observer);
+            const disconnect = vi.spyOn(observer, 'disconnect');
+            editions.push({ observer, disconnect });
 
-          cleanupAll.mockClear();
-          window.dispatchEvent(new window.Event('pagehide'));
-          expect(cleanupAll).toHaveBeenCalledTimes(alreadyBound + 1);
+            cleanupAll.mockClear();
+            window.dispatchEvent(new window.Event('pagehide'));
+            expect(cleanupAll).toHaveBeenCalledTimes(alreadyBound + 1);
 
-          lifecycle.destroy();
-          cleanupAll.mockClear();
-          window.dispatchEvent(new window.Event('pagehide'));
+            lifecycle.destroy();
+            cleanupAll.mockClear();
+            window.dispatchEvent(new window.Event('pagehide'));
 
-          expect(cleanupAll).toHaveBeenCalledTimes(alreadyBound);
-          expect(recorder._cleanupBound).toBe(false);
-          expect(recorder._detachObserver).toBeNull();
+            expect(cleanupAll).toHaveBeenCalledTimes(alreadyBound);
+            expect(disconnect).toHaveBeenCalledTimes(1);
+            expect(recorder._cleanupBound).toBe(false);
+            expect(recorder._detachObserver).toBeNull();
+          }
+          // The first observer was not disconnected again by the second edition.
+          expect(editions[0].disconnect).toHaveBeenCalledTimes(1);
         } finally {
           cleanupAll.mockRestore();
           recorder._cleanupBound = previousBound;
