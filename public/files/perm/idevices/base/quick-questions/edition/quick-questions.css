@@ -84,13 +84,6 @@
 }
 
 
-.Games-Reportdiv {
-    display: flex;
-    justify-content: flex-start;
-    align-items: center;
-    gap: 2px;
-}
-
 
 .QXTE-ButtonLink {
     display: block;

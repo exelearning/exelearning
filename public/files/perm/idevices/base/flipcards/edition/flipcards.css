@@ -156,18 +156,13 @@
 
 .FLCRDS-EInputAudio,
 
-.FLCRDS-EInputText,
-.FLCRDS-EInputImageBack {
+.FLCRDS-EInputText {
     align-items: center;
     display: flex;
     justify-content: flex-start;
     flex-wrap: nowrap;
     min-width: 100px;
     width: 100%;
-}
-
-.FLCRDS-EInputImageBack label {
-    white-space: nowrap;
 }
 
 
@@ -410,11 +405,4 @@
 #flipcardsEOptions #flipcardsEURLImgCard {
     width: 250px;
     flex: 0 1 auto;
-}
-
-.Games-Reportdiv {
-    display: flex;
-    justify-content: flex-start;
-    align-items: center;
-    gap: 2px;
 }

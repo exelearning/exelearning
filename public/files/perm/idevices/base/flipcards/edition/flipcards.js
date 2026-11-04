@@ -246,8 +246,6 @@ var $exeDevice = {
                         <img class="FLCRDS-EImageBack" src="${path}flcsHome.png" id="flipcardENoCard" alt="${_('No image')}" />
                     </p>
                 </div>
-                <div class="Games-Reportdiv d-flex align-items-center gap-2 flex-nowrap mb-3">
-                </div>
             </div>
         `,
             cardsHtml = `

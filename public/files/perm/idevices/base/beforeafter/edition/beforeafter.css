@@ -373,13 +373,6 @@
 	margin: 0 .1em;
 }
 
-.Games-Reportdiv {
-	display: flex;
-	align-items: center;
-	justify-content: flex-start;
-	gap: 2px;
-}
-
 .BFAFE-ENavigationButtons {
 	display: flex;
 	align-items: center;

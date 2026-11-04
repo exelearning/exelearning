@@ -310,6 +310,10 @@ describe('dragdrop edition: shared form tabs, options tooltips, and saving', () 
         expect(document.querySelectorAll('[role="switch"], [aria-checked]')).toHaveLength(0);
     });
 
+    it('leaves no empty placeholder of the old report at the end of Options', () => {
+        expect(document.querySelector('.Games-Reportdiv')).toBeNull();
+    });
+
     it('organises the edition form into shared WAI-ARIA tabs', () => {
         expect(tabNames()).toEqual([
             'instructions',

@@ -108,13 +108,6 @@
 }
 
 
-.Games-Reportdiv {
-    display: flex;
-    justify-content: flex-start;
-    align-items: center;
-    gap: 2px;
-}
-
 .GameModeHelpLink {
     margin: 0 2px;
     vertical-align: middle;

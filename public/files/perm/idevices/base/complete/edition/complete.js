@@ -281,8 +281,6 @@ var $exeDevice = {
                     <label for="cmptAuthorBack" class="mb-0">${_('Authorship')}: </label>
                     <input type="text" class="CMPT-EURLImage form-control" id="cmptAuthorBack"/>
                 </div>
-                <div class="Games-Reportdiv d-flex align-items-center gap-2 flex-nowrap">
-                </div>
             </div>
         `;
         const textPanelHtml = `

@@ -208,8 +208,6 @@ var $exeDevice = {
                     <label for="dadEAuthory" class="mb-0">${_('Authorship')}:</label>
                     <input id="dadEAuthory" type="text" class="form-control" />
                 </div>
-                <div class="Games-Reportdiv d-flex align-items-center gap-2 flex-nowrap mt-3">
-                </div>
             </div>
         `;
 
