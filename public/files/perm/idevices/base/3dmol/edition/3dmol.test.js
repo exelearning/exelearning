@@ -275,6 +275,28 @@ describe('3dmol iDevice edition', () => {
         });
     });
 
+    describe('createModelStyleOptions', () => {
+        it('names the molecule styles in the language of the editor', () => {
+            vi.stubGlobal('_', (text) => `es:${text}`);
+            try {
+                const select = document.createElement('select');
+                select.innerHTML = dmol.createModelStyleOptions('sphere');
+
+                expect([...select.options].map((option) => option.textContent)).toEqual([
+                    'es:Line',
+                    'es:Cross',
+                    'es:Stick',
+                    'es:Sphere',
+                    'es:Cartoon',
+                    'es:Surface',
+                ]);
+                expect(select.querySelector('option[selected]').value).toBe('sphere');
+            } finally {
+                vi.unstubAllGlobals();
+            }
+        });
+    });
+
     describe('getCuestionDefault', () => {
         it('includes empty author and alt fields', () => {
             const q = dmol.getCuestionDefault({
@@ -1066,6 +1088,31 @@ describe('3dmol edition: shared form tabs and feedback', () => {
             expect(device.active).toBe(1);
             expect(document.getElementById('dmoleQuestion').value).toBe('Which elements are in water?');
             expect(document.getElementById('dmoleNumQuestions').textContent).toBe('4');
+        });
+
+        it('reports the lines it cannot take, with those the window refused, and hands them back', async () => {
+            await ready();
+            const single = 'A#Which gas do we breathe?#Oxygen';
+
+            await saveFromAI(['A#Which is the lightest element?#Hydrogen#Helium', single, 'not a question']);
+
+            expect(device.selectsGame.map((question) => question.quextion)).toHaveLength(2);
+            expect(global.eXe.app.alert).toHaveBeenCalledTimes(1);
+            expect(global.eXe.app.alert).toHaveBeenCalledWith(
+                `The following lines are invalid:\n\nnot a question\n${single}`
+            );
+            expect(document.getElementById('eXeEQuestionsArea').value).toBe(`not a question\n${single}`);
+        });
+
+        it('hands the lines back when none can be added', async () => {
+            await ready();
+            const single = 'A#Which gas do we breathe?#Oxygen';
+
+            await saveFromAI([single]);
+
+            expect(device.selectsGame).toHaveLength(1);
+            expect(global.eXe.app.alert).toHaveBeenCalledWith('Sorry, there are no questions for this type of activity.');
+            expect(document.getElementById('eXeEQuestionsArea').value).toBe(single);
         });
 
         it('keeps the last changes of the question on screen', async () => {

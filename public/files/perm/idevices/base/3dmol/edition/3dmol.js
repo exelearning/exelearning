@@ -241,14 +241,21 @@ var $exeDevice = {
      * word. They start with the default model, which the author changes in
      * each one.
      *
+     * The AI window lets through some lines this reader does not take, such
+     * as a choice with a single option. Those, with the ones the window
+     * refused, are reported and handed back to it to be corrected.
+     *
      * @param {string[]} lines
-     * @returns {{handledMessaging: boolean}|undefined} handledMessaging when
-     * nothing was added and the author has already been told why.
+     * @param {string[]} [invalidLines] The lines the window refused.
+     * @returns {{handledMessaging: boolean, remainingLines: string[]}|undefined}
+     * handledMessaging when the author has already been told what was left
+     * out, and remainingLines with those lines.
      */
-    insertQuestions: function (lines) {
+    insertQuestions: function (lines, invalidLines = []) {
         const choice = /^([0-3]|[A-D]{1,4})#([^#]+)#([^#]+)#([^#]*)(#[^#]*){0,2}$/i,
             word = /^([^#]+)#([^#]+)$/,
-            questions = [];
+            questions = [],
+            rejected = [...invalidLines];
         lines.forEach((line) => {
             const text = line.trim(),
                 fields = text.split('#'),
@@ -266,11 +273,13 @@ var $exeDevice = {
                 p.quextion = fields[1];
                 p.options = ['', '', '', ''];
                 questions.push(p);
+            } else if (text) {
+                rejected.push(text);
             }
         });
         if (questions.length === 0) {
             eXe.app.alert(_('Sorry, there are no questions for this type of activity.'));
-            return { handledMessaging: true };
+            return { handledMessaging: true, remainingLines: rejected };
         }
         $exeIDevicesEdition.iDevice.gamification.share.keepQuestionOnScreen(
             () => $exeDevice.validateQuestion()
@@ -279,6 +288,10 @@ var $exeDevice = {
         $exeDevice.active = $exeDevice.selectsGame.length - questions.length;
         $exeDevice.showQuestion($exeDevice.active);
         $exeDevice.updateSelectOrder();
+        if (rejected.length > 0) {
+            eXe.app.alert(_('The following lines are invalid:') + '\n\n' + rejected.join('\n'));
+            return { handledMessaging: true, remainingLines: rejected };
+        }
     },
 
     removeQuestion: function () {
@@ -1085,21 +1098,23 @@ var $exeDevice = {
         return allowed.includes(normalized) ? normalized : 'stick';
     },
 
-    getModelStyleChoices: function (msgs) {
+    // The styles in the editor's language: the learners' texts (ci18n) are
+    // for the exported activity.
+    getModelStyleChoices: function () {
         return [
-            { value: 'line', label: msgs.msgModelStyleLine || 'Line' },
-            { value: 'cross', label: msgs.msgModelStyleCross || 'Cross' },
-            { value: 'stick', label: msgs.msgModelStyleStick || 'Stick' },
-            { value: 'sphere', label: msgs.msgModelStyleSphere || 'Sphere' },
-            { value: 'cartoon', label: msgs.msgModelStyleCartoon || 'Cartoon' },
-            { value: 'surface', label: msgs.msgModelStyleSurface || 'Surface' },
+            { value: 'line', label: _('Line') },
+            { value: 'cross', label: _('Cross') },
+            { value: 'stick', label: _('Stick') },
+            { value: 'sphere', label: _('Sphere') },
+            { value: 'cartoon', label: _('Cartoon') },
+            { value: 'surface', label: _('Surface') },
         ];
     },
 
-    createModelStyleOptions: function (msgs, selectedStyle) {
+    createModelStyleOptions: function (selectedStyle) {
         const style = $exeDevice.normalizeModelStyle(selectedStyle);
         return $exeDevice
-            .getModelStyleChoices(msgs)
+            .getModelStyleChoices()
             .map(function (item) {
                 const selected = item.value === style ? ' selected' : '';
                 return `<option value="${item.value}"${selected}>${item.label}</option>`;
@@ -1514,7 +1529,7 @@ var $exeDevice = {
                                 <label for="dmoleModelStyle" class="DMOLE-ModelStyleLabel">${_('Molecule style')}:</label>
                                 <div class="DMOLE-ModelStyleInputGroup">
                                     <select id="dmoleModelStyle" class="DMOLE-ModelStyleSelect form-select form-select-sm">
-                                        ${$exeDevice.createModelStyleOptions($exeDevice.msgs, $exeDevice.modelStyle)}
+                                        ${$exeDevice.createModelStyleOptions($exeDevice.modelStyle)}
                                     </select>
                                     <button type="button" id="dmoleModelSizeDown" class="DMOLE-ModelSizeBtn" title="${_('Smaller')}">-</button>
                                     <button type="button" id="dmoleModelSizeUp" class="DMOLE-ModelSizeBtn" title="${_('Bigger')}">+</button>
