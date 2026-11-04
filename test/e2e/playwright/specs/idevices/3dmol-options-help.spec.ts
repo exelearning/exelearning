@@ -1,7 +1,7 @@
 import { test, expect } from '../../fixtures/auth.fixture';
 import {
+    addIdevice,
     editIdevice,
-    expandIdeviceCategory,
     gotoWorkarea,
     reloadPage,
     saveIdevice,
@@ -19,11 +19,7 @@ async function dismissBetaWarningIfPresent(page: Page): Promise<void> {
 }
 
 async function add3DmolIdevice(page: Page): Promise<void> {
-    await expandIdeviceCategory(page, /Science|Ciencia/i);
-
-    const menuItem = page.locator('.idevice_item[id="3dmol"]').first();
-    await menuItem.waitFor({ state: 'visible', timeout: 10000 });
-    await menuItem.click();
+    await addIdevice(page, '3dmol');
 
     const editForm = page.locator('#dMoleIdeviceForm');
     await editForm.waitFor({ state: 'visible', timeout: 15000 });

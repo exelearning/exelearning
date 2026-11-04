@@ -824,8 +824,12 @@ export async function addIdevice(page: Page, ideviceType: string): Promise<void>
     await idevice.scrollIntoViewIfNeeded();
     await idevice.click();
 
-    // Wait for iDevice to appear in content area
-    await page.locator(`#node-content article .idevice_node.${ideviceType}`).first().waitFor({ timeout: 15000 });
+    // Wait for iDevice to appear in content area. The type is matched as a word of
+    // the class attribute: as a class selector, one starting with a digit (3dmol) is invalid.
+    await page
+        .locator(`#node-content article .idevice_node[class~="${ideviceType}"]`)
+        .first()
+        .waitFor({ timeout: 15000 });
 }
 
 /**
@@ -959,7 +963,7 @@ export async function verifyIdeviceInEditor(
             if (!nodeContent) return { found: false, details: { error: 'No #node-content' } };
 
             // Find iDevice node
-            const ideviceNode = nodeContent.querySelector(`.idevice_node.${type}`);
+            const ideviceNode = nodeContent.querySelector(`.idevice_node[class~="${type}"]`);
             if (!ideviceNode) return { found: false, details: { error: `No .idevice_node.${type}` } };
 
             const details: Record<string, unknown> = { ideviceFound: true, elements: {} };
