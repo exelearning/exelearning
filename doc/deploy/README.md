@@ -27,20 +27,26 @@ This directory contains sample Docker Compose configurations for deploying eXeLe
    curl -L https://raw.githubusercontent.com/exelearning/exelearning/main/doc/deploy/docker-compose.sqlite.yml -o docker-compose.yml
    ```
 
-2. Start the application:
+2. Create a `.env` file for the installation:
    ```bash
-   # Set required environment variables (or use defaults)
-   export APP_PORT=8080
-   export APP_SECRET=YourSecretKey
-   export DB_NAME=exelearning
-   export DB_USER=exelearning
-   export DB_PASSWORD=secure_password
-   
-   # Start the containers
+   APP_PORT=8080
+   APP_SECRET=
+   API_JWT_SECRET=
+   DB_NAME=exelearning
+   DB_USER=exelearning
+   DB_PASSWORD=secure_password
+   ```
+
+   The empty secret values intentionally make Docker Compose fail. Generate two different secrets once (for example,
+   run `openssl rand -base64 48` twice), paste one after each `=`, and store the resulting `.env` file securely. Keep
+   these values unchanged across normal restarts and upgrades.
+
+3. Start the application:
+   ```bash
    docker compose up
    ```
 
-3. Access the application at http://localhost:8080 (or the port specified in your APP_PORT variable)
+4. Access the application at http://localhost:8080 (or the port specified in your APP_PORT variable)
 
 ## Environment Variables
 
@@ -48,7 +54,8 @@ You can customize the deployment by setting these environment variables:
 
 ### Common Variables
 - `APP_PORT`: Port to access the application (default: 8080)
-- `APP_SECRET`: Secret key for JWT authentication (required for production)
+- `APP_SECRET`: Secret for platform integrations (required; no default)
+- `API_JWT_SECRET`: Secret for sessions and API authentication (required; no default)
 - `ADMIN_EMAIL`, `ADMIN_PASSWORD`: Admin user credentials (created/updated when ADMIN_PASSWORD is set)
 - `ONLINE_THEMES_INSTALL`: Allow users to import/install styles
 - `ONLINE_IDEVICES_INSTALL`: Allow users to import/install iDevices
@@ -83,7 +90,9 @@ All configurations use Docker volumes for data persistence:
 
 For production deployments:
 
-1. Set a strong `APP_SECRET` value
-2. Change all default passwords
-3. Consider setting up a backup strategy for your volumes
-4. For high-traffic sites, consider using PostgreSQL or MariaDB instead of SQLite
+1. Generate unique `APP_SECRET` and `API_JWT_SECRET` values once for each installation
+2. Store both secrets outside the Compose file, preserve them across restarts, and rotate any value copied from an
+   older deployment example
+3. Change all default passwords
+4. Consider setting up a backup strategy for your volumes
+5. For high-traffic sites, consider using PostgreSQL or MariaDB instead of SQLite

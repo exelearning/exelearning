@@ -26,6 +26,7 @@ import { getPostLoginTarget } from '../services/maintenance';
 import { logActivity } from '../services/activity-logger';
 import { resolveOidcEndpoints, type ResolvedOidcEndpoints } from '../services/oidc-discovery';
 import { verifyPassword } from '../services/password';
+import { getJwtSecret } from '../utils/jwt-secret';
 
 // Domain for temporary emails (CAS, OIDC, Guest users without real email)
 const TEMP_EMAIL_DOMAIN = process.env.AUTH_TEMP_EMAIL_DOMAIN || 'domain.local';
@@ -110,11 +111,6 @@ export interface JwtPayload {
     iat?: number;
     exp?: number;
 }
-
-// Get JWT secret from environment
-const getJwtSecret = (): string => {
-    return process.env.API_JWT_SECRET || process.env.JWT_SECRET || 'dev_secret_change_me';
-};
 
 const getRequestClientIp = (request: Request): string | null => {
     const forwardedFor = request.headers.get('x-forwarded-for');
