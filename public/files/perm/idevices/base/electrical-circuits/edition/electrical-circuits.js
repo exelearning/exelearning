@@ -184,7 +184,6 @@ var $exeDevice = {
         msgs.msgECompleteAllOptions = _('Please complete all options');
         msgs.msgTimeFormat = _('Please check the time format: hh:mm:ss');
         msgs.msgProvideSolution = _('Please write the word/phrase');
-        msgs.msgESelectFile = _('The selected file is not a valid game');
         msgs.msgEProvideTimeSolution = _(
             'Please indicate the time to display the solution'
         );
@@ -1682,6 +1681,7 @@ var $exeDevice = {
                         texts: this.ci18n,
                         share: {
                             importQuestions: true,
+                            importInfo: _('You can import questions compatible with this activity from txt files.'),
                             exportQuestions: true,
                             type: 11,
                         },
@@ -2421,29 +2421,15 @@ var $exeDevice = {
         ) {
             $('#eXeGameExportImport .exe-field-instructions')
                 .eq(0)
-                .text(`${_('Supported formats')}: txt, xml(Moodle)`);
+                .text(`${_('Supported formats')}: txt`);
             $('#eXeGameExportImport').show();
             $('#eXeGameImportGame')
-                .attr('accept', '.txt, .xml')
+                .attr('accept', '.txt')
                 .on('change', function (e) {
                     const file = e.target.files[0];
-                    if (!file) {
+                    if (!file || !file.type.match('text/plain')) {
                         $exeDevice.showMessage(
-                            `${_('Select a file')} (txt, xml(Moodle))`
-                        );
-                        return;
-                    }
-                    if (
-                        !file.type ||
-                        !(
-                            file.type.match('text/plain') ||
-                            file.type.match('application/json') ||
-                            file.type.match('application/xml') ||
-                            file.type.match('text/xml')
-                        )
-                    ) {
-                        $exeDevice.showMessage(
-                            `${_('Select a file')} (txt, xml(Moodle))`
+                            _('Please select a text file (.txt)')
                         );
                         return;
                     }
@@ -2549,221 +2535,13 @@ var $exeDevice = {
     },
 
 
-    importMoodle(xmlString) {
-        const xmlDoc = $.parseXML(xmlString),
-            $xml = $(xmlDoc);
-        if ($xml.find('GLOSSARY').length > 0) {
-            $exeDevice.importGlosary(xmlString);
-        } else if ($xml.find('quiz').length > 0) {
-            $exeDevice.importCuestionaryXML(xmlString);
-        } else {
-            eXe.app.alert(_('Sorry, wrong file format'));
-        }
-    },
-
+    // Only plain text is read: the lines that Export writes and the AI uses.
     importGame: function (content, filetype) {
-        const game =
-            $exeDevices.iDevice.gamification.helpers.isJsonString(content);
-
-        if (content && content.includes('\u0000')) {
+        if (content.includes('\u0000') || !filetype.match('text/plain')) {
             $exeDevice.showMessage(_('Sorry, wrong file format'));
             return;
-        } else if (!game && content) {
-            if (filetype.match('text/plain')) {
-                $exeDevice.importText(content);
-            } else if (
-                filetype.match('application/xml') ||
-                filetype.match('text/xml')
-            ) {
-                $exeDevice.importMoodle(content);
-            } else {
-                eXe.app.alert(_('Sorry, wrong file format'));
-            }
-            return;
-        } else if (!game || typeof game.typeGame === 'undefined') {
-            $exeDevice.showMessage($exeDevice.msgs.msgESelectFile);
-            return;
-        } else if (game.typeGame === 'ElectricalCircuits' || game.typeGame === 'Selecciona') {
-            game.id = $exeDevice.getIdeviceID();
-            $exeDevice.active = 0;
-            $exeDevice.updateFieldGame(game);
-            const instructions = game.instructionsExe || game.instructions,
-                tAfter = game.textAfter || '',
-                textFeedBack = game.textFeedBack || '';
-            $exeDevice.setEditorContent('eXeGameInstructions', unescape(instructions));
-            $exeDevice.setEditorContent('eXeIdeviceTextAfter', unescape(tAfter));
-            $exeIDevicesEdition.iDevice.gamification.feedback.setText(unescape(textFeedBack));
-        } else if (game.typeGame === 'QuExt') {
-            $exeDevice.selectsGame = $exeDevice.importQuExt(game);
-        } else if (game.typeGame === 'Rosco' || game.typeGame === 'Adivina') {
-            $exeDevice.selectsGame = $exeDevice.importRosco(game);
-        } else {
-            $exeDevice.showMessage($exeDevice.msgs.msgESelectFile);
-            return;
         }
-
-        $exeDevice.active = 0;
-        $exeDevice.showQuestion($exeDevice.active);
-        $exeDevice.deleteEmptyQuestion();
-        $exeDevice.updateQuestionsNumber();
-        $exeDevice.updateSelectOrder();
-    },
-
-    importCuestionaryXML: function (xmlText) {
-        const parser = new DOMParser(),
-            xmlDoc = parser.parseFromString(xmlText, 'text/xml');
-
-        if ($(xmlDoc).find('parsererror').length > 0) {
-            return false;
-        }
-
-        const quiz = $(xmlDoc).find('quiz').first();
-        if (quiz.length === 0) {
-            return false;
-        }
-
-        const questions = quiz.find('question'),
-            questionsJson = [];
-        for (let i = 0; i < questions.length; i++) {
-            const question = questions[i],
-                type = $(question).attr('type');
-
-            if (
-                ![
-                    'multichoice',
-                    'truefalse',
-                    'numerical',
-                    'shortanswer',
-                ].includes(type)
-            ) {
-                continue;
-            }
-
-            const typeSelect = type === 'shortanswer' ? 2 : 0,
-                questionText = $(question).find('questiontext').first().text(),
-                answers = $(question).find('answer');
-            let options = [],
-                solution = '',
-                solutionQuestion = '';
-
-            if (typeSelect === 0) {
-                for (let j = 0; j < answers.length; j++) {
-                    const answer = answers[j],
-                        answerHtml = $exeDevice.removeTags(
-                            $(answer).find('text').eq(0).text().trim()
-                        ),
-                        answerText = answerHtml.split('\n')[0].trim();
-                    options.push(answerText);
-                    if (parseFloat($(answer).attr('fraction')) > 0) {
-                        solution += String.fromCharCode(65 + j);
-                    }
-                }
-            } else if (typeSelect === 2) {
-                let maxFraction = -1;
-                for (let j = 0; j < answers.length; j++) {
-                    const answer = answers[j],
-                        answerHtml = $(answer).find('text').eq(0).text().trim(),
-                        answerText = answerHtml.split('\n')[0].trim(),
-                        currentFraction = parseFloat(
-                            $(answer).attr('fraction')
-                        );
-                    if (currentFraction > maxFraction) {
-                        maxFraction = currentFraction;
-                        solutionQuestion = answerText;
-                    }
-                }
-            }
-
-            questionsJson.push({
-                typeSelect,
-                question: $exeDevice.removeTags(questionText.trim()),
-                options,
-                solution,
-                solutionQuestion,
-            });
-        }
-
-        let questionsj = [];
-        questionsJson.forEach((question) => {
-            const p = $exeDevice.getCuestionDefault();
-            p.typeSelect = question.typeSelect;
-            if (p.typeSelect === 0) {
-                p.quextion = question.question;
-                p.options[0] = question.options[0] || '';
-                p.options[1] = question.options[1] || '';
-                p.options[2] = question.options[2] || '';
-                p.options[3] = question.options[3] || '';
-                p.solution = question.solution;
-                p.numberOptions = question.options.length;
-                if (p.numberOptions === 2) {
-                    p.options[0] =
-                        p.options[0] === 'true' ? _('True') : p.options[0];
-                    p.options[0] =
-                        p.options[0] === 'false' ? _('False') : p.options[0];
-                    p.options[1] =
-                        p.options[1] === 'true' ? _('True') : p.options[1];
-                    p.options[1] =
-                        p.options[1] === 'false' ? _('False') : p.options[1];
-                }
-                if (question.question && question.options.length > 1) {
-                    questionsj.push(p);
-                }
-            } else if (p.typeSelect === 2) {
-                p.quextion = question.question;
-                p.solutionQuestion = question.solutionQuestion;
-                p.percentageShow = 35;
-                if (question.question && question.solutionQuestion) {
-                    questionsj.push(p);
-                }
-            }
-        });
-
-        $exeDevice.addQuestions(questionsj);
-    },
-
-    importGlosary: function (xmlText) {
-        const parser = new DOMParser(),
-            xmlDoc = parser.parseFromString(xmlText, 'text/xml'),
-            $xml = $(xmlDoc);
-
-        if ($xml.find('parsererror').length > 0) {
-            return false;
-        }
-
-        const $entries = $xml.find('ENTRIES').first();
-        if ($entries.length === 0) {
-            return false;
-        }
-
-        const questionsJson = [];
-        $entries.find('ENTRY').each(function () {
-            const $this = $(this),
-                concept = $this.find('CONCEPT').text(),
-                definition = $this
-                    .find('DEFINITION')
-                    .text()
-                    .replace(/<[^>]*>/g, '');
-            if (concept && definition) {
-                questionsJson.push({
-                    solution: concept,
-                    question: definition,
-                });
-            }
-        });
-
-        let questionsj = [];
-        questionsJson.forEach((question) => {
-            const p = $exeDevice.getCuestionDefault();
-            p.typeSelect = 2;
-            p.quextion = question.question;
-            p.solutionQuestion = question.solution;
-            p.percentageShow = 35;
-            if (p.quextion.length > 0 && p.solutionQuestion.length > 0) {
-                questionsj.push(p);
-            }
-        });
-
-        $exeDevice.addQuestions(questionsj);
+        $exeDevice.importText(content);
     },
 
     importText: function (content) {
@@ -2952,33 +2730,6 @@ var $exeDevice = {
         $exeDevice.updateQuestionsNumber();
     },
 
-    importQuExt: function (data) {
-        data.questionsGame.forEach((cuestion) => {
-            const p = $exeDevice.getCuestionDefault();
-            p.typeSelect = 0;
-            p.time = cuestion.time;
-            p.numberOptions = cuestion.numberOptions;
-            p.quextion = cuestion.quextion;
-            p.options = [...cuestion.options];
-
-            let numOpt = 0;
-            for (let j = 0; j < p.options.length; j++) {
-                if (p.options[j].trim().length === 0) {
-                    p.numberOptions = numOpt;
-                    break;
-                }
-                numOpt++;
-            }
-
-            const solution = 'ABCD';
-            p.solution = solution.charAt(cuestion.solution);
-            p.solutionQuestion = '';
-            p.percentageShow = 35;
-            $exeDevice.selectsGame.push(p);
-        });
-        return $exeDevice.selectsGame;
-    },
-
     deleteEmptyQuestion: function () {
         if ($exeDevice.selectsGame.length > 1) {
             const quextion = $('#elceQuestion').val().trim(),
@@ -3011,41 +2762,5 @@ var $exeDevice = {
                 $exeDevice.removeQuestion();
             }
         }
-    },
-
-    importRosco: function (data) {
-        for (let i = 0; i < data.wordsGame.length; i++) {
-            const p = $exeDevice.getCuestionDefault();
-            const cuestion = data.wordsGame[i];
-            const msc = $exeDevice.msgs.msgContaint.replace(
-                '%1',
-                cuestion.letter
-            );
-            const mss = $exeDevice.msgs.msgStartWith.replace(
-                '%1',
-                cuestion.letter
-            );
-            const start = cuestion.type == 1 ? msc : mss;
-            p.typeSelect = 2;
-            p.time =
-                cuestion.time || $exeDevice.getIndexTime(data.timeQuestion);
-            p.numberOptions = 4;
-            p.quextion = start + ': ' + cuestion.definition;
-            p.options = ['', '', '', ''];
-            p.solution = '';
-            p.solutionQuestion = cuestion.word;
-            p.percentageShow = cuestion.percentageShow || data.percentageShow;
-            if (p.solutionQuestion.trim().length > 0) {
-                $exeDevice.selectsGame.push(p);
-            }
-        }
-        return $exeDevice.selectsGame;
-    },
-
-    getIndexTime: function (tm) {
-        const tms = [15, 30, 60, 180, 300, 600, 900];
-        let itm = tms.indexOf(tm);
-        itm = itm < 0 ? 1 : itm;
-        return itm;
     },
 };

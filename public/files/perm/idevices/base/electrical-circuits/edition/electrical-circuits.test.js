@@ -1821,6 +1821,56 @@ describe('electrical-circuits edition: shared form tabs and feedback', () => {
         });
     });
 
+    describe('importing', () => {
+        const chooseFile = (file) => {
+            const input = document.getElementById('eXeGameImportGame');
+            Object.defineProperty(input, 'files', { value: [file], configurable: true });
+            input.dispatchEvent(new Event('change'));
+        };
+
+        it('offers plain text files only', () => {
+            const link = document.querySelector('[data-exe-share="import"]');
+            const modal = document.getElementById(link.getAttribute('aria-controls'));
+
+            expect(modal.querySelector('.modal-body').firstElementChild.textContent).toBe(
+                'You can import questions compatible with this activity from txt files.'
+            );
+            expect(modal.querySelector('.exe-field-instructions').textContent).toBe('Supported formats: txt');
+            expect(document.getElementById('eXeGameImportGame').getAttribute('accept')).toBe('.txt');
+        });
+
+        it('reads the lines of a text file', () => {
+            const importText = vi.spyOn(device, 'importText').mockImplementation(() => {});
+
+            device.importGame('Ohm#Unit of resistance', 'text/plain');
+
+            expect(importText).toHaveBeenCalledWith('Ohm#Unit of resistance');
+        });
+
+        it('refuses Moodle xml and game json files', () => {
+            const importText = vi.spyOn(device, 'importText');
+
+            for (const [content, type] of [
+                ['<quiz></quiz>', 'text/xml'],
+                ['<GLOSSARY></GLOSSARY>', 'application/xml'],
+                ['{"typeGame":"ElectricalCircuits"}', 'application/json'],
+            ]) {
+                device.importGame(content, type);
+                expect(global.eXe.app.getLastAlert()).toBe('Sorry, wrong file format');
+            }
+            expect(importText).not.toHaveBeenCalled();
+        });
+
+        it('asks for a text file when another one is chosen', () => {
+            const readAsText = vi.spyOn(FileReader.prototype, 'readAsText');
+
+            chooseFile(new File(['<quiz></quiz>'], 'questions.xml', { type: 'text/xml' }));
+
+            expect(global.eXe.app.getLastAlert()).toBe('Please select a text file (.txt)');
+            expect(readAsText).not.toHaveBeenCalled();
+        });
+    });
+
     describe('Show mode', () => {
         const hidden = (id) => document.getElementById(id).classList.contains('d-none');
         const openInShowMode = () => {
