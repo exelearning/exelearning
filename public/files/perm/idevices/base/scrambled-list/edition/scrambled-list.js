@@ -498,15 +498,20 @@ var $exeDevice = {
             const isRequired = i < this.items_min;
             const requiredAttr = isRequired ? 'required' : '';
             const requiredClass = isRequired ? 'required' : '';
-            const value = i < options.length ? options[i] : '';
             inputList += `
                 <li class="${requiredClass}">
                     <label for="sortableListFormList${i}" class="sr-av">${_('Element')} ${i + 1}</label>
                     <input type="text" name="sortableListFormList${i}" id="sortableListFormList${i}"
-                        class="sortableListFormList form-control ${requiredClass}" ${requiredAttr} value="${value}" />
+                        class="sortableListFormList form-control ${requiredClass}" ${requiredAttr} />
                 </li>`;
         }
         $('#sortableListFormList ol').append(inputList);
+        // Through the DOM: written in the markup, a quotation mark in an
+        // imported element would end its value and turn the rest into
+        // attributes of the field.
+        for (let i = 0; i < this.items_no && i < options.length; i++) {
+            $(`#sortableListFormList${i}`).val(options[i]);
+        }
     },
 
     /**

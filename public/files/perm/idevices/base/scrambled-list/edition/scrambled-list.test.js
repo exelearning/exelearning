@@ -427,6 +427,27 @@ describe('scrambled-list edition: shared form tabs', () => {
         expect(document.getElementById('sortableListFormList1').value).toBe('Have  2 breakfast');
     });
 
+    it('imports quotation marks and other markup characters as text', async () => {
+        open({ options: ['He said "yes"', 'Fish & <chips>', 'Three'] });
+        const download = vi
+            .spyOn($exeIDevicesEdition.iDevice.gamification.share, 'downloadBlob')
+            .mockReturnValue(true);
+        document.getElementById('eXeGameExportQuestions').click();
+        const value = (i) => document.getElementById(`sortableListFormList${i}`).value;
+
+        device.insertWords([await download.mock.calls[0][0].text()]);
+
+        expect([value(0), value(1), value(2)]).toEqual(['He said "yes"', 'Fish & <chips>', 'Three']);
+
+        // A crafted line, from a file or the AI, stays the text of its field.
+        device.insertWords(['Alpha" data-injected="yes" onfocus="alert(1)#Beta#Gamma']);
+
+        const field = document.getElementById('sortableListFormList0');
+        expect(field.value).toBe('Alpha" data-injected="yes" onfocus="alert(1)');
+        expect(field.hasAttribute('data-injected')).toBe(false);
+        expect(field.hasAttribute('onfocus')).toBe(false);
+    });
+
     it('asks for three elements before exporting, as saving does', () => {
         open({ options: ['Wake up', 'Have breakfast'] });
         const download = vi.spyOn($exeIDevicesEdition.iDevice.gamification.share, 'downloadBlob');
