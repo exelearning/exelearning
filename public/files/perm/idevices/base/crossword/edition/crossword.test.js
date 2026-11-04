@@ -581,6 +581,26 @@ describe('crossword edition: shared form tabs and feedback', () => {
     expect(document.getElementById('eXeGamePercentajeFB').value).toBe('80');
   });
 
+  describe('background image', () => {
+    const url = 'files/back.png';
+    const hidden = (id) => document.getElementById(id).classList.contains('d-none');
+
+    it('keeps the image of a background switched off, with its rows hidden', () => {
+      device.updateFieldGame(game({ hasBack: false, urlBack: url }));
+
+      expect(document.getElementById('ccgmBack0').checked).toBe(false);
+      expect(document.getElementById('ccgmEURLBack').value).toBe(url);
+      expect(['ccgmbackground', 'ccgmbackground1', 'ccgmAuthorBackDiv'].map(hidden)).toEqual([true, true, true]);
+    });
+
+    it('shows the rows of a background switched on', () => {
+      device.updateFieldGame(game({ hasBack: true, urlBack: url }));
+
+      expect(document.getElementById('ccgmEURLBack').value).toBe(url);
+      expect(['ccgmbackground', 'ccgmbackground1', 'ccgmAuthorBackDiv'].map(hidden)).toEqual([false, false, false]);
+    });
+  });
+
   it('loads the saved message into the shared editor', () => {
     device.idevicePreviousData = `
       <div class="crucigrama-IDevice">

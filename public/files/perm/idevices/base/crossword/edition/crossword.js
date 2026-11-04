@@ -1357,16 +1357,15 @@ var $exeDevice = {
         $exeDevice.wordsGame = game.wordsGame;
 
         $exeDevice.showImageBack(game.hasBack, game.urlBack);
-        $('#ccgmbackground, #ccgmbackground1').hide();
-
-        if (game.hasBack) {
-            $('#ccgmbackground, #ccgmbackground1, #ccgmAuthorBackDiv')
-                .removeClass('d-none')
-                .addClass('d-flex');
-            if (game.urlBack.length > 4) {
-                $('#ccgmEURLBack').val(game.urlBack);
-            }
+        // The image is kept with the background switched off, so switching it
+        // on again brings it back. The rows follow the switch, as on change:
+        // hide() alone cannot hide a row with Bootstrap's d-flex.
+        if ((game.urlBack || '').length > 4) {
+            $('#ccgmEURLBack').val(game.urlBack);
         }
+        $('#ccgmbackground, #ccgmbackground1, #ccgmAuthorBackDiv')
+            .toggleClass('d-none', !game.hasBack)
+            .toggleClass('d-flex', !!game.hasBack);
         $exeDevice.updateQuestionsNumber();
     },
     exportQuestions: function () {
