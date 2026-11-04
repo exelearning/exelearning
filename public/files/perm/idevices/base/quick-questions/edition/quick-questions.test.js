@@ -725,6 +725,26 @@ describe('quick-questions edition: shared form tabs and feedback', () => {
       expect(device.save()).toContain('<div class="quext-feedback-game"><p>Bravo</p></div>');
     });
 
+    it('keeps the lives as they were saved', () => {
+      vi.spyOn(device, 'validateQuestion').mockReturnValue(true);
+
+      device.updateFieldGame(game({ questionsGame: device.questionsGame, gameMode: 0, useLives: false, numberLives: 5 }));
+      expect(document.getElementById('quextEUseLives').checked).toBe(false);
+      expect(document.getElementById('quextENumberLives').disabled).toBe(true);
+      expect(device.validateData()).toMatchObject({ useLives: false, numberLives: 5 });
+
+      device.updateFieldGame(game({ questionsGame: device.questionsGame, gameMode: 0, useLives: true, numberLives: 2 }));
+      expect(document.getElementById('quextEUseLives').checked).toBe(true);
+      expect(document.getElementById('quextENumberLives').disabled).toBe(false);
+      expect(device.validateData()).toMatchObject({ useLives: true, numberLives: 2 });
+    });
+
+    it('offers three lives for a game saved without them', () => {
+      device.updateFieldGame(game({ questionsGame: device.questionsGame, gameMode: 0 }));
+
+      expect(document.getElementById('quextENumberLives').value).toBe('3');
+    });
+
     it('asks for the message in "No score" mode', () => {
       device.updateFieldGame(game({ questionsGame: device.questionsGame, gameMode: 2 }));
 

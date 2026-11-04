@@ -1569,6 +1569,8 @@ var $exeDevice = {
             typeof game.weighted !== 'undefined' ? game.weighted : 100;
         game.globalTime =
             typeof game.globalTime !== 'undefined' ? game.globalTime : 0;
+        game.numberLives =
+            typeof game.numberLives !== 'undefined' ? game.numberLives : 3;
         $exeDevice.id = $exeDevice.getIdeviceID();
 
         $('#quextEShowMinimize').prop('checked', game.showMinimize);
@@ -1578,6 +1580,8 @@ var $exeDevice = {
         $('#quextEShowSolution').prop('checked', game.showSolution);
         $('#quextETimeShowSolution').val(game.timeShowSolution);
         $('#quextETimeShowSolution').prop('disabled', !game.showSolution);
+        $('#quextEUseLives').prop('checked', game.useLives);
+        $('#quextENumberLives').val(game.numberLives);
         $('#quextENumberLives').prop('disabled', !game.useLives);
         $('#quextEVIURL').val(game.idVideo);
         $('#quextEVIEnd').val(
