@@ -496,7 +496,11 @@ describe('Discover Edition Functions', () => {
     });
 
     describe('real exportQuestions regression', () => {
-        it('downloads question text with the discover filename and container', () => {
+        // A set of cards as the edition stores it: each card keeps its own text.
+        const set = (...texts) => ({
+            data: [0, 1, 2, 3].map((i) => ({ eText: texts[i] || '', url: '', audio: '' })),
+        });
+        const exportGame = (dataGame) => {
             const realExeDevice = global.loadIdevice(join(__dirname, 'discover.js'));
             const downloadBlob = vi.fn(() => true);
             const prevShare = global.$exeIDevicesEdition?.iDevice?.gamification?.share;
@@ -509,14 +513,11 @@ describe('Discover Edition Functions', () => {
                 if (global.$exeDevicesEdition?.iDevice?.gamification) {
                     global.$exeDevicesEdition.iDevice.gamification.share = { ...prevLegacyShare, downloadBlob };
                 }
-                vi.spyOn(realExeDevice, 'validateData').mockReturnValue({
-                    wordsGame: [{ word: 'Card', definition: 'Pair' }],
-                });
+                const validateQuestion = vi.spyOn(realExeDevice, 'validateQuestion').mockReturnValue(true);
+                vi.spyOn(realExeDevice, 'validateData').mockReturnValue(dataGame);
 
-                expect(realExeDevice.exportQuestions()).toBe(true);
-                expect(downloadBlob).toHaveBeenCalledTimes(1);
-                expect(downloadBlob.mock.calls[0][1]).toBe('words-descubre.txt');
-                expect(downloadBlob.mock.calls[0][2]).toBe('descubreQEIdeviceForm');
+                const result = realExeDevice.exportQuestions();
+                return { result, downloadBlob, validateQuestion };
             } finally {
                 if (global.$exeIDevicesEdition?.iDevice?.gamification && prevShare) {
                     global.$exeIDevicesEdition.iDevice.gamification.share = prevShare;
@@ -525,6 +526,38 @@ describe('Discover Edition Functions', () => {
                     global.$exeDevicesEdition.iDevice.gamification.share = prevLegacyShare;
                 }
             }
+        };
+
+        it('downloads one line per set, with the text of each of its cards, as Import reads it', async () => {
+            const { result, downloadBlob, validateQuestion } = exportGame({
+                gameMode: 1,
+                wordsGame: [set('Paris', 'France', 'Europe', 'Unused'), set('Lima #1', 'Peru', 'South\nAmerica')],
+            });
+
+            expect(validateQuestion).toHaveBeenCalled();
+            expect(result).toBe(true);
+            expect(downloadBlob).toHaveBeenCalledTimes(1);
+            const [blob, fileName, containerId] = downloadBlob.mock.calls[0];
+            expect(await blob.text()).toBe('Paris#France#Europe\nLima 1#Peru#South America');
+            expect(fileName).toBe('words-descubre.txt');
+            expect(containerId).toBe('descubreQEIdeviceForm');
+        });
+
+        it('leaves out the sets with a card that has no text', async () => {
+            const { downloadBlob } = exportGame({
+                gameMode: 0,
+                wordsGame: [set('Dog', 'Perro'), set('', 'Gato')],
+            });
+
+            expect(await downloadBlob.mock.calls[0][0].text()).toBe('Dog#Perro');
+        });
+
+        it('tells the author when no set can be written as text', () => {
+            const { result, downloadBlob } = exportGame({ gameMode: 0, wordsGame: [set('', 'Gato')] });
+
+            expect(result).toBe(false);
+            expect(downloadBlob).not.toHaveBeenCalled();
+            expect(eXe.app.getLastAlert()).toBe('Sorry, there are no questions for this type of activity.');
         });
     });
 

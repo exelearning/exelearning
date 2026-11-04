@@ -2112,10 +2112,21 @@ var $exeDevice = {
     },
 
     exportQuestions: function () {
+        // Store the set on screen first, as saving does.
+        if (!$exeDevice.validateQuestion()) return false;
         const dataGame = this.validateData();
         if (!dataGame) return false;
 
-        const lines = this.getLinesQuestions(dataGame.wordsGame);
+        const lines = this.getLinesQuestions(
+            dataGame.wordsGame,
+            dataGame.gameMode
+        );
+        if (lines.length === 0) {
+            eXe.app.alert(
+                _('Sorry, there are no questions for this type of activity.')
+            );
+            return false;
+        }
         const fileContent = lines.join('\n');
         const newBlob = new Blob([fileContent], { type: 'text/plain' });
         return $exeIDevicesEdition.iDevice.gamification.share.downloadBlob(
@@ -2125,13 +2136,20 @@ var $exeDevice = {
         );
     },
 
-    getLinesQuestions: function (words) {
-        let lineswords = [];
-        for (let i = 0; i < words.length; i++) {
-            let word = `${words[i].word}#${words[i].definition}`;
-            lineswords.push(word);
-        }
-        return lineswords;
+    /**
+     * "text#text[#text[#text]]" lines, one text for each card of a set (two,
+     * three or four, by game mode), the format Import and the AI read back.
+     * A set with a card that is only an image or a sound has no line.
+     */
+    getLinesQuestions: function (words, gameMode) {
+        const cards = gameMode + 2,
+            plain = (text) => (text || '').replace(/[#\s]+/g, ' ').trim();
+        return words
+            .map((word) =>
+                word.data.slice(0, cards).map((card) => plain(card.eText))
+            )
+            .filter((texts) => texts.every((text) => text))
+            .map((texts) => texts.join('#'));
     },
 
     importGame(content, filetype) {
