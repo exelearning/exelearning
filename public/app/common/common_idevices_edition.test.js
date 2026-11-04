@@ -1,6 +1,7 @@
 import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
 import { readFileSync, readdirSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
+import { parseSync, Visitor } from 'vite';
 import { useGradingHelpHarness } from './grading-help.test-util.js';
 
 // Setup globals needed BEFORE the script is loaded
@@ -3780,23 +3781,125 @@ describe('common_idevices_edition.js', () => {
       )
       .filter(({ source }) => source.includes('gamification.progressBar.getValues()'));
 
-    // `if (!x) return false;`, or a block of plain statements -- such as
-    // showing the field -- that ends returning false. An `if` or a `return`
-    // inside the block could skip that return and let the save go through.
-    const guards = (source, name) =>
-      new RegExp(
-        `if\\s*\\(!${name}\\)\\s*(?:return false;|\\{(?:(?!\\bif\\b|\\breturn\\b)[^{}])*return false;\\s*\\})`
-      ).test(source);
+    // Inspect executable statements: comments and strings are not guards, and
+    // a return inside a loop or another branch does not reject every invalid ID.
+    // Vite is already a dev dependency; its parser keeps this check independent
+    // of whitespace, comments and the spelling of strings in the edition code.
+    const isGetValues = (node) =>
+      node?.type === 'CallExpression' &&
+      node.callee.type === 'MemberExpression' && node.callee.property.name === 'getValues' &&
+      node.callee.object.type === 'MemberExpression' && node.callee.object.property.name === 'progressBar';
+
+    // Whether a statement stores what getValues() returns in `name`.
+    const reads = (statement, name) => {
+      if (statement.type === 'VariableDeclaration') {
+        return statement.declarations.some(
+          ({ id, init }) => id.type === 'Identifier' && id.name === name && isGetValues(init)
+        );
+      }
+      const { expression } = statement;
+      return (
+        statement.type === 'ExpressionStatement' && expression.type === 'AssignmentExpression' &&
+        expression.left.type === 'Identifier' && expression.left.name === name && isGetValues(expression.right)
+      );
+    };
+
+    // `if (!name) return false;`, or a block of plain statements ending in it.
+    const isGuard = (statement, name) => {
+      if (statement.type !== 'IfStatement') return false;
+      const { test, consequent } = statement;
+      if (
+        test.type !== 'UnaryExpression' || test.operator !== '!' ||
+        test.argument.type !== 'Identifier' || test.argument.name !== name
+      ) return false;
+
+      const statements = consequent.type === 'BlockStatement' ? consequent.body : [consequent];
+      const last = statements.at(-1);
+      return (
+        last?.type === 'ReturnStatement' &&
+        last.argument?.type === 'Literal' && last.argument.value === false &&
+        statements.slice(0, -1).every((inner) =>
+          ['ExpressionStatement', 'VariableDeclaration', 'EmptyStatement'].includes(inner.type)
+        )
+      );
+    };
+
+    // Every read of getValues() has to be followed by a guard in its own list
+    // of statements: one in dead code, in another function or before the read
+    // never stops the save. Other checks may come in between.
+    const guards = (source, name) => {
+      const parsed = parseSync('progress-report-guard.js', source, {
+        sourceType: 'commonjs',
+        preserveParens: false,
+      });
+      if (parsed.errors.length > 0) return false;
+
+      let read = 0;
+      let guarded = 0;
+      const check = (statements) =>
+        statements.forEach((statement, index) => {
+          if (!reads(statement, name)) return;
+          read += 1;
+          if (statements.slice(index + 1).some((next) => isGuard(next, name))) guarded += 1;
+        });
+      new Visitor({
+        Program: ({ body }) => check(body),
+        BlockStatement: ({ body }) => check(body),
+      }).visit(parsed.program);
+      return read > 0 && guarded === read;
+    };
+
+    // What every snippet below guards.
+    const read = 'const p = api.progressBar.getValues();\n';
 
     it('accepts only a guard that always returns false', () => {
-      expect(guards('if (!p) return false;', 'p')).toBe(true);
-      expect(guards("if (!p) {\n    show('grading', 'id');\n    return false;\n}", 'p')).toBe(true);
-      expect(guards('if (!p) {\n    if (false) return false;\n}', 'p')).toBe(false);
-      expect(guards('if (!p) {\n    show();\n    if (ready) return false;\n}', 'p')).toBe(false);
-      expect(guards('if (!p) {\n    return true;\n    return false;\n}', 'p')).toBe(false);
-      expect(guards('if (!p) {\n    show();\n}\nreturn false;', 'p')).toBe(false);
-      expect(guards('if (!p) {\n    return false;\n    show();\n}', 'p')).toBe(false);
-      expect(guards('use(p);\nreturn false;', 'p')).toBe(false);
+      expect(guards(`${read}if (!p) return false;`, 'p')).toBe(true);
+      expect(guards(`${read}if (!p) {\n    show('grading', 'id');\n    return false;\n}`, 'p')).toBe(true);
+      expect(guards(`${read}if (!p) {\n    if (false) return false;\n}`, 'p')).toBe(false);
+      expect(guards(`${read}if (!p) {\n    show();\n    if (ready) return false;\n}`, 'p')).toBe(false);
+      expect(guards(`${read}if (!p) {\n    return true;\n    return false;\n}`, 'p')).toBe(false);
+      expect(guards(`${read}if (!p) {\n    show();\n}\nreturn false;`, 'p')).toBe(false);
+      expect(guards(`${read}if (!p) {\n    return false;\n    show();\n}`, 'p')).toBe(false);
+      expect(guards(`${read}use(p);\nreturn false;`, 'p')).toBe(false);
+      expect(guards(`${read}if (!p) { return\nfalse; }`, 'p')).toBe(false);
+      expect(guards(`${read}if (!p) { return false;`, 'p')).toBe(false);
+      expect(guards(`${read}if (!other) return false;`, 'p')).toBe(false);
+      expect(guards(`${read}if (p) return false;`, 'p')).toBe(false);
+      expect(guards(`${read}if (!p) { /* if return */ show("return false;"); return (false); }`, 'p')).toBe(true);
+      expect(guards(`${read}if (!p) { const field = "id"; show(field); return false; }`, 'p')).toBe(true);
+    });
+
+    it.each([
+      ['line comment', `${read}if (!p) {\n    // return false;\n}`],
+      ['block comment', `${read}if (!p) { /* return false; */ }`],
+      ['commented guard', `${read}// if (!p) return false;`],
+      ['string literal', `${read}const note = "if (!p) return false;";`],
+      ['template literal', `${read}const note = \`if (!p) return false;\`;`],
+    ])('does not treat a %s as an executable guard', (_description, source) => {
+      expect(guards(source, 'p')).toBe(false);
+    });
+
+    it.each([
+      ['while', 'while (false) return false;'],
+      ['for', 'for (; false;) return false;'],
+      ['for-of', 'for (const item of []) return false;'],
+    ])('rejects a return inside a %s loop that may never execute', (_description, statement) => {
+      expect(guards(`${read}if (!p) { ${statement} }`, 'p')).toBe(false);
+    });
+
+    it.each([
+      ['in dead code', `${read}if (false) {\n    if (!p) return false;\n}\nuse(p);`],
+      ['in another function', `function save() {\n    ${read}    use(p);\n}\nfunction other(p) {\n    if (!p) return false;\n}`],
+      ['before the read', 'let p;\nif (!p) return false;\np = api.progressBar.getValues();\nuse(p);'],
+      ['with no read at all', 'if (!p) return false;'],
+      ['for only one of two reads', `function a() {\n    ${read}    if (!p) return false;\n}\nfunction b() {\n    ${read}    use(p);\n}`],
+    ])('rejects a guard %s', (_description, source) => {
+      expect(guards(source, 'p')).toBe(false);
+    });
+
+    it('accepts other checks between the read and its guard, and a plain assignment', () => {
+      expect(guards(`${read}if (!itinerary) return;\nif (!p) {\n    show();\n    return false;\n}\nuse(p);`, 'p')).toBe(true);
+      expect(guards('let p;\np = api.progressBar.getValues();\nif (!p) return false;', 'p')).toBe(true);
     });
 
     it('finds the iDevices that read the shared progress report', () => {
