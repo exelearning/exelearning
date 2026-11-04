@@ -1984,30 +1984,32 @@ var $exeDevice = {
         questions.each(function () {
             const question = $(this),
                 type = question.attr('type');
-            if (
-                type !== 'multichoice' &&
-                type !== 'truefalse' &&
-                type !== 'numerical'
-            ) {
+            // A numerical question has no options to choose from.
+            if (type !== 'multichoice' && type !== 'truefalse') {
                 return;
             }
             const questionText = question.find('questiontext').first().text(),
                 answers = question.find('answer'),
-                options = [];
-            let solution = 0;
+                options = [],
+                right = [];
             answers.each(function (index) {
                 const answer = $(this),
                     answerHtml = $exeDevice.removeTags(answer.text().trim()),
                     answerText = answerHtml.split('\n')[0].trim();
                 options.push(answerText);
-                if (parseInt(answer.attr('fraction')) === 100) {
-                    solution = index;
+                if (parseFloat(answer.attr('fraction')) === 100) {
+                    right.push(index);
                 }
             });
+            // A question of this activity has one right answer: the one worth
+            // 100%. Questions with several right answers are left out.
+            if (right.length !== 1) {
+                return;
+            }
             questionsJson.push({
                 question: $exeDevice.removeTags(questionText.trim()),
                 options: options,
-                solution: solution,
+                solution: right[0],
             });
         });
         let questionj = [];
@@ -2030,7 +2032,7 @@ var $exeDevice = {
                 p.options[1] =
                     p.options[1] === 'false' ? _('False') : p.options[1];
             }
-            if (p.quextion && p.options.length > 1) {
+            if (p.quextion && question.options.length > 1) {
                 questionj.push(p);
             }
         });

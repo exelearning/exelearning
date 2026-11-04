@@ -796,5 +796,68 @@ describe('quick-questions edition: shared form tabs and feedback', () => {
       expect(global.eXe.app.alert).not.toHaveBeenCalled();
     });
   });
+
+  describe('importing Moodle questions', () => {
+    const answer = ([fraction, text]) =>
+      `<answer fraction="${fraction}" format="moodle_auto_format"><text>${text}</text>` +
+      '<feedback format="html"><text></text></feedback></answer>';
+    // Moodle wraps the HTML in CDATA, which happy-dom does not read; escaped
+    // HTML has the same text in a browser.
+    const question = (type, text, answers) =>
+      `<question type="${type}"><questiontext format="html"><text>&lt;p&gt;${text}&lt;/p&gt;</text></questiontext>` +
+      `${answers.map(answer).join('')}</question>`;
+    const france = question('multichoice', 'Capital of France?', [
+      [0, 'Madrid'],
+      [100, 'Paris'],
+      [0, 'Rome'],
+      [0, 'Berlin'],
+    ]);
+    const importQuiz = (...questions) => {
+      device.questionsGame = [device.getCuestionDefault()];
+      device.importCuestionaryXML(`<?xml version="1.0" encoding="UTF-8"?><quiz>${questions.join('')}</quiz>`);
+    };
+    const imported = () =>
+      device.questionsGame.map((item) => [item.quextion, item.options.slice(0, item.numberOptions), item.solution]);
+
+    it('marks the answer worth 100% as the right one', () => {
+      importQuiz(
+        france,
+        question('truefalse', 'The Moon is a star.', [
+          [0, 'true'],
+          [100, 'false'],
+        ])
+      );
+
+      expect(imported()).toEqual([
+        ['Capital of France?', ['Madrid', 'Paris', 'Rome', 'Berlin'], 1],
+        ['The Moon is a star.', ['True', 'False'], 1],
+      ]);
+    });
+
+    it('leaves out a numerical question, which has no options to choose from', () => {
+      importQuiz(question('numerical', 'How much is 2 + 2?', [[100, '4']]), france);
+
+      expect(imported().map(([text]) => text)).toEqual(['Capital of France?']);
+    });
+
+    it('leaves out a question without exactly one answer worth 100%', () => {
+      importQuiz(
+        question('multichoice', 'Which numbers are prime?', [
+          [50, '2'],
+          [50, '3'],
+          [-100, '4'],
+          [-100, '9'],
+        ]),
+        question('multichoice', 'Which are capitals?', [
+          [100, 'Paris'],
+          [100, 'Rome'],
+          [0, 'Valencia'],
+        ]),
+        france
+      );
+
+      expect(imported().map(([text]) => text)).toEqual(['Capital of France?']);
+    });
+  });
 });
 
