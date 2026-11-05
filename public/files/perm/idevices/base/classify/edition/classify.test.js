@@ -942,6 +942,16 @@ describe('classify edition: shared form tabs and feedback', () => {
             expect(device.save()).not.toContain('Old');
         });
 
+        it('asks, in the language of the editor, to name a group left without a name', () => {
+            device.updateFieldGame(game());
+            device.showQuestion(0);
+            document.getElementById('clasificaTitle1').value = '  ';
+
+            expect(device.validateData()).toBe(false);
+            expect(eXe.app.getLastAlert()).toBe('Give each group a name in Options');
+            expect(global._).toHaveBeenCalledWith('Give each group a name in Options');
+        });
+
         it('asks for an image or a sound when an iDevice just added is saved', () => {
             expect(device.save()).toBe(false);
             expect(eXe.app.getLastAlert()).toBe('Add an image or a sound to the card');

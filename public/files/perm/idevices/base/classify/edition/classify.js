@@ -959,9 +959,7 @@ var $exeDevice = {
         });
 
         if (nogroups) {
-            $exeDevice.showMessage(
-                'Debes indicar un nombre para todos los grupos seleccionados'
-            );
+            $exeDevice.showMessage(_('Give each group a name in Options'));
             return false;
         }
 
