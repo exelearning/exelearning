@@ -487,8 +487,7 @@ var $exeDevice = {
                     texts: this.ci18n,
                     share: {
                         importQuestions: true,
-                        // It reads txt files only, not Moodle xml.
-                        importInfo: _('You can import questions compatible with this activity from txt files.'),
+                        formats: ['txt'],
                         exportQuestions: true,
                         type: 10,
                         options: { numLevels: this.numLevels },
@@ -2151,9 +2150,7 @@ var $exeDevice = {
         // the file is parsed as one AI-format line per question. Mirrors
         // the pattern used by az-quiz-game.
         if (window.File && window.FileReader && window.FileList && window.Blob) {
-            $('#eXeGameExportImport .exe-field-instructions').eq(0).text(_('Supported formats') + ': txt');
             $('#eXeGameExportImport').show();
-            $('#eXeGameImportGame').attr('accept', '.txt');
 
             $('#eXeGameImportGame').on('change', e => {
                 const file = e.target.files && e.target.files[0];

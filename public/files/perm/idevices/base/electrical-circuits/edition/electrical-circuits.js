@@ -1681,7 +1681,7 @@ var $exeDevice = {
                         texts: this.ci18n,
                         share: {
                             importQuestions: true,
-                            importInfo: _('You can import questions compatible with this activity from txt files.'),
+                            formats: ['txt'],
                             exportQuestions: true,
                             type: 11,
                         },
@@ -2415,12 +2415,8 @@ var $exeDevice = {
             window.FileList &&
             window.Blob
         ) {
-            $('#eXeGameExportImport .exe-field-instructions')
-                .eq(0)
-                .text(`${_('Supported formats')}: txt`);
             $('#eXeGameExportImport').show();
             $('#eXeGameImportGame')
-                .attr('accept', '.txt')
                 .on('change', function (e) {
                     const file = e.target.files[0];
                     if (!file || !file.type.match('text/plain')) {

@@ -2790,12 +2790,8 @@ var $exeDevice = {
             window.FileList &&
             window.Blob
         ) {
-            $('#eXeGameExportImport .exe-field-instructions')
-                .eq(0)
-                .text(`${_('Supported formats')}: txt, xml(Moodle)`);
             $('#eXeGameExportImport').show();
             $('#eXeGameImportGame')
-                .attr('accept', '.txt, .xml')
                 .on('change', function (e) {
                     if (!$exeDevice) return;
                     const file = e.target.files[0];

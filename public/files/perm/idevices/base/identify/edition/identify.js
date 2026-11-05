@@ -625,8 +625,7 @@ var $exeDevice = {
                     texts: this.ci18n,
                     share: {
                         importQuestions: true,
-                        // It reads txt files only, not Moodle xml.
-                        importInfo: _('You can import questions compatible with this activity from txt files.'),
+                        formats: ['txt'],
                         exportQuestions: true,
                         type: 4,
                     },
@@ -1336,13 +1335,9 @@ var $exeDevice = {
             window.FileList &&
             window.Blob
         ) {
-            $('#eXeGameExportImport .exe-field-instructions')
-                .eq(0)
-                .text(`${_('Supported formats')}: txt`);
             $('#eXeGameExportImport').show();
 
             $('#eXeGameImportGame')
-                .attr('accept', '.txt')
                 .on('change', function (e) {
                     const file = e.target.files[0];
                     if (!file) {

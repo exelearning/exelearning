@@ -399,11 +399,7 @@ var $exeDevice = {
         const msg = _(
             'Sorry, the selected file does not contain any questions that are compatible with this activity.'
         );
-        $('#eXeGameExportImport .exe-field-instructions')
-            .eq(0)
-            .text(`${_('Supported formats')}: txt, xml(Moodle)`);
         $('#eXeGameExportImport').show();
-        $('#eXeGameImportGame').attr('accept', '.txt, .xml');
         if (content && content.includes('\u0000')) {
             eXe.app.alert(msg);
             return;
@@ -1032,11 +1028,7 @@ var $exeDevice = {
             window.FileList &&
             window.Blob
         ) {
-            $('#eXeGameExportImport .exe-field-instructions')
-                .eq(0)
-                .text(`${_('Supported formats')}: txt, xml(Moodle)`);
             $('#eXeGameExportImport').show();
-            $('#eXeGameImportGame').attr('accept', '.txt, .xml');
             $('#eXeGameImportGame').on('change', function (e) {
                 const file = e.target.files[0];
                 if (!file) {

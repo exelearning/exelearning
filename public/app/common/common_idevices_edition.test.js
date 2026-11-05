@@ -1553,6 +1553,28 @@ describe('common_idevices_edition.js', () => {
       );
     });
 
+    it('offers to import the formats an iDevice reads, and says so', () => {
+      const info = () => modal('import').querySelector('.modal-body').firstElementChild.textContent;
+      const accept = () => modal('import').querySelector('#eXeGameImportGame').getAttribute('accept');
+      const formats = () => modal('import').querySelector('.exe-field-instructions').textContent;
+
+      render({ contents: '', share: { formats: ['txt'] } });
+      expect(accept()).toBe('.txt');
+      expect(formats()).toBe('Supported formats: txt');
+      expect(info()).toBe('You can import questions compatible with this activity from txt files.');
+
+      render({ contents: '', share: { formats: ['txt', 'json', 'xml'] } });
+      expect(accept()).toBe('.txt, .json, .xml');
+      expect(formats()).toBe('Supported formats: txt, json, xml (Moodle)');
+      expect(info()).toContain('txt or xml (Moodle)');
+
+      // Its own message still comes first, and no formats means the shared ones.
+      render({ contents: '', share: { formats: ['txt'], importInfo: 'Only lists.' } });
+      expect(info()).toBe('Only lists.');
+      render({ contents: '', share: { formats: [] } });
+      expect(accept()).toBe('.txt, .xml');
+    });
+
     it('gives no links to a form without a Questions tab', () => {
       render({ options: '' });
 
@@ -2555,7 +2577,7 @@ describe('common_idevices_edition.js', () => {
 
       expect(document.querySelector('#eXeGameExportImport #eXeGameImportGame').getAttribute('accept')).toBe('.txt, .xml');
       expect(document.querySelector('#eXeGameExportImport .exe-field-instructions').textContent).toBe(
-        'Supported formats: txt, xml'
+        'Supported formats: txt, xml (Moodle)'
       );
     });
 

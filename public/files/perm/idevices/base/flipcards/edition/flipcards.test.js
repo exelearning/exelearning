@@ -793,6 +793,14 @@ describe('flipcards edition: shared form tabs, options tooltips, and saving', ()
         vi.unstubAllGlobals();
     });
 
+    it('offers to import the json, txt and Moodle xml files it reads', () => {
+        const input = document.getElementById('eXeGameImportGame');
+        expect(input.getAttribute('accept')).toBe('.txt, .json, .xml');
+        expect(input.closest('.exe-file-upload').querySelector('.exe-field-instructions').textContent).toBe(
+            'Supported formats: txt, json, xml (Moodle)'
+        );
+    });
+
     it('counts the first card of a new activity', () => {
         // The counter used to stay at the 0 of its markup until a card was added.
         expect(device.cardsGame).toHaveLength(1);

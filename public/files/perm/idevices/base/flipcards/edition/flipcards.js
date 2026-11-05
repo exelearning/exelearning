@@ -404,6 +404,7 @@ var $exeDevice = {
                     texts: this.ci18n,
                     share: {
                         importQuestions: true,
+                        formats: ['txt', 'json', 'xml'],
                         exportQuestions: true,
                         type: 0,
                     },
@@ -1345,11 +1346,7 @@ var $exeDevice = {
             window.FileList &&
             window.Blob
         ) {
-            $('#eXeGameExportImport .exe-field-instructions')
-                .eq(0)
-                .text(`${_('Supported formats')}: json, txt, xml(Moodle)`);
             $('#eXeGameExportImport').show();
-            $('#eXeGameImportGame').attr('accept', '.txt, .json, .xml');
             $('#eXeGameImportGame').on('change', (e) => {
                 const file = e.target.files[0];
                 if (!file) {

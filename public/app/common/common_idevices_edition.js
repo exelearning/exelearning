@@ -978,17 +978,22 @@ var $exeIDevicesEdition = {
                  * The question import control. The iDevice reads the chosen
                  * file: it binds `change` on #eXeGameImportGame.
                  *
+                 * @param {string[]} [formats=['txt', 'xml']] The extensions of
+                 * the files the iDevice reads; xml is a Moodle xml file.
                  * @returns {string}
                  */
-                getImportContents: function () {
+                getImportContents: function (formats = ['txt', 'xml']) {
+                    const escape = $exeIDevicesEdition.iDevice.common.escapeHtml;
+                    const accept = formats.map((format) => `.${format}`).join(', ');
+                    const names = formats.map((format) => (format === 'xml' ? 'xml (Moodle)' : format)).join(', ');
                     return `<div id="eXeGameExportImport">
                             <form method="POST">
                                 <div class="exe-file-upload" data-exe-upload>
                                     <label for="eXeGameImportGame" class="form-label mb-1">${_('Import')}: </label>
-                                    <input type="file" name="eXeGameImportGame" id="eXeGameImportGame" accept=".txt, .xml" class="exe-file-input d-none" />
+                                    <input type="file" name="eXeGameImportGame" id="eXeGameImportGame" accept="${escape(accept)}" class="exe-file-input d-none" />
                                     <button type="button" class="btn btn-primary exe-file-btn" data-exe-file-trigger>${_('Choose')}</button>
                                     <span class="exe-file-name" data-exe-file-name>${_('No file selected')}</span>
-                                    <span class="exe-field-instructions d-block mt-1">${_('Supported formats')}: txt, xml</span>
+                                    <span class="exe-field-instructions d-block mt-1">${_('Supported formats')}: ${escape(names)}</span>
                                 </div>
                             </form>
                         </div>`;
@@ -1014,9 +1019,11 @@ var $exeIDevicesEdition = {
                  * @param {boolean|Object} [settings] The `share` setting of
                  * tabs.getHtml.
                  * @param {boolean} [settings.importQuestions=true] Offer Import.
+                 * @param {string[]} [settings.formats=['txt', 'xml']] The
+                 * files Import reads, by extension; xml is a Moodle xml file.
                  * @param {string} [settings.importInfo] The message of the
-                 * Import window, for an iDevice that does not read both txt
-                 * and Moodle xml files.
+                 * Import window, in place of the one that says which of txt
+                 * and Moodle xml files it reads.
                  * @param {boolean} [settings.exportQuestions=true] Offer Export.
                  * @param {number} [settings.type=0] The game, for the AI prompt.
                  * @param {Object} [settings.options] Prompt options of the game.
@@ -1028,15 +1035,19 @@ var $exeIDevicesEdition = {
                     const options = settings !== null && typeof settings === 'object' ? settings : {};
                     const windows = [];
                     if (options.importQuestions !== false) {
+                        const formats =
+                            Array.isArray(options.formats) && options.formats.length ? options.formats : ['txt', 'xml'];
+                        let info = _('You can import questions compatible with this activity from txt or xml (Moodle) files.');
+                        if (typeof options.importInfo === 'string' && options.importInfo) info = options.importInfo;
+                        else if (!formats.includes('xml')) {
+                            info = _('You can import questions compatible with this activity from txt files.');
+                        }
                         windows.push({
                             name: 'import',
                             icon: 'upload',
                             title: _('Import'),
-                            info:
-                                typeof options.importInfo === 'string' && options.importInfo
-                                    ? options.importInfo
-                                    : _('You can import questions compatible with this activity from txt or xml (Moodle) files.'),
-                            content: share.getImportContents(),
+                            info: info,
+                            content: share.getImportContents(formats),
                         });
                     }
                     if (options.exportQuestions !== false) {
