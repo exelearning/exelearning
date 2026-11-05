@@ -631,11 +631,11 @@ var $exeDevice = {
 
         $exeIDevicesEdition.iDevice.gamification.helpers.stopSound();
 
+        // The front comes first on screen, so a blank card asks for it first.
         let message = '';
         if (!p.eText && !p.url && !p.audio) {
             message = msgs.msgCompleteData;
-        }
-        if (!p.eTextBk && !p.urlBk && !p.audioBk) {
+        } else if (!p.eTextBk && !p.urlBk && !p.audioBk) {
             message = msgs.msgCompleteDataBack;
         }
 

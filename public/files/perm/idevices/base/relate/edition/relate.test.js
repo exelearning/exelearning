@@ -501,6 +501,21 @@ describe('relate edition: shared form tabs and share windows', () => {
             expect(eXe.app.getLastAlert()).toBe('Maximum card number: 200.');
         });
 
+        it('asks for the front of a blank card, which comes first on screen', () => {
+            document.getElementById('rclEText').value = '';
+            document.getElementById('rclETextBack').value = '';
+
+            expect(device.save()).toBe(false);
+            expect(eXe.app.getLastAlert()).toBe("Provide an image, text or audio for each card's front side");
+        });
+
+        it('asks for the back once the front is complete', () => {
+            document.getElementById('rclETextBack').value = '';
+
+            expect(device.save()).toBe(false);
+            expect(eXe.app.getLastAlert()).toBe("Provide an image, text or audio for each card's back side");
+        });
+
         it('stays on a card that is not complete when its number is typed', () => {
             device.cardsGame = [card('A', 'a'), card('B', 'b')];
             device.active = 0;

@@ -1007,6 +1007,23 @@ describe('flipcards edition: shared form tabs, options tooltips, and saving', ()
             expect(device.save()).not.toContain('Old');
         });
 
+        it('asks for the front of a blank card, which comes first on screen', () => {
+            loadGame();
+            $('#flipcardsEText').val('');
+            $('#flipcardsETextBack').val('');
+
+            expect(device.save()).toBeUndefined();
+            expect(eXe.app.getLastAlert()).toBe("Provide an image, text or audio for each card's front side");
+        });
+
+        it('asks for the back once the front is complete', () => {
+            loadGame();
+            $('#flipcardsETextBack').val('');
+
+            expect(device.save()).toBeUndefined();
+            expect(eXe.app.getLastAlert()).toBe("Provide an image, text or audio for each card's back side");
+        });
+
         describe('sharing the cards as text', () => {
             let downloadBlob;
             const encode = (text) => device.encodeURIComponentSafe(text);

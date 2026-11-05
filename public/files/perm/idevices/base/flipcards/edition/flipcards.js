@@ -658,10 +658,10 @@ var $exeDevice = {
             $('#flipcardsETextBack').val()
         );
 
+        // The front comes first on screen, so a blank card asks for it first.
         if (p.eText.length == 0 && p.url.length == 0 && p.audio.length == 0) {
             message = msgs.msgCompleteData;
-        }
-        if (
+        } else if (
             p.eTextBk.length == 0 &&
             p.urlBk.length == 0 &&
             p.audioBk.length == 0
