@@ -71,6 +71,46 @@ test.describe('Presentation mode (web site export)', () => {
         await expect(heading).toHaveText(firstTitle ?? '');
     });
 
+    test('presenter remote buttons: B and Shift+F5 go to the first and last pages, and F5 does not reload', async ({
+        authenticatedPage,
+        createProject,
+    }) => {
+        const page = authenticatedPage;
+        await exportTwoPageSite(page, createProject);
+
+        await page.goto(`${ORIGIN}/index.html?exe-presentation=1`);
+        const heading = page.locator('main h1.page-title');
+        await expect(heading).toBeVisible();
+        const firstTitle = await heading.textContent();
+        await expectPresenting(page, true);
+        await page.keyboard.press('PageDown');
+        await expect(heading).toHaveText(SECOND_PAGE);
+        await expectPresenting(page, true);
+
+        // On the last page, neither key of the start/stop button does anything. Window listeners
+        // run after the mode's document listener, so they see whether the reload was cancelled.
+        await page.evaluate(() => {
+            const seen: boolean[] = [];
+            (window as any).__f5Cancelled = seen;
+            window.addEventListener('keydown', event => {
+                if (event.key === 'F5') seen.push(event.defaultPrevented);
+            });
+        });
+        await page.keyboard.press('F5');
+        await page.keyboard.press('Shift+F5');
+        expect(await page.evaluate(() => (window as any).__f5Cancelled)).toEqual([true, true]);
+
+        await page.keyboard.press('b');
+        await expect(heading).toHaveText(firstTitle ?? '');
+        expect(page.url()).toContain('exe-presentation=1');
+        await expectPresenting(page, true);
+
+        await page.keyboard.press('Shift+F5');
+        await expect(heading).toHaveText(SECOND_PAGE);
+        expect(page.url()).toContain('exe-presentation=1');
+        await expectPresenting(page, true);
+    });
+
     test('the parameter enters the mode, the keys present, and leaving rewrites the parameter to 0', async ({
         authenticatedPage,
         createProject,

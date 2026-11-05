@@ -701,10 +701,11 @@ window.$exeExport = {
      * Lets a reader present a web site export with the keyboard or a presenter remote:
      * the navigation menu collapses, Left/PageUp go to the previous page and
      * Right/PageDown to the next one, M shows/hides the menu and T toggles Teacher Mode
-     * where its toggle exists (never shadows Ctrl/Cmd+T). Pages stay the navigation unit
-     * and long pages keep scrolling normally (Up/Down are never captured). Nothing is
-     * stored in the .elpx and there is no export option: the READER activates the mode,
-     * like Teacher Mode.
+     * where its toggle exists (never shadows Ctrl/Cmd+T). For presenter remotes, B goes
+     * to the first page, Shift+F5 to the last one and F5 does nothing (neither reloads).
+     * Pages stay the navigation unit and long pages keep scrolling normally (Up/Down are
+     * never captured). Nothing is stored in the .elpx and there is no export option: the
+     * READER activates the mode, like Teacher Mode.
      *
      *   ?exe-presentation=1|true|yes   present: the mode is on and a visible
      *                                  "Presentation mode" toggle leaves it.
@@ -967,6 +968,15 @@ window.$exeExport = {
         },
         handleKeydown : function(event){
             if (event.defaultPrevented || event.isComposing) return;
+            // A remote's start/stop button sends F5 or Shift+F5, and a reload would reset the
+            // page's activities, even under an overlay or in a field. Ctrl/Cmd reloads still work.
+            if (event.key === 'F5' && !event.ctrlKey && !event.metaKey && !event.altKey) {
+                if (event.cancelable) event.preventDefault();
+                if (event.shiftKey && !this.isTypingTarget(event.target) && !this.isOverlayActive()) {
+                    this._goToLastPage();
+                }
+                return;
+            }
             // Plain keys only: never shadow Alt/Ctrl/Cmd/Shift combinations the browser
             // reserves (e.g. Alt+Left/Right for history).
             if (event.ctrlKey || event.metaKey || event.altKey || event.shiftKey) return;
@@ -983,10 +993,19 @@ window.$exeExport = {
                 // Only exists when Teacher Mode is available on this page (?exe-teacher=1
                 // and teacher-only content); its change handler owns the reveal logic.
                 target = document.getElementById('teacher-mode-toggler');
+            } else if (this._isKey(event, 'KeyB', 'b')) {
+                // A remote's "blank" button. Already on the first page, there is nothing to do.
+                target = document.querySelector('#siteNav a.main-node:not(.active)');
             }
             if (!target) return;
             if (target.id === 'siteNavToggler') this._clickMenuToggler(target); else target.click();
             if (event.cancelable) event.preventDefault();
+        },
+        // The menu lists the pages in order; already on the last one, there is nothing to do.
+        _goToLastPage : function(){
+            var links = document.querySelectorAll('#siteNav a');
+            var last = links[links.length - 1];
+            if (last && !last.classList.contains('active')) last.click();
         },
         // KeyboardEvent.code identifies the physical key on any layout (Option+M gives
         // "µ" on macOS); fall back to .key where .code is unavailable.
