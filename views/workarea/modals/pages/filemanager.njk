@@ -109,9 +109,10 @@
                         </div>
                         <div class="media-library-sidebar-content" style="display:none;">
                             <div class="media-library-preview">
-                                <img src="" alt="" class="media-library-preview-img">
-                                <video src="" class="media-library-preview-video" controls style="display:none;"></video>
-                                <audio src="" class="media-library-preview-audio" controls style="display:none;"></audio>
+                                {# No src="" here: Firefox resolves it against the document base URL and aborts the request (#2691) #}
+                                <img alt="" class="media-library-preview-img">
+                                <video class="media-library-preview-video" controls style="display:none;"></video>
+                                <audio class="media-library-preview-audio" controls style="display:none;"></audio>
                                 <div class="media-library-preview-file" style="display:none;">
                                     <span class="exe-icon file-icon">description</span>
                                 </div>
