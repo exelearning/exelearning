@@ -96,9 +96,7 @@ test('Electrical circuits explains each option inline without changing its value
         .filter({ has: page.locator('#elceQuestionsRandom') })
         .locator('.exe-idevice-help');
     await randomQuestionsHelp.focus();
-    await expect(page.getByRole('tooltip')).toHaveText(
-        (await randomQuestionsHelp.getAttribute('aria-label')) as string,
-    );
+    await expect(page.getByRole('tooltip')).toHaveText('Information');
     await randomQuestionsHelp.click();
     await expect(page.locator('#elceQuestionsRandom')).not.toBeChecked();
     const randomContent = page.locator(`#${await randomQuestionsHelp.getAttribute('aria-controls')}`);

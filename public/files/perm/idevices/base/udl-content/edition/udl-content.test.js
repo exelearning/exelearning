@@ -210,7 +210,7 @@ describe('udl-content edition: shared form tabs', () => {
         expect(document.getElementById(group.getAttribute('aria-labelledby')).textContent).toBe('Type:');
         expect(panel('contents').querySelectorAll('.exe-idevice-help')).toHaveLength(1);
         expect(group.lastElementChild.contains(help)).toBe(true);
-        expect(help.getAttribute('aria-label')).toBe(help.title);
+        expect(help.getAttribute('aria-label')).toMatch(/^Information about \S/);
         help.click();
         document.getElementById(help.getAttribute('aria-controls')).click();
         expect(document.getElementById('udlContentType-engagement').checked).toBe(true);

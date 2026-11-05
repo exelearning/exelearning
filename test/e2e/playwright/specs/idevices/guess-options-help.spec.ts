@@ -65,7 +65,7 @@ test('Guess explains each option inline without changing its value', async ({
     }
     const randomHelp = page.locator('#adivinaEOptionsRamdon').locator('..').locator('..').locator('.exe-idevice-help');
     await randomHelp.focus();
-    await expect(page.getByRole('tooltip')).toHaveText((await randomHelp.getAttribute('aria-label')) as string);
+    await expect(page.getByRole('tooltip')).toHaveText('Information');
     await randomHelp.click();
     await expect(page.locator('#adivinaEOptionsRamdon')).not.toBeChecked();
     const randomContent = page.locator(`#${await randomHelp.getAttribute('aria-controls')}`);

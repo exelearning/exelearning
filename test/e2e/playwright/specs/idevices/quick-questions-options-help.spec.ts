@@ -82,7 +82,7 @@ test('Quick Questions explains each option inline without changing its value', a
         .filter({ has: page.locator('#quextEQuestionsRamdon') })
         .locator('.exe-idevice-help');
     await randomHelp.focus();
-    await expect(page.getByRole('tooltip')).toHaveText((await randomHelp.getAttribute('aria-label')) as string);
+    await expect(page.getByRole('tooltip')).toHaveText('Information');
     await randomHelp.click();
     await expect(page.locator('#quextEQuestionsRamdon')).not.toBeChecked();
     const randomContent = page.locator(`#${await randomHelp.getAttribute('aria-controls')}`);

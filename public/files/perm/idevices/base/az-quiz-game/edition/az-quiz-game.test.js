@@ -1065,7 +1065,7 @@ describe('az-quiz-game edition: shared form tabs', () => {
             expect(row.lastElementChild.contains(button)).toBe(true);
             expect(button.type).toBe('button');
             expect(button.title).toBe('Information');
-            expect(button.getAttribute('aria-label')).toBe('Information');
+            expect(button.getAttribute('aria-label')).toMatch(/^Information about \S/);
             const content = document.getElementById(button.getAttribute('aria-controls'));
             expect(content.textContent.length).toBeGreaterThan(30);
             const controls = [...row.querySelectorAll('input')];

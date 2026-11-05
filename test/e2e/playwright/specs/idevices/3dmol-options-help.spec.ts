@@ -95,9 +95,7 @@ test('3Dmol explains each option inline without changing its value', async ({
         .filter({ has: page.locator('#dmoleQuestionsRandom') })
         .locator('.exe-idevice-help');
     await randomQuestionsHelp.focus();
-    await expect(page.getByRole('tooltip')).toHaveText(
-        (await randomQuestionsHelp.getAttribute('aria-label')) as string,
-    );
+    await expect(page.getByRole('tooltip')).toHaveText('Information');
     await randomQuestionsHelp.click();
     await expect(page.locator('#dmoleQuestionsRandom')).not.toBeChecked();
     const randomContent = page.locator(`#${await randomQuestionsHelp.getAttribute('aria-controls')}`);

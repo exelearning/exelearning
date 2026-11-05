@@ -105,3 +105,24 @@ test('An open help closes when the focus moves on, and with Escape from its expl
     await expect(content).toBeHidden();
     await expect(help).toBeFocused();
 });
+
+test('Each help is named after the option it explains, and describes it', async ({
+    authenticatedPage: page,
+    createProject,
+}) => {
+    const help = await openGuessOptions(page, createProject);
+    const names = new Set<string>();
+    for (const button of await help.all()) {
+        await expect(button).toHaveAccessibleName(/^Information about \S/);
+        names.add((await button.getAttribute('aria-label'))!);
+    }
+    // A screen reader lists ten different helps, not ten "Information".
+    expect(names.size).toBe(await help.count());
+
+    const minimize = page.locator('#adivinaEShowMinimize');
+    await expect(help.first()).toHaveAccessibleName('Information about Show minimized');
+    await expect(minimize).toHaveAccessibleDescription(/^Start with the game collapsed/);
+    // The hover label stays short.
+    await help.first().hover();
+    await expect(page.getByRole('tooltip')).toHaveText('Information');
+});

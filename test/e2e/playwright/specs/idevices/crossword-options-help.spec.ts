@@ -81,7 +81,7 @@ test('Crossword explains each option inline without changing its value', async (
         .filter({ has: page.locator('#ccgmECaseSensitive') })
         .locator('.exe-idevice-help');
     await caseHelp.focus();
-    await expect(page.getByRole('tooltip')).toHaveText((await caseHelp.getAttribute('aria-label')) as string);
+    await expect(page.getByRole('tooltip')).toHaveText('Information');
     await caseHelp.click();
     await expect(page.locator('#ccgmECaseSensitive')).not.toBeChecked();
     const caseContent = page.locator(`#${await caseHelp.getAttribute('aria-controls')}`);

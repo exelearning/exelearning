@@ -133,6 +133,7 @@ describe('common_idevices_edition.js', () => {
         const button = document.querySelector('button');
         expect(button.type).toBe('button');
         expect(button.title).toBe('Information');
+        // Until initHelpTooltips names the option it explains.
         expect(button.getAttribute('aria-label')).toBe('Information');
         expect(button.getAttribute('aria-expanded')).toBe('false');
         expect(document.getElementById(button.getAttribute('aria-controls')).textContent).toBe(text);
@@ -263,6 +264,36 @@ describe('common_idevices_edition.js', () => {
         tooltip.hide.mockClear();
         escape(document.body);
         expect(tooltip.hide).not.toHaveBeenCalled();
+      });
+
+      it('names the option it explains and describes its control, until the edition closes', () => {
+        const help = (text) => common().getHelpTooltip(text);
+        document.body.innerHTML = `
+          <div id="switch"><span><input type="checkbox" id="a" aria-describedby="own"><label for="a">Show minimized.</label></span>${help('A')}</div>
+          <div id="before"><label for="b">Percentage of questions: </label>${help('B')}<input type="number" id="b"></div>
+          <div id="text"><span>Assessment:</span>${help('C')}<input type="radio" id="c"></div>
+          <div id="nothing">${help('D')}</div>
+          <div id="symbols"><input id="e" aria-label="Pay $& keep"><input id="f">${help('E')}</div>`;
+        common().initHelpTooltips(document.body);
+        const name = (row) => document.querySelector(`#${row} button`).getAttribute('aria-label');
+        const note = (row) => document.querySelector(`#${row} .help-content`).id;
+
+        expect(name('switch')).toBe('Information about Show minimized');
+        expect(document.getElementById('a').getAttribute('aria-describedby')).toBe(`own ${note('switch')}`);
+        // The label right before the help names the control after it.
+        expect(name('before')).toBe('Information about Percentage of questions');
+        expect(document.getElementById('b').getAttribute('aria-describedby')).toBe(note('before'));
+        // Without a control before it, the text before it names it.
+        expect(name('text')).toBe('Information about Assessment');
+        expect(document.getElementById('c').hasAttribute('aria-describedby')).toBe(false);
+        expect(name('nothing')).toBe('Information');
+        // The first control of the row, its name as it is.
+        expect(name('symbols')).toBe('Information about Pay $& keep');
+        expect(document.getElementById('f').hasAttribute('aria-describedby')).toBe(false);
+
+        lifecycle.destroy();
+        expect(document.getElementById('a').getAttribute('aria-describedby')).toBe('own');
+        expect(document.getElementById('b').hasAttribute('aria-describedby')).toBe(false);
       });
 
       it('supports forms without an active edition lifecycle', () => {
@@ -499,7 +530,7 @@ describe('common_idevices_edition.js', () => {
       const before = grading().scorm.getValues();
       expect(button.type).toBe('button');
       expect(button.title).toBe('Information');
-      expect(button.getAttribute('aria-label')).toBe('Information');
+      expect(button.getAttribute('aria-label')).toMatch(/^Information about \S/);
       expect(button.querySelector('.info-icon-solid-green')).not.toBeNull();
       expect(note.textContent).toContain(explanation);
       expect(note.classList.contains('help-hidden')).toBe(true);

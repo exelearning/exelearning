@@ -205,7 +205,7 @@ describe('interactive-video iDevice edition', () => {
       for (const help of helpButtons) {
         const row = help.closest('.d-flex');
         expect(row.lastElementChild.contains(help)).toBe(true);
-        expect(help.getAttribute('aria-label')).toBe(help.title);
+        expect(help.getAttribute('aria-label')).toMatch(/^Information about \S/);
         expect(document.getElementById(help.getAttribute('aria-controls')).textContent.length).toBeGreaterThan(30);
         const input = row.querySelector('input');
         const checked = input.checked;

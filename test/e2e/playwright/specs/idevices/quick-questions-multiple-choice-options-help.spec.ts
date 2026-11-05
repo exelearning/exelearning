@@ -83,7 +83,7 @@ test('Multiple Choice explains each option inline without changing its value', a
         .filter({ has: page.locator('#seleccionaEOrderLinear') })
         .locator('.exe-idevice-help');
     await orderHelp.focus();
-    await expect(page.getByRole('tooltip')).toHaveText((await orderHelp.getAttribute('aria-label')) as string);
+    await expect(page.getByRole('tooltip')).toHaveText('Information');
     await orderHelp.click();
     await expect(page.locator('#seleccionaEOrderLinear')).toBeChecked();
     const orderContent = page.locator(`#${await orderHelp.getAttribute('aria-controls')}`);

@@ -956,7 +956,7 @@ describe('3dmol edition: shared form tabs and feedback', () => {
             expect(row.lastElementChild.contains(help)).toBe(true);
             expect(help.tagName).toBe('BUTTON');
             expect(help.type).toBe('button');
-            expect(help.getAttribute('aria-label')).toBe(help.title);
+            expect(help.getAttribute('aria-label')).toMatch(/^Information about \S/);
             expect(help.title).toBe('Information');
             expect(document.getElementById(help.getAttribute('aria-controls')).textContent.length).toBeGreaterThan(15);
             expect(help.querySelector('[aria-hidden="true"].info-icon-solid-green')).not.toBeNull();

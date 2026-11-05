@@ -1040,7 +1040,7 @@ describe('form edition: shared form tabs', () => {
         for (const help of helpButtons) {
             const row = help.closest('#frmEOptions > div');
             expect(row.lastElementChild.contains(help)).toBe(true);
-            expect(help.getAttribute('aria-label')).toBe(help.title);
+            expect(help.getAttribute('aria-label')).toMatch(/^Information about \S/);
             expect(document.getElementById(help.getAttribute('aria-controls')).textContent.length).toBeGreaterThan(30);
             const input = row.querySelector('input');
             const value = `${input.checked}${input.value}`;

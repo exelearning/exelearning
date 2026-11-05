@@ -367,7 +367,7 @@ describe('word-search edition: shared form tabs and feedback', () => {
             const row = help.closest('.d-flex');
             expect(row.lastElementChild.contains(help)).toBe(true);
             expect(help.type).toBe('button');
-            expect(help.getAttribute('aria-label')).toBe(help.title);
+            expect(help.getAttribute('aria-label')).toMatch(/^Information about \S/);
             expect(document.getElementById(help.getAttribute('aria-controls')).textContent.length).toBeGreaterThan(30);
             const controls = [...row.querySelectorAll('input')];
             const checked = controls.map((control) => control.checked);

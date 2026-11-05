@@ -105,6 +105,15 @@ var $exeIDevicesEdition = {
                         content.style.maxWidth = `${width}px`;
                     };
                     const container = button.parentElement;
+                    // The help names the option it explains and is the description
+                    // of its control.
+                    const option = $exeIDevicesEdition.iDevice.common.getHelpOption(container);
+                    const name = $exeIDevicesEdition.iDevice.common.getHelpOptionName(container, option);
+                    if (name) button.setAttribute('aria-label', _('Information about %s').replace('%s', () => name));
+                    const describedBy = (option?.getAttribute('aria-describedby') || '').split(/\s+/).filter(Boolean);
+                    if (option && !describedBy.includes(content.id)) {
+                        option.setAttribute('aria-describedby', [...describedBy, content.id].join(' '));
+                    }
                     const hide = function () {
                         content.classList.add('help-hidden');
                         button.setAttribute('aria-expanded', 'false');
@@ -163,11 +172,61 @@ var $exeIDevicesEdition = {
                         $(content).off('.exeHelpTooltip');
                         container.removeEventListener('focusout', focusOut);
                         document.removeEventListener('click', outsideClick, true);
+                        if (option) {
+                            const ids = (option.getAttribute('aria-describedby') || '')
+                                .split(/\s+/)
+                                .filter((id) => id && id !== content.id);
+                            if (ids.length) option.setAttribute('aria-describedby', ids.join(' '));
+                            else option.removeAttribute('aria-describedby');
+                        }
                         tooltip.dispose();
                     };
                     return lifecycle ? lifecycle.own(dispose) : dispose;
                 });
                 return () => disposers.forEach((dispose) => dispose());
+            },
+            /**
+             * The control whose option a help explains: the one of the label
+             * right before the help, or else the first control before it in
+             * its row.
+             *
+             * @param {HTMLElement} container The help (.exe-idevice-help-container).
+             * @returns {HTMLElement|null}
+             */
+            getHelpOption: function (container) {
+                const previous = container.previousElementSibling;
+                if (previous && previous.tagName === 'LABEL' && previous.htmlFor) {
+                    return document.getElementById(previous.htmlFor);
+                }
+                const row = container.parentElement;
+                if (!row) return null;
+                return (
+                    Array.from(row.querySelectorAll('input:not([type="hidden"]), select, textarea')).find(
+                        (control) => control.compareDocumentPosition(container) & Node.DOCUMENT_POSITION_FOLLOWING
+                    ) || null
+                );
+            },
+            /**
+             * The name of the option a help explains: the label of its
+             * control or, for a help without one, the text right before it.
+             * Without the colon or full stop that ends some labels.
+             *
+             * @param {HTMLElement} container The help (.exe-idevice-help-container).
+             * @param {HTMLElement|null} control From getHelpOption.
+             * @returns {string}
+             */
+            getHelpOptionName: function (container, control) {
+                let text = '';
+                if (control) {
+                    text = control.labels && control.labels.length ? control.labels[0].textContent : '';
+                    text = text || control.getAttribute('aria-label') || '';
+                } else if (container.previousElementSibling) {
+                    text = container.previousElementSibling.textContent;
+                }
+                return text
+                    .replace(/\s+/g, ' ')
+                    .trim()
+                    .replace(/[\s:.]+$/, '');
             },
             getIdeviceDescription: function (text, url) {
                 if (typeof text != "string") return "";

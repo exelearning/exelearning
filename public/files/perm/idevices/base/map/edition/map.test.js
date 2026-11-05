@@ -655,7 +655,7 @@ describe('map edition: shared form tabs', () => {
         expect(helpButtons).toHaveLength(12);
         for (const help of helpButtons) {
             expect(help.type).toBe('button');
-            expect(help.getAttribute('aria-label')).toBe(help.title);
+            expect(help.getAttribute('aria-label')).toMatch(/^Information about \S/);
             expect(document.getElementById(help.getAttribute('aria-controls')).textContent.length).toBeGreaterThan(30);
             const before = state();
             help.click();
