@@ -8,13 +8,21 @@
                 <span class="auto-icon" aria-hidden="true">download</span>
                 <span class="btn-label">{{ t.download or 'Download' }}</span>
             </button>
-            <button id="head-top-save-button" class="btn button-display d-flex justify-content-center align-items-center me-2 {% if config.platformIntegration %}d-none{% endif %}" title="{{ t.save or 'Save' }}" data-testid="save-button" aria-describedby="exe-collab-save-status">
+            {# Save control. In cloud mode (issue #2615) the `cloud-autosave` class turns it
+               into the autosave status indicator (icon + short label, Google Docs style):
+               the "Save" label/icon are hidden by CSS, the status is written by
+               CollaborativeSaveStatusView, and a click still means "save now". The
+               static build strips the `not isOfflineInstallation` block, and Electron
+               renders without it, so both keep the file-based Save button. #}
+            <button id="head-top-save-button" class="btn button-display d-flex justify-content-center align-items-center me-2 {% if config.platformIntegration %}d-none{% endif %} {% if not config.isOfflineInstallation %}cloud-autosave{% endif %}" title="{{ t.save or 'Save' }}" data-testid="save-button" aria-describedby="exe-collab-save-status">
                 <div class="small-icon save-icon-white"></div>
-                <span>{{ t.save or 'Save' }}</span>
+                <span class="save-label">{{ t.save or 'Save' }}</span>
+                <span class="auto-icon cloud-save-icon" aria-hidden="true"></span>
+                <span class="cloud-save-label" data-testid="cloud-save-label"></span>
                 {# Collaborative autosave badge (issue #1592): a compact glyph
-                   overlaid on the Save button, shown via JS only in online
-                   collaborative sessions. Decorative — the state is exposed to
-                   assistive tech through the #exe-collab-save-status live region
+                   overlaid on the Save button, used when the button is a real Save
+                   button (not in cloud chip mode). Decorative — the state is exposed
+                   to assistive tech through the #exe-collab-save-status live region
                    referenced by aria-describedby above. #}
                 <span class="collab-autosave-badge exe-online d-none" data-testid="collab-autosave-indicator" aria-hidden="true"></span>
             </button>
