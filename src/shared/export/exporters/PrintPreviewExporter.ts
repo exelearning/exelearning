@@ -85,7 +85,9 @@ export interface PrintPreviewOptions {
     themeFromFiles?: boolean;
     /**
      * Optional hook to pre-render LaTeX expressions to SVG+MathML.
-     * When provided and successful, MathJax library will NOT be included in the output.
+     * Always applied, whether or not the project includes MathJax: the preview never ships the
+     * MathJax library, because the printed copy runs no scripts. Without the hook, or if it fails,
+     * formulas print as LaTeX source.
      */
     preRenderLatex?: (html: string) => Promise<LatexPreRenderResult>;
     /**
@@ -696,6 +698,11 @@ ${includeActivityStyles ? WORKSHEET_ACTIVITY_STYLES + APPENDIX_PRINT_STYLES : ''
             try {
                 const result = await options.preRenderLatex(finalHtml);
                 if (result.latexRendered) finalHtml = result.html;
+                else if (result.hasLatex) {
+                    // Nothing else will typeset these formulas on paper, so say so instead of
+                    // letting them print as source in silence (e.g. MathJax not ready in time).
+                    console.warn('LaTeX pre-render did not render the formulas: they will print as LaTeX source.');
+                }
             } catch (e) {
                 console.warn('LaTeX pre-render error:', e);
             }
