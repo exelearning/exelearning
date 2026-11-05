@@ -1519,13 +1519,19 @@ describe('common_idevices_edition.js', () => {
       render({ contents: '<div id="questionForm"></div>' });
 
       const panel = document.getElementById('testForm-panel-contents');
-      expect([...panel.children].map((child) => child.getAttribute('role') || child.id || child.tagName)).toEqual([
+      const tools = panel.querySelector('.exe-share-tools');
+      expect([...panel.children].map((child) => (child === tools ? 'tools' : child.id || child.tagName))).toEqual([
         'P',
-        'toolbar',
+        'tools',
         'questionForm',
       ]);
-      expect(panel.querySelector('[role="toolbar"]').classList.contains('justify-content-end')).toBe(true);
-      expect(panel.querySelector('[role="toolbar"]').getAttribute('aria-label')).toBe('Activities');
+      expect(tools.classList.contains('justify-content-end')).toBe(true);
+      // A plain row of buttons, each one reached with Tab, not a toolbar moved through with the arrow keys.
+      expect(tools.hasAttribute('role')).toBe(false);
+      expect(tools.hasAttribute('aria-label')).toBe(false);
+      expect(links().every((element) => element.tagName === 'BUTTON' && !element.hasAttribute('tabindex'))).toBe(
+        true
+      );
       expect(links().map((element) => element.getAttribute('data-exe-share'))).toEqual(['import', 'export', 'ai']);
       expect(links().map(label)).toEqual(['Import', 'Export', 'Create with AI']);
       expect(links().map((element) => element.querySelector('.auto-icon').textContent)).toEqual([

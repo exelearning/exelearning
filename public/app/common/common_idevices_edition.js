@@ -1104,8 +1104,11 @@ var $exeIDevicesEdition = {
                             </div>`;
                         })
                         .join('');
+                    // A plain row of buttons, each one reached with Tab: a
+                    // toolbar role would promise a single tab stop and the
+                    // arrow keys, which are not worth it for three buttons.
                     return {
-                        toolbar: `<div class="d-flex justify-content-end flex-wrap gap-2 mb-2" role="toolbar" aria-label="${_('Activities')}">${links}</div>`,
+                        toolbar: `<div class="exe-share-tools d-flex justify-content-end flex-wrap gap-2 mb-2">${links}</div>`,
                         modals: modals,
                     };
                 },

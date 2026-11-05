@@ -767,10 +767,10 @@ describe('classify edition: shared form tabs and feedback', () => {
         expect(panel('texts').querySelector('#ci18n_msgSubmit')).not.toBeNull();
     });
 
-    it('mounts import, export and AI modal triggers in contents toolbar', () => {
-        const toolbar = panel('contents').querySelector('[role="toolbar"]');
-        expect(toolbar).not.toBeNull();
-        const links = [...toolbar.querySelectorAll('[data-exe-share]')];
+    it('mounts import, export and AI modal triggers above the contents', () => {
+        const tools = panel('contents').querySelector('.exe-share-tools');
+        expect(tools).not.toBeNull();
+        const links = [...tools.querySelectorAll('[data-exe-share]')];
         expect(links.map((link) => link.getAttribute('data-exe-share'))).toEqual(['import', 'export', 'ai']);
     });
 
