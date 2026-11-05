@@ -736,7 +736,7 @@ describe('progress-report edition: shared form tabs', () => {
         open();
 
         expect(tabNames()).toEqual(['options', 'contents', 'texts']);
-        expect(document.getElementById('reportQEIdeviceForm-tab-contents').textContent.trim()).toBe('Activities');
+        expect(document.getElementById('reportQEIdeviceForm-tab-contents').textContent.trim()).toBe('Progress report');
         expect(panel('contents').classList.contains('active')).toBe(true);
     });
 
@@ -746,7 +746,7 @@ describe('progress-report edition: shared form tabs', () => {
         for (const id of ['informeEEvaluationID', 'informeEShowDate', 'informeEShowTypeGame', 'informeEActiveLinks', 'informeEUserData']) {
             expect(panel('options').querySelector(`#${id}`)).not.toBeNull();
         }
-        // "Show" leads Activities, above the list it filters.
+        // "Show" leads the report, above the list it filters.
         const contents = panel('contents').querySelector('#informeEContents');
         expect(contents.querySelector('input[name="showtype"]')).toBe(contents.querySelector('input'));
         expect(contents.querySelectorAll('input[name="showtype"]')).toHaveLength(3);

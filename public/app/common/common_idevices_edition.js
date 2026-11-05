@@ -3342,6 +3342,9 @@ var $exeIDevicesEdition = {
              * @param {Object<string, string>} [config.info] The iDevice's own
              * message for some shared tabs, by tab name, in place of the
              * shared one (HTML): e.g. how its questions are written.
+             * @param {Object<string, string>} [config.titles] The iDevice's own
+             * title for some shared tabs, by tab name, in place of the shared
+             * one: e.g. Activities in an iDevice that has none.
              * @param {Array<{name: string, title: string, info: string, content: string}>} [config.extra]
              * Tabs of this iDevice only, after the shared ones.
              * @param {string} [config.path] The iDevice's path, used by the
@@ -3356,12 +3359,14 @@ var $exeIDevicesEdition = {
                 if (!tabs.isValidId(id) || config === null || typeof config !== 'object') return '';
 
                 const ownInfo = config.info !== null && typeof config.info === 'object' ? config.info : {};
+                const ownTitles = config.titles !== null && typeof config.titles === 'object' ? config.titles : {};
                 const list = [];
                 tabs.order.forEach(function (name) {
                     const value = config[name];
                     if (value === undefined || value === null || value === false) return;
                     const definition = tabs.getDefinition(name, value, config);
                     if (typeof ownInfo[name] === 'string') definition.info = ownInfo[name];
+                    if (typeof ownTitles[name] === 'string' && ownTitles[name]) definition.title = ownTitles[name];
                     list.push(Object.assign({ name: name }, definition));
                 });
                 (Array.isArray(config.extra) ? config.extra : []).forEach(function (tab) {

@@ -27,10 +27,10 @@ test('Rubric lays its form out in the shared tabs and keeps CSV import and expor
     const tabs = page.locator('#ri_IdeviceForm-tabs [data-exe-tab]');
     await expect(tabs).toHaveCount(6);
     await expect(page.locator('#ri_IdeviceForm-tab-contents')).toHaveAttribute('aria-selected', 'true');
-    await expect(page.locator('#ri_IdeviceForm-tab-contents')).toHaveText('Activities');
+    await expect(page.locator('#ri_IdeviceForm-tab-contents')).toHaveText('Rubric');
     await expect(page.locator('#ri_IdeviceForm-panel-contents #ri_CreateNewRubric')).toBeVisible();
 
-    // Import a CSV from its own tab: the rubric is shown in Activities. The
+    // Import a CSV from its own tab: the rubric is shown in its tab. The
     // tab opens with its message as plain text, without a box.
     await page.locator('#ri_IdeviceForm-tab-csv').click();
     const info = page.locator('#ri_IdeviceForm-panel-csv > p').first();

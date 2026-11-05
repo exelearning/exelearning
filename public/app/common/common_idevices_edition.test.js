@@ -1202,6 +1202,18 @@ describe('common_idevices_edition.js', () => {
         expect(panel('contents').firstElementChild.textContent).toContain('Add the questions');
       });
 
+      it('lets the iDevice name a shared tab, and keeps the other titles', () => {
+        const title = (name) => document.getElementById(`testForm-tab-${name}`).textContent.trim();
+        render({ options: '', contents: '', titles: { contents: 'Rubric <b>table</b>', options: '' } });
+
+        // As text, like every title.
+        expect(title('contents')).toBe('Rubric <b>table</b>');
+        expect(title('options')).toBe('Options');
+
+        render({ contents: '', titles: null });
+        expect(title('contents')).toBe('Activities');
+      });
+
       it('explains the passwords once, in the message of the tab', () => {
         render({ passwords: true });
 

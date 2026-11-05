@@ -652,6 +652,7 @@ var $exeDevice = {
                     contents: contents,
                     texts: this.ci18n,
                     share: false,
+                    titles: { contents: _('Progress report') },
                     info: {
                         contents: _('The pages and iDevices of this resource. The ones assessed with the identifier of this report are marked.'),
                     },

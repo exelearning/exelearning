@@ -32,7 +32,7 @@ test('UDL content explains its type inline and keeps it with its blocks and text
     await expect(page.locator('#udlContentEditorWrapper-tab-contents')).toHaveAttribute('aria-selected', 'true');
     await expect(page.locator('[data-exe-share]')).toHaveCount(0);
 
-    // The type leads the blocks in Activities, as in main: there is no Options tab.
+    // The type leads the blocks in Content, as in main: there is no Options tab.
     await expect(page.locator('#udlContentEditorWrapper-tabs [data-exe-tab]')).toHaveCount(2);
     await expect(page.locator('#udlContentEditorWrapper-panel-contents #udlContentTypeOptions')).toBeVisible();
     const help = page.locator('#udlContentTypeOptions .exe-idevice-help');

@@ -111,7 +111,7 @@ describe('checklist edition: shared form tabs', () => {
         open();
 
         expect(tabNames()).toEqual(['instructions', 'options', 'contents', 'after', 'texts']);
-        expect(document.getElementById('gameQEIdeviceForm-tab-contents').textContent.trim()).toBe('Activities');
+        expect(document.getElementById('gameQEIdeviceForm-tab-contents').textContent.trim()).toBe('Checklist');
         expect(panel('contents').classList.contains('active')).toBe(true);
     });
 

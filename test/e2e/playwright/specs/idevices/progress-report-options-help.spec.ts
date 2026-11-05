@@ -24,7 +24,7 @@ test('Progress report explains its options inline without changing their values'
     const id = await device.getAttribute('id');
     expect(id).toBeTruthy();
 
-    // The settings in Options; "Show", leading Activities above the list it filters.
+    // The settings in Options; "Show", leading the report above the list it filters.
     for (const [tab, container, count] of [
         ['options', '#informeEOptions', 5],
         ['contents', '#informeEContents', 1],

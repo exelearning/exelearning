@@ -1225,7 +1225,7 @@ describe('rubric edition: shared form tabs', () => {
         open();
 
         expect(tabNames()).toEqual(['instructions', 'contents', 'after', 'grading', 'texts', 'csv']);
-        expect(document.getElementById('ri_IdeviceForm-tab-contents').textContent.trim()).toBe('Activities');
+        expect(document.getElementById('ri_IdeviceForm-tab-contents').textContent.trim()).toBe('Rubric');
         expect(document.getElementById('ri_IdeviceForm-tab-csv').textContent.trim()).toBe('CSV import/export');
         expect(panel('contents').classList.contains('active')).toBe(true);
     });

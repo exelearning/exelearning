@@ -163,6 +163,7 @@ var $exeDevice = {
                     contents: contents,
                     texts: strs,
                     share: false,
+                    titles: { contents: _('Content') },
                     info: {
                         contents: _('Write the content in blocks. Each block has a main content and, if you like, an easier-to-read version, an audio and a visual aid; with a button text, it stays hidden until the learner opens it.'),
                     },

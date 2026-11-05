@@ -180,7 +180,7 @@ async function typeInTinyMCE(page: Page, text: string): Promise<void> {
 }
 
 /**
- * Helper to select a UDL type, above the blocks in the Activities tab
+ * Helper to select a UDL type, above the blocks in the Content tab
  */
 async function selectUdlType(page: Page, type: 'engagement' | 'representation' | 'expression'): Promise<void> {
     // The form has no description above its tabs, so the notice of a development

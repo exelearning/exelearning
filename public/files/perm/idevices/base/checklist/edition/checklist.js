@@ -161,6 +161,7 @@ var $exeDevice = {
                     after: true,
                     texts: this.ci18n,
                     share: false,
+                    titles: { contents: _('Checklist') },
                     info: {
                         contents: _('Write the title of the checklist and its items, one per row, in the column of their level.'),
                     },

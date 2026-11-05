@@ -208,6 +208,7 @@ var $exeDevice = {
                     grading: true,
                     texts: this.ci18n,
                     share: false,
+                    titles: { contents: _('Rubric') },
                     info: {
                         contents: _('Create a rubric or load an example, then complete the criteria, the levels and the descriptors of its table.'),
                     },

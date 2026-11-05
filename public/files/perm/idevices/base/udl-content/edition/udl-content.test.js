@@ -176,13 +176,14 @@ describe('udl-content edition: shared form tabs', () => {
 
     const open = (previousData = '') => device.init(document.getElementById('udlBody'), previousData, PATH);
 
-    it('lays the form out in Activities and Texts, with no Options tab', () => {
+    it('lays the form out in Content and Texts, with no Options tab', () => {
         open();
         const tabNames = [...document.querySelectorAll('#udlContentEditorWrapper-tabs [data-exe-tab]')].map((tab) =>
             tab.getAttribute('data-exe-tab')
         );
 
         expect(tabNames).toEqual(['contents', 'texts']);
+        expect(document.getElementById('udlContentEditorWrapper-tab-contents').textContent.trim()).toBe('Content');
         expect(panel('contents').classList.contains('active')).toBe(true);
     });
 
