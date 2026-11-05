@@ -45,7 +45,8 @@ var $exeIDevicesEdition = {
              * that a click opens and a second click closes, using the editor's
              * help window styling. Clicks on the button or the explanation do
              * not reach the row around them, so an option is never switched
-             * by reading its help.
+             * by reading its help. Moving the focus out of the help, or Escape
+             * from anywhere, closes it.
              * Pass localized text, e.g. getHelpTooltip(_('Explain this option.')).
              * tabs.bind initializes it automatically; forms without shared tabs
              * call initHelpTooltips after inserting their HTML.
@@ -62,7 +63,7 @@ var $exeIDevicesEdition = {
                             <button type="button" class="exe-app-tooltip exe-idevice-help" title="${label}" aria-label="${label}" aria-expanded="false" aria-controls="${id}">
                                 <span class="info-icon-solid-green" aria-hidden="true"></span>
                             </button>
-                            <span id="${id}" class="help-content help-hidden" role="note">${description}</span>
+                            <span id="${id}" class="help-content help-hidden" role="note" tabindex="-1">${description}</span>
                         </span>`;
             },
             /**
@@ -103,15 +104,26 @@ var $exeIDevicesEdition = {
                         content.style.left = `${start - anchor}px`;
                         content.style.maxWidth = `${width}px`;
                     };
+                    const container = button.parentElement;
                     const hide = function () {
                         content.classList.add('help-hidden');
                         button.setAttribute('aria-expanded', 'false');
                         window.removeEventListener('resize', fitContent);
                         document.removeEventListener('scroll', fitContent, true);
+                        document.removeEventListener('keydown', escape);
+                    };
+                    // Escape closes it wherever the focus is. From the explanation
+                    // (a click focuses it), the focus goes back to the icon.
+                    const escape = function (event) {
+                        if (event.key !== 'Escape') return;
+                        const inside = container.contains(document.activeElement);
+                        tooltip.hide();
+                        hide();
+                        if (inside) button.focus();
                     };
                     // Capture also sees clicks whose own handlers stop propagation.
                     const outsideClick = function (event) {
-                        if (!button.parentElement.contains(event.target)) hide();
+                        if (!container.contains(event.target)) hide();
                     };
                     document.addEventListener('click', outsideClick, true);
                     // Reading or selecting the explanation leaves it open, and the
@@ -119,6 +131,12 @@ var $exeIDevicesEdition = {
                     $(content).on('click.exeHelpTooltip', function (event) {
                         event.stopPropagation();
                     });
+                    // Tab, or a click elsewhere, closes it; another window taking
+                    // the focus does not.
+                    const focusOut = function (event) {
+                        if (document.hasFocus() && !container.contains(event.relatedTarget)) hide();
+                    };
+                    container.addEventListener('focusout', focusOut);
                     $(button).on('click.exeHelpTooltip', function (event) {
                         event.stopPropagation();
                         tooltip.hide();
@@ -132,6 +150,7 @@ var $exeIDevicesEdition = {
                         fitContent();
                         window.addEventListener('resize', fitContent);
                         document.addEventListener('scroll', fitContent, true);
+                        document.addEventListener('keydown', escape);
                     }).on('keydown.exeHelpTooltip', function (event) {
                         if (event.key === 'Escape') {
                             tooltip.hide();
@@ -142,6 +161,7 @@ var $exeIDevicesEdition = {
                         hide();
                         $(button).off('.exeHelpTooltip');
                         $(content).off('.exeHelpTooltip');
+                        container.removeEventListener('focusout', focusOut);
                         document.removeEventListener('click', outsideClick, true);
                         tooltip.dispose();
                     };

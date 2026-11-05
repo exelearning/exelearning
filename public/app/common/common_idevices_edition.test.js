@@ -215,6 +215,56 @@ describe('common_idevices_edition.js', () => {
         expect(toggle).toHaveBeenCalledOnce();
       });
 
+      it('closes when the focus leaves the help, but not when it moves inside it or to another window', () => {
+        document.body.innerHTML = `${common().getHelpTooltip('Explain the option')}<input id="next">`;
+        common().initHelpTooltips(document.body);
+        const button = document.querySelector('button');
+        const note = document.querySelector('.help-content');
+        const focusOut = (relatedTarget) =>
+          button.dispatchEvent(new FocusEvent('focusout', { bubbles: true, relatedTarget }));
+        // A click on the explanation focuses it, out of the Tab order.
+        expect(note.getAttribute('tabindex')).toBe('-1');
+        button.click();
+
+        focusOut(note);
+        expect(note.classList.contains('help-hidden')).toBe(false);
+        const hasFocus = vi.spyOn(document, 'hasFocus').mockReturnValue(false);
+        focusOut(null);
+        expect(note.classList.contains('help-hidden')).toBe(false);
+        hasFocus.mockReturnValue(true);
+        focusOut(document.getElementById('next'));
+        expect(note.classList.contains('help-hidden')).toBe(true);
+        expect(button.getAttribute('aria-expanded')).toBe('false');
+        hasFocus.mockRestore();
+      });
+
+      it('closes with Escape from anywhere while open, giving the focus back to its icon from the explanation', () => {
+        document.body.innerHTML = `${common().getHelpTooltip('Explain the option')}<input id="next">`;
+        common().initHelpTooltips(document.body);
+        const button = document.querySelector('button');
+        const note = document.querySelector('.help-content');
+        const tooltip = instances.get(button);
+        const escape = (target) => target.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+
+        button.click();
+        note.focus();
+        escape(note);
+        expect(note.classList.contains('help-hidden')).toBe(true);
+        expect(document.activeElement).toBe(button);
+
+        button.click();
+        document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+        expect(note.classList.contains('help-hidden')).toBe(false);
+        escape(document.body);
+        expect(note.classList.contains('help-hidden')).toBe(true);
+        expect(document.activeElement).toBe(button);
+
+        // Closed, it no longer listens.
+        tooltip.hide.mockClear();
+        escape(document.body);
+        expect(tooltip.hide).not.toHaveBeenCalled();
+      });
+
       it('supports forms without an active edition lifecycle', () => {
         window.$exeEditionLifecycle = null;
         document.body.innerHTML = common().getHelpTooltip('Explain the option');

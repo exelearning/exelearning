@@ -83,3 +83,25 @@ test('An open help keeps its width near the right edge, also on a phone', async 
     // Some icon is close enough to the right edge for its help to open to the left.
     expect(moved).toBeGreaterThan(0);
 });
+
+test('An open help closes when the focus moves on, and with Escape from its explanation', async ({
+    authenticatedPage: page,
+    createProject,
+}) => {
+    const help = (await openGuessOptions(page, createProject)).first();
+    const content = page.locator(`#${await help.getAttribute('aria-controls')}`);
+    await help.focus();
+    await page.keyboard.press('Enter');
+    await expect(content).toBeVisible();
+    await page.keyboard.press('Tab');
+    await expect(content).toBeHidden();
+    await expect(help).toHaveAttribute('aria-expanded', 'false');
+
+    // A click on the explanation, to read or select it, takes the focus there.
+    await help.click();
+    await content.click();
+    await expect(content).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(content).toBeHidden();
+    await expect(help).toBeFocused();
+});
