@@ -1273,27 +1273,26 @@ var $exeIDevicesEdition = {
                     const tab = `
                             <p style="display:none"><input type="button" class="btn btn-primary ms-2"  name="eXeGameAddQuestions" id="eXeGameAddQuestion" value="${_('Add questions')}" /></p>
                             <div class="bg-white rounded w-100 position-relative" style="max-width: 1400px;" id="eXeEAddArea">
-                                <ul class="nav nav-tabs">
-                                    <li class="nav-item">
-                                        <a id="eXeETabPrompt" class="nav-link bg-light border-end active" href="#">
-                                        ${_('Prompt')}
-                                        </a>
+                                <ul class="nav nav-tabs exe-idevice-tabs" role="tablist">
+                                    <li class="nav-item" role="presentation">
+                                        <button type="button" id="eXeETabPrompt" class="nav-link active" role="tab" aria-selected="true" aria-controls="eXeEPromptPanel">${_('Prompt')}</button>
                                     </li>
-                                    <li class="nav-item">
-                                        <a id="eXeETabQuestions" class="nav-link bg-light border-end"  href="#">
-                                         ${_('Questions')}
-                                        </a>
+                                    <li class="nav-item" role="presentation">
+                                        <button type="button" id="eXeETabQuestions" class="nav-link" role="tab" aria-selected="false" aria-controls="eXeEQuestionsPanel" tabindex="-1">${_('Questions')}</button>
                                     </li>
-                                    <li class="nav-item" style="display:none">
-                                        <a id="eXeETabIA" class="nav-link bg-light border-end" href="#">
-                                        ${_('Generate')}
-                                        </a>
+                                    <!-- Hidden on purpose: generating the questions from here will come later. -->
+                                    <li class="nav-item" role="presentation" hidden>
+                                        <button type="button" id="eXeETabIA" class="nav-link" role="tab" aria-selected="false" aria-controls="eXeEIADiv" tabindex="-1">${_('Generate')}</button>
                                     </li>
                                 </ul>
                                 <div class="eXeE-LightboxContent p-2">
-                                    <textarea class="form-control font-monospace fs-6" style="min-height:350px;" id="eXeEPromptArea">${promptText}</textarea>
-                                    <textarea id="eXeEQuestionsArea" class="form-control font-monospace fs-6" style="min-height:350px;display:none"></textarea>
-                                    <div  class="form-control font-monospace fs-6" id="eXeEIADiv"  style="display:none">
+                                    <div id="eXeEPromptPanel" role="tabpanel" aria-labelledby="eXeETabPrompt">
+                                        <textarea class="form-control font-monospace fs-6" style="min-height:350px;" id="eXeEPromptArea" aria-labelledby="eXeETabPrompt">${promptText}</textarea>
+                                    </div>
+                                    <div id="eXeEQuestionsPanel" role="tabpanel" aria-labelledby="eXeETabQuestions" hidden>
+                                        <textarea id="eXeEQuestionsArea" class="form-control font-monospace fs-6" style="min-height:350px;" aria-labelledby="eXeETabQuestions"></textarea>
+                                    </div>
+                                    <div class="form-control font-monospace fs-6" id="eXeEIADiv" role="tabpanel" aria-labelledby="eXeETabIA" hidden>
                                         ${$exeIDevicesEdition.iDevice.gamification.share.createIAButtonsHtml()}
                                     </div>
                                 </div>
@@ -1654,14 +1653,52 @@ var $exeIDevicesEdition = {
                     // Do not persist changes here; preferences are managed in the user preferences UI.
                     $iaSelect.off('change.defaultAI');
 
-                    $saveButton.hide();
-                    $textQuestionsArea.hide();
-
-                    $textPrompt.show()
-                    $copyButton.show();
-                    $openChatGPTButton.show();
-                    $iaSelect.show()
-                    $divEIA.hide();                   
+                    // The tabs of the window, with the WAI-ARIA tabs pattern: each
+                    // one shows its panel and its buttons. Generate stays hidden
+                    // for now, and the keyboard skips it.
+                    const aiTabs = [
+                        { tab: $tabPrompt, panel: $('#eXeEPromptPanel'), buttons: [$copyButton, $iaSelect, $openChatGPTButton] },
+                        { tab: $tabQuestions, panel: $('#eXeEQuestionsPanel'), buttons: [$saveButton] },
+                        { tab: $tabIA, panel: $divEIA, buttons: [] },
+                    ];
+                    const showAITab = function (shown) {
+                        aiTabs.forEach(function (item) {
+                            const active = item === shown;
+                            item.tab.toggleClass('active', active).attr({
+                                'aria-selected': String(active),
+                                tabindex: active ? '0' : '-1',
+                            });
+                            item.panel.prop('hidden', !active);
+                            item.buttons.forEach(($button) => $button.toggle(active));
+                        });
+                    };
+                    aiTabs.forEach(function (item) {
+                        item.tab.off('.exeAITabs').on('keydown.exeAITabs', function (e) {
+                            const shown = aiTabs.filter((other) => other.tab.length && !other.tab.closest('li').prop('hidden'));
+                            const index = shown.indexOf(item);
+                            let next;
+                            switch (e.key) {
+                                case 'ArrowRight':
+                                    next = (index + 1) % shown.length;
+                                    break;
+                                case 'ArrowLeft':
+                                    next = (index - 1 + shown.length) % shown.length;
+                                    break;
+                                case 'Home':
+                                    next = 0;
+                                    break;
+                                case 'End':
+                                    next = shown.length - 1;
+                                    break;
+                                default:
+                                    return;
+                            }
+                            e.preventDefault();
+                            showAITab(shown[next]);
+                            shown[next].tab.trigger('focus');
+                        });
+                    });
+                    showAITab(aiTabs[0]);
 
                     // File input custom UI events.
                     // Delegated on `document`, so they outlive the edition form:
@@ -1695,48 +1732,11 @@ var $exeIDevicesEdition = {
                         $(document).on('change.exeFileInput', '.exe-file-input', onFileInputChange);
                     }
 
-                    $tabQuestions.on('click', function (e) {
-                        e.preventDefault();
-                        $tabQuestions.addClass('active');
-                        $tabPrompt.removeClass('active');
-                        $tabIA.removeClass('active');
-                        $textQuestionsArea.show();
-                        $divEIA.hide();
-                        $textPrompt.hide()
-                        $saveButton.show();
-                        $copyButton.hide();
-                        $openChatGPTButton.hide();
-                        $iaSelect.hide()
-                    });
-
-                    $tabPrompt.on('click', function (e) {
-                        e.preventDefault();
-                        $tabQuestions.removeClass('active');
-                        $tabPrompt.addClass('active');
-                        $tabIA.removeClass('active');
-                        $textQuestionsArea.hide();
-                        $divEIA.hide();
-                        $textPrompt.show()
-                        $saveButton.hide();
-                        $copyButton.show();
-                        $openChatGPTButton.show();
-                        $iaSelect.show();
-                    });
-
-                    $tabIA.on('click', function (e) {
-                        e.preventDefault();
-                        $tabQuestions.removeClass('active');
-                        $tabPrompt.removeClass('active');
-                        $tabIA.addClass('active');
-
-                        $textQuestionsArea.hide();
-                        $textPrompt.hide();
-                        $divEIA.show();
-
-                        $saveButton.hide();
-                        $copyButton.hide();
-                        $openChatGPTButton.hide();
-                        $iaSelect.hide();
+                    aiTabs.forEach(function (item) {
+                        item.tab.on('click.exeAITabs', function (e) {
+                            e.preventDefault();
+                            showAITab(item);
+                        });
                     });
 
                     $openChatGPTButton.on('click', function () {

@@ -2662,6 +2662,67 @@ describe('common_idevices_edition.js', () => {
       expect(result).toContain('eXeEPromptArea');
     });
 
+    it('gives the AI window accessible tabs, each showing its panel and its buttons', () => {
+      const share = globalThis.$exeIDevicesEdition.iDevice.gamification.share;
+      document.body.innerHTML = share.getIAContents(0);
+      share.addEvents(0, vi.fn());
+      const tab = (id) => document.getElementById(id);
+      const [prompt, questions, generate] = ['eXeETabPrompt', 'eXeETabQuestions', 'eXeETabIA'].map(tab);
+      const state = () => ({
+        selected: [prompt, questions, generate].map((item) => item.getAttribute('aria-selected')),
+        stops: [prompt, questions, generate].map((item) => item.getAttribute('tabindex')),
+        panels: ['eXeEPromptPanel', 'eXeEQuestionsPanel', 'eXeEIADiv'].map((id) => tab(id).hidden),
+        buttons: ['eXeECopyButton', 'eXeEIASelect', 'eXeEOpenChatGPTButton', 'eXeESaveButton'].map(
+          (id) => tab(id).style.display !== 'none'
+        ),
+      });
+      const onPrompt = {
+        selected: ['true', 'false', 'false'],
+        stops: ['0', '-1', '-1'],
+        panels: [false, true, true],
+        buttons: [true, true, true, false],
+      };
+      const onQuestions = {
+        selected: ['false', 'true', 'false'],
+        stops: ['-1', '0', '-1'],
+        panels: [true, false, true],
+        buttons: [false, false, false, true],
+      };
+      const press = (target, key) => target.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true }));
+
+      expect(document.querySelector('[role="tablist"]').classList.contains('exe-idevice-tabs')).toBe(true);
+      for (const item of [prompt, questions, generate]) {
+        expect(item.tagName).toBe('BUTTON');
+        expect(item.getAttribute('role')).toBe('tab');
+        const panel = tab(item.getAttribute('aria-controls'));
+        expect(panel.getAttribute('role')).toBe('tabpanel');
+        expect(panel.getAttribute('aria-labelledby')).toBe(item.id);
+      }
+      // Generating from here will come later: its tab is there, hidden.
+      expect(generate.closest('li').hidden).toBe(true);
+      // Each text box takes its name from its tab.
+      expect(tab('eXeEPromptArea').getAttribute('aria-labelledby')).toBe('eXeETabPrompt');
+      expect(tab('eXeEQuestionsArea').getAttribute('aria-labelledby')).toBe('eXeETabQuestions');
+      expect(state()).toEqual(onPrompt);
+
+      press(prompt, 'ArrowRight');
+      expect(state()).toEqual(onQuestions);
+      expect(document.activeElement).toBe(questions);
+      // The keyboard skips the hidden tab, and goes round.
+      press(questions, 'ArrowRight');
+      expect(state()).toEqual(onPrompt);
+      press(prompt, 'ArrowLeft');
+      expect(state()).toEqual(onQuestions);
+      press(questions, 'Home');
+      expect(state()).toEqual(onPrompt);
+      press(prompt, 'End');
+      expect(state()).toEqual(onQuestions);
+      press(questions, 'Tab');
+      expect(state()).toEqual(onQuestions);
+      prompt.click();
+      expect(state()).toEqual(onPrompt);
+    });
+
     it('getIAContents renders prompt examples on real newlines, not literal "\\n"', () => {
       const result = globalThis.$exeIDevicesEdition.iDevice.gamification.share.getIAContents(0);
       // The prompt textarea must NOT contain literal backslash-n sequences
