@@ -183,9 +183,7 @@ var $exeDevice = {
         msgs.msgCompleteText = _(
             'You must indicate a text or sound for this card'
         );
-        msgs.msgCompleteImage = _(
-            'You must link an image or sound to this card'
-        );
+        msgs.msgCompleteImage = _('Add an image or a sound to the card');
         msgs.msgTitleAltImageWarning = _('Accessibility warning');
         msgs.msgAltImageWarning = _(
             'At least one image has no description, are you sure you want to continue without including it? Without it the image may not be accessible to some users with disabilities, or to those using a text browser, or browsing the Web with images turned off.'
