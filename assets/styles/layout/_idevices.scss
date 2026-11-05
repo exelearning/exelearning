@@ -11,7 +11,9 @@
         top: calc(100% + .3rem);
         left: 0;
         right: auto;
-        z-index: 1080;
+        // Bootstrap's dropdown level: over the content, under the side panels,
+        // offcanvas and modals (and their backdrops).
+        z-index: 1000;
         max-width: 90vw;
         box-sizing: border-box;
         overflow-wrap: anywhere;
