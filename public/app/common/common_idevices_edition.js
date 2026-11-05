@@ -771,7 +771,7 @@ var $exeIDevicesEdition = {
 
                 /**
                  * @returns {Object|false} { feedBack, percentajeFB, textFeedBack },
-                 * or false (after telling the author) when the feedback is on
+                 * or false (after opening its tab and telling the author) when the feedback is on
                  * or compulsory but has no message. While compulsory, feedBack
                  * is the author's own choice.
                  */
@@ -782,6 +782,8 @@ var $exeIDevicesEdition = {
                     const feedBack = required ? $switch.data('authorChoice') === true : $switch.is(':checked');
                     const textFeedBack = feedback.getText();
                     if ((feedBack || required) && textFeedBack.trim().length === 0) {
+                        // Behind the warning, the tab where the message is written.
+                        $exeIDevicesEdition.iDevice.tabs.showTabOf('eXeGameFeedBackEditor');
                         eXe.app.alert(_('Message to display when passing the game'));
                         return false;
                     }
@@ -3510,6 +3512,21 @@ var $exeIDevicesEdition = {
                     $(document.getElementById(this.getAttribute('aria-controls'))).toggleClass('active show', isActive);
                 });
                 return true;
+            },
+
+            /**
+             * Show the tab whose panel holds an element, so that the author
+             * sees the field a warning is about.
+             *
+             * @param {Element|string} element The element, or its id.
+             * @returns {boolean} false when it is in no tab of these forms.
+             */
+            showTabOf: function (element) {
+                const node = typeof element === 'string' ? document.getElementById(element) : element;
+                const panel = node && node.closest('[role="tabpanel"][id*="-panel-"]');
+                if (!panel) return false;
+                const at = panel.id.lastIndexOf('-panel-');
+                return $exeIDevicesEdition.iDevice.tabs.show(panel.id.slice(0, at), panel.id.slice(at + '-panel-'.length));
             }
         }
     }

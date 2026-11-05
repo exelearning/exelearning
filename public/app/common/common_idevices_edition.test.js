@@ -1396,6 +1396,31 @@ describe('common_idevices_edition.js', () => {
       });
     });
 
+    describe('showTabOf', () => {
+      it('shows the tab whose panel holds the element, given or by its id', () => {
+        render({ options: '<input id="optionField">', contents: '<div><input id="cardField"></div>', feedback: true });
+
+        expect(tabs().showTabOf('optionField')).toBe(true);
+        expect(activeNames()).toEqual(['options']);
+
+        expect(tabs().showTabOf(document.getElementById('cardField'))).toBe(true);
+        expect(activeNames()).toEqual(['contents']);
+
+        expect(tabs().showTabOf('eXeGameFeedBackEditor')).toBe(true);
+        expect(activeNames()).toEqual(['feedback']);
+      });
+
+      it('returns false and changes nothing for an element in no tab', () => {
+        render({ options: '', contents: '' });
+        document.body.insertAdjacentHTML('beforeend', '<input id="outside">');
+
+        expect(tabs().showTabOf('outside')).toBe(false);
+        expect(tabs().showTabOf('missing')).toBe(false);
+        expect(tabs().showTabOf(null)).toBe(false);
+        expect(activeNames()).toEqual(['contents']);
+      });
+    });
+
     describe('bind', () => {
       const press = (name, key) => {
         const event = new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true });
@@ -2261,6 +2286,24 @@ describe('common_idevices_edition.js', () => {
         checkbox().checked = true;
 
         expect(feedback().getValues()).toBe(false);
+        expect(globalThis.eXe.app.alert).toHaveBeenCalledWith('Message to display when passing the game');
+      });
+
+      it('opens the Feedback tab behind the warning, where the message is written', () => {
+        const tabs = globalThis.$exeIDevicesEdition.iDevice.tabs;
+        document.body.innerHTML = tabs.getHtml('testForm', { contents: '', feedback: true });
+        tabs.bind('testForm');
+        const feedbackTab = () => document.getElementById('testForm-tab-feedback');
+        checkbox().checked = true;
+        feedback().setText('<p>Well done</p>');
+
+        expect(feedback().getValues()).not.toBe(false);
+        expect(feedbackTab().getAttribute('aria-selected')).toBe('false');
+
+        feedback().setText('');
+        expect(feedback().getValues()).toBe(false);
+        expect(feedbackTab().getAttribute('aria-selected')).toBe('true');
+        expect(document.getElementById('testForm-panel-feedback').classList.contains('active')).toBe(true);
         expect(globalThis.eXe.app.alert).toHaveBeenCalledWith('Message to display when passing the game');
       });
 

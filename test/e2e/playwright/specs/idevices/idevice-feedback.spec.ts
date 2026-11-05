@@ -75,13 +75,17 @@ test('An activity saved with the feedback on and no message opens with the feedb
     expect(stored).toContain('"feedBack":false');
 });
 
-test('The feedback the author switches on asks for its message when saving', async ({
+test('The feedback the author switches on asks for its message when saving, on its own tab', async ({
     authenticatedPage: page,
     createProject,
 }) => {
     test.setTimeout(120000);
     const id = await addActivity(page, createProject, 'Feedback switched on without a message');
     await page.locator('#eXeGameHasFeedBack').check();
+    // Saved from another tab, as an author does.
+    const feedbackTab = page.locator('#gameQEIdeviceForm-tab-feedback');
+    await page.locator('#gameQEIdeviceForm-tab-contents').click();
+    await expect(feedbackTab).toHaveAttribute('aria-selected', 'false');
 
     await page.locator(`.idevice_node[id="${id}"] .btn-save-idevice`).click();
 
@@ -90,4 +94,7 @@ test('The feedback the author switches on asks for its message when saving', asy
     await alert.getByRole('button', { name: 'Accept' }).click();
     await expect(page.locator(`.idevice_node[id="${id}"] .btn-save-idevice`)).toBeVisible();
     await expect(page.locator('#eXeGameHasFeedBack')).toBeChecked();
+    // Behind the warning, the tab where the message is written.
+    await expect(feedbackTab).toHaveAttribute('aria-selected', 'true');
+    await expect(page.locator('#eXeGameFeedbackP')).toBeVisible();
 });
