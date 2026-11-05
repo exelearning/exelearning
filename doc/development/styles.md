@@ -705,11 +705,14 @@ Common functionality found in built-in eXe styles:
 - **Presentation mode**. Opening a web site export with `?exe-presentation=1` collapses the
   menu, adds a "Presentation mode" toggle button (`#exe-presentation-toggler`, next to
   `#made-with-eXe`, its state in `aria-pressed`) and lets the reader present with the keyboard
-  or a presenter remote: `←`/`PageUp` and `→`/`PageDown` change page, `M` shows/hides the menu
-  and `T` toggles Teacher Mode where its toggle exists. A remote's "blank" button (`B`) goes to
-  the first page and its start/stop button goes to the last page in the menu (`Shift+F5`) or does
-  nothing (`F5`), so `Ctrl`/`Cmd`+`R` is the way to reload while presenting. The runtime drives the style's
-  own controls, so a style only has to keep them where it expects:
+  or a presenter remote:
+  - `←`/`PageUp` and `→`/`PageDown` change page.
+  - `M` shows/hides the menu.
+  - `T` toggles Teacher Mode where its toggle exists.
+  - `F5` and `Shift+F5`, sent by a remote's start/stop button, do nothing. `Ctrl`/`Cmd`+`R` is
+    the way to reload while presenting.
+
+  The runtime drives the style's own controls, so a style only has to keep them where it expects:
   - The menu toggler is `#siteNavToggler`, and its click handler must update
     `aria-expanded` **synchronously**: the runtime reads it right after clicking to know the
     new state.
@@ -721,7 +724,7 @@ Common functionality found in built-in eXe styles:
   - A style that offers a light/dark mode switch should give `#exe-presentation-toggler`
     the same treatment as `#made-with-eXe a` (for example, in the same
     `html.exe-dark-mode` rule), so the two badges side by side keep matching.
-  - Do not bind `←`/`→`/`PageUp`/`PageDown`/`M`/`T`/`B` on `document`. The mode only yields to a
+  - Do not bind `←`/`→`/`PageUp`/`PageDown`/`M`/`T` on `document`. The mode only yields to a
     handler that calls `preventDefault()`, so an unconditional handler would change the page
     twice.
 

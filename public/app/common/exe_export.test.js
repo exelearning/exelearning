@@ -3112,7 +3112,7 @@ describe('exe_export.js', () => {
         expect(pm().isSupported()).toBe(true);
       });
 
-      it.each(['exe-scorm', 'exe-ims', 'exe-epub'])('rejects a %s export', (cls) => {
+      it.each(['exe-scorm', 'exe-ims', 'exe-epub', 'exe-single-page'])('rejects a %s export', (cls) => {
         document.body.className = 'exe-export ' + cls;
         expect(pm().isSupported()).toBe(false);
       });
@@ -3511,109 +3511,23 @@ describe('exe_export.js', () => {
       });
 
       describe('presenter remote buttons', () => {
-        const markFirstPageLink = (classes) => {
-          document.querySelector('#siteNav a').className = classes;
-          return document.querySelector('#siteNav a');
-        };
-
-        it('b goes to the first page, carrying the mode in its link', () => {
-          const first = markFirstPageLink('main-node no-ch');
-          const clickSpy = vi.spyOn(first, 'click');
-          const event = makeEvent({ key: 'b', code: 'KeyB' });
-          pm().handleKeydown(event);
-          expect(clickSpy).toHaveBeenCalledTimes(1);
-          expect(first.getAttribute('href')).toContain('exe-presentation=1');
-          expect(event.preventDefault).toHaveBeenCalledTimes(1);
-        });
-
-        it('b does nothing when already on the first page', () => {
-          const first = markFirstPageLink('active main-node no-ch');
-          const clickSpy = vi.spyOn(first, 'click');
-          const event = makeEvent({ key: 'b', code: 'KeyB' });
-          pm().handleKeydown(event);
-          expect(clickSpy).not.toHaveBeenCalled();
-          expect(event.preventDefault).not.toHaveBeenCalled();
-        });
-
-        it('b does not change page under an overlay or with a modifier', () => {
-          const first = markFirstPageLink('main-node no-ch');
-          const clickSpy = vi.spyOn(first, 'click');
-          pm().handleKeydown(makeEvent({ key: 'b', code: 'KeyB', ctrlKey: true }));
-          document.body.insertAdjacentHTML('beforeend', '<div class="sl-wrapper"></div>');
-          pm().handleKeydown(makeEvent({ key: 'b', code: 'KeyB' }));
-          expect(clickSpy).not.toHaveBeenCalled();
-        });
-
         const lastMenuLink = () => document.querySelector('#siteNav a:last-child');
 
-        it('F5 does not reload or change page', () => {
-          const clickSpy = vi.spyOn(lastMenuLink(), 'click');
-          const event = makeEvent({ key: 'F5', code: 'F5' });
+        it('b is not captured', () => {
+          const clickSpy = vi.spyOn(document.querySelector('#siteNav a'), 'click');
+          const event = makeEvent({ key: 'b', code: 'KeyB' });
           pm().handleKeydown(event);
-          expect(event.preventDefault).toHaveBeenCalledTimes(1);
+          expect(event.preventDefault).not.toHaveBeenCalled();
           expect(clickSpy).not.toHaveBeenCalled();
-        });
-
-        it('Shift+F5 goes to the last page instead of reloading', () => {
-          const clickSpy = vi.spyOn(lastMenuLink(), 'click');
-          const event = makeEvent({ key: 'F5', code: 'F5', shiftKey: true });
-          pm().handleKeydown(event);
-          expect(event.preventDefault).toHaveBeenCalledTimes(1);
-          expect(clickSpy).toHaveBeenCalledTimes(1);
-          expect(lastMenuLink().getAttribute('href')).toContain('exe-presentation=1');
-        });
-
-        it('Shift+F5 stays put, without reloading, when already on the last page', () => {
-          lastMenuLink().className = 'active no-ch';
-          const clickSpy = vi.spyOn(lastMenuLink(), 'click');
-          const event = makeEvent({ key: 'F5', code: 'F5', shiftKey: true });
-          pm().handleKeydown(event);
-          expect(event.preventDefault).toHaveBeenCalledTimes(1);
-          expect(clickSpy).not.toHaveBeenCalled();
-        });
-
-        describe('with a nested menu like the exported one', () => {
-          beforeEach(() => {
-            // Some styles add a button inside the links of the pages with children.
-            document.getElementById('siteNav').innerHTML =
-              '<ul>' +
-              '<li><a class="main-node daddy" href="p1.html">1<button type="button"></button></a>' +
-              '<ul class="other-section"><li><a class="no-ch" href="p2.html">2</a></li></ul></li>' +
-              '<li><a class="daddy" href="p3.html">3</a>' +
-              '<ul class="other-section"><li><a class="no-ch" href="p4.html">4</a></li></ul></li>' +
-              '</ul>';
-          });
-
-          const linkTo = (href) => document.querySelector('#siteNav a[href="' + href + '"]');
-
-          it('Shift+F5 goes to the last page, a deep child', () => {
-            const clickSpy = vi.spyOn(linkTo('p4.html'), 'click');
-            const parentSpy = vi.spyOn(linkTo('p3.html'), 'click');
-            pm().handleKeydown(makeEvent({ key: 'F5', code: 'F5', shiftKey: true }));
-            expect(clickSpy).toHaveBeenCalledTimes(1);
-            expect(parentSpy).not.toHaveBeenCalled();
-          });
-
-          it('b goes to the first page, a parent with a button in its link', () => {
-            const clickSpy = vi.spyOn(linkTo('p1.html'), 'click');
-            const event = makeEvent({ key: 'b', code: 'KeyB' });
-            pm().handleKeydown(event);
-            expect(clickSpy).toHaveBeenCalledTimes(1);
-            expect(event.preventDefault).toHaveBeenCalledTimes(1);
-          });
-        });
-
-        it('Shift+F5 does not reload without a menu', () => {
-          document.getElementById('siteNav').remove();
-          const event = makeEvent({ key: 'F5', code: 'F5', shiftKey: true });
-          pm().handleKeydown(event);
-          expect(event.preventDefault).toHaveBeenCalledTimes(1);
         });
 
         it.each([{}, { shiftKey: true }])(
-          'F5 %o neither reloads nor changes page under an overlay or from a form field',
+          'F5 %o neither reloads nor changes page, even under an overlay or from a form field',
           (mods) => {
             const clickSpy = vi.spyOn(lastMenuLink(), 'click');
+            const plain = makeEvent(Object.assign({ key: 'F5', code: 'F5' }, mods));
+            pm().handleKeydown(plain);
+            expect(plain.preventDefault).toHaveBeenCalledTimes(1);
             const input = document.createElement('input');
             document.body.appendChild(input);
             const inField = makeEvent(Object.assign({ key: 'F5', code: 'F5', target: input }, mods));

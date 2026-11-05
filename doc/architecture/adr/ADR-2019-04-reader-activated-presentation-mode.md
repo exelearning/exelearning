@@ -168,7 +168,8 @@ enters and leaves it, rewriting the
 parameter in the URL and the navigation links. The parameter is the only
 state: no storage, no project property, no export option and no export type.
 The keys are `←`/`PageUp`, `→`/`PageDown`, `M` (menu) and `T` (Teacher Mode
-where available), extended for presenter remotes by ADR-2701-01; `↑`/`↓`, `Space`, `Enter` and `Esc` are never captured. Fullscreen is not part of the mode
+where available), extended for presenter remotes by ADR-2701-01; `↑`/`↓`,
+`Space`, `Enter` and `Esc` are never captured. Fullscreen is not part of the mode
 and `Esc` is not its exit key. It exists only for web site exports, top-level
 or in an iframe whose URL carries the parameter.
 
