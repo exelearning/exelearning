@@ -3,6 +3,11 @@
     This is where $exeIDevicesEdition or a similar object should be
     Include here the code that should not be exported
     This code is required to edit the iDevices
+
+    The edition library of the iDevices: new code and fixes go here.
+    common_edition.js ($exeDevicesEdition) is a transitional copy of its
+    predecessor, kept only for the iDevices still in development that use
+    it, and will be removed once they are adapted to this one.
 */
 var $exeIDevicesEdition = {
     iDevice: {

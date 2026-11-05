@@ -335,8 +335,10 @@
          from app/common/i18n/common_i18n.{lang}.js (pre-built with c_() already resolved at build time).
          Loading the template file here would cause "ReferenceError: c_ is not defined" because c_()
          is defined by the Locale constructor which runs after app.bundle.js loads. -->
+    <!-- Transitional: kept only for the iDevices still in development that use it (such as the new interactive
+         video), and to be removed once they are adapted to common_idevices_edition.js -->
     <script src="./app/common/common_edition.js?v={{BUILD_VERSION}}"></script>
-    <!-- Edition helpers for the refactored iDevices; the rest still use common_edition.js -->
+    <!-- Edition helpers of the iDevices -->
     <script src="./app/common/common_idevices_edition.js?v={{BUILD_VERSION}}"></script>
     <script src="./app/common/common.js?v={{BUILD_VERSION}}"></script>
     <script src="./app/common/exe_effects/exe_effects.js?v={{BUILD_VERSION}}"></script>
