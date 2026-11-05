@@ -855,6 +855,8 @@ describe('classify edition: shared form tabs and feedback', () => {
     });
 
     it('restores form values and updates gamification modules on updateFieldGame', () => {
+        // Saved with its message: without one, the feedback loads off.
+        $exeIDevicesEdition.iDevice.gamification.feedback.setText('<p>Well done</p>');
         device.updateFieldGame(
             game({
                 showMinimize: true,
@@ -923,6 +925,16 @@ describe('classify edition: shared form tabs and feedback', () => {
             const savedHtml = device.save();
             expect(savedHtml).toContain('clasifica-feedback-game');
             expect(savedHtml).toContain('clasifica-extra-content');
+        });
+
+        it('loads with the feedback off an activity saved with it on and no message, and saves it', () => {
+            editors.eXeGameFeedBackEditor = '';
+            device.updateFieldGame(game({ feedBack: true, percentajeFB: 80 }));
+            device.showQuestion(0);
+
+            expect(document.getElementById('eXeGameHasFeedBack').checked).toBe(false);
+            expect(device.validateData().feedBack).toBe(false);
+            expect(device.save()).toContain('clasifica-DataGame');
         });
 
         it('saves an emptied Instructions or After editor as empty', () => {

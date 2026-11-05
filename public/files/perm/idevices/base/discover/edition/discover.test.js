@@ -956,6 +956,8 @@ describe('discover edition: shared form tabs, options tooltips, and feedback', (
     });
 
     it('restores form values and updates gamification modules on updateFieldGame', () => {
+        // Saved with its message: without one, the feedback loads off.
+        $exeIDevicesEdition.iDevice.gamification.feedback.setText('<p>Well done</p>');
         device.updateFieldGame({
             showMinimize: true,
             customMessages: true,
@@ -1128,6 +1130,16 @@ describe('discover edition: shared form tabs, options tooltips, and feedback', (
             const savedHtml = device.save();
             expect(savedHtml).toContain('descubre-feedback-game');
             expect(savedHtml).toContain('descubre-extra-content');
+        });
+
+        it('loads with the feedback off an activity saved with it on and no message, and saves it', () => {
+            editors.eXeGameFeedBackEditor = '';
+            device.updateFieldGame(game({ feedBack: true }));
+            device.showQuestion(0);
+
+            expect(document.getElementById('eXeGameHasFeedBack').checked).toBe(false);
+            expect(device.validateData().feedBack).toBe(false);
+            expect(device.save()).toContain('descubre-DataGame');
         });
 
         it('saves an emptied Instructions or After editor as empty', () => {

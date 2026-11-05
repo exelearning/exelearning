@@ -464,8 +464,9 @@ describe('puzzle edition: shared form tabs and feedback', () => {
         };
 
         it('saves the feedback values the export reads', () => {
-            open({ feedBack: true, percentajeFB: 70 });
+            // Saved with its message: without one, the feedback loads off.
             editors.eXeGameFeedBackEditor = '<p>Bravo</p>';
+            open({ feedBack: true, percentajeFB: 70 });
 
             const data = device.validateData();
 
@@ -478,10 +479,20 @@ describe('puzzle edition: shared form tabs and feedback', () => {
         });
 
         it('does not save when the feedback is on without a message', () => {
-            open({ feedBack: true });
+            open();
+            // The author switches the feedback on and leaves its message empty.
+            $('#eXeGameHasFeedBack').prop('checked', true).trigger('change');
 
             expect(device.save()).toBe(false);
             expect(eXe.app.getLastAlert()).toBe('Message to display when passing the game');
+        });
+
+        it('loads with the feedback off an activity saved with it on and no message, and saves it', () => {
+            open({ feedBack: true, percentajeFB: 70 });
+
+            expect(document.getElementById('eXeGameHasFeedBack').checked).toBe(false);
+            expect(device.validateData().feedBack).toBe(false);
+            expect(device.save()).toContain('puzzle-DataGame');
         });
 
         it('keeps the access code and the clue when saving', () => {

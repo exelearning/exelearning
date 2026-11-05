@@ -575,6 +575,8 @@ describe('crossword edition: shared form tabs and feedback', () => {
   });
 
   it('restores the feedback with the game', () => {
+    // Saved with its message: without one, the feedback loads off.
+    $exeIDevicesEdition.iDevice.gamification.feedback.setText('<p>Well done</p>');
     device.updateFieldGame(game({ feedBack: true, percentajeFB: 80 }));
 
     expect(document.getElementById('eXeGameHasFeedBack').checked).toBe(true);
@@ -715,8 +717,9 @@ describe('crossword edition: shared form tabs and feedback', () => {
     });
 
     it('saves the feedback values the export reads', () => {
-      device.updateFieldGame(game({ wordsGame: device.wordsGame, feedBack: true, percentajeFB: 70 }));
+      // Saved with its message: without one, the feedback loads off.
       editors.eXeGameFeedBackEditor = '<p>Bravo</p>';
+      device.updateFieldGame(game({ wordsGame: device.wordsGame, feedBack: true, percentajeFB: 70 }));
       vi.spyOn(device, 'validateQuestion').mockReturnValue(true);
 
       const data = device.validateData();
@@ -744,8 +747,10 @@ describe('crossword edition: shared form tabs and feedback', () => {
     });
 
     it('requires feedback message if feedback is enabled and text is empty', () => {
-      device.updateFieldGame(game({ wordsGame: device.wordsGame, feedBack: true }));
+      device.updateFieldGame(game({ wordsGame: device.wordsGame }));
       editors.eXeGameFeedBackEditor = '';
+      // The author switches the feedback on and leaves its message empty.
+      $('#eXeGameHasFeedBack').prop('checked', true).trigger('change');
       vi.spyOn(device, 'validateQuestion').mockReturnValue(true);
 
       expect(device.validateData()).toBe(false);

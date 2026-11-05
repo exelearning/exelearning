@@ -430,6 +430,8 @@ describe('complete edition: shared form tabs and feedback', () => {
     });
 
     it('restores form values and updates gamification modules on updateFieldGame', () => {
+        // Saved with its message: without one, the feedback loads off.
+        $exeIDevicesEdition.iDevice.gamification.feedback.setText('<p>Well done</p>');
         device.updateFieldGame(
             game({
                 showMinimize: true,
@@ -518,8 +520,10 @@ describe('complete edition: shared form tabs and feedback', () => {
         });
 
         it('does not save when the feedback is on without a message', () => {
-            device.updateFieldGame(game({ feedBack: true }));
+            device.updateFieldGame(game());
             edition().gamification.feedback.setText('');
+            // The author switches the feedback on and leaves its message empty.
+            $('#eXeGameHasFeedBack').prop('checked', true).trigger('change');
 
             expect(device.validateData()).toBe(false);
             expect(eXe.app.getLastAlert()).toBe('Message to display when passing the game');

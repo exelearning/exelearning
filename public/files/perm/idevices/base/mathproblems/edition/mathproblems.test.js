@@ -332,6 +332,8 @@ describe('mathproblems edition: shared form tabs and feedback', () => {
     });
 
     it('restores the options and the feedback with the game', () => {
+        // Saved with its message: without one, the feedback loads off.
+        $exeIDevicesEdition.iDevice.gamification.feedback.setText('<p>Well done</p>');
         device.updateFieldGame(game({ optionsRamdon: true, errorType: 2, feedBack: true, percentajeFB: 80 }));
 
         expect(document.getElementById('eCQOptionsRamdon').checked).toBe(true);
@@ -433,8 +435,9 @@ describe('mathproblems edition: shared form tabs and feedback', () => {
         });
 
         it('saves the feedback values the export reads', () => {
-            device.updateFieldGame(game({ feedBack: true, percentajeFB: 70 }));
+            // Saved with its message: without one, the feedback loads off.
             editors.eXeGameFeedBackEditor = '<p>Bravo</p>';
+            device.updateFieldGame(game({ feedBack: true, percentajeFB: 70 }));
 
             const data = device.validateData();
 
@@ -447,7 +450,9 @@ describe('mathproblems edition: shared form tabs and feedback', () => {
         });
 
         it('does not save when the feedback is on without a message', () => {
-            device.updateFieldGame(game({ feedBack: true }));
+            device.updateFieldGame(game());
+            // The author switches the feedback on and leaves its message empty.
+            $('#eXeGameHasFeedBack').prop('checked', true).trigger('change');
 
             expect(device.save()).toBe(false);
             expect(eXe.app.getLastAlert()).toBe('Message to display when passing the game');

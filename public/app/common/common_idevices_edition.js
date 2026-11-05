@@ -680,9 +680,33 @@ var $exeIDevicesEdition = {
                  * textarea is what it will load.
                  */
                 setText: function (html) {
-                    const editor = $exeIDevicesEdition.iDevice.gamification.feedback.getEditor();
+                    const feedback = $exeIDevicesEdition.iDevice.gamification.feedback;
+                    const editor = feedback.getEditor();
                     if (editor) editor.setContent(html);
                     else $('#eXeGameFeedBackEditor').val(html);
+                    feedback.settle();
+                },
+
+                /**
+                 * Show on the switch the choice the activity was saved with,
+                 * but only with a message: feedback saved on and empty was a
+                 * mistake, which gave its learners an empty box, so it loads
+                 * off. The iDevices load the switch and the message in either
+                 * order, so setValues and setText both call this. Once the
+                 * author flips the switch the choice is theirs, and from then
+                 * on the feedback on asks for its message when saving.
+                 */
+                settle: function () {
+                    const feedback = $exeIDevicesEdition.iDevice.gamification.feedback;
+                    const $switch = $('#eXeGameHasFeedBack');
+                    const saved = $switch.data('savedChoice');
+                    if (typeof saved !== 'boolean') return;
+                    const choice = saved && feedback.getText().trim().length > 0;
+                    // While compulsory the switch stays on: the value is the
+                    // author's choice, for when it is optional again.
+                    if (feedback.isRequired()) $switch.data('authorChoice', choice);
+                    else $switch.prop('checked', choice);
+                    feedback.refresh();
                 },
 
                 /**
@@ -733,20 +757,16 @@ var $exeIDevicesEdition = {
                  * @param {boolean} [data.feedBack]
                  * @param {number} [data.percentajeFB]
                  * @param {string} [data.textFeedBack] The message (HTML). Left
-                 * untouched when omitted.
+                 * untouched when omitted, for the iDevice to load with setText.
                  */
                 setValues: function (data) {
                     const feedback = $exeIDevicesEdition.iDevice.gamification.feedback;
                     const values = data || {};
                     const enabled = values.feedBack === true || values.feedBack === 'true';
-                    const $switch = $('#eXeGameHasFeedBack');
-                    // While compulsory the switch stays on: the value is the
-                    // author's choice, for when it is optional again.
-                    if (feedback.isRequired()) $switch.data('authorChoice', enabled);
-                    else $switch.prop('checked', enabled);
+                    $('#eXeGameHasFeedBack').data('savedChoice', enabled);
                     $('#eXeGamePercentajeFB').val(feedback.normalizePercentage(values.percentajeFB));
-                    feedback.refresh();
                     if (typeof values.textFeedBack === 'string') feedback.setText(values.textFeedBack);
+                    else feedback.settle();
                 },
 
                 /**
@@ -775,6 +795,8 @@ var $exeIDevicesEdition = {
                 addEvents: function () {
                     const feedback = $exeIDevicesEdition.iDevice.gamification.feedback;
                     $('#eXeGameHasFeedBack').on('change', function () {
+                        // The author's choice now: nothing loaded overrides it.
+                        $(this).removeData('savedChoice');
                         feedback.refresh();
                     });
                     $('#eXeGamePercentajeFB').on('focusout', function () {

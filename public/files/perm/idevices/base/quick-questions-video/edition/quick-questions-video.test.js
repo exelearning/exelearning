@@ -793,6 +793,8 @@ describe('quick-questions-video edition: shared form tabs and feedback', () => {
     });
 
     it('restores the game mode and the feedback with the game', () => {
+        // Saved with its message: without one, the feedback loads off.
+        $exeIDevicesEdition.iDevice.gamification.feedback.setText('<p>Well done</p>');
         device.updateFieldGame(game({ gameMode: 0, useLives: false, feedBack: true, percentajeFB: 80 }));
 
         expect(document.getElementById('vquextEGameMode').checked).toBe(true);
@@ -856,9 +858,10 @@ describe('quick-questions-video edition: shared form tabs and feedback', () => {
         });
 
         it('saves the feedback values the export reads', () => {
+            // Saved with its message: without one, the feedback loads off.
+            editors.eXeGameFeedBackEditor = '<p>Bravo</p>';
             device.updateFieldGame(game({ feedBack: true, percentajeFB: 70 }));
             device.questionsGame = [question()];
-            editors.eXeGameFeedBackEditor = '<p>Bravo</p>';
 
             const data = device.validateData();
 

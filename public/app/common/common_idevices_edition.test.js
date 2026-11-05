@@ -2089,7 +2089,7 @@ describe('common_idevices_edition.js', () => {
       it('takes the "true" string some saved data carries as on', () => {
         mount();
 
-        feedback().setValues({ feedBack: 'true' });
+        feedback().setValues({ feedBack: 'true', textFeedBack: 'Well done' });
 
         expect(checkbox().checked).toBe(true);
       });
@@ -2128,7 +2128,12 @@ describe('common_idevices_edition.js', () => {
       });
 
       it('writes the message into TinyMCE once it has started', () => {
-        const editor = { initialized: true, setContent: vi.fn(), getContent: vi.fn() };
+        let content = '';
+        const editor = {
+          initialized: true,
+          setContent: vi.fn((html) => (content = html)),
+          getContent: vi.fn(() => content),
+        };
         withEditor(editor, () => {
           mount();
 
@@ -2136,7 +2141,100 @@ describe('common_idevices_edition.js', () => {
 
           expect(editor.setContent).toHaveBeenCalledWith('Hi');
           expect(textarea().value).toBe('');
+          expect(checkbox().checked).toBe(true);
         });
+      });
+    });
+
+    describe('an activity saved with the feedback on and no message', () => {
+      // A mistake: its learners got an empty box. It loads with the feedback off.
+      it('loads with the feedback off', () => {
+        mount();
+
+        feedback().setValues({ feedBack: true, percentajeFB: 60, textFeedBack: '' });
+
+        expect(checkbox().checked).toBe(false);
+        expect(percentage().disabled).toBe(true);
+        expect(editorBlock().classList.contains('d-none')).toBe(true);
+        expect(feedback().getValues()).toEqual({ feedBack: false, percentajeFB: 60, textFeedBack: '' });
+        expect(globalThis.eXe.app.alert).not.toHaveBeenCalled();
+      });
+
+      it('counts a message of spaces as no message', () => {
+        mount();
+
+        feedback().setValues({ feedBack: true, textFeedBack: '  \n ' });
+
+        expect(checkbox().checked).toBe(false);
+      });
+
+      it('keeps the feedback on when the iDevice loads its message after the switch', () => {
+        mount();
+
+        feedback().setValues({ feedBack: true, percentajeFB: 60 });
+        feedback().setText('<p>Well done</p>');
+
+        expect(checkbox().checked).toBe(true);
+        expect(editorBlock().classList.contains('d-none')).toBe(false);
+      });
+
+      it('and when it loads its message before the switch', () => {
+        mount();
+
+        feedback().setText('<p>Well done</p>');
+        feedback().setValues({ feedBack: true, percentajeFB: 60 });
+
+        expect(checkbox().checked).toBe(true);
+      });
+
+      it('turns it off whichever of the two the iDevice loads first', () => {
+        mount();
+        feedback().setValues({ feedBack: true });
+        feedback().setText('');
+        expect(checkbox().checked).toBe(false);
+
+        mount();
+        feedback().setText('');
+        feedback().setValues({ feedBack: true });
+        expect(checkbox().checked).toBe(false);
+      });
+
+      it('keeps the switch on while the feedback is compulsory, and still asks for the message', () => {
+        mount();
+        feedback().setRequired(true);
+
+        feedback().setValues({ feedBack: true, textFeedBack: '' });
+
+        expect(checkbox().checked).toBe(true);
+        expect(feedback().getValues()).toBe(false);
+        feedback().setRequired(false);
+        expect(checkbox().checked).toBe(false);
+      });
+    });
+
+    describe('the feedback the author switches on', () => {
+      it('asks for its message when saving', () => {
+        mount();
+        feedback().addEvents();
+        feedback().setValues({ feedBack: true, textFeedBack: '' });
+
+        checkbox().checked = true;
+        checkbox().dispatchEvent(new Event('change', { bubbles: true }));
+
+        expect(feedback().getValues()).toBe(false);
+        expect(globalThis.eXe.app.alert).toHaveBeenCalledWith('Message to display when passing the game');
+      });
+
+      it('stays on when a message is loaded afterwards, as the author chose', () => {
+        mount();
+        feedback().addEvents();
+        feedback().setValues({ feedBack: false });
+
+        checkbox().checked = true;
+        checkbox().dispatchEvent(new Event('change', { bubbles: true }));
+        feedback().setText('<p>Generated message</p>');
+
+        expect(checkbox().checked).toBe(true);
       });
     });
 
@@ -2160,7 +2258,7 @@ describe('common_idevices_edition.js', () => {
 
       it('refuses an empty message while the feedback is on, and says why', () => {
         mount();
-        feedback().setValues({ feedBack: true, textFeedBack: '   ' });
+        checkbox().checked = true;
 
         expect(feedback().getValues()).toBe(false);
         expect(globalThis.eXe.app.alert).toHaveBeenCalledWith('Message to display when passing the game');
@@ -2250,7 +2348,7 @@ describe('common_idevices_edition.js', () => {
         expect(checkbox().disabled).toBe(false);
         expect(editorBlock().classList.contains('d-none')).toBe(true);
 
-        feedback().setValues({ feedBack: true });
+        feedback().setValues({ feedBack: true, textFeedBack: 'Well done' });
         feedback().setRequired(true);
         feedback().setRequired(false);
         expect(checkbox().checked).toBe(true);
@@ -2259,7 +2357,7 @@ describe('common_idevices_edition.js', () => {
 
       it('changes nothing when asked for the state it is already in', () => {
         mount();
-        feedback().setValues({ feedBack: true });
+        feedback().setValues({ feedBack: true, textFeedBack: 'Well done' });
 
         feedback().setRequired(false);
         expect(checkbox().checked).toBe(true);

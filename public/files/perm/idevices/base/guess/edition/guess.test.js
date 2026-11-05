@@ -900,6 +900,8 @@ describe('guess edition: shared form tabs and feedback', () => {
   });
 
   it('restores the feedback and its mode with the game', () => {
+    // Saved with its message: without one, the feedback loads off.
+    $exeIDevicesEdition.iDevice.gamification.feedback.setText('<p>Well done</p>');
     device.updateFieldGame(game({ gameMode: 2, feedBack: false, percentajeFB: 60 }));
 
     expect(feedback().isRequired()).toBe(true);
@@ -948,8 +950,9 @@ describe('guess edition: shared form tabs and feedback', () => {
     });
 
     it('saves the feedback values the export reads', () => {
-      device.updateFieldGame(game({ wordsGame: device.wordsGame, feedBack: true, percentajeFB: 70 }));
+      // Saved with its message: without one, the feedback loads off.
       editors.eXeGameFeedBackEditor = '<p>Bravo</p>';
+      device.updateFieldGame(game({ wordsGame: device.wordsGame, feedBack: true, percentajeFB: 70 }));
       // The question being edited is checked against its media controls,
       // which is not what this test is about.
       vi.spyOn(device, 'validateQuestion').mockReturnValue(true);
