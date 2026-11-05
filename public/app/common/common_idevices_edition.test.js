@@ -1733,6 +1733,23 @@ describe('common_idevices_edition.js', () => {
       expect(modal('ai').classList.contains('show')).toBe(true);
     });
 
+    it('stays closed when it is closed while it steps aside, and gives the focus back to its link', () => {
+      render({ contents: '' });
+      const alertModal = document.createElement('div');
+      alertModal.className = 'modal';
+      document.body.appendChild(alertModal);
+      link('ai').click();
+      const focusLink = vi.spyOn(link('ai'), 'focus');
+
+      // The iDevice reports the questions it added in an alert of its own, then closes the window.
+      alertModal.dispatchEvent(new Event('show.bs.modal', { bubbles: true }));
+      share().close('ai');
+      expect(focusLink).not.toHaveBeenCalled();
+
+      alertModal.dispatchEvent(new Event('hidden.bs.modal'));
+      expect(modal('ai').classList.contains('show')).toBe(false);
+      expect(focusLink).toHaveBeenCalledOnce();
+    });
 
     it('listens for the application modals once, however many forms are mounted', () => {
       const yieldTo = vi.spyOn(share(), 'yieldTo');
@@ -3096,6 +3113,34 @@ describe('common_idevices_edition.js', () => {
         expect(globalThis.eXe.app.alert).not.toHaveBeenCalled();
       });
 
+      it('saveButton click closes the window when the callback added every question and said so itself', async () => {
+        const share = globalThis.$exeIDevicesEdition.iDevice.gamification.share;
+        const close = vi.spyOn(share, 'close');
+        const saveQuestionsMock = vi
+          .fn()
+          .mockResolvedValueOnce({ handledMessaging: true, remainingLines: ['Bad#line'] })
+          .mockResolvedValueOnce({ handledMessaging: true })
+          .mockResolvedValueOnce({ handledMessaging: true, remainingLines: [] });
+        try {
+          share.addEvents(0, saveQuestionsMock);
+          // Lines left to correct, or a callback that does not say what is left: the window stays.
+          for (let i = 0; i < 2; i++) {
+            $('#eXeEQuestionsArea').val('Good#Definition\nBad#line');
+            $('#eXeESaveButton').trigger('click');
+            await flushAsync();
+          }
+          expect(close).not.toHaveBeenCalled();
+
+          $('#eXeEQuestionsArea').val('Good#Definition');
+          $('#eXeESaveButton').trigger('click');
+          await flushAsync();
+          expect(close).toHaveBeenCalledWith('ai');
+          expect($('#eXeEQuestionsArea').val()).toBe('');
+          expect(globalThis.eXe.app.alert).not.toHaveBeenCalled();
+        } finally {
+          close.mockRestore();
+        }
+      });
 
       it('openChatGPTButton click shows alert when prompt is empty', () => {
         const saveQuestionsMock = vi.fn();

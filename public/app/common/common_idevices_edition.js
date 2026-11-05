@@ -1190,7 +1190,8 @@ var $exeIDevicesEdition = {
                  * opens one of its own over an open window -- the alert about
                  * the questions just pasted, say -- the window steps aside, so
                  * that alert is not left behind it, and comes back once the
-                 * alert is closed.
+                 * alert is closed -- unless it was closed meanwhile: then the
+                 * focus goes back to its link.
                  *
                  * @param {HTMLElement} other The modal being shown.
                  */
@@ -1206,8 +1207,15 @@ var $exeIDevicesEdition = {
                         other.addEventListener(
                             'hidden.bs.modal',
                             function () {
+                                const closed = !$(el).data('exeShareSuspended');
                                 $(el).data('exeShareSuspended', false);
-                                if (document.body.contains(el)) Modal.getOrCreateInstance(el).show();
+                                if (!document.body.contains(el)) return;
+                                if (!closed) {
+                                    Modal.getOrCreateInstance(el).show();
+                                    return;
+                                }
+                                const trigger = $(el).data('exeShareTrigger');
+                                if (trigger && document.body.contains(trigger)) trigger.focus();
                             },
                             { once: true }
                         );
@@ -1215,10 +1223,17 @@ var $exeIDevicesEdition = {
                 },
 
                 /**
+                 * Close a window. One that stepped aside (see yieldTo) is
+                 * hidden already: it just does not come back.
+                 *
                  * @param {string} name A name in `windows`.
                  */
                 close: function (name) {
                     const el = document.getElementById($exeIDevicesEdition.iDevice.gamification.share.getModalId(name));
+                    if (el && $(el).data('exeShareSuspended')) {
+                        $(el).data('exeShareSuspended', false);
+                        return;
+                    }
                     const Modal = window.bootstrap && window.bootstrap.Modal;
                     const instance = el && Modal ? Modal.getInstance(el) : null;
                     if (instance) instance.hide();
@@ -1750,11 +1765,15 @@ var $exeIDevicesEdition = {
                         // callback already informed the user, so skip the generic alert.
                         // It may also return `remainingLines` (questions it could not
                         // add): refill the textarea with them, cleared, so the user can
-                        // correct them and save again.
+                        // correct them and save again. None left means all of them are
+                        // in the form, and the window closes as below.
                         const result = await saveQuestions(questions.validLines, questions.invalidLines);
                         if (result && result.handledMessaging) {
                             if (Array.isArray(result.remainingLines)) {
                                 $textQuestionsArea.val(result.remainingLines.join('\n'));
+                                if (result.remainingLines.length === 0) {
+                                    $exeIDevicesEdition.iDevice.gamification.share.close('ai');
+                                }
                             }
                             return;
                         }
