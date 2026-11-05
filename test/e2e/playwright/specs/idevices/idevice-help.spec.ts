@@ -38,3 +38,48 @@ test('An open help stays under the modals and their backdrop', async ({ authenti
     expect(layers.backdrop).toBeGreaterThan(0);
     expect(layers.help).toBeLessThan(layers.backdrop);
 });
+
+test('An open help keeps its width near the right edge, also on a phone', async ({
+    authenticatedPage: page,
+    createProject,
+}) => {
+    const help = await openGuessOptions(page, createProject);
+    let moved = 0;
+    for (const width of [1024, 390]) {
+        await page.setViewportSize({ width, height: 844 });
+        for (const button of await help.all()) {
+            await button.click();
+            const content = page.locator(`#${await button.getAttribute('aria-controls')}`);
+            await expect(content).toBeVisible();
+            const fit = await content.evaluate(element => {
+                const rect = element.getBoundingClientRect();
+                const icon = element.parentElement!.getBoundingClientRect();
+                const pane = element.closest('.tab-pane')!;
+                const panel = pane.getBoundingClientRect();
+                // The part of the panel on screen: the window and the scrolling boxes around it cut it.
+                let left = Math.max(0, panel.left);
+                let right = Math.min(panel.right, document.documentElement.clientWidth);
+                for (let parent = pane.parentElement; parent; parent = parent.parentElement) {
+                    if (/auto|scroll|hidden|clip/.test(getComputedStyle(parent).overflowX)) {
+                        const clip = parent.getBoundingClientRect();
+                        left = Math.max(left, clip.left);
+                        right = Math.min(right, clip.right);
+                    }
+                }
+                return {
+                    inside: rect.left >= left - 1 && rect.right <= right + 1,
+                    // As wide as its CSS says (300px), or as all that is seen of the panel when that is narrower.
+                    wide: rect.width >= Math.min(300, right - left - 8) - 1,
+                    unbroken: element.scrollWidth <= element.clientWidth,
+                    moved: rect.left < icon.left - 1,
+                };
+            });
+            expect(fit).toMatchObject({ inside: true, wide: true, unbroken: true });
+            if (fit.moved) moved++;
+            await button.press('Escape');
+            await expect(content).toBeHidden();
+        }
+    }
+    // Some icon is close enough to the right edge for its help to open to the left.
+    expect(moved).toBeGreaterThan(0);
+});

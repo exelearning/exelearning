@@ -226,25 +226,38 @@ describe('common_idevices_edition.js', () => {
         expect(document.querySelector('button').getAttribute('aria-expanded')).toBe('false');
       });
 
+      // happy-dom has no layout: the explanation is as wide as its CSS (300px) says.
+      const naturalWidth = (content, width = 300) =>
+        Object.defineProperty(content, 'offsetWidth', { configurable: true, get: () => width });
+
       it('fits help to its panel and clipping ancestors, and refits only while open', () => {
         document.body.innerHTML = `<div id="scroller" style="overflow-x: auto"><div class="tab-pane">
           ${common().getHelpTooltip('Explain the option')}</div></div>`;
         const panel = document.querySelector('.tab-pane');
         const button = panel.querySelector('button');
         const content = panel.querySelector('.help-content');
-        const panelRect = vi.spyOn(panel, 'getBoundingClientRect').mockReturnValue({ right: 900 });
-        vi.spyOn(document.getElementById('scroller'), 'getBoundingClientRect').mockReturnValue({ right: 875 });
-        const anchorRect = vi.spyOn(button.parentElement, 'getBoundingClientRect').mockReturnValue({ left: 730 });
+        naturalWidth(content);
+        const panelRect = vi.spyOn(panel, 'getBoundingClientRect').mockReturnValue({ left: 100, right: 900 });
+        vi.spyOn(document.getElementById('scroller'), 'getBoundingClientRect').mockReturnValue({ left: 0, right: 875 });
+        const anchorRect = vi.spyOn(button.parentElement, 'getBoundingClientRect').mockReturnValue({ left: 400 });
         common().initHelpTooltips(panel);
         button.click();
-        expect(content.style.maxWidth).toBe('137px');
+        // There is room on the right of the icon: it opens there, at its own width.
+        expect(content.style.left).toBe('0px');
+        expect(content.style.maxWidth).toBe('300px');
 
-        panelRect.mockReturnValue({ right: 820 });
+        // Near the edge it moves left instead of shrinking.
+        anchorRect.mockReturnValue({ left: 730 });
         window.dispatchEvent(new Event('resize'));
-        expect(content.style.maxWidth).toBe('82px');
-        anchorRect.mockReturnValue({ left: 700 });
+        expect(content.style.left).toBe('-163px');
+        expect(content.style.maxWidth).toBe('300px');
+
+        // A panel narrower than the explanation: it takes the whole panel.
+        panelRect.mockReturnValue({ left: 100, right: 300 });
+        anchorRect.mockReturnValue({ left: 250 });
         document.getElementById('scroller').dispatchEvent(new Event('scroll'));
-        expect(content.style.maxWidth).toBe('112px');
+        expect(content.style.left).toBe('-150px');
+        expect(content.style.maxWidth).toBe('192px');
 
         button.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
         panelRect.mockClear();
@@ -264,11 +277,20 @@ describe('common_idevices_edition.js', () => {
         document.body.innerHTML = `<div id="form">${common().getHelpTooltip('Explain the option')}</div>`;
         const form = document.getElementById('form');
         const button = form.querySelector('button');
-        vi.spyOn(form, 'getBoundingClientRect').mockReturnValue({ right: window.innerWidth + 200 });
+        const content = form.querySelector('.help-content');
+        naturalWidth(content);
+        vi.spyOn(form, 'getBoundingClientRect').mockReturnValue({ left: -50, right: window.innerWidth + 200 });
         vi.spyOn(button.parentElement, 'getBoundingClientRect').mockReturnValue({ left: window.innerWidth - 120 });
         common().initHelpTooltips(form);
         button.click();
-        expect(form.querySelector('.help-content').style.maxWidth).toBe('112px');
+        expect(content.style.left).toBe(`${window.innerWidth - 8 - 300 - (window.innerWidth - 120)}px`);
+        expect(content.style.maxWidth).toBe('300px');
+
+        // Neither past the left edge of the window.
+        naturalWidth(content, window.innerWidth + 100);
+        window.dispatchEvent(new Event('resize'));
+        expect(content.style.left).toBe(`${-(window.innerWidth - 120)}px`);
+        expect(content.style.maxWidth).toBe(`${window.innerWidth - 8}px`);
       });
 
       it('leaves missing forms and forms without help alone', () => {
@@ -1607,6 +1629,7 @@ describe('common_idevices_edition.js', () => {
       modal('import').dispatchEvent(new Event('show.bs.modal', { bubbles: true }));
       expect(modal('ai').classList.contains('show')).toBe(true);
     });
+
 
     it('listens for the application modals once, however many forms are mounted', () => {
       const yieldTo = vi.spyOn(share(), 'yieldTo');
@@ -2969,6 +2992,7 @@ describe('common_idevices_edition.js', () => {
         expect($('#eXeEQuestionsArea').val()).toBe('Bad#line');
         expect(globalThis.eXe.app.alert).not.toHaveBeenCalled();
       });
+
 
       it('openChatGPTButton click shows alert when prompt is empty', () => {
         const saveQuestionsMock = vi.fn();

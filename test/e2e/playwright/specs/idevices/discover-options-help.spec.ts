@@ -53,18 +53,19 @@ test('Discover explains options inline without changing their values', async ({
             await expect(page.getByRole('tooltip')).toHaveCount(0);
             const content = page.locator(`#${await button.getAttribute('aria-controls')}`);
             await expect(content).toBeVisible();
-            const opensToTheRight = await content.evaluate(element => {
+            const fitsInThePanel = await content.evaluate(element => {
                 const rect = element.getBoundingClientRect();
                 const icon = element.parentElement!.querySelector('button')!.getBoundingClientRect();
                 const panel = element.closest('.tab-pane')!.getBoundingClientRect();
                 return (
-                    Math.abs(rect.left - icon.left) < 2 &&
+                    // Under its icon, or moved left to keep its width near the right edge.
+                    (Math.abs(rect.left - icon.left) < 2 || (rect.left < icon.left && rect.width >= 299)) &&
                     rect.left >= panel.left &&
                     rect.right <= Math.min(panel.right, window.innerWidth) &&
                     element.scrollWidth <= element.clientWidth
                 );
             });
-            expect(opensToTheRight).toBe(true);
+            expect(fitsInThePanel).toBe(true);
             await page.locator('#descubreQEIdeviceForm-tab-options').hover();
             await expect(content).toBeVisible();
             await expect(button).toHaveAttribute('aria-expanded', 'true');

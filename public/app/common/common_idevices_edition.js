@@ -78,20 +78,30 @@ var $exeIDevicesEdition = {
                 const disposers = pending.map((button) => {
                     const tooltip = bootstrap.Tooltip.getInstance(button);
                     const content = document.getElementById(button.getAttribute('aria-controls'));
+                    // The explanation opens below the icon, to its right. When it
+                    // does not fit there it moves left, keeping its width, and it
+                    // is only narrower than that in a panel narrower than itself.
                     const fitContent = function () {
                         const panel = button.closest('.tab-pane') || element;
-                        let right = Math.min(
-                            document.documentElement.clientWidth || window.innerWidth,
-                            panel.getBoundingClientRect().right,
-                        );
-                        // A scrollable editor can clip the panel before its own edge.
+                        const box = panel.getBoundingClientRect();
+                        let left = Math.max(0, box.left);
+                        let right = Math.min(document.documentElement.clientWidth || window.innerWidth, box.right);
+                        // A scrollable editor can clip the panel before its own edges.
                         for (let parent = panel.parentElement; parent; parent = parent.parentElement) {
                             if (/auto|scroll|hidden|clip/.test(getComputedStyle(parent).overflowX)) {
-                                right = Math.min(right, parent.getBoundingClientRect().right);
+                                const clip = parent.getBoundingClientRect();
+                                left = Math.max(left, clip.left);
+                                right = Math.min(right, clip.right);
                             }
                         }
-                        const left = button.parentElement.getBoundingClientRect().left;
-                        content.style.maxWidth = `${Math.max(0, right - left - 8)}px`;
+                        right -= 8;
+                        content.style.left = '';
+                        content.style.maxWidth = '';
+                        const width = Math.max(0, Math.min(content.offsetWidth, right - left));
+                        const anchor = button.parentElement.getBoundingClientRect().left;
+                        const start = Math.max(left, Math.min(anchor, right - width));
+                        content.style.left = `${start - anchor}px`;
+                        content.style.maxWidth = `${width}px`;
                     };
                     const hide = function () {
                         content.classList.add('help-hidden');

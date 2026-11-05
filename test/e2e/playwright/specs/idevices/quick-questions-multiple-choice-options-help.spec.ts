@@ -101,14 +101,20 @@ test('Multiple Choice explains each option inline without changing its value', a
         .locator('#seleccionaEOptions > .d-flex')
         .filter({ has: page.locator('#seleccionaEShowSolution') })
         .locator('.exe-idevice-help');
-    // Below 1200px the panels collapse, which leaves the explanation room to reach its
-    // widest at 1024px: with them open it has to grow when the window does.
+    // Below 1200px the panels collapse, which leaves the explanation room at 1024px. With them open
+    // it moves left to keep its width, and back towards its icon when the window grows.
     await openLeftPanels(page);
     await solutionHelp.click();
     const solutionContent = page.locator(`#${await solutionHelp.getAttribute('aria-controls')}`);
-    const narrowWidth = (await solutionContent.boundingBox())!.width;
+    const offset = () =>
+        solutionContent.evaluate(
+            element => element.getBoundingClientRect().left - element.parentElement!.getBoundingClientRect().left,
+        );
+    const narrowOffset = await offset();
+    expect(narrowOffset).toBeLessThan(0);
+    await expect(solutionContent).toHaveCSS('max-width', '300px');
     await page.setViewportSize({ width: 1280, height: 900 });
-    await expect.poll(async () => (await solutionContent.boundingBox())!.width).toBeGreaterThan(narrowWidth);
+    await expect.poll(offset).toBeGreaterThan(narrowOffset);
     await solutionHelp.press('Escape');
     await page.setViewportSize({ width: 1024, height: 900 });
 

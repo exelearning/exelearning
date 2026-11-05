@@ -59,7 +59,8 @@ test('Math problems explains its settings inline without changing their values',
                     const icon = element.parentElement!.querySelector('button')!.getBoundingClientRect();
                     const panel = element.closest('.tab-pane')!.getBoundingClientRect();
                     return (
-                        Math.abs(rect.left - icon.left) < 2 &&
+                        // Under its icon, or moved left to keep its width near the right edge.
+                        (Math.abs(rect.left - icon.left) < 2 || (rect.left < icon.left && rect.width >= 299)) &&
                         rect.left >= panel.left &&
                         rect.right <= Math.min(panel.right, window.innerWidth) &&
                         element.scrollWidth <= element.clientWidth
