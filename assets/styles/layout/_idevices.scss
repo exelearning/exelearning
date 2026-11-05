@@ -66,7 +66,7 @@ button.exe-idevice-help {
         }
 
         &.active {
-            color: var(--dark-exe-color-text);
+            color: var(--brand-primary, #0BA1A1);
             background-color: transparent;
             font-weight: 600;
             // Inset, so the underline stays inside the tab, over the row's border

@@ -35,6 +35,17 @@ test('The active tab of an iDevice form is bold and underlined, also in forced c
     expect(on.weight).toBe(600);
     expect(off.weight).toBeLessThan(600);
     expect(on.color).not.toBe(off.color);
+    // The colour of the active tab of the project properties.
+    const properties = await page.evaluate(() => {
+        const row = document.createElement('div');
+        row.className = 'project-properties-tabs';
+        row.innerHTML = '<button class="project-properties-tab active">Tab</button>';
+        document.body.appendChild(row);
+        const color = getComputedStyle(row.firstElementChild!).color;
+        row.remove();
+        return color;
+    });
+    expect(on.color).toBe(properties);
     expect(on.underline).toMatch(/0px -3px 0px 0px inset/);
     expect(off.underline).toBe('none');
     // No folder borders: the active tab is not boxed.
