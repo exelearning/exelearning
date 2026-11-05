@@ -1323,6 +1323,10 @@
                 <span class="mi">engineering</span>
                 {{ t.maintenance or 'Maintenance' }}
             </a>
+            <a href="#cleanup" class="admin-nav-link" data-section="cleanup">
+                <span class="mi">delete_sweep</span>
+                {{ t.cleanup or 'Project cleanup' }}
+            </a>
             <div class="admin-nav-divider"></div>
             <div class="admin-nav-section">{{ t.navigation or 'Navigation' }}</div>
             <a href="{{ basePath }}/workarea" class="admin-nav-link">
@@ -2116,6 +2120,79 @@ window.$eXeLearningCustom = {
                     </div>
                 </div>
             </section>
+
+            <!-- Project cleanup Section -->
+            <section id="cleanup" class="admin-section">
+                <div class="admin-card">
+                    <div class="admin-card-header">
+                        <h5>
+                            <span class="mi mi-sm">delete_sweep</span>
+                            {{ t.cleanup or 'Project cleanup' }}
+                        </h5>
+                    </div>
+                    <div class="admin-card-body">
+                        <div class="admin-settings-actions">
+                            <button id="cleanupSaveBtn" class="btn-admin-primary">
+                                <span class="mi mi-sm">save</span>
+                                {{ t.save or 'Save' }}
+                            </button>
+                            <span id="cleanupSaveStatus" class="admin-settings-status"></span>
+                        </div>
+
+                        <div class="maintenance-status-card maintenance-status-active">
+                            <div class="maintenance-status-icon">
+                                <span class="mi">warning</span>
+                            </div>
+                            <div class="maintenance-status-info">
+                                <strong>{{ t.cleanup_warning or 'Deletion is permanent: the projects, their version history and their files are removed and cannot be recovered. Only private projects without collaborators are eligible.' }}</strong>
+                                <p>{{ t.cleanup_runs_immediately or 'A first cleanup runs as soon as you enable this, and then once per interval.' }}</p>
+                            </div>
+                        </div>
+
+                        <div class="admin-settings-group">
+                            <h6>{{ t.cleanup_settings or 'Automatic project cleanup' }}</h6>
+                            <div class="admin-settings-grid">
+                                <div class="admin-field">
+                                    <label for="cleanupEnabledToggle">CLEANUP_ENABLED</label>
+                                    <div class="form-check-custom">
+                                        <input type="checkbox" id="cleanupEnabledToggle" data-cleanup-setting-key="CLEANUP_ENABLED" data-setting-type="boolean" {% if adminSettings.cleanup.cleanup_enabled %}checked{% endif %}>
+                                        <span>{{ t.active or 'Active' }}</span>
+                                    </div>
+                                    <small>{{ t.cleanup_enabled_desc or 'Periodically deletes drafts that were never saved and projects owned by guest users.' }}</small>
+                                </div>
+                                <div class="admin-field">
+                                    <label for="cleanupIntervalInput">CLEANUP_INTERVAL_HOURS</label>
+                                    <input id="cleanupIntervalInput" class="admin-input" type="number" min="{{ cleanupLimits.intervalHours.min }}" max="{{ cleanupLimits.intervalHours.max }}" step="1" data-cleanup-setting-key="CLEANUP_INTERVAL_HOURS" data-setting-type="number" value="{{ adminSettings.cleanup.cleanup_interval_hours }}">
+                                    <small>{{ t.cleanup_interval_desc or 'Hours between cleanup runs.' }}</small>
+                                </div>
+                                <div class="admin-field">
+                                    <label for="cleanupUnsavedInput">CLEANUP_UNSAVED_AGE_HOURS</label>
+                                    <input id="cleanupUnsavedInput" class="admin-input" type="number" min="{{ cleanupLimits.unsavedAgeHours.min }}" max="{{ cleanupLimits.unsavedAgeHours.max }}" step="1" data-cleanup-setting-key="CLEANUP_UNSAVED_AGE_HOURS" data-setting-type="number" value="{{ adminSettings.cleanup.cleanup_unsaved_age_hours }}">
+                                    <small>{{ t.cleanup_unsaved_desc or 'Delete never-saved drafts after this many hours.' }}</small>
+                                </div>
+                                <div class="admin-field">
+                                    <label for="cleanupGuestInput">CLEANUP_GUEST_AGE_DAYS</label>
+                                    <input id="cleanupGuestInput" class="admin-input" type="number" min="{{ cleanupLimits.guestAgeDays.min }}" max="{{ cleanupLimits.guestAgeDays.max }}" step="1" data-cleanup-setting-key="CLEANUP_GUEST_AGE_DAYS" data-setting-type="number" value="{{ adminSettings.cleanup.cleanup_guest_age_days }}">
+                                    <small>{{ t.cleanup_guest_desc or 'Delete projects owned by guest users after this many days.' }}</small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="admin-settings-group">
+                            <h6>{{ t.cleanup_preview_title or 'Projects eligible right now' }}</h6>
+                            <div class="admin-settings-actions">
+                                <button id="cleanupPreviewBtn" class="btn-admin-outline btn-sm">
+                                    <span class="mi mi-sm">refresh</span>
+                                    {{ t.cleanup_preview_refresh or 'Refresh count' }}
+                                </button>
+                                <span id="cleanupPreviewStatus" class="admin-settings-status"></span>
+                            </div>
+                            <p id="cleanupPreviewResult" class="mb-1">—</p>
+                            <small>{{ t.cleanup_preview_help or 'Informational count with the saved settings. It is not a deletion and the number can change before the next run.' }}</small>
+                        </div>
+                    </div>
+                </div>
+            </section>
         </div>
     </main>
 
@@ -2335,6 +2412,7 @@ window.$eXeLearningCustom = {
             password_strength_strong: '{{ t.password_strength_strong or "Password strength: strong" }}',
             presentation: '{{ t.customization or "Customization" }}',
             maintenance: '{{ t.maintenance or "Maintenance" }}',
+            cleanup: '{{ t.cleanup or "Project cleanup" }}',
             logins: '{{ t.logins or "Logins" }}',
             projects_created: '{{ t.projects_created or "Projects Created" }}'
         };
@@ -2382,7 +2460,8 @@ window.$eXeLearningCustom = {
                 settings: T.settings,
                 sharing: T.sharing,
                 presentation: T.customization,
-                maintenance: T.maintenance
+                maintenance: T.maintenance,
+                cleanup: T.cleanup
             };
             document.getElementById('sectionTitle').textContent = titles[section] || section;
 
@@ -2530,6 +2609,102 @@ window.$eXeLearningCustom = {
                     }
                 } finally {
                     sharingSaveBtn.removeAttribute('disabled');
+                }
+            });
+        }
+
+        // Project cleanup settings
+        const cleanupSaveBtn = document.getElementById('cleanupSaveBtn');
+        const cleanupSaveStatus = document.getElementById('cleanupSaveStatus');
+        const cleanupPreviewBtn = document.getElementById('cleanupPreviewBtn');
+        const cleanupPreviewStatus = document.getElementById('cleanupPreviewStatus');
+        const cleanupPreviewResult = document.getElementById('cleanupPreviewResult');
+
+        async function loadCleanupPreview() {
+            if (!cleanupPreviewResult) return;
+            if (cleanupPreviewStatus) {
+                cleanupPreviewStatus.textContent = '{{ t.loading or "Loading..." }}';
+                cleanupPreviewStatus.classList.remove('success', 'error');
+            }
+            try {
+                const res = await fetch(`${API_BASE}/cleanup/preview`, { credentials: 'include' });
+                if (!res.ok) throw new Error('Failed to load preview');
+                const data = await res.json();
+                cleanupPreviewResult.textContent =
+                    '{{ t.cleanup_preview_total or "Total" }}: ' + data.total +
+                    ' ({{ t.cleanup_preview_unsaved or "Never-saved drafts" }}: ' + data.unsaved +
+                    ', {{ t.cleanup_preview_guest or "Guest projects" }}: ' + data.guest + ')';
+                if (cleanupPreviewStatus) cleanupPreviewStatus.textContent = '';
+            } catch (err) {
+                cleanupPreviewResult.textContent = '—';
+                if (cleanupPreviewStatus) {
+                    cleanupPreviewStatus.textContent = '{{ t.cleanup_preview_error or "Could not read the count" }}';
+                    cleanupPreviewStatus.classList.add('error');
+                }
+            }
+        }
+
+        if (cleanupPreviewBtn) {
+            cleanupPreviewBtn.addEventListener('click', loadCleanupPreview);
+        }
+
+        document.querySelector('.admin-nav-link[data-section="cleanup"]')?.addEventListener('click', () => {
+            loadCleanupPreview();
+        });
+
+        if (cleanupSaveBtn) {
+            cleanupSaveBtn.addEventListener('click', async () => {
+                cleanupSaveBtn.setAttribute('disabled', 'disabled');
+                if (cleanupSaveStatus) {
+                    cleanupSaveStatus.textContent = '{{ t.saving or "Saving..." }}';
+                    cleanupSaveStatus.classList.remove('success', 'error');
+                }
+
+                try {
+                    const toggle = document.getElementById('cleanupEnabledToggle');
+                    const intervalInput = document.getElementById('cleanupIntervalInput');
+                    const unsavedInput = document.getElementById('cleanupUnsavedInput');
+                    const guestInput = document.getElementById('cleanupGuestInput');
+                    // Send what the form holds. The old per-field fallbacks
+                    // restated the defaults a fourth time, and a missing input
+                    // is a template bug, not a reason to save a guessed value.
+                    const settings = [
+                        { key: 'CLEANUP_ENABLED', value: toggle && toggle.checked ? 'true' : 'false', type: 'boolean' },
+                    ];
+                    for (const input of [intervalInput, unsavedInput, guestInput]) {
+                        if (input) {
+                            settings.push({
+                                key: input.getAttribute('data-cleanup-setting-key'),
+                                value: input.value,
+                                type: 'number',
+                            });
+                        }
+                    }
+                    const res = await fetch(`${API_BASE}/settings`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        credentials: 'include',
+                        body: JSON.stringify({ settings }),
+                    });
+                    const resData = await res.json().catch(() => ({}));
+                    if (!res.ok) throw new Error(resData.message || 'Failed to save');
+
+                    if (cleanupSaveStatus) {
+                        cleanupSaveStatus.textContent = '{{ t.saved or "Saved" }}';
+                        cleanupSaveStatus.classList.add('success');
+                        setTimeout(() => {
+                            cleanupSaveStatus.textContent = '';
+                            cleanupSaveStatus.classList.remove('success');
+                        }, 3000);
+                    }
+                    loadCleanupPreview();
+                } catch (err) {
+                    if (cleanupSaveStatus) {
+                        cleanupSaveStatus.textContent = err.message || '{{ t.error_saving or "Error saving" }}';
+                        cleanupSaveStatus.classList.add('error');
+                    }
+                } finally {
+                    cleanupSaveBtn.removeAttribute('disabled');
                 }
             });
         }

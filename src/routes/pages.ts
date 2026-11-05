@@ -50,6 +50,7 @@ import {
     isPublicViewFeatureEnabled as isPublicViewFeatureEnabledFromSettings,
     parseBoolean as parseAppSettingBoolean,
 } from '../services/app-settings';
+import { getConfigFromEnv, normalizeConfig, CLEANUP_LIMITS } from '../services/cleanup-scheduler';
 type AppSettingsTable = {
     key: string;
     value: string;
@@ -1418,6 +1419,20 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                     maintenance: {
                         maintenance_mode: false,
                     },
+                    // Show what the scheduler would actually use, not the raw
+                    // environment: an out-of-range CLEANUP_* value is replaced
+                    // by the default there, and rendering the raw one made the
+                    // panel display a number the scheduler was not using (and
+                    // then 400 when the admin saved the form unchanged).
+                    cleanup: (() => {
+                        const fromEnv = normalizeConfig(getConfigFromEnv());
+                        return {
+                            cleanup_enabled: fromEnv.enabled,
+                            cleanup_interval_hours: fromEnv.intervalMs / (60 * 60 * 1000),
+                            cleanup_unsaved_age_hours: fromEnv.unsavedAgeHours,
+                            cleanup_guest_age_days: fromEnv.guestAgeDays,
+                        };
+                    })(),
                 };
 
                 const adminSettingsMap: Record<
@@ -1466,6 +1481,10 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                     APP_NAME: { path: ['presentation', 'app_name'], type: 'string' },
                     APP_FAVICON_PATH: { path: ['presentation', 'app_favicon_path'], type: 'string' },
                     MAINTENANCE_MODE: { path: ['maintenance', 'maintenance_mode'], type: 'boolean' },
+                    CLEANUP_ENABLED: { path: ['cleanup', 'cleanup_enabled'], type: 'boolean' },
+                    CLEANUP_INTERVAL_HOURS: { path: ['cleanup', 'cleanup_interval_hours'], type: 'number' },
+                    CLEANUP_UNSAVED_AGE_HOURS: { path: ['cleanup', 'cleanup_unsaved_age_hours'], type: 'number' },
+                    CLEANUP_GUEST_AGE_DAYS: { path: ['cleanup', 'cleanup_guest_age_days'], type: 'number' },
                 };
 
                 try {
@@ -1507,6 +1526,9 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                     basePath: getBasePath(),
                     defaultQuota,
                     adminSettings,
+                    // The form renders its min/max from here, so the client
+                    // cannot allow a value the API rejects.
+                    cleanupLimits: CLEANUP_LIMITS,
                     impersonation,
                 };
 
