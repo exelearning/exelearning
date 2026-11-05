@@ -49,6 +49,56 @@ button.exe-idevice-help {
     }
 }
 
+// The tabs of the iDevice forms (tabs.getHtml), in the application's style: no folder borders, and the active
+// tab bold and underlined in the brand colour, as in the project properties.
+.exe-idevice-tabs.nav-tabs {
+    gap: 0 2px;
+
+    .nav-link {
+        color: #5f5f6c;
+        background-color: transparent;
+        border: 0;
+        border-radius: 0;
+        margin-bottom: 0;
+
+        &:hover {
+            color: var(--dark-exe-color-text);
+        }
+
+        &.active {
+            color: var(--dark-exe-color-text);
+            background-color: transparent;
+            font-weight: 600;
+            // Inset, so the underline stays inside the tab, over the row's border
+            box-shadow: inset 0 -3px 0 var(--dark-exe-color);
+        }
+
+        // Important, over the global focus ring (base/_accesibility.scss), which would hide the underline
+        &:focus-visible {
+            box-shadow: inset 0 0 0 2px var(--brand-primary-300) !important;
+        }
+
+        &.active:focus-visible {
+            // The underline goes first so it is painted over the ring
+            box-shadow: inset 0 -3px 0 var(--dark-exe-color), inset 0 0 0 2px var(--brand-primary-300) !important;
+        }
+
+        // Forced colors drop box-shadow, so the active and focused tabs need a real border and outline. The
+        // border comes out of the padding, so the tab row does not grow.
+        @media (forced-colors: active) {
+            &.active {
+                padding-bottom: calc(var(--bs-nav-link-padding-y) - 3px);
+                border-bottom: 3px solid Highlight;
+            }
+
+            &:focus-visible {
+                outline: 2px solid Highlight !important;
+                outline-offset: -2px;
+            }
+        }
+    }
+}
+
 article.box {
     &.idevice-element-in-content {
         min-height: 172px;

@@ -3276,12 +3276,13 @@ var $exeIDevicesEdition = {
             },
 
             /**
-             * The horizontal tabs at the top of an iDevice form, styled with
-             * Bootstrap's nav-tabs. Each key of `config` is a tab: it is shown
-             * when the key is present and not false, and its value is its
-             * contents. Tabs always come in the order of `tabs.order` and
-             * keep their titles, so every iDevice lays out its form the same
-             * way; each panel opens with a message saying what is done there.
+             * The horizontal tabs at the top of an iDevice form: Bootstrap's
+             * nav-tabs, in the application's style (exe-idevice-tabs). Each
+             * key of `config` is a tab: it is shown when the key is present
+             * and not false, and its value is its contents. Tabs always come
+             * in the order of `tabs.order` and keep their titles, so every
+             * iDevice lays out its form the same way; each panel opens with a
+             * message saying what is done there.
              *
              * Call `tabs.bind(id)` once the HTML is in the document.
              *
@@ -3367,7 +3368,7 @@ var $exeIDevicesEdition = {
                 });
                 // The windows wait here, hidden, until bind moves them to <body>.
                 return `
-                    <ul class="nav nav-tabs" id="${id}-tabs" role="tablist">${nav}</ul>
+                    <ul class="nav nav-tabs exe-idevice-tabs" id="${id}-tabs" role="tablist">${nav}</ul>
                     <div class="tab-content border border-top-0 rounded-bottom p-3 mb-3" id="${id}-panels">${panels}</div>${tools.modals}`;
             },
 

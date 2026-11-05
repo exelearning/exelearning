@@ -1316,10 +1316,10 @@ describe('common_idevices_edition.js', () => {
         });
       });
 
-      it('styles the tabs with Bootstrap classes only', () => {
+      it('styles the tabs with Bootstrap classes, and the row in the application style', () => {
         render({ options: '', contents: '' });
 
-        const bootstrap = /^(nav|nav-tabs|nav-item|nav-link|active|show|tab-content|tab-pane|border|border-top-0|rounded-bottom|p-3|mb-3)$/;
+        const bootstrap = /^(nav|nav-tabs|exe-idevice-tabs|nav-item|nav-link|active|show|tab-content|tab-pane|border|border-top-0|rounded-bottom|p-3|mb-3)$/;
         const elements = [
           document.getElementById('testForm-tabs'),
           ...document.querySelectorAll('#testForm-tabs li, #testForm-tabs button'),
@@ -1329,7 +1329,7 @@ describe('common_idevices_edition.js', () => {
         elements.forEach((element) => {
           element.classList.forEach((klass) => expect(klass).toMatch(bootstrap));
         });
-        expect(document.getElementById('testForm-tabs').className).toBe('nav nav-tabs');
+        expect(document.getElementById('testForm-tabs').className).toBe('nav nav-tabs exe-idevice-tabs');
         expect(document.getElementById('testForm-panels').classList.contains('tab-content')).toBe(true);
       });
 
