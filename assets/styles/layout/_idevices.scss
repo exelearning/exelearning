@@ -782,6 +782,46 @@ article.box {
                     white-space: nowrap;
                     z-index: 999;
                 }
+
+                // The Options tab of the iDevice forms (tabs.getHtml), which a long line pushed sideways.
+                [role="tabpanel"][id$="-panel-options"] {
+                    // A switch's label longer than the line wraps beside its switch, at any width.
+                    .toggle-item {
+                        flex-wrap: nowrap !important;
+                    }
+
+                    .toggle-label {
+                        white-space: normal !important;
+                        flex-shrink: 1 !important;
+                    }
+                }
+
+                // On a narrow form, on a phone or in a small window, its rows, laid out on one line for a wide
+                // form, also pushed it sideways. The width that counts is the form's, not the screen's, which
+                // the side panels also take.
+                .exe-idevice-tabs + .tab-content {
+                    container: exe-idevice-form / inline-size;
+                }
+
+                @container exe-idevice-form (max-width: 40rem) {
+                    [role="tabpanel"][id$="-panel-options"] {
+                        // What does not fit goes on in the next line...
+                        * {
+                            flex-wrap: wrap !important;
+                        }
+
+                        // ...and a label longer than the line wraps.
+                        label {
+                            white-space: normal !important;
+                            flex-shrink: 1 !important;
+                        }
+
+                        // A switch leaves room for its help, which would otherwise go on alone in the next line.
+                        .toggle-item:has(+ .exe-idevice-help-container) {
+                            max-width: calc(100% - 2.5rem);
+                        }
+                    }
+                }
             }
 
         }
