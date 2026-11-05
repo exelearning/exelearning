@@ -2,6 +2,7 @@ import { test, expect } from '../../fixtures/auth.fixture';
 import { waitForEditor } from '../../helpers/editor-helpers';
 import {
     addIdevice,
+    dismissVersionNotice,
     editIdevice,
     gotoWorkarea,
     reloadPage,
@@ -22,11 +23,7 @@ test('UDL content explains its type inline and keeps it with its blocks and text
     await selectFirstPage(page);
     // The form has no description above its tabs, so the notice of a development
     // version would sit over them.
-    const dismissNotice = async () => {
-        const notice = page.getByRole('alert').filter({ hasText: 'development version' });
-        if (await notice.isVisible()) await notice.getByRole('button', { name: 'Accept' }).click();
-    };
-    await dismissNotice();
+    await dismissVersionNotice(page);
     await addIdevice(page, 'udl-content');
     const device = page.locator('.idevice_node.udl-content').first();
     const id = await device.getAttribute('id');
@@ -101,7 +98,7 @@ test('UDL content explains its type inline and keeps it with its blocks and text
 
     await saveProject(page);
     await reloadPage(page);
-    await dismissNotice();
+    await dismissVersionNotice(page);
     await selectFirstPage(page);
     await editIdevice(page, id!);
 

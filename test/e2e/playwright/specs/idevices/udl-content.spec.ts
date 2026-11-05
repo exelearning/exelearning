@@ -1,5 +1,11 @@
 import { test, expect } from '../../fixtures/auth.fixture';
-import { waitForAppReady, reloadPage, gotoWorkarea, editIdevice } from '../../helpers/workarea-helpers';
+import {
+    waitForAppReady,
+    reloadPage,
+    gotoWorkarea,
+    editIdevice,
+    dismissVersionNotice,
+} from '../../helpers/workarea-helpers';
 import { WorkareaPage } from '../../pages/workarea.page';
 import type { Page } from '@playwright/test';
 
@@ -179,8 +185,7 @@ async function typeInTinyMCE(page: Page, text: string): Promise<void> {
 async function selectUdlType(page: Page, type: 'engagement' | 'representation' | 'expression'): Promise<void> {
     // The form has no description above its tabs, so the notice of a development
     // version sits over them.
-    const notice = page.getByRole('alert').filter({ hasText: 'development version' });
-    if (await notice.isVisible()) await notice.getByRole('button', { name: 'Accept' }).click();
+    await dismissVersionNotice(page);
     const typeSelector = page.locator(`#udlContentTypeOptions input[value="${type}"]`);
     await typeSelector.click();
 }

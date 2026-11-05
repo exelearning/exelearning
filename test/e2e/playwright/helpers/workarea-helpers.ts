@@ -2223,6 +2223,19 @@ export async function dismissBlockingAlertModal(page: Page, attempts = 3): Promi
 }
 
 /**
+ * Close the notice of a development or demo version (#eXeBetaWarning) if it is shown. It sits over the top of
+ * the content area and can cover the tabs of an edition form. Its text differs between the server ("... is a
+ * development version") and the static build ("This is just a demo version"), so it is found by id.
+ */
+export async function dismissVersionNotice(page: Page): Promise<void> {
+    const close = page.locator('#eXeBetaWarningCloseBtn');
+    if (!(await close.isVisible())) return;
+    await close.click();
+    // Bootstrap fades the alert out before removing it, and until then it still takes the clicks.
+    await page.locator('#eXeBetaWarning').waitFor({ state: 'detached' });
+}
+
+/**
  * Set content in the active TinyMCE editor
  *
  * @param page - Playwright page

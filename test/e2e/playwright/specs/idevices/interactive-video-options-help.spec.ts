@@ -2,6 +2,7 @@ import { test, expect } from '../../fixtures/auth.fixture';
 import { waitForEditor } from '../../helpers/editor-helpers';
 import {
     addIdevice,
+    dismissVersionNotice,
     editIdevice,
     gotoWorkarea,
     reloadPage,
@@ -27,11 +28,7 @@ test('Interactive video explains its options inline and keeps the text before th
     await expect(page.locator('#interactiveVideoIdeviceForm-tab-contents')).toHaveAttribute('aria-selected', 'true');
     // The form has no description above its tabs, so the notice of a development
     // version would sit over them.
-    const dismissNotice = async () => {
-        const notice = page.getByRole('alert').filter({ hasText: 'development version' });
-        if (await notice.isVisible()) await notice.getByRole('button', { name: 'Accept' }).click();
-    };
-    await dismissNotice();
+    await dismissVersionNotice(page);
 
     await page.locator('#interactiveVideoIdeviceForm-tab-options').click();
     const help = page.locator('#interactiveVideoOptions .exe-idevice-help:visible');
@@ -110,7 +107,7 @@ test('Interactive video explains its options inline and keeps the text before th
     await reloadPage(page);
     await selectFirstPage(page);
     await editIdevice(page, id!);
-    await dismissNotice();
+    await dismissVersionNotice(page);
 
     await expect(page.locator('#interactiveVideoType-youtube')).toBeChecked();
     await expect(page.locator('#interactiveVideoYoutubeURL')).toHaveValue(
