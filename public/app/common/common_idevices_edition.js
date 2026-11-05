@@ -43,7 +43,9 @@ var $exeIDevicesEdition = {
             /**
              * Inline information button: a short hover label and an explanation
              * that a click opens and a second click closes, using the editor's
-             * help window styling.
+             * help window styling. Clicks on the button or the explanation do
+             * not reach the row around them, so an option is never switched
+             * by reading its help.
              * Pass localized text, e.g. getHelpTooltip(_('Explain this option.')).
              * tabs.bind initializes it automatically; forms without shared tabs
              * call initHelpTooltips after inserting their HTML.
@@ -99,9 +101,14 @@ var $exeIDevicesEdition = {
                     };
                     // Capture also sees clicks whose own handlers stop propagation.
                     const outsideClick = function (event) {
-                        if (!button.contains(event.target)) hide();
+                        if (!button.parentElement.contains(event.target)) hide();
                     };
                     document.addEventListener('click', outsideClick, true);
+                    // Reading or selecting the explanation leaves it open, and the
+                    // click stays out of the handlers of the row that holds it.
+                    $(content).on('click.exeHelpTooltip', function (event) {
+                        event.stopPropagation();
+                    });
                     $(button).on('click.exeHelpTooltip', function (event) {
                         event.stopPropagation();
                         tooltip.hide();
@@ -124,6 +131,7 @@ var $exeIDevicesEdition = {
                     const dispose = function () {
                         hide();
                         $(button).off('.exeHelpTooltip');
+                        $(content).off('.exeHelpTooltip');
                         document.removeEventListener('click', outsideClick, true);
                         tooltip.dispose();
                     };

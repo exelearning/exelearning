@@ -2284,9 +2284,7 @@ var $exeDevice = {
 
         $('#gameQEIdeviceForm').on('click', '.toggle-item', function (e) {
             const target = e.target;
-            // The help button and its open explanation live inside the row:
-            // reading the help must not switch the option.
-            if (target.closest('input, a, button, select, textarea, .exe-idevice-help-container')) return;
+            if (target.closest('input, a, button, select, textarea')) return;
             if (target.tagName === 'LABEL') return;
             const $container = $(this);
             const $input = $container.find('input.toggle-input').first();

@@ -1650,9 +1650,8 @@ var $exeDevice = {
         $exeIDevicesEdition.iDevice.gamification.passScore.addEvents();
 
         this.$lifecycle.on(document, 'click', '.toggle-item', function (e) {
-            // The controls and the help (button and open explanation) live
-            // inside the row: they must not switch it.
-            const own = e.target.closest('input, label, a, button, .exe-idevice-help-container');
+            // The controls live inside the row: they must not switch it.
+            const own = e.target.closest('input, label, a, button');
             if (own && e.currentTarget.contains(own)) return;
             const id = $(e.currentTarget).attr('idevice-id');
             if (!id) return;

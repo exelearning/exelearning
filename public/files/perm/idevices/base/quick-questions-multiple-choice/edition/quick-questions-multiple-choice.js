@@ -2607,11 +2607,8 @@ var $exeDevice = {
             'click.qq.toggle',
             '.toggle-item',
             function (e) {
-                // The controls of the row and its help (button and open
-                // explanation) must not switch it.
-                const own = e.target.closest(
-                    'input, label[for], select, textarea, button, .exe-idevice-help-container'
-                );
+                // The controls of the row must not switch it.
+                const own = e.target.closest('input, label[for], select, textarea, button');
                 if (own && this.contains(own)) return;
                 const $input = $(this).find('input.toggle-input').first();
                 // A locked switch (the feedback in "No score") stays as it is.

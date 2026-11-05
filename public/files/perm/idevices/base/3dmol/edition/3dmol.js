@@ -2311,11 +2311,7 @@ var $exeDevice = {
                     )
                 )
                     return;
-                if (
-                    $(e.target).is('#eXeProgressReportID') ||
-                    $(e.target).closest('.exe-idevice-help-container').length
-                )
-                    return;
+                if ($(e.target).is('#eXeProgressReportID')) return;
                 const $input = $(this).find('input.toggle-input').first();
                 if ($input.length) {
                     const newVal = !$input.prop('checked');

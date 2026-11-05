@@ -191,10 +191,28 @@ describe('common_idevices_edition.js', () => {
         second.click();
         expect(firstNote.classList.contains('help-hidden')).toBe(true);
         expect(secondNote.classList.contains('help-hidden')).toBe(false);
-        // A click inside the explanation also counts as clicking elsewhere.
-        secondNote.addEventListener('click', (event) => event.stopPropagation());
+        // Reading the open explanation keeps it open; clicking anywhere else closes it.
         secondNote.click();
+        expect(secondNote.classList.contains('help-hidden')).toBe(false);
+        document.body.click();
         expect(secondNote.classList.contains('help-hidden')).toBe(true);
+      });
+
+      it('keeps clicks on the open explanation out of the row around it', () => {
+        document.body.innerHTML = `<div id="option">${common().getHelpTooltip('Explain the option')}</div>`;
+        const row = document.getElementById('option');
+        const toggle = vi.fn();
+        row.addEventListener('click', toggle);
+        common().initHelpTooltips(row);
+        row.querySelector('button').click();
+        const note = row.querySelector('.help-content');
+        note.click();
+        expect(toggle).not.toHaveBeenCalled();
+        expect(note.classList.contains('help-hidden')).toBe(false);
+        // Once the edition closes, the explanation no longer holds the click back.
+        lifecycle.destroy();
+        note.click();
+        expect(toggle).toHaveBeenCalledOnce();
       });
 
       it('supports forms without an active edition lifecycle', () => {
