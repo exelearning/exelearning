@@ -1893,6 +1893,30 @@ describe('NavbarFile', () => {
             expect(eXeLearning.app.interface.connectionTime.loadLasUpdatedInInterface).toHaveBeenCalled();
         });
 
+        it('warns about the references the saved package left dangling (#2681)', async () => {
+            eXeLearning.app.project.exportToElpxViaYjs = vi.fn().mockResolvedValue({
+                saved: true,
+                unresolvedAssets: ['12345678-1234-1234-1234-123456789abc'],
+            });
+
+            await navbarFile.downloadProjectViaYjs();
+
+            const notice = eXeLearning.app.modals.alert.show.mock.calls.at(-1)[0];
+            expect(notice.contentId).toBe('missing-assets');
+            expect(notice.body).toContain('12345678-1234-1234-1234-123456789abc');
+        });
+
+        it('stays quiet when the export resolved every reference', async () => {
+            eXeLearning.app.project.exportToElpxViaYjs = vi.fn().mockResolvedValue({
+                saved: true,
+                unresolvedAssets: [],
+            });
+
+            await navbarFile.downloadProjectViaYjs();
+
+            expect(eXeLearning.app.modals.alert.show).not.toHaveBeenCalled();
+        });
+
         it('should show alert on Yjs export error', async () => {
             eXeLearning.app.project.exportToElpxViaYjs = vi.fn().mockRejectedValue(new Error('boom'));
 
@@ -3553,4 +3577,5 @@ describe('NavbarFile printing with interactive activities', () => {
             warn.mockRestore();
         });
     });
+
 });

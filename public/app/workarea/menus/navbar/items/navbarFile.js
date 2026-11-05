@@ -10,6 +10,7 @@ import {
     saveProjectFolderInBrowser,
 } from '../../../../core/ProjectFolderStorage.js';
 import { DEFAULT_ACTIVITY_MODE, PREVIEW_MODE_DOCUMENT } from '../../../modals/modals/pages/modalPrintPreview.js';
+import { buildUnresolvedExportNotice } from '../../../project/missingAssetsNotice.js';
 
 /**
  * Below this viewport width the left panels start collapsed, and collapse when the viewport
@@ -2261,6 +2262,13 @@ export default class NavbarFile {
 
             toast.toastBody.innerHTML = _('File saved.');
             Logger.log('[NavbarFile] Project saved via Yjs');
+
+            // The package just written carries references with no file behind
+            // them: say so now, while the author can still put them back (#2681).
+            const notice = buildUnresolvedExportNotice(result?.unresolvedAssets);
+            if (notice) {
+                eXeLearning.app.modals.alert.show({ ...notice, contentId: 'missing-assets' });
+            }
 
             // In offline/static mode, export acts as the save operation.
             // Mark document clean so the save indicator turns green.
