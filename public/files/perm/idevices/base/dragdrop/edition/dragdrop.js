@@ -115,10 +115,7 @@ var $exeDevice = {
             'Your browser is not compatible with this tool.'
         );
         msgs.msgCompleteData = _(
-            'You must complete the text and add an image or video'
-        );
-        msgs.msgCompleteDataBack = _(
-            'You must complete the text and add an image or video'
+            'Add a text and an image or a sound to the card'
         );
         msgs.msgEOneCard = _('Please create at least one activity');
         msgs.msgTitleAltImageWarning = _('Accessibility warning');
@@ -476,13 +473,15 @@ var $exeDevice = {
         p.url = $('#dadEURLImage').val().trim();
         p.author = $('#dadEAuthor').val();
         p.alt = $('#dadEAlt').val();
-        p.audio = $('#dadEURLAudio').val();
+        p.audio = $('#dadEURLAudio').val().trim();
 
-        if (p.definition.length == 0) {
+        // A card is a text and the image or sound it is matched with; the game
+        // only shows a file whose address has more than 3 characters.
+        if (
+            p.definition.length == 0 ||
+            (p.url.length < 4 && p.audio.length < 4)
+        ) {
             message = msgs.msgCompleteData;
-        }
-        if (p.url.length < 0 && p.audio.length < 4) {
-            message = msgs.msgCompleteDataBack;
         }
         if (message.length == 0) {
             $exeDevice.cardsGame[$exeDevice.active] = p;

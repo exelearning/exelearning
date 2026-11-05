@@ -469,7 +469,7 @@ describe('dragdrop edition: shared form tabs, options tooltips, and saving', () 
                 cardsGame: [
                     {
                         definition: 'target definition',
-                        url: '',
+                        url: 'images/heart.png',
                         author: '',
                         alt: '',
                         audio: '',
@@ -477,6 +477,7 @@ describe('dragdrop edition: shared form tabs, options tooltips, and saving', () 
                 ],
             });
             $('#dadEDefinition').val('target definition');
+            $('#dadEURLImage').val('images/heart.png');
         };
 
         it('saves valid data and outputs expected HTML structure', () => {
@@ -509,9 +510,47 @@ describe('dragdrop edition: shared form tabs, options tooltips, and saving', () 
             expect(data.textAfter).toBe('');
             expect(device.save()).not.toContain('Old');
         });
+
+        describe('the card on screen', () => {
+            const message = 'Add a text and an image or a sound to the card';
+
+            it('needs an image or a sound besides its text', () => {
+                loadGame();
+                $('#dadEURLImage').val('');
+
+                expect(device.save()).toBe(false);
+                expect(eXe.app.getLastAlert()).toBe(message);
+            });
+
+            it('needs its text besides its image', () => {
+                loadGame();
+                $('#dadEDefinition').val('');
+
+                expect(device.save()).toBe(false);
+                expect(eXe.app.getLastAlert()).toBe(message);
+            });
+
+            it('is complete with a sound instead of an image', () => {
+                loadGame();
+                $('#dadEURLImage').val('');
+                $('#dadEURLAudio').val('audio/heart.mp3');
+
+                expect(device.save()).toContain('dragdrop-DataGame');
+            });
+
+            it('does not count a sound address made of spaces', () => {
+                loadGame();
+                $('#dadEURLImage').val('');
+                $('#dadEURLAudio').val('     ');
+
+                expect(device.save()).toBe(false);
+                expect(eXe.app.getLastAlert()).toBe(message);
+            });
+        });
     });
 
     it('keeps the changes made to the card on screen after copying it', () => {
+        document.getElementById('dadEURLImage').value = 'images/heart.png';
         document.getElementById('dadEDefinition').value = 'Heart';
         device.copyCard();
         document.getElementById('dadEDefinition').value = 'Lungs';

@@ -24,8 +24,9 @@ test('Dragdrop explains options inline without changing their values', async ({
     const id = await device.getAttribute('id');
     expect(id).toBeTruthy();
 
-    // Fill valid card data in contents tab (definition text)
+    // Fill valid card data in contents tab: its text and the image it is matched with
     await page.locator('#dadEDefinition').fill('Target item 1');
+    await page.locator('#dadEURLImage').fill('item.png');
 
     // Test the option help in Options tab
     await page.locator('#dragdropQIdeviceForm-tab-options').click();
