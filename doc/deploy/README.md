@@ -60,6 +60,8 @@ You can customize the deployment by setting these environment variables:
 - `ONLINE_THEMES_INSTALL`: Allow users to import/install styles
 - `ONLINE_IDEVICES_INSTALL`: Allow users to import/install iDevices
 - `PUBLIC_VIEW_ENABLED`: Allow project owners to publish a public read-only link to their projects (default: `false`). Administrators can also change it from `/admin` > Sharing; the value saved there takes precedence.
+- `PROJECT_ACTIVITY_RETENTION_DAYS`: Days to keep the per-project activity log (who shared, opened, saved, edited or imported content). Default `90`; `0` disables recording and pruning while keeping existing entries readable. See [Project activity log](../development/project-activity.md).
+- `PROJECT_ACTIVITY_EDITOR_ACCESS`: Let invited editors read the activity log of the projects they edit (default: `false`). Owners and administrators can always read it.
 
 ### Database-Specific Variables
 - PostgreSQL:

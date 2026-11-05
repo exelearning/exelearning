@@ -66,6 +66,14 @@ describe('Yjs Document Routes', () => {
     let ownerToken: string;
     let strangerToken: string;
     let adminToken: string;
+    let recordedSaves: Array<{
+        projectId: number;
+        userId: number;
+        kind: string;
+        documentVersion: string;
+        merged: boolean;
+    }>;
+    let recorderThrows: boolean;
 
     beforeAll(async () => {
         ownerToken = await signToken(42, ['ROLE_USER']);
@@ -77,6 +85,13 @@ describe('Yjs Document Routes', () => {
     function createMockDependencies(): YjsDependencies {
         return {
             db: {} as any,
+            // Activity recorder stub (issue #2689): records the save calls the route makes.
+            activity: {
+                recordSave: async (_db: any, input: any) => {
+                    if (recorderThrows) throw new Error('recorder down');
+                    recordedSaves.push(input);
+                },
+            } as any,
             queries: {
                 findProjectByUuid: async (_db: any, uuid: string) => {
                     if (uuid === 'test-uuid-123') {
@@ -162,6 +177,8 @@ describe('Yjs Document Routes', () => {
         projectSavedFlag = false;
         replaceCalls = [];
         replaceFailuresLeft = 0;
+        recordedSaves = [];
+        recorderThrows = false;
         const mockDeps = createMockDependencies();
         const routes = createYjsRoutes(mockDeps);
         app = new Elysia().use(routes);
@@ -748,6 +765,115 @@ describe('Yjs Document Routes', () => {
             base.destroy();
             server.destroy();
             doc.destroy();
+        });
+    });
+
+    describe('save intent and activity (issue #2689)', () => {
+        const URL = 'http://localhost/api/projects/uuid/no-snapshot-uuid/yjs-document';
+        const PROJECT_ID = 2;
+
+        function stateWith(title: string): Uint8Array {
+            const doc = new Y.Doc();
+            doc.getMap('metadata').set('title', title);
+            const state = Y.encodeStateAsUpdate(doc);
+            doc.destroy();
+            return state;
+        }
+
+        async function post(url: string, extraHeaders: Record<string, string> = {}, body: Uint8Array = stateWith('x')) {
+            return app.handle(
+                new Request(url, { method: 'POST', body, headers: { ...authHeaders(ownerToken), ...extraHeaders } }),
+            );
+        }
+
+        it('records a manual save when markSaved=true and no header is sent (legacy clients)', async () => {
+            const res = await post(`${URL}?markSaved=true`);
+            const body = await res.json();
+            expect(res.status).toBe(200);
+            expect(body.saveKind).toBe('manual');
+            expect(body.markedAsSaved).toBe(true);
+            expect(recordedSaves).toEqual([
+                { projectId: PROJECT_ID, userId: 42, kind: 'manual', documentVersion: body.version, merged: false },
+            ]);
+        });
+
+        it('classifies the real collaborative-autosave chain (markSaved=true + X-Save-Kind) as an autosave', async () => {
+            const res = await post(`${URL}?markSaved=true`, { 'X-Save-Kind': 'collaborative-autosave' });
+            const body = await res.json();
+            expect(body.saveKind).toBe('collaborative-autosave');
+            // saved_once keeps its meaning: the project is still marked as saved.
+            expect(body.markedAsSaved).toBe(true);
+            expect(projectSavedFlag).toBe(true);
+            expect(recordedSaves[0].kind).toBe('collaborative-autosave');
+        });
+
+        it('classifies header-less, markSaved-less posts (sendBeacon) as unload persistence', async () => {
+            const res = await post(URL);
+            const body = await res.json();
+            expect(body.saveKind).toBe('unload');
+            expect(body.markedAsSaved).toBe(false);
+            expect(recordedSaves[0].kind).toBe('unload');
+        });
+
+        it('ignores invalid header values and falls back to the legacy mapping', async () => {
+            const res = await post(`${URL}?markSaved=true`, { 'X-Save-Kind': 'definitely-manual' });
+            expect((await res.json()).saveKind).toBe('manual');
+            const res2 = await post(URL, { 'X-Save-Kind': 'manual' });
+            const body2 = await res2.json();
+            expect(body2.saveKind).toBe('manual');
+            expect(body2.markedAsSaved).toBe(false);
+        });
+
+        it('reports merged saves and records exactly one event after a compare-and-set retry', async () => {
+            savedSnapshots.set(PROJECT_ID, {
+                id: 9,
+                project_id: PROJECT_ID,
+                snapshot_data: stateWith('stored'),
+                version: '1000',
+                snapshot_version: '1000',
+            });
+            replaceFailuresLeft = 1;
+            const res = await post(`${URL}?markSaved=true`, { 'X-Base-Version': '0' });
+            const body = await res.json();
+            expect(res.status).toBe(200);
+            expect(body.merged).toBe(true);
+            expect(replaceCalls.length).toBe(2);
+            expect(recordedSaves).toHaveLength(1);
+            expect(recordedSaves[0].merged).toBe(true);
+            expect(recordedSaves[0].documentVersion).toBe(body.version);
+        });
+
+        it('records nothing when the save is rejected or fails before persisting', async () => {
+            const forbidden = await app.handle(
+                new Request(`${URL}?markSaved=true`, {
+                    method: 'POST',
+                    body: stateWith('x'),
+                    headers: authHeaders(strangerToken),
+                }),
+            );
+            expect(forbidden.status).toBe(403);
+
+            const failingDeps = createMockDependencies();
+            failingDeps.queries.upsertSnapshot = async () => {
+                throw new Error('database unavailable');
+            };
+            const failingApp = new Elysia().use(createYjsRoutes(failingDeps));
+            const failed = await failingApp.handle(
+                new Request(`${URL}?markSaved=true`, {
+                    method: 'POST',
+                    body: stateWith('x'),
+                    headers: authHeaders(ownerToken),
+                }),
+            );
+            expect(failed.status).toBe(500);
+            expect(recordedSaves).toHaveLength(0);
+        });
+
+        it('keeps the save successful when the recorder itself fails', async () => {
+            recorderThrows = true;
+            const res = await post(`${URL}?markSaved=true`);
+            expect(res.status).toBe(200);
+            expect((await res.json()).success).toBe(true);
         });
     });
 });

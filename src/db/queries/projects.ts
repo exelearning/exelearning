@@ -836,6 +836,7 @@ export async function findGuestProjectsOlderThan(db: Kysely<Database>, maxAgeMs:
 export async function deleteProjectWithRelatedData(db: Kysely<Database>, projectId: number): Promise<void> {
     await db.transaction().execute(async trx => {
         // Delete in order respecting foreign keys
+        await trx.deleteFrom('project_activity').where('project_id', '=', projectId).execute();
         await trx.deleteFrom('yjs_version_history').where('project_id', '=', projectId).execute();
         await trx.deleteFrom('yjs_updates').where('project_id', '=', projectId).execute();
         await trx.deleteFrom('yjs_documents').where('project_id', '=', projectId).execute();

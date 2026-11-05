@@ -99,6 +99,7 @@ describe('ModalShare', () => {
       <div id="share-aria-live"></div>
       <div class="modal-header"><h5 class="modal-title"></h5></div>
       <div class="modal-body"></div>
+      <div class="modal-footer"><button id="share-activity-button" class="d-none" type="button"></button></div>
     `;
     document.body.appendChild(mockElement);
 
@@ -130,6 +131,7 @@ describe('ModalShare', () => {
 
     mockManager = {
       closeModals: vi.fn(() => false),
+      activity: { show: vi.fn() },
     };
 
     modal = new ModalShare(mockManager);
@@ -826,6 +828,38 @@ describe('ModalShare', () => {
       expect(modal.visibilitySelect.value).toBe('private');
       expect(updateIconSpy).toHaveBeenCalledWith('private');
       consoleErrorSpy.mockRestore();
+    });
+  });
+
+  describe('activity button (issue #2689)', () => {
+    it('is hidden unless the server reports the caller may read the log', () => {
+      modal.projectData = { uuid: 'proj-uuid', title: 'T', activity: { recordingEnabled: true, canView: false } };
+      modal.renderActivityButton();
+      expect(modal.activityButton.classList.contains('d-none')).toBe(true);
+
+      modal.projectData = { uuid: 'proj-uuid', title: 'T', activity: { recordingEnabled: true, canView: true } };
+      modal.renderActivityButton();
+      expect(modal.activityButton.classList.contains('d-none')).toBe(false);
+
+      modal.projectData = { uuid: 'proj-uuid', title: 'T' }; // older server payloads
+      modal.renderActivityButton();
+      expect(modal.activityButton.classList.contains('d-none')).toBe(true);
+    });
+
+    it('opens the activity modal for the project with the live document title', () => {
+      modal.projectData = { uuid: 'proj-uuid', title: 'Stored title', activity: { canView: true } };
+      window.eXeLearning.app.project.properties = { properties: { pp_title: { value: 'Live title' } } };
+      modal.behaviour();
+      modal.activityButton.click();
+      expect(mockManager.activity.show).toHaveBeenCalledWith({ projectId: 'proj-uuid', title: 'Live title' });
+    });
+
+    it('falls back to the stored title and does nothing without an activity modal', () => {
+      modal.projectData = { uuid: 'proj-uuid', title: 'Stored title', activity: { canView: true } };
+      modal.openActivity();
+      expect(mockManager.activity.show).toHaveBeenCalledWith({ projectId: 'proj-uuid', title: 'Stored title' });
+      mockManager.activity = null;
+      expect(() => modal.openActivity()).not.toThrow();
     });
   });
 

@@ -177,6 +177,23 @@ const PRIORITY = {
 };
 ```
 
+## Activity Attribution
+
+The relay never decodes Yjs frames, so it cannot tell which page or iDevice an update touched. The
+per-project activity log (issue #2689, ADR-2689-01) therefore combines two sources:
+
+- **Server-recorded events** use the authenticated identity of the REST request or the WebSocket
+  connection: sharing and access changes, one `session.opened` per client editor session (the
+  `session` query parameter of the WebSocket URL is a correlation id, never a credential) and every
+  successful save after the compare-and-set write of ADR-2615-01. The save intent travels in the
+  `X-Save-Kind` header (`manual`, `collaborative-autosave`, `unload`); `markSaved` keeps its meaning.
+- **Client-reported events** are captured in the browser by `ProjectActivityReporter` from local
+  user-origin transactions (never from remote updates, IndexedDB replays or snapshot merges),
+  aggregated per target and posted to `/api/projects/uuid/:uuid/activity/events`, where the server
+  validates them and attributes them to the authenticated reporter.
+
+Details, limits and privacy notes: [Project activity log](project-activity.md).
+
 ## Room Management
 
 ### Room Lifecycle

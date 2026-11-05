@@ -66,6 +66,11 @@ import {
     ServerYjsDocumentWrapper,
 } from '../shared/export';
 import { reconstructDocument } from '../websocket/yjs-persistence';
+import {
+    projectActivityService as projectActivityServiceDefault,
+    ProjectActivityValidationError,
+    type ProjectActivityService,
+} from '../services/project-activity';
 
 type AppSettingsTable = {
     key: string;
@@ -119,6 +124,8 @@ export interface AdminDependencies {
     queries: AdminQueries;
     fileHelper?: FileHelper;
     getConnectedClientsDetail?: typeof getConnectedClientsDetail;
+    /** Project activity reader (issue #2689). Defaults to the real service. */
+    activity?: ProjectActivityService;
 }
 
 // ============================================================================
@@ -309,6 +316,30 @@ export function buildAdminTranslations(locale: string): Record<string, string> {
         archive: trans('Archive', {}, locale),
         view_project: trans('View Project', {}, locale),
         download_elpx: trans('Download .elpx', {}, locale),
+        // Project activity log (issue #2689)
+        activity: trans('Activity', {}, locale),
+        activity_intro: trans(
+            'Who shared, opened, saved, edited or imported content in this project, and when. Content changes are reported by the browser that made them and validated by the server.',
+            {},
+            locale,
+        ),
+        activity_user: trans('User', {}, locale),
+        activity_all_users: trans('All users', {}, locale),
+        activity_deleted_user: trans('Deleted user', {}, locale),
+        activity_from: trans('From', {}, locale),
+        activity_to: trans('To', {}, locale),
+        activity_apply_filters: trans('Apply filters', {}, locale),
+        activity_load_more: trans('Load more', {}, locale),
+        activity_empty: trans('No activity recorded yet.', {}, locale),
+        activity_error: trans('The activity could not be loaded.', {}, locale),
+        activity_disabled: trans(
+            'Activity recording is disabled on this site. Existing entries remain visible.',
+            {},
+            locale,
+        ),
+        activity_retention: trans('Entries are kept for {days} days.', {}, locale),
+        activity_reported_by_editor: trans('reported by the editor', {}, locale),
+        close: trans('Close', {}, locale),
         confirm_delete_project: trans('Are you sure you want to delete this project?', {}, locale),
         confirm_delete_project_bulk: trans('Are you sure you want to delete {count} projects?', {}, locale),
         all_statuses: trans('All statuses', {}, locale),
@@ -690,6 +721,7 @@ const ADMIN_SETTINGS_DEFAULTS: Record<
 export function createAdminRoutes(deps: AdminDependencies = defaultDependencies) {
     const { db, queries, fileHelper = createFileHelper() } = deps;
     const connectedClientsDetail = deps.getConnectedClientsDetail ?? getConnectedClientsDetail;
+    const activity = deps.activity ?? projectActivityServiceDefault;
 
     return (
         new Elysia({ name: 'admin-routes' })
@@ -1300,6 +1332,50 @@ export function createAdminRoutes(deps: AdminDependencies = defaultDependencies)
                 },
                 { body: updateProjectStatusSchema },
             )
+
+            // GET /api/admin/projects/:id/activity - Per-project activity log (issue #2689)
+            .get('/api/admin/projects/:id/activity', async ({ params, query, set }) => {
+                const parsed = parseAndValidateId(params.id, set);
+                if ('error' in parsed) return parsed;
+
+                const project = await queries.findProjectById(db, parsed.id);
+                if (!project) {
+                    set.status = 404;
+                    return { error: 'NOT_FOUND', message: 'Project not found' };
+                }
+
+                const q = query as Record<string, string | undefined>;
+                try {
+                    const page = await activity.listActivity(db, project.id, {
+                        userId: q.userId,
+                        since: q.since,
+                        until: q.until,
+                        limit: q.limit,
+                        cursor: q.cursor,
+                    });
+                    return { ...page, project: { id: project.id, uuid: project.uuid, title: project.title } };
+                } catch (error) {
+                    if (error instanceof ProjectActivityValidationError) {
+                        set.status = 400;
+                        return { error: error.code, message: error.message };
+                    }
+                    throw error;
+                }
+            })
+
+            // GET /api/admin/projects/:id/activity/actors - Distinct actors for the filter
+            .get('/api/admin/projects/:id/activity/actors', async ({ params, set }) => {
+                const parsed = parseAndValidateId(params.id, set);
+                if ('error' in parsed) return parsed;
+
+                const project = await queries.findProjectById(db, parsed.id);
+                if (!project) {
+                    set.status = 404;
+                    return { error: 'NOT_FOUND', message: 'Project not found' };
+                }
+
+                return { actors: await activity.listActors(db, project.id) };
+            })
 
             // DELETE /api/admin/projects/:id - Hard delete project
             .delete('/api/admin/projects/:id', async ({ params, set }) => {

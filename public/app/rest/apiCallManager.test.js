@@ -204,6 +204,47 @@ describe('ApiCallManager', () => {
     });
   });
 
+  describe('project activity (issue #2689)', () => {
+    let originalFetch;
+
+    beforeEach(() => {
+      originalFetch = global.fetch;
+    });
+
+    afterEach(() => {
+      global.fetch = originalFetch;
+    });
+
+    it('requests the log with only the provided filters as query parameters', async () => {
+      global.fetch = vi.fn(async () => ({ ok: true, json: async () => ({ events: [], nextCursor: null }) }));
+      const result = await apiManager.getProjectActivity('abc-123', { userId: 7, since: 1000, until: '', limit: 20, cursor: undefined });
+      expect(global.fetch.mock.calls[0][0]).toBe(
+        'http://localhost/exelearning/api/projects/uuid/abc-123/activity?userId=7&since=1000&limit=20'
+      );
+      expect(global.fetch.mock.calls[0][1].method).toBe('GET');
+      expect(result).toEqual({ events: [], nextCursor: null });
+
+      await apiManager.getProjectActivity(42);
+      expect(global.fetch.mock.calls[1][0]).toBe('http://localhost/exelearning/api/projects/42/activity');
+    });
+
+    it('requests the actors list and normalises errors', async () => {
+      global.fetch = vi.fn(async () => ({ ok: false, status: 403, json: async () => ({ message: 'Access denied' }) }));
+      const result = await apiManager.getProjectActivityActors('abc-123');
+      expect(global.fetch.mock.calls[0][0]).toBe('http://localhost/exelearning/api/projects/uuid/abc-123/activity/actors');
+      expect(result).toEqual({ responseMessage: 'ERROR', detail: 'Access denied' });
+    });
+
+    it('is unavailable in static mode without touching the network', async () => {
+      global.fetch = vi.fn();
+      const spy = vi.spyOn(apiManager, '_isStaticMode').mockReturnValue(true);
+      expect((await apiManager.getProjectActivity('abc-123')).responseMessage).toBe('ERROR');
+      expect((await apiManager.getProjectActivityActors('abc-123')).responseMessage).toBe('ERROR');
+      expect(global.fetch).not.toHaveBeenCalled();
+      spy.mockRestore();
+    });
+  });
+
   describe('getResourceLockTimeout', () => {
     it('should return the default lock timeout', async () => {
       const result = await apiManager.getResourceLockTimeout();

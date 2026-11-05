@@ -2911,4 +2911,41 @@ describe('YjsDocumentManager', () => {
       expect(manager.getMetadata().get('theme')).toBe('base');
     });
   });
+
+  describe('editor session id and activity hints (issue #2689)', () => {
+    it('generates a session id in the accepted format and accepts an injected one', () => {
+      const generated = new YjsDocumentManager('project-1', { token: 't' });
+      expect(generated.sessionId).toMatch(/^[A-Za-z0-9_-]{8,64}$/);
+      const injected = new YjsDocumentManager('project-1', { token: 't', sessionId: 'session-fixed-01' });
+      expect(injected.sessionId).toBe('session-fixed-01');
+      expect(generated.sessionId).not.toBe(new YjsDocumentManager('project-1', {}).sessionId);
+    });
+
+    it('sends the session id with the WebSocket connection parameters', async () => {
+      const providerArgs = [];
+      class SpyProvider extends MockWebsocketProvider {
+        constructor(url, room, doc, options) {
+          super(url, room, doc, options);
+          providerArgs.push({ url, room, options });
+        }
+      }
+      global.window.WebsocketProvider = SpyProvider;
+      const dm = new YjsDocumentManager('project-9', { wsUrl: 'ws://test/yjs', token: 'tok', sessionId: 'session-fixed-02' });
+      dm.ydoc = new global.window.Y.Doc();
+      dm.Y = global.window.Y;
+      await dm.connectWebSocket();
+      expect(providerArgs[0].room).toBe('project-project-9');
+      expect(providerArgs[0].options.params).toEqual({ token: 'tok', session: 'session-fixed-02' });
+      dm.ydoc.destroy();
+    });
+
+    it('forwards activity hints to the attached reporter only', () => {
+      const dm = new YjsDocumentManager('project-1', {});
+      expect(() => dm.noteActivity({ type: 'page.moved', targetId: 'p' })).not.toThrow();
+      const reporter = { noteActivity: vi.fn() };
+      dm.activityReporter = reporter;
+      dm.noteActivity({ type: 'page.moved', targetId: 'p' });
+      expect(reporter.noteActivity).toHaveBeenCalledWith({ type: 'page.moved', targetId: 'p' });
+    });
+  });
 });
