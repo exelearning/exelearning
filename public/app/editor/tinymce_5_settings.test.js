@@ -714,6 +714,61 @@ describe('TinyMCE 5 Settings', () => {
       });
     });
 
+    it('file_picker_callback links an HTML file from the link dialog instead of inserting an iframe (issue #2686)', async () => {
+      globalThis.$exeTinyMCE.init('single', '#editor');
+      const config = globalThis.tinymce.init.mock.calls[0][0];
+      const cb = vi.fn();
+      const insertContent = vi.fn();
+      globalThis.tinymce.activeEditor = { insertContent, windowManager: { close: vi.fn() } };
+
+      window.eXeLearning.app.modals = {
+        filemanager: {
+          show: ({ onSelect }) => {
+            onSelect({
+              assetUrl: 'asset://html-id/app.html',
+              blobUrl: 'blob://app',
+              asset: { id: 'html-id', mime: 'text/html', filename: 'app.html' },
+            });
+          },
+        },
+      };
+
+      await config.file_picker_callback(cb, '', { filetype: 'file', text: 'my word' });
+
+      expect(insertContent).not.toHaveBeenCalled();
+      expect(cb).toHaveBeenCalledWith('asset://html-id/app.html', {
+        title: 'app.html',
+        alt: '',
+        'data-asset-id': 'html-id',
+      });
+      delete globalThis.tinymce.activeEditor;
+    });
+
+    it('file_picker_callback keeps the selected link text and only prefills it when empty (issue #2686)', async () => {
+      globalThis.$exeTinyMCE.init('single', '#editor');
+      const config = globalThis.tinymce.init.mock.calls[0][0];
+      const cb = vi.fn();
+
+      window.eXeLearning.app.modals = {
+        filemanager: {
+          show: ({ onSelect }) => {
+            onSelect({
+              assetUrl: 'asset://doc-id/file.pdf',
+              blobUrl: 'blob://file',
+              asset: { id: 'doc-id', mime: 'application/zip', filename: 'file.zip' },
+            });
+          },
+        },
+      };
+
+      await config.file_picker_callback(cb, '', { filetype: 'file', text: 'my word' });
+      expect(cb.mock.calls[0][1]).not.toHaveProperty('text');
+
+      cb.mockClear();
+      await config.file_picker_callback(cb, '', { filetype: 'file', text: '' });
+      expect(cb.mock.calls[0][1].text).toBe('file.zip');
+    });
+
     it('images_upload_handler keeps existing blob url for display (GetContent converts to asset://)', async () => {
       globalThis.$exeTinyMCE.init('single', '#editor');
       const config = globalThis.tinymce.init.mock.calls[0][0];
