@@ -2306,6 +2306,23 @@ describe('common_idevices_edition.js', () => {
         expect(checkbox().checked).toBe(false);
       });
 
+      it('counts empty paragraphs as no message, as TinyMCE does once it starts', () => {
+        mount();
+
+        feedback().setValues({ feedBack: true, textFeedBack: '<p>&nbsp;</p>' });
+        expect(checkbox().checked).toBe(false);
+        feedback().setValues({ feedBack: true, textFeedBack: '<p><br></p>\n<p>&nbsp;</p>' });
+        expect(checkbox().checked).toBe(false);
+      });
+
+      it('keeps the feedback on for a message that is only an image', () => {
+        mount();
+
+        feedback().setValues({ feedBack: true, textFeedBack: '<p><img src="medal.png" alt="A medal"></p>' });
+
+        expect(checkbox().checked).toBe(true);
+      });
+
       it('keeps the feedback on when the iDevice loads its message after the switch', () => {
         mount();
 
@@ -2397,6 +2414,15 @@ describe('common_idevices_edition.js', () => {
       it('refuses an empty message while the feedback is on, and says why', () => {
         mount();
         checkbox().checked = true;
+
+        expect(feedback().getValues()).toBe(false);
+        expect(globalThis.eXe.app.alert).toHaveBeenCalledWith('Message to display when passing the game');
+      });
+
+      it('refuses a message of empty paragraphs while the feedback is on', () => {
+        mount();
+        checkbox().checked = true;
+        feedback().setText('<p>&nbsp;</p>');
 
         expect(feedback().getValues()).toBe(false);
         expect(globalThis.eXe.app.alert).toHaveBeenCalledWith('Message to display when passing the game');

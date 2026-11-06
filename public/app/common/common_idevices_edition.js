@@ -719,6 +719,24 @@ var $exeIDevicesEdition = {
                 },
 
                 /**
+                 * @param {string} html A message.
+                 * @returns {boolean} Whether it shows the learner something: a
+                 * text, an image, a video... Empty paragraphs show nothing:
+                 * TinyMCE turns a `<p>&nbsp;</p>` it loads into '', so a test
+                 * on the HTML alone would judge the message twice, once on
+                 * either side of the editor starting.
+                 */
+                hasMessage: function (html) {
+                    const template = document.createElement('template');
+                    template.innerHTML = html || '';
+                    const content = template.content;
+                    return (
+                        content.textContent.trim().length > 0 ||
+                        !!content.querySelector('img, video, audio, iframe, object, embed, svg, canvas, math')
+                    );
+                },
+
+                /**
                  * Show on the switch the choice the activity was saved with,
                  * but only with a message: feedback saved on and empty was a
                  * mistake, which gave its learners an empty box, so it loads
@@ -732,7 +750,7 @@ var $exeIDevicesEdition = {
                     const $switch = $('#eXeGameHasFeedBack');
                     const saved = $switch.data('savedChoice');
                     if (typeof saved !== 'boolean') return;
-                    const choice = saved && feedback.getText().trim().length > 0;
+                    const choice = saved && feedback.hasMessage(feedback.getText());
                     // While compulsory the switch stays on: the value is the
                     // author's choice, for when it is optional again.
                     if (feedback.isRequired()) $switch.data('authorChoice', choice);
@@ -812,7 +830,7 @@ var $exeIDevicesEdition = {
                     const required = feedback.isRequired();
                     const feedBack = required ? $switch.data('authorChoice') === true : $switch.is(':checked');
                     const textFeedBack = feedback.getText();
-                    if ((feedBack || required) && textFeedBack.trim().length === 0) {
+                    if ((feedBack || required) && !feedback.hasMessage(textFeedBack)) {
                         // Behind the warning, the tab where the message is written.
                         $exeIDevicesEdition.iDevice.tabs.showTabOf('eXeGameFeedBackEditor');
                         eXe.app.alert(_('Message to display when passing the game'));
