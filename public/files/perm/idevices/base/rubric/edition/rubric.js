@@ -1198,14 +1198,14 @@ var $exeDevice = {
     // Transform a JSON object into an HTML table
     getTableHTML: function (data) {
         var i, z, c;
-        var tableTitle = this.escapeHtml(this.removeTags(data.title || ''));
+        var tableTitle = $exeIDevicesEdition.iDevice.common.escapeHtml(this.removeTags(data.title || ''));
         var html = "<table class='exe-table exe-rubrics-edition-table' data-rubric-table-type='edition'>";
         html += '<caption>' + tableTitle + '</caption>';
         html += '<thead>';
         html += '<tr>';
         html += '<th>&nbsp;</th>';
         for (i = 0; i < data.scores.length; i++) {
-            html += '<th>' + this.escapeHtml(this.removeTags(data.scores[i] || '')) + '</th>';
+            html += '<th>' + $exeIDevicesEdition.iDevice.common.escapeHtml(this.removeTags(data.scores[i] || '')) + '</th>';
         }
         html += '</tr>';
         html += '</thead>';
@@ -1213,12 +1213,12 @@ var $exeDevice = {
         for (i = 0; i < data.descriptions.length; i++) {
             c = data.descriptions[i];
             html += '<tr>';
-            html += '<th>' + this.escapeHtml(this.removeTags(data.categories[i] || '')) + '</th>';
+            html += '<th>' + $exeIDevicesEdition.iDevice.common.escapeHtml(this.removeTags(data.categories[i] || '')) + '</th>';
             for (z = 0; z < data.scores.length; z++) {
                 html += '<td>' + $exeDevice.sanitizeDescriptorHtml(c[z].text || '');
                 var safeWeight = this.removeTags(c[z].weight || '');
                 if (safeWeight != '')
-                    html += ' <span>(' + this.escapeHtml(safeWeight) + ')</span>';
+                    html += ' <span>(' + $exeIDevicesEdition.iDevice.common.escapeHtml(safeWeight) + ')</span>';
                 html += '</td>';
             }
             html += '</tr>';
@@ -1289,13 +1289,13 @@ var $exeDevice = {
                     '<a href="' +
                     this.escapeAttribute(authorURL) +
                     '" target="_blank" class="author" rel="noopener">' +
-                    this.escapeHtml(author) +
+                    $exeIDevicesEdition.iDevice.common.escapeHtml(author) +
                     '</a>. ';
             } else {
-                info += '<span class="author">' + this.escapeHtml(author) + '</span>. ';
+                info += '<span class="author">' + $exeIDevicesEdition.iDevice.common.escapeHtml(author) + '</span>. ';
             }
         }
-        info += '<span class="title"><em>' + this.escapeHtml(title) + '</em></span> ';
+        info += '<span class="title"><em>' + $exeIDevicesEdition.iDevice.common.escapeHtml(title) + '</em></span> ';
         if (license !== '') {
             info += '<span class="license">(';
             if (license.indexOf('CC') === 0) {
@@ -1325,7 +1325,7 @@ var $exeDevice = {
             if (!Object.prototype.hasOwnProperty.call(map, key)) continue;
             var safeKey = String(key || '').replace(/[^a-zA-Z0-9_-]/g, '');
             if (!safeKey) continue;
-            lang += '<li class="' + safeKey + '">' + this.escapeHtml(map[key]) + '</li>';
+            lang += '<li class="' + safeKey + '">' + $exeIDevicesEdition.iDevice.common.escapeHtml(map[key]) + '</li>';
         }
         lang += '</ul>';
         return lang;
@@ -2738,18 +2738,8 @@ var $exeDevice = {
         return wrapper.text();
     },
 
-    escapeHtml: function (str) {
-        var value = typeof str === 'string' ? str : String(str || '');
-        return value
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;')
-            .replace(/'/g, '&#39;');
-    },
-
     escapeAttribute: function (str) {
-        return this.escapeHtml(str);
+        return $exeIDevicesEdition.iDevice.common.escapeHtml(str);
     },
 
     sanitizeExternalUrl: function (url) {

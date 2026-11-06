@@ -689,15 +689,6 @@ var $exeDevice = {
         });
     },
 
-    escapeHtml: function (string) {
-        return String(string)
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;')
-            .replace(/'/g, '&#39;');
-    },
-
     save: function () {
         const dataGame = this.validateData();
         if (!dataGame) return false;

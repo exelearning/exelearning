@@ -3,7 +3,6 @@
  *
  * Tests cover:
  * - hexToRgba: Color conversion utility
- * - escapeHtml: HTML character escaping
  * - removeTags: HTML tag stripping
  * - getCardDefault / getPhraseDefault: Default data structures
  * - validateCard: Card validation logic
@@ -79,44 +78,6 @@ describe('select-media-files iDevice', () => {
         it('uses alpha = 1 when opacity is not finite', () => {
             const result = $exeDevice.hexToRgba('#ffffff', NaN);
             expect(result).toBe('rgba(255,255,255,1)');
-        });
-    });
-
-    // -------------------------------------------------------------------------
-    // escapeHtml
-    // -------------------------------------------------------------------------
-    describe('escapeHtml', () => {
-        it('escapes ampersand', () => {
-            expect($exeDevice.escapeHtml('a & b')).toBe('a &amp; b');
-        });
-
-        it('escapes less-than sign', () => {
-            expect($exeDevice.escapeHtml('a < b')).toBe('a &lt; b');
-        });
-
-        it('escapes greater-than sign', () => {
-            expect($exeDevice.escapeHtml('a > b')).toBe('a &gt; b');
-        });
-
-        it('escapes double quotes', () => {
-            expect($exeDevice.escapeHtml('say "hi"')).toBe(
-                'say &quot;hi&quot;'
-            );
-        });
-
-        it('escapes single quotes', () => {
-            expect($exeDevice.escapeHtml("it's")).toBe("it&#39;s");
-        });
-
-        it('escapes a full XSS payload', () => {
-            const input = '<script>alert("xss")</script>';
-            const expected =
-                '&lt;script&gt;alert(&quot;xss&quot;)&lt;/script&gt;';
-            expect($exeDevice.escapeHtml(input)).toBe(expected);
-        });
-
-        it('returns empty string for empty input', () => {
-            expect($exeDevice.escapeHtml('')).toBe('');
         });
     });
 
@@ -554,7 +515,7 @@ describe('select-media-files iDevice', () => {
             const methods = [
                 'init', 'save', 'addPickerButton', 'addCard',
                 'validateCard', 'validatePhrase', 'validateData',
-                'showMessage', 'hexToRgba', 'escapeHtml',
+                'showMessage', 'hexToRgba',
                 'getCardDefault', 'getPhraseDefault',
             ];
             methods.forEach((m) => {

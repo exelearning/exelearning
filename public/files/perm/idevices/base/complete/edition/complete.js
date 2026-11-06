@@ -486,15 +486,6 @@ var $exeDevice = {
         }
     },
 
-    escapeHtml: function (string) {
-        return String(string)
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;')
-            .replace(/'/g, '&#39;');
-    },
-
     getEditorContent: function (id) {
         const editor = typeof tinyMCE !== 'undefined' ? tinyMCE.get(id) : null;
         if (editor && editor.initialized) return editor.getContent();

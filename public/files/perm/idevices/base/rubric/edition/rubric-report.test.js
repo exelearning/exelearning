@@ -101,7 +101,7 @@ describe('rubric progress report integration', () => {
 
     it('includes the rubric as evaluable when the report reads exported content.xml', () => {
         // Happy DOM does not expose CDATA text; XML-escaped text has the same browser textContent.
-        const html = $exeDevice.escapeHtml(serialize());
+        const html = $exeIDevicesEdition.iDevice.common.escapeHtml(serialize());
         const xml = `<ode><odeNavStructures><odeNavStructure>
             <odePageId>page1</odePageId><pageName>Page</pageName><odePagStructures><odePagStructure>
             <odeComponents><odeComponent><odeIdeviceId>rubric-node</odeIdeviceId>

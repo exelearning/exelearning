@@ -2,7 +2,6 @@
  * Unit tests for challenge iDevice
  *
  * Tests pure functions that don't depend on DOM manipulation:
- * - escapeHtml: HTML character escaping
  * - getChallengeDefault: Default challenge object structure
  * - getId: Unique ID generation
  *
@@ -45,42 +44,6 @@ describe('challenge iDevice', () => {
 
     // Load iDevice and get reference
     $exeDevice = loadIdevice(code);
-  });
-
-  describe('escapeHtml', () => {
-    it('escapes ampersand', () => {
-      expect($exeDevice.escapeHtml('foo & bar')).toBe('foo &amp; bar');
-    });
-
-    it('escapes less than', () => {
-      expect($exeDevice.escapeHtml('a < b')).toBe('a &lt; b');
-    });
-
-    it('escapes greater than', () => {
-      expect($exeDevice.escapeHtml('a > b')).toBe('a &gt; b');
-    });
-
-    it('escapes double quotes', () => {
-      expect($exeDevice.escapeHtml('say "hello"')).toBe('say &quot;hello&quot;');
-    });
-
-    it('escapes single quotes', () => {
-      expect($exeDevice.escapeHtml("it's")).toBe('it&#39;s');
-    });
-
-    it('escapes multiple special characters', () => {
-      const input = '<script>alert("xss")</script>';
-      const expected = '&lt;script&gt;alert(&quot;xss&quot;)&lt;/script&gt;';
-      expect($exeDevice.escapeHtml(input)).toBe(expected);
-    });
-
-    it('returns empty string for empty input', () => {
-      expect($exeDevice.escapeHtml('')).toBe('');
-    });
-
-    it('handles string with no special characters', () => {
-      expect($exeDevice.escapeHtml('hello world')).toBe('hello world');
-    });
   });
 
   describe('getChallengeDefault', () => {

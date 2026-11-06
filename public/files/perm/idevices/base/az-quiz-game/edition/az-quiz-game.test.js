@@ -10,7 +10,6 @@
  * - startContains: Check if word starts with or contains letter
  * - placeImageWindows: Image dimension calculations (with mocked jQuery)
  * - rearrangeAlphabet: Alphabet rearrangement
- * - escapeHtml: HTML character escaping
  * - removeTags: HTML tag removal
  */
 /* eslint-disable no-undef */
@@ -442,38 +441,6 @@ describe('az-quiz-game iDevice', () => {
       const result = $exeDevice.rearrangeAlphabet('ABCD');
       // Consonants (BCD), then vowels (AEIOU)
       expect(result).toBe('BCDAEIOU');
-    });
-  });
-
-  describe('escapeHtml', () => {
-    it('escapes ampersand', () => {
-      expect($exeDevice.escapeHtml('foo & bar')).toBe('foo &amp; bar');
-    });
-
-    it('escapes less than', () => {
-      expect($exeDevice.escapeHtml('a < b')).toBe('a &lt; b');
-    });
-
-    it('escapes greater than', () => {
-      expect($exeDevice.escapeHtml('a > b')).toBe('a &gt; b');
-    });
-
-    it('escapes double quotes', () => {
-      expect($exeDevice.escapeHtml('say "hello"')).toBe('say &quot;hello&quot;');
-    });
-
-    it('escapes single quotes', () => {
-      expect($exeDevice.escapeHtml("it's")).toBe('it&#39;s');
-    });
-
-    it('escapes multiple special characters', () => {
-      const input = '<script>alert("xss")</script>';
-      const expected = '&lt;script&gt;alert(&quot;xss&quot;)&lt;/script&gt;';
-      expect($exeDevice.escapeHtml(input)).toBe(expected);
-    });
-
-    it('returns empty string for empty input', () => {
-      expect($exeDevice.escapeHtml('')).toBe('');
     });
   });
 

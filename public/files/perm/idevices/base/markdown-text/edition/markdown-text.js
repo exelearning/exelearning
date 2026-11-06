@@ -313,7 +313,7 @@ var $exeDevice = {
         }
         const converter = this.getMarkdownConverter();
         if (!converter) {
-            return this.escapeHtml(content);
+            return $exeIDevicesEdition.iDevice.common.escapeHtml(content);
         }
         const stash = this.stashLatex(content);
         const html = converter.makeHtml(stash.text);
@@ -367,21 +367,6 @@ var $exeDevice = {
             disableForced4SpacesIndentedSublists: true,
         });
         return this.markdownConverter;
-    },
-
-    /**
-     * Escape HTML special characters in a string.
-     *
-     * @param {string} str
-     * @returns {string}
-     */
-    escapeHtml: function (str) {
-        return String(str)
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;')
-            .replace(/'/g, '&#39;');
     },
 
     /**
@@ -509,12 +494,12 @@ var $exeDevice = {
             ? `<span class="exe-field-instructions">${instructions}</span>`
             : '';
         const placeholderAttrib = placeholder
-            ? `placeholder="${this.escapeHtml(placeholder)}"`
+            ? `placeholder="${$exeIDevicesEdition.iDevice.common.escapeHtml(placeholder)}"`
             : '';
         return `
       <div class="exe-field exe-text-field">
         <label for="${id}">${title}:</label>
-        <input type="text" value="${this.escapeHtml(value || '')}" ${placeholderAttrib} class="ideviceTextfield" name="${id}" id="${id}" onfocus="this.select()" />
+        <input type="text" value="${$exeIDevicesEdition.iDevice.common.escapeHtml(value || '')}" ${placeholderAttrib} class="ideviceTextfield" name="${id}" id="${id}" onfocus="this.select()" />
         ${instructionsSpan}
       </div>`;
     },

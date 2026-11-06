@@ -1922,15 +1922,6 @@ var $exeDevice = {
         $exeDevice.showQuestion($exeDevice.active);
     },
 
-    escapeHtml: function (string) {
-        return String(string)
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;')
-            .replace(/'/g, '&#39;');
-    },
-
     save: function () {
         if (!$exeDevice.validateQuestion()) {
             return false;

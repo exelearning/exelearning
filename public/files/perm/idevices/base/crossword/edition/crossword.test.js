@@ -3,7 +3,6 @@
  *
  * Tests pure functions that don't depend on DOM manipulation:
  * - getCuestionDefault: Default question structure
- * - escapeHtml: HTML escaping
  * - validTime: Time format validation
  */
 
@@ -86,46 +85,6 @@ describe('crossword iDevice', () => {
       const defaultQuestion = $exeDevice.getCuestionDefault();
       expect(defaultQuestion.x).toBe(0);
       expect(defaultQuestion.y).toBe(0);
-    });
-  });
-
-  describe('escapeHtml', () => {
-    it('escapes ampersand', () => {
-      expect($exeDevice.escapeHtml('&')).toBe('&amp;');
-      expect($exeDevice.escapeHtml('a & b')).toBe('a &amp; b');
-    });
-
-    it('escapes less than', () => {
-      expect($exeDevice.escapeHtml('<')).toBe('&lt;');
-      expect($exeDevice.escapeHtml('<div>')).toBe('&lt;div&gt;');
-    });
-
-    it('escapes greater than', () => {
-      expect($exeDevice.escapeHtml('>')).toBe('&gt;');
-    });
-
-    it('escapes double quotes', () => {
-      expect($exeDevice.escapeHtml('"')).toBe('&quot;');
-      expect($exeDevice.escapeHtml('say "hello"')).toBe('say &quot;hello&quot;');
-    });
-
-    it('escapes single quotes', () => {
-      expect($exeDevice.escapeHtml("'")).toBe('&#39;');
-      expect($exeDevice.escapeHtml("it's")).toBe('it&#39;s');
-    });
-
-    it('escapes multiple characters', () => {
-      expect($exeDevice.escapeHtml('<script>alert("XSS")</script>')).toBe(
-        '&lt;script&gt;alert(&quot;XSS&quot;)&lt;/script&gt;'
-      );
-    });
-
-    it('handles empty string', () => {
-      expect($exeDevice.escapeHtml('')).toBe('');
-    });
-
-    it('handles string with no special characters', () => {
-      expect($exeDevice.escapeHtml('Hello World')).toBe('Hello World');
     });
   });
 
