@@ -657,7 +657,7 @@ var $exeDevice = {
                         this.naturalWidth,
                         this.naturalHeight
                     );
-                    $exeDevice.drawImage(this, mData);
+                    $exeIDevicesEdition.iDevice.common.drawImage(this, mData);
                     image.attr('alt', alt).show();
                     $cursor.show();
                     $noImage.hide();
@@ -678,15 +678,6 @@ var $exeDevice = {
                 }
                 return false;
             });
-    },
-
-    drawImage: function (image, mData) {
-        $(image).css({
-            left: `${mData.x}px`,
-            top: `${mData.y}px`,
-            width: `${mData.w}px`,
-            height: `${mData.h}px`,
-        });
     },
 
     save: function () {

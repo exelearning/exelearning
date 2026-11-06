@@ -732,16 +732,6 @@ var $exeDevice = {
         return data;
     },
 
-    drawImage: function (image, mData) {
-        $(image).css({
-            position: 'absolute',
-            left: `${mData.x}px`,
-            top: `${mData.y}px`,
-            width: `${mData.w}px`,
-            height: `${mData.h}px`,
-        });
-    },
-
     addEvents: function () {
         $('#puzzleEPaste').hide();
 

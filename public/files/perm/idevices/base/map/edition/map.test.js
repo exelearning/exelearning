@@ -369,7 +369,6 @@ describe('map edition: $exeDevice guards (#2271)', () => {
             const spy = vi
                 .spyOn($exeDevice, 'placeImageWindows')
                 .mockReturnValue({ w: 10, h: 5, x: 0, y: 0 });
-            vi.spyOn($exeDevice, 'drawImage').mockImplementation(() => {});
             $(img).trigger('load');
             expect(spy).toHaveBeenCalledWith(img, 100, 50);
         });

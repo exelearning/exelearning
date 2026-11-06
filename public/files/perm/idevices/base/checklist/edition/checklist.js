@@ -653,7 +653,7 @@ var $exeDevice = {
                         this.naturalWidth,
                         this.naturalHeight
                     );
-                    $exeDevice.drawImage(this, mData);
+                    $exeIDevicesEdition.iDevice.common.drawImage(this, mData);
                     $image.show();
                     $(noimg).hide();
                     return true;
@@ -747,14 +747,5 @@ var $exeDevice = {
             game.urlDecorative,
             _('Decorative image')
         );
-    },
-
-    drawImage: function (image, mData) {
-        $(image).css({
-            left: mData.x + 'px',
-            top: mData.y + 'px',
-            width: mData.w + 'px',
-            height: mData.h + 'px',
-        });
     },
 };

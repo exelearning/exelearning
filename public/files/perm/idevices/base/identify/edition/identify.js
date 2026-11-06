@@ -344,7 +344,7 @@ var $exeDevice = {
                         this.naturalWidth,
                         this.naturalHeight
                     );
-                    $exeDevice.drawImage(this, mData);
+                    $exeIDevicesEdition.iDevice.common.drawImage(this, mData);
                     $image.show();
                     $('#idfENoImage').hide();
                     $exeDevice.paintMouse(this, $cursor, x, y);
@@ -1501,15 +1501,6 @@ var $exeDevice = {
             x: xImage,
             y: yImage,
         };
-    },
-
-    drawImage: function (image, mData) {
-        $(image).css({
-            left: `${mData.x}px`,
-            top: `${mData.y}px`,
-            width: `${mData.w}px`,
-            height: `${mData.h}px`,
-        });
     },
 
     validateScoreQuestion: function (text) {

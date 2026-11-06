@@ -1222,15 +1222,6 @@ var $exeDevice = {
         };
     },
 
-    drawImage: function (image, mData) {
-        $(image).css({
-            left: `${mData.x}px`,
-            top: `${mData.y}px`,
-            width: `${mData.w}px`,
-            height: `${mData.h}px`,
-        });
-    },
-
     validateScoreQuestion: function (text) {
         const isValid =
             text.length > 0 &&

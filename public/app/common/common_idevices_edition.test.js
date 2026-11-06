@@ -422,6 +422,34 @@ describe('common_idevices_edition.js', () => {
       });
     });
 
+    describe('drawImage', () => {
+      const drawImage = (...args) => globalThis.$exeIDevicesEdition.iDevice.common.drawImage(...args);
+      const box = { x: 10, y: 20, w: 300, h: 150 };
+
+      it('places and sizes the image in pixels, leaving its positioning to its CSS', () => {
+        const image = document.createElement('img');
+
+        drawImage(image, box);
+
+        expect([image.style.left, image.style.top, image.style.width, image.style.height]).toEqual([
+          '10px',
+          '20px',
+          '300px',
+          '150px',
+        ]);
+        expect(image.style.position).toBe('');
+      });
+
+      it('also takes the image out of the flow when asked to', () => {
+        const image = document.createElement('img');
+
+        drawImage(image, box, true);
+
+        expect(image.style.position).toBe('absolute');
+        expect(image.style.left).toBe('10px');
+      });
+    });
+
     describe('getTextEditor', () => {
       const getTextEditor = (position) => globalThis.$exeIDevicesEdition.iDevice.common.getTextEditor(position);
 

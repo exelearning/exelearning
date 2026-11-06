@@ -2502,7 +2502,8 @@ var $exeDevice = {
                         this.naturalWidth,
                         this.naturalHeight
                     );
-                    $exeDevice.drawImage(this, mData);
+                    $exeIDevicesEdition.iDevice.common.drawImage(this, mData);
+                    $image.show();
                     $exeDevice.canvas.width = mData.w;
                     $exeDevice.canvas.height = mData.h;
                     $noImage.hide();
@@ -2563,7 +2564,7 @@ var $exeDevice = {
                         this.naturalWidth,
                         this.naturalHeight
                     );
-                    $exeDevice.drawImage(this, mData);
+                    $exeIDevicesEdition.iDevice.common.drawImage(this, mData);
                     $image.show();
                     $noImage.hide();
                     return true;
@@ -2597,7 +2598,7 @@ var $exeDevice = {
                         this.naturalWidth,
                         this.naturalHeight
                     );
-                    $exeDevice.drawImage(this, mData);
+                    $exeIDevicesEdition.iDevice.common.drawImage(this, mData);
                     $image.show();
                     $noImage.hide();
                     return true;
@@ -2688,16 +2689,6 @@ var $exeDevice = {
         }
         $textLink.text(text);
         $textLink.show();
-    },
-
-    drawImage: function (image, mData) {
-        $(image).css({
-            left: mData.x + 'px',
-            top: mData.y + 'px',
-            width: mData.w + 'px',
-            height: mData.h + 'px',
-        });
-        $(image).show();
     },
 
     addEvents: function () {

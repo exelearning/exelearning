@@ -1060,15 +1060,6 @@ var $exeDevice = {
         $('#selecionaESolutionSelect').text(solution);
     },
 
-    drawImage: function (image, mData) {
-        $(image).css({
-            left: mData.x + 'px',
-            top: mData.y + 'px',
-            width: mData.w + 'px',
-            height: mData.h + 'px',
-        });
-    },
-
     showImage: function (url, x, y, alt, type) {
         const $image = $('#seleccionaEImage'),
             $cursor = $('#seleccionaECursor');
@@ -1096,7 +1087,7 @@ var $exeDevice = {
                         this.naturalWidth,
                         this.naturalHeight
                     );
-                    $exeDevice.drawImage(this, mData);
+                    $exeIDevicesEdition.iDevice.common.drawImage(this, mData);
                     $image.show();
                     $('#seleccionaENoImage').hide();
                     $exeDevice.paintMouse(this, $cursor, x, y);

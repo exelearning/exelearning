@@ -61,6 +61,20 @@ var $exeIDevicesEdition = {
             showMessage: function (message) {
                 eXe.app.alert(message);
             },
+            /**
+             * Place and size an image, in pixels, where the iDevice's
+             * placeImageWindows measured it.
+             *
+             * @param {HTMLElement} image
+             * @param {{x: number, y: number, w: number, h: number}} box
+             * @param {boolean} [absolute=false] Also take it out of the flow,
+             * for an image its CSS leaves in it.
+             */
+            drawImage: function (image, box, absolute) {
+                const css = { left: `${box.x}px`, top: `${box.y}px`, width: `${box.w}px`, height: `${box.h}px` };
+                if (absolute) css.position = 'absolute';
+                $(image).css(css);
+            },
             helpTooltipId: 0,
             /**
              * Inline information button: a short hover label and an explanation

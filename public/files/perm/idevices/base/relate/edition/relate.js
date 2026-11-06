@@ -1048,7 +1048,7 @@ var $exeDevice = {
                         this.naturalWidth,
                         this.naturalHeight
                     );
-                    $exeDevice.drawImage(this, mData);
+                    $exeIDevicesEdition.iDevice.common.drawImage(this, mData, true);
                     $image.show();
                     $nimage.hide();
                     $exeDevice.paintMouse(this, $cursor, x, y);
@@ -1077,16 +1077,6 @@ var $exeDevice = {
                 })
                 .show();
         }
-    },
-
-    drawImage: function (image, mData) {
-        $(image).css({
-            position: 'absolute',
-            left: `${mData.x}px`,
-            top: `${mData.y}px`,
-            width: `${mData.w}px`,
-            height: `${mData.h}px`,
-        });
     },
 
     addEvents: function () {
