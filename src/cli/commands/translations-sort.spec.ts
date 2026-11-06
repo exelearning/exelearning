@@ -1,7 +1,7 @@
 /**
  * Tests for Translations Sort Command
  */
-import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
+import { describe, it, expect, beforeEach, afterEach, spyOn } from 'bun:test';
 import * as fs from 'fs-extra';
 import * as path from 'path';
 
@@ -68,6 +68,78 @@ describe('Translations Sort Command', () => {
         if (await fs.pathExists(testDir)) {
             await fs.remove(testDir);
         }
+    });
+
+    describe('direct CLI entry point', () => {
+        it('reports successful sorting and a zero exit status', async () => {
+            const { runCli, configure } = await import('./translations-sort');
+            configure({ extractKeys: async () => new Set(['Key A', 'Key B', 'Key C']) });
+            const log = spyOn(console, 'log').mockImplementation(() => {});
+            try {
+                expect(await runCli(['bun', 'translations-sort.ts', '--locale=es'])).toBe(0);
+                expect(log.mock.calls.some(args => String(args[0]).includes('SUCCESS'))).toBe(true);
+                const sorted = await fs.readFile(path.join(testTranslationsDir, 'messages.es.xlf'), 'utf8');
+                expect(sorted.indexOf('id_A')).toBeLessThan(sorted.indexOf('id_B'));
+            } finally {
+                log.mockRestore();
+            }
+        });
+
+        it.each([
+            ['--help', 0, '--locale'],
+            ['--locale=zz', 1, 'Unknown locale'],
+        ] as const)('runs the actual CLI process for %s', async (flag, status, expected) => {
+            const child = Bun.spawn([process.execPath, path.join(import.meta.dir, 'translations-sort.ts'), flag], {
+                cwd: testDir,
+                stdout: 'pipe',
+                stderr: 'pipe',
+            });
+            const [stdout, stderr, exit] = await Promise.all([
+                new Response(child.stdout).text(),
+                new Response(child.stderr).text(),
+                child.exited,
+            ]);
+            expect(exit).toBe(status);
+            expect(stdout + stderr).toContain(expected);
+        });
+
+        it('prints help without extracting or sorting', async () => {
+            const { runCli, configure } = await import('./translations-sort');
+            configure({
+                extractKeys: async () => {
+                    throw new Error('help must not extract');
+                },
+            });
+            const before = await fs.readFile(path.join(testTranslationsDir, 'messages.es.xlf'), 'utf8');
+            const log = spyOn(console, 'log').mockImplementation(() => {});
+            try {
+                expect(await runCli(['bun', 'translations-sort.ts', '--help'])).toBe(0);
+                expect(log.mock.calls.some(args => String(args[0]).includes('--locale'))).toBe(true);
+                expect(await fs.readFile(path.join(testTranslationsDir, 'messages.es.xlf'), 'utf8')).toBe(before);
+            } finally {
+                log.mockRestore();
+            }
+        });
+
+        it.each([false, true])('returns failure for validation/extraction errors (throws: %s)', async throws => {
+            const { runCli, configure } = await import('./translations-sort');
+            configure({
+                extractKeys: async () => {
+                    throw new Error('extraction unavailable');
+                },
+            });
+            const log = spyOn(console, 'error').mockImplementation(() => {});
+            try {
+                expect(await runCli(['bun', 'translations-sort.ts', `--locale=${throws ? 'es' : 'zz'}`])).toBe(1);
+                expect(
+                    log.mock.calls.some(args =>
+                        String(args[0]).includes(throws ? 'extraction unavailable' : 'Unknown locale'),
+                    ),
+                ).toBe(true);
+            } finally {
+                log.mockRestore();
+            }
+        });
     });
 
     // -----------------------------------------------------------------------

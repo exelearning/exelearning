@@ -109,7 +109,7 @@ export const usersRoutes = new Elysia({ prefix: '/users' })
             // Create user
             // user_id: not set for API-created users (null) - they're not SSO
             const roles = body.roles || ['ROLE_USER'];
-            const result = await createUser(db, {
+            const newUser = await createUser(db, {
                 email: body.email,
                 password: hashedPassword,
                 roles: JSON.stringify(roles),
@@ -118,15 +118,13 @@ export const usersRoutes = new Elysia({ prefix: '/users' })
                 is_active: 1,
             });
 
-            const newUser = await findUserById(db, Number(result.insertId));
-
             set.status = 201;
             return successResponse({
-                id: newUser!.id,
-                email: newUser!.email,
-                roles: parseRoles(newUser!.roles),
-                created_at: newUser!.created_at,
-                updated_at: newUser!.updated_at,
+                id: newUser.id,
+                email: newUser.email,
+                roles: parseRoles(newUser.roles),
+                created_at: newUser.created_at,
+                updated_at: newUser.updated_at,
             });
         },
         {

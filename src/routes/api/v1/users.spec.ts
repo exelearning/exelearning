@@ -8,6 +8,8 @@ import { Elysia } from 'elysia';
 import * as bcrypt from 'bcryptjs';
 import { db, resetClientCacheForTesting } from '../../../db/client';
 import { up } from '../../../db/migrations/001_initial';
+import { up as makeUserIdNullable } from '../../../db/migrations/005_user_id_nullable';
+import { up as createActivityLog } from '../../../db/migrations/007_activity_log';
 import { now } from '../../../db/types';
 import { usersRoutes } from './users';
 import { createAuthRoutes } from '../../auth';
@@ -56,6 +58,8 @@ describe('Users API v1', () => {
 
         await resetClientCacheForTesting();
         await up(db);
+        await makeUserIdNullable(db);
+        await createActivityLog(db);
 
         app = createTestApp();
 
@@ -176,9 +180,7 @@ describe('Users API v1', () => {
             expect(response.status).toBe(403);
         });
 
-        // Note: Full user creation requires proper db setup
-        // This test verifies auth passes for admin
-        it('should accept create request for admin (auth passes)', async () => {
+        it('creates a local user with a nullable SSO identifier for an admin', async () => {
             const response = await app.handle(
                 new Request('http://localhost/users', {
                     method: 'POST',
@@ -192,16 +194,17 @@ describe('Users API v1', () => {
                     }),
                 }),
             );
-            // Auth passes, creation may succeed or fail due to db setup
-            expect([201, 500]).toContain(response.status);
-            if (response.status === 201) {
-                const data = (await response.json()) as {
-                    success: boolean;
-                    data: { id: number; email: string };
-                };
-                expect(data.success).toBe(true);
-                expect(data.data.email).toBe('createduser@test.com');
-            }
+            expect(response.status).toBe(201);
+            const data = (await response.json()) as {
+                success: boolean;
+                data: { id: number; email: string };
+            };
+            expect(data.success).toBe(true);
+            expect(data.data.email).toBe('createduser@test.com');
+            const saved = await findUserById(db, data.data.id);
+            expect(saved?.user_id).toBeNull();
+            expect(saved?.roles).toBe('["ROLE_USER"]');
+            expect(await Bun.password.verify('password123', saved!.password)).toBe(true);
         });
     });
 
@@ -254,6 +257,33 @@ describe('Users API v1', () => {
     // =========================================================================
 
     describe('PATCH /users/:id', () => {
+        it('updates credentials and rejects an email already owned by another user', async () => {
+            const target = await createUser(db, {
+                email: 'coverage-update@test.com',
+                password: await hashPassword('before'),
+                roles: '["ROLE_USER"]',
+                is_active: 1,
+                is_lopd_accepted: 1,
+            });
+            const id = target.id;
+            const update = (body: object) =>
+                app.handle(
+                    new Request(`http://localhost/users/${id}`, {
+                        method: 'PATCH',
+                        headers: { Authorization: `Bearer ${adminToken}`, 'Content-Type': 'application/json' },
+                        body: JSON.stringify(body),
+                    }),
+                );
+            const conflict = await update({ email: 'superadmin@test.com' });
+            expect(conflict.status).toBe(409);
+            expect((await findUserById(db, id))?.email).toBe('coverage-update@test.com');
+            const response = await update({ email: 'coverage-updated@test.com', password: 'new-password123' });
+            expect(response.status).toBe(200);
+            const saved = await findUserById(db, id);
+            expect(saved?.email).toBe('coverage-updated@test.com');
+            expect(await Bun.password.verify('new-password123', saved!.password)).toBe(true);
+        });
+
         it('should return 401 without auth token', async () => {
             const response = await app.handle(
                 new Request(`http://localhost/users/${userId}`, {
