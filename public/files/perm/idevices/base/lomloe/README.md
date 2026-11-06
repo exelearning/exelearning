@@ -33,7 +33,7 @@ lomloe/
     ├── lomloe-ES-GA.json   # Galicia (ISO ES-GA) — DOG decrees, Galician language
     ├── lomloe-ES-NC.json   # Com. Foral de Navarra (ISO ES-NC) — Decretos Forales 61/67/71/72-2022, Spanish
     ├── lomloe-ES-VC.json   # Comunitat Valenciana (ISO ES-VC) — Decrets 100/106/107/108-2022, Valencian
-    └── lomloe-ES-PV.json   # Euskadi / País Vasco (ISO ES-PV) — Decretos 75/2023, 77/2023, Basque
+    └── lomloe-ES-PV.json   # Euskadi / País Vasco (ISO ES-PV) — Decretos 75/2023, 76/2023, 77/2023, Basque
 ```
 
 ## Dataset format
@@ -478,29 +478,33 @@ The Canary Islands dataset (`lomloe-canarias.json`) is derived from the official
 
 `lomloe-ES-PV.json` is a **full, direct extraction from the official Basque-language
 (euskara) decrees** — nothing is inherited from the state RDs and nothing is
-machine-translated. Both decrees were published in the same gazette, *Euskal
-Herriko Agintaritzaren Aldizkaria* (EHAA) núm. 109, 9 June 2023.
+machine-translated. The three decrees were published in *Euskal Herriko
+Agintaritzaren Aldizkaria* (EHAA) núm. 109, 9 June 2023. Baccalaureate uses
+the corrected Annex II published in EHAA núm. 140, 24 July 2023.
 
 | EHAA disposition | Norma | Etapa | Canonical PDF (language) |
 |---|---|---|---|
 | 2023/2727 | Decreto 75/2023, de 30 de mayo | Haur Hezkuntza (Educación Infantil) | `haur_hezkuntza_curriculum_dekretua_e.pdf` (Basque) |
+| [2023/2728](https://www.euskadi.eus/bopv2/datos/2023/06/2302728e.pdf) | Decreto 76/2023, de 30 de mayo | Batxilergoa (Baccalaureate): Annex I descriptors, course distribution | `2302728e.pdf` (Basque) |
+| [2023/3570](https://www.euskadi.eus/bopv2/datos/2023/07/2303570e.pdf) | Correction of Decreto 76/2023, 24 July 2023 | Batxilergoa: replacement Annex II subject curricula | `2303570e.pdf` (Basque) |
 | 2023/2729 | Decreto 77/2023, de 30 de mayo | Oinarrizko Hezkuntza (Educación Básica: Primaria + ESO) | `Oinarrizko Hezkuntzaren Dekretua.pdf` (Basque) |
 
-The Spanish editions of both decrees were used **only as a structural oracle**
+The Spanish editions were used **only as a structural oracle**
 (to cross-check the number of areas, competencias, criterios per cycle and saber
 blocks); all curriculum text shipped in the dataset is the official Basque text.
 
 ### Etapas, niveles and codes
 
 The dataset uses Basque stage/level keys (matching the co-official-language
-precedent of `ES-VC`). There is **no Bachillerato** — Decreto 77/2023 only covers
-Educación Básica.
+precedent of `ES-VC`). Baccalaureate is included as `Batxilergoa`.
 
 | Etapa key | Niveles | Areas | Competencias | Criterios | Saberes | Code tag |
 |---|---|---|---|---|---|---|
 | `Haur Hezkuntza` | `Lehen zikloa (0-2 urte)`, `Bigarren zikloa (3-5 urte)` | 3 | 24 | 80 | 255 | `INF1`, `INF2` |
 | `Lehen Hezkuntza` | `Lehen Hezkuntzako 1. maila` … `6. maila` | 8 | 329 | 831 | 1 936 | `PRI1` … `PRI6` |
 | `Derrigorrezko Bigarren Hezkuntza` | `DBHko 1. maila` … `4. maila` | 29 | 408 | 1 115 | 3 338 | `ESO1` … `ESO4` |
+| `Batxilergoa` | `Batxilergoko 1. maila` | 44 | 287 | 694 | 1 566 | `BACH1` |
+| `Batxilergoa` | `Batxilergoko 2. maila` | 39 | 254 | 602 | 1 363 | `BACH2` |
 
 (Competencias/criterios/saberes counted per `(nivel, area)`, i.e. including the
 per-year/per-course duplication.)
@@ -520,7 +524,7 @@ same cycle content duplicated across two years keeps unique selection ids.
 
 ### Subject codes (`codArea`)
 
-Neither decree publishes official subject *siglas*, so the area/materia codes are
+The decrees publish no official subject *siglas*, so the area/materia codes are
 **derived deterministically from the official Basque names** (initials of the
 significant words, e.g. `NGKIE` = *Natura, Gizarte eta Kultura Ingurunearen
 Ezagutza*, `EL`/`GL` = *Euskara*/*Gaztelania eta Literatura*, `GH` = *Geografia
@@ -549,6 +553,28 @@ is listed in art. 13 for 4.º but has no curriculum annex in Decreto 77/2023, so
 is exposed with an intentionally empty curriculum rather than fabricated content.
 4.º Matemáticas reuses the 3.º column the decree publishes.
 
+### Baccalaureate course distribution
+
+The corrected Annex II of Decreto 76/2023 supplies all 65 subject sections.
+The joint Euskara/Gaztelania section is exposed as two subjects with distinct
+selection codes. Common and modality subjects follow articles 11–15; electives
+follow the course stated in each subject introduction. `Atzerriko Bigarren
+Hizkuntza` and `IKT` are I/II electives. `Jarduera Fisikoa, Aisia eta Osasuna`
+has a stage-wide curriculum without an explicit course assignment in this annex,
+so it is available in both courses.
+
+Where the source publishes separate first/second-year criterion columns or
+knowledge tables, they remain separate. Unified I/II curricula (e.g. languages,
+Greek and Latin) are copied into each course with course-specific selection IDs.
+Criterion-to-competency association follows the explicit table headings: for
+example, Euskal Herriko Historia prints `1.1` under competency 2 and `7.1`/`7.2`
+under competency 8. Generated selection codes remain unique without rewriting
+the official criterion wording.
+
+The supplied preliminary notes are not the extraction authority. The corrected
+Basque annex has eight Espainiako Historia competencies, nine Filosofiaren
+Historia competencies and seven Heziketa Fisikoa competencies.
+
 ### Descriptors / competencias clave strategy
 
 The Basque ANEXO I defines the *irteera-profila* operational descriptors with
@@ -565,11 +591,17 @@ variants of these codes (`PSIIK`/`SII`→`KPSII`, `DK`/`LD`→`KD`, `ELK`→`KE`
 generator normalises them to the ANEXO I family set and validates every code is
 in range, dropping (never inventing) anything that fails.
 
-The full Basque descriptor catalogue (43 codes: 8 families + the numbered
+The original Basque descriptor catalogue (43 codes: 8 families + the numbered
 descriptors, end-of-Oinarrizko-Hezkuntza wording, union of both exit levels) is
 shipped under the reserved top-level **`descriptors`** key, so the editor and
 exports render Basque descriptor tooltips instead of the shared Castilian
-`CC_DESCRIPTIONS` fallback.
+`CC_DESCRIPTIONS` fallback. Baccalaureate adds the eight fractional codes
+`KPSII1.1`, `KPSII1.2`, `KPSII3.1`, `KPSII3.2`, `KAKK3.1`, `KAKK3.2`,
+`KAKK4.1` and `KAKK4.2`, using the Baccalaureate column of Decreto 76/2023
+Annex I. Existing descriptor text and all earlier stage trees remain unchanged.
+The shared catalogue still uses the existing basic-education wording for codes
+common to both exit levels; stage-specific wording for those shared codes is
+not represented by the current dataset schema.
 
 ### Infantil competencias clave (documented limitation)
 
@@ -598,7 +630,17 @@ the Basque source does not make. This decision is locked by a test in
 A single self-contained Python script (`parse_es_pv.py`, `pdfplumber`-based)
 deterministically regenerates `lomloe-ES-PV.json` from the two Basque PDFs. It is
 **attached to the PR** that introduced this dataset rather than committed to the
-repo.
+repo. The Baccalaureate addition has a separate self-contained
+`parse_es_pv_bach.py` parser attached to the PR for #2704, following the same
+convention. It requires Python, `pdfplumber` 0.11.10 and Poppler's `pdftotext`:
+
+```sh
+python parse_es_pv_bach.py 2302728e.pdf 2303570e.pdf lomloe-ES-PV.json output.json
+```
+
+It appends/replaces only `Batxilergoa` and adds the eight missing descriptor
+entries, preserving the existing stage trees and descriptor values. It asserts
+subject and element counts and refuses to write duplicate selection identifiers.
 
 ## Persisted data model
 

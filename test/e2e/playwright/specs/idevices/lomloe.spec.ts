@@ -148,6 +148,52 @@ test.describe('LOMLOE iDevice', () => {
         await expect(page.locator('input[data-type="saber"]').first()).toBeChecked();
     });
 
+    test('saves and previews official Basque Baccalaureate curriculum from both courses', async ({
+        authenticatedPage: page,
+    }) => {
+        await addLomloe(page);
+        await page.locator('select[id^="lomloe-ds-"]').selectOption('ES-PV');
+        await page.locator('.lomloe-etapa-btn[data-etapa="Batxilergoa"]').click();
+        await page.locator('.lomloe-nivel-btn[data-nivel="Batxilergoko 1. maila"]').click();
+        await expect(page.locator('.lomloe-materia-item[data-codarea="HF"]')).toBeVisible();
+        await expect(page.locator('.lomloe-materia-item[data-codarea="EH"]')).toHaveCount(0);
+        await page.locator('.lomloe-nivel-btn[data-nivel="Batxilergoko 2. maila"]').click();
+        await expect(page.locator('.lomloe-materia-item[data-codarea="EH"]')).toBeVisible();
+        await expect(page.locator('.lomloe-materia-item[data-codarea="HF"]')).toHaveCount(0);
+        await page.locator('.lomloe-materia-item[data-codarea="APDAMT"]').click();
+        const criterion = 'ES-PV-BACH2-APDAMT-CE02-CR01';
+        await expect(page.locator('.lomloe-criterio-item').first()).toContainText('Hautemateko eta gozatzeko');
+        await page.locator('input[data-type="criterio"]').nth(1).check();
+        await page.locator('.lomloe-desc-cb[data-cc="KAKK3.1"]').check();
+        await page.locator('.lomloe-tab-btn[data-tab="saberes"]').click();
+        const knowledge = await page.locator('.lomloe-saber-code').first().innerText();
+        await page.locator('input[data-type="saber"]').first().check();
+        const idevice = page.locator('.idevice_node.lomloe');
+        const id = await idevice.getAttribute('id');
+        await saveIdevice(page, id!);
+        await saveProject(page);
+        await reloadPage(page);
+        await selectFirstPage(page);
+        await expect(idevice.locator('.lomloeIdeviceContent')).toContainText(criterion);
+        await expect(idevice.locator('.lomloeIdeviceContent')).toContainText(knowledge);
+        await editIdevice(page, id!);
+        await expect(page.locator('select[id^="lomloe-ds-"]')).toHaveValue('ES-PV');
+        await expect(page.locator('.lomloe-selected-count')).toHaveText('2');
+        await expect(page.locator('input[data-type="saber"]').first()).toBeChecked();
+        await expect(page.locator('.lomloe-desc-cb[data-cc="KAKK3.1"]')).toBeChecked();
+        await saveIdevice(page, id!);
+        await saveProject(page);
+        expect(await waitForPreviewContent(page)).toBe(true);
+        const content = getPreviewFrame(page).locator('.lomloeIdeviceContent');
+        await expect(content.locator('strong[data-lomloe-tip]').first()).toHaveAttribute(
+            'data-lomloe-tip',
+            /Batxilergoko 2\. maila/,
+        );
+        await expect(content).toContainText(criterion);
+        await expect(content).toContainText(knowledge);
+        await expect(content).toContainText('KAKK3.1');
+    });
+
     test('renders the saved curriculum table in the preview panel', async ({ authenticatedPage: page }) => {
         await addLomloe(page);
         const { criterion, knowledge } = await selectCurriculumElements(page);
