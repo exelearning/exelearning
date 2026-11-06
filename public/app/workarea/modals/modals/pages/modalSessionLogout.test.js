@@ -37,6 +37,11 @@ describe('ModalSessionLogout', () => {
           alert: {
             show: vi.fn(),
           },
+          openuserodefiles: {
+            openUserLocalOdeFilesWithOpenSession: vi.fn(),
+            openUserOdeFilesWithOpenSession: vi.fn(),
+            largeFilesUpload: vi.fn(),
+          },
         },
       },
       config: {
@@ -224,7 +229,6 @@ describe('ModalSessionLogout', () => {
 
       modal.show({ pendingAction: { action: 'new' } });
       vi.advanceTimersByTime(500);
-
       const yesButton = mockElement.querySelector('.modal-footer .session-logout-save');
       yesButton.click();
       await vi.advanceTimersByTimeAsync(0);
@@ -253,6 +257,72 @@ describe('ModalSessionLogout', () => {
         projectUuid: 'uuid-2',
         skipSave: true,
       });
+      vi.useRealTimers();
+    });
+
+    it('should navigate directly to a Yjs project when not saving', async () => {
+      vi.useFakeTimers();
+      const button = document.createElement('button');
+      const closeSpy = vi.spyOn(modal, 'close').mockImplementation(() => {});
+
+      modal.notSaveSessionEventListener(button, {
+        openYjsProject: true,
+        projectUuid: 'uuid-3',
+      });
+
+      button.click();
+      await vi.advanceTimersByTimeAsync(0);
+
+      expect(window.location.href).toBe('/base/workarea?project=uuid-3');
+      expect(closeSpy).toHaveBeenCalled();
+      vi.useRealTimers();
+    });
+
+    it('should open a large local file upload when not saving', async () => {
+      vi.useFakeTimers();
+      const button = document.createElement('button');
+      const closeSpy = vi.spyOn(modal, 'close').mockImplementation(() => {});
+      const largeFile = { name: 'big.elp' };
+
+      modal.notSaveSessionEventListener(button, {
+        openOdeFile: true,
+        localOdeFile: true,
+        isLargeFile: true,
+        odeFile: largeFile,
+      });
+
+      button.click();
+      await vi.advanceTimersByTimeAsync(0);
+
+      expect(window.eXeLearning.app.modals.openuserodefiles.largeFilesUpload).toHaveBeenCalledWith(
+        largeFile,
+        false,
+        false,
+        true,
+        true,
+      );
+      expect(closeSpy).toHaveBeenCalled();
+      vi.useRealTimers();
+    });
+
+    it('should open a remote ODE file when not saving', async () => {
+      vi.useFakeTimers();
+      const button = document.createElement('button');
+      const closeSpy = vi.spyOn(modal, 'close').mockImplementation(() => {});
+
+      modal.notSaveSessionEventListener(button, {
+        openOdeFile: true,
+        localOdeFile: false,
+        id: 'remote-id-2',
+      });
+
+      button.click();
+      await vi.advanceTimersByTimeAsync(0);
+
+      expect(window.eXeLearning.app.modals.openuserodefiles.openUserOdeFilesWithOpenSession).toHaveBeenCalledWith(
+        'remote-id-2',
+      );
+      expect(closeSpy).toHaveBeenCalled();
       vi.useRealTimers();
     });
   });
