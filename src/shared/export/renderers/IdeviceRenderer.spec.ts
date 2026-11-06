@@ -810,6 +810,16 @@ describe('IdeviceRenderer', () => {
 
             expect(scripts[0]).toBe('<script src="../idevices/text/text.js"></script>');
         });
+
+        // Issue #2705: the server exporter used to emit the main iDevice file first and
+        // the remaining files alphabetically, so OrbitControls.js ran before three.min.js
+        // and the exported panorama lost its controls. config.xml declares the real order.
+        it('should emit three-sixty-viewer scripts in config.xml order (issue #2705)', () => {
+            const scripts = renderer.getJsScripts(['three-sixty-viewer'], '');
+            const files = scripts.map(tag => tag.match(/idevices\/three-sixty-viewer\/([^"]+)"/)?.[1]);
+
+            expect(files).toEqual(['three.min.js', 'OrbitControls.js', 'three-sixty-viewer.js']);
+        });
     });
 
     describe('getCssLinkInfo', () => {
