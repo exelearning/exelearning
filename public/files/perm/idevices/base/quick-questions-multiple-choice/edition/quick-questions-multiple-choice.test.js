@@ -850,7 +850,7 @@ describe('quick-questions-multiple-choice edition: shared form tabs and feedback
     });
 
     it('disposes all option tooltips when the edition closes', () => {
-        expect(tooltips.size).toBe(19); // Options plus the six shared Grading helpers.
+        expect(tooltips.size).toBe(22); // Options, the six shared Grading helpers and the three links of Questions.
         device.$lifecycle.destroy();
         for (const tooltip of tooltips.values()) {
             expect(tooltip.dispose).toHaveBeenCalledTimes(1);

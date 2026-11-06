@@ -1578,11 +1578,13 @@ describe('common_idevices_edition.js', () => {
       expect(buttons()[1]).toBe(exportButton());
       expect(exportButton().hasAttribute('aria-haspopup')).toBe(false);
       expect(exportButton().hasAttribute('aria-controls')).toBe(false);
-      // What the window used to say, its tooltip says.
-      expect(exportButton().classList.contains('exe-app-tooltip')).toBe(true);
-      expect(exportButton().getAttribute('title')).toBe(
-        'You can export its questions in txt format to integrate them into other compatible activities.'
-      );
+      // Each one says what it does in its tooltip.
+      expect(buttons().every((element) => element.classList.contains('exe-app-tooltip'))).toBe(true);
+      expect(buttons().map((element) => element.getAttribute('title'))).toEqual([
+        'Import questions from a file',
+        'Save the questions in a txt file',
+        'Create questions with an AI',
+      ]);
     });
 
     it('leaves Import or Export out for an iDevice without them, and all of them with share: false', () => {
@@ -1740,7 +1742,7 @@ describe('common_idevices_edition.js', () => {
       expect(() => share().close('missing')).not.toThrow();
     });
 
-    it('starts the tooltip of Export once, and disposes of it when the edition closes', () => {
+    it('starts the tooltips of the links once, and disposes of them when the edition closes', () => {
       const disposers = [];
       const previousLifecycle = window.$exeEditionLifecycle;
       const previousCommon = eXeLearning.app.common;
@@ -1762,12 +1764,13 @@ describe('common_idevices_edition.js', () => {
       try {
         render({ contents: '' });
         share().mount();
-        const tooltip = instances.get(exportButton());
+        const tooltips = buttons().map((element) => instances.get(element));
 
         expect(eXeLearning.app.common.initTooltips).toHaveBeenCalledTimes(1);
         expect(eXeLearning.app.common.initTooltips).toHaveBeenCalledWith(exportButton().parentElement);
+        expect(tooltips).toHaveLength(3);
         disposers.forEach((dispose) => dispose());
-        expect(tooltip.dispose).toHaveBeenCalledTimes(1);
+        tooltips.forEach((tooltip) => expect(tooltip.dispose).toHaveBeenCalledTimes(1));
       } finally {
         window.$exeEditionLifecycle = previousLifecycle;
         eXeLearning.app.common = previousCommon;

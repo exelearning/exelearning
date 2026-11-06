@@ -353,7 +353,7 @@ describe('relate edition: shared form tabs and share windows', () => {
     });
 
     it('disposes all tooltips when the edition closes', () => {
-        expect(tooltips.size).toBe(10); // Options plus the six shared Grading helpers.
+        expect(tooltips.size).toBe(13); // Options, the six shared Grading helpers and the three links of Questions.
         device.$lifecycle.destroy();
         for (const tooltip of tooltips.values()) {
             expect(tooltip.dispose).toHaveBeenCalledTimes(1);

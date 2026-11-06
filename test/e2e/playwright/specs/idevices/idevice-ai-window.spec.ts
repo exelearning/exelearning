@@ -25,15 +25,17 @@ test('The Import, Export and Create with AI buttons are each reached with Tab', 
     const exportButton = tools.getByRole('button', { name: 'Export' });
     const aiButton = tools.getByRole('button', { name: 'Create with AI' });
 
+    // Each one says what it does in its tooltip. The one it leaves fades out
+    // while the next one shows.
+    const tooltip = (text: string) => page.getByRole('tooltip').filter({ hasText: text });
     await importButton.focus();
+    await expect(tooltip('Import questions from a file')).toBeVisible();
     await page.keyboard.press('Tab');
     await expect(exportButton).toBeFocused();
-    // Export opens no window: its tooltip says what it saves.
-    await expect(page.getByRole('tooltip')).toHaveText(
-        'You can export its questions in txt format to integrate them into other compatible activities.',
-    );
+    await expect(tooltip('Save the questions in a txt file')).toBeVisible();
     await page.keyboard.press('Tab');
     await expect(aiButton).toBeFocused();
+    await expect(tooltip('Create questions with an AI')).toBeVisible();
     await page.keyboard.press('Shift+Tab');
     await expect(exportButton).toBeFocused();
     // No arrow keys: they belong to a toolbar, and these buttons are not one.

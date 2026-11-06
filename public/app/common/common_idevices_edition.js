@@ -1033,8 +1033,8 @@ var $exeIDevicesEdition = {
                  * tab. Import and Create with AI open a window: an informative
                  * message and the controls of its process. Export has nothing
                  * to ask, and saves the file at once: the iDevice binds
-                 * `click` on #eXeGameExportQuestions. Its message is its
-                 * tooltip.
+                 * `click` on #eXeGameExportQuestions. Each one says what it
+                 * does in its tooltip.
                  *
                  * @param {boolean|Object} [settings] The `share` setting of
                  * tabs.getHtml.
@@ -1068,6 +1068,7 @@ var $exeIDevicesEdition = {
                             name: 'import',
                             icon: 'upload',
                             title: _('Import'),
+                            tooltip: _('Import questions from a file'),
                             info: info,
                             content: share.getImportContents(formats),
                         });
@@ -1077,13 +1078,14 @@ var $exeIDevicesEdition = {
                             id: 'eXeGameExportQuestions',
                             icon: 'download',
                             title: _('Export'),
-                            info: _('You can export its questions in txt format to integrate them into other compatible activities.'),
+                            tooltip: _('Save the questions in a txt file'),
                         });
                     }
                     tools.push({
                         name: 'ai',
                         icon: 'auto_awesome',
                         title: share.getAILabel(),
+                        tooltip: _('Create questions with an AI'),
                         info: `${_('You can easily generate multiple questions for the activity using AI.')} ${_('Send the prompt to an AI, paste the questions it returns in Questions and save them.')}`,
                         content: share.getIAContents(options.type || 0, options.options || {}),
                         dialog: 'modal-dialog-scrollable',
@@ -1093,10 +1095,9 @@ var $exeIDevicesEdition = {
                         .map((tool) => {
                             const attributes = tool.name
                                 ? `data-exe-share="${tool.name}" aria-haspopup="dialog" aria-controls="${share.getModalId(tool.name)}"`
-                                : `id="${tool.id}" title="${escape(tool.info)}"`;
-                            const tooltip = tool.name ? '' : ' exe-app-tooltip';
+                                : `id="${tool.id}"`;
                             return `
-                            <button type="button" class="btn btn-link btn-sm d-inline-flex align-items-center gap-1${tooltip}" ${attributes}>
+                            <button type="button" class="btn btn-link btn-sm d-inline-flex align-items-center gap-1 exe-app-tooltip" title="${escape(tool.tooltip)}" ${attributes}>
                                 <span class="auto-icon" aria-hidden="true">${tool.icon}</span>${tool.title}
                             </button>`;
                         })
@@ -1177,15 +1178,18 @@ var $exeIDevicesEdition = {
                         });
 
                     const lifecycle = $exeIDevicesEdition.iDevice.getLifecycle();
-                    // Export has no window to say what it saves: its tooltip
-                    // does, and goes with the edition.
-                    const exportButton = document.getElementById('eXeGameExportQuestions');
+                    // The tooltips of the links go with the edition. The help
+                    // of the form may have started them already, with the
+                    // other tooltips of the form, but it disposes only its own.
                     const Tooltip = window.bootstrap && window.bootstrap.Tooltip;
-                    if (exportButton && Tooltip && !Tooltip.getInstance(exportButton)) {
-                        eXeLearning.app.common.initTooltips(exportButton.parentElement);
-                        const tooltip = Tooltip.getInstance(exportButton);
-                        if (tooltip && lifecycle) lifecycle.own(() => tooltip.dispose());
-                    }
+                    const rows = Tooltip ? document.querySelectorAll('.exe-share-tools') : [];
+                    rows.forEach(function (row) {
+                        eXeLearning.app.common.initTooltips(row);
+                        row.querySelectorAll('.exe-app-tooltip').forEach(function (el) {
+                            const tooltip = Tooltip.getInstance(el);
+                            if (tooltip && lifecycle) lifecycle.own(() => tooltip.dispose());
+                        });
+                    });
                     if (share.onModalShow) document.removeEventListener('show.bs.modal', share.onModalShow);
                     share.onModalShow = function (event) {
                         share.yieldTo(event.target);
