@@ -1,11 +1,18 @@
 import { test, expect } from '../../fixtures/auth.fixture';
-import type { Page } from '@playwright/test';
-import { addIdevice, gotoWorkarea, selectFirstPage, waitForAppReady } from '../../helpers/workarea-helpers';
+import type { Locator, Page } from '@playwright/test';
+import {
+    addIdevice,
+    gotoWorkarea,
+    openLeftPanels,
+    selectFirstPage,
+    waitForAppReady,
+} from '../../helpers/workarea-helpers';
 import { waitForEditor } from '../../helpers/editor-helpers';
 
 /**
  * The shared help of the iDevice forms (common.getHelpTooltip), checked once on Guess, whose Options tab has
- * ten of them. Each iDevice's own spec checks where its help sits and that reading it leaves its options alone.
+ * ten of them. idevice-options-help.spec.ts checks, for each iDevice, where its helps sit and that reading
+ * them leaves its options alone.
  */
 async function openGuessOptions(page: Page, createProject: (page: Page, title: string) => Promise<string>) {
     const uuid = await createProject(page, 'Shared iDevice help');
@@ -18,6 +25,105 @@ async function openGuessOptions(page: Page, createProject: (page: Page, title: s
     await page.locator('#gameQEIdeviceForm-tab-options').click();
     return page.locator('#adivinaEOptions .exe-idevice-help:visible');
 }
+
+test('A help opens on a click and stays open until a second click, another help or its tab closes it', async ({
+    authenticatedPage: page,
+    createProject,
+}) => {
+    const help = await openGuessOptions(page, createProject);
+    const tab = page.locator('#gameQEIdeviceForm-tab-options');
+    const open = page.locator('#adivinaEOptions .help-content:visible');
+    const first = help.first();
+    const content = page.locator(`#${await first.getAttribute('aria-controls')}`);
+    // Pointing at it only names it.
+    await first.hover();
+    await expect(page.getByRole('tooltip')).toHaveText('Information');
+    await expect(open).toHaveCount(0);
+
+    await first.click();
+    await expect(page.getByRole('tooltip')).toHaveCount(0);
+    await expect(content).toBeVisible();
+    await expect(first).toHaveAttribute('aria-expanded', 'true');
+    // Moving the pointer away to read it leaves it open.
+    await tab.hover();
+    await expect(content).toBeVisible();
+    // A second click on its icon closes it, as in the project properties.
+    await first.click();
+    await expect(content).toBeHidden();
+    await expect(first).toHaveAttribute('aria-expanded', 'false');
+
+    // One open at a time (the one below, so that the first one opened does not cover it).
+    const second = page.locator(`#${await help.nth(1).getAttribute('aria-controls')}`);
+    await help.nth(1).click();
+    await expect(second).toBeVisible();
+    await first.click();
+    await expect(second).toBeHidden();
+    await expect(open).toHaveCount(1);
+    await tab.click();
+    await expect(open).toHaveCount(0);
+
+    // Reaching it with the keyboard names it too.
+    await help.nth(2).focus();
+    await expect(page.getByRole('tooltip')).toHaveText('Information');
+    await expect(open).toHaveCount(0);
+});
+
+test('Enter and Space open and close a help, and leave its option as it was', async ({
+    authenticatedPage: page,
+    createProject,
+}) => {
+    const help = (await openGuessOptions(page, createProject)).first();
+    const content = page.locator(`#${await help.getAttribute('aria-controls')}`);
+    const options = page.locator('#adivinaEOptions input');
+    const before = await options.evaluateAll(inputs =>
+        inputs.map(input => [(input as HTMLInputElement).value, (input as HTMLInputElement).checked]),
+    );
+    await help.focus();
+    for (const key of ['Enter', 'Space']) {
+        for (const expanded of [true, false]) {
+            await help.press(key);
+            await expect(content).toBeVisible({ visible: expanded });
+            await expect(help).toHaveAttribute('aria-expanded', String(expanded));
+            await expect(help).toBeFocused();
+        }
+    }
+    expect(
+        await options.evaluateAll(inputs =>
+            inputs.map(input => [(input as HTMLInputElement).value, (input as HTMLInputElement).checked]),
+        ),
+    ).toEqual(before);
+});
+
+test('By the right edge a help moves left to keep its width, and back as the window grows', async ({
+    authenticatedPage: page,
+    createProject,
+}) => {
+    const help = await openGuessOptions(page, createProject);
+    // Below 1200px the panels collapse, which leaves the explanations room at 1024px: open them.
+    await page.setViewportSize({ width: 1024, height: 900 });
+    await openLeftPanels(page);
+    const offsetOf = (content: Locator) =>
+        content.evaluate(
+            element => element.getBoundingClientRect().left - element.parentElement!.getBoundingClientRect().left,
+        );
+    let moved: Locator | undefined;
+    let narrowOffset = 0;
+    for (const button of await help.all()) {
+        await button.click();
+        const content = page.locator(`#${await button.getAttribute('aria-controls')}`);
+        await expect(content).toBeVisible();
+        narrowOffset = await offsetOf(content);
+        if (narrowOffset < 0) {
+            moved = content;
+            break;
+        }
+        await button.press('Escape');
+    }
+    expect(moved, 'a help by the right edge').toBeDefined();
+    await expect(moved!).toHaveCSS('max-width', '300px');
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await expect.poll(() => offsetOf(moved!)).toBeGreaterThan(narrowOffset);
+});
 
 test('An open help stays under the modals and their backdrop', async ({ authenticatedPage: page, createProject }) => {
     const help = (await openGuessOptions(page, createProject)).first();
@@ -110,6 +216,8 @@ test('Each help is named after the option it explains, and describes it', async 
     authenticatedPage: page,
     createProject,
 }) => {
+    // Its accessible names take most of a minute in Firefox.
+    test.setTimeout(90_000);
     const help = await openGuessOptions(page, createProject);
     const names = new Set<string>();
     for (const button of await help.all()) {
