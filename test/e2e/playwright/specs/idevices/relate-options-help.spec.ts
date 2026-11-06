@@ -105,7 +105,6 @@ test('Relate explains its options inline and shares its pairs', async ({ authent
     await expect(alert).toBeHidden();
 
     // Export writes the format Import reads back.
-    await page.locator('[data-exe-share="export"]').click();
     const downloading = page.waitForEvent('download');
     await page.locator('#eXeGameExportQuestions').click();
     const download = await downloading;

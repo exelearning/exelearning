@@ -7,7 +7,7 @@ import { waitForEditor } from '../../helpers/editor-helpers';
  * AI are a plain row, each one reached with Tab. In the Create with AI window, Prompt and Questions are tabs with the
  * WAI-ARIA tabs pattern, each showing its own text box and buttons. Its Generate tab is hidden for now.
  */
-test('The buttons that open Import, Export and Create with AI are each reached with Tab', async ({
+test('The Import, Export and Create with AI buttons are each reached with Tab', async ({
     authenticatedPage: page,
     createProject,
 }) => {

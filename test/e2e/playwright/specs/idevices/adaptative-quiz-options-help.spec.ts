@@ -109,7 +109,6 @@ test('Adaptative quiz explains its options inline and shares its questions', asy
     await expect(page.locator('#adaptativeQuizENumQuestions')).toHaveText('7');
 
     // Export writes the format Import reads back.
-    await page.locator('[data-exe-share="export"]').click();
     const downloading = page.waitForEvent('download');
     await page.locator('#eXeGameExportQuestions').click();
     const download = await downloading;
@@ -117,8 +116,7 @@ test('Adaptative quiz explains its options inline and shares its questions', asy
     let exported = '';
     for await (const chunk of stream) exported += chunk.toString();
     expect(exported.split('\n')).toEqual([...QUESTIONS, '2@0#Sun#The star of our system']);
-    await page.keyboard.press('Escape');
-    await expect(page.locator('#eXeShareModal-export')).toBeHidden();
+    await expect(page.locator('.exe-share-modal.show')).toHaveCount(0);
 
     // An access code, in the Passwords tab.
     await page.locator('#adaptativeQuizIdeviceForm-tab-passwords').click();

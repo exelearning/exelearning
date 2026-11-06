@@ -537,8 +537,9 @@ describe('identify edition: shared form tabs and feedback', () => {
 
     it('offers to import, to export and to create with AI', () => {
         const links = [...panel('contents').querySelectorAll('[data-exe-share]')];
-        expect(links.map((link) => link.getAttribute('data-exe-share'))).toEqual(['import', 'export', 'ai']);
-        expect(document.querySelector('body > #eXeShareModal-export #eXeGameExportQuestions')).not.toBeNull();
+        expect(links.map((link) => link.getAttribute('data-exe-share'))).toEqual(['import', 'ai']);
+        // Export has no window: it saves the file at once.
+        expect(panel('contents').querySelector('.exe-share-tools #eXeGameExportQuestions')).not.toBeNull();
         // It reads txt files only: the Import window does not offer Moodle xml.
         expect(document.querySelector('#eXeShareModal-import .modal-body').firstElementChild.textContent).toBe(
             'You can import questions compatible with this activity from txt files.'

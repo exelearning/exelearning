@@ -637,9 +637,10 @@ describe('trueorfalse edition: shared form tabs', () => {
         open();
         const links = [...panel('contents').querySelectorAll('[data-exe-share]')];
 
-        expect(links.map((link) => link.getAttribute('data-exe-share'))).toEqual(['import', 'export', 'ai']);
+        expect(links.map((link) => link.getAttribute('data-exe-share'))).toEqual(['import', 'ai']);
         expect(document.querySelector('body > #eXeShareModal-import #eXeGameImportGame')).not.toBeNull();
-        expect(document.querySelector('body > #eXeShareModal-export #eXeGameExportQuestions')).not.toBeNull();
+        // Export has no window: it saves the file at once.
+        expect(panel('contents').querySelector('.exe-share-tools #eXeGameExportQuestions')).not.toBeNull();
         expect(document.getElementById('eXeEPromptArea').value.length).toBeGreaterThan(0);
         expect(panel('contents').firstElementChild.textContent).toContain('mark whether it is true or false');
     });

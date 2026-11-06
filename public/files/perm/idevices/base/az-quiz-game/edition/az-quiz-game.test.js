@@ -1110,7 +1110,9 @@ describe('az-quiz-game edition: shared form tabs', () => {
         device.createForm();
 
         const links = [...panel('contents').querySelectorAll('[data-exe-share]')];
-        expect(links.map((link) => link.getAttribute('data-exe-share'))).toEqual(['import', 'export', 'ai']);
+        expect(links.map((link) => link.getAttribute('data-exe-share'))).toEqual(['import', 'ai']);
+        // Export has no window: it saves the file at once.
+        expect(panel('contents').querySelector('.exe-share-tools #eXeGameExportQuestions')).not.toBeNull();
         expect(build).toHaveBeenCalledWith(1, {});
     });
 

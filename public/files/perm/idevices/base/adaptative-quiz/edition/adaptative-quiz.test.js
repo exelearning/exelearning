@@ -2221,11 +2221,12 @@ describe('adaptative-quiz edition: shared form tabs', () => {
         open();
         const links = [...panel('contents').querySelectorAll('[data-exe-share]')];
 
-        expect(links.map((link) => link.getAttribute('data-exe-share'))).toEqual(['import', 'export', 'ai']);
+        expect(links.map((link) => link.getAttribute('data-exe-share'))).toEqual(['import', 'ai']);
         expect(document.querySelector('body > #eXeShareModal-import #eXeGameImportGame').getAttribute('accept')).toBe(
             '.txt'
         );
-        expect(document.querySelector('body > #eXeShareModal-export #eXeGameExportQuestions')).not.toBeNull();
+        // Export has no window: it saves the file at once.
+        expect(panel('contents').querySelector('.exe-share-tools #eXeGameExportQuestions')).not.toBeNull();
         expect(document.getElementById('eXeEPromptArea').value.length).toBeGreaterThan(0);
         // It reads txt files only: the Import window does not offer Moodle xml.
         expect(document.querySelector('#eXeShareModal-import .modal-body').firstElementChild.textContent).toBe(

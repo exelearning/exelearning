@@ -767,11 +767,13 @@ describe('classify edition: shared form tabs and feedback', () => {
         expect(panel('texts').querySelector('#ci18n_msgSubmit')).not.toBeNull();
     });
 
-    it('mounts import, export and AI modal triggers above the contents', () => {
+    it('mounts import, export and AI above the contents', () => {
         const tools = panel('contents').querySelector('.exe-share-tools');
         expect(tools).not.toBeNull();
         const links = [...tools.querySelectorAll('[data-exe-share]')];
-        expect(links.map((link) => link.getAttribute('data-exe-share'))).toEqual(['import', 'export', 'ai']);
+        expect(links.map((link) => link.getAttribute('data-exe-share'))).toEqual(['import', 'ai']);
+        // Export has no window: it saves the file at once.
+        expect(tools.querySelector('#eXeGameExportQuestions')).not.toBeNull();
     });
 
     it('offers to import txt files only, without the Moodle xml it does not read', () => {

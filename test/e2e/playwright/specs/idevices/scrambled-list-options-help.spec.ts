@@ -100,7 +100,6 @@ test('Scrambled list explains its options inline and imports its elements', asyn
     await expect(page.locator('#sortableListFormList3')).toHaveValue('Flower');
 
     // Export writes the list as Import reads it: one line, separated by #.
-    await page.locator('[data-exe-share="export"]').click();
     const downloading = page.waitForEvent('download');
     await page.locator('#eXeGameExportQuestions').click();
     const download = await downloading;
@@ -108,8 +107,7 @@ test('Scrambled list explains its options inline and imports its elements', asyn
     let exported = '';
     for await (const chunk of stream) exported += chunk.toString();
     expect(exported).toBe('Seed#Sprout#Plant#Flower');
-    await page.keyboard.press('Escape');
-    await expect(page.locator('#eXeShareModal-export')).toBeHidden();
+    await expect(page.locator('.exe-share-modal.show')).toHaveCount(0);
 
     await saveIdevice(page, id!);
     await expect(page.getByRole('tooltip')).toHaveCount(0);

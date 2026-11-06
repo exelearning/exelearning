@@ -324,7 +324,9 @@ describe('relate edition: shared form tabs and share windows', () => {
     it('offers importing, exporting and creating the pairs with AI', () => {
         expect(
             [...panel('contents').querySelectorAll('[data-exe-share]')].map((link) => link.dataset.exeShare)
-        ).toEqual(['import', 'export', 'ai']);
+        ).toEqual(['import', 'ai']);
+        // Export has no window: it saves the file at once.
+        expect(panel('contents').querySelector('.exe-share-tools #eXeGameExportQuestions')).not.toBeNull();
     });
 
     it('explains each option without changing any of them', () => {

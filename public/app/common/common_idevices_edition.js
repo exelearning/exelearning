@@ -982,7 +982,7 @@ var $exeIDevicesEdition = {
                  * The windows the Activities tab opens, in the order of its
                  * links.
                  */
-                windows: ['import', 'export', 'ai'],
+                windows: ['import', 'ai'],
 
                 /**
                  * @param {string} name A name in `windows`.
@@ -1029,21 +1029,11 @@ var $exeIDevicesEdition = {
                 },
 
                 /**
-                 * The question export button. The iDevice writes the file: it
-                 * binds `click` on #eXeGameExportQuestions.
-                 *
-                 * @returns {string}
-                 */
-                getExportContents: function () {
-                    return `<p class="m-0">
-                            <input type="button" class="btn btn-primary" name="eXeGameExportQuestions" id="eXeGameExportQuestions" value="${_('Export questions')}" />
-                        </p>`;
-                },
-
-                /**
                  * The Import, Export and Create with AI links of the Questions
-                 * tab, and the windows they open: each one an informative
-                 * message and the controls of its process.
+                 * tab. Import and Create with AI open a window: an informative
+                 * message and the controls of its process. Export has nothing
+                 * to ask, and saves the file at once: the iDevice binds
+                 * `click` on #eXeGameExportQuestions.
                  *
                  * @param {boolean|Object} [settings] The `share` setting of
                  * tabs.getHtml.
@@ -1062,7 +1052,8 @@ var $exeIDevicesEdition = {
                     const share = $exeIDevicesEdition.iDevice.gamification.share;
                     const tabs = $exeIDevicesEdition.iDevice.tabs;
                     const options = settings !== null && typeof settings === 'object' ? settings : {};
-                    const windows = [];
+                    // The links, in their order; those with a name open a window.
+                    const tools = [];
                     if (options.importQuestions !== false) {
                         const formats =
                             Array.isArray(options.formats) && options.formats.length ? options.formats : ['txt', 'xml'];
@@ -1071,7 +1062,7 @@ var $exeIDevicesEdition = {
                         else if (!formats.includes('xml')) {
                             info = _('You can import questions compatible with this activity from txt files.');
                         }
-                        windows.push({
+                        tools.push({
                             name: 'import',
                             icon: 'upload',
                             title: _('Import'),
@@ -1080,15 +1071,9 @@ var $exeIDevicesEdition = {
                         });
                     }
                     if (options.exportQuestions !== false) {
-                        windows.push({
-                            name: 'export',
-                            icon: 'download',
-                            title: _('Export'),
-                            info: _('You can export its questions in txt format to integrate them into other compatible activities.'),
-                            content: share.getExportContents(),
-                        });
+                        tools.push({ id: 'eXeGameExportQuestions', icon: 'download', title: _('Export') });
                     }
-                    windows.push({
+                    tools.push({
                         name: 'ai',
                         icon: 'auto_awesome',
                         title: share.getAILabel(),
@@ -1097,19 +1082,23 @@ var $exeIDevicesEdition = {
                         dialog: 'modal-dialog-scrollable',
                     });
 
-                    const links = windows
-                        .map(
-                            (win) => `
-                            <button type="button" class="btn btn-link btn-sm d-inline-flex align-items-center gap-1" data-exe-share="${win.name}" aria-haspopup="dialog" aria-controls="${share.getModalId(win.name)}">
-                                <span class="auto-icon" aria-hidden="true">${win.icon}</span>${win.title}
-                            </button>`
-                        )
+                    const links = tools
+                        .map((tool) => {
+                            const attributes = tool.name
+                                ? `data-exe-share="${tool.name}" aria-haspopup="dialog" aria-controls="${share.getModalId(tool.name)}"`
+                                : `id="${tool.id}"`;
+                            return `
+                            <button type="button" class="btn btn-link btn-sm d-inline-flex align-items-center gap-1" ${attributes}>
+                                <span class="auto-icon" aria-hidden="true">${tool.icon}</span>${tool.title}
+                            </button>`;
+                        })
                         .join('');
                     // No `fade`: the edition closing hides and disposes a
                     // window at once, with no transition still to run. No
                     // size either: the application gives all its centered
                     // modals the same width.
-                    const modals = windows
+                    const modals = tools
+                        .filter((tool) => tool.name)
                         .map((win) => {
                             const id = share.getModalId(win.name);
                             return `
@@ -1171,17 +1160,12 @@ var $exeIDevicesEdition = {
                         .on('click.exeShare', function () {
                             share.open(this.getAttribute('data-exe-share'), this);
                         });
-                    // Each process closes its window; the iDevice then reports
+                    // Choosing the file closes Import; the iDevice then reports
                     // the result in its own messages.
                     $('#eXeGameImportGame')
                         .off('change.exeShare')
                         .on('change.exeShare', function () {
                             share.close('import');
-                        });
-                    $('#eXeGameExportQuestions')
-                        .off('click.exeShare')
-                        .on('click.exeShare', function () {
-                            share.close('export');
                         });
 
                     const lifecycle = $exeIDevicesEdition.iDevice.getLifecycle();

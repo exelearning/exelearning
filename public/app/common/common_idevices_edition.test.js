@@ -1505,6 +1505,8 @@ describe('common_idevices_edition.js', () => {
     };
     const link = (name) => document.querySelector(`#testForm-panel-contents [data-exe-share="${name}"]`);
     const links = () => [...document.querySelectorAll('#testForm-panel-contents [data-exe-share]')];
+    const buttons = () => [...document.querySelectorAll('#testForm-panel-contents .exe-share-tools button')];
+    const exportButton = () => document.getElementById('eXeGameExportQuestions');
     const label = (element) => element.textContent.replace(element.querySelector('.auto-icon').textContent, '').trim();
     const modal = (name) => document.getElementById(`eXeShareModal-${name}`);
     const fakeModal = () => {
@@ -1554,35 +1556,44 @@ describe('common_idevices_edition.js', () => {
       // A plain row of buttons, each one reached with Tab, not a toolbar moved through with the arrow keys.
       expect(tools.hasAttribute('role')).toBe(false);
       expect(tools.hasAttribute('aria-label')).toBe(false);
-      expect(links().every((element) => element.tagName === 'BUTTON' && !element.hasAttribute('tabindex'))).toBe(
+      expect(buttons().every((element) => element.tagName === 'BUTTON' && !element.hasAttribute('tabindex'))).toBe(
         true
       );
-      expect(links().map((element) => element.getAttribute('data-exe-share'))).toEqual(['import', 'export', 'ai']);
-      expect(links().map(label)).toEqual(['Import', 'Export', 'Create with AI']);
-      expect(links().map((element) => element.querySelector('.auto-icon').textContent)).toEqual([
+      expect(buttons().map(label)).toEqual(['Import', 'Export', 'Create with AI']);
+      expect(buttons().map((element) => element.querySelector('.auto-icon').textContent)).toEqual([
         'upload',
         'download',
         'auto_awesome',
       ]);
-      links().forEach((element) => {
+      buttons().forEach((element) => {
         expect(element.getAttribute('type')).toBe('button');
-        expect(element.getAttribute('aria-haspopup')).toBe('dialog');
-        expect(element.getAttribute('aria-controls')).toBe(`eXeShareModal-${element.getAttribute('data-exe-share')}`);
         expect(element.querySelector('.auto-icon').getAttribute('aria-hidden')).toBe('true');
       });
+      // Import and Create with AI open a window; Export saves the file at once.
+      expect(links().map((element) => element.getAttribute('data-exe-share'))).toEqual(['import', 'ai']);
+      links().forEach((element) => {
+        expect(element.getAttribute('aria-haspopup')).toBe('dialog');
+        expect(element.getAttribute('aria-controls')).toBe(`eXeShareModal-${element.getAttribute('data-exe-share')}`);
+      });
+      expect(buttons()[1]).toBe(exportButton());
+      expect(exportButton().hasAttribute('aria-haspopup')).toBe(false);
+      expect(exportButton().hasAttribute('aria-controls')).toBe(false);
     });
 
     it('leaves Import or Export out for an iDevice without them, and all of them with share: false', () => {
       render({ contents: '', share: { exportQuestions: false } });
-      expect(links().map((element) => element.getAttribute('data-exe-share'))).toEqual(['import', 'ai']);
-      expect(modal('export')).toBeNull();
+      expect(buttons().map(label)).toEqual(['Import', 'Create with AI']);
+      expect(exportButton()).toBeNull();
 
-      render({ contents: '', share: { importQuestions: false, exportQuestions: false } });
-      expect(links().map((element) => element.getAttribute('data-exe-share'))).toEqual(['ai']);
+      render({ contents: '', share: { importQuestions: false } });
+      expect(buttons().map(label)).toEqual(['Export', 'Create with AI']);
       expect(modal('import')).toBeNull();
 
+      render({ contents: '', share: { importQuestions: false, exportQuestions: false } });
+      expect(buttons().map(label)).toEqual(['Create with AI']);
+
       render({ contents: '', share: false });
-      expect(links()).toHaveLength(0);
+      expect(buttons()).toHaveLength(0);
       expect(document.querySelector('.exe-share-modal')).toBeNull();
     });
 
@@ -1639,7 +1650,7 @@ describe('common_idevices_edition.js', () => {
     it('opens every window with its title, a close button and a message saying what it does', () => {
       render({ contents: '' });
 
-      const titles = { import: 'Import', export: 'Export', ai: 'Create with AI' };
+      const titles = { import: 'Import', ai: 'Create with AI' };
       share().windows.forEach((name) => {
         const el = modal(name);
         const title = el.querySelector('.modal-title');
@@ -1654,7 +1665,6 @@ describe('common_idevices_edition.js', () => {
         expect(info.textContent.trim().length).toBeGreaterThan(20);
       });
       expect(modal('import').querySelector('#eXeGameImportGame')).not.toBeNull();
-      expect(modal('export').querySelector('#eXeGameExportQuestions')).not.toBeNull();
       expect(modal('ai').querySelector('#eXeEPromptArea')).not.toBeNull();
       // The application gives all its centered modals one width; the AI
       // window scrolls when the screen is short.
@@ -1684,25 +1694,33 @@ describe('common_idevices_edition.js', () => {
     it('opens the window of the link clicked, and gives the focus back to the link when it closes', () => {
       render({ contents: '' });
 
-      link('export').click();
-      expect(Modal.getOrCreateInstance).toHaveBeenCalledWith(modal('export'));
-      expect(modal('export').classList.contains('show')).toBe(true);
+      link('ai').click();
+      expect(Modal.getOrCreateInstance).toHaveBeenCalledWith(modal('ai'));
+      expect(modal('ai').classList.contains('show')).toBe(true);
 
-      share().close('export');
-      expect(modal('export').classList.contains('show')).toBe(false);
-      expect(document.activeElement).toBe(link('export'));
+      share().close('ai');
+      expect(modal('ai').classList.contains('show')).toBe(false);
+      expect(document.activeElement).toBe(link('ai'));
     });
 
-    it('closes Import once a file is chosen, and Export once the button is pressed', () => {
+    it('closes Import once a file is chosen', () => {
       render({ contents: '' });
 
       link('import').click();
       $('#eXeGameImportGame').trigger('change');
       expect(modal('import').classList.contains('show')).toBe(false);
+    });
 
-      link('export').click();
-      $('#eXeGameExportQuestions').trigger('click');
-      expect(modal('export').classList.contains('show')).toBe(false);
+    it('saves the questions at once from Export, which opens no window', () => {
+      render({ contents: '' });
+      const save = vi.fn();
+      $('#eXeGameExportQuestions').on('click', save);
+
+      exportButton().click();
+
+      expect(save).toHaveBeenCalledTimes(1);
+      expect(Modal.getOrCreateInstance).not.toHaveBeenCalled();
+      expect(modal('export')).toBeNull();
     });
 
     it('opens nothing without the window or without Bootstrap, and closes a window never opened quietly', () => {
@@ -2761,12 +2779,6 @@ describe('common_idevices_edition.js', () => {
       const result = globalThis.$exeIDevicesEdition.iDevice.gamification.share.getImportContents();
       expect(result).toMatch(/<input[^>]*id="eXeGameImportGame"[^>]*class="[^"]*\bd-none\b[^"]*"/);
       expect(result).toMatch(/<button[^>]*class="[^"]*\bbtn-primary\b[^"]*\bexe-file-btn\b[^"]*"[^>]*data-exe-file-trigger/);
-    });
-
-    it('getExportContents offers the export button the iDevices bind', () => {
-      document.body.innerHTML = globalThis.$exeIDevicesEdition.iDevice.gamification.share.getExportContents();
-
-      expect(document.getElementById('eXeGameExportQuestions').value).toBe('Export questions');
     });
 
     it('getAILabel drops the ✨ some translations of "Create with AI" open with', () => {

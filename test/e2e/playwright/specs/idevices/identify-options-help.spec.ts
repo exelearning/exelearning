@@ -123,7 +123,6 @@ test('Identify explains options inline without changing their values', async ({
     });
     await expect(page.locator('#eXeShareModal-import')).toBeHidden();
     await expect(page.locator('#idfESolution')).toHaveValue('Mercury');
-    await page.locator('[data-exe-share="export"]').click();
     const downloading = page.waitForEvent('download');
     await page.locator('#eXeGameExportQuestions').click();
     const download = await downloading;
@@ -134,8 +133,7 @@ test('Identify explains options inline without changing their values', async ({
         'Mercury#Who am I?#Closest planet to the Sun#Smallest planet#Named after a Roman god#No moons',
         ...lines,
     ]);
-    await page.keyboard.press('Escape');
-    await expect(page.locator('#eXeShareModal-export')).toBeHidden();
+    await expect(page.locator('.exe-share-modal.show')).toHaveCount(0);
 });
 
 test('Identify keeps the question typed on screen when questions are imported', async ({

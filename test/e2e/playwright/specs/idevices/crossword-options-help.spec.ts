@@ -107,7 +107,6 @@ test('Crossword explains each option inline without changing its value', async (
 
     // Export includes the word still on screen (MOON, not stored yet), in the format Import reads.
     await page.locator('#ccgmQEIdeviceForm-tab-contents').click();
-    await page.locator('[data-exe-share="export"]').click();
     const downloading = page.waitForEvent('download');
     await page.locator('#eXeGameExportQuestions').click();
     const download = await downloading;
@@ -115,8 +114,7 @@ test('Crossword explains each option inline without changing its value', async (
     let exported = '';
     for await (const chunk of stream) exported += chunk.toString();
     expect(exported.split('\n')).toEqual(['EARTH#Our home planet', 'MOON#Earth natural satellite']);
-    await page.keyboard.press('Escape');
-    await expect(page.locator('#eXeShareModal-export')).toBeHidden();
+    await expect(page.locator('.exe-share-modal.show')).toHaveCount(0);
 
     // The AI window says when nothing fits the game, and adds what does.
     const alert = page.locator('#modalAlert.show');

@@ -110,7 +110,6 @@ test('True or false explains its options inline and shares its questions', async
 
     // Export writes every question in the order Import reads back: the one on
     // screen as the editor stores it, and suggestion before feedback.
-    await page.locator('[data-exe-share="export"]').click();
     const downloading = page.waitForEvent('download');
     await page.locator('#eXeGameExportQuestions').click();
     const download = await downloading;
