@@ -248,6 +248,26 @@ describe('decodeStoredText', () => {
         expect(decodeStoredText(text)).toBe(text);
     });
 
+    it('decodes a text without tags stored escaped, whatever characters it had', () => {
+        for (const text of ['Hola mundo', 'Canción de León', 'Cuesta 5 €', '100%']) {
+            expect(decodeStoredText(escape(text))).toBe(text);
+        }
+    });
+
+    it('leaves a text without tags stored as written, which escape() could not have written', () => {
+        // A space, a colon, or the UTF-8 bytes of a percent-encoded link: escape() writes a space
+        // and a colon as %20 and %3A, and "é" as the single byte %E9.
+        for (const text of [
+            'Ver https://es.wikipedia.org/wiki/An%C3%A9lido',
+            '50%20 del total',
+            'An%C3%A9lido',
+            '100%',
+            'Sube un 5%zz',
+        ]) {
+            expect(decodeStoredText(text)).toBe(text);
+        }
+    });
+
     it('returns an empty string for anything but a string', () => {
         expect(decodeStoredText(undefined)).toBe('');
         expect(decodeStoredText(null)).toBe('');
