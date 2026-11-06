@@ -596,6 +596,8 @@ describe('adaptative-quiz edition', () => {
         it('defaults time to 0 when the form input is 0', () => {
             globalThis.$exeIDevicesEdition = {
                 iDevice: {
+                    // The shared helpers stay the real ones.
+                    common: realEdition.iDevice.common,
                     gamification: {
                         itinerary: {
                             getValues: () => ({
@@ -645,6 +647,8 @@ describe('adaptative-quiz edition', () => {
         it('reads time from the #adaptativeQuizETime input and clamps it to 0..59', () => {
             globalThis.$exeIDevicesEdition = {
                 iDevice: {
+                    // The shared helpers stay the real ones.
+                    common: realEdition.iDevice.common,
                     gamification: {
                         itinerary: {
                             getValues: () => ({
@@ -715,6 +719,8 @@ describe('adaptative-quiz edition', () => {
 
             globalThis.$exeIDevicesEdition = {
                 iDevice: {
+                    // The shared helpers stay the real ones.
+                    common: realEdition.iDevice.common,
                     gamification: {
                         itinerary: { setValues: () => {} },
                         scorm: { setValues: () => {} },
@@ -752,6 +758,8 @@ describe('adaptative-quiz edition', () => {
             // Stub globals that the shared edition helpers rely on.
             globalThis.$exeIDevicesEdition = {
                 iDevice: {
+                    // The shared helpers stay the real ones.
+                    common: realEdition.iDevice.common,
                     gamification: {
                         itinerary: {
                             getValues: () => ({
@@ -807,6 +815,8 @@ describe('adaptative-quiz edition', () => {
         it('rejects save when questions per round is greater than the created questions', () => {
             globalThis.$exeIDevicesEdition = {
                 iDevice: {
+                    // The shared helpers stay the real ones.
+                    common: realEdition.iDevice.common,
                     gamification: {
                         itinerary: {
                             getValues: () => ({
@@ -868,6 +878,8 @@ describe('adaptative-quiz edition', () => {
         it('rejects save when an active difficulty level has fewer than two questions', () => {
             globalThis.$exeIDevicesEdition = {
                 iDevice: {
+                    // The shared helpers stay the real ones.
+                    common: realEdition.iDevice.common,
                     gamification: {
                         itinerary: {
                             getValues: () => ({
@@ -929,6 +941,8 @@ describe('adaptative-quiz edition', () => {
         it('reads showSolution and timeShowSolution from the form when present', () => {
             globalThis.$exeIDevicesEdition = {
                 iDevice: {
+                    // The shared helpers stay the real ones.
+                    common: realEdition.iDevice.common,
                     gamification: {
                         itinerary: {
                             getValues: () => ({
@@ -1030,6 +1044,8 @@ describe('adaptative-quiz edition', () => {
         it('rejects save when showSolution is on but timeShowSolution is 0', () => {
             globalThis.$exeIDevicesEdition = {
                 iDevice: {
+                    // The shared helpers stay the real ones.
+                    common: realEdition.iDevice.common,
                     gamification: {
                         itinerary: {
                             getValues: () => ({
@@ -1110,6 +1126,8 @@ describe('adaptative-quiz edition', () => {
 
             globalThis.$exeIDevicesEdition = {
                 iDevice: {
+                    // The shared helpers stay the real ones.
+                    common: realEdition.iDevice.common,
                     gamification: {
                         itinerary: { setValues: () => {} },
                         scorm: { setValues: () => {} },
@@ -1213,7 +1231,6 @@ describe('adaptative-quiz edition', () => {
             idevice.active = 0;
             idevice.refreshTranslations();
             idevice.setMessagesInfo();
-            idevice.showMessage = () => {};
             // Populate the answer-control slots with checkboxes (default Select layout)
             // so tests that read/write them directly work without invoking showQuestionType.
             idevice.applyAnswerControls(0);

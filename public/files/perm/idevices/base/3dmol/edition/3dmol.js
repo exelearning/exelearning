@@ -218,10 +218,6 @@ var $exeDevice = {
         msgs.msgModelLarge = _('Large model file. This may affect performance.');
     },
 
-    showMessage: function (msg) {
-        eXe.app.alert(msg);
-    },
-
     addQuestion: function () {
         if ($exeDevice.validateQuestion()) {
             $exeDevice.clearQuestion();
@@ -296,7 +292,7 @@ var $exeDevice = {
 
     removeQuestion: function () {
         if ($exeDevice.selectsGame.length < 2) {
-            $exeDevice.showMessage($exeDevice.msgs.msgEOneQuestion);
+            $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgEOneQuestion);
             return;
         } else {
             $exeDevice.selectsGame.splice($exeDevice.active, 1);
@@ -1285,7 +1281,7 @@ var $exeDevice = {
                 console.error(error);
                 $exeDevice.updateModelA11y(modelName);
                 $noModel.show();
-                $exeDevice.showMessage($exeDevice.msgs.msgEModelRender);
+                $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgEModelRender);
             }
         });
     },
@@ -2059,7 +2055,7 @@ var $exeDevice = {
             $exeDevice.selectsGame[$exeDevice.active] = p;
             message = true;
         } else {
-            if (!options.silent) $exeDevice.showMessage(message);
+            if (!options.silent) $exeIDevicesEdition.iDevice.common.showMessage(message);
             message = false;
         }
 
@@ -2119,7 +2115,7 @@ var $exeDevice = {
 
         if (activityMode === 'test') {
             if (showSolution && timeShowSolution.length == 0) {
-                $exeDevice.showMessage($exeDevice.msgs.msgEProvideTimeSolution);
+                $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgEProvideTimeSolution);
                 return false;
             }
         }
@@ -2128,7 +2124,7 @@ var $exeDevice = {
         for (let i = 0; i < selectsGame.length; i++) {
             const mquestion = selectsGame[i];
             if (!(mquestion.modelData || '').trim() || !mquestion.modelFormat) {
-                $exeDevice.showMessage($exeDevice.msgs.msgESelectModel);
+                $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgESelectModel);
                 return false;
             }
         }
@@ -2141,12 +2137,12 @@ var $exeDevice = {
                         ? 1
                         : mquestion.customScore;
                 if (mquestion.quextion.length == 0) {
-                    $exeDevice.showMessage($exeDevice.msgs.msgECompleteQuestion);
+                    $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgECompleteQuestion);
                     return false;
                 }
                 if (mquestion.typeSelect == 2) {
                     if (mquestion.solutionQuestion.length == 0) {
-                        $exeDevice.showMessage($exeDevice.msgs.msgProvideSolution);
+                        $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgProvideSolution);
                         return false;
                     }
                 } else {
@@ -2157,7 +2153,7 @@ var $exeDevice = {
                         }
                     }
                     if (!completAnswer) {
-                        $exeDevice.showMessage(
+                        $exeIDevicesEdition.iDevice.common.showMessage(
                             $exeDevice.msgs.msgECompleteAllOptions
                         );
                         return false;
@@ -2536,7 +2532,7 @@ var $exeDevice = {
                 $('#dmoleModelFormat').val('');
                 $('#dmoleModelFileName').text('');
                 $('#dmoleModelSizeWarning').addClass('d-none');
-                $exeDevice.showMessage($exeDevice.msgs.msgEModelFormat);
+                $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgEModelFormat);
                 $(this).val('');
                 $exeDevice.clearModelBlobUrl();
             }

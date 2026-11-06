@@ -146,15 +146,11 @@ var $exeDevice = {
         );
     },
 
-    showMessage: function (msg) {
-        eXe.app.alert(msg);
-    },
-
     addChallenge: function () {
         $exeDevice.saveChallenge();
 
         if ($exeDevice.challengesGame.length === 10) {
-            $exeDevice.showMessage($exeDevice.msgs.msgTenChallenges);
+            $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgTenChallenges);
             return;
         }
 
@@ -193,7 +189,7 @@ var $exeDevice = {
 
     removeChallenge: function () {
         if ($exeDevice.challengesGame.length < 2) {
-            $exeDevice.showMessage($exeDevice.msgs.msgOneChallenge);
+            $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgOneChallenge);
             return;
         }
 
@@ -246,7 +242,7 @@ var $exeDevice = {
         $exeDevice.saveChallenge();
         if ($exeDevice.challengesGame.length > 9 + $exeDevice.typeEdit) {
             $('#desafioEPaste').hide();
-            $exeDevice.showMessage($exeDevice.msgs.msgTenChallenges);
+            $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgTenChallenges);
             return;
         }
 
@@ -903,13 +899,13 @@ var $exeDevice = {
         if (!progressBar) return false;
 
         if ($exeDevice.desafioTitle.length === 0) {
-            $exeDevice.showMessage($exeDevice.msgs.msgTitleDesafio);
+            $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgTitleDesafio);
             return false;
         } else if ($exeDevice.desafioSolution.length === 0) {
-            $exeDevice.showMessage($exeDevice.msgs.msgSolutionDesafio);
+            $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgSolutionDesafio);
             return false;
         } else if ($exeDevice.desafioDescription.length === 0) {
-            $exeDevice.showMessage($exeDevice.msgs.msgDescriptionDesafio);
+            $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgDescriptionDesafio);
             return false;
         }
 
@@ -921,7 +917,7 @@ var $exeDevice = {
                 mChallenge.solution.length === 0 ||
                 mChallenge.description.length === 0
             ) {
-                $exeDevice.showMessage($exeDevice.msgs.msgDataChanllenge);
+                $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgDataChanllenge);
                 return false;
             }
         }

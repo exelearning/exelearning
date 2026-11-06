@@ -127,10 +127,6 @@ var $exeDevice = {
         );
     },
 
-    showMessage: function (msg) {
-        eXe.app.alert(msg);
-    },
-
     createForm: function () {
         const edition = $exeIDevicesEdition.iDevice;
         const optionsHtml = `
@@ -452,7 +448,7 @@ var $exeDevice = {
             $exeDevices.iDevice.gamification.helpers.isJsonString(content);
 
         if (!game || typeof game.typeGame === 'undefined') {
-            $exeDevice.showMessage($exeDevice.msgs.msgESelectFile);
+            $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgESelectFile);
             return;
         } else if (game.typeGame === 'Completa') {
             game.id = $exeDevice.getIdeviceID();
@@ -481,7 +477,7 @@ var $exeDevice = {
                 $('#eXeIdeviceTextAfter').val(unescape(tAfter));
             }
         } else {
-            $exeDevice.showMessage($exeDevice.msgs.msgESelectFile);
+            $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgESelectFile);
             return;
         }
     },
@@ -743,7 +739,7 @@ var $exeDevice = {
                 ext = selectedFile.split('.').pop().toLowerCase(),
                 hasBack = $('#cmptBack0').is(':checked');
             if (selectedFile.startsWith('files') && !validExt.includes(ext)) {
-                $exeDevice.showMessage(
+                $exeIDevicesEdition.iDevice.common.showMessage(
                     `${_('Supported formats')}: jpg, jpeg, gif, png, svg, webp`
                 );
                 return false;
@@ -757,7 +753,7 @@ var $exeDevice = {
                 ext = selectedFile.split('.').pop().toLowerCase(),
                 hasBack = $('#cmptBack0').is(':checked');
             if (selectedFile.startsWith('files') && !validExt.includes(ext)) {
-                $exeDevice.showMessage(
+                $exeIDevicesEdition.iDevice.common.showMessage(
                     `${_('Supported formats')}: jpg, jpeg, gif, png, svg, webp`
                 );
                 return false;

@@ -479,7 +479,7 @@ var $exeDevice = {
 
     removeQuestion: function () {
         if ($exeDevice.questions.length < 2) {
-            $exeDevice.showMessage($exeDevice.msgs.msgEOneQuestion);
+            $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgEOneQuestion);
         } else {
             $exeDevice.questions.splice($exeDevice.active, 1);
             if ($exeDevice.active >= $exeDevice.questions.length - 1) {
@@ -664,7 +664,7 @@ var $exeDevice = {
             $exeDevice.questions[$exeDevice.active] = Object.assign({}, p);
             message = true;
         } else {
-            if (!options.silent) $exeDevice.showMessage(message);
+            if (!options.silent) $exeIDevicesEdition.iDevice.common.showMessage(message);
             message = false;
         }
         return message;
@@ -955,10 +955,6 @@ var $exeDevice = {
             '</div>';
         html += '</div>';
         return html;
-    },
-
-    showMessage: function (msg) {
-        eXe.app.alert(msg);
     },
 
     addEvents: function () {

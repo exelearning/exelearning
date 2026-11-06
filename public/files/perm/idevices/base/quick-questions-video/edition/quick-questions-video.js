@@ -348,7 +348,7 @@ var $exeDevice = {
     },
 
     onPlayerError: function () {
-        //$exeDevice.showMessage("El video vquextdo no está disponible")
+        //$exeIDevicesEdition.iDevice.common.showMessage("El video vquextdo no está disponible")
     },
 
     startVideo: function (url, start, end) {
@@ -561,10 +561,6 @@ var $exeDevice = {
         }
     },
 
-    showMessage: function (msg) {
-        eXe.app.alert(msg);
-    },
-
     addQuestion: function () {
         if ($exeDevice.validateQuestion()) {
             $exeDevice.clearQuestion();
@@ -578,7 +574,7 @@ var $exeDevice = {
     },
     removeQuestion: function () {
         if ($exeDevice.questionsGame.length < 2) {
-            $exeDevice.showMessage($exeDevice.msgs.msgEOneQuestion);
+            $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgEOneQuestion);
             return;
         }
 
@@ -1512,16 +1508,16 @@ var $exeDevice = {
             (videoType === 2 && !isAudio) ||
             (videoType === 3 && !isMediaTeca)
         ) {
-            $exeDevice.showMessage(msgs.msgFormatVideo);
+            $exeIDevicesEdition.iDevice.common.showMessage(msgs.msgFormatVideo);
             return false;
         } else if (
             !$exeDevice.validTime($('#vquextEVIStart').val()) ||
             !$exeDevice.validTime($('#vquextEVIEnd').val())
         ) {
-            $exeDevice.showMessage(msgs.msgTimeFormat);
+            $exeIDevicesEdition.iDevice.common.showMessage(msgs.msgTimeFormat);
             return false;
         } else if (startVideoQuExt >= endVideoQuExt) {
-            $exeDevice.showMessage(msgs.msgEStartEndIncorrect);
+            $exeIDevicesEdition.iDevice.common.showMessage(msgs.msgEStartEndIncorrect);
             return false;
         }
 
@@ -1589,7 +1585,7 @@ var $exeDevice = {
             questionsGame[active] = p;
             return true;
         } else {
-            $exeDevice.showMessage(message);
+            $exeIDevicesEdition.iDevice.common.showMessage(message);
             return false;
         }
     },
@@ -1687,7 +1683,7 @@ var $exeDevice = {
             startVideoQuExt >= endVideoQuExt ||
             (durationVideo > 0 && endVideoQuExt > durationVideo + 1)
         ) {
-            $exeDevice.showMessage($exeDevice.msgs.msgEStartEndIncorrect);
+            $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgEStartEndIncorrect);
 
             return false;
         }
@@ -1695,21 +1691,21 @@ var $exeDevice = {
         const questionsGame = $exeDevice.questionsGame;
         for (const mquestion of questionsGame) {
             if (mquestion.quextion.length === 0) {
-                $exeDevice.showMessage($exeDevice.msgs.msgECompleteQuestion);
+                $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgECompleteQuestion);
                 return false;
             }
             if (
                 mquestion.pointVideo < startVideoQuExt ||
                 mquestion.pointVideo > endVideoQuExt
             ) {
-                $exeDevice.showMessage($exeDevice.msgs.msgEPoiIncorrect);
+                $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgEPoiIncorrect);
                 return false;
             }
             if (
                 mquestion.typeQuestion === 1 &&
                 mquestion.solutionQuestion.length === 0
             ) {
-                $exeDevice.showMessage($exeDevice.msgs.msgProvideSolution);
+                $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgProvideSolution);
                 return false;
             }
             if (mquestion.typeQuestion === 0) {
@@ -1717,7 +1713,7 @@ var $exeDevice = {
                     .slice(0, mquestion.numberOptions)
                     .every((opt) => opt.length > 0);
                 if (!completAnswer) {
-                    $exeDevice.showMessage(
+                    $exeIDevicesEdition.iDevice.common.showMessage(
                         $exeDevice.msgs.msgECompleteAllOptions
                     );
                     return false;
@@ -2162,7 +2158,7 @@ var $exeDevice = {
             !isAudio &&
             !isMediaTeca
         ) {
-            $exeDevice.showMessage($exeDevice.msgs.msgFormatVideo);
+            $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgFormatVideo);
             $exeDevice.videoLoading = false;
             return;
         }

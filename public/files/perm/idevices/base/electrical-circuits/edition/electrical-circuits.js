@@ -217,10 +217,6 @@ var $exeDevice = {
         );
     },
 
-    showMessage: function (msg) {
-        eXe.app.alert(msg);
-    },
-
     addQuestion: function () {
         if ($exeDevice.validateQuestion()) {
             $exeDevice.clearQuestion();
@@ -236,7 +232,7 @@ var $exeDevice = {
 
     removeQuestion: function () {
         if ($exeDevice.selectsGame.length < 2) {
-            $exeDevice.showMessage($exeDevice.msgs.msgEOneQuestion);
+            $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgEOneQuestion);
             return;
         } else {
             $exeDevice.selectsGame.splice($exeDevice.active, 1);
@@ -1973,7 +1969,7 @@ var $exeDevice = {
             $exeDevice.selectsGame[$exeDevice.active] = p;
             message = true;
         } else {
-            if (!options.silent) $exeDevice.showMessage(message);
+            if (!options.silent) $exeIDevicesEdition.iDevice.common.showMessage(message);
             message = false;
         }
 
@@ -2108,7 +2104,7 @@ var $exeDevice = {
 
         if (activityMode === 'test') {
             if (showSolution && timeShowSolution.length == 0) {
-                $exeDevice.showMessage($exeDevice.msgs.msgEProvideTimeSolution);
+                $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgEProvideTimeSolution);
                 return false;
             }
         }
@@ -2120,7 +2116,7 @@ var $exeDevice = {
                 tikzSvg = (mquestion.tikzSvg || '').trim();
 
             if (tikzCode.length > 0 && tikzSvg.length == 0) {
-                $exeDevice.showMessage($exeDevice.msgs.msgERenderCircuitPreview);
+                $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgERenderCircuitPreview);
                 return false;
             }
         }
@@ -2133,12 +2129,12 @@ var $exeDevice = {
                         ? 1
                         : mquestion.customScore;
                 if (mquestion.quextion.length == 0) {
-                    $exeDevice.showMessage($exeDevice.msgs.msgECompleteQuestion);
+                    $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgECompleteQuestion);
                     return false;
                 }
                 if (mquestion.typeSelect == 2) {
                     if (mquestion.solutionQuestion.length == 0) {
-                        $exeDevice.showMessage($exeDevice.msgs.msgProvideSolution);
+                        $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgProvideSolution);
                         return false;
                     }
                 } else {
@@ -2149,7 +2145,7 @@ var $exeDevice = {
                         }
                     }
                     if (!completAnswer) {
-                        $exeDevice.showMessage(
+                        $exeIDevicesEdition.iDevice.common.showMessage(
                             $exeDevice.msgs.msgECompleteAllOptions
                         );
                         return false;
@@ -2407,7 +2403,7 @@ var $exeDevice = {
                 .on('change', function (e) {
                     const file = e.target.files[0];
                     if (!file || !file.type.match('text/plain')) {
-                        $exeDevice.showMessage(
+                        $exeIDevicesEdition.iDevice.common.showMessage(
                             _('Please select a text file (.txt)')
                         );
                         return;
@@ -2517,7 +2513,7 @@ var $exeDevice = {
     // Only plain text is read: the lines that Export writes and the AI uses.
     importGame: function (content, filetype) {
         if (content.includes('\u0000') || !filetype.match('text/plain')) {
-            $exeDevice.showMessage(_('Sorry, wrong file format'));
+            $exeIDevicesEdition.iDevice.common.showMessage(_('Sorry, wrong file format'));
             return;
         }
         $exeDevice.importText(content);
@@ -2665,9 +2661,9 @@ var $exeDevice = {
         }
 
         if (remainingLines.length > 0) {
-            self.showMessage(self.msgs.msgEQuestionsNotAdded);
+            $exeIDevicesEdition.iDevice.common.showMessage(self.msgs.msgEQuestionsNotAdded);
         } else {
-            self.showMessage(self.msgs.msgQuestionsAdded);
+            $exeIDevicesEdition.iDevice.common.showMessage(self.msgs.msgQuestionsAdded);
         }
 
         return { handledMessaging: true, remainingLines };

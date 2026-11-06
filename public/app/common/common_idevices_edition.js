@@ -53,6 +53,14 @@ var $exeIDevicesEdition = {
             removeTags: function (html) {
                 return $('<div></div>').html(html).text();
             },
+            /**
+             * Tell the author something, in the application's alert.
+             *
+             * @param {string} message
+             */
+            showMessage: function (message) {
+                eXe.app.alert(message);
+            },
             helpTooltipId: 0,
             /**
              * Inline information button: a short hover label and an explanation

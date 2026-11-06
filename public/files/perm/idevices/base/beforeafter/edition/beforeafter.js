@@ -319,7 +319,7 @@ var $exeDevice = {
         let cards = $exeDevice.cardsGame,
             active = $exeDevice.active;
         if (cards.length < 2) {
-            $exeDevice.showMessage($exeDevice.msgs.msgEOneCard);
+            $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgEOneCard);
             return;
         }
 
@@ -473,7 +473,7 @@ var $exeDevice = {
             $exeDevice.cardsGame[$exeDevice.active] = p;
             return true;
         } else {
-            if (!options.silent) $exeDevice.showMessage(message);
+            if (!options.silent) $exeIDevicesEdition.iDevice.common.showMessage(message);
             return false;
         }
     },
@@ -663,10 +663,6 @@ var $exeDevice = {
                     .join('');
             })
             .join('');
-    },
-
-    showMessage: function (msg) {
-        eXe.app.alert(msg);
     },
 
     getIdeviceID: function () {
@@ -865,7 +861,7 @@ var $exeDevice = {
             return false;
         }
         if (url.startsWith('files') && !validExt.includes(ext)) {
-            $exeDevice.showMessage(
+            $exeIDevicesEdition.iDevice.common.showMessage(
                 `${_('Supported formats')}: jpg, jpeg, gif, png, svg, webp`
             );
             return false;

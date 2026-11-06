@@ -148,10 +148,6 @@ var $exeDevice = {
         ); //eXe 3.0
     },
 
-    showMessage: function (msg) {
-        eXe.app.alert(msg);
-    },
-
     addQuestion: function () {
         if ($exeDevice.validateQuestion()) {
             $exeDevice.clearQuestion();
@@ -166,7 +162,7 @@ var $exeDevice = {
     },
     removeQuestion: function () {
         if ($exeDevice.questionsGame.length < 2) {
-            $exeDevice.showMessage($exeDevice.msgs.msgEOneQuestion);
+            $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgEOneQuestion);
             return;
         } else {
             $exeDevice.questionsGame.splice($exeDevice.active, 1);
@@ -941,7 +937,7 @@ var $exeDevice = {
             $exeDevice.questionsGame[$exeDevice.active] = p;
             message = true;
         } else {
-            if (!options.silent) $exeDevice.showMessage(message);
+            if (!options.silent) $exeIDevicesEdition.iDevice.common.showMessage(message);
             message = false;
         }
         return message;
@@ -1106,7 +1102,7 @@ var $exeDevice = {
             }
             return;
         } else if (!game || typeof game.typeGame == 'undefined') {
-            $exeDevice.showMessage($exeDevice.msgs.msgESelectFile);
+            $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgESelectFile);
             return;
         } else if (game.typeGame === 'Identifica') {
             game.id = $exeDevice.getIdeviceID();
@@ -1136,7 +1132,7 @@ var $exeDevice = {
                 tinyMCE.get('eXeIdeviceTextAfter').setContent(unescape(tAfter));
             else $('#eXeIdeviceTextAfter').val(unescape(tAfter));
         } else {
-            $exeDevice.showMessage($exeDevice.msgs.msgESelectFile);
+            $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgESelectFile);
             return;
         }
 
@@ -1189,7 +1185,7 @@ var $exeDevice = {
         for (let i = 0; i < questionsGame.length; i++) {
             const mquestion = questionsGame[i];
             if (mquestion.solution.length === 0) {
-                $exeDevice.showMessage($exeDevice.msgs.msgIndicateSolution);
+                $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgIndicateSolution);
                 return false;
             }
             let completAnswer = true;
@@ -1197,7 +1193,7 @@ var $exeDevice = {
                 if (mquestion.clues[j].length === 0) completAnswer = false;
             }
             if (!completAnswer) {
-                $exeDevice.showMessage($exeDevice.msgs.msgECompleteAllClues);
+                $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgECompleteAllClues);
                 return false;
             }
         }
@@ -1363,7 +1359,7 @@ var $exeDevice = {
                 selectedFile = $(this).val(),
                 ext = selectedFile.split('.').pop().toLowerCase();
             if (selectedFile.startsWith('files') && !validExt.includes(ext)) {
-                $exeDevice.showMessage(
+                $exeIDevicesEdition.iDevice.common.showMessage(
                     `${_('Supported formats')}: jpg, jpeg, gif, png, svg, webp`
                 );
                 return false;
@@ -1381,7 +1377,7 @@ var $exeDevice = {
                 selectedFile = $('#idfEURLImage').val(),
                 ext = selectedFile.split('.').pop().toLowerCase();
             if (selectedFile.startsWith('files') && !validExt.includes(ext)) {
-                $exeDevice.showMessage(
+                $exeIDevicesEdition.iDevice.common.showMessage(
                     `${_('Supported formats')}: jpg, jpeg, gif, png, svg, webp`
                 );
                 return false;
@@ -1413,7 +1409,7 @@ var $exeDevice = {
         $('#idfEURLAudio').on('change', function () {
             const selectedFile = $(this).val().trim();
             if (selectedFile.length === 0) {
-                $exeDevice.showMessage(
+                $exeIDevicesEdition.iDevice.common.showMessage(
                     `${_('Supported formats')}: mp3, ogg, wav`
                 );
             } else if (selectedFile.length > 4) {

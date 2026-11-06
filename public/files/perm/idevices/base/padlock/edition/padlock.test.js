@@ -62,12 +62,6 @@ describe('padlock iDevice', () => {
     });
   });
 
-  describe('showMessage', () => {
-    it('exists as a function', () => {
-      expect(typeof $exeDevice.showMessage).toBe('function');
-    });
-  });
-
   describe('getIdeviceID', () => {
     it('exists as a function', () => {
       expect(typeof $exeDevice.getIdeviceID).toBe('function');

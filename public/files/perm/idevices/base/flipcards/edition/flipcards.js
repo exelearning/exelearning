@@ -471,7 +471,7 @@ var $exeDevice = {
 
     removeCard: function () {
         if ($exeDevice.cardsGame.length < 2) {
-            $exeDevice.showMessage($exeDevice.msgs.msgEOneCard);
+            $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgEOneCard);
             return;
         } else {
             $exeDevice.cardsGame.splice($exeDevice.active, 1);
@@ -672,7 +672,7 @@ var $exeDevice = {
             $exeDevice.cardsGame[$exeDevice.active] = p;
             message = true;
         } else {
-            if (!options.silent) $exeDevice.showMessage(message);
+            if (!options.silent) $exeIDevicesEdition.iDevice.common.showMessage(message);
             message = false;
         }
 
@@ -1010,10 +1010,6 @@ var $exeDevice = {
         return html;
     },
 
-    showMessage: function (msg) {
-        eXe.app.alert(msg);
-    },
-
     getIdeviceID: function () {
         const ideviceid =
             $('#flipcardsQEIdeviceForm')
@@ -1267,7 +1263,7 @@ var $exeDevice = {
         $('#flipcardsEAddC').on('click', function (e) {
             e.preventDefault();
             if ($exeDevice.cardsGame.length > 200) {
-                $exeDevice.showMessage(
+                $exeIDevicesEdition.iDevice.common.showMessage(
                     $exeDevice.msgs.msgMaxCards.replace('%s', 200)
                 );
                 return;
@@ -1293,7 +1289,7 @@ var $exeDevice = {
         $('#flipcardsEPasteC').on('click', function (e) {
             e.preventDefault();
             if ($exeDevice.cardsGame.length > 200) {
-                $exeDevice.showMessage(
+                $exeIDevicesEdition.iDevice.common.showMessage(
                     $exeDevice.msgs.msgMaxCards.replace('%s', 200)
                 );
                 return;
@@ -1566,7 +1562,7 @@ var $exeDevice = {
             ext = url.split('.').pop().toLowerCase();
 
         if (url.indexOf('files') == 0 && validExt.indexOf(ext) == -1) {
-            $exeDevice.showMessage(
+            $exeIDevicesEdition.iDevice.common.showMessage(
                 _('Supported formats') + ': jpg, jpeg, gif, png, svg, webp'
             );
             return false;
@@ -1579,7 +1575,7 @@ var $exeDevice = {
             ext = url.split('.').pop().toLowerCase();
 
         if (url.indexOf('files') == 0 && validExt.indexOf(ext) == -1) {
-            $exeDevice.showMessage(_('Supported formats') + ': mp3, ogg, waw');
+            $exeIDevicesEdition.iDevice.common.showMessage(_('Supported formats') + ': mp3, ogg, waw');
             return false;
         } else {
             if (url.length > 4) {
@@ -1594,7 +1590,7 @@ var $exeDevice = {
             ext = url.split('.').pop().toLowerCase();
 
         if (url.indexOf('files') == 0 && validExt.indexOf(ext) == -1) {
-            $exeDevice.showMessage(
+            $exeIDevicesEdition.iDevice.common.showMessage(
                 _('Supported formats') + ': jpg, jpeg, gif, png, svg, webp'
             );
             return false;
@@ -1812,7 +1808,7 @@ var $exeDevice = {
 
         let cards = [];
         if (content && content.includes('\u0000')) {
-            $exeDevice.showMessage(_('Sorry, wrong file format'));
+            $exeIDevicesEdition.iDevice.common.showMessage(_('Sorry, wrong file format'));
             return;
         } else if (!game && content) {
             if (filetype.match('text/plain')) {
@@ -1843,18 +1839,18 @@ var $exeDevice = {
                     cards = $exeDevice.importAdivina(game);
                     break;
                 default:
-                    return $exeDevice.showMessage(
+                    return $exeIDevicesEdition.iDevice.common.showMessage(
                         $exeDevice.msgs.msgESelectFile
                     );
             }
         } else {
-            return $exeDevice.showMessage($exeDevice.msgs.msgESelectFile);
+            return $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgESelectFile);
         }
 
         if (cards && cards.length > 0) {
             $exeDevice.cardsGame = cards.map((card) => $exeDevice.encodeCardTexts(card));
         } else {
-            $exeDevice.showMessage(_('Sorry, wrong file format'));
+            $exeIDevicesEdition.iDevice.common.showMessage(_('Sorry, wrong file format'));
             return;
         }
 

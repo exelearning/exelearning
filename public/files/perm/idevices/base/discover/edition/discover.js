@@ -1014,14 +1014,10 @@ var $exeDevice = {
             $exeDevice.wordsGame[$exeDevice.active] = q;
             message = true;
         } else {
-            if (!options.silent) $exeDevice.showMessage(message);
+            if (!options.silent) $exeIDevicesEdition.iDevice.common.showMessage(message);
             message = false;
         }
         return message;
-    },
-
-    showMessage: function (msg) {
-        eXe.app.alert(msg);
     },
 
     getIdeviceID: function () {
@@ -1068,17 +1064,17 @@ var $exeDevice = {
         if (!feedback) return false;
 
         if (wordsGame.length == 0) {
-            $exeDevice.showMessage($exeDevice.msgs.msgEOneQuestion);
+            $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgEOneQuestion);
             return false;
         }
 
         if (gameLevels == 3 && wordsGame.length < 3) {
-            $exeDevice.showMessage(
+            $exeIDevicesEdition.iDevice.common.showMessage(
                 'Para un juego con tres niveles de dificultad necesita al menos tres cuestiones'
             );
             return false;
         } else if (gameLevels == 2 && wordsGame.length < 2) {
-            $exeDevice.showMessage(
+            $exeIDevicesEdition.iDevice.common.showMessage(
                 'Para un juego con dos niveles de dificultad necesita al menos dos cuestiones'
             );
             return false;
@@ -1095,7 +1091,7 @@ var $exeDevice = {
             for (let j = 0; j < num_cards; j++) {
                 const p = wordsGame[i].data[j];
                 if (p.eText == 0 && p.url.length < 5 && p.audio.length < 5) {
-                    $exeDevice.showMessage($exeDevice.msgs.msgCompleteData);
+                    $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgCompleteData);
                     return false;
                 }
             }
@@ -1105,7 +1101,7 @@ var $exeDevice = {
             attempts > 0 &&
             attempts < (wordsGame.length * percentajeQuestions) / 100
         ) {
-            $exeDevice.showMessage($exeDevice.msgs.msgFewAttempts);
+            $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgFewAttempts);
             return false;
         }
 
@@ -1687,7 +1683,7 @@ var $exeDevice = {
             ext = url.split('.').pop().toLowerCase();
 
         if (url.indexOf('files') == 0 && validExt.indexOf(ext) == -1) {
-            $exeDevice.showMessage(
+            $exeIDevicesEdition.iDevice.common.showMessage(
                 _('Supported formats') + ': jpg, jpeg, gif, png, svg, webp'
             );
             return false;
@@ -1730,7 +1726,7 @@ var $exeDevice = {
             y = parseFloat($('#descubreEYImage-' + number).val());
 
         if (selectedFile.indexOf('files') == 0 && validExt.indexOf(ext) == -1) {
-            $exeDevice.showMessage(
+            $exeIDevicesEdition.iDevice.common.showMessage(
                 _('Supported formats') + ': jpg, jpeg, gif, png, svg webp'
             );
             return false;
@@ -1751,7 +1747,7 @@ var $exeDevice = {
             ext = url.split('.').pop().toLowerCase();
 
         if (url.indexOf('files') == 0 && validExt.indexOf(ext) == -1) {
-            $exeDevice.showMessage(_('Supported formats') + ': mp3, ogg, wav');
+            $exeIDevicesEdition.iDevice.common.showMessage(_('Supported formats') + ': mp3, ogg, wav');
             return false;
         } else {
             if (url.length > 4) {
@@ -1790,7 +1786,7 @@ var $exeDevice = {
 
     addQuestion: function () {
         if ($exeDevice.wordsGame.length >= 20) {
-            $exeDevice.showMessage($exeDevice.msgs.msgPairsMax);
+            $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgPairsMax);
             return;
         }
 
@@ -1809,7 +1805,7 @@ var $exeDevice = {
 
     removeQuestion: function () {
         if ($exeDevice.wordsGame.length < 2) {
-            $exeDevice.showMessage($exeDevice.msgs.msgEOneQuestion);
+            $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgEOneQuestion);
         } else {
             $exeDevice.wordsGame.splice($exeDevice.active, 1);
             if ($exeDevice.active >= $exeDevice.wordsGame.length - 1) {
@@ -1846,7 +1842,7 @@ var $exeDevice = {
             (options) => $exeDevice.validateQuestion(options)
         );
         if ($exeDevice.wordsGame.length >= 20) {
-            $exeDevice.showMessage($exeDevice.msgs.msgPairsMax);
+            $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgPairsMax);
             return;
         }
 
@@ -2057,15 +2053,15 @@ var $exeDevice = {
             $exeDevices.iDevice.gamification.helpers.isJsonString(content);
 
         if (content && content.includes('\u0000')) {
-            $exeDevice.showMessage(_('Sorry, wrong file format'));
+            $exeIDevicesEdition.iDevice.common.showMessage(_('Sorry, wrong file format'));
         } else if (!game && content) {
             if (filetype.match('text/plain')) {
                 $exeDevice.importText(content);
             } else {
-                $exeDevice.showMessage(_('Sorry, wrong file format'));
+                $exeIDevicesEdition.iDevice.common.showMessage(_('Sorry, wrong file format'));
             }
         } else {
-            $exeDevice.showMessage($exeDevice.msgs.msgESelectFile);
+            $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgESelectFile);
         }
     },
     deleteEmptyQuestion: function () {

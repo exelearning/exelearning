@@ -312,7 +312,7 @@ var $exeDevice = {
         ) {
             $exeDevice.showVideoQuestion();
         } else {
-            $exeDevice.showMessage($exeDevice.msgs.msgECompleteURLYoutube);
+            $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgECompleteURLYoutube);
         }
     },
 
@@ -375,7 +375,7 @@ var $exeDevice = {
 
             $exeDevice.muteVideo(soundVideo === 0);
         } else {
-            $exeDevice.showMessage($exeDevice.msgs.msgEUnavailableVideo);
+            $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgEUnavailableVideo);
         }
     },
 
@@ -580,7 +580,7 @@ var $exeDevice = {
     },
 
     onPlayerError: function () {
-        //$exeDevice.showMessage("El video seleccionado no está disponible")
+        //$exeIDevicesEdition.iDevice.common.showMessage("El video seleccionado no está disponible")
     },
 
     startVideoIntro: function (id, start, end, type) {
@@ -647,7 +647,7 @@ var $exeDevice = {
 
         if (idv || idmt) {
             if (fVI <= iVI) {
-                $exeDevice.showMessage($exeDevice.msgs.msgEStartEndIncorrect);
+                $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgEStartEndIncorrect);
                 return;
             }
 
@@ -671,7 +671,7 @@ var $exeDevice = {
         } else {
             $('#seleccionaEVINo').show();
             $('#seleccionaEVI').hide();
-            $exeDevice.showMessage($exeDevice.msgs.msgECompleteURLYoutube);
+            $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgECompleteURLYoutube);
         }
     },
 
@@ -693,7 +693,7 @@ var $exeDevice = {
 
         if (idv || idmt) {
             if (fVI <= iVI) {
-                $exeDevice.showMessage($exeDevice.msgs.msgEStartEndIncorrect);
+                $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgEStartEndIncorrect);
                 return;
             }
             if (idv) {
@@ -708,7 +708,7 @@ var $exeDevice = {
                 $exeDevice.startVideoIntro(idmt, iVI, fVI, 1);
             }
         } else {
-            $exeDevice.showMessage($exeDevice.msgs.msgECompleteURLYoutube);
+            $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgECompleteURLYoutube);
         }
     },
 
@@ -772,10 +772,6 @@ var $exeDevice = {
         }
     },
 
-    showMessage: function (msg) {
-        eXe.app.alert(msg);
-    },
-
     addQuestion: function () {
         if ($exeDevice.validateQuestion()) {
             $exeDevice.clearQuestion();
@@ -791,7 +787,7 @@ var $exeDevice = {
 
     removeQuestion: function () {
         if ($exeDevice.selectsGame.length < 2) {
-            $exeDevice.showMessage($exeDevice.msgs.msgEOneQuestion);
+            $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgEOneQuestion);
             return;
         } else {
             $exeDevice.selectsGame.splice($exeDevice.active, 1);
@@ -1091,7 +1087,7 @@ var $exeDevice = {
                     this.naturalWidth == 0
                 ) {
                     if (type == 1) {
-                        $exeDevice.showMessage($exeDevice.msgs.msgEURLValid);
+                        $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgEURLValid);
                     }
                     return false;
                 } else {
@@ -1109,7 +1105,7 @@ var $exeDevice = {
             })
             .on('error', function () {
                 if (type == 1) {
-                    $exeDevice?.showMessage($exeDevice.msgs.msgEURLValid);
+                    if ($exeDevice) $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgEURLValid);
                 }
                 return false;
             });
@@ -2302,7 +2298,7 @@ var $exeDevice = {
             $exeDevice.selectsGame[$exeDevice.active] = p;
             message = true;
         } else {
-            if (!options.silent) $exeDevice.showMessage(message);
+            if (!options.silent) $exeIDevicesEdition.iDevice.common.showMessage(message);
             message = false;
         }
 
@@ -2425,7 +2421,7 @@ var $exeDevice = {
         if (!itinerary) return false;
         if (!progressBar) return false;
         if (showSolution && timeShowSolution.length == 0) {
-            $exeDevice.showMessage($exeDevice.msgs.msgEProvideTimeSolution);
+            $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgEProvideTimeSolution);
             return false;
         }
         const selectsGame = $exeDevice.selectsGame;
@@ -2437,10 +2433,10 @@ var $exeDevice = {
                     ? 1
                     : mquestion.customScore;
             if (mquestion.quextion.length == 0) {
-                $exeDevice.showMessage($exeDevice.msgs.msgECompleteQuestion);
+                $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgECompleteQuestion);
                 return false;
             } else if (mquestion.type == 1 && mquestion.url.length < 10) {
-                $exeDevice.showMessage($exeDevice.msgs.msgEURLValid);
+                $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgEURLValid);
                 return false;
             } else if (
                 mquestion.type == 2 &&
@@ -2451,12 +2447,12 @@ var $exeDevice = {
                     mquestion.url
                 )
             ) {
-                $exeDevice.showMessage($exeDevice.msgs.msgECompleteURLYoutube);
+                $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgECompleteURLYoutube);
                 return false;
             }
             if (mquestion.typeSelect == 2) {
                 if (mquestion.solutionQuestion.length == 0) {
-                    $exeDevice.showMessage($exeDevice.msgs.msgProvideSolution);
+                    $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgProvideSolution);
                     return false;
                 }
             } else {
@@ -2467,7 +2463,7 @@ var $exeDevice = {
                     }
                 }
                 if (!completAnswer) {
-                    $exeDevice.showMessage(
+                    $exeIDevicesEdition.iDevice.common.showMessage(
                         $exeDevice.msgs.msgECompleteAllOptions
                     );
                     return false;
@@ -2783,7 +2779,7 @@ var $exeDevice = {
                     if (!$exeDevice) return;
                     const file = e.target.files[0];
                     if (!file) {
-                        $exeDevice.showMessage(
+                        $exeIDevicesEdition.iDevice.common.showMessage(
                             `${_('Select a file')} (txt, xml(Moodle))`
                         );
                         return;
@@ -2797,7 +2793,7 @@ var $exeDevice = {
                             file.type.match('text/xml')
                         )
                     ) {
-                        $exeDevice.showMessage(
+                        $exeIDevicesEdition.iDevice.common.showMessage(
                             `${_('Select a file')} (txt, xml(Moodle))`
                         );
                         return;
@@ -2920,7 +2916,7 @@ var $exeDevice = {
                 selectedFile = $(this).val(),
                 ext = selectedFile.split('.').pop().toLowerCase();
             if (selectedFile.startsWith('files') && !validExt.includes(ext)) {
-                $exeDevice.showMessage(
+                $exeIDevicesEdition.iDevice.common.showMessage(
                     `${_('Supported formats')}: jpg, jpeg, gif, png, svg, webp`
                 );
                 return false;
@@ -2939,7 +2935,7 @@ var $exeDevice = {
                 selectedFile = $('#seleccionaEURLImage').val(),
                 ext = selectedFile.split('.').pop().toLowerCase();
             if (selectedFile.startsWith('files') && !validExt.includes(ext)) {
-                $exeDevice.showMessage(
+                $exeIDevicesEdition.iDevice.common.showMessage(
                     `${_('Supported formats')}: jpg, jpeg, gif, png, svg, webp`
                 );
                 return false;
@@ -2989,7 +2985,7 @@ var $exeDevice = {
         $('#seleccionaEURLAudio').on('change', function () {
             const selectedFile = $(this).val().trim();
             if (selectedFile.length === 0) {
-                $exeDevice?.showMessage(
+                if ($exeDevice) $exeIDevicesEdition.iDevice.common.showMessage(
                     `${_('Supported formats')}: mp3, ogg, wav`
                 );
             } else if (selectedFile.length > 4) {
@@ -3198,7 +3194,7 @@ var $exeDevice = {
             $exeDevices.iDevice.gamification.helpers.isJsonString(content);
 
         if (content && content.includes('\u0000')) {
-            $exeDevice.showMessage(_('Sorry, wrong file format'));
+            $exeIDevicesEdition.iDevice.common.showMessage(_('Sorry, wrong file format'));
             return;
         } else if (!game && content) {
             if (filetype.match('text/plain')) {
@@ -3213,7 +3209,7 @@ var $exeDevice = {
             }
             return;
         } else if (!game || typeof game.typeGame === 'undefined') {
-            $exeDevice.showMessage($exeDevice.msgs.msgESelectFile);
+            $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgESelectFile);
             return;
         } else if (game.typeGame === 'Selecciona') {
             game.id = $exeDevice.getIdeviceID();
@@ -3236,7 +3232,7 @@ var $exeDevice = {
         } else if (game.typeGame === 'Rosco' || game.typeGame === 'Adivina') {
             $exeDevice.selectsGame = $exeDevice.importRosco(game);
         } else {
-            $exeDevice.showMessage($exeDevice.msgs.msgESelectFile);
+            $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgESelectFile);
             return;
         }
 

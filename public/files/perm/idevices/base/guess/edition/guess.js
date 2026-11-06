@@ -933,7 +933,7 @@ var $exeDevice = {
     },
 
     onPlayerError: function () {
-        //$exeDevice.showMessage("El video adivinaEdo no está disponible")
+        //$exeIDevicesEdition.iDevice.common.showMessage("El video adivinaEdo no está disponible")
     },
 
     startVideo: function (id, start, end, type) {
@@ -1356,13 +1356,9 @@ var $exeDevice = {
             $exeDevice.wordsGame[$exeDevice.active] = p;
             return true;
         } else {
-            if (!options.silent) $exeDevice.showMessage(message);
+            if (!options.silent) $exeIDevicesEdition.iDevice.common.showMessage(message);
             return false;
         }
-    },
-
-    showMessage: function (msg) {
-        eXe.app.alert(msg);
     },
 
     getIdeviceID: function () {
@@ -1440,7 +1436,7 @@ var $exeDevice = {
         for (let i = 0; i < wordsGame.length; i++) {
             let mquestion = wordsGame[i];
             if (mquestion.word.length == 0) {
-                $exeDevice.showMessage($exeDevice.msgs.msgEProvideWord);
+                $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgEProvideWord);
                 return false;
             } else if (
                 mquestion.definition.length == 0 &&
@@ -1451,7 +1447,7 @@ var $exeDevice = {
                 );
                 return false;
             } else if (mquestion.type == 1 && mquestion.url.length < 4) {
-                $exeDevice.showMessage($exeDevice.msgs.msgEURLValid);
+                $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgEURLValid);
                 return false;
             } else if (
                 mquestion.type == 2 &&
@@ -1462,7 +1458,7 @@ var $exeDevice = {
                     mquestion.url
                 )
             ) {
-                $exeDevice.showMessage($exeDevice.msgs.msgECompleteURLYoutube);
+                $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgECompleteURLYoutube);
                 return false;
             }
         }
@@ -1695,7 +1691,7 @@ var $exeDevice = {
             ) {
                 $exeDevice.showVideoQuestion();
             } else {
-                $exeDevice.showMessage($exeDevice.msgs.msgECompleteURLYoutube);
+                $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgECompleteURLYoutube);
             }
         });
 
@@ -1896,7 +1892,7 @@ var $exeDevice = {
                     selectedFile.startsWith('/previews/')) &&
                 !validExt.includes(ext)
             ) {
-                $exeDevice.showMessage(
+                $exeIDevicesEdition.iDevice.common.showMessage(
                     `${_('Supported formats')}: jpg, jpeg, gif, png, svg, webp`
                 );
                 return false;
@@ -1914,7 +1910,7 @@ var $exeDevice = {
                 selectedFile = $('#adivinaEURLImage').val(),
                 ext = selectedFile.split('.').pop().toLowerCase();
             if (selectedFile.startsWith('files') && !validExt.includes(ext)) {
-                $exeDevice.showMessage(
+                $exeIDevicesEdition.iDevice.common.showMessage(
                     `${_('Supported formats')}: jpg, jpeg, gif, png, svg, webp`
                 );
                 return false;
@@ -1938,7 +1934,7 @@ var $exeDevice = {
         $('#adivinaEURLAudio').on('change', function () {
             const selectedFile = $(this).val().trim();
             if (selectedFile.length === 0) {
-                $exeDevice.showMessage(
+                $exeIDevicesEdition.iDevice.common.showMessage(
                     `${_('Supported formats')}: mp3, ogg, wav`
                 );
             } else if (selectedFile.length > 4) {
@@ -2105,7 +2101,7 @@ var $exeDevice = {
             }
             $exeDevice.muteVideo(soundVideo === 0);
         } else {
-            $exeDevice.showMessage(_('This video is not available'));
+            $exeIDevicesEdition.iDevice.common.showMessage(_('This video is not available'));
             $('#adivinaENoVideo').show();
         }
     },
@@ -2152,7 +2148,7 @@ var $exeDevice = {
 
     removeQuestion: function () {
         if ($exeDevice.wordsGame.length < 2) {
-            $exeDevice.showMessage($exeDevice.msgs.msgEOneQuestion);
+            $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgEOneQuestion);
         } else {
             $exeDevice.wordsGame.splice($exeDevice.active, 1);
             $exeDevice.active = Math.min(
@@ -2411,7 +2407,7 @@ var $exeDevice = {
         const game =
             $exeDevices.iDevice.gamification.helpers.isJsonString(content);
         if (content && content.includes('\u0000')) {
-            $exeDevice.showMessage(_('Sorry, wrong file format'));
+            $exeIDevicesEdition.iDevice.common.showMessage(_('Sorry, wrong file format'));
             return;
         } else if (!game && content) {
             if (filetype.match('text/plain')) {
@@ -2426,7 +2422,7 @@ var $exeDevice = {
             }
             return;
         } else if (!game || typeof game.typeGame === 'undefined') {
-            $exeDevice.showMessage($exeDevice.msgs.msgESelectFile);
+            $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgESelectFile);
             return;
         } else if (game.typeGame === 'Adivina') {
             game.id = $exeDevice.getIdeviceID();

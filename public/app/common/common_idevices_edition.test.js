@@ -411,6 +411,17 @@ describe('common_idevices_edition.js', () => {
       });
     });
 
+    describe('showMessage', () => {
+      it("tells the author the message in the application's alert", () => {
+        const alert = globalThis.eXe.app.alert;
+        alert.mockClear();
+
+        globalThis.$exeIDevicesEdition.iDevice.common.showMessage('Add a question');
+
+        expect(alert).toHaveBeenCalledExactlyOnceWith('Add a question');
+      });
+    });
+
     describe('getTextEditor', () => {
       const getTextEditor = (position) => globalThis.$exeIDevicesEdition.iDevice.common.getTextEditor(position);
 

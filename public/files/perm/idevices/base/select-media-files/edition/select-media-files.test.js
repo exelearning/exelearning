@@ -152,9 +152,14 @@ describe('select-media-files iDevice', () => {
     // validateCard
     // -------------------------------------------------------------------------
     describe('validateCard', () => {
+        let showMessage;
+
         beforeEach(() => {
-            // showMessage delegates to eXe.app.alert; mock it so it doesn't throw
-            $exeDevice.showMessage = vi.fn();
+            showMessage = vi.spyOn($exeIDevicesEdition.iDevice.common, 'showMessage').mockImplementation(() => {});
+        });
+
+        afterEach(() => {
+            showMessage.mockRestore();
         });
 
         it('returns true (invalid) when card has no url, no audio, no text', () => {
@@ -184,13 +189,13 @@ describe('select-media-files iDevice', () => {
         it('calls showMessage when card is invalid', () => {
             const card = { url: '', audio: '', eText: '' };
             $exeDevice.validateCard(card);
-            expect($exeDevice.showMessage).toHaveBeenCalledOnce();
+            expect(showMessage).toHaveBeenCalledOnce();
         });
 
         it('does not call showMessage when card is valid', () => {
             const card = { url: 'files/image.jpg', audio: '', eText: '' };
             $exeDevice.validateCard(card);
-            expect($exeDevice.showMessage).not.toHaveBeenCalled();
+            expect(showMessage).not.toHaveBeenCalled();
         });
 
         it('treats url shorter than 5 chars as absent', () => {
@@ -491,7 +496,7 @@ describe('select-media-files iDevice', () => {
             const methods = [
                 'init', 'save', 'addPickerButton', 'addCard',
                 'validateCard', 'validatePhrase', 'validateData',
-                'showMessage', 'hexToRgba',
+                'hexToRgba',
                 'getCardDefault', 'getPhraseDefault',
             ];
             methods.forEach((m) => {

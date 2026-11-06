@@ -298,7 +298,7 @@ var $exeDevice = {
     removeCard: function () {
         const numcards = $('#slcmEPhrase').find('div.SLCME-EDatosCarta').length;
         if (numcards < 2) {
-            $exeDevice.showMessage($exeDevice.msgs.msgEOneQuestion);
+            $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgEOneQuestion);
         } else {
             const next = $('#slcmEDatosCarta-' + $exeDevice.activeID)
                     .next('div.SLCME-EDatosCarta')
@@ -738,7 +738,7 @@ var $exeDevice = {
     validateCard: function (p, options = {}) {
         if (p.eText.length == 0 && p.url.length < 5 && p.audio.length == 0) {
             const message = $exeDevice.msgs.msgCompleteData;
-            if (!options.silent) $exeDevice.showMessage(message);
+            if (!options.silent) $exeIDevicesEdition.iDevice.common.showMessage(message);
             return true;
         }
         return false;
@@ -1116,10 +1116,6 @@ var $exeDevice = {
         return html;
     },
 
-    showMessage: function (msg) {
-        eXe.app.alert(msg);
-    },
-
     getIdeviceID: function () {
         const ideviceid =
             $('#gameQEIdeviceForm')
@@ -1164,7 +1160,7 @@ var $exeDevice = {
         if (!feedback) return false;
 
         if (phrasesGame.length == 0) {
-            $exeDevice.showMessage($exeDevice.msgs.msgEOneQuestion);
+            $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgEOneQuestion);
             return false;
         }
         const scorm = $exeIDevicesEdition.iDevice.gamification.scorm.getValues();
@@ -1468,7 +1464,7 @@ var $exeDevice = {
             url = $('#slcmEURLImage-' + id).val(),
             ext = url.split('.').pop().toLowerCase();
         if (url.indexOf('files') == 0 && validExt.indexOf(ext) == -1) {
-            $exeDevice.showMessage(
+            $exeIDevicesEdition.iDevice.common.showMessage(
                 _('Supported formats') + ': jpg, jpeg, gif, png, svg, webp'
             );
             return false;
@@ -1485,7 +1481,7 @@ var $exeDevice = {
             return false;
         }
         if (url.indexOf('files') == 0 && validExt.indexOf(ext) == -1) {
-            $exeDevice.showMessage(
+            $exeIDevicesEdition.iDevice.common.showMessage(
                 _('Supported formats') + ': jpg, jpeg, gif, png, svg, webp'
             );
             return false;
@@ -1498,7 +1494,7 @@ var $exeDevice = {
         const validExt = ['mp3', 'ogg', 'wav'],
             ext = url.split('.').pop().toLowerCase();
         if (url.indexOf('files') == 0 && validExt.indexOf(ext) == -1) {
-            $exeDevice.showMessage(_('Supported formats') + ': mp3, ogg, wav');
+            $exeIDevicesEdition.iDevice.common.showMessage(_('Supported formats') + ': mp3, ogg, wav');
             return false;
         } else {
             if (url.length > 4) {
@@ -1522,7 +1518,7 @@ var $exeDevice = {
 
     addPhrase: function () {
         if ($exeDevice.phrasesGame.length >= 30) {
-            $exeDevice.showMessage($exeDevice.msgs.msgPairsMax);
+            $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgPairsMax);
             return;
         }
         const valida = $exeDevice.validatePhrase();
@@ -1542,7 +1538,7 @@ var $exeDevice = {
 
     removePhrase: function () {
         if ($exeDevice.phrasesGame.length < 2) {
-            $exeDevice.showMessage($exeDevice.msgs.msgEOneQuestion);
+            $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgEOneQuestion);
         } else {
             $exeDevice.phrasesGame.splice($exeDevice.active, 1);
             if ($exeDevice.active >= $exeDevice.phrasesGame.length - 1) {
@@ -1580,7 +1576,7 @@ var $exeDevice = {
             (options) => $exeDevice.validatePhrase(options)
         );
         if ($exeDevice.phrasesGame.length >= 30) {
-            $exeDevice.showMessage($exeDevice.msgs.msgPairsMax);
+            $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgPairsMax);
             return;
         }
         if ($exeDevice.typeEdit == 0) {

@@ -140,10 +140,6 @@ var $exeDevice = {
         );
     },
 
-    showMessage: function (msg) {
-        eXe.app.alert(msg);
-    },
-
     addQuestion: function () {
         if ($exeDevice.validateQuestion() !== false) {
             $exeDevice.clearQuestion();
@@ -159,7 +155,7 @@ var $exeDevice = {
 
     removeQuestion: function () {
         if ($exeDevice.questionsGame.length < 2) {
-            $exeDevice.showMessage($exeDevice.msgs.msgEOneQuestion);
+            $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgEOneQuestion);
             return;
         }
         $exeDevice.questionsGame.splice($exeDevice.active, 1);
@@ -877,7 +873,7 @@ var $exeDevice = {
             $exeDevice.questionsGame[$exeDevice.active] = p;
             message = true;
         } else {
-            if (!options.silent) $exeDevice.showMessage(message);
+            if (!options.silent) $exeIDevicesEdition.iDevice.common.showMessage(message);
             message = false;
         }
 
@@ -960,10 +956,10 @@ var $exeDevice = {
                     ? 1
                     : mquestion.customScore;
             if (mquestion.question.length === 0) {
-                $exeDevice.showMessage($exeDevice.msgs.msgECompleteQuestion);
+                $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgECompleteQuestion);
                 return false;
             } else if (mquestion.url.length < 10) {
-                $exeDevice.showMessage($exeDevice.msgs.msgEURLValid);
+                $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgEURLValid);
                 return false;
             }
             let completAnswer = true;
@@ -973,7 +969,7 @@ var $exeDevice = {
                 }
             }
             if (!completAnswer) {
-                $exeDevice.showMessage($exeDevice.msgs.msgECompleteAllOptions);
+                $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgECompleteAllOptions);
                 return false;
             }
         }
@@ -1107,7 +1103,7 @@ var $exeDevice = {
                 selectedFile = $(this).val(),
                 ext = selectedFile.split('.').pop().toLowerCase();
             if (selectedFile.startsWith('files') && !validExt.includes(ext)) {
-                $exeDevice.showMessage(
+                $exeIDevicesEdition.iDevice.common.showMessage(
                     `${_('Supported formats')}: jpg, jpeg, gif, png, svg, webp`
                 );
                 return false;
@@ -1123,7 +1119,7 @@ var $exeDevice = {
                 selectedFile = $('#hiEURLImage').val(),
                 ext = selectedFile.split('.').pop().toLowerCase();
             if (selectedFile.startsWith('files') && !validExt.includes(ext)) {
-                $exeDevice.showMessage(
+                $exeIDevicesEdition.iDevice.common.showMessage(
                     `${_('Supported formats')}: jpg, jpeg, gif, png, svg, webp`
                 );
                 return false;
@@ -1142,7 +1138,7 @@ var $exeDevice = {
         $('#hiEURLAudio').on('change', function () {
             const selectedFile = $(this).val().trim();
             if (selectedFile.length === 0) {
-                $exeDevice.showMessage(
+                $exeIDevicesEdition.iDevice.common.showMessage(
                     `${_('Supported formats')}: mp3, ogg, wav`
                 );
             } else if (selectedFile.length > 4) {

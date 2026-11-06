@@ -440,7 +440,7 @@ var $exeDevice = {
         let cards = $exeDevice.cardsGame,
             active = $exeDevice.active;
         if (cards.length < 2) {
-            $exeDevice.showMessage($exeDevice.msgs.msgEOneCard);
+            $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgEOneCard);
             return;
         }
 
@@ -643,7 +643,7 @@ var $exeDevice = {
             $exeDevice.cardsGame[$exeDevice.active] = p;
             return true;
         } else {
-            if (!options.silent) $exeDevice.showMessage(message);
+            if (!options.silent) $exeIDevicesEdition.iDevice.common.showMessage(message);
             return false;
         }
     },
@@ -959,10 +959,6 @@ var $exeDevice = {
             .join('');
     },
 
-    showMessage: function (msg) {
-        eXe.app.alert(msg);
-    },
-
     getIdeviceID: function () {
         const ideviceid =
             $('#relateQIdeviceForm')
@@ -1102,7 +1098,7 @@ var $exeDevice = {
             e.preventDefault();
             const numcards = $exeDevice.cardsGame.length;
             if (numcards >= maxCards) {
-                $exeDevice.showMessage(
+                $exeIDevicesEdition.iDevice.common.showMessage(
                     $exeDevice.msgs.msgMaxCards.replace('%s', maxCards)
                 );
                 return true;
@@ -1388,7 +1384,7 @@ var $exeDevice = {
             return false;
         }
         if (url.startsWith('files') && !validExt.includes(ext)) {
-            $exeDevice.showMessage(
+            $exeIDevicesEdition.iDevice.common.showMessage(
                 `${_('Supported formats')}: jpg, jpeg, gif, png, svg, webp`
             );
             return false;
@@ -1401,7 +1397,7 @@ var $exeDevice = {
             ext = url.split('.').pop().toLowerCase();
 
         if (url.startsWith('files') && !validExt.includes(ext)) {
-            $exeDevice.showMessage(`${_('Supported formats')}: mp3, ogg, waw`);
+            $exeIDevicesEdition.iDevice.common.showMessage(`${_('Supported formats')}: mp3, ogg, waw`);
             return false;
         }
 
@@ -1479,7 +1475,7 @@ var $exeDevice = {
         const game =
             $exeDevices.iDevice.gamification.helpers.isJsonString(content);
         if (content && content.includes('\u0000')) {
-            $exeDevice.showMessage(_('Sorry, wrong file format'));
+            $exeIDevicesEdition.iDevice.common.showMessage(_('Sorry, wrong file format'));
             return;
         } else if (!game && content) {
             if (filetype.match('text/plain')) {
@@ -1494,7 +1490,7 @@ var $exeDevice = {
             }
             return;
         } else {
-            return $exeDevice.showMessage($exeDevice.msgs.msgESelectFile);
+            return $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgESelectFile);
         }
     },
 

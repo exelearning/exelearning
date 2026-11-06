@@ -880,10 +880,6 @@ var $exeDevice = {
                 </div>`;
     },
 
-    showMessage: function (msg) {
-        eXe.app.alert(msg);
-    },
-
     validateData: function () {
         const evaluationID = $('#informeEEvaluationID').val(),
             showDate = $('#informeEShowDate').is(':checked'),
@@ -893,7 +889,7 @@ var $exeDevice = {
             typeshow = parseInt($('input[name="showtype"]:checked').val());
 
         if (!evaluationID || evaluationID.length < 5) {
-            $exeDevice.showMessage(
+            $exeIDevicesEdition.iDevice.common.showMessage(
                 _('The report identifier must have at least 5 characters')
             );
             return false;

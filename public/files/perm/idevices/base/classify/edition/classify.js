@@ -883,13 +883,9 @@ var $exeDevice = {
             $exeDevice.wordsGame[$exeDevice.active] = p;
             return true;
         } else {
-            if (!options.silent) $exeDevice.showMessage(message);
+            if (!options.silent) $exeIDevicesEdition.iDevice.common.showMessage(message);
             return false;
         }
-    },
-
-    showMessage: function (msg) {
-        eXe.app.alert(msg);
     },
 
     getIdeviceID: function () {
@@ -934,7 +930,7 @@ var $exeDevice = {
         if (!feedback) return false;
 
         if ($exeDevice.wordsGame.length === 0) {
-            $exeDevice.showMessage($exeDevice.msgs.msgEOneQuestion);
+            $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgEOneQuestion);
             return false;
         }
 
@@ -950,7 +946,7 @@ var $exeDevice = {
         });
 
         if (nogroups) {
-            $exeDevice.showMessage(_('Give each group a name in Options'));
+            $exeIDevicesEdition.iDevice.common.showMessage(_('Give each group a name in Options'));
             return false;
         }
 
@@ -963,7 +959,7 @@ var $exeDevice = {
                 // Bring the offending card up so the message points at something.
                 $exeDevice.active = i;
                 $exeDevice.showQuestion(i);
-                $exeDevice.showMessage($exeDevice.msgs.msgCompleteData);
+                $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgCompleteData);
                 return false;
             }
         }
@@ -1216,7 +1212,7 @@ var $exeDevice = {
             const selectedFile = this.value.trim();
             const ext = selectedFile.split('.').pop().toLowerCase();
             if (selectedFile.startsWith('files') && !validExt.includes(ext)) {
-                $exeDevice.showMessage(
+                $exeIDevicesEdition.iDevice.common.showMessage(
                     `${_('Supported formats')}: jpg, jpeg, gif, png, svg, webp`
                 );
                 return false;
@@ -1241,7 +1237,7 @@ var $exeDevice = {
             const selectedFile = $('#clasificaEURLImage').val();
             const ext = selectedFile.split('.').pop().toLowerCase();
             if (selectedFile.startsWith('files') && !validExt.includes(ext)) {
-                $exeDevice.showMessage(
+                $exeIDevicesEdition.iDevice.common.showMessage(
                     `${_('Supported formats')}: jpg, jpeg, gif, png, svg, webp`
                 );
                 return false;
@@ -1472,7 +1468,7 @@ var $exeDevice = {
             ext = url.split('.').pop().toLowerCase();
 
         if (url.indexOf('files') == 0 && validExt.indexOf(ext) == -1) {
-            $exeDevice.showMessage(
+            $exeIDevicesEdition.iDevice.common.showMessage(
                 _('Supported formats') + ': jpg, jpeg, gif, png, svg, webp'
             );
             return false;
@@ -1541,7 +1537,7 @@ var $exeDevice = {
 
     addQuestion: function () {
         if ($exeDevice.wordsGame.length >= 25) {
-            $exeDevice.showMessage($exeDevice.msgs.msgPairsMax);
+            $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgPairsMax);
             return;
         }
         if ($exeDevice.validateQuestion()) {
@@ -1561,7 +1557,7 @@ var $exeDevice = {
 
     removeQuestion: function () {
         if ($exeDevice.wordsGame.length < 2) {
-            $exeDevice.showMessage($exeDevice.msgs.msgEOneQuestion);
+            $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgEOneQuestion);
         } else {
             $exeDevice.wordsGame.splice($exeDevice.active, 1);
             $exeDevice.active = Math.min(
@@ -1600,7 +1596,7 @@ var $exeDevice = {
             (options) => $exeDevice.validateQuestion(options)
         );
         if ($exeDevice.wordsGame.length >= 25) {
-            $exeDevice.showMessage($exeDevice.msgs.msgPairsMax);
+            $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgPairsMax);
             return;
         }
         if ($exeDevice.typeEdit === 0) {
@@ -1804,7 +1800,7 @@ var $exeDevice = {
             $('#clasificaENumGroups').val(numgroups);
             $exeDevice.showGroups(numgroups);
         } else {
-            $exeDevice.showMessage(_('Incorrect group number'));
+            $exeIDevicesEdition.iDevice.common.showMessage(_('Incorrect group number'));
             return;
         }
         $exeDevice.addWords(questions);

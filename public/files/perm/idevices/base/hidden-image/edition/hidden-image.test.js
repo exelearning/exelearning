@@ -207,12 +207,6 @@ describe('hidden-image iDevice', () => {
     });
   });
 
-  describe('showMessage', () => {
-    it('exists as a function', () => {
-      expect(typeof $exeDevice.showMessage).toBe('function');
-    });
-  });
-
   describe('validateData', () => {
     it('exists as a function', () => {
       expect(typeof $exeDevice.validateData).toBe('function');

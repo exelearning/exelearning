@@ -142,10 +142,6 @@ var $exeDevice = {
         };
     },
 
-    showMessage: msg => {
-        eXe.app.alert(msg);
-    },
-
     cleanQuestionPrefix: function (msg, questionNumber) {
         const clean = String(msg || '')
             .replace('%s', questionNumber)
@@ -1104,7 +1100,7 @@ var $exeDevice = {
                 tSel === 2 ? this.msgs.msgEProvideWord : this.msgs.msgQuestionEmpty,
                 human,
             );
-            this.showMessage(msg);
+            $exeIDevicesEdition.iDevice.common.showMessage(msg);
             return false;
         }
 
@@ -1113,7 +1109,7 @@ var $exeDevice = {
             // shown to the learner), so a missing value here is reported as
             // a missing definition.
             if (!q.solutionWord || this.removeTags(q.solutionWord).length === 0) {
-                this.showMessage(this.cleanQuestionPrefix(this.msgs.msgEDefinition, human));
+                $exeIDevicesEdition.iDevice.common.showMessage(this.cleanQuestionPrefix(this.msgs.msgEDefinition, human));
                 return false;
             }
             return true;
@@ -1122,7 +1118,7 @@ var $exeDevice = {
         const num = q.numberOptions || 4;
         for (let k = 0; k < num; k++) {
             if (!q.options[k] || !q.options[k].text || this.removeTags(q.options[k].text).length === 0) {
-                this.showMessage(this.cleanQuestionPrefix(this.msgs.msgOptionsIncomplete, human));
+                $exeIDevicesEdition.iDevice.common.showMessage(this.cleanQuestionPrefix(this.msgs.msgOptionsIncomplete, human));
                 return false;
             }
         }
@@ -1137,7 +1133,7 @@ var $exeDevice = {
             // marked indexes must still be within range.
             const inRange = q.solutionMulti.every(idx => idx >= 0 && idx < num);
             if (!inRange) {
-                this.showMessage(this.cleanQuestionPrefix(this.msgs.msgESelectAtLeastOne, human));
+                $exeIDevicesEdition.iDevice.common.showMessage(this.cleanQuestionPrefix(this.msgs.msgESelectAtLeastOne, human));
                 return false;
             }
         }
@@ -1158,7 +1154,7 @@ var $exeDevice = {
 
     removeQuestion: () => {
         if ($exeDevice.questionsGame.length < 2) {
-            $exeDevice.showMessage($exeDevice.msgs.msgEOneQuestion);
+            $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgEOneQuestion);
             return;
         }
         $exeDevice.questionsGame.splice($exeDevice.active, 1);
@@ -1484,14 +1480,14 @@ var $exeDevice = {
         if (!this.validateQuestion()) return false;
 
         if (this.questionsGame.length < this.MIN_QUESTIONS) {
-            this.showMessage(this.msgs.msgNoQuestions);
+            $exeIDevicesEdition.iDevice.common.showMessage(this.msgs.msgNoQuestions);
             return false;
         }
 
         const numRound = this.normalizeQuestionsPerRound($('#adaptativeQuizNumRound').val());
         $('#adaptativeQuizNumRound').val(numRound);
         if (numRound > this.questionsGame.length) {
-            this.showMessage(this.msgs.msgNumQuestionsRange.replace('%s', numRound));
+            $exeIDevicesEdition.iDevice.common.showMessage(this.msgs.msgNumQuestionsRange.replace('%s', numRound));
             return false;
         }
 
@@ -1503,7 +1499,7 @@ var $exeDevice = {
         const showSolution = $('#adaptativeQuizShowSolution').is(':checked');
         const timeShowSolution = parseInt($('#adaptativeQuizTimeShowSolution').val(), 10) || 0;
         if (showSolution && timeShowSolution === 0) {
-            this.showMessage(this.msgs.msgProvideTimeSolution);
+            $exeIDevicesEdition.iDevice.common.showMessage(this.msgs.msgProvideTimeSolution);
             return false;
         }
         const customMessages = showSolution && $('#adaptativeQuizECustomMessages').is(':checked');
@@ -1523,7 +1519,7 @@ var $exeDevice = {
             rawLevelNames.push(($('#adaptativeQuizLevelName5').val() || '').trim());
         }
         if (rawLevelNames.some(name => name === '')) {
-            this.showMessage(this.msgs.msgLevelNameEmpty);
+            $exeIDevicesEdition.iDevice.common.showMessage(this.msgs.msgLevelNameEmpty);
             return false;
         }
         const levelNames = rawLevelNames.slice();
@@ -1537,12 +1533,12 @@ var $exeDevice = {
         for (const level of activeLevels) {
             if ((countByLevel[level] || 0) < 2) {
                 const name = levelNames[level - 1] || String(level);
-                this.showMessage((this.msgs.msgLevelTooFewQuestions || '').replace('%s', name));
+                $exeIDevicesEdition.iDevice.common.showMessage((this.msgs.msgLevelTooFewQuestions || '').replace('%s', name));
                 return false;
             }
         }
         if (countByLevel[initialLevel] === 0) {
-            this.showMessage(this.msgs.msgInitialLevelEmpty);
+            $exeIDevicesEdition.iDevice.common.showMessage(this.msgs.msgInitialLevelEmpty);
         }
 
         const progressBar = $exeIDevicesEdition.iDevice.gamification.progressBar.getValues();

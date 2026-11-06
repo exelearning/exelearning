@@ -377,7 +377,7 @@ var $exeDevice = {
 
     validatePuzzle: function (options = {}) {
         if ($('#puzzleEURLImageDefinition').val().length < 3) {
-            if (!options.silent) $exeDevice.showMessage($exeDevice.msgs.msgSelectPuzzleImage);
+            if (!options.silent) $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgSelectPuzzleImage);
             return false;
         }
 
@@ -386,7 +386,7 @@ var $exeDevice = {
         puzzle.url = $('#puzzleEURLImageDefinition').val();
 
         if (puzzle.url.length < 3) {
-            if (!options.silent) $exeDevice.showMessage($exeDevice.msgs.msgSelectImage);
+            if (!options.silent) $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgSelectImage);
             return false;
         }
 
@@ -401,7 +401,7 @@ var $exeDevice = {
             puzzle.columns >= 2 &&
             puzzle.columns <= 6;
         if (!pcc) {
-            if (!options.silent) $exeDevice.showMessage($exeDevice.msgs.msgRowsNumber);
+            if (!options.silent) $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgRowsNumber);
             return false;
         }
 
@@ -643,10 +643,6 @@ var $exeDevice = {
         return html;
     },
 
-    showMessage: function (msg) {
-        eXe.app.alert(msg);
-    },
-
     validateAlt: function () {
         const altImage = $('#puzzleEAlt').val();
         if (!$exeDevice.checkAltImage) return true;
@@ -703,7 +699,7 @@ var $exeDevice = {
         if (!feedback) return false;
 
         if (puzzlesGame.length === 0) {
-            $exeDevice.showMessage($exeDevice.msgs.msgEOneQuestion);
+            $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgEOneQuestion);
             return false;
         }
 
@@ -872,7 +868,7 @@ var $exeDevice = {
 
         if (url.trim().length < 4) return false;
         if (url.indexOf('files') == 0 && validExt.indexOf(ext) == -1) {
-            $exeDevice.showMessage(
+            $exeIDevicesEdition.iDevice.common.showMessage(
                 _('Supported formats') + ': jpg, jpeg, gif, png, svg, webp'
             );
             return false;
@@ -884,7 +880,7 @@ var $exeDevice = {
         const validExt = ['mp3', 'ogg', 'waw'],
             ext = url.split('.').pop().toLowerCase();
         if (url.indexOf('files') == 0 && validExt.indexOf(ext) == -1) {
-            $exeDevice.showMessage(_('Supported formats') + ': mp3, ogg, waw');
+            $exeIDevicesEdition.iDevice.common.showMessage(_('Supported formats') + ': mp3, ogg, waw');
             return false;
         } else {
             if (url.length > 4) {
@@ -923,7 +919,7 @@ var $exeDevice = {
 
     removePuzzle: function () {
         if ($exeDevice.puzzlesGame.length < 2) {
-            $exeDevice.showMessage($exeDevice.msgs.msgEOneQuestion);
+            $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgEOneQuestion);
         } else {
             $exeDevice.puzzlesGame.splice($exeDevice.active, 1);
             if ($exeDevice.active >= $exeDevice.puzzlesGame.length - 1)
@@ -961,7 +957,7 @@ var $exeDevice = {
             (options) => $exeDevice.validatePuzzle(options)
         );
         if ($exeDevice.puzzlesGame.length >= 30) {
-            $exeDevice.showMessage($exeDevice.msgs.msgPairsMax);
+            $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgPairsMax);
             return;
         }
         if ($exeDevice.typeEdit === 0) {

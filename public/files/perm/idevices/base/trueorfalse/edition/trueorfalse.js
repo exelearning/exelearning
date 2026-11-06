@@ -148,10 +148,6 @@ var $exeDevice = {
         msgs.msNotScorm = _('SCORM grades can only be saved in Quiz mode');
     },
 
-    showMessage: function (msg) {
-        eXe.app.alert(msg);
-    },
-
     addQuestion: function () {
         if (!$exeDevice.validateQuestion()) return;
         $exeDevice.typeEdit = -1;
@@ -186,7 +182,7 @@ var $exeDevice = {
 
     removeQuestion: function () {
         if ($exeDevice.questionsGame.length < 2) {
-            $exeDevice.showMessage($exeDevice.msgs.msgOneQuestion);
+            $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgOneQuestion);
             return;
         }
 
@@ -708,7 +704,7 @@ var $exeDevice = {
         const game =
             $exeDevices.iDevice.gamification.helpers.isJsonString(content);
         if (content && content.includes('\u0000')) {
-            $exeDevice.showMessage(_('Sorry, wrong file format'));
+            $exeIDevicesEdition.iDevice.common.showMessage(_('Sorry, wrong file format'));
             return;
         } else if (!game && content) {
             if (filetype.match('text/plain')) {
@@ -723,7 +719,7 @@ var $exeDevice = {
             }
             return;
         } else if (!game || typeof game.typeGame === 'undefined') {
-            $exeDevice.showMessage(_('Sorry, wrong file format'));
+            $exeIDevicesEdition.iDevice.common.showMessage(_('Sorry, wrong file format'));
             return;
         } else if (game.typeGame === 'TrueOrFalse') {
             $exeDevice.questionsGame = $exeDevice.toQuestionsArray(
@@ -747,7 +743,7 @@ var $exeDevice = {
             }
             $('#eXeIdeviceTextAfter').val(eXeIdeviceTextAfter);
         } else if (game.typeGame !== 'TrueOrFalse') {
-            $exeDevice.showMessage(_('Sorry, wrong file format'));
+            $exeIDevicesEdition.iDevice.common.showMessage(_('Sorry, wrong file format'));
             return;
         }
         $exeDevice.active = 0;
@@ -953,7 +949,7 @@ var $exeDevice = {
             $exeDevice.questionsGame[$exeDevice.active] = p;
             return true;
         } else {
-            if (!options.silent) $exeDevice.showMessage(message);
+            if (!options.silent) $exeIDevicesEdition.iDevice.common.showMessage(message);
             return false;
         }
     },
@@ -1007,7 +1003,7 @@ var $exeDevice = {
         let evaluationID = '';
 
         if (questionsGame.length == 0) {
-            $exeDevice.showMessage($exeDevice.msgs.msgOneQuestion);
+            $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgOneQuestion);
             return false;
         }
 
@@ -1026,7 +1022,7 @@ var $exeDevice = {
             const mQuestion = questionsGame[i];
 
             if (mQuestion.question.length === 0) {
-                $exeDevice.showMessage($exeDevice.msgs.msgWriteQuestion);
+                $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgWriteQuestion);
                 return false;
             }
         }
@@ -1034,7 +1030,7 @@ var $exeDevice = {
         const scorm = $exeIDevicesEdition.iDevice.gamification.scorm.getValues();
 
         if (scorm.isScorm > 0 && !isTest) {
-            $exeDevice.showMessage($exeDevice.msgs.msNotScorm);
+            $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msNotScorm);
             return false;
         }
 

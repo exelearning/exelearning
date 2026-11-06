@@ -135,12 +135,6 @@ describe('challenge iDevice', () => {
     });
   });
 
-  describe('showMessage', () => {
-    it('exists as a function', () => {
-      expect(typeof $exeDevice.showMessage).toBe('function');
-    });
-  });
-
   describe('addChallenge', () => {
     it('exists as a function', () => {
       expect(typeof $exeDevice.addChallenge).toBe('function');

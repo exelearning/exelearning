@@ -345,7 +345,7 @@ var $exeDevice = {
 
     removeCard: function () {
         if ($exeDevice.cardsGame.length < 1) {
-            $exeDevice.showMessage($exeDevice.msgs.msgEOneCard);
+            $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgEOneCard);
             return;
         }
 
@@ -487,7 +487,7 @@ var $exeDevice = {
             $exeDevice.cardsGame[$exeDevice.active] = p;
             message = true;
         } else {
-            if (!options.silent) $exeDevice.showMessage(message);
+            if (!options.silent) $exeIDevicesEdition.iDevice.common.showMessage(message);
             message = false;
         }
         return message;
@@ -688,10 +688,6 @@ var $exeDevice = {
                     .join('');
             })
             .join('');
-    },
-
-    showMessage: function (msg) {
-        eXe.app.alert(msg);
     },
 
     getIdeviceID: function () {
@@ -1021,7 +1017,7 @@ var $exeDevice = {
             ext = url.split('.').pop().toLowerCase();
 
         if (url.indexOf('files') == 0 && validExt.indexOf(ext) == -1) {
-            $exeDevice.showMessage(
+            $exeIDevicesEdition.iDevice.common.showMessage(
                 _('Supported formats') + ': jpg, jpeg, gif, png, svg,  webp'
             );
             return false;
@@ -1034,7 +1030,7 @@ var $exeDevice = {
             ext = url.split('.').pop().toLowerCase();
 
         if (url.startsWith('files') && !validExt.includes(ext)) {
-            $exeDevice.showMessage(`${_('Supported formats')}: mp3, ogg, waw`);
+            $exeIDevicesEdition.iDevice.common.showMessage(`${_('Supported formats')}: mp3, ogg, waw`);
             return false;
         }
 

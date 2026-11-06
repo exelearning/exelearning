@@ -358,10 +358,6 @@ var $exeDevice = {
         return html;
     },
 
-    showMessage: function (msg) {
-        eXe.app.alert(msg);
-    },
-
     getIdeviceID: function () {
         const ideviceid =
             $('#gameQEIdeviceForm')
@@ -390,7 +386,7 @@ var $exeDevice = {
             isMoreThanOneLevelFilled = false;
 
         if (title === '') {
-            $exeDevice.showMessage(_('Indicate a title for the checklist'));
+            $exeIDevicesEdition.iDevice.common.showMessage(_('Indicate a title for the checklist'));
             return false;
         }
 
@@ -403,7 +399,7 @@ var $exeDevice = {
                     }).length;
 
             if (filledLevels === 0) {
-                $exeDevice.showMessage(_('No empty items can be left'));
+                $exeIDevicesEdition.iDevice.common.showMessage(_('No empty items can be left'));
                 hasEmptyRow = true;
                 return false;
             }
@@ -422,7 +418,7 @@ var $exeDevice = {
             return false;
         }
         if (isMoreThanOneLevelFilled) {
-            $exeDevice.showMessage(
+            $exeIDevicesEdition.iDevice.common.showMessage(
                 _(`You can only use text at this item's level`)
             );
             return false;
@@ -465,7 +461,7 @@ var $exeDevice = {
         });
 
         if (scoreError == 2) {
-            $exeDevice.showMessage(
+            $exeIDevicesEdition.iDevice.common.showMessage(
                 _('You cannot indicate a score for this type of boxes')
             );
             return false;
@@ -504,7 +500,7 @@ var $exeDevice = {
                 ext = selectedFile.split('.').pop().toLowerCase();
 
             if (selectedFile.startsWith('files') && !validExt.includes(ext)) {
-                $exeDevice.showMessage(
+                $exeIDevicesEdition.iDevice.common.showMessage(
                     `${_('Supported formats')}: jpg, jpeg, gif, png, svg, webp`
                 );
                 return false;
@@ -536,7 +532,7 @@ var $exeDevice = {
                     $(this).closest('.CTJ-data-row').remove();
                 }
             } else {
-                $exeDevice.showMessage(_('There must be at least one row.'));
+                $exeIDevicesEdition.iDevice.common.showMessage(_('There must be at least one row.'));
             }
         });
         const imageConfig = [

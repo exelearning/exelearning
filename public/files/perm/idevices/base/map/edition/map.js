@@ -1270,7 +1270,7 @@ var $exeDevice = {
     },
 
     onPlayerError: function () {
-        //$exeDevice.showMessage("El video mapaEdo no está disponible")
+        //$exeIDevicesEdition.iDevice.common.showMessage("El video mapaEdo no está disponible")
     },
 
     startVideo: function (id, start, end, type) {
@@ -1726,17 +1726,17 @@ var $exeDevice = {
 
     save: function () {
         if ($exeDevice.levels.length > 1) {
-            $exeDevice.showMessage($exeDevice.msgs.msgCloseMap);
+            $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgCloseMap);
             return false;
         }
 
         if ($exeDevice.slides.length > 0) {
-            $exeDevice.showMessage($exeDevice.msgs.msgCloseSlide);
+            $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgCloseSlide);
             return false;
         }
 
         if ($exeDevice.tests && $exeDevice.tests.length > 0) {
-            $exeDevice.showMessage($exeDevice.msgs.msgCloseTest);
+            $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgCloseTest);
             return false;
         }
 
@@ -1947,7 +1947,7 @@ var $exeDevice = {
             alt = $('#mapaAltImageMap').val();
 
         if (url.length < 4) {
-            $exeDevice.showMessage($exeDevice.msgs.msgEURLValid);
+            $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgEURLValid);
             return false;
         }
 
@@ -2017,7 +2017,7 @@ var $exeDevice = {
         $exeIDevicesEdition.iDevice.gamification.helpers.stopSound();
         $exeDevice.stopVideo();
         if (url.length < 4) {
-            if (!options.silent) $exeDevice.showMessage($exeDevice.msgs.msgEURLValid);
+            if (!options.silent) $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgEURLValid);
             return false;
         }
 
@@ -2089,7 +2089,7 @@ var $exeDevice = {
             $exeDevice.updateQuestionsNumber();
             message = p;
         } else {
-            if (!options.silent) $exeDevice.showMessage(message);
+            if (!options.silent) $exeIDevicesEdition.iDevice.common.showMessage(message);
             message = false;
         }
         return message;
@@ -2306,10 +2306,6 @@ var $exeDevice = {
         return $exeDevice.activeMap.pts;
     },
 
-    showMessage: function (msg) {
-        eXe.app.alert(msg);
-    },
-
     getIdeviceID: function () {
         const ideviceid =
             $('#gameQEIdeviceForm')
@@ -2364,22 +2360,22 @@ var $exeDevice = {
         }
 
         if (url.length < 4) {
-            $exeDevice.showMessage($exeDevice.msgs.msgEURLValid);
+            $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgEURLValid);
             return false;
         }
 
         if (evaluationG == 5 && order && order.length == 0) {
-            $exeDevice.showMessage($exeDevice.msgs.msgSolutionOrder);
+            $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgSolutionOrder);
             return false;
         }
 
         for (let i = 0; i < points.length; i++) {
             let mpoint = points[i];
             if (mpoint.title.length == 0) {
-                $exeDevice.showMessage($exeDevice.msgs.msgProvideTitle);
+                $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgProvideTitle);
                 return false;
             } else if (mpoint.type == 0 && mpoint.url.length < 5) {
-                $exeDevice.showMessage($exeDevice.msgs.msgEURLValid);
+                $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgEURLValid);
                 return false;
             } else if (
                 mpoint.type == 1 &&
@@ -2388,29 +2384,29 @@ var $exeDevice = {
                 ) &&
                 !$exeDevice.getIDMediaTeca(mpoint.video)
             ) {
-                $exeDevice.showMessage($exeDevice.msgs.msgECompleteURLYoutube);
+                $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgECompleteURLYoutube);
                 return false;
             } else if (mpoint.type == 2 && mpoint.eText.length == 0) {
-                $exeDevice.showMessage($exeDevice.msgs.msgWriteText);
+                $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgWriteText);
                 return false;
             } else if (mpoint.type == 5) {
                 if (mpoint.map.url.length < 4) {
-                    $exeDevice.showMessage($exeDevice.msgs.msgEURLValid);
+                    $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgEURLValid);
                     return false;
                 } else if (
                     typeof mpoint.map.pts == 'undefined' ||
                     mpoint.map.pts.length == 0
                 ) {
-                    $exeDevice.showMessage($exeDevice.msgs.msgEOneQuestion);
+                    $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgEOneQuestion);
                     return false;
                 }
                 for (let j = 0; j < mpoint.map.pts.length; j++) {
                     let vpp = mpoint.map.pts[j];
                     if (vpp.title.length == 0) {
-                        $exeDevice.showMessage($exeDevice.msgs.msgProvideTitle);
+                        $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgProvideTitle);
                         return false;
                     } else if (vpp.type == 0 && vpp.url.length < 5) {
-                        $exeDevice.showMessage($exeDevice.msgs.msgEURLValid);
+                        $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgEURLValid);
                         return false;
                     } else if (
                         vpp.type == 1 &&
@@ -2421,18 +2417,18 @@ var $exeDevice = {
                             mpoint.video
                         )
                     ) {
-                        $exeDevice.showMessage(
+                        $exeIDevicesEdition.iDevice.common.showMessage(
                             $exeDevice.msgs.msgECompleteURLYoutube
                         );
                         return false;
                     } else if (vpp.type == 2 && vpp.eText.length == 0) {
-                        $exeDevice.showMessage($exeDevice.msgs.msgWriteText);
+                        $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgWriteText);
                         return false;
                     } else if (vpp.type == 3 && vpp.audio.trim().length == 0) {
-                        $exeDevice.showMessage($exeDevice.msgs.msgSelectAudio);
+                        $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgSelectAudio);
                         return false;
                     } else if (vpp.x == 0 && vpp.y == 0) {
-                        $exeDevice.showMessage($exeDevice.msgs.msgMarkPoint);
+                        $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgMarkPoint);
                     }
                 }
             }
@@ -3053,7 +3049,7 @@ var $exeDevice = {
                 selectedFile.indexOf('files') == 0 &&
                 validExt.indexOf(ext) == -1
             ) {
-                $exeDevice.showMessage(
+                $exeIDevicesEdition.iDevice.common.showMessage(
                     _('Supported formats') + ': jpg, jpeg, gif, png, svg, webp'
                 );
                 return false;
@@ -3073,7 +3069,7 @@ var $exeDevice = {
                 selectedFile = $('#mapaURLImageMap').val(),
                 ext = selectedFile.split('.').pop().toLowerCase();
             if (selectedFile.length < 5) {
-                $exeDevice.showMessage(
+                $exeIDevicesEdition.iDevice.common.showMessage(
                     _('Supported formats') + ': jpg, jpeg, gif, png, svg, webp'
                 );
             }
@@ -3081,7 +3077,7 @@ var $exeDevice = {
                 selectedFile.indexOf('files') == 0 &&
                 validExt.indexOf(ext) == -1
             ) {
-                $exeDevice.showMessage(
+                $exeIDevicesEdition.iDevice.common.showMessage(
                     _('Supported formats') + ': jpg, jpeg, gif, png, svg, webp'
                 );
                 return false;
@@ -3101,7 +3097,7 @@ var $exeDevice = {
                 selectedFile = $('#mapaURLImage').val(),
                 ext = selectedFile.split('.').pop().toLowerCase();
             if (selectedFile.length < 5) {
-                $exeDevice.showMessage(
+                $exeIDevicesEdition.iDevice.common.showMessage(
                     _('Supported formats') + ': jpg, jpeg, gif, png, svg, webp'
                 );
             }
@@ -3109,7 +3105,7 @@ var $exeDevice = {
                 selectedFile.indexOf('files') == 0 &&
                 validExt.indexOf(ext) == -1
             ) {
-                $exeDevice.showMessage(
+                $exeIDevicesEdition.iDevice.common.showMessage(
                     _('Supported formats') + ': jpg, jpeg, gif, png, svg, webp'
                 );
                 return false;
@@ -3126,7 +3122,7 @@ var $exeDevice = {
                 selectedFile = $('#mapaSURLImage').val(),
                 ext = selectedFile.split('.').pop().toLowerCase();
             if (selectedFile.length < 5) {
-                $exeDevice.showMessage(
+                $exeIDevicesEdition.iDevice.common.showMessage(
                     _('Supported formats') + ': jpg, jpeg, gif, png, svg, webp'
                 );
             }
@@ -3134,7 +3130,7 @@ var $exeDevice = {
                 selectedFile.indexOf('files') == 0 &&
                 validExt.indexOf(ext) == -1
             ) {
-                $exeDevice.showMessage(
+                $exeIDevicesEdition.iDevice.common.showMessage(
                     _('Supported formats') + ': jpg, jpeg, gif, png, svg, webp'
                 );
                 return false;
@@ -3152,7 +3148,7 @@ var $exeDevice = {
                 selectedFile.indexOf('files') == 0 &&
                 validExt.indexOf(ext) == -1
             ) {
-                $exeDevice.showMessage(
+                $exeIDevicesEdition.iDevice.common.showMessage(
                     _('Supported formats') + ': jpg, jpeg, gif, png, svg, webp'
                 );
                 return false;
@@ -3369,7 +3365,7 @@ var $exeDevice = {
                 selectedFile.indexOf('files') == 0 &&
                 validExt.indexOf(ext) == -1
             ) {
-                $exeDevice.showMessage(
+                $exeIDevicesEdition.iDevice.common.showMessage(
                     _('Supported formats') + ': jpg, jpeg, gif, png, svg, webp'
                 );
                 return false;
@@ -3393,7 +3389,7 @@ var $exeDevice = {
                 selectedFile.indexOf('files') == 0 &&
                 validExt.indexOf(ext) == -1
             ) {
-                $exeDevice.showMessage(
+                $exeIDevicesEdition.iDevice.common.showMessage(
                     _('Supported formats') + ': jpg, jpeg, gif, png, svg, webp'
                 );
                 return false;
@@ -3417,7 +3413,7 @@ var $exeDevice = {
                 selectedFile = $('#mapaURLImage').val(),
                 ext = selectedFile.split('.').pop().toLowerCase();
             if (selectedFile.length < 5) {
-                $exeDevice.showMessage(
+                $exeIDevicesEdition.iDevice.common.showMessage(
                     _('Supported formats') + ': jpg, jpeg, gif, png, svg, webp'
                 );
             }
@@ -3425,7 +3421,7 @@ var $exeDevice = {
                 selectedFile.indexOf('files') == 0 &&
                 validExt.indexOf(ext) == -1
             ) {
-                $exeDevice.showMessage(
+                $exeIDevicesEdition.iDevice.common.showMessage(
                     _('Supported formats') + ': jpg, jpeg, gif, png, svg, webp'
                 );
                 return false;
@@ -3447,7 +3443,7 @@ var $exeDevice = {
                 selectedFile = $('#mapaPURLImage').val(),
                 ext = selectedFile.split('.').pop().toLowerCase();
             if (selectedFile.length < 5) {
-                $exeDevice.showMessage(
+                $exeIDevicesEdition.iDevice.common.showMessage(
                     _('Supported formats') + ': jpg, jpeg, gif, png, svg, webp'
                 );
             }
@@ -3455,7 +3451,7 @@ var $exeDevice = {
                 selectedFile.indexOf('files') == 0 &&
                 validExt.indexOf(ext) == -1
             ) {
-                $exeDevice.showMessage(
+                $exeIDevicesEdition.iDevice.common.showMessage(
                     _('Supported formats') + ': jpg, jpeg, gif, png, svg, webp'
                 );
                 return false;
@@ -3500,7 +3496,7 @@ var $exeDevice = {
                 $('#mapaPURLYoutube').val($('#mapaURLYoutube').val());
                 $exeDevice.showVideoPoint();
             } else {
-                $exeDevice.showMessage($exeDevice.msgs.msgECompleteURLYoutube);
+                $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgECompleteURLYoutube);
                 return;
             }
             $('#mapaPTitle').val($('#mapaTitle').val());
@@ -3528,7 +3524,7 @@ var $exeDevice = {
                 $('#mapaURLYoutube').val($('#mapaPURLYoutube').val());
                 $exeDevice.showVideoPoint();
             } else {
-                $exeDevice.showMessage($exeDevice.msgs.msgECompleteURLYoutube);
+                $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgECompleteURLYoutube);
                 return;
             }
 
@@ -3548,7 +3544,7 @@ var $exeDevice = {
         $('#mapaURLAudio').on('change', function () {
             const selectedFile = $(this).val().trim();
             if (selectedFile.length == 0) {
-                $exeDevice?.showMessage(
+                if ($exeDevice) $exeIDevicesEdition.iDevice.common.showMessage(
                     _('Supported formats') + ': mp3, ogg, wav'
                 );
             } else {
@@ -3569,7 +3565,7 @@ var $exeDevice = {
         $('#mapaURLAudioIdentify').on('change', function () {
             const selectedFile = $(this).val().trim();
             if (selectedFile.length == 0) {
-                $exeDevice?.showMessage(
+                if ($exeDevice) $exeIDevicesEdition.iDevice.common.showMessage(
                     _('Supported formats') + ': mp3, ogg, wav'
                 );
             } else {
@@ -3808,7 +3804,7 @@ var $exeDevice = {
             msg = $exeDevice.msgs.msgEURLValid;
         }
         if (msg.length > 0) {
-            if (!options.silent) $exeDevice.showMessage(msg);
+            if (!options.silent) $exeIDevicesEdition.iDevice.common.showMessage(msg);
         } else {
             let slide = $exeDevice.slides[$exeDevice.activeSlide];
             slide.title = $('#mapaSTitle').val();
@@ -4172,7 +4168,7 @@ var $exeDevice = {
 
     removeQuestion: function () {
         if ($exeDevice.selectsGame.length < 2) {
-            $exeDevice.showMessage($exeDevice.msgs.msgEOneQuestion);
+            $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgEOneQuestion);
             return;
         } else {
             $exeDevice.selectsGame.splice($exeDevice.qActive, 1);
@@ -4278,7 +4274,7 @@ var $exeDevice = {
 
     removePointQuestion: function () {
         if ($exeDevice.tests.length < 2) {
-            $exeDevice.showMessage($exeDevice.msgs.msgEOneQuestion);
+            $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgEOneQuestion);
             return;
         } else {
             $exeDevice.tests.splice($exeDevice.activeTest, 1);
@@ -4418,7 +4414,7 @@ var $exeDevice = {
             $exeDevice.tests[$exeDevice.activeTest] = p;
             message = true;
         } else {
-            if (!options.silent) $exeDevice.showMessage(message);
+            if (!options.silent) $exeIDevicesEdition.iDevice.common.showMessage(message);
             message = false;
         }
         return message;
@@ -4600,7 +4596,7 @@ var $exeDevice = {
             $exeDevice.selectsGame[$exeDevice.qActive] = p;
             message = true;
         } else {
-            if (!options.silent) $exeDevice.showMessage(message);
+            if (!options.silent) $exeIDevicesEdition.iDevice.common.showMessage(message);
             message = false;
         }
         return message;
@@ -4763,7 +4759,7 @@ var $exeDevice = {
             $('#mapaPNoVideo').hide();
             $('#mapaEVideoLocal').show();
         } else {
-            $exeDevice.showMessage(_('This video is not currently available'));
+            $exeIDevicesEdition.iDevice.common.showMessage(_('This video is not currently available'));
         }
 
         $('#mapaPContainer').css('display', 'flex');
@@ -4828,7 +4824,7 @@ var $exeDevice = {
     },
     removeSlide: function () {
         if ($exeDevice.slides.length < 2) {
-            $exeDevice.showMessage($exeDevice.msgs.msgEOneSlide);
+            $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgEOneSlide);
         } else {
             $exeDevice.slides.splice($exeDevice.activeSlide, 1);
             if ($exeDevice.activeSlide >= $exeDevice.slides.length - 1) {
@@ -4940,7 +4936,7 @@ var $exeDevice = {
 
     removePoint: function () {
         if ($exeDevice.activeMap.pts.length < 2) {
-            $exeDevice.showMessage($exeDevice.msgs.msgEOnePoint);
+            $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgEOnePoint);
         } else {
             $exeDevice.activeMap.pts.splice($exeDevice.activeMap.active, 1);
             if (

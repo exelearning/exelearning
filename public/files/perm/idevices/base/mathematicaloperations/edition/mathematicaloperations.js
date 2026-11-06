@@ -374,7 +374,7 @@ var $exeDevice = {
 
         let num = $('#eRMQnum');
         if (num.val() == '') {
-            $exeDevice.showMessage(
+            $exeIDevicesEdition.iDevice.common.showMessage(
                 _('Please specify the number of operations')
             );
             num.focus();
@@ -383,7 +383,7 @@ var $exeDevice = {
         num = num.val();
         let min = $('#eRMQmin');
         if (min.val() == '') {
-            $exeDevice.showMessage(
+            $exeIDevicesEdition.iDevice.common.showMessage(
                 _('Please define the minimal value of the operand')
             );
             min.focus();
@@ -393,7 +393,7 @@ var $exeDevice = {
         // max
         let max = $('#eRMQmax');
         if (max.val() == '') {
-            $exeDevice.showMessage(
+            $exeIDevicesEdition.iDevice.common.showMessage(
                 _('Please define the highest value of the operand')
             );
             max.focus();
@@ -403,7 +403,7 @@ var $exeDevice = {
         let operations = '';
 
         if (parseInt(min) >= parseInt(max)) {
-            $exeDevice.showMessage(
+            $exeIDevicesEdition.iDevice.common.showMessage(
                 _('The highest number should be bigger than the smallest one')
             );
             return false;
@@ -421,7 +421,7 @@ var $exeDevice = {
         if ($('#eRMQdiv').is(':checked')) operations += '1';
         else operations += '0';
         if (operations == '0000') {
-            $exeDevice.showMessage(_('No operations selected'));
+            $exeIDevicesEdition.iDevice.common.showMessage(_('No operations selected'));
             return false;
         }
         if (!itinerary) return false;
@@ -577,10 +577,6 @@ var $exeDevice = {
             '</div>';
         html += '</div>';
         return html;
-    },
-
-    showMessage: function (msg) {
-        eXe.app.alert(msg);
     },
 
     addEvents: function () {

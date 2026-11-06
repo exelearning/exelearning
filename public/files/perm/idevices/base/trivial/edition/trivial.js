@@ -308,7 +308,7 @@ var $exeDevice = {
     },
 
     onPlayerError: function (event) {
-        //$exeDevice.showMessage("El video  no está disponible")
+        //$exeIDevicesEdition.iDevice.common.showMessage("El video  no está disponible")
     },
 
     updateSoundVideoLocal: function () {
@@ -416,10 +416,6 @@ var $exeDevice = {
         }
     },
 
-    showMessage: function (msg) {
-        eXe.app.alert(msg);
-    },
-
     addQuestion: function () {
         if ($exeDevice.validateQuestion()) {
             $exeDevice.clearQuestion();
@@ -441,7 +437,7 @@ var $exeDevice = {
 
     removeQuestion: function (num) {
         if ($exeDevice.temas[$exeDevice.activeTema].length < 2) {
-            $exeDevice.showMessage($exeDevice.msgs.msgEOneQuestion);
+            $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgEOneQuestion);
             return;
         } else {
             $exeDevice.temas[$exeDevice.activeTema].splice(
@@ -750,7 +746,7 @@ var $exeDevice = {
                 $exeDevices.iDevice.gamification.media.muteVideo(false);
             }
         } else {
-            $exeDevice.showMessage($exeDevice.msgs.msgVideoNotAvailable);
+            $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgVideoNotAvailable);
             $exeDevice.showFlex($('#trivialENoVideo'));
         }
     },
@@ -781,7 +777,7 @@ var $exeDevice = {
                     this.naturalWidth == 0
                 ) {
                     if (type == 1) {
-                        $exeDevice.showMessage(msgs.msgEURLValid);
+                        $exeIDevicesEdition.iDevice.common.showMessage(msgs.msgEURLValid);
                     }
                     return false;
                 } else {
@@ -799,7 +795,7 @@ var $exeDevice = {
             })
             .on('error', function () {
                 if (type == 1) {
-                    $exeDevice.showMessage(msgs.msgEURLValid);
+                    $exeIDevicesEdition.iDevice.common.showMessage(msgs.msgEURLValid);
                 }
                 return false;
             });
@@ -1725,7 +1721,7 @@ var $exeDevice = {
             '</div>';
         html += '</div>';
         if (html.length > 650000) {
-            $exeDevice.showMessage($exeDevice.msgs.tooManyQuestions);
+            $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.tooManyQuestions);
             return false;
         }
         return html;
@@ -2022,7 +2018,7 @@ var $exeDevice = {
             $exeDevice.nombresTemas[$exeDevice.activeTema] = nombreTema;
             message = true;
         } else {
-            if (!options.silent) $exeDevice.showMessage(message);
+            if (!options.silent) $exeIDevicesEdition.iDevice.common.showMessage(message);
             message = false;
         }
         return message;
@@ -2325,7 +2321,7 @@ var $exeDevice = {
 
         for (let z = 0; z < numeroTemas; z++) {
             if (nombresTemas.length == 0) {
-                $exeDevice.showMessage($exeDevice.msgs.msgNameThemes);
+                $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgNameThemes);
                 return false;
             }
             const tema = $exeDevice.temas[z];
@@ -2336,12 +2332,12 @@ var $exeDevice = {
                         ? 1
                         : mquestion.customScore;
                 if (mquestion.quextion.length == 0) {
-                    $exeDevice.showMessage(
+                    $exeIDevicesEdition.iDevice.common.showMessage(
                         $exeDevice.msgs.msgCmpleteAllQuestions
                     );
                     return false;
                 } else if (mquestion.type == 1 && mquestion.url.length < 10) {
-                    $exeDevice.showMessage(
+                    $exeIDevicesEdition.iDevice.common.showMessage(
                         $exeDevice.msgs.msgCmpleteAllQuestions
                     );
                     return false;
@@ -2354,14 +2350,14 @@ var $exeDevice = {
                         mquestion.url
                     )
                 ) {
-                    $exeDevice.showMessage(
+                    $exeIDevicesEdition.iDevice.common.showMessage(
                         $exeDevice.msgs.msgCmpleteAllQuestions
                     );
                     return false;
                 }
                 if (mquestion.typeSelect >= 2) {
                     if (mquestion.solutionQuestion.length == 0) {
-                        $exeDevice.showMessage(
+                        $exeIDevicesEdition.iDevice.common.showMessage(
                             $exeDevice.msgs.msgCmpleteAllQuestions
                         );
                         return false;
@@ -2374,7 +2370,7 @@ var $exeDevice = {
                         }
                     }
                     if (!completAnswer) {
-                        $exeDevice.showMessage(
+                        $exeIDevicesEdition.iDevice.common.showMessage(
                             $exeDevice.msgs.msgCmpleteAllQuestions
                         );
                         return false;
@@ -2737,7 +2733,7 @@ var $exeDevice = {
                 selectedFile = $(this).val(),
                 ext = selectedFile.split('.').pop().toLowerCase();
             if (selectedFile.startsWith('files') && !validExt.includes(ext)) {
-                $exeDevice.showMessage(
+                $exeIDevicesEdition.iDevice.common.showMessage(
                     _('Supported formats') + ': jpg, jpeg, gif, png, svg, webp'
                 );
                 return false;
@@ -2755,7 +2751,7 @@ var $exeDevice = {
                 selectedFile = $('#trivialEURLImage').val(),
                 ext = selectedFile.split('.').pop().toLowerCase();
             if (selectedFile.startsWith('files') && !validExt.includes(ext)) {
-                $exeDevice.showMessage(
+                $exeIDevicesEdition.iDevice.common.showMessage(
                     _('Supported formats') + ': jpg, jpeg, gif, png, svg, webp'
                 );
                 return false;
@@ -3020,7 +3016,7 @@ var $exeDevice = {
             $exeDevices.iDevice.gamification.helpers.isJsonString(content);
 
         if (content && content.includes('\u0000')) {
-            $exeDevice.showMessage(_('Sorry, wrong file format'));
+            $exeIDevicesEdition.iDevice.common.showMessage(_('Sorry, wrong file format'));
             return;
         } else if (!game && content) {
             var questions = false;
@@ -3037,11 +3033,11 @@ var $exeDevice = {
                 $exeDevice.selectsGame =
                     $exeDevice.temas[$exeDevice.activeTema];
             } else {
-                $exeDevice.showMessage(_('Sorry, wrong file format'));
+                $exeIDevicesEdition.iDevice.common.showMessage(_('Sorry, wrong file format'));
                 return;
             }
         } else if (!game || typeof game.typeGame == 'undefined') {
-            $exeDevice.showMessage($exeDevice.msgs.msgESelectFile);
+            $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgESelectFile);
             $('#trivialLoadGame').val('');
             return;
         } else if (game.typeGame == 'Selecciona') {
@@ -3053,7 +3049,7 @@ var $exeDevice = {
         } else if (game.typeGame == 'Rosco') {
             $exeDevice.importRosco(game);
         } else {
-            $exeDevice.showMessage($exeDevice.msgs.msgESelectFile);
+            $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgESelectFile);
             $('#trivialLoadGame').val('');
             return;
         }

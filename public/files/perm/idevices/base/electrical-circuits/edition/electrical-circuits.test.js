@@ -150,12 +150,13 @@ describe('electrical-circuits iDevice edition', () => {
         $('#elceTikzCode').val('\\draw (0,0);');
         $exeDevice.selectsGame = [{}];
         $exeDevice.active = 0;
-        const showMessage = vi.spyOn($exeDevice, 'showMessage').mockImplementation(() => {});
+        const showMessage = vi.spyOn($exeIDevicesEdition.iDevice.common, 'showMessage').mockImplementation(() => {});
 
         const isValid = $exeDevice.validateQuestion();
 
         expect(isValid).toBe(false);
         expect(showMessage).toHaveBeenCalledWith($exeDevice.msgs.msgERenderCircuitPreview);
+        showMessage.mockRestore();
     });
 
     it('collapses line breaks in the TikZ code before compiling', () => {
@@ -1122,7 +1123,7 @@ describe('electrical-circuits iDevice edition', () => {
                     .mockImplementation(() => {});
                 vi.spyOn($exeDevice, 'showCircuitGenerationModal').mockImplementation(() => {});
                 const addQuestions = vi.spyOn($exeDevice, 'addQuestions').mockImplementation(() => {});
-                const showMessage = vi.spyOn($exeDevice, 'showMessage').mockImplementation(() => {});
+                const showMessage = vi.spyOn($exeIDevicesEdition.iDevice.common, 'showMessage').mockImplementation(() => {});
                 const render = vi
                     .spyOn($exeDevice, 'renderTikzCodeToSvg')
                     .mockImplementation(() => {
@@ -1141,6 +1142,7 @@ describe('electrical-circuits iDevice edition', () => {
                 expect(addQuestions).not.toHaveBeenCalled();
                 expect(showMessage).not.toHaveBeenCalled();
                 expect(result).toEqual({ handledMessaging: true });
+                showMessage.mockRestore();
             });
 
             it('still reports a render that fails for another reason', async () => {

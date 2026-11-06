@@ -95,10 +95,6 @@ var $exeDevice = {
         );
     },
 
-    showMessage: function (msg) {
-        eXe.app.alert(msg);
-    },
-
     createForm: function () {
         const msgs = this.msgs,
             edition = $exeIDevicesEdition.iDevice,
@@ -397,7 +393,7 @@ var $exeDevice = {
 
         if (message.length !== 0) {
             this.revealValidationField(tab, fieldId);
-            $exeDevice.showMessage(message);
+            $exeIDevicesEdition.iDevice.common.showMessage(message);
             message = false;
         } else {
             message = true;

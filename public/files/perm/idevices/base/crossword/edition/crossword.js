@@ -679,13 +679,9 @@ var $exeDevice = {
             $exeDevice.wordsGame[$exeDevice.active] = p;
             return true;
         } else {
-            if (!options.silent) $exeDevice.showMessage(message);
+            if (!options.silent) $exeIDevicesEdition.iDevice.common.showMessage(message);
             return false;
         }
-    },
-
-    showMessage: function (msg) {
-        eXe.app.alert(msg);
     },
 
     validateData() {
@@ -731,14 +727,14 @@ var $exeDevice = {
         for (let i = 0; i < wordsGame.length; i++) {
             const mquestion = wordsGame[i];
             if (mquestion.word.length === 0) {
-                $exeDevice.showMessage($exeDevice.msgs.msgEProvideWord);
+                $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgEProvideWord);
                 return false;
             } else if (
                 mquestion.definition.length === 0 &&
                 mquestion.url.length < 4 &&
                 mquestion.audio.length < 4
             ) {
-                $exeDevice.showMessage(
+                $exeIDevicesEdition.iDevice.common.showMessage(
                     `${$exeDevice.msgs.msgEProvideDefinition} ${mquestion.word}`
                 );
                 return false;
@@ -1016,7 +1012,7 @@ var $exeDevice = {
                 selectedFile = $(this).val(),
                 ext = selectedFile.split('.').pop().toLowerCase();
             if (selectedFile.startsWith('files') && !validExt.includes(ext)) {
-                $exeDevice.showMessage(
+                $exeIDevicesEdition.iDevice.common.showMessage(
                     `${_('Supported formats')}: jpg, jpeg, gif, png, svg, webp`
                 );
                 return false;
@@ -1034,7 +1030,7 @@ var $exeDevice = {
                 selectedFile = $('#ccgmEURLImage').val(),
                 ext = selectedFile.split('.').pop().toLowerCase();
             if (selectedFile.startsWith('files') && !validExt.includes(ext)) {
-                $exeDevice.showMessage(
+                $exeIDevicesEdition.iDevice.common.showMessage(
                     `${_('Supported formats')}: jpg, jpeg, gif, png, svg, webp`
                 );
                 return false;
@@ -1061,7 +1057,7 @@ var $exeDevice = {
         $('#ccgmEURLAudio').on('change', function () {
             const selectedFile = $(this).val().trim();
             if (selectedFile.length === 0) {
-                $exeDevice.showMessage(
+                $exeIDevicesEdition.iDevice.common.showMessage(
                     `${_('Supported formats')}: mp3, ogg, wav`
                 );
             } else {
@@ -1141,7 +1137,7 @@ var $exeDevice = {
                 ext = selectedFile.split('.').pop().toLowerCase(),
                 hasBack = $('#ccgmBack0').is(':checked');
             if (selectedFile.startsWith('files') && !validExt.includes(ext)) {
-                $exeDevice.showMessage(
+                $exeIDevicesEdition.iDevice.common.showMessage(
                     `${_('Supported formats')}: jpg, jpeg, gif, png, svg, webp`
                 );
                 return false;
@@ -1155,7 +1151,7 @@ var $exeDevice = {
                 ext = selectedFile.split('.').pop().toLowerCase(),
                 hasBack = $('#ccgmBack0').is(':checked');
             if (selectedFile.startsWith('files') && !validExt.includes(ext)) {
-                $exeDevice.showMessage(
+                $exeIDevicesEdition.iDevice.common.showMessage(
                     `${_('Supported formats')}: jpg, jpeg, gif, png, svg, webp`
                 );
                 return false;
@@ -1208,7 +1204,7 @@ var $exeDevice = {
 
     removeQuestion: function () {
         if ($exeDevice.wordsGame.length < 3) {
-            $exeDevice.showMessage($exeDevice.msgs.msgEOneQuestion);
+            $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgEOneQuestion);
         } else {
             $exeDevice.wordsGame.splice($exeDevice.active, 1);
             if ($exeDevice.active >= $exeDevice.wordsGame.length - 1) {
@@ -1382,7 +1378,7 @@ var $exeDevice = {
             $exeDevices.iDevice.gamification.helpers.isJsonString(content);
         let instructions, tAfter, textFeedBack;
         if (content && content.includes('\u0000')) {
-            $exeDevice.showMessage(_('Sorry, wrong file format'));
+            $exeIDevicesEdition.iDevice.common.showMessage(_('Sorry, wrong file format'));
             return;
         } else if (!game && content) {
             if (filetype.match('text/plain')) {
@@ -1472,7 +1468,7 @@ var $exeDevice = {
         } else if ($xml.find('quiz').length > 0) {
             $exeDevice.importCuestionaryXML(xmlString);
         } else {
-            $exeDevice.showMessage(_('Sorry, wrong file format'));
+            $exeIDevicesEdition.iDevice.common.showMessage(_('Sorry, wrong file format'));
         }
     },
 
