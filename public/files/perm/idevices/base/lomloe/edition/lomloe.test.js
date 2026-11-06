@@ -2316,9 +2316,28 @@ describe('LOMLOE Euskadi (ES-PV) real-dataset render', () => {
         expect(eso3).not.toContain('AA');
     });
 
-    it('round-trips real Baccalaureate criteria, knowledge and fractional descriptors', async () => {
+    it.each([1, 2])('renders every published subject and its selectable curriculum in course %i', async (course) => {
         await initEsPv();
-        await materiasAfter('Batxilergoa', 'Batxilergoko 2. maila');
+        const level = `Batxilergoko ${course}. maila`;
+        const subjects = await materiasAfter('Batxilergoa', level);
+        expect(subjects).toEqual(Object.keys(esPvDataset.Batxilergoa[level]));
+        for (const code of subjects) {
+            el.querySelector(`.lomloe-materia-item[data-codarea="${code}"]`).click();
+            el.querySelector('.lomloe-tab-btn[data-tab="competencias"]').click();
+            const area = esPvDataset.Batxilergoa[level][code];
+            const expected = Object.values(area.competencias_especificas).flatMap(c => c.criterios_evaluacion);
+            expect(el.querySelectorAll('input[data-type="criterio"]'), code).toHaveLength(expected.length);
+            expect(el.querySelector('.lomloe-criterio-desc').textContent, code).toBe(expected[0].descripcion);
+            el.querySelector('.lomloe-tab-btn[data-tab="saberes"]').click();
+            expect(el.querySelectorAll('input[data-type="saber"]'), code).toHaveLength(
+                Object.values(area.saberes_basicos.bloques).flat().length,
+            );
+        }
+    });
+
+    it.each([1, 2])('round-trips course %i criteria, knowledge and fractional descriptors through export', async (course) => {
+        await initEsPv();
+        await materiasAfter('Batxilergoa', `Batxilergoko ${course}. maila`);
         el.querySelector('.lomloe-materia-item[data-codarea="APDAMT"]').click();
         el.querySelectorAll('input[data-type="criterio"]')[1].click();
         const descriptor = el.querySelector('.lomloe-desc-cb[data-cc="KAKK3.1"]');
@@ -2328,10 +2347,20 @@ describe('LOMLOE Euskadi (ES-PV) real-dataset render', () => {
         el.querySelector('input[data-type="saber"]').click();
         const saved = dev.save();
         expect(saved.lomloeSelections).toHaveLength(2);
-        expect(saved.lomloeSelections[0].codigoCriterio).toBe('ES-PV-BACH2-APDAMT-CE02-CR01');
+        expect(saved.lomloeSelections[0].codigoCriterio).toBe(`ES-PV-BACH${course}-APDAMT-CE02-CR01`);
         expect(saved.lomloeDescriptors['KAKK3.1']).toBe(esPvDataset.descriptors['KAKK3.1']);
-        expect(saved.lomloeSummaryHtml).toContain('Batxilergoko 2. maila');
-        expect(saved.lomloeSummaryHtml).toContain('Patroiak eta mosaikoak');
+        expect(saved.lomloeSummaryHtml).toContain(`Batxilergoko ${course}. maila`);
+        expect(saved.lomloeSummaryHtml).toContain(course === 1 ? 'Forma poligonalak' : 'Patroiak eta mosaikoak');
+        const exportSource = await import('../export/lomloe.js?raw').then(m => m.default);
+        const renderer = new Function(`${exportSource}\nreturn $Lomloe;`)();
+        for (const summary of [saved.lomloeSummaryHtml, '']) {
+            const html = renderer.renderView({ ...saved, lomloeSummaryHtml: summary }, null, '<article>{content}</article>');
+            const exported = document.createElement('div');
+            exported.innerHTML = html;
+            expect(exported.querySelector('.lomloe-criterio-code-badge').textContent).toBe(saved.lomloeSelections[0].codigoCriterio);
+            expect(exported.querySelector('.lomloe-cc-badge').getAttribute('data-lomloe-tip')).toBe(esPvDataset.descriptors['KAKK3.1']);
+            expect(exported.querySelector('.lomloe-saber-link-badge').textContent).toBe(saved.lomloeSelections[1].nombre);
+        }
         el.remove();
         await initEsPv(saved);
         expect(dev.save().lomloeSelections).toEqual(saved.lomloeSelections);
