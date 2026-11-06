@@ -8,7 +8,10 @@ import {
     saveIdevice,
     waitForPreviewContent,
     getPreviewFrame,
+    reloadPage,
+    saveProject,
 } from '../../helpers/workarea-helpers';
+import { waitForEditor } from '../../helpers/editor-helpers';
 import type { Page } from '@playwright/test';
 
 /**
@@ -205,5 +208,51 @@ test.describe('GeoGebra Activity iDevice — progress report', () => {
         );
 
         await page.unroute(GEOGEBRA_SCRIPT_PATTERN);
+    });
+});
+
+test.describe('GeoGebra Activity iDevice — form', () => {
+    test('opens on its construction and keeps its instructions and address', async ({
+        authenticatedPage: page,
+        createProject,
+    }) => {
+        // Saving and reloading the project takes most of a minute in Firefox.
+        test.setTimeout(90_000);
+        const projectUuid = await createProject(page, 'GeoGebra instructions');
+        await gotoWorkarea(page, projectUuid);
+        await waitForAppReady(page);
+        await selectFirstPage(page);
+        await addIdevice(page, IDEVICE);
+        const id = await page.locator(NODE).first().getAttribute('id');
+        expect(id).toBeTruthy();
+        await expect(page.locator('#eXeAutoGeogebraForm-tab-contents')).toHaveAttribute('aria-selected', 'true');
+        // The instructions are written in their own tab.
+        await page.locator('#eXeAutoGeogebraForm-tab-instructions').click();
+        await waitForEditor(page, 'eXeGameInstructions');
+        await page.evaluate(() =>
+            (window as any).tinymce.get('eXeGameInstructions').setContent('<p>Move the point</p>'),
+        );
+        await page.locator('#eXeAutoGeogebraForm-tab-contents').click();
+        await page.locator('#geogebraActivityURL').fill('VgHhQXCC');
+        await saveIdevice(page, id!);
+        const html = await page.evaluate(
+            componentId =>
+                (window as any).eXeLearning.app.project._yjsBridge.structureBinding.getComponent(componentId)
+                    .htmlContent as string,
+            id!,
+        );
+        expect(html).toContain('<div class="auto-geogebra-instructions"><p>Move the point</p></div>');
+
+        await saveProject(page);
+        await reloadPage(page);
+        await selectFirstPage(page);
+        await editIdevice(page, id!);
+        // A construction id becomes its address.
+        await expect(page.locator('#geogebraActivityURL')).toHaveValue('https://www.geogebra.org/m/VgHhQXCC');
+        await page.locator('#eXeAutoGeogebraForm-tab-instructions').click();
+        await waitForEditor(page, 'eXeGameInstructions');
+        expect(await page.evaluate(() => (window as any).tinymce.get('eXeGameInstructions').getContent())).toBe(
+            '<p>Move the point</p>',
+        );
     });
 });

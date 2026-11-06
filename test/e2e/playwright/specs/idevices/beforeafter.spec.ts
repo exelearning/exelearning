@@ -1,5 +1,14 @@
 import { test, expect } from '../../fixtures/auth.fixture';
-import { reloadPage, gotoWorkarea } from '../../helpers/workarea-helpers';
+import {
+    reloadPage,
+    gotoWorkarea,
+    addIdevice,
+    editIdevice,
+    saveIdevice,
+    saveProject,
+    selectFirstPage,
+    waitForAppReady,
+} from '../../helpers/workarea-helpers';
 import { WorkareaPage } from '../../pages/workarea.page';
 import type { Page, FrameLocator } from '@playwright/test';
 
@@ -519,4 +528,31 @@ test.describe('BeforeAfter iDevice', () => {
             await expect(idevice).toContainText(uniqueDescription, { timeout: 10000 });
         });
     });
+});
+
+test('BeforeAfter has no Options tab, as there is nothing to set there', async ({
+    authenticatedPage: page,
+    createProject,
+}) => {
+    // Saving and reloading the project takes most of a minute in Firefox.
+    test.setTimeout(90_000);
+    const uuid = await createProject(page, 'BeforeAfter tabs');
+    await gotoWorkarea(page, uuid);
+    await waitForAppReady(page);
+    await selectFirstPage(page);
+    await addIdevice(page, 'beforeafter');
+    const id = await page.locator('.idevice_node.beforeafter').first().getAttribute('id');
+    expect(id).toBeTruthy();
+    // As in main, there is nothing to set in Options, so the tab is not offered.
+    await expect(page.locator('#beforeAfterQIdeviceForm-tab-options')).toHaveCount(0);
+    await expect(page.locator('#bfafEShowMinimize')).toHaveCount(0);
+    await page.locator('#bfafEDescription').fill('City view comparison');
+    await page.locator('#bfafEURLImageBack').fill('before.jpg');
+    await page.locator('#bfafEURLImage').fill('after.jpg');
+    await saveIdevice(page, id!);
+    await saveProject(page);
+    await reloadPage(page);
+    await selectFirstPage(page);
+    await editIdevice(page, id!);
+    await expect(page.locator('#beforeAfterQIdeviceForm-tab-options')).toHaveCount(0);
 });

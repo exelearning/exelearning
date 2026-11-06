@@ -1,5 +1,16 @@
 import { test, expect } from '../../fixtures/auth.fixture';
-import { waitForAppReady, reloadPage, gotoWorkarea, editIdevice } from '../../helpers/workarea-helpers';
+import {
+    waitForAppReady,
+    reloadPage,
+    gotoWorkarea,
+    editIdevice,
+    addIdevice,
+    getPreviewFrame,
+    openPreviewPanel,
+    saveIdevice,
+    saveProject,
+    selectFirstPage,
+} from '../../helpers/workarea-helpers';
 import { WorkareaPage } from '../../pages/workarea.page';
 import type { Page, FrameLocator } from '@playwright/test';
 
@@ -883,4 +894,45 @@ test.describe('A-Z Quiz Game iDevice', () => {
             );
         });
     });
+});
+
+test('A-Z quiz asks no time to show the solutions when it does not show them, also when reopened', async ({
+    authenticatedPage: page,
+    createProject,
+}) => {
+    // Saving and reloading the project takes most of a minute in Firefox.
+    test.setTimeout(90_000);
+    const uuid = await createProject(page, 'A-Z quiz solutions');
+    await gotoWorkarea(page, uuid);
+    await waitForAppReady(page);
+    await selectFirstPage(page);
+    await addIdevice(page, 'az-quiz-game');
+    const id = await page.locator('.idevice_node.az-quiz-game').first().getAttribute('id');
+    expect(id).toBeTruthy();
+    await page.locator('.roscoWordEdition').first().fill('Apple');
+    await page.locator('.roscoDefinitionEdition').first().fill('A fruit that grows on trees');
+    const optionsTab = page.locator('#roscoIdeviceForm-tab-options');
+    await optionsTab.click();
+    await expect(page.locator('#roscoShowSolution')).toBeChecked();
+    await expect(page.locator('#roscoTimeShowSolution')).toBeEnabled();
+    await page.locator('#roscoShowSolution').uncheck();
+    await expect(page.locator('#roscoTimeShowSolution')).toBeDisabled();
+    await saveIdevice(page, id!);
+    await saveProject(page);
+
+    // The game shows in the preview, without the helps of the form.
+    await page.locator('#head-bottom-preview').click();
+    await openPreviewPanel(page);
+    const frame = getPreviewFrame(page);
+    await expect(frame.locator('.rosco-MainContainer')).toBeVisible();
+    await expect(frame.locator('.exe-idevice-help')).toHaveCount(0);
+    // The panel closes offscreen rather than becoming hidden in the DOM.
+    await page.locator('#previewsidenavclose').click();
+
+    await reloadPage(page);
+    await selectFirstPage(page);
+    await editIdevice(page, id!);
+    await optionsTab.click();
+    await expect(page.locator('#roscoShowSolution')).not.toBeChecked();
+    await expect(page.locator('#roscoTimeShowSolution')).toBeDisabled();
 });
