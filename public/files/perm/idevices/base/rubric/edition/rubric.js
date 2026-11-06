@@ -169,70 +169,65 @@ var $exeDevice = {
     },
 
     createForm: function () {
-        // Only one Rubric iDevice per page.
-        if ($('.iDevice_wrapper.rubricIdevice').length > 0) {
-            this.ideviceBody.innerHTML =
-                '<p>' +
-                _('You can only add one Rubric iDevice per page.') +
-                '</p>';
-            return;
-        }
-
-        const html = `
+        const edition = $exeIDevicesEdition.iDevice,
+            contents = `
+                <div id="ri_RubricsEditor"></div>
+                <div id="ri_TableEditor"></div>
+                <div id="ri_PreviousContent"></div>`,
+            csv = `
+                <div id="ri_CsvTools">
+                    <div class="ri-csv-import">
+                        <form method="POST">
+                            <div class="exe-file-upload" data-exe-upload>
+                                <label for="ri_CsvFile" class="form-label mb-1">${_('Import')}: </label>
+                                <input type="file" id="ri_CsvFile" accept=".csv,text/csv" class="exe-file-input d-none" />
+                                <button type="button" class="btn btn-primary exe-file-btn" data-exe-file-trigger>${_('Choose')}</button>
+                                <span class="exe-file-name" data-exe-file-name>${_('No file selected')}</span>
+                                <span class="exe-field-instructions d-block mt-1">${_('Supported formats')}: csv</span>
+                            </div>
+                        </form>
+                    </div>
+                    <p class="mt-3">
+                        ${_('You can export the rubric in CSV format to integrate it into other compatible activities.')}
+                    </p>
+                    <p class="ri-csv-export-actions d-flex align-items-center justify-content-start gap-1 mb-0">
+                        <input type="button" id="ri_ExportCsv" class="btn btn-primary" value="${_('Export CSV')}" />
+                    </p>
+                </div>`,
+            html = `
             <div id="ri_IdeviceForm">
-                ${$exeDevicesEdition.iDevice.common.getIdeviceDescription(
-                    'Complete the table to define a scoring guide. Define the score or value of each descriptor.',
+                ${edition.common.getIdeviceDescription(
+                    _('Complete the table to define a scoring guide. Define the score or value of each descriptor.'),
                     'https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe40/html/rubrica.html',
                 )}
-
-                <div class="exe-form-tab" title="${_('General settings')}">
-                    ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset(c_('Complete the following rubric'))}
-                    <fieldset class="exe-fieldset ">
-                        <legend><a href="#">${_('Rubric')}</a></legend>
-                        <div>
-                            <div id="ri_RubricsEditor"></div>
-                            <div id="ri_TableEditor"></div>
-                            <div id="ri_PreviousContent"></div>
-                        </div>
-                    </fieldset>
-                    ${$exeDevicesEdition.iDevice.common.getTextFieldset('after')}
-                </div>
-                <div class="exe-form-tab" title="${_('CSV import/export')}">
-                    <fieldset class="exe-fieldset">
-                        <legend><a href="#">${_('CSV import/export')}</a></legend>
-                        <div id="ri_CsvTools">
-                            <p class="exe-block-info">
-                                ${_('You can import rubric data from CSV files.')}
-                            </p>
-                            <div class="ri-csv-import">
-                                <form method="POST">
-                                    <div class="exe-file-upload" data-exe-upload>
-                                        <label for="ri_CsvFile" class="form-label mb-1">${_('Import')}: </label>
-                                        <input type="file" id="ri_CsvFile" accept=".csv,text/csv" class="exe-file-input d-none" />
-                                        <button type="button" class="btn btn-primary exe-file-btn" data-exe-file-trigger>${_('Choose')}</button>
-                                        <span class="exe-file-name" data-exe-file-name>${_('No file selected')}</span>
-                                        <span class="exe-field-instructions d-block mt-1">${_('Supported formats')}: csv</span>
-                                    </div>
-                                </form>
-                            </div>
-                            <p class="exe-block-info mt-3">
-                                ${_('You can export the rubric in CSV format to integrate it into other compatible activities.')}
-                            </p>
-                            <p class="ri-csv-export-actions d-flex align-items-center justify-content-start gap-1 mb-0">
-                                <input type="button" id="ri_ExportCsv" class="btn btn-primary" value="${_('Export CSV')}" />
-                            </p>
-                        </div>
-                    </fieldset>
-                </div>
-                ${$exeDevicesEdition.iDevice.gamification.scorm.getTab($exeDevice.idevicePath)}
-                ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
+                ${edition.tabs.getHtml('ri_IdeviceForm', {
+                    path: $exeDevice.idevicePath,
+                    instructions: c_('Complete the following rubric'),
+                    contents: contents,
+                    after: true,
+                    grading: true,
+                    texts: this.ci18n,
+                    share: false,
+                    titles: { contents: _('Rubric') },
+                    info: {
+                        contents: _('Create a rubric or load an example, then complete the criteria, the levels and the descriptors of its table.'),
+                    },
+                    extra: [
+                        {
+                            name: 'csv',
+                            title: _('CSV import/export'),
+                            info: _('You can import rubric data from CSV files.'),
+                            content: csv,
+                        },
+                    ],
+                })}
             </div>
         `;
         this.ideviceBody.innerHTML = html;
-        $exeDevicesEdition.iDevice.tabs.init('ri_IdeviceForm');
-        $exeDevicesEdition.iDevice.gamification.scorm.init();
-        $exeDevicesEdition.iDevice.gamification.progressBar.addEvents();
-        $exeDevicesEdition.iDevice.gamification.passScore.addEvents();
+        edition.tabs.bind('ri_IdeviceForm');
+        edition.gamification.scorm.init();
+        edition.gamification.progressBar.addEvents();
+        edition.gamification.passScore.addEvents();
 
         this.renderRubricTemplateControls();
         this.loadPreviousValues();
@@ -336,19 +331,19 @@ var $exeDevice = {
             $('#eXeIdeviceTextAfter').val(data.textAfter);
         }
 
-        $exeDevicesEdition.iDevice.gamification.scorm.setValues(
+        $exeIDevicesEdition.iDevice.gamification.scorm.setValues(
             data.isScorm,
             data.textButtonScorm,
             data.repeatActivity,
             data.weighted
         );
 
-        $exeDevicesEdition.iDevice.gamification.passScore.setValues({
+        $exeIDevicesEdition.iDevice.gamification.passScore.setValues({
             passScoreMode: data.passScoreMode,
             passScoreCustom: data.passScoreCustom,
         });
 
-        $exeDevicesEdition.iDevice.gamification.progressBar.setValues({
+        $exeIDevicesEdition.iDevice.gamification.progressBar.setValues({
             evaluation: data.evaluation,
             evaluationID: data.evaluationID,
         });
@@ -443,14 +438,6 @@ var $exeDevice = {
         return data;
     },
 
-    // Re-attach fieldset toggle handlers after a dynamic rebuild of #ri_TableEditor
-    enableFieldsetToggle: function () {
-        $('#ri_TableEditor .exe-fieldset legend a').off('click.rubric').on('click.rubric', function () {
-            $(this).closest('fieldset').toggleClass('exe-fieldset-closed');
-            return false;
-        });
-    },
-
     // Rebuild the top controls in #ri_RubricsEditor (called on init and after loading CEDEC rubrics)
     renderRubricTemplateControls: function () {
         // Get the available rubrics (a list)
@@ -504,7 +491,6 @@ var $exeDevice = {
         $('#ri_CreateNewRubric').click(function () {
             var data = $exeDevice.translateRubric($exeDevice.rubrics[0]);
             $exeDevice.jsonToTable(data, 'edition');
-            $exeDevice.enableFieldsetToggle();
             $exeDevice.setEditionFocus();
             return false;
         });
@@ -523,7 +509,6 @@ var $exeDevice = {
                 data = $exeDevice.translateRubric($exeDevice.rubrics[rubric]);
             }
             $exeDevice.jsonToTable(data, 'edition');
-            $exeDevice.enableFieldsetToggle();
             $exeDevice.setEditionFocus();
         });
 
@@ -691,7 +676,6 @@ var $exeDevice = {
 
         this.clearCurrentRubricEdition();
         this.jsonToTable(parsed, 'edition');
-        this.enableFieldsetToggle();
         this.setEditionFocus();
         this.alert(_('CSV imported successfully.'));
     },
@@ -777,20 +761,20 @@ var $exeDevice = {
 
         var captionInput = $('caption input[type="text"]', table).first();
         if (captionInput.length === 1) {
-            data.title = this.removeTags(captionInput.val() || '');
+            data.title = $exeIDevicesEdition.iDevice.common.removeTags(captionInput.val() || '');
         }
 
         var thInputs = $('thead th input[type="text"]', table);
         thInputs.each(function (index) {
             // Skip first hidden corner header cell.
             if (index === 0) return;
-            data.scores.push(self.removeTags($(this).val() || ''));
+            data.scores.push($exeIDevicesEdition.iDevice.common.removeTags($(this).val() || ''));
         });
 
         $('tbody tr', table).each(function () {
             var row = $(this);
             var categoryInput = $('th input[type="text"]', row).first();
-            var category = self.removeTags(categoryInput.val() || '');
+            var category = $exeIDevicesEdition.iDevice.common.removeTags(categoryInput.val() || '');
             if (category === '') return;
 
             data.categories.push(category);
@@ -802,7 +786,7 @@ var $exeDevice = {
                 var weightInput = td.find('input.ri_Weight').first();
 
                 descriptors.push({
-                    weight: self.removeTags(weightInput.val() || ''),
+                    weight: $exeIDevicesEdition.iDevice.common.removeTags(weightInput.val() || ''),
                     text: self.sanitizeDescriptorHtml(textInput.val() || ''),
                 });
             });
@@ -1214,14 +1198,14 @@ var $exeDevice = {
     // Transform a JSON object into an HTML table
     getTableHTML: function (data) {
         var i, z, c;
-        var tableTitle = this.escapeHtml(this.removeTags(data.title || ''));
+        var tableTitle = $exeIDevicesEdition.iDevice.common.escapeHtml($exeIDevicesEdition.iDevice.common.removeTags(data.title || ''));
         var html = "<table class='exe-table exe-rubrics-edition-table' data-rubric-table-type='edition'>";
         html += '<caption>' + tableTitle + '</caption>';
         html += '<thead>';
         html += '<tr>';
         html += '<th>&nbsp;</th>';
         for (i = 0; i < data.scores.length; i++) {
-            html += '<th>' + this.escapeHtml(this.removeTags(data.scores[i] || '')) + '</th>';
+            html += '<th>' + $exeIDevicesEdition.iDevice.common.escapeHtml($exeIDevicesEdition.iDevice.common.removeTags(data.scores[i] || '')) + '</th>';
         }
         html += '</tr>';
         html += '</thead>';
@@ -1229,12 +1213,12 @@ var $exeDevice = {
         for (i = 0; i < data.descriptions.length; i++) {
             c = data.descriptions[i];
             html += '<tr>';
-            html += '<th>' + this.escapeHtml(this.removeTags(data.categories[i] || '')) + '</th>';
+            html += '<th>' + $exeIDevicesEdition.iDevice.common.escapeHtml($exeIDevicesEdition.iDevice.common.removeTags(data.categories[i] || '')) + '</th>';
             for (z = 0; z < data.scores.length; z++) {
                 html += '<td>' + $exeDevice.sanitizeDescriptorHtml(c[z].text || '');
-                var safeWeight = this.removeTags(c[z].weight || '');
+                var safeWeight = $exeIDevicesEdition.iDevice.common.removeTags(c[z].weight || '');
                 if (safeWeight != '')
-                    html += ' <span>(' + this.escapeHtml(safeWeight) + ')</span>';
+                    html += ' <span>(' + $exeIDevicesEdition.iDevice.common.escapeHtml(safeWeight) + ')</span>';
                 html += '</td>';
             }
             html += '</tr>';
@@ -1290,11 +1274,11 @@ var $exeDevice = {
     },
 
     buildRubricAuthorshipHTML: function (data) {
-        var author = this.removeTags(data.author || '');
+        var author = $exeIDevicesEdition.iDevice.common.removeTags(data.author || '');
         var authorURL = this.sanitizeExternalUrl(data['author-url'] || '');
         var license = data.license || '';
         var infoVisibility = data['visible-info'] ? '' : ' sr-av';
-        var title = this.removeTags(data.title || '');
+        var title = $exeIDevicesEdition.iDevice.common.removeTags(data.title || '');
 
         if (author === '' && authorURL === '' && license === '') return '';
 
@@ -1305,13 +1289,13 @@ var $exeDevice = {
                     '<a href="' +
                     this.escapeAttribute(authorURL) +
                     '" target="_blank" class="author" rel="noopener">' +
-                    this.escapeHtml(author) +
+                    $exeIDevicesEdition.iDevice.common.escapeHtml(author) +
                     '</a>. ';
             } else {
-                info += '<span class="author">' + this.escapeHtml(author) + '</span>. ';
+                info += '<span class="author">' + $exeIDevicesEdition.iDevice.common.escapeHtml(author) + '</span>. ';
             }
         }
-        info += '<span class="title"><em>' + this.escapeHtml(title) + '</em></span> ';
+        info += '<span class="title"><em>' + $exeIDevicesEdition.iDevice.common.escapeHtml(title) + '</em></span> ';
         if (license !== '') {
             info += '<span class="license">(';
             if (license.indexOf('CC') === 0) {
@@ -1341,7 +1325,7 @@ var $exeDevice = {
             if (!Object.prototype.hasOwnProperty.call(map, key)) continue;
             var safeKey = String(key || '').replace(/[^a-zA-Z0-9_-]/g, '');
             if (!safeKey) continue;
-            lang += '<li class="' + safeKey + '">' + this.escapeHtml(map[key]) + '</li>';
+            lang += '<li class="' + safeKey + '">' + $exeIDevicesEdition.iDevice.common.escapeHtml(map[key]) + '</li>';
         }
         lang += '</ul>';
         return lang;
@@ -1406,7 +1390,7 @@ var $exeDevice = {
             var instrEditor = tinyMCE.get('eXeGameInstructions');
             var instructions = instrEditor ? instrEditor.getContent() : ($('#eXeGameInstructions').val() || '');
             data['visible-info'] = $('#ri_ShowRubricInfo').prop('checked');
-            data.author = this.removeTags($('#ri_RubricAuthor').val() || '');
+            data.author = $exeIDevicesEdition.iDevice.common.removeTags($('#ri_RubricAuthor').val() || '');
             data['author-url'] = this.sanitizeExternalUrl($('#ri_RubricAuthorURL').val() || '');
             data.license = $('#ri_RubricLicense').val() || '';
             data.i18n = this.collectRubricStringsFromForm();
@@ -1558,7 +1542,6 @@ var $exeDevice = {
                             $exeDevice.originalData,
                             'edition'
                         );
-                        $exeDevice.enableFieldsetToggle();
                     } else {
                         $('#ri_TableEditor').html('');
                     }
@@ -1671,7 +1654,7 @@ var $exeDevice = {
 
         // Caption
         var c0 = $('#ri_Cell-0', table);
-        c0.val($exeDevice.removeTags(c0.val()));
+        c0.val($exeIDevicesEdition.iDevice.common.removeTags(c0.val()));
         if (c0.val() == '') {
             this.alert(_('Please write the rubric title.'));
             this.setFieldError(c0);
@@ -1682,7 +1665,7 @@ var $exeDevice = {
         var levels = $("thead th input[type='text']", table);
         var levelErrors = false;
         levels.each(function () {
-            this.value = $exeDevice.removeTags(this.value);
+            this.value = $exeIDevicesEdition.iDevice.common.removeTags(this.value);
             if (this.value == '') {
                 $exeDevice.setFieldError($(this));
                 if (levelErrors == false)
@@ -1698,7 +1681,7 @@ var $exeDevice = {
         var criteria = $("tbody th input[type='text']", table);
         var criteriaErrors = false;
         criteria.each(function () {
-            this.value = $exeDevice.removeTags(this.value);
+            this.value = $exeIDevicesEdition.iDevice.common.removeTags(this.value);
             if (this.value == '') {
                 $exeDevice.setFieldError($(this));
                 if (criteriaErrors == false)
@@ -1717,7 +1700,7 @@ var $exeDevice = {
             if (this.id.indexOf('-weight') == -1) {
                 this.value = $exeDevice.sanitizeDescriptorHtml(this.value);
             } else {
-                this.value = $exeDevice.removeTags(this.value);
+                this.value = $exeIDevicesEdition.iDevice.common.removeTags(this.value);
             }
             // The score field can be empty...
             if (this.id.indexOf('-weight') == -1 && this.value == '') {
@@ -1760,7 +1743,7 @@ var $exeDevice = {
 
         // Get the rubric information and add it to data
         data['visible-info'] = $('#ri_ShowRubricInfo').prop('checked');
-        var author = this.removeTags($('#ri_RubricAuthor').val() || '');
+        var author = $exeIDevicesEdition.iDevice.common.removeTags($('#ri_RubricAuthor').val() || '');
         if (author != '') data.author = author;
         var authorURL = this.sanitizeExternalUrl($('#ri_RubricAuthorURL').val() || '');
         if (authorURL != '') data['author-url'] = authorURL;
@@ -1769,16 +1752,16 @@ var $exeDevice = {
 
         data.i18n = this.collectRubricStringsFromForm();
 
-        var scorm = $exeDevicesEdition.iDevice.gamification.scorm.getValues();
+        var scorm = $exeIDevicesEdition.iDevice.gamification.scorm.getValues();
         data.isScorm = scorm.isScorm;
         data.textButtonScorm = scorm.textButtonScorm;
         data.repeatActivity = scorm.repeatActivity;
         data.weighted = $exeDevice.normalizeWeight(scorm.weighted);
-        var passScore = $exeDevicesEdition.iDevice.gamification.passScore.getValues();
+        var passScore = $exeIDevicesEdition.iDevice.gamification.passScore.getValues();
         data.passScoreMode = passScore.passScoreMode;
         data.passScoreCustom = passScore.passScoreCustom;
 
-        var progressBar = $exeDevicesEdition.iDevice.gamification.progressBar.getValues();
+        var progressBar = $exeIDevicesEdition.iDevice.gamification.progressBar.getValues();
         if (!progressBar) return false;
         data.evaluation = progressBar.evaluation;
         data.evaluationID = progressBar.evaluationID;
@@ -2748,25 +2731,8 @@ var $exeDevice = {
         this.setMaxScore();
     },
 
-    // Remove any HTML tags
-    removeTags: function (str) {
-        var wrapper = $('<div></div>');
-        wrapper.html(str);
-        return wrapper.text();
-    },
-
-    escapeHtml: function (str) {
-        var value = typeof str === 'string' ? str : String(str || '');
-        return value
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;')
-            .replace(/'/g, '&#39;');
-    },
-
     escapeAttribute: function (str) {
-        return this.escapeHtml(str);
+        return $exeIDevicesEdition.iDevice.common.escapeHtml(str);
     },
 
     sanitizeExternalUrl: function (url) {

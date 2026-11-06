@@ -15,6 +15,8 @@ import { dirname, join } from 'path';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
+// The loader below swaps jQuery for a stub; the DOM suites need the real one.
+const realJQuery = global.$;
 
 /**
  * Helper to load iDevice file and expose $eXeInforme globally.
@@ -792,6 +794,56 @@ describe('progress-report iDevice (export)', () => {
       expect(typeof result).toBe('string');
       // Format should be dd/mm/yyyy hh:mm:ss
       expect(result).toMatch(/\d{2}\/\d{2}\/\d{4}\s+\d{2}:\d{2}:\d{2}/);
+    });
+  });
+
+  describe('date of each activity', () => {
+    const record = { id: 'a1', score: 8, state: 2, date: '21/10/2026 10:30:00' };
+    const shownDate = (options) => {
+      $eXeInforme.options = {
+        number: 1,
+        msgs: {
+          mssActivitiesNumber: '%s',
+          msgActivitiesCompleted: '%s',
+          msgAverageScore1: '%s',
+          msgAverageScoreCompleted: '%s',
+        },
+      };
+      $eXeInforme.instances = [options];
+      $eXeInforme.updatePages([record], 0);
+      return document.querySelector('.IFPP-ComponentDate').textContent;
+    };
+    let stub$;
+
+    beforeEach(() => {
+      stub$ = global.$;
+      global.$ = realJQuery;
+      document.body.innerHTML = `
+        <div id="informeGameContainer-0">
+          <div class="IFPP-ComponentItem" data-component-id="a1">
+            <div class="IFPP-Icon"></div>
+            <div class="IFPP-ComponentDate"></div>
+            <div class="IFPP-ComponentScore"></div>
+          </div>
+        </div>`;
+    });
+
+    afterEach(() => {
+      global.$ = stub$;
+      document.body.innerHTML = '';
+    });
+
+    it('shows when each activity was completed', () => {
+      expect(shownDate({ showDate: true })).toBe('21/10/2026 10:30:00');
+    });
+
+    it('leaves it out when the author turned the date off', () => {
+      expect(shownDate({ showDate: false })).toBe('');
+      expect(document.querySelector('.IFPP-ComponentScore').textContent).toBe('8');
+    });
+
+    it('keeps it in a report saved before the option existed', () => {
+      expect(shownDate({})).toBe('21/10/2026 10:30:00');
     });
   });
 

@@ -10,7 +10,6 @@ var $exeDevice = {
     // Min number of items
     items_min: 3,
 
-    iDeviceId: 'sortableListForm',
     ci18n: {},
     ideviceBody: null,
     idevicePreviousData: null,
@@ -176,12 +175,12 @@ var $exeDevice = {
             (this.ideviceBody.querySelector('#sortableListWrongText') || {})
                 .value || '';
         const progressBar =
-            $exeDevicesEdition.iDevice.gamification.progressBar.getValues();
+            $exeIDevicesEdition.iDevice.gamification.progressBar.getValues();
         if (!progressBar) return false;
         this.evaluationID = progressBar.evaluationID;
         this.evaluation = progressBar.evaluation;
         const passScore =
-            $exeDevicesEdition.iDevice.gamification.passScore.getValues();
+            $exeIDevicesEdition.iDevice.gamification.passScore.getValues();
         this.passScoreMode = passScore.passScoreMode;
         this.passScoreCustom = passScore.passScoreCustom;
         this.showSolutions = !!(
@@ -222,7 +221,7 @@ var $exeDevice = {
      * @returns string
      */
     dataJson: function () {
-        const scorm = $exeDevicesEdition.iDevice.gamification.scorm.getValues();
+        const scorm = $exeIDevicesEdition.iDevice.gamification.scorm.getValues();
         this.data = {
             typeGame: 'ScrambledList',
             instructions: this.instructions,
@@ -230,9 +229,9 @@ var $exeDevice = {
             afterElement: this.afterElement,
             options: this.options,
             time: 0,
-            buttonText: this.removeTags(this.buttonText),
-            rightText: this.removeTags(this.rightText),
-            wrongText: this.removeTags(this.wrongText),
+            buttonText: $exeIDevicesEdition.iDevice.common.removeTags(this.buttonText),
+            rightText: $exeIDevicesEdition.iDevice.common.removeTags(this.rightText),
+            wrongText: $exeIDevicesEdition.iDevice.common.removeTags(this.wrongText),
             isScorm: scorm.isScorm,
             textButtonScorm: scorm.textButtonScorm,
             repeatActivity: scorm.repeatActivity,
@@ -318,53 +317,62 @@ var $exeDevice = {
         const textWrongAnswer_2 = _(
             'The right answer will be shown after this text.'
         );
-        const textContentAfter_1 = _('after');
-        const textContentAfter_2 = _('optional');
-        const hiddenClass = '';
-        const html = `
+        const edition = $exeIDevicesEdition.iDevice,
+            options = `
+                <div id="sortableListOptions">
+                    <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
+                        <span class="toggle-item">
+                            <span class="toggle-control">
+                                <input type="checkbox" id="sortableShowSolutions" class="toggle-input" checked />
+                                <span class="toggle-visual" aria-hidden="true"></span>
+                            </span>
+                            <label class="toggle-label mb-0" for="sortableShowSolutions">${_('Show solutions')}.</label>
+                        </span>
+                        ${edition.common.getHelpTooltip(_('After checking, show the learners the elements in the right order.'))}
+                    </div>
+                    <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
+                        <label for="sortableAttemptsNumber" class="mb-0">${_('Number of attempts')}:</label>
+                        <input type="number" name="sortableAttemptsNumber" id="sortableAttemptsNumber" value="1" min="1" max="9" class="form-control" />
+                        ${edition.common.getHelpTooltip(_('How many times the learners can check the list before it is marked.'))}
+                    </div>
+                </div>`,
+            contents = `
+                <div id="tofEPanel">
+                    <div id="ef${id}" class="exe-form-content">
+                        ${this.getListsFields()}
+                        ${this.createInputHTML('sortableListButtonText', textButtonText, false, true)}
+                        ${this.createInputHTML('sortableListRightText', textCorrectAnswer, false, true)}
+                        ${this.createInputHTML('sortableListWrongText', textWrongAnswer_1, textWrongAnswer_2, true)}
+                    </div>
+                </div>`,
+            html = `
             <div id="scrambledlistIdeviceForm">
-                ${$exeDevicesEdition.iDevice.common.getIdeviceDescription(
+                ${edition.common.getIdeviceDescription(
                     _('Create interactive text ordering activities.'),
                     'https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe40/html/lista-desordenada.html',
                 )}
-                <div class="exe-form-tab" title="${_('General settings')}">
-                    ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset(c_('Arrange the following texts in the correct order to complete the activity.'))}
-                    <fieldset class="exe-fieldset">
-                        <legend><a href="#">${_('List')}</a></legend>
-                        <div  id="tofEPanel">
-                            <div id="ef${id}" class="exe-form-content${hiddenClass}">
-                                ${this.getListsFields()}
-                                ${this.createInputHTML('sortableListButtonText', textButtonText, false, true)}
-                                ${this.createInputHTML('sortableListRightText', textCorrectAnswer, false, true)}
-                                ${this.createInputHTML('sortableListWrongText', textWrongAnswer_1, textWrongAnswer_2, true)}
-                            
-                                <div class="toggle-item mb-3">
-                                    <span class="toggle-control">
-                                        <input type="checkbox" id="sortableShowSolutions" class="toggle-input" checked />
-                                        <span class="toggle-visual"></span>
-                                    </span>
-                                    <label class="toggle-label mb-0" for="sortableShowSolutions">${_('Show solutions')}.</label>
-                                </div>
-                                <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
-                                    <label for="sortableAttemptsNumber" class="mb-0">${_('Number of attempts')}:</label>
-                                    <input type="number" name="sortableAttemptsNumber" id="sortableAttemptsNumber" value="1" min="1" max="9" class="form-control" />
-                                </div>
-                                <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
-                                </div>
-                            </div>
-                        </div>
-                    </fieldset>
-                    ${$exeDevicesEdition.iDevice.common.getTextFieldset('after')}
-
-                </div>
-                ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
-                ${$exeDevicesEdition.iDevice.gamification.scorm.getTab(this.idevicePath)}
-                ${$exeDevicesEdition.iDevice.gamification.share.getTab(true, 8, false)}
-                ${$exeDevicesEdition.iDevice.gamification.share.getTabIA(8)}
+                ${edition.tabs.getHtml('scrambledlistIdeviceForm', {
+                    path: this.idevicePath,
+                    instructions: c_('Arrange the following texts in the correct order to complete the activity.'),
+                    options: options,
+                    contents: contents,
+                    after: true,
+                    grading: true,
+                    texts: this.ci18n,
+                    share: {
+                        importQuestions: true,
+                        formats: ['txt'],
+                        exportQuestions: true,
+                        type: 8,
+                    },
+                    info: {
+                        contents: _('Write the elements of the list in the right order, and the texts the learners will see when they check it.'),
+                    },
+                })}
             </div>`;
         this.ideviceBody.innerHTML = html;
-        $exeDevicesEdition.iDevice.tabs.init('scrambledlistIdeviceForm');
-        $exeDevicesEdition.iDevice.gamification.scorm.init();
+        edition.tabs.bind('scrambledlistIdeviceForm');
+        edition.gamification.scorm.init();
         this.loadPreviousValues();
     },
 
@@ -372,8 +380,8 @@ var $exeDevice = {
         // Captured lexically so the deferred file-reader callback below stays
         // bound to this edition instead of resolving the mutable global.
         const self = this;
-        $exeDevicesEdition.iDevice.gamification.progressBar.addEvents();
-        $exeDevicesEdition.iDevice.gamification.passScore.addEvents();
+        $exeIDevicesEdition.iDevice.gamification.progressBar.addEvents();
+        $exeIDevicesEdition.iDevice.gamification.passScore.addEvents();
 
         $('#sortableAttemptsNumber')
             .on('keyup', function () {
@@ -387,7 +395,7 @@ var $exeDevice = {
                 this.value = val;
             });
 
-        $exeDevicesEdition.iDevice.gamification.share.addEvents(
+        $exeIDevicesEdition.iDevice.gamification.share.addEvents(
             8,
             $exeDevice.insertWords
         );
@@ -398,11 +406,7 @@ var $exeDevice = {
             window.FileList &&
             window.Blob
         ) {
-            $('#eXeGameExportImport .exe-field-instructions')
-                .eq(0)
-                .text(`${_('Supported formats')}: txt`);
             $('#eXeGameExportImport').show();
-            $('#eXeGameImportGame').attr('accept', '.txt');
             $('#eXeGameImportGame').on('change', (e) => {
                 const file = e.target.files[0];
                 if (!file) {
@@ -421,9 +425,37 @@ var $exeDevice = {
                 });
                 reader.readAsText(file);
             });
+            $('#eXeGameExportQuestions').on('click', () => {
+                $exeDevice.exportQuestions();
+            });
         } else {
             $('#eXeGameExportImport').hide();
         }
+    },
+
+    /**
+     * Download the list in the format Import reads back: one line with the
+     * elements in their right order, separated by #.
+     *
+     * @returns {boolean} Whether the file was offered.
+     */
+    exportQuestions: function () {
+        const items = [];
+        this.ideviceBody.querySelectorAll('#sortableListFormList input').forEach((el) => {
+            // # separates the elements: inside one it would split it in two.
+            const val = (el.value || '').replace(/#/g, ' ').trim();
+            if (val !== '') items.push(val);
+        });
+        if (items.length < this.items_min) {
+            eXe.app.alert(_('Add at least 3 elements.'));
+            return false;
+        }
+        const blob = new Blob([items.join('#')], { type: 'text/plain' });
+        return $exeIDevicesEdition.iDevice.gamification.share.downloadBlob(
+            blob,
+            `${_('Scrambled list')}.txt`,
+            'scrambledlistIdeviceForm'
+        );
     },
 
     importGame: function (content, filetype) {
@@ -461,33 +493,20 @@ var $exeDevice = {
             const isRequired = i < this.items_min;
             const requiredAttr = isRequired ? 'required' : '';
             const requiredClass = isRequired ? 'required' : '';
-            const value = i < options.length ? options[i] : '';
             inputList += `
                 <li class="${requiredClass}">
-                    <label for="sortableListFormList${i}" class="sr-av"></label>
+                    <label for="sortableListFormList${i}" class="sr-av">${_('Element')} ${i + 1}</label>
                     <input type="text" name="sortableListFormList${i}" id="sortableListFormList${i}"
-                        class="sortableListFormList form-control ${requiredClass}" ${requiredAttr} value="${value}" />
+                        class="sortableListFormList form-control ${requiredClass}" ${requiredAttr} />
                 </li>`;
         }
         $('#sortableListFormList ol').append(inputList);
-        //$('.exe-form-tabs li:first-child a').trigger('click');
-    },
-
-    /**
-     * Function to create HTML textfield textarea
-     *
-     * @param {} id
-     * @param {*} title
-     * @returns string
-     */
-    createTextareaHTML(id, title, required) {
-        const requiredClass = required ? 'required' : '';
-        const requiredAttr = required ? ' required' : '';
-        return `
-        <p class="exe-text-field ${requiredClass}">
-            <label for="${id}">${title}:</label>
-            <textarea id="${id}" class="exe-html-editor"${requiredAttr}></textarea>
-        </p>`;
+        // Through the DOM: written in the markup, a quotation mark in an
+        // imported element would end its value and turn the rest into
+        // attributes of the field.
+        for (let i = 0; i < this.items_no && i < options.length; i++) {
+            $(`#sortableListFormList${i}`).val(options[i]);
+        }
     },
 
     /**
@@ -509,28 +528,6 @@ var $exeDevice = {
             id="${id}" onfocus="this.select()" />
             ${instructionsSpan}
         </p>`;
-    },
-
-    /**
-     * Function to create HTML fieldset
-     *
-     * @param {*} id
-     * @param {*} title
-     * @param {*} affix
-     * @returns string
-     */
-    createFieldset(id, title, affix) {
-        let affixText = affix ? ` (${affix})` : '';
-        return `
-      <fieldset class="exe-advanced exe-fieldset exe-feedback-fieldset exe-fieldset-closed">
-        <legend><a href="#">${title}${affixText}</a></legend>
-        <div>
-          <p>
-            <label for="${id}" class="sr-av">${title}</label>
-            <textarea id="${id}" class='exe-html-editor'></textarea>
-          </p>
-        <div>
-      </fieldset>`;
     },
 
     /**
@@ -575,11 +572,11 @@ var $exeDevice = {
             data.evaluationID.trim() !== ''
                 ? data.evaluationID
                 : '';
-        $exeDevicesEdition.iDevice.gamification.progressBar.setValues({
+        $exeIDevicesEdition.iDevice.gamification.progressBar.setValues({
             evaluation: evalChecked,
             evaluationID: evalIDValue,
         });
-        $exeDevicesEdition.iDevice.gamification.passScore.setValues({
+        $exeIDevicesEdition.iDevice.gamification.passScore.setValues({
             passScoreMode: data.passScoreMode,
             passScoreCustom: data.passScoreCustom,
         });
@@ -603,13 +600,13 @@ var $exeDevice = {
         data.textButtonScorm = data.textButtonScorm || _('Save score');
         data.isScorm = data.isScorm || 0;
 
-        $exeDevicesEdition.iDevice.gamification.scorm.setValues(
+        $exeIDevicesEdition.iDevice.gamification.scorm.setValues(
             data.isScorm,
             data.textButtonScorm,
             data.repeatActivity,
             data.weighted
         );
-        $exeDevicesEdition.iDevice.gamification.common.setLanguageTabValues(
+        $exeIDevicesEdition.iDevice.gamification.common.setLanguageTabValues(
             data.msgs
         );
     },
@@ -686,7 +683,7 @@ var $exeDevice = {
             const requiredClass = isRequired ? 'required' : '';
             inputList += `
                 <li class="${requiredClass}">
-                    <label for="sortableListFormList${i}" class="sr-av"></label>
+                    <label for="sortableListFormList${i}" class="sr-av">${_('Element')} ${i + 1}</label>
                     <input type="text" name="sortableListFormList${i}" id="sortableListFormList${i}"
                         class="sortableListFormList form-control ${requiredClass}" ${requiredAttr} />
                 </li>`;
@@ -699,17 +696,5 @@ var $exeDevice = {
                 </p>
                 <ol>${inputList}</ol>
             </div>`;
-    },
-
-    /**
-     * Function to remove HTML tags
-     *
-     * @param {*} str
-     * @returns string
-     */
-    removeTags: function (str) {
-        var wrapper = $('<div></div>');
-        wrapper.html(str);
-        return wrapper.text();
     },
 };

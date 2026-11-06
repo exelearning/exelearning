@@ -399,7 +399,7 @@ var $exeDevice = {
         item.innerHTML = `
             <span class="fileAttachment-edit-icon fileAttachment-icon--${category}" aria-hidden="true">${icon}</span>
             <div class="fileAttachment-edit-fields">
-                <p class="fileAttachment-edit-filename">${this.escapeHtml(displayName)}</p>
+                <p class="fileAttachment-edit-filename">${$exeIDevicesEdition.iDevice.common.escapeHtml(displayName)}</p>
                 ${
                     missing
                         ? `<p class="fileAttachment-edit-warning">${_('The attached file is missing. Re-add it from the Media Library.')}</p>`
@@ -414,7 +414,7 @@ var $exeDevice = {
                         </div>
                         <div class="property-row">
                             <label for="${descId}">${_('Description')}:</label>
-                            <textarea id="${descId}" class="fileAttachment-edit-description ideviceTextfield" rows="2">${this.escapeHtml(attachment.description || '')}</textarea>
+                            <textarea id="${descId}" class="fileAttachment-edit-description ideviceTextfield" rows="2">${$exeIDevicesEdition.iDevice.common.escapeHtml(attachment.description || '')}</textarea>
                         </div>
                     </div>
                 </div>
@@ -611,24 +611,8 @@ var $exeDevice = {
     getFileIconSvg: function (mimeType, filename) {
         const ext = this.getExtension(filename);
         const rawLabel = (ext || this.getFileCategory(mimeType, filename) || 'file').toUpperCase();
-        const label = this.escapeHtml(rawLabel.replace(/[^A-Z0-9]/g, '').slice(0, 4));
+        const label = $exeIDevicesEdition.iDevice.common.escapeHtml(rawLabel.replace(/[^A-Z0-9]/g, '').slice(0, 4));
         return `<svg class="fileAttachment-glyph" viewBox="0 0 40 48" width="40" height="48" focusable="false" aria-hidden="true"><path class="fileAttachment-glyph-page" d="M4 2h22l10 10v34a0 0 0 0 1 0 0H4a0 0 0 0 1 0 0V2z"/><path class="fileAttachment-glyph-fold" d="M26 2l10 10H26z"/><text class="fileAttachment-glyph-label" x="20" y="34" text-anchor="middle">${label}</text></svg>`;
-    },
-
-    /**
-     * Escape text for safe insertion as element content.
-     *
-     * @param {String} str
-     * @returns {String}
-     */
-    escapeHtml: function (str) {
-        if (str === null || str === undefined) return '';
-        return String(str)
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;')
-            .replace(/'/g, '&#39;');
     },
 
     /**
@@ -638,6 +622,6 @@ var $exeDevice = {
      * @returns {String}
      */
     escapeAttr: function (str) {
-        return this.escapeHtml(str);
+        return $exeIDevicesEdition.iDevice.common.escapeHtml(str);
     },
 };

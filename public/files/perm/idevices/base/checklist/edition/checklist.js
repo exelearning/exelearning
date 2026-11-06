@@ -13,7 +13,6 @@ var $exeDevice = {
         category: _('Assessment and tracking'),
         name: _('Checklist'),
     },
-    msgs: {},
     classIdevice: 'checklist',
     id: false,
     idevicePath: '',
@@ -28,11 +27,6 @@ var $exeDevice = {
         this.createForm();
         this.addEvents();
     },
-    setMessagesInfo: function () {
-        const msgs = this.msgs;
-        msgs.msgEProvideID = _('Please provide the ID of this progress report');
-    },
-
     refreshTranslations: function () {
         this.ci18n = {
             msgComplit: c_('Completed'),
@@ -54,168 +48,128 @@ var $exeDevice = {
     },
 
     createForm: function () {
-        const html = `
-        <div id="gameQEIdeviceForm">
-            ${$exeDevicesEdition.iDevice.common.getIdeviceDescription(
-                _('You can use a checklist as a structured and easy way to understand the suggested activities in this educational resource. It will be a useful instrument for student self-assessment, allowing to monitor the completed activities.'),
-                'https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe40/html/lista-de-cotejo.html',
-            )}
-            <div class="exe-form-tab" title="${_('General settings')}">
-                ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset(c_('Complete the checklist ticking the boxes for all finished activities.'))}
-                <fieldset class="exe-fieldset">
-                    <legend><a href="#">${_('Options')}</a></legend>
-                    <div>
-                        <div class="d-flex align-items-center flex-nowrap gap-2 mb-4">
-                            <label for="ctjTitle">${_('Title')}:</label>
-                            <input id="ctjTitle" type="text" style="flex-grow: 1" class="form-control" />
-                        </div>
-                        <div class="d-flex align-items-center flex-nowrap gap-2 mb-4">                            
-                            <label for="ctjSubTitle">${_('Caption')}:</label>
-                            <input id="ctjSubTitle" type="text" style="flex-grow: 1;" class="form-control"/>
-                        </div>
-                        <div class="mb-4">
-                            <span class="toggle-item" role="switch" aria-checked="false">
-                                <span class="toggle-control">
-                                    <input type="checkbox" class="toggle-input" id="ctjUserData" aria-label="${_('User data')}" />
-                                    <span class="toggle-visual"></span>
-                                </span>
-                                <label class="toggle-label" for="ctjUserData">${_('User data')}.</label>
+        const path = $exeDevice.idevicePath,
+            edition = $exeIDevicesEdition.iDevice,
+            toggle = (id, label) => `
+                        <span class="toggle-item">
+                            <span class="toggle-control">
+                                <input type="checkbox" class="toggle-input" id="${id}" />
+                                <span class="toggle-visual" aria-hidden="true"></span>
                             </span>
+                            <label class="toggle-label mb-0" for="${id}">${label}.</label>
+                        </span>`,
+            logo = (id, label, help, block, image, input, play, inputLabel, file) => `
+                    <div class="mb-3">
+                        <div class="d-flex align-items-center gap-2 flex-nowrap">
+                            ${toggle(id, label)}
+                            ${edition.common.getHelpTooltip(help)}
                         </div>
-                        <div class="mb-4">
-                            <span class="toggle-item" role="switch" aria-checked="false">
-                                <span class="toggle-control">
-                                    <input type="checkbox" class="toggle-input" id="ctjSaveData" aria-label="${_('Remember marked options')}" />
-                                    <span class="toggle-visual"></span>
-                                </span>
-                                <label class="toggle-label" for="ctjSaveData">${_('Remember marked options')}.</label>
-                            </span>
-                        </div>
-                        <div class="mb-4">
-                            <span class="toggle-item" role="switch" aria-checked="false">
-                                <span class="toggle-control">
-                                    <input type="checkbox" class="toggle-input" id="ctjUseScore" aria-label="${_('Assign scores')}" />
-                                    <span class="toggle-visual"></span>
-                                </span>
-                                <label class="toggle-label" for="ctjUseScore">${_('Assign scores')}.</label>
-                            </span>
-                        </div>
-                        <div>${_('(*) Cells support formatted text')}.</div>
-                        <div class="CTJ-table-container mb-4">
-                            <table class="CTJ-Table">
-                                <thead>
-                                    <tr class="CTJ-header-row">
-                                        <th class="CTJ-TypeColumn">${_('Type')}</th>
-                                        <th class="CTJ-Points-column" data-points="0">${_('Points')}</th>
-                                        <th class="CTJ-Level1-column" data-nivel="0">${_('Level')} 1</th>
-                                        <th class="CTJ-Level2-column" data-nivel="1">${_('Level')} 2</th>
-                                        <th class="CTJ-Level3-column" data-nivel="2">${_('Level')} 3</th>
-                                        <th class="CTJ-Level4-column" data-nivel="3">${_('Level')} 4</th>
-                                        <th class="CTJ-editar-column">${_('Edit')}</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr class="CTJ-data-row">
-                                        <td class="CTJ-Types">
-                                            <select class="CTJ-Select form-select">
-                                                <option value="0" selected>${_('Box')}</option>
-                                                <option value="1">${_('Text')}</option>
-                                                <option value="2">${_('Selection')}</option>
-                                                <option value="3">${_('Do not mark')}</option>
-                                            </select>
-                                        </td>
-                                        <td class="CTJ-Points" contenteditable="true"></td>
-                                        <td class="CTJ-Level1 CTJ-Levels" contenteditable="true"></td>
-                                        <td class="CTJ-Level2 CTJ-Levels" contenteditable="true"></td>
-                                        <td class="CTJ-Level3 CTJ-Levels" contenteditable="true"></td>
-                                        <td class="CTJ-Level4 CTJ-Levels" contenteditable="true"></td>
-                                        <td class="CTJ-Editions">
-                                            <button class="CTJ-Add btn btn-primary btn-sm">${_('Add')}</button>
-                                            <button class="CTJ-Delete btn btn-primary btn-sm">${_('Delete')}</button>
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                        <div class="mb-4">
-                            <div>
-                                <span class="toggle-item" role="switch" aria-checked="false" data-target="ctjcommunitylogo">
-                                    <span class="toggle-control">
-                                        <input type="checkbox" class="toggle-input" id="ctjCommunity" aria-label="${_('(Left) Logo')}" />
-                                        <span class="toggle-visual"></span>
-                                    </span>
-                                    <label class="toggle-label" for="ctjCommunity">${_('(Left) Logo')}.</label>
-                                </span>
+                        <div id="${block}" class="CTJ-Logo mt-2">
+                            <div class="CTJ-Images">
+                                <img class="CTJ-EMedia" src="${path}${file}" id="ctjEImage${image}" alt="${_('Image')}" />
+                                <img class="CTJ-EMedia" src="${path}${file}" id="ctjEImageNo${image}" alt="${_('No image')}" />
                             </div>
-                            <div id="ctjcommunitylogo" class="CTJ-Logo">
-                                <div class="CTJ-Images">
-                                    <img class="CTJ-EMedia" src="${$exeDevice.idevicePath}codejocomunidad.png" id="ctjEImageCommunity" alt="${_('Image')}" />
-                                    <img class="CTJ-EMedia" src="${$exeDevice.idevicePath}codejocomunidad.png" id="ctjEImageNoCommunity" alt="${_('No image')}" />
-                                </div>
-                                <div class="CTJ-InputImage">
-                                    <label class="sr-av" for="ctjEURLCommunity">${_('Community')}:</label>
-                                    <input type="text" class="exe-file-picker CTJ-EURLImage form-control me-0" id="ctjEURLCommunity"/>
-                                    <a href="#" id="ctjEPlayCommunity" class="CTJ-ENavigationButton CTJ-EPlayVideo" title="${_('Show')}"><img src="${$exeDevice.idevicePath}quextIEPlay.png" alt="${_('Show')}" class="CTJ-EButtonImage " /></a>
-                                </div>
+                            <div class="CTJ-InputImage">
+                                <label class="sr-av" for="${input}">${inputLabel}:</label>
+                                <input type="text" class="exe-file-picker CTJ-EURLImage form-control me-0" id="${input}"/>
+                                <a href="#" id="${play}" class="CTJ-ENavigationButton CTJ-EPlayVideo" title="${_('Show')}"><img src="${path}quextIEPlay.png" alt="${_('Show')}" class="CTJ-EButtonImage " /></a>
                             </div>
                         </div>
-                        <div class="mb-4">
-                            <div>
-                                <span class="toggle-item" role="switch" aria-checked="false" data-target="ctjlogologo">
-                                    <span class="toggle-control">
-                                        <input type="checkbox" class="toggle-input" id="ctjLogo" aria-label="${_('(Right) Logo')}" />
-                                        <span class="toggle-visual"></span>
-                                    </span>
-                                    <label class="toggle-label" for="ctjLogo">${_('(Right) Logo')}.</label>
-                                </span>
-                            </div>
-                            <div id="ctjlogologo" class="CTJ-Logo">
-                                <div class="CTJ-Images">
-                                    <img class="CTJ-EMedia" src="${$exeDevice.idevicePath}cotejologo.png" id="ctjEImageLogo" alt="${_('Image')}" />
-                                    <img class="CTJ-EMedia" src="${$exeDevice.idevicePath}cotejologo.png" id="ctjEImageNoLogo" alt="${_('No image')}" />
-                                </div>
-                                <div class="CTJ-InputImage">
-                                    <label class="sr-av" for="ctjEURLLogo">${_('Logo')}:</label>
-                                    <input type="text" class="exe-file-picker CTJ-EURLImage form-control me-0" id="ctjEURLLogo"/>
-                                    <a href="#" id="ctjEPlayLogo" class="CTJ-ENavigationButton CTJ-EPlayVideo" title="${_('Show')}"><img src="${$exeDevice.idevicePath}quextIEPlay.png" alt="${_('Show')}" class="CTJ-EButtonImage " /></a>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="mb-4">
-                            <div>
-                                <span class="toggle-item" role="switch" aria-checked="false" data-target="ctjdecorativelogo">
-                                    <span class="toggle-control">
-                                        <input type="checkbox" class="toggle-input" id="ctjDecorative" aria-label="${_('Decorative image')}" />
-                                        <span class="toggle-visual"></span>
-                                    </span>
-                                    <label class="toggle-label" for="ctjDecorative">${_('Decorative image')}.</label>
-                                </span>
-                            </div>
-                            <div id="ctjdecorativelogo" class="CTJ-Logo">
-                                <div class="CTJ-Images">
-                                    <img class="CTJ-EMedia" src="${$exeDevice.idevicePath}cotejodecorative.png" id="ctjEImageDecorative" alt="${_('Image')}" />
-                                    <img class="CTJ-EMedia" src="${$exeDevice.idevicePath}cotejodecorative.png" id="ctjEImageNoDecorative" alt="${_('No image')}" />
-                                </div>
-                                <div class="CTJ-InputImage">
-                                    <label class="sr-av" for="ctjEURLDecorative">${_('Community')}:</label>
-                                    <input type="text" class="exe-file-picker CTJ-EURLImage form-control me-0" id="ctjEURLDecorative"/>
-                                    <a href="#" id="ctjEPlayDecorative" class="CTJ-ENavigationButton CTJ-EPlayVideo" title="${_('Show')}"><img src="${$exeDevice.idevicePath}quextIEPlay.png" alt="${_('Show')}" class="CTJ-EButtonImage " /></a>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="d-flex align-items-center flex-nowrap gap-2">
-                            <label for="ctjFooter">${_('Footer')}:</label>
-                            <input id="ctjFooter" type="text" class="form-control" value="Esta <a href=https://es.wikipedia.org/wiki/Lista_de_comprobaci%C3%B3n>lista de cotejo</a> se encuentra bajo una licencia</br><a href=http://creativecommons.org/licenses/by-sa/4.0>Creative Commons Reconocimiento-Compartir igual 4.0 International License</a>"/>
-                        </div>
+                    </div>`,
+            options = `
+                <div id="ctjEOptions">
+                    <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
+                        ${toggle('ctjUserData', _('User data'))}
+                        ${edition.common.getHelpTooltip(_('Ask the learners for their name and the date, at the top of the checklist.'))}
                     </div>
-                </fieldset>
-                ${$exeDevicesEdition.iDevice.common.getTextFieldset('after')}
+                    <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
+                        ${toggle('ctjSaveData', _('Remember marked options'))}
+                        ${edition.common.getHelpTooltip(_('Keep what each learner ticks in their browser, so it is still there when they come back.'))}
+                    </div>
+                    <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
+                        ${toggle('ctjUseScore', _('Assign scores'))}
+                        ${edition.common.getHelpTooltip(_('Give points to the items in the Activities tab. The checklist shows the score of what is ticked.'))}
+                    </div>
+                    ${logo('ctjCommunity', _('(Left) Logo'), _('Show an image at the top left of the checklist.'), 'ctjcommunitylogo', 'Community', 'ctjEURLCommunity', 'ctjEPlayCommunity', _('Community'), 'codejocomunidad.png')}
+                    ${logo('ctjLogo', _('(Right) Logo'), _('Show an image at the top right of the checklist.'), 'ctjlogologo', 'Logo', 'ctjEURLLogo', 'ctjEPlayLogo', _('Logo'), 'cotejologo.png')}
+                    ${logo('ctjDecorative', _('Decorative image'), _('Show an image beside the items. It is not shown on mobile devices.'), 'ctjdecorativelogo', 'Decorative', 'ctjEURLDecorative', 'ctjEPlayDecorative', _('Decorative image'), 'cotejodecorative.png')}
+                    <div class="d-flex align-items-center flex-nowrap gap-2">
+                        <label for="ctjFooter" class="mb-0">${_('Footer')}:</label>
+                        ${edition.common.getHelpTooltip(_('Text at the bottom of the checklist, such as its license. It can include links.'))}
+                        <input id="ctjFooter" type="text" class="form-control" value="Esta <a href=https://es.wikipedia.org/wiki/Lista_de_comprobaci%C3%B3n>lista de cotejo</a> se encuentra bajo una licencia</br><a href=http://creativecommons.org/licenses/by-sa/4.0>Creative Commons Reconocimiento-Compartir igual 4.0 International License</a>"/>
+                    </div>
+                </div>`,
+            contents = `
+                <div id="ctjEItems">
+                    <div class="d-flex align-items-center flex-nowrap gap-2 mb-3">
+                        <label for="ctjTitle" class="mb-0">${_('Title')}:</label>
+                        <input id="ctjTitle" type="text" style="flex-grow: 1" class="form-control" />
+                    </div>
+                    <div class="d-flex align-items-center flex-nowrap gap-2 mb-3">
+                        <label for="ctjSubTitle" class="mb-0">${_('Caption')}:</label>
+                        <input id="ctjSubTitle" type="text" style="flex-grow: 1;" class="form-control"/>
+                    </div>
+                    <div>${_('(*) Cells support formatted text')}.</div>
+                    <div class="CTJ-table-container mb-4">
+                        <table class="CTJ-Table">
+                            <thead>
+                                <tr class="CTJ-header-row">
+                                    <th class="CTJ-TypeColumn">${_('Type')}</th>
+                                    <th class="CTJ-Points-column" data-points="0">${_('Points')}</th>
+                                    <th class="CTJ-Level1-column" data-nivel="0">${_('Level')} 1</th>
+                                    <th class="CTJ-Level2-column" data-nivel="1">${_('Level')} 2</th>
+                                    <th class="CTJ-Level3-column" data-nivel="2">${_('Level')} 3</th>
+                                    <th class="CTJ-Level4-column" data-nivel="3">${_('Level')} 4</th>
+                                    <th class="CTJ-editar-column">${_('Edit')}</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr class="CTJ-data-row">
+                                    <td class="CTJ-Types">
+                                        <select class="CTJ-Select form-select">
+                                            <option value="0" selected>${_('Box')}</option>
+                                            <option value="1">${_('Text')}</option>
+                                            <option value="2">${_('Selection')}</option>
+                                            <option value="3">${_('Do not mark')}</option>
+                                        </select>
+                                    </td>
+                                    <td class="CTJ-Points" contenteditable="true"></td>
+                                    <td class="CTJ-Level1 CTJ-Levels" contenteditable="true"></td>
+                                    <td class="CTJ-Level2 CTJ-Levels" contenteditable="true"></td>
+                                    <td class="CTJ-Level3 CTJ-Levels" contenteditable="true"></td>
+                                    <td class="CTJ-Level4 CTJ-Levels" contenteditable="true"></td>
+                                    <td class="CTJ-Editions">
+                                        <button class="CTJ-Add btn btn-primary btn-sm">${_('Add')}</button>
+                                        <button class="CTJ-Delete btn btn-primary btn-sm">${_('Delete')}</button>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>`,
+            html = `
+            <div id="gameQEIdeviceForm">
+                ${edition.common.getIdeviceDescription(
+                    _('You can use a checklist as a structured and easy way to understand the suggested activities in this educational resource. It will be a useful instrument for student self-assessment, allowing to monitor the completed activities.'),
+                    'https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe40/html/lista-de-cotejo.html',
+                )}
+                ${edition.tabs.getHtml('gameQEIdeviceForm', {
+                    path: path,
+                    instructions: c_('Complete the checklist ticking the boxes for all finished activities.'),
+                    options: options,
+                    contents: contents,
+                    after: true,
+                    texts: this.ci18n,
+                    share: false,
+                    titles: { contents: _('Checklist') },
+                    info: {
+                        contents: _('Write the title of the checklist and its items, one per row, in the column of their level.'),
+                    },
+                })}
             </div>
-            ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
-        </div>
-      `;
+        `;
         this.ideviceBody.innerHTML = html;
-        $exeDevicesEdition.iDevice.tabs.init('gameQEIdeviceForm');
+        edition.tabs.bind('gameQEIdeviceForm');
         $('.CTJ-Table .CTJ-Points-column, .CTJ-Table .CTJ-Points').hide();
 
         $exeDevice.loadPreviousValues();
@@ -260,6 +214,10 @@ var $exeDevice = {
             const textAfter = $('.listacotejo-extra-content', wrapper);
             if (textAfter.length == 1)
                 $('#eXeIdeviceTextAfter').val(textAfter.html());
+
+            $exeIDevicesEdition.iDevice.gamification.common.setLanguageTabValues(
+                dataGame.msgs
+            );
         }
     },
 
@@ -271,9 +229,9 @@ var $exeDevice = {
 
         arrayLevels.forEach((obj) => {
             const row = $('<tr></tr>').addClass('CTJ-data-row'),
-                select = $('<select></select>').addClass('CTJ-Select');
+                select = $('<select></select>').addClass('CTJ-Select form-select');
 
-            [_('Box'), _('Text'), _('Choose'), _('Do not mark')].forEach(
+            [_('Box'), _('Text'), _('Selection'), _('Do not mark')].forEach(
                 (option, index) => {
                     const optElement = $('<option></option>')
                         .attr('value', index)
@@ -308,11 +266,11 @@ var $exeDevice = {
                 row.append(cell);
             }
             const addButton = $('<button>' + _('Add') + '</button>').addClass(
-                    'CTJ-Add'
+                    'CTJ-Add btn btn-primary btn-sm'
                 ),
                 deleteButton = $(
                     '<button>' + _('Delete') + '</button>'
-                ).addClass('CTJ-Delete'),
+                ).addClass('CTJ-Delete btn btn-primary btn-sm'),
                 editCell = $('<td></td>')
                     .addClass('CTJ-Editions')
                     .append(addButton, deleteButton);
@@ -400,10 +358,6 @@ var $exeDevice = {
         return html;
     },
 
-    showMessage: function (msg) {
-        eXe.app.alert(msg);
-    },
-
     getIdeviceID: function () {
         const ideviceid =
             $('#gameQEIdeviceForm')
@@ -428,10 +382,11 @@ var $exeDevice = {
             useScore = $('#ctjUseScore').is(':checked');
 
         let isLevelComplete = false,
+            hasEmptyRow = false,
             isMoreThanOneLevelFilled = false;
 
         if (title === '') {
-            $exeDevice.showMessage(_('Indicate a title for the checklist'));
+            $exeIDevicesEdition.iDevice.common.showMessage(_('Indicate a title for the checklist'));
             return false;
         }
 
@@ -444,7 +399,8 @@ var $exeDevice = {
                     }).length;
 
             if (filledLevels === 0) {
-                $exeDevice.showMessage(_('No empty items can be left'));
+                $exeIDevicesEdition.iDevice.common.showMessage(_('No empty items can be left'));
+                hasEmptyRow = true;
                 return false;
             }
 
@@ -458,11 +414,11 @@ var $exeDevice = {
             }
         });
 
-        if (!isLevelComplete) {
+        if (!isLevelComplete || hasEmptyRow) {
             return false;
         }
         if (isMoreThanOneLevelFilled) {
-            $exeDevice.showMessage(
+            $exeIDevicesEdition.iDevice.common.showMessage(
                 _(`You can only use text at this item's level`)
             );
             return false;
@@ -504,21 +460,14 @@ var $exeDevice = {
             arrayLevels.push(obj);
         });
 
-        if (scoreError == 1) {
-            $exeDevice.showMessage(
-                _(
-                    'You must indicate the number of points for each item to be assesed'
-                )
-            );
-            return false;
-        } else if (scoreError == 2) {
-            $exeDevice.showMessage(
+        if (scoreError == 2) {
+            $exeIDevicesEdition.iDevice.common.showMessage(
                 _('You cannot indicate a score for this type of boxes')
             );
             return false;
         }
 
-        return (data = {
+        return {
             typeGame: 'Cotejo',
             id: $exeDevice.id,
             title: title,
@@ -534,260 +483,12 @@ var $exeDevice = {
             userData: userData,
             footer: footer,
             useScore: useScore,
-        });
+        };
     },
     isNumberInteger: function (str) {
         return Number.isInteger(Number(str)) && Number(str) >= 0;
     },
-    addEvents1: function () {
-        $('.CTJ-Add').click(function (e) {
-            e.preventDefault();
-            const parentRow = $(this).closest('.CTJ-data-row'),
-                clonedRow = parentRow.clone(true);
-
-            clonedRow
-                .find('.CTJ-Level1, .CTJ-Level2, .CTJ-Level3, .CTJ-Level4')
-                .html('');
-            clonedRow.insertAfter(parentRow);
-        });
-
-        $('.CTJ-Delete').click(function (e) {
-            e.preventDefault();
-            if ($('.CTJ-data-row').length > 1) {
-                if (confirm('¿Desea eliminar esta fila?')) {
-                    $(this).closest('.CTJ-data-row').remove();
-                }
-            } else {
-                $exeDevice.showMessage(_('There must be at least one row.'));
-            }
-        });
-
-        $('#ctjEURLLogo').on('change', function () {
-            const validExt = ['jpg', 'png', 'gif', 'jpeg', 'svg', 'webp`'],
-                selectedFile = $(this).val(),
-                ext = selectedFile.split('.').pop().toLowerCase();
-            if (
-                selectedFile.indexOf('files') == 0 &&
-                validExt.indexOf(ext) == -1
-            ) {
-                $exeDevice.showMessage(
-                    _('Supported formats') + ': jpg, jpeg, gif, png, svg, webp'
-                );
-                return false;
-            }
-            let url = selectedFile,
-                alt = _('Project logo');
-            $exeDevice.showImage(
-                '#ctjEImageLogo',
-                '#ctjEImageNoLogo',
-                url,
-                alt
-            );
-        });
-
-        $('#ctjEPlayLogo').on('click', function (e) {
-            e.preventDefault();
-            const validExt = ['jpg', 'png', 'gif', 'jpeg', 'svg', 'webp'],
-                selectedFile = $('#ctjEURLLogo').val(),
-                ext = selectedFile.split('.').pop().toLowerCase();
-            if (
-                selectedFile.indexOf('files') == 0 &&
-                validExt.indexOf(ext) == -1
-            ) {
-                $exeDevice.showMessage(
-                    _('Supported formats') + ': jpg, jpeg, gif, png, svg, webp'
-                );
-                return false;
-            }
-            const url = selectedFile,
-                alt = _('Project logo');
-            $exeDevice.showImage(
-                '#ctjEImageLogo',
-                '#ctjEImageNoLogo',
-                url,
-                alt
-            );
-        });
-
-        $('#ctjEURLCommunity').on('change', function () {
-            const validExt = ['jpg', 'png', 'gif', 'jpeg', 'svg', 'web`'],
-                selectedFile = $(this).val(),
-                ext = selectedFile.split('.').pop().toLowerCase();
-            if (
-                selectedFile.indexOf('files') == 0 &&
-                validExt.indexOf(ext) == -1
-            ) {
-                $exeDevice.showMessage(
-                    _('Supported formats') + ': jpg, jpeg, gif, png, svg, webp'
-                );
-                return false;
-            }
-            const url = selectedFile,
-                alt = _('Community/Company');
-            $exeDevice.showImage(
-                '#ctjEImageCommunity',
-                '#ctjEImageNoCommunity',
-                url,
-                alt
-            );
-        });
-
-        $('#ctjEPlayCommunity').on('click', function (e) {
-            e.preventDefault();
-            const validExt = ['jpg', 'png', 'gif', 'jpeg', 'svg', 'web`'],
-                selectedFile = $('#ctjEURLCommunity').val(),
-                ext = selectedFile.split('.').pop().toLowerCase();
-            if (
-                selectedFile.indexOf('files') == 0 &&
-                validExt.indexOf(ext) == -1
-            ) {
-                $exeDevice.showMessage(
-                    _('Supported formats') + ': jpg, jpeg, gif, png, svg, webp'
-                );
-                return false;
-            }
-            const url = selectedFile,
-                alt = _('Community/Company');
-            $exeDevice.showImage(
-                '#ctjEImageCommunity',
-                '#ctjEImageNoCommunity',
-                url,
-                alt
-            );
-        });
-
-        $('#ctjEURLDecorative').on('change', function () {
-            const validExt = ['jpg', 'png', 'gif', 'jpeg', 'svg', 'web`'],
-                selectedFile = $(this).val(),
-                ext = selectedFile.split('.').pop().toLowerCase();
-
-            if (
-                selectedFile.indexOf('files') == 0 &&
-                validExt.indexOf(ext) == -1
-            ) {
-                $exeDevice.showMessage(
-                    _('Supported formats') + ': jpg, jpeg, gif, png, svg, webp'
-                );
-                return false;
-            }
-            const url = selectedFile,
-                alt = _('Decoration');
-            $exeDevice.showImage(
-                '#ctjEImageDecorative',
-                '#ctjEImageNoDecorative',
-                url,
-                alt
-            );
-        });
-
-        $('#ctjEPlayDecorative').on('click', function (e) {
-            e.preventDefault();
-            const validExt = ['jpg', 'png', 'gif', 'jpeg', 'svg', 'web`'],
-                selectedFile = $('#ctjEURLDecorative').val(),
-                ext = selectedFile.split('.').pop().toLowerCase();
-            if (
-                selectedFile.indexOf('files') == 0 &&
-                validExt.indexOf(ext) == -1
-            ) {
-                $exeDevice.showMessage(
-                    _('Supported formats') + ': jpg, jpeg, gif, png, svg, webp'
-                );
-                return false;
-            }
-            const url = selectedFile,
-                alt = _('Decoration');
-            $exeDevice.showImage(
-                '#ctjEImageDecorative',
-                '#ctjEImageNoDecorative',
-                url,
-                alt
-            );
-        });
-
-        $('#ctjCommunity').change(function () {
-            if ($(this).is(':checked')) {
-                $('#ctjcommunitylogo').show();
-            } else {
-                $('#ctjcommunitylogo').hide();
-            }
-        });
-
-        $('#ctjLogo').change(function () {
-            if ($(this).is(':checked')) {
-                $('#ctjlogologo').show();
-            } else {
-                $('#ctjlogologo').hide();
-            }
-        });
-
-        $('#ctjDecorative').change(function () {
-            if ($(this).is(':checked')) {
-                $('#ctjdecorativelogo').show();
-            } else {
-                $('#ctjdecorativelogo').hide();
-            }
-        });
-
-        $('#ctjUseScore').change(function () {
-            if ($(this).is(':checked')) {
-                $(
-                    '.CTJ-Table .CTJ-Points-column, .CTJ-Table .CTJ-Points'
-                ).show();
-            } else {
-                $(
-                    '.CTJ-Table .CTJ-Points-column, .CTJ-Table .CTJ-Points'
-                ).hide();
-            }
-        });
-
-        $('.CTJ-Table')
-            .on('change', 'select.CTJ-Select', function () {
-                const selectedOptionIndex = $(this).val();
-                const pointsCell = $(this).closest('tr').find('.CTJ-Points');
-                if (selectedOptionIndex == '3') {
-                    pointsCell.text('');
-                    pointsCell.attr('contenteditable', 'false');
-                } else {
-                    pointsCell.attr('contenteditable', 'true');
-                }
-            })
-            .trigger('change');
-
-        $('.CTJ-Table').on('keypress', '.CTJ-Points', function (event) {
-            const charCode = event.which ? event.which : event.keyCode;
-            if (charCode > 31 && (charCode < 48 || charCode > 57)) {
-                event.preventDefault();
-            }
-        });
-    },
     addEvents() {
-        // Generic toggle handler: sync aria and show/hide target
-        $('#gameQEIdeviceForm').on('change', '.toggle-input', function () {
-            const $toggle = $(this).closest('.toggle-item');
-            const checked = $(this).is(':checked');
-            $toggle.attr('aria-checked', checked ? 'true' : 'false');
-            const target = $toggle.data('target');
-            if (target) {
-                $('#' + target).toggle(checked);
-            }
-        });
-        const initToggle = (selector) => {
-            const $input = $(selector);
-            if ($input.length === 0) return;
-            const $toggle = $input.closest('.toggle-item');
-            const checked = $input.is(':checked');
-            $toggle.attr('aria-checked', checked ? 'true' : 'false');
-            const target = $toggle.data('target');
-            if (target) {
-                $('#' + target).toggle(checked);
-            }
-        };
-        initToggle('#ctjUserData');
-        initToggle('#ctjSaveData');
-        initToggle('#ctjUseScore');
-        initToggle('#ctjCommunity');
-        initToggle('#ctjLogo');
-        initToggle('#ctjDecorative');
         const handleImageChange = (
             selectorInput,
             selectorImage,
@@ -799,7 +500,7 @@ var $exeDevice = {
                 ext = selectedFile.split('.').pop().toLowerCase();
 
             if (selectedFile.startsWith('files') && !validExt.includes(ext)) {
-                $exeDevice.showMessage(
+                $exeIDevicesEdition.iDevice.common.showMessage(
                     `${_('Supported formats')}: jpg, jpeg, gif, png, svg, webp`
                 );
                 return false;
@@ -831,7 +532,7 @@ var $exeDevice = {
                     $(this).closest('.CTJ-data-row').remove();
                 }
             } else {
-                $exeDevice.showMessage(_('There must be at least one row.'));
+                $exeIDevicesEdition.iDevice.common.showMessage(_('There must be at least one row.'));
             }
         });
         const imageConfig = [
@@ -924,7 +625,7 @@ var $exeDevice = {
         });
 
         $('.CTJ-Table').on('keypress', '.CTJ-Points', function (event) {
-            charCode = event.which || event.keyCode;
+            const charCode = event.which || event.keyCode;
             if (charCode > 31 && (charCode < 48 || charCode > 57)) {
                 event.preventDefault();
             }
@@ -952,7 +653,7 @@ var $exeDevice = {
                         this.naturalWidth,
                         this.naturalHeight
                     );
-                    $exeDevice.drawImage(this, mData);
+                    $exeIDevicesEdition.iDevice.common.drawImage(this, mData);
                     $image.show();
                     $(noimg).hide();
                     return true;
@@ -998,8 +699,6 @@ var $exeDevice = {
             typeof game.userData == 'undefined' ? false : game.userData;
         game.useScore =
             typeof game.useScore == 'undefined' ? false : game.useScore;
-        game.weighted =
-            typeof game.weighted !== 'undefined' ? game.weighted : 100;
         $exeDevice.id = $exeDevice.getIdeviceID();
 
         $('#ctjTitle').val(game.title);
@@ -1048,14 +747,5 @@ var $exeDevice = {
             game.urlDecorative,
             _('Decorative image')
         );
-    },
-
-    drawImage: function (image, mData) {
-        $(image).css({
-            left: mData.x + 'px',
-            top: mData.y + 'px',
-            width: mData.w + 'px',
-            height: mData.h + 'px',
-        });
     },
 };

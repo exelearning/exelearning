@@ -204,7 +204,6 @@ function buildForm() {
             <input id="mapaURLYoutube" type="text" value="" />
             <input id="mapaPURLYoutube" type="text" value="" />
             <input id="mapaNumberPoint" type="text" value="2" />
-            <input id="mapaNumberPoint1" type="text" value="2" />
             <img id="mapaPImage" alt="" />
             <div id="mapaPNoImage"></div>
             <video id="mapaEVideoLocal"></video>
@@ -213,24 +212,31 @@ function buildForm() {
 
 describe('map edition: $exeDevice guards (#2271)', () => {
     let $exeDevice;
+    let previousItinerary;
+    let previousPlaySound;
+    let previousStopSound;
 
     beforeEach(() => {
         global.$exeDevice = undefined;
         buildForm();
+        const gamification = global.$exeIDevicesEdition.iDevice.gamification;
+        previousItinerary = gamification.itinerary;
+        previousPlaySound = gamification.helpers.playSound;
+        previousStopSound = gamification.helpers.stopSound;
         global.$exeDevices.iDevice.gamification.media = {
             getIDYoutube: vi.fn(() => false),
             getURLVideoMediaTeca: vi.fn(() => false),
             extractURLGD: vi.fn((url) => url),
         };
-        global.$exeDevicesEdition.iDevice.gamification.itinerary = {
+        global.$exeIDevicesEdition.iDevice.gamification.itinerary = {
             getTab: vi.fn(() => ''),
             addEvents: vi.fn(),
             getValues: vi.fn(() => ({})),
             setValues: vi.fn(),
         };
-        global.$exeDevicesEdition.iDevice.gamification.helpers.playSound =
+        global.$exeIDevicesEdition.iDevice.gamification.helpers.playSound =
             vi.fn();
-        global.$exeDevicesEdition.iDevice.gamification.helpers.stopSound =
+        global.$exeIDevicesEdition.iDevice.gamification.helpers.stopSound =
             vi.fn();
         $exeDevice = global.loadIdevice(join(__dirname, 'map.js'));
         $exeDevice.addEvents();
@@ -240,6 +246,10 @@ describe('map edition: $exeDevice guards (#2271)', () => {
         // Close the edition as the workarea does, so nothing this test owns
         // (timers, players, media) survives into the next one.
         $exeDevice.$lifecycle.destroy();
+        const gamification = global.$exeIDevicesEdition.iDevice.gamification;
+        gamification.itinerary = previousItinerary;
+        gamification.helpers.playSound = previousPlaySound;
+        gamification.helpers.stopSound = previousStopSound;
         global.$exeDevice = undefined;
         document.body.innerHTML = '';
     });
@@ -259,11 +269,6 @@ describe('map edition: $exeDevice guards (#2271)', () => {
         it('does not throw on point number Enter keyup', () => {
             expect(() =>
                 $('#mapaNumberPoint').trigger(
-                    $.Event('keyup', { keyCode: 13 })
-                )
-            ).not.toThrow();
-            expect(() =>
-                $('#mapaNumberPoint1').trigger(
                     $.Event('keyup', { keyCode: 13 })
                 )
             ).not.toThrow();
@@ -364,7 +369,6 @@ describe('map edition: $exeDevice guards (#2271)', () => {
             const spy = vi
                 .spyOn($exeDevice, 'placeImageWindows')
                 .mockReturnValue({ w: 10, h: 5, x: 0, y: 0 });
-            vi.spyOn($exeDevice, 'drawImage').mockImplementation(() => {});
             $(img).trigger('load');
             expect(spy).toHaveBeenCalledWith(img, 100, 50);
         });
@@ -391,7 +395,7 @@ describe('map edition: $exeDevice guards (#2271)', () => {
             // so rendering them again would show each control twice.
             expect(source).not.toContain('passScore.getContents(');
             expect(source).not.toContain('progressBar.getContents(');
-            expect(source).toContain('gamification.scorm.getTab(');
+            expect(source).toMatch(/tabs\.getHtml\([\s\S]*grading: true/);
         });
 
         it('restores the control when the iDevice is reopened', () => {
@@ -515,38 +519,6 @@ describe('map edition: $exeDevice guards (#2271)', () => {
             onApiReady();
             expect(youTubeReady).toHaveBeenCalledTimes(1);
         });
-
-        it('stops the preview audio when the edition closes', () => {
-            const audio = {
-                play: vi.fn(),
-                pause: vi.fn(),
-                load: vi.fn(),
-                removeAttribute: vi.fn(),
-                addEventListener: vi.fn(),
-                removeEventListener: vi.fn(),
-            };
-            const audioSpy = vi.spyOn(global, 'Audio').mockImplementation(function () {
-                return audio;
-            });
-
-            try {
-                $exeDevice.playSound('sound.mp3');
-                const [type, handler] = audio.addEventListener.mock.calls[0];
-                expect(type).toBe('canplaythrough');
-
-                handler();
-                expect(audio.play).toHaveBeenCalledTimes(1);
-
-                $exeDevice.$lifecycle.destroy();
-                expect(audio.pause).toHaveBeenCalledTimes(1);
-                expect(audio.removeAttribute).toHaveBeenCalledWith('src');
-
-                handler();
-                expect(audio.play).toHaveBeenCalledTimes(1);
-            } finally {
-                audioSpy.mockRestore();
-            }
-        });
     });
 });
 
@@ -557,5 +529,401 @@ describe('map minimum score text', () => {
         device.refreshTranslations();
 
         expect(device.ci18n.msgPassScore).toBe('Minimum score needed to pass this activity: %s');
+    });
+});
+
+describe('map edition: shared form tabs', () => {
+    const PATH = '/files/perm/idevices/base/map/edition/';
+    const helpers = () => global.$exeDevices.iDevice.gamification.helpers;
+    const tabNames = () =>
+        [...document.querySelectorAll('#gameQEIdeviceForm-tabs [data-exe-tab]')].map((tab) =>
+            tab.getAttribute('data-exe-tab')
+        );
+    const panel = (name) => document.getElementById(`gameQEIdeviceForm-panel-${name}`);
+    const chooseMode = (value) => $(`input.MQE-TypeEvaluation[value="${value}"]`).prop('checked', true).trigger('click');
+    let device;
+    let previousApp;
+    let tooltips;
+    let previousHelpers;
+    let previousMedia;
+    let tinymceInit;
+
+    beforeEach(() => {
+        global.$exeDevice = undefined;
+        previousApp = global.eXeLearning?.app;
+        tooltips = new Map();
+        global.eXeLearning = {
+            ...global.eXeLearning,
+            app: {
+                ...previousApp,
+                common: {
+                    initTooltips: vi.fn((scope) => {
+                        scope.querySelectorAll('.exe-app-tooltip').forEach((button) => {
+                            if (!tooltips.has(button)) tooltips.set(button, { hide: vi.fn(), dispose: vi.fn() });
+                        });
+                    }),
+                },
+            },
+        };
+        vi.stubGlobal('bootstrap', { Tooltip: { getInstance: (button) => tooltips.get(button) } });
+        previousHelpers = { ...helpers() };
+        Object.assign(helpers(), {
+            isJsonString: (text) => {
+                try {
+                    return JSON.parse(text);
+                } catch {
+                    return false;
+                }
+            },
+            sanitizeJSONString: (text) => text,
+            hourToSeconds: () => 0,
+            secondsToHour: () => '00:00:00',
+            arrayMove: (list, from, to) => list.splice(to, 0, list.splice(from, 1)[0]),
+        });
+        previousMedia = global.$exeDevices.iDevice.gamification.media;
+        global.$exeDevices.iDevice.gamification.media = {
+            getIDYoutube: () => false,
+            getURLVideoMediaTeca: () => false,
+            extractURLGD: (url) => url,
+        };
+        tinymceInit = vi.spyOn(global.tinymce, 'init').mockImplementation(() => Promise.resolve([]));
+        document.body.innerHTML = '<div id="mapBody"></div>';
+        device = global.loadIdevice(join(__dirname, 'map.js'));
+        vi.spyOn(device, 'loadYoutubeApi').mockImplementation(() => {});
+        device.init(document.getElementById('mapBody'), {}, PATH);
+        // The form is wired once the editor of the point text is ready.
+        const { setup } = tinymceInit.mock.calls.find(([config]) => config.setup)[0];
+        let editorReady;
+        setup({ on: (event, callback) => event === 'init' && (editorReady = callback) });
+        editorReady();
+    });
+
+    afterEach(() => {
+        device.$lifecycle?.destroy();
+        if (global.eXeLearning) {
+            global.eXeLearning.app = previousApp;
+        }
+        vi.unstubAllGlobals();
+        vi.restoreAllMocks();
+        for (const key of ['isJsonString', 'sanitizeJSONString', 'hourToSeconds', 'secondsToHour', 'arrayMove']) {
+            if (key in previousHelpers) helpers()[key] = previousHelpers[key];
+            else delete helpers()[key];
+        }
+        global.$exeDevices.iDevice.gamification.media = previousMedia;
+        global.$exeDevice = undefined;
+        document.body.innerHTML = '';
+    });
+
+    it('lays the form out in the shared tabs, and opens on its points', () => {
+        expect(tabNames()).toEqual(['instructions', 'options', 'contents', 'passwords', 'after', 'grading', 'texts']);
+        expect(document.getElementById('gameQEIdeviceForm-tab-contents').textContent.trim()).toBe('Activities');
+        expect(panel('contents').classList.contains('active')).toBe(true);
+    });
+
+    it('puts each part of the form in its tab', () => {
+        expect(panel('instructions').querySelector('#eXeGameInstructions').value).toBe(
+            'Click on the active areas or image icons.'
+        );
+        expect(panel('options').querySelector('#mapaEOptions #mapaEEvaluationTest')).not.toBeNull();
+        expect(panel('contents').querySelector('.MQE-FieldPanel > #mapaEPanel')).not.toBeNull();
+        expect(panel('contents').querySelector('#mapaFQuestions')).not.toBeNull();
+        expect(panel('passwords').querySelector('#eXeGameShowCodeAccess')).not.toBeNull();
+        expect(panel('after').querySelector('#eXeIdeviceTextAfter')).not.toBeNull();
+        expect(panel('grading').querySelector('.exe-progress-report-wrapper')).not.toBeNull();
+        expect(panel('texts').querySelector('#ci18n_msgSubmit').value).toBe('Submit');
+        expect(document.querySelectorAll('#eXeIdeviceTextAfter')).toHaveLength(1);
+    });
+
+    it('explains the Questions tab, keeps the accessibility warning, and offers no sharing', () => {
+        const info = panel('contents').firstElementChild;
+
+        expect(info.tagName).toBe('P');
+        expect(info.textContent).toContain('Choose the image of the map, add its points');
+        expect(document.querySelector('#gameQEIdeviceForm > .alert-warning').textContent).toContain(
+            'This game may present accessibility problems'
+        );
+        expect(document.querySelectorAll('.exe-block-dismissible, #gameQEIdeviceForm fieldset')).toHaveLength(0);
+        expect(document.querySelectorAll('[data-exe-share]')).toHaveLength(0);
+    });
+
+    it('provides one accessible information button in each options row', () => {
+        const options = panel('options');
+        const helpButtons = [...options.querySelectorAll('#mapaEOptions .exe-idevice-help')];
+        const state = () => [...options.querySelectorAll('input')].map((input) => `${input.checked}${input.value}`);
+
+        expect(helpButtons).toHaveLength(12);
+        for (const help of helpButtons) {
+            expect(help.type).toBe('button');
+            expect(help.getAttribute('aria-label')).toMatch(/^Information about \S/);
+            expect(document.getElementById(help.getAttribute('aria-controls')).textContent.length).toBeGreaterThan(30);
+            const before = state();
+            help.click();
+            document.getElementById(help.getAttribute('aria-controls')).click();
+            expect(state()).toEqual(before);
+        }
+    });
+
+    it('shows the options of each assessment mode only', () => {
+        chooseMode(4);
+        expect(document.getElementById('mapaEvaluationData').style.display).not.toBe('none');
+        expect(document.getElementById('mapaFQuestions').style.display).not.toBe('none');
+        expect(document.getElementById('mapaSolutionOrderDiv').style.display).toBe('none');
+
+        chooseMode(5);
+        expect(document.getElementById('mapaSolutionOrderDiv').style.display).toBe('flex');
+        expect(document.getElementById('mapaFQuestions').style.display).toBe('none');
+
+        chooseMode(1);
+        expect(document.getElementById('mapaNumOptionsData').style.display).toBe('flex');
+        expect(document.getElementById('mapaEAutoShowDiv').style.display).toBe('none');
+
+        chooseMode(0);
+        expect(document.getElementById('mapaEAutoShowDiv').style.display).not.toBe('none');
+        expect(document.getElementById('mapaNumOptionsData').style.display).toBe('none');
+    });
+
+    it('disposes all option tooltips when the edition closes', () => {
+        expect(tooltips.size).toBe(document.querySelectorAll('#gameQEIdeviceForm .exe-app-tooltip').length);
+        expect(tooltips.size).toBeGreaterThanOrEqual(12);
+        device.$lifecycle.destroy();
+        for (const tooltip of tooltips.values()) {
+            expect(tooltip.dispose).toHaveBeenCalledTimes(1);
+        }
+    });
+
+    it('leaves the state of each switch to its native checkbox', () => {
+        document.querySelectorAll('#mapaEOptions .toggle-input:not(:disabled)').forEach((input) => input.click());
+
+        expect(document.querySelectorAll('[role="switch"], [aria-checked]')).toHaveLength(0);
+        expect(document.querySelectorAll('#mapaEOptions [data-target]')).toHaveLength(0);
+    });
+
+    it('names the icon and the drawing buttons in the language of the edition', () => {
+        expect(document.querySelector('.MQP-Dropdown').textContent).toContain('Icon:');
+        expect(document.getElementById('mapaClearButton').textContent).toBe('Clear');
+        expect(document.getElementById('mapaRedoButton').textContent).toBe('Redo');
+        expect(document.getElementById('mapaUndoButton').textContent).toBe('Undo');
+    });
+
+    it('offers the sound option of a new map, which starts in the Visited points mode', () => {
+        expect(document.getElementById('mapaEEvaluationPoints').checked).toBe(true);
+        expect(document.getElementById('mapaEAutoAudioDiv').classList.contains('MQE-EHide')).toBe(false);
+    });
+
+    it('hides the whole solutions switch where the mode does not offer it', () => {
+        const toggle = document.getElementById('mapaEShowSolution').closest('.toggle-item');
+
+        chooseMode(1);
+        expect(toggle.style.display).toBe('none');
+
+        chooseMode(4);
+        expect(toggle.style.display).not.toBe('none');
+    });
+
+    describe('questionnaire', () => {
+        const question = (text) => ({ ...device.getDefaultQuestion(), quextion: text });
+
+        beforeEach(() => {
+            chooseMode(4);
+            vi.spyOn(device, 'validateQuestion').mockReturnValue(true);
+        });
+
+        it('counts the questions as they are added', () => {
+            device.addQuestion();
+
+            expect(document.getElementById('mapaENumQuestions').textContent).toBe('2');
+        });
+
+        it('copies the question on screen', () => {
+            device.selectsGame = [question('First'), question('Second')];
+            device.qActive = 1;
+            device.active = 0;
+
+            device.copyQuestion();
+
+            expect(device.qClipBoard.quextion).toBe('Second');
+        });
+
+        it('moves a cut question when it is pasted', () => {
+            device.selectsGame = [question('A'), question('B'), question('C')];
+            device.qActive = 0;
+            device.cutQuestion();
+            device.qActive = 2;
+
+            expect(() => device.pasteQuestion()).not.toThrow();
+            expect(device.selectsGame.map((item) => item.quextion)).toEqual(['B', 'C', 'A']);
+        });
+
+        it('counts a pasted copy in the questions per game', () => {
+            device.selectsGame = [question('A'), question('B')];
+            device.qActive = 0;
+            device.updateNumberQuestions();
+
+            device.copyQuestion();
+            device.pasteQuestion();
+
+            expect(device.selectsGame).toHaveLength(3);
+            expect(document.getElementById('mapaNumberQuestions').textContent).toBe('3/3');
+        });
+
+        it('goes to the question whose number is typed', () => {
+            device.selectsGame = [question('A'), question('B'), question('C')];
+            device.qActive = 0;
+            const input = $('#mapaENumberQuestionQ');
+
+            input.val('2').trigger($.Event('keyup', { keyCode: 13 }));
+            expect(device.qActive).toBe(1);
+            expect($('#mapaEQuestion').val()).toBe('B');
+
+            input.val('9').trigger($.Event('keyup', { keyCode: 13 }));
+            expect(device.qActive).toBe(2);
+            expect(input.val()).toBe('3');
+
+            input.val('x').trigger($.Event('keyup', { keyCode: 13 }));
+            expect(device.qActive).toBe(2);
+            expect(input.val()).toBe('3');
+        });
+    });
+
+    describe('pasting after changing what is on screen', () => {
+        const complete = (text) => ({
+            ...device.getDefaultQuestion(),
+            quextion: text,
+            options: ['Paris', 'Rome', 'Madrid', 'Berlin'],
+            solution: 'A',
+        });
+
+        it('keeps the changes made to a question of the game questionnaire', () => {
+            chooseMode(4);
+            device.selectsGame = [complete('Capital of France?')];
+            device.qActive = 0;
+            device.showQuestion(0);
+            device.copyQuestion();
+            $('#mapaEQuestion').val('Capital of Spain?');
+
+            device.pasteQuestion();
+
+            expect(device.selectsGame.map((item) => item.quextion)).toEqual(['Capital of Spain?', 'Capital of France?']);
+        });
+
+        it('keeps the changes made to a question of a point questionnaire', () => {
+            device.tests = [complete('Capital of France?')];
+            device.activeTest = 0;
+            device.showPointQuestion(0);
+            device.copyPointQuestion();
+            $('#mapaEQuestion1').val('Capital of Spain?');
+
+            device.pastePointQuestion();
+
+            expect(device.tests.map((item) => item.quextion)).toEqual(['Capital of Spain?', 'Capital of France?']);
+        });
+
+        it('keeps the changes made to a slide', () => {
+            device.slides = [{ ...device.getDefaultSlide(), title: 'Paris', url: 'images/paris.jpg' }];
+            device.activeSlide = 0;
+            device.showSlide(0);
+            device.copySlide();
+            $('#mapaSTitle').val('Rome');
+
+            device.pasteSlide();
+
+            expect(device.slides.map((slide) => slide.title)).toEqual(['Rome', 'Paris']);
+        });
+
+        it('keeps the point on screen as its check returns it', () => {
+            const points = device.activeMap.pts;
+            device.activeMap.active = 0;
+            device.typeEdit = 0;
+            device.clipBoard = { ...points[0], title: 'Copied' };
+            vi.spyOn(device, 'validatePoint').mockImplementation((point) => ({ ...point, title: 'Edited' }));
+
+            device.pastePoint();
+
+            expect(device.activeMap.pts.slice(0, 2).map((point) => point.title)).toEqual(['Edited', 'Copied']);
+        });
+
+        it('leaves out an incomplete question of the game questionnaire, without its warning', () => {
+            chooseMode(4);
+            device.selectsGame = [complete('Capital of France?')];
+            device.qActive = 0;
+            device.showQuestion(0);
+            device.copyQuestion();
+            $('#mapaEQuestion').val('');
+            const before = eXe.app._alertHistory.length;
+
+            device.pasteQuestion();
+
+            expect(device.selectsGame.map((item) => item.quextion)).toEqual(['Capital of France?', 'Capital of France?']);
+            expect(eXe.app._alertHistory.slice(before)).toEqual([]);
+        });
+
+        it('leaves out an incomplete question of a point questionnaire, without its warning', () => {
+            device.tests = [complete('Capital of France?')];
+            device.activeTest = 0;
+            device.showPointQuestion(0);
+            device.copyPointQuestion();
+            $('#mapaEQuestion1').val('');
+            const before = eXe.app._alertHistory.length;
+
+            device.pastePointQuestion();
+
+            expect(device.tests.map((item) => item.quextion)).toEqual(['Capital of France?', 'Capital of France?']);
+            expect(eXe.app._alertHistory.slice(before)).toEqual([]);
+        });
+
+        it('leaves out a slide without its title, without its warning', () => {
+            device.slides = [{ ...device.getDefaultSlide(), title: 'Paris', url: 'images/paris.jpg' }];
+            device.activeSlide = 0;
+            device.showSlide(0);
+            device.copySlide();
+            $('#mapaSTitle').val('');
+            const before = eXe.app._alertHistory.length;
+
+            device.pasteSlide();
+
+            expect(device.slides.map((slide) => slide.title)).toEqual(['Paris', 'Paris']);
+            expect(eXe.app._alertHistory.slice(before)).toEqual([]);
+        });
+
+        it('leaves out the point on screen of a map without its image, without its warning', () => {
+            const points = device.activeMap.pts;
+            device.activeMap.active = 0;
+            device.typeEdit = 0;
+            device.clipBoard = { ...points[0], title: 'Copied' };
+            $('#mapaURLImageMap').val('');
+            const before = eXe.app._alertHistory.length;
+
+            device.pastePoint();
+
+            expect(device.activeMap.pts[1].title).toBe('Copied');
+            expect(eXe.app._alertHistory.slice(before)).toEqual([]);
+        });
+
+        it('checks an incomplete point without its warning when asked to', () => {
+            vi.spyOn(global.tinymce, 'get').mockReturnValue({ getContent: () => '' });
+            $('#mapaURLImageMap').val('map.png');
+            $('#mapaTitle').val('');
+            const before = eXe.app._alertHistory.length;
+
+            expect(device.validatePoint({ ...device.activeMap.pts[0] }, { silent: true })).toBe(false);
+            expect(eXe.app._alertHistory.slice(before)).toEqual([]);
+            expect(device.validatePoint({ ...device.activeMap.pts[0] })).toBe(false);
+            expect(eXe.app._alertHistory).toHaveLength(before + 1);
+        });
+    });
+
+    it('goes to the question of the point questionnaire whose number is typed', () => {
+        vi.spyOn(device, 'validatePointQuestion').mockReturnValue(true);
+        device.tests = ['A', 'B', 'C'].map((text) => ({ ...device.getDefaultQuestion(), quextion: text }));
+        device.activeTest = 0;
+        const input = $('#mapaENumberQuestionQ1');
+
+        input.val('3').trigger($.Event('keyup', { keyCode: 13 }));
+        expect(device.activeTest).toBe(2);
+        expect($('#mapaEQuestion1').val()).toBe('C');
+
+        input.val('0').trigger($.Event('keyup', { keyCode: 13 }));
+        expect(device.activeTest).toBe(2);
+        expect(input.val()).toBe('3');
     });
 });

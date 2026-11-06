@@ -2,9 +2,7 @@
  * Unit tests for flipcards iDevice
  *
  * Tests pure functions that don't depend on DOM manipulation:
- * - escapeHtml: HTML character escaping
  * - validTime: Time format validation
- * - removeTags: HTML tag removal (with mocked jQuery)
  * - getCardDefault: Default card object structure
  * - placeImageWindows: Image dimension calculations (with mocked jQuery)
  */
@@ -46,38 +44,6 @@ describe('flipcards iDevice', () => {
 
     // Load iDevice and get reference
     $exeDevice = loadIdevice(code);
-  });
-
-  describe('escapeHtml', () => {
-    it('escapes ampersand', () => {
-      expect($exeDevice.escapeHtml('foo & bar')).toBe('foo &amp; bar');
-    });
-
-    it('escapes less than', () => {
-      expect($exeDevice.escapeHtml('a < b')).toBe('a &lt; b');
-    });
-
-    it('escapes greater than', () => {
-      expect($exeDevice.escapeHtml('a > b')).toBe('a &gt; b');
-    });
-
-    it('escapes double quotes', () => {
-      expect($exeDevice.escapeHtml('say "hello"')).toBe('say &quot;hello&quot;');
-    });
-
-    it('escapes single quotes', () => {
-      expect($exeDevice.escapeHtml("it's")).toBe('it&#39;s');
-    });
-
-    it('escapes multiple special characters', () => {
-      const input = '<script>alert("xss")</script>';
-      const expected = '&lt;script&gt;alert(&quot;xss&quot;)&lt;/script&gt;';
-      expect($exeDevice.escapeHtml(input)).toBe(expected);
-    });
-
-    it('returns empty string for empty input', () => {
-      expect($exeDevice.escapeHtml('')).toBe('');
-    });
   });
 
   describe('validTime', () => {
@@ -174,28 +140,6 @@ describe('flipcards iDevice', () => {
     });
   });
 
-  describe('removeTags', () => {
-    it('removes simple HTML tags', () => {
-      const result = $exeDevice.removeTags('<p>Hello</p>');
-      expect(result).toBe('Hello');
-    });
-
-    it('removes nested HTML tags', () => {
-      const result = $exeDevice.removeTags('<div><p><strong>Text</strong></p></div>');
-      expect(result).toBe('Text');
-    });
-
-    it('handles text without tags', () => {
-      const result = $exeDevice.removeTags('Plain text');
-      expect(result).toBe('Plain text');
-    });
-
-    it('handles empty string', () => {
-      const result = $exeDevice.removeTags('');
-      expect(result).toBe('');
-    });
-  });
-
   describe('placeImageWindows', () => {
     // Helper to create a mock image with real DOM parent dimensions
     const createMockImage = (parentWidth, parentHeight) => {
@@ -279,12 +223,6 @@ describe('flipcards iDevice', () => {
     });
   });
 
-  describe('showMessage', () => {
-    it('exists as a function', () => {
-      expect(typeof $exeDevice.showMessage).toBe('function');
-    });
-  });
-
   describe('validateData', () => {
     it('exists as a function', () => {
       expect(typeof $exeDevice.validateData).toBe('function');
@@ -294,6 +232,7 @@ describe('flipcards iDevice', () => {
   describe('createForm', () => {
     let originalExeLearning;
     let originalExeDevicesEdition;
+    let originalExeIDevicesEdition;
     let container;
 
     beforeEach(() => {
@@ -304,21 +243,27 @@ describe('flipcards iDevice', () => {
 
       originalExeLearning = global.eXeLearning;
       originalExeDevicesEdition = global.$exeDevicesEdition;
+      originalExeIDevicesEdition = global.$exeIDevicesEdition;
 
       global.eXeLearning = {
         app: {
           project: { odeId: 'ode-id' },
         },
       };
-      global.$exeDevicesEdition = {
+      const mockEdition = {
         iDevice: {
-          tabs: { init: vi.fn() },
+          tabs: {
+            init: vi.fn(),
+            getHtml: vi.fn((id, config) => `<div id="${id}-tabs"><div class="mock-scorm"></div></div>`),
+            bind: vi.fn(),
+          },
           common: {
             getTextFieldset: vi.fn(() => '<div class="mock-after"></div>'),
             getIdeviceDescription: vi.fn(
               () =>
                 '<p class="alert alert-info alert-dismissible fade show mb-3" role="alert">mock description<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Hide"></button></p>',
             ),
+            getHelpTooltip: vi.fn((text) => `<button class="exe-idevice-help" type="button" title="${text}">?</button>`),
           },
           gamification: {
             instructions: { getFieldset: vi.fn(() => '<div class="mock-instructions"></div>') },
@@ -351,12 +296,15 @@ describe('flipcards iDevice', () => {
           },
         },
       };
+      global.$exeDevicesEdition = mockEdition;
+      global.$exeIDevicesEdition = mockEdition;
       $exeDevice.enableForm = vi.fn();
     });
 
     afterEach(() => {
       global.eXeLearning = originalExeLearning;
       global.$exeDevicesEdition = originalExeDevicesEdition;
+      global.$exeIDevicesEdition = originalExeIDevicesEdition;
     });
 
     it('hands its asset path to the Grading tab, which renders the report', () => {
@@ -364,18 +312,23 @@ describe('flipcards iDevice', () => {
       // now, and it needs this path for the report's help icon -- so what this
       // iDevice still owns is passing it along.
       $exeDevice.createForm();
-      const scorm = global.$exeDevicesEdition.iDevice.gamification.scorm;
-      expect(scorm.getTab).toHaveBeenCalledWith('/test/');
+      const tabs = global.$exeIDevicesEdition.iDevice.tabs;
+      expect(tabs.getHtml).toHaveBeenCalledWith(
+        'flipcardsQEIdeviceForm',
+        expect.objectContaining({ path: '/test/', grading: true }),
+      );
       expect(container.querySelector('.mock-scorm')).not.toBeNull();
     });
   });
 
   describe('addEvents', () => {
     let originalExeDevicesEdition;
+    let originalExeIDevicesEdition;
 
     beforeEach(() => {
       originalExeDevicesEdition = global.$exeDevicesEdition;
-      global.$exeDevicesEdition = {
+      originalExeIDevicesEdition = global.$exeIDevicesEdition;
+      const mockEvents = {
         iDevice: {
           gamification: {
             itinerary: { addEvents: vi.fn() },
@@ -385,6 +338,8 @@ describe('flipcards iDevice', () => {
           },
         },
       };
+      global.$exeDevicesEdition = mockEvents;
+      global.$exeIDevicesEdition = mockEvents;
     });
 
     afterEach(() => {
@@ -392,12 +347,13 @@ describe('flipcards iDevice', () => {
       // do not leak into the next test.
       $exeDevice.$lifecycle.destroy();
       global.$exeDevicesEdition = originalExeDevicesEdition;
+      global.$exeIDevicesEdition = originalExeIDevicesEdition;
     });
 
     it('registers shared progress bar events', () => {
       $exeDevice.addEvents();
       expect(
-        global.$exeDevicesEdition.iDevice.gamification.progressBar.addEvents,
+        global.$exeIDevicesEdition.iDevice.gamification.progressBar.addEvents,
       ).toHaveBeenCalledTimes(1);
     });
   });
@@ -409,15 +365,21 @@ describe('flipcards iDevice', () => {
     let previousItinerary;
 
     beforeEach(() => {
-      previousItinerary = $exeDevicesEdition.iDevice.gamification.itinerary;
+      previousItinerary = (global.$exeIDevicesEdition || global.$exeDevicesEdition).iDevice.gamification.itinerary;
       // addEvents wires the whole editor. The itinerary component lives outside
       // this iDevice's source, so it is stubbed rather than exercised here.
-      $exeDevicesEdition.iDevice.gamification.itinerary = {
+      const itin = {
         addEvents: () => {},
         getTab: () => '',
         init: () => {},
         setValues: () => {},
       };
+      if (global.$exeIDevicesEdition) {
+        global.$exeIDevicesEdition.iDevice.gamification.itinerary = itin;
+      }
+      if (global.$exeDevicesEdition) {
+        global.$exeDevicesEdition.iDevice.gamification.itinerary = itin;
+      }
       document.body.innerHTML = `
         <script></script>
         <form id="gameQEIdeviceForm">
@@ -428,7 +390,12 @@ describe('flipcards iDevice', () => {
 
     afterEach(() => {
       $exeDevice.$lifecycle.destroy();
-      $exeDevicesEdition.iDevice.gamification.itinerary = previousItinerary;
+      if (global.$exeIDevicesEdition) {
+        global.$exeIDevicesEdition.iDevice.gamification.itinerary = previousItinerary;
+      }
+      if (global.$exeDevicesEdition) {
+        global.$exeDevicesEdition.iDevice.gamification.itinerary = previousItinerary;
+      }
       document.body.innerHTML = '';
     });
 
@@ -466,7 +433,7 @@ describe('flipcards iDevice', () => {
             // so rendering them again would show each control twice.
             expect(source).not.toContain('passScore.getContents(');
             expect(source).not.toContain('progressBar.getContents(');
-            expect(source).toContain('gamification.scorm.getTab(');
+            expect(source).toMatch(/tabs\.getHtml\([\s\S]*grading: true/);
         });
 
         it('restores the control when the iDevice is reopened', () => {
@@ -494,14 +461,24 @@ describe('flipcards iDevice', () => {
     let savedMedia;
 
     beforeEach(() => {
-      savedGamification = global.$exeDevicesEdition.iDevice.gamification;
-      global.$exeDevicesEdition.iDevice.gamification = {
+      savedGamification =
+        global.$exeIDevicesEdition?.iDevice?.gamification ||
+        global.$exeDevicesEdition?.iDevice?.gamification;
+      const mockGam = {
         ...savedGamification,
         progressBar: { addEvents: vi.fn() },
+        passScore: { addEvents: vi.fn() },
         itinerary: { addEvents: vi.fn() },
         share: { addEvents: vi.fn(), downloadBlob: vi.fn(() => true) },
         helpers: { stopSound: vi.fn(), playSound: vi.fn() },
       };
+      if (!global.$exeIDevicesEdition) {
+        global.$exeIDevicesEdition = { iDevice: {} };
+      }
+      global.$exeIDevicesEdition.iDevice.gamification = mockGam;
+      if (global.$exeDevicesEdition) {
+        global.$exeDevicesEdition.iDevice.gamification = mockGam;
+      }
       savedMedia = global.$exeDevices.iDevice.gamification.media;
       global.$exeDevices.iDevice.gamification.media = {
         extractURLGD: (url) => url,
@@ -509,7 +486,7 @@ describe('flipcards iDevice', () => {
 
       document.body.innerHTML = `
         <div id="flipcardsIdeviceForm">
-          <span class="toggle-item" role="switch">
+          <span class="toggle-item">
             <input id="tgl" class="toggle-input" type="checkbox" data-target="#tgt">
           </span>
           <div id="tgt"></div>
@@ -525,7 +502,12 @@ describe('flipcards iDevice', () => {
       // leak into the next one.
       $exeDevice.$lifecycle.destroy();
       document.body.innerHTML = '';
-      global.$exeDevicesEdition.iDevice.gamification = savedGamification;
+      if (global.$exeIDevicesEdition?.iDevice) {
+        global.$exeIDevicesEdition.iDevice.gamification = savedGamification;
+      }
+      if (global.$exeDevicesEdition?.iDevice) {
+        global.$exeDevicesEdition.iDevice.gamification = savedGamification;
+      }
       global.$exeDevices.iDevice.gamification.media = savedMedia;
     });
 
@@ -533,19 +515,17 @@ describe('flipcards iDevice', () => {
       it('reacts to a change while the edition is open', () => {
         $('#tgl').prop('checked', true).trigger('change');
 
-        expect($('.toggle-item').attr('aria-checked')).toBe('true');
         expect($('#tgt').css('display')).toBe('flex');
       });
 
       it('stops reacting once the edition is closed', () => {
         $('#tgl').prop('checked', true).trigger('change');
-        expect($('.toggle-item').attr('aria-checked')).toBe('true');
+        expect($('#tgt').css('display')).toBe('flex');
 
         $exeDevice.$lifecycle.destroy();
-        $('.toggle-item').attr('aria-checked', 'stale');
         $('#tgl').prop('checked', false).trigger('change');
 
-        expect($('.toggle-item').attr('aria-checked')).toBe('stale');
+        expect($('#tgt').css('display')).toBe('flex');
       });
 
       it('leaves unrelated document handlers registered', () => {
@@ -663,4 +643,420 @@ describe('flipcards minimum score text', () => {
 
     expect(device.ci18n.msgPassScore).toBe('Minimum score needed to pass this activity: %s');
   });
+});
+
+describe('flipcards edition: shared form tabs, options tooltips, and saving', () => {
+    const PATH = 'files/perm/idevices/base/flipcards/edition/';
+    const jq = window.jQuery;
+    let savedGlobals;
+    let device;
+    let previousApp;
+    let tooltips;
+
+    function panel(tab) {
+        return document.getElementById(`flipcardsQEIdeviceForm-panel-${tab}`);
+    }
+
+    function tabNames() {
+        return [...document.querySelectorAll('#flipcardsQEIdeviceForm-tabs [data-exe-tab]')].map(
+            (tab) => tab.getAttribute('data-exe-tab')
+        );
+    }
+
+    beforeEach(() => {
+        savedGlobals = {
+            $: global.$,
+            jQuery: global.jQuery,
+            exeDevices: global.$exeDevices,
+        };
+        global.$ = jq;
+        global.jQuery = jq;
+        global.$exeDevices = {
+            ...global.$exeDevices,
+            iDevice: {
+                ...global.$exeDevices?.iDevice,
+                gamification: {
+                    ...global.$exeDevices?.iDevice?.gamification,
+                    helpers: {
+                        ...global.$exeDevices?.iDevice?.gamification?.helpers,
+                        encrypt: (t) => t,
+                        decrypt: (t) => t,
+                        isJsonString: (t) => {
+                            try {
+                                return JSON.parse(t);
+                            } catch {
+                                return false;
+                            }
+                        },
+                        sanitizeJSONString: (t) => t,
+                    },
+                    media: {
+                        extractURLGD: (url) => url,
+                    },
+                },
+            },
+        };
+        global.$exeDevice = undefined;
+        previousApp = global.eXeLearning?.app;
+        tooltips = new Map();
+        global.eXeLearning = {
+            ...global.eXeLearning,
+            app: {
+                ...previousApp,
+                common: {
+                    initTooltips: vi.fn((scope) => {
+                        scope.querySelectorAll('.exe-app-tooltip').forEach((button) => {
+                            if (!tooltips.has(button)) tooltips.set(button, { hide: vi.fn(), dispose: vi.fn() });
+                        });
+                    }),
+                },
+            },
+        };
+        vi.stubGlobal('bootstrap', { Tooltip: { getInstance: (button) => tooltips.get(button) } });
+
+        device = global.loadIdevice(join(__dirname, 'flipcards.js'));
+        document.body.innerHTML = '<div id="flipcardsBody"></div>';
+        device.init(document.getElementById('flipcardsBody'), {}, PATH);
+    });
+
+    afterEach(() => {
+        device.$lifecycle?.destroy();
+        document.body.innerHTML = '';
+        global.$ = savedGlobals.$;
+        global.jQuery = savedGlobals.jQuery;
+        global.$exeDevices = savedGlobals.exeDevices;
+        if (global.eXeLearning) {
+            global.eXeLearning.app = previousApp;
+        }
+        vi.unstubAllGlobals();
+    });
+
+    it('offers to import the json, txt and Moodle xml files it reads', () => {
+        const input = document.getElementById('eXeGameImportGame');
+        expect(input.getAttribute('accept')).toBe('.txt, .json, .xml');
+        expect(input.closest('.exe-file-upload').querySelector('.exe-field-instructions').textContent).toBe(
+            'Supported formats: txt, json, xml (Moodle)'
+        );
+    });
+
+    it('counts the first card of a new activity', () => {
+        // The counter used to stay at the 0 of its markup until a card was added.
+        expect(device.cardsGame).toHaveLength(1);
+        expect(document.getElementById('flipcardsENumCards').textContent).toBe('1');
+    });
+
+    it('explains what goes in the Questions tab', () => {
+        const info = panel('contents').firstElementChild;
+
+        expect(info.tagName).toBe('P');
+        expect(info.textContent).toContain('Add the cards with the text, image or sound of each side, and edit them one by one.');
+    });
+
+    it('leaves the state of each switch to its native checkbox', () => {
+        document.querySelectorAll('.toggle-input:not(:disabled)').forEach((input) => input.click());
+
+        expect(document.querySelectorAll('[role="switch"], [aria-checked]')).toHaveLength(0);
+    });
+
+    it('leaves no empty placeholder of the old report at the end of Options', () => {
+        expect(document.querySelector('.Games-Reportdiv')).toBeNull();
+    });
+
+    it('organises the edition form into shared WAI-ARIA tabs', () => {
+        expect(tabNames()).toEqual([
+            'instructions',
+            'options',
+            'contents',
+            'passwords',
+            'after',
+            'grading',
+            'texts',
+        ]);
+
+        expect(panel('instructions').querySelector('#eXeGameInstructions')).not.toBeNull();
+        expect(panel('options').querySelector('#flipcardsEOptions')).not.toBeNull();
+        expect(panel('contents').querySelector('#flipcardsEPanel')).not.toBeNull();
+        expect(panel('passwords').querySelector('#eXeGameShowClue')).not.toBeNull();
+        expect(panel('after').querySelector('#eXeIdeviceTextAfter')).not.toBeNull();
+        expect(panel('grading').querySelector('.exe-progress-report-wrapper')).not.toBeNull();
+        expect(panel('texts').querySelector('#ci18n_msgSubmit')).not.toBeNull();
+    });
+
+    it('provides accessible help tooltips for option rows', () => {
+        const optionHelps = [...panel('options').querySelectorAll('#flipcardsEOptions .exe-idevice-help')];
+        expect(optionHelps.length).toBe(7);
+
+        for (const help of optionHelps) {
+            expect(help.tagName).toBe('BUTTON');
+            expect(help.type).toBe('button');
+            expect(help.title).toBe('Information');
+            const targetId = help.getAttribute('aria-controls');
+            expect(targetId).toBeTruthy();
+            expect(document.getElementById(targetId)?.textContent.length).toBeGreaterThan(10);
+        }
+    });
+
+    it('does not toggle switches when clicking help icons inside toggle-items', () => {
+        const minimizeInput = document.getElementById('flipcardsEShowMinimize');
+        const minimizeHelp = minimizeInput.closest('div').querySelector('.exe-idevice-help');
+        expect(minimizeHelp).not.toBeNull();
+        expect(minimizeInput.checked).toBe(false);
+        minimizeHelp.click();
+        expect(minimizeInput.checked).toBe(false);
+    });
+
+    it('disposes all option tooltips when the edition closes', () => {
+        expect(tooltips.size).toBeGreaterThanOrEqual(7);
+        device.$lifecycle.destroy();
+        for (const tooltip of tooltips.values()) {
+            expect(tooltip.dispose).toHaveBeenCalledTimes(1);
+        }
+    });
+
+    it('switches tabs when one is clicked', () => {
+        document.getElementById('flipcardsQEIdeviceForm-tab-options').click();
+
+        expect(panel('options').classList.contains('active')).toBe(true);
+        expect(panel('instructions').classList.contains('active')).toBe(false);
+    });
+
+    it('restores form values and updates gamification modules on updateFieldGame', () => {
+        device.updateFieldGame({
+            showMinimize: true,
+            percentajeCards: 80,
+            author: 'Test Author',
+            showSolution: true,
+            timeShowSolution: 5,
+            time: 25,
+            type: 3,
+            itinerary: {},
+            evaluation: true,
+            evaluationID: 'eval-flip-1',
+            passScoreMode: 1,
+            passScoreCustom: 7,
+            isScorm: 1,
+            textButtonScorm: 'Submit',
+            repeatActivity: true,
+            weighted: 50,
+            cardsGame: [{ eText: 'card1', eTextBk: 'cardBack1' }],
+        });
+
+        expect(document.getElementById('flipcardsEShowMinimize').checked).toBe(true);
+        expect(document.getElementById('flipcardsEPercentajeCards').value).toBe('80');
+        expect(document.getElementById('flipcardsEAuthory').value).toBe('Test Author');
+        expect(document.getElementById('flipcardsEShowSolution').checked).toBe(true);
+        expect(document.getElementById('flipcardsETimeShowSolution').value).toBe('5');
+        expect(document.getElementById('flipcardsETime').value).toBe('25');
+        expect(document.getElementById('flipcardsETypeMemory').checked).toBe(true);
+        expect(document.getElementById('flipcardsETimeDiv').style.display).toBe('flex');
+        expect(document.getElementById('flipcardBackDiv').style.display).not.toBe('none');
+    });
+
+    describe('saving and validation', () => {
+        let editors;
+        let tinymceGet;
+
+        beforeEach(() => {
+            editors = {
+                eXeGameInstructions: '<p>Click on cards</p>',
+                eXeIdeviceTextAfter: '<p>Extra flipcards info</p>',
+            };
+            tinymceGet = vi.spyOn(global.tinymce, 'get').mockImplementation((id) =>
+                id in editors
+                    ? {
+                          initialized: true,
+                          getContent: () => editors[id],
+                          setContent: (html) => (editors[id] = html),
+                          hide: vi.fn(),
+                          show: vi.fn(),
+                      }
+                    : null
+            );
+        });
+
+        afterEach(() => {
+            tinymceGet.mockRestore();
+        });
+
+        // A valid activity, with its card on screen.
+        const loadGame = () => {
+            device.updateFieldGame({
+                showMinimize: true,
+                percentajeCards: 100,
+                author: 'Author Name',
+                showSolution: true,
+                timeShowSolution: 3,
+                time: 0,
+                type: 0,
+                itinerary: {},
+                evaluation: false,
+                evaluationID: '',
+                passScoreMode: 0,
+                passScoreCustom: 5,
+                isScorm: 0,
+                textButtonScorm: '',
+                repeatActivity: false,
+                weighted: 100,
+                cardsGame: [
+                    {
+                        eText: 'front card text',
+                        eTextBk: 'back card text',
+                        url: '',
+                        urlBk: '',
+                        author: '',
+                        alt: '',
+                        audio: '',
+                        audioBk: '',
+                    },
+                ],
+            });
+            $('#flipcardsEText').val('front card text');
+            $('#flipcardsETextBack').val('back card text');
+        };
+
+        it('saves valid data and outputs expected HTML structure', () => {
+            loadGame();
+
+            const data = device.validateData();
+            expect(data).not.toBe(false);
+            expect(data.showMinimize).toBe(true);
+            expect(data.instructions).toBe('<p>Click on cards</p>');
+            expect(unescape(data.textAfter)).toBe('<p>Extra flipcards info</p>');
+
+            const savedHtml = device.save();
+            expect(savedHtml).toContain('flipcards-IDevice');
+            expect(savedHtml).toContain('flipcards-instructions');
+            expect(savedHtml).toContain('flipcards-DataGame');
+            expect(savedHtml).toContain('flipcards-extra-content');
+        });
+
+        it('saves an emptied Instructions or After editor as empty', () => {
+            loadGame();
+            // TinyMCE does not write back to its textarea, which keeps what the form was loaded with.
+            $('#eXeGameInstructions').val('<p>Old instructions</p>');
+            $('#eXeIdeviceTextAfter').val('<p>Old extra info</p>');
+            editors.eXeGameInstructions = '';
+            editors.eXeIdeviceTextAfter = '';
+
+            const data = device.validateData();
+
+            expect(data.instructions).toBe('');
+            expect(data.textAfter).toBe('');
+            expect(device.save()).not.toContain('Old');
+        });
+
+        it('asks for the front of a blank card, which comes first on screen', () => {
+            loadGame();
+            $('#flipcardsEText').val('');
+            $('#flipcardsETextBack').val('');
+
+            expect(device.save()).toBeUndefined();
+            expect(eXe.app.getLastAlert()).toBe("Provide an image, text or audio for each card's front side");
+        });
+
+        it('asks for the back once the front is complete', () => {
+            loadGame();
+            $('#flipcardsETextBack').val('');
+
+            expect(device.save()).toBeUndefined();
+            expect(eXe.app.getLastAlert()).toBe("Provide an image, text or audio for each card's back side");
+        });
+
+        describe('sharing the cards as text', () => {
+            let downloadBlob;
+            const encode = (text) => device.encodeURIComponentSafe(text);
+            const showCards = (cards) => {
+                device.cardsGame = cards;
+                device.active = 0;
+                device.showCard(0);
+            };
+
+            beforeEach(() => {
+                downloadBlob = vi
+                    .spyOn($exeIDevicesEdition.iDevice.gamification.share, 'downloadBlob')
+                    .mockReturnValue(true);
+            });
+
+            afterEach(() => {
+                downloadBlob.mockRestore();
+            });
+
+            it('exports readable lines for the cards with text on both sides', async () => {
+                showCards([
+                    { ...device.getCardDefault(), eText: encode('Heart 50%'), eTextBk: encode('Organ #1') },
+                    { ...device.getCardDefault(), url: 'images/front.png', urlBk: 'images/back.png' },
+                ]);
+
+                document.getElementById('eXeGameExportQuestions').click();
+
+                expect(downloadBlob).toHaveBeenCalledTimes(1);
+                expect(await downloadBlob.mock.calls[0][0].text()).toBe('Heart 50%#Organ 1');
+            });
+
+            it('does not export a card left empty', () => {
+                showCards([device.getCardDefault()]);
+
+                document.getElementById('eXeGameExportQuestions').click();
+
+                expect(downloadBlob).not.toHaveBeenCalled();
+            });
+
+            it('imports text cards ready for the activity, even with a "%"', () => {
+                device.importGame('Heart 50%#Organ that pumps blood', 'text/plain');
+
+                const card = device.cardsGame.at(-1);
+                expect(device.decodeURIComponentSafe(card.eText)).toBe('Heart 50%');
+                expect(device.decodeURIComponentSafe(card.eTextBk)).toBe('Organ that pumps blood');
+            });
+        });
+    });
+
+    describe('adding cards to the one on screen', () => {
+        // The author typed it in a new activity: it is on screen, not in the list yet.
+        const typeOnScreen = (front, back) => {
+            $('#flipcardsEText').val(front);
+            $('#flipcardsETextBack').val(back);
+        };
+        const fronts = () => device.cardsGame.map((card) => device.decodeURIComponentSafe(card.eText));
+
+        it('keeps it when it is complete', () => {
+            typeOnScreen('Sun', 'Star');
+
+            device.insertCards(['Moon#Satellite']);
+
+            expect(fronts()).toEqual(['Sun', 'Moon']);
+        });
+
+        it('keeps it when a copied card is pasted', () => {
+            typeOnScreen('Sun', 'Star');
+            device.typeEdit = 0;
+            device.clipBoard = { ...device.getCardDefault(), eText: 'Moon', eTextBk: 'Satellite' };
+
+            device.pasteCard();
+
+            expect(fronts()).toEqual(['Sun', 'Moon']);
+        });
+
+        it('leaves it out, without its warning, when it is incomplete', () => {
+            typeOnScreen('', 'Star');
+            eXe.app.alert.mockClear();
+
+            device.insertCards(['Moon#Satellite']);
+
+            expect(fronts()).toEqual(['Moon']);
+            expect(eXe.app.alert).not.toHaveBeenCalled();
+        });
+
+        it('leaves it out of a paste, without its warning, when it is incomplete', () => {
+            typeOnScreen('', 'Star');
+            device.typeEdit = 0;
+            device.clipBoard = { ...device.getCardDefault(), eText: 'Moon', eTextBk: 'Satellite' };
+
+            eXe.app.alert.mockClear();
+            device.pasteCard();
+
+            expect(fronts()).toContain('Moon');
+            expect(eXe.app.alert).not.toHaveBeenCalled();
+        });
+    });
 });

@@ -194,8 +194,9 @@ export default defineConfig({
                 baseURL: process.env.E2E_BASE_URL || 'http://localhost:3001',
                 serviceWorkers: 'allow',
             },
-            // project-properties-tabs needs forcedColors emulation, which Playwright only supports in Chromium
-            testIgnore: [/.*-static\.spec\.ts/, /project-properties-tabs\.spec\.ts/],
+            // project-properties-tabs and idevice-tabs need forcedColors emulation, which Playwright only supports
+            // in Chromium
+            testIgnore: [/.*-static\.spec\.ts/, /project-properties-tabs\.spec\.ts/, /idevice-tabs\.spec\.ts/],
         },
         // {
         //     name: 'webkit',

@@ -32,22 +32,31 @@ for (const device of [
             await addIdevice(page, device.name);
         }
         const form = page.locator(device.form);
-        await form
-            .locator('.exe-form-tabs a')
-            .filter({ hasText: /^Grading$/ })
-            .click();
+        await form.locator('[data-exe-tab="grading"]').click();
         const report = form.locator('#eXeProgressReport');
         const identifier = form.locator('#eXeProgressReportID');
-        const help = form.locator('#eXeProgressReportHelp');
-        const link = form.locator('#eXeProgressReportHelpLnk');
+        const help = form.locator('.exe-progress-report-wrapper .help-content');
+        const information = form.locator('.exe-progress-report-wrapper .exe-idevice-help');
         const reportId = await identifier.inputValue();
 
         for (const enabled of [false, true]) {
             await report.setChecked(enabled);
             await expect(help).toBeHidden();
-            await link.locator('img').click();
+            await information.locator('.info-icon-solid-green').click();
             await expect(help).toBeVisible();
-            await link.click();
+            await expect(information).toHaveAttribute('aria-expanded', 'true');
+            // A second click on the icon closes it, as in the project properties.
+            await information.click();
+            await expect(help).toBeHidden();
+            await expect(information).toHaveAttribute('aria-expanded', 'false');
+            await information.click();
+            await expect(help).toBeVisible();
+            await information.press('Escape');
+            await expect(help).toBeHidden();
+            await expect(information).toHaveAttribute('aria-expanded', 'false');
+            await information.click();
+            await expect(help).toBeVisible();
+            await form.locator('.exe-scorm-wrapper h3').click();
             await expect(help).toBeHidden();
             await expect(report).toBeChecked({ checked: enabled });
             await expect(identifier).toBeEnabled({ enabled });
@@ -56,7 +65,7 @@ for (const device of [
     });
 }
 
-test('rubric reports its custom pass mark in the workarea and preview', async ({
+test('rubric reports its custom pass mark in the workarea and preview, with or without the date', async ({
     authenticatedPage: page,
     createProject,
 }) => {
@@ -75,10 +84,7 @@ test('rubric reports its custom pass mark in the workarea and preview', async ({
         await rows.nth(index).locator('input.ri_Weight').nth(0).fill('4');
         await rows.nth(index).locator('input.ri_Weight').nth(1).fill('3');
     }
-    await page
-        .locator('.exe-form-tabs a')
-        .filter({ hasText: /^Grading$/ })
-        .click();
+    await page.locator('#ri_IdeviceForm-tab-grading').click();
     await page.locator('#eXeProgressReport').check();
     const reportId = await page.locator('#eXeProgressReportID').inputValue();
     await page.locator('#eXePassScoreCustom').check();
@@ -131,6 +137,7 @@ test('rubric reports its custom pass mark in the workarea and preview', async ({
     const reportRow = frame.locator(`.IFPP-ComponentItem[data-component-id="${rubricId}"]`);
     await expect(reportRow).toHaveAttribute('data-is-evaluable', 'true');
     await expect(reportRow.locator('.IFPP-ComponentScore')).toHaveText('7.50');
+    await expect(reportRow.locator('.IFPP-ComponentDate')).toHaveText(/^\d{2}\/\d{2}\/\d{4} /);
     await expect(reportRow.locator('.IFPP-IdiviceIconFail')).toBeVisible();
 
     for (let index = 0; index < (await previewRows.count()); index++) {
@@ -147,6 +154,18 @@ test('rubric reports its custom pass mark in the workarea and preview', async ({
         .toBe(true);
     await expect(reportRow.locator('.IFPP-ComponentScore')).toHaveText('10');
     await expect(reportRow.locator('.IFPP-IdiviceIconPass')).toBeVisible();
+
+    // The author can leave out when each activity was completed.
+    // The panel closes offscreen rather than becoming hidden in the DOM.
+    await page.locator('#previewsidenavclose').click();
+    await editIdevice(page, reportNodeId);
+    await page.locator('#reportQEIdeviceForm-tab-options').click();
+    await page.locator('#informeEShowDate').uncheck();
+    await saveIdevice(page, reportNodeId);
+    expect(await waitForPreviewContent(page, 30000)).toBe(true);
+    const rowWithoutDate = getPreviewFrame(page).locator(`.IFPP-ComponentItem[data-component-id="${rubricId}"]`);
+    await expect(rowWithoutDate.locator('.IFPP-ComponentScore')).toHaveText('10');
+    await expect(rowWithoutDate.locator('.IFPP-ComponentDate')).toHaveText('');
 });
 
 test('scrambled-list shows the learner their score outside the editor', async ({
@@ -218,23 +237,16 @@ test('new true-or-false activities offer a report only in test mode', async ({
     await addIdevice(page, 'trueorfalse');
     const nodeId = (await page.locator('#node-content .idevice_node.trueorfalse').getAttribute('id'))!;
     await expect(page.locator('#tofEIsTest')).not.toBeChecked();
-    await page
-        .locator('.exe-form-tabs a')
-        .filter({ hasText: /^Grading$/ })
-        .click();
+    await page.locator('#trueorfalseIdeviceForm-tab-grading').click();
     await expect(page.locator('.exe-progress-report-wrapper')).toBeHidden();
 
-    await page.locator('.exe-form-tabs a').first().click();
-    await page.getByRole('link', { name: 'Options', exact: true }).click();
+    await page.locator('#trueorfalseIdeviceForm-tab-options').click();
     await page.locator('#tofEIsTest').check();
     await page.waitForFunction(() => (window as any).tinymce?.get('tofEQuestionEditor')?.initialized);
     await page.evaluate(() =>
         (window as any).tinymce.get('tofEQuestionEditor').setContent('<p>The Earth is a planet.</p>'),
     );
-    await page
-        .locator('.exe-form-tabs a')
-        .filter({ hasText: /^Grading$/ })
-        .click();
+    await page.locator('#trueorfalseIdeviceForm-tab-grading').click();
     await expect(page.locator('.exe-progress-report-wrapper')).toBeVisible();
     await page.locator('#eXeProgressReport').check();
     const reportId = await page.locator('#eXeProgressReportID').inputValue();
@@ -242,20 +254,13 @@ test('new true-or-false activities offer a report only in test mode', async ({
 
     await editIdevice(page, nodeId);
     await expect(page.locator('#tofEIsTest')).toBeChecked();
-    await page
-        .locator('.exe-form-tabs a')
-        .filter({ hasText: /^Grading$/ })
-        .click();
+    await page.locator('#trueorfalseIdeviceForm-tab-grading').click();
     await expect(page.locator('.exe-progress-report-wrapper')).toBeVisible();
     await expect(page.locator('#eXeProgressReport')).toBeChecked();
     await expect(page.locator('#eXeProgressReportID')).toHaveValue(reportId);
-    await page.locator('.exe-form-tabs a').first().click();
-    await page.getByRole('link', { name: 'Options', exact: true }).click();
+    await page.locator('#trueorfalseIdeviceForm-tab-options').click();
     await page.locator('#tofEIsTest').uncheck();
-    await page
-        .locator('.exe-form-tabs a')
-        .filter({ hasText: /^Grading$/ })
-        .click();
+    await page.locator('#trueorfalseIdeviceForm-tab-grading').click();
     await expect(page.locator('.exe-progress-report-wrapper')).toBeHidden();
     await saveIdevice(page, nodeId);
     expect(await waitForPreviewContent(page, 30000)).toBe(true);
@@ -277,8 +282,7 @@ test('true-or-false tells the learner its minimum score, in quiz mode only', asy
     const nodeId = (await page.locator('#node-content .idevice_node.trueorfalse').getAttribute('id'))!;
     const form = page.locator('#trueorfalseIdeviceForm');
     const optionsTab = async () => {
-        await form.locator('.exe-form-tabs a').first().click();
-        await form.getByRole('link', { name: 'Options', exact: true }).click();
+        await form.locator('#trueorfalseIdeviceForm-tab-options').click();
     };
 
     await optionsTab();
@@ -287,10 +291,7 @@ test('true-or-false tells the learner its minimum score, in quiz mode only', asy
     await page.evaluate(() =>
         (window as any).tinymce.get('tofEQuestionEditor').setContent('<p>The Earth is a planet.</p>'),
     );
-    await form
-        .locator('.exe-form-tabs a')
-        .filter({ hasText: /^Grading$/ })
-        .click();
+    await form.locator('#trueorfalseIdeviceForm-tab-grading').click();
     await page.locator('#eXeProgressReport').check();
     await page.locator('#eXePassScoreCustom').check();
     await page.locator('#eXePassScoreValue').fill('7');
@@ -319,10 +320,7 @@ test('true-or-false tells the learner its minimum score, in quiz mode only', asy
     await editIdevice(page, nodeId);
     await optionsTab();
     await page.locator('#tofEIsTest').check();
-    await form
-        .locator('.exe-form-tabs a')
-        .filter({ hasText: /^Grading$/ })
-        .click();
+    await form.locator('#trueorfalseIdeviceForm-tab-grading').click();
     await page.locator('#eXeProgressReport').check();
     await page.locator('#eXeProgressReportID').fill('tof-report');
     await saveIdevice(page, nodeId);

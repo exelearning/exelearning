@@ -3096,10 +3096,19 @@ export default class IdeviceNode {
      */
     async save(loadPage) {
         clearInterval(this.checkDeviceLoadInterval);
-        // Stop any playing audio when exiting edition mode
-        if (typeof $exeDevicesEdition !== 'undefined' && $exeDevicesEdition.iDevice?.gamification?.helpers?.stopSound) {
-            $exeDevicesEdition.iDevice.gamification.helpers.stopSound();
+        // Stop any playing audio when exiting edition mode. Refactored iDevices
+        // use $exeIDevicesEdition, the rest $exeDevicesEdition, and each object
+        // keeps its own player, so both are stopped.
+        for (const edition of [globalThis.$exeDevicesEdition, globalThis.$exeIDevicesEdition]) {
+            edition?.iDevice?.gamification?.helpers?.stopSound?.();
         }
+        // An iDevice that refuses to save says why in the alert or confirm
+        // window. Counting the requests for them, rather than looking for an
+        // open one later, still tells so once the author has closed it.
+        const modals = eXeLearning.app.modals;
+        const windowRequests = () =>
+            (modals.alert.showRequests || 0) + (modals.confirm.showRequests || 0);
+        const requestsBefore = windowRequests();
         // Save data of idevice in database
         let saveOk = await this.saveIdeviceProcess();
         // Desactivate user flags
@@ -3136,10 +3145,11 @@ export default class IdeviceNode {
             this.toogleIdeviceButtonsState(false);
             setTimeout(() => {
                 if (
-                    !eXeLearning.app.modals.alert.modal._isShown &&
-                    !eXeLearning.app.modals.confirm.modal._isShown
+                    windowRequests() === requestsBefore &&
+                    !modals.alert.modal._isShown &&
+                    !modals.confirm.modal._isShown
                 ) {
-                    eXeLearning.app.modals.alert.show({
+                    modals.alert.show({
                         title: _('Error saving the iDevice'),
                         body: _('Failed to save the iDevice to database'),
                         contentId: 'error',

@@ -1,5 +1,15 @@
 import { test, expect } from '../../fixtures/auth.fixture';
-import { reloadPage, gotoWorkarea } from '../../helpers/workarea-helpers';
+import {
+    reloadPage,
+    gotoWorkarea,
+    addIdevice,
+    editIdevice,
+    saveIdevice,
+    saveProject,
+    selectFirstPage,
+    waitForAppReady,
+} from '../../helpers/workarea-helpers';
+import { addWithAi, closeAlert, exportText, importText } from '../../helpers/idevice-share-helpers';
 import { WorkareaPage } from '../../pages/workarea.page';
 import type { Page, FrameLocator } from '@playwright/test';
 
@@ -518,4 +528,37 @@ test.describe('Relate iDevice', () => {
             await expect(idevice).toBeVisible({ timeout: 15000 });
         });
     });
+});
+
+test('Relate shares its pairs', async ({ authenticatedPage: page, createProject }) => {
+    // Saving and reloading the project takes most of a minute in Firefox.
+    test.setTimeout(90_000);
+    const uuid = await createProject(page, 'Relate sharing');
+    await gotoWorkarea(page, uuid);
+    await waitForAppReady(page);
+    await selectFirstPage(page);
+    await addIdevice(page, 'relate');
+    const id = await page.locator('.idevice_node.relate').first().getAttribute('id');
+    expect(id).toBeTruthy();
+
+    // Import a real text file: its pairs replace the empty first card.
+    await page.locator('#relateQIdeviceForm-tab-contents').click();
+    await importText(page, 'pairs.txt', 'Sun#Sol\nMoon#Luna\n');
+    await expect(page.locator('#rclENumCards')).toHaveText('2');
+    await expect(page.locator('#rclEText')).toHaveValue('Sun');
+    // The AI window adds the lines it is given.
+    await addWithAi(page, 'Star#Estrella');
+    await expect(page.locator('#rclENumCards')).toHaveText('3');
+    await closeAlert(page, 'The questions have been added successfully');
+    // Export writes the format Import reads back.
+    expect((await exportText(page)).split('\n')).toEqual(['Sun#Sol', 'Moon#Luna', 'Star#Estrella']);
+
+    await saveIdevice(page, id!);
+    await saveProject(page);
+    await reloadPage(page);
+    await selectFirstPage(page);
+    await editIdevice(page, id!);
+    await page.locator('#relateQIdeviceForm-tab-contents').click();
+    await expect(page.locator('#rclENumCards')).toHaveText('3');
+    await expect(page.locator('#rclETextBack')).toHaveValue('Sol');
 });

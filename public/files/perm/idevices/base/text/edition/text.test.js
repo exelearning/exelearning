@@ -878,23 +878,6 @@ describe('text iDevice', () => {
     });
   });
 
-  describe('escapeHtml', () => {
-    it('escapes HTML special characters', () => {
-      $exeDevice.init(mockElement, {});
-
-      expect($exeDevice.escapeHtml('<script>')).toBe('&lt;script&gt;');
-      expect($exeDevice.escapeHtml('a & b')).toBe('a &amp; b');
-    });
-
-    it('returns empty string for falsy input', () => {
-      $exeDevice.init(mockElement, {});
-
-      expect($exeDevice.escapeHtml('')).toBe('');
-      expect($exeDevice.escapeHtml(null)).toBe('');
-      expect($exeDevice.escapeHtml(undefined)).toBe('');
-    });
-  });
-
   describe('escapeHtmlAttr', () => {
     it('escapes attribute special characters', () => {
       $exeDevice.init(mockElement, {});

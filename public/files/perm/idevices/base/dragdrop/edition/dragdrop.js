@@ -22,7 +22,6 @@ var $exeDevice = {
     numberCutCuestion: -1,
     clipBoard: '',
     idevicePath: '',
-    playerAudio: '',
     version: 2.0,
     id: false,
     mode: false,
@@ -47,7 +46,6 @@ var $exeDevice = {
         );
         if (!$exeDevice.cardsGame.length)
             $exeDevice.cardsGame.push($exeDevice.getDefaultCard());
-        $('#dadETextDiv, #dadETextDivBack').hide();
         this.active = 0;
     },
 
@@ -117,10 +115,7 @@ var $exeDevice = {
             'Your browser is not compatible with this tool.'
         );
         msgs.msgCompleteData = _(
-            'You must complete the text and add an image or video'
-        );
-        msgs.msgCompleteDataBack = _(
-            'You must complete the text and add an image or video'
+            'Add a text and an image or a sound to the card'
         );
         msgs.msgEOneCard = _('Please create at least one activity');
         msgs.msgTitleAltImageWarning = _('Accessibility warning');
@@ -130,209 +125,208 @@ var $exeDevice = {
     },
 
     createForm: function () {
-        const path = $exeDevice.idevicePath,
-            html = `
+        const edition = $exeIDevicesEdition.iDevice;
+        const path = this.idevicePath;
+
+        const optionsHtml = `
+            <div id="dragdropEOptions">
+                <div class="d-flex align-items-center gap-2 flex-nowrap mb-3" role="radiogroup" aria-labelledby="dadEDragLabel">
+                    <span id="dadEDragLabel">${_('Source')}:</span>
+                    <div class="form-check form-check-inline m-0">
+                        <input class="DAD-Drags form-check-input" checked id="dadEDragMedia" type="radio" name="flctypedrag" value="0"/>
+                        <label for="dadEDragMedia" class="form-check-label">${_('Media')}</label>
+                    </div>
+                    <div class="form-check form-check-inline m-0">
+                        <input class="DAD-Drags form-check-input" id="dadEDragDefintion" type="radio" name="flctypedrag" value="1"/>
+                        <label for="dadEDragDefintion" class="form-check-label">${_('Text')}</label>
+                    </div>
+                    ${edition.common.getHelpTooltip(
+                        _('Select whether players drag media (images or audio) onto text or text onto media.')
+                    )}
+                </div>
+                <div class="d-flex align-items-center gap-2 flex-nowrap mb-3" role="radiogroup" aria-labelledby="dadETypeLabel">
+                    <span id="dadETypeLabel">${_('Level')}:</span>
+                    <div class="form-check form-check-inline m-0">
+                        <input class="DAD-Type form-check-input" id="dadETypeShow" type="radio" name="flctype" value="0"/>
+                        <label for="dadETypeShow" class="form-check-label">${_('Essential')}</label>
+                    </div>
+                    <div class="form-check form-check-inline m-0">
+                        <input class="DAD-Type form-check-input" checked id="dadETypeNavigation" type="radio" name="flctype" value="1"/>
+                        <label for="dadETypeNavigation" class="form-check-label">${_('Medium')}</label>
+                    </div>
+                    <div class="form-check form-check-inline m-0">
+                       <input class="DAD-Type form-check-input" id="dadETypeIdentify" type="radio" name="flctype" value="2"/>
+                       <label for="dadETypeIdentify" class="form-check-label">${_('Advanced')}</label>
+                    </div>
+                    ${edition.common.getHelpTooltip(
+                        _('Select the difficulty level. In Advanced level, learners must complete the activity within a time limit.')
+                    )}
+                </div>
+                <div style="display:none" class="mb-3">
+                    <span class="toggle-item">
+                        <span class="toggle-control">
+                            <input type="checkbox" checked id="dadEShowSolution" class="toggle-input" />
+                            <span class="toggle-visual" aria-hidden="true"></span>
+                        </span>
+                        <label class="toggle-label" for="dadEShowSolution">${_('Show solutions')}.</label>
+                    </span>
+                    <label for="dadETimeShowSolution" class="ms-2 mb-0">${_('Show solution time (seconds)')}:
+                        <input type="number" name="dadETimeShowSolution" id="dadETimeShowSolution" value="3" min="1" max="9" class="form-control" style="width:5ch" />
+                    </label>
+                </div>
+                <div id="dadETimeDiv" class="d-none align-items-center gap-2 flex-nowrap mb-3">
+                    <label for="dadETime" class="mb-0">${_('Time (minutes)')}:</label>
+                    <input type="number" name="dadETime" id="dadETime" value="3" min="0" max="59" class="form-control" style="width:5ch" />
+                    ${edition.common.getHelpTooltip(
+                        _('Maximum time allowed to complete the game. 0 for unlimited time.')
+                    )}
+                </div>
+                <div class="mb-3 d-flex align-items-center gap-2">
+                    <span class="toggle-item">
+                        <span class="toggle-control">
+                            <input type="checkbox" id="dadEShowMinimize" class="toggle-input" />
+                            <span class="toggle-visual" aria-hidden="true"></span>
+                        </span>
+                        <label class="toggle-label" for="dadEShowMinimize">${_('Show minimized.')}</label>
+                    </span>
+                    ${edition.common.getHelpTooltip(
+                        _('Start with the game collapsed. Learners can expand it when they are ready to play.')
+                    )}
+                </div>
+                <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
+                    <label for="dadEPercentajeCards" class="mb-0">%${_('Activities')}:</label>
+                    <input type="number" name="dadEPercentajeCards" id="dadEPercentajeCards" value="100" min="1" max="100" class="form-control" style="width:6ch" />
+                    <span id="dadENumeroPercentaje">1/1</span>
+                    ${edition.common.getHelpTooltip(
+                        _('Percentage of available activities included in each game session.')
+                    )}
+                </div>
+                <div class="d-none align-items-center gap-2 flex-nowrap mb-3">
+                    <label for="dadEAuthory" class="mb-0">${_('Authorship')}:</label>
+                    <input id="dadEAuthory" type="text" class="form-control" />
+                </div>
+            </div>
+        `;
+
+        const activitiesHtml = `
+            <div class="DAD-EPanel" id="dadEPanel">                            
+                <div id="dadEDragDiv">
+                        <div class="DAD-DEOptionsMedia">
+                            <div class="DAD-DEOptionsGame">
+                                <span id="dadETitleWord">${_('Text')}</span>
+                                <div class="DAD-DEInputImage mb-3 gap-2" id="dadEWordDiv">
+                                    <label class="sr-av" for="dadEDefinition">${_('Text')}: </label>
+                                    <input type="text" id="dadEDefinition" maxlength="30" class="form-control"/>
+                                </div>
+                                <span class="DAD-DETitleImage" id="dadETitleImage">${_('Image URL')}</span>
+                                <div class="DAD-DEInputImage mb-3 gap-2" id="dadEInputImage">
+                                    <label class="sr-av" for="dadEURLImage">${_('Image URL')}</label>
+                                    <input type="text" class="exe-file-picker form-control me-0" id="dadEURLImage"/>
+                                    <a href="#" id="dadEPlayImage" class="DAD-ENavigationButton DAD-EPlayVideo" title="${_('Show')}">
+                                        <img src="${path}quextIEPlay.png" alt="${_('Show')}" class="DAD-DEButtonImage " />
+                                    </a>
+                                    <a href="#" id="dadEShowMore" class="DAD-ENavigationButton DAD-EShowMore" title="${_('More')}">
+                                        <img src="${path}quextEIMore.png" alt="${_('More')}" class="DAD-EButtonImage " />
+                                    </a>
+                                </div>
+                                <div class="DAD-DEAuthorAlt mb-3" id="dadEAuthorAlt">
+                                    <div class="DAD-DEInputAuthor">
+                                        <label>${_('Authorship')}</label><input id="dadEAuthor" type="text" class="DAD-EAuthor form-control" />
+                                    </div>
+                                    <div class="DAD-DEInputAlt">
+                                        <label>${_('Alt')}</label><input id="dadEAlt" type="text" class="DAD-EAlt form-control" />
+                                    </div>
+                                </div>
+                                <span id="dadETitleAudio">${_('Audio')}</span>
+                                <div class="DAD-DEInputAudio gap-2" id="dadEInputAudio" data-voice-recorder data-voice-input="#dadEURLAudio">
+                                    <label class="sr-av" for="dadEURLAudio">${_('URL')}</label>
+                                    <input type="text" class="exe-file-picker form-control me-0" id="dadEURLAudio"/>
+                                    <a href="#" id="dadEPlayAudio" class="DAD-ENavigationButton DAD-EPlayVideo" title="${_('Play audio')}">
+                                        <img src="${path}quextIEPlay.png" alt="${_('Play audio')}" class="DAD-EButtonImage " />
+                                    </a>
+                                </div>
+                            </div>
+                            <div class="DAD-DEMultiMediaOption">
+                                <div class="DAD-DEMultimedia" id="dadEMultimedia">
+                                    <img class="DAD-DEMedia" src="${path}quextIEImage.png" id="dadEImage" alt="${_('Image')}" />
+                                    <img class="DAD-DEMedia" src="${path}quextIEImage.png" id="dadENoImage" alt="${_('No image')}" />
+                                </div>
+                            </div>
+                        </div>
+                </div>                           
+                <div class="DAD-ENavigationButtons gap-2">
+                    <a href="#" id="dadEAddC" class="DAD-ENavigationButton" title="${_('Add question')}">
+                        <img src="${path}quextIEAdd.png" alt="${_('Add question')}" class="DAD-EButtonImage" />
+                    </a>
+                   
+                    <a href="#" id="dadEFirstC" class="DAD-ENavigationButton" title="${_('First question')}">
+                        <img src="${path}quextIEFirst.png" alt="${_('First question')}" class="DAD-EButtonImage" />
+                    </a>
+                    <a href="#" id="dadEPreviousC" class="DAD-ENavigationButton" title="${_('Previous question')}">
+                        <img src="${path}quextIEPrev.png" alt="${_('Previous question')}" class="DAD-EButtonImage" />
+                    </a>
+                    <label class="sr-av" for="dadENumberCard">${_('Question number:')}:</label>
+                    <input type="text" class="DAD-NumberCard form-control" id="dadENumberCard" value="1"/>
+                    <a href="#" id="dadENextC" class="DAD-ENavigationButton" title="${_('Next question')}">
+                        <img src="${path}quextIENext.png" alt="${_('Next question')}" class="DAD-EButtonImage" />
+                    </a>
+                    <a href="#" id="dadELastC" class="DAD-ENavigationButton" title="${_('Last question')}">
+                        <img src="${path}quextIELast.png" alt="${_('Last question')}" class="DAD-EButtonImage" />
+                    </a>
+                    <a href="#" id="dadEDeleteC" class="DAD-ENavigationButton" title="${_('Delete question')}">
+                        <img src="${path}quextIEDelete.png" alt="${_('Delete question')}" class="DAD-EButtonImage" />
+                    </a>
+                    <a href="#" id="dadECopyC" class="DAD-ENavigationButton" title="${_('Copy question')}">
+                        <img src="${path}quextIECopy.png" alt="${_('Copy question')}" class="DAD-EButtonImage" />
+                    </a>
+                    <a href="#" id="dadECutC" class="DAD-ENavigationButton" title="${_('Cut question')}">
+                        <img src="${path}quextIECut.png" alt="${_('Cut question')}" class="DAD-EButtonImage" />
+                    </a>
+                    <a href="#" id="dadEPasteC" class="DAD-ENavigationButton" title="${_('Paste question')}">
+                        <img src="${path}quextIEPaste.png" alt="${_('Paste question')}" class="DAD-EButtonImage" />
+                    </a>
+                </div>
+                <div class="DAD-ENumCardDiv" id="dadENumCardsDiv">
+                    <div class="DAD-ENumCardsIcon"><span class="sr-av">${_('activities')}:</span></div> 
+                    <span class="DAD-ENumCards" id="dadENumCards">0</span>
+                </div>
+            </div>
+        `;
+
+        const tabsHtml = edition.tabs.getHtml('dragdropQIdeviceForm', {
+            path,
+            instructions: c_('Drag each item onto the one it matches with'),
+            options: optionsHtml,
+            contents: activitiesHtml,
+            passwords: true,
+            after: true,
+            grading: true,
+            texts: this.ci18n,
+            share: false,
+            info: {
+                contents: _('Add the text, images and audio for each draggable item and edit them one by one.'),
+            },
+        });
+
+        const html = `
             <div id="dragdropQIdeviceForm">
-                ${$exeDevicesEdition.iDevice.common.getIdeviceDescription(
+                ${edition.common.getIdeviceDescription(
                     _('Create drag-and-drop activities combining texts, images, and audio clips, allowing interactions in any direction (e.g., dragging text onto images or audio, and vice versa).'),
                     'https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe40/html/arrastra.html',
                 )}
-                <div class="exe-form-tab" title="${_('General settings')}">
-                    ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset(c_('Drag each item onto the one it matches with'))}
-                    <fieldset class="exe-fieldset exe-fieldset-closed">
-                        <legend><a href="#">${_('Options')}</a></legend>
-                        <div>
-                            <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
-                                <span>${_('Source')}:</span>
-                                <div class="form-check form-check-inline m-0">
-                                    <input class="form-check-input" checked id="dadEDragMedia" type="radio" name="flctypedrag" value="0"/>
-                                    <label for="dadEDragMedia" class="form-check-label">${_('Media')}</label>
-                                </div>
-                                <div class="form-check form-check-inline m-0">
-                                    <input class="form-check-input" id="dadEDragDefintion" type="radio" name="flctypedrag" value="1"/>
-                                    <label for="dadEDragDefintion" class="form-check-label">${_('Text')}</label>
-                                </div>
-                            </div>
-                            <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
-                                <span>${_('Level')}:</span>
-                                <div class="form-check form-check-inline m-0">
-                                    <input class="DAD-Type form-check-input"  id="dadETypeShow" type="radio" name="flctype" value="0"/>
-                                    <label for="dadETypeShow" class="form-check-label">${_('Essential')}</label>
-                                </div>
-                                <div class="form-check form-check-inline m-0">
-                                    <input class="DAD-Type form-check-input" checked id="dadETypeNavigation" type="radio" name="flctype" value="1"/>
-                                    <label for="dadETypeNavigation" class="form-check-label">${_('Medium')}</label>
-                                </div>
-                                <div class="form-check form-check-inline m-0">
-                                   <input class="DAD-Type form-check-input" id="dadETypeIdentify" type="radio" name="flctype" value="2"/>
-                                   <label for="dadETypeIdentify" class="form-check-label">${_('Advanced')}</label>
-                                </div>
-                            </div>
-                            <div style="display:none" class="mb-3">
-                                <span class="toggle-item" role="switch" aria-checked="true">
-                                    <span class="toggle-control">
-                                        <input type="checkbox" checked id="dadEShowSolution" class="toggle-input" />
-                                        <span class="toggle-visual" aria-hidden="true"></span>
-                                    </span>
-                                    <label class="toggle-label" for="dadEShowSolution">${_('Show solutions')}.</label>
-                                </span>
-                                <label for="dadETimeShowSolution" class="ms-2 mb-0">${_('Show solution time (seconds)')}:
-                                    <input type="number" name="dadETimeShowSolution" id="dadETimeShowSolution" value="3" min="1" max="9" class="form-control" style="width:5ch" />
-                                </label>
-                            </div>
-                            <div id="dadETimeDiv" class="d-none align-items-center gap-2 flex-nowrap mb-3">
-                                <label for="dadETime" class="mb-0">${_('Time (minutes)')}:</label>
-                                <input type="number" name="dadETime" id="dadETime" value="3" min="0" max="59" class="form-control" style="width:5ch" />
-                            </div>
-                            <div class="mb-3">
-                                <span class="toggle-item" role="switch" aria-checked="false">
-                                    <span class="toggle-control">
-                                        <input type="checkbox" id="dadEShowMinimize" class="toggle-input" />
-                                        <span class="toggle-visual" aria-hidden="true"></span>
-                                    </span>
-                                    <label class="toggle-label" for="dadEShowMinimize">${_('Show minimized.')}</label>
-                                </span>
-                            </div>
-                            <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
-                                <label for="dadEPercentajeCards" class="mb-0">%${_('Activities')}:</label>
-                                <input type="number" name="dadEPercentajeCards" id="dadEPercentajeCards" value="100" min="1" max="100" class="form-control" style="width:6ch" />
-                                <span id="dadENumeroPercentaje">1/1</span>
-                            </div>
-                            <div class="d-none align-items-center gap-2 flex-nowrap mb-3">
-                                <label for="dadEAuthory" class="mb-0">${_('Authorship')}:</label>
-                                <input id="dadEAuthory" type="text" class="form-control" />
-                            </div>
-                            <div class="Games-Reportdiv d-flex align-items-center gap-2 flex-nowrap mt-3">
-                            </div>
-                        </div>
-                    </fieldset>
-                    <fieldset class="exe-fieldset">
-                        <legend><a href="#">${_('Activities')}</a></legend>
-                        <div class="DAD-EPanel" id="dadEPanel">                            
-                            <div id="dadEDragDiv">
-                                    <div class="DAD-DEOptionsMedia">
-                                        <div class="DAD-DEOptionsGame">
-                                            <span id="dadETitleWord">${_('Text')}</span>
-                                            <div class="DAD-DEInputImage mb-3 gap-2" id="dadEWordDiv">
-                                                <label class="sr-av" for="dadEDefinition">${_('Text')}: </label>
-                                                <input type="text" id="dadEDefinition" maxlength="30" class="form-control"/>
-                                            </div>
-                                            <span class="DAD-DETitleImage" id="dadETitleImage">${_('Image URL')}</span>
-                                            <div class="DAD-DEInputImage mb-3 gap-2" id="dadEInputImage">
-                                                <label class="sr-av" for="dadEURLImage">${_('Image URL')}</label>
-                                                <input type="text" class="exe-file-picker form-control me-0" id="dadEURLImage"/>
-                                                <a href="#" id="dadEPlayImage" class="DAD-ENavigationButton DAD-EPlayVideo" title="${_('Show')}">
-                                                    <img src="${path}quextIEPlay.png" alt="${_('Show')}" class="DAD-DEButtonImage " />
-                                                </a>
-                                                <a href="#" id="dadEShowMore" class="DAD-ENavigationButton DAD-EShowMore" title="${_('More')}">
-                                                    <img src="${path}quextEIMore.png" alt="${_('More')}" class="DAD-EButtonImage " />
-                                                </a>
-                                            </div>
-                                            <div class="DAD-DEAuthorAlt mb-3" id="dadEAuthorAlt">
-                                                <div class="DAD-DEInputAuthor">
-                                                    <label>${_('Authorship')}</label><input id="dadEAuthor" type="text" class="DAD-EAuthor form-control" />
-                                                </div>
-                                                <div class="DAD-DEInputAlt">
-                                                    <label>${_('Alt')}</label><input id="dadEAlt" type="text" class="DAD-EAlt form-control" />
-                                                </div>
-                                            </div>
-                                            <span id="dadETitleAudio">${_('Audio')}</span>
-                                            <div class="DAD-DEInputAudio gap-2" id="dadEInputAudio" data-voice-recorder data-voice-input="#dadEURLAudio">
-                                                <label class="sr-av" for="dadEURLAudio">${_('URL')}</label>
-                                                <input type="text" class="exe-file-picker form-control me-0" id="dadEURLAudio"/>
-                                                <a href="#" id="dadEPlayAudio" class="DAD-ENavigationButton DAD-EPlayVideo" title="${_('Play audio')}">
-                                                    <img src="${path}quextIEPlay.png" alt="${_('Play audio')}" class="DAD-EButtonImage " />
-                                                </a>
-                                            </div>
-                                        </div>
-                                        <div class="DAD-DEMultiMediaOption">
-                                            <div class="DAD-DEMultimedia" id="dadEMultimedia">
-                                                <img class="DAD-DEMedia" src="${path}quextIEImage.png" id="dadEImage" alt="${_('Image')}" />
-                                                <img class="DAD-DEMedia" src="${path}quextIEImage.png" id="dadENoImage" alt="${_('No image')}" />
-                                            </div>
-                                        </div>
-                                    </div>
-                            </div>                           
-                            <div class="DAD-ENavigationButtons gap-2">
-                                <a href="#" id="dadEAddC" class="DAD-ENavigationButton" title="${_('Add question')}">
-                                    <img src="${path}quextIEAdd.png" alt="${_('Add question')}" class="DAD-EButtonImage" />
-                                </a>
-                               
-                                <a href="#" id="dadEFirstC" class="DAD-ENavigationButton" title="${_('First question')}">
-                                    <img src="${path}quextIEFirst.png" alt="${_('First question')}" class="DAD-EButtonImage" />
-                                </a>
-                                <a href="#" id="dadEPreviousC" class="DAD-ENavigationButton" title="${_('Previous question')}">
-                                    <img src="${path}quextIEPrev.png" alt="${_('Previous question')}" class="DAD-EButtonImage" />
-                                </a>
-                                <label class="sr-av" for="dadENumberCard">${_('Question number:')}:</label>
-                                <input type="text" class="DAD-NumberCard form-control" id="dadENumberCard" value="1"/>
-                                <a href="#" id="dadENextC" class="DAD-ENavigationButton" title="${_('Next question')}">
-                                    <img src="${path}quextIENext.png" alt="${_('Next question')}" class="DAD-EButtonImage" />
-                                </a>
-                                <a href="#" id="dadELastC" class="DAD-ENavigationButton" title="${_('Last question')}">
-                                    <img src="${path}quextIELast.png" alt="${_('Last question')}" class="DAD-EButtonImage" />
-                                </a>
-                                <a href="#" id="dadEDeleteC" class="DAD-ENavigationButton" title="${_('Delete question')}">
-                                    <img src="${path}quextIEDelete.png" alt="${_('Delete question')}" class="DAD-EButtonImage" />
-                                </a>
-                                <a href="#" id="dadECopyC" class="DAD-ENavigationButton" title="${_('Copy question')}">
-                                    <img src="${path}quextIECopy.png" alt="${_('Copy question')}" class="DAD-EButtonImage" />
-                                </a>
-                                <a href="#" id="dadECutC" class="DAD-ENavigationButton" title="${_('Cut question')}">
-                                    <img src="${path}quextIECut.png" alt="${_('Cut question')}" class="DAD-EButtonImage" />
-                                </a>
-                                <a href="#" id="dadEPasteC" class="DAD-ENavigationButton" title="${_('Paste question')}">
-                                    <img src="${path}quextIEPaste.png" alt="${_('Paste question')}" class="DAD-EButtonImage" />
-                                </a>
-                            </div>
-                            <div class="DAD-ENumCardDiv" id="dadENumCardsDiv">
-                                <div class="DAD-ENumCardsIcon"><span class="sr-av">${_('activities')}:</span></div> 
-                                <span class="DAD-ENumCards" id="dadENumCards">0</span>
-                            </div>
-                        </div>
-                    </fieldset>
-                    ${$exeDevice.getTextFieldset('after')}
-                </div>
-                ${$exeDevicesEdition.iDevice.gamification.itinerary.getTab()}
-                ${$exeDevicesEdition.iDevice.gamification.scorm.getTab(path)}
-                ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
+                ${tabsHtml}
             </div>
         `;
         this.ideviceBody.innerHTML = html;
-        $exeDevicesEdition.iDevice.tabs.init('dragdropQIdeviceForm');
-        $exeDevicesEdition.iDevice.gamification.scorm.init();
+        edition.tabs.bind('dragdropQIdeviceForm');
+        edition.gamification.scorm.init();
         this.enableForm();
-    },
-
-    getTextFieldset: function (position) {
-        if (
-            typeof position !== 'string' ||
-            (position !== 'after' && position !== 'before')
-        )
-            return '';
-        let tit = _('Content after'),
-            id = 'After';
-        if (position === 'before') {
-            tit = _('Content before');
-            id = 'Before';
-        }
-        return `<fieldset class="exe-fieldset exe-feedback-fieldset exe-fieldset-closed">
-                    <legend>
-                        <a href="#">${tit} (${_('Optional').toLowerCase()})</a>
-                    </legend>
-                    <div>
-                        <p>
-                            <label for="eXeIdeviceText${id}" class="sr-av">${tit}:</label>
-                            <textarea id="eXeIdeviceText${id}" class="exe-html-editor"></textarea>
-                        </p>
-                    </div>
-                </fieldset>`;
     },
 
     clearCard: function () {
         $('#dadEURLImage').val('');
         $('#dadEAuthor').val('');
-        $('#dadEDAlt').val('');
+        $('#dadEAlt').val('');
         $('#dadEURLAudio').val('');
         $('#dadEDefinition').val('');
         $exeDevice.showImage();
@@ -351,7 +345,7 @@ var $exeDevice = {
 
     removeCard: function () {
         if ($exeDevice.cardsGame.length < 1) {
-            $exeDevice.showMessage($exeDevice.msgs.msgEOneCard);
+            $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgEOneCard);
             return;
         }
 
@@ -385,6 +379,9 @@ var $exeDevice = {
     },
 
     pasteCard: function () {
+        $exeIDevicesEdition.iDevice.gamification.share.keepQuestionOnScreen(
+            (options) => $exeDevice.validateCard(options)
+        );
         if ($exeDevice.typeEdit == 0) {
             $exeDevice.active++;
             $exeDevice.cardsGame.splice(
@@ -396,7 +393,7 @@ var $exeDevice = {
         } else if ($exeDevice.typeEdit == 1) {
             $('#dadEPasteC').hide();
             $exeDevice.typeEdit = -1;
-            $exeDevices.iDevice.gamification.helpers.arrayMove(
+            ($exeDevices?.iDevice?.gamification?.helpers || $exeIDevicesEdition?.iDevice?.gamification?.helpers).arrayMove(
                 $exeDevice.cardsGame,
                 $exeDevice.numberCutCuestion,
                 $exeDevice.active
@@ -444,7 +441,7 @@ var $exeDevice = {
         let num = Math.max(0, Math.min(i, $exeDevice.cardsGame.length - 1)),
             p = $exeDevice.cardsGame[num];
 
-        $exeDevicesEdition.iDevice.gamification.helpers.stopSound();
+        $exeIDevicesEdition.iDevice.gamification.helpers.stopSound();
         $('#dadEURLImage').val(p.url);
         $('#dadEAuthor').val(p.author);
         $('#dadEAlt').val(p.alt);
@@ -454,7 +451,7 @@ var $exeDevice = {
         $('#dadENumCards').text($exeDevice.cardsGame.length);
 
         if (p.audio.length > 3) {
-            $exeDevicesEdition.iDevice.gamification.helpers.playSound(p.audio);
+            $exeIDevicesEdition.iDevice.gamification.helpers.playSound(p.audio);
         }
         $exeDevice.showImage(p.url);
     },
@@ -467,7 +464,7 @@ var $exeDevice = {
         return s ? encodeURIComponent(s.replace('%', '&percnt;')) : s;
     },
 
-    validateCard: function () {
+    validateCard: function (options = {}) {
         let message = '',
             msgs = $exeDevice.msgs,
             p = {};
@@ -476,19 +473,21 @@ var $exeDevice = {
         p.url = $('#dadEURLImage').val().trim();
         p.author = $('#dadEAuthor').val();
         p.alt = $('#dadEAlt').val();
-        p.audio = $('#dadEURLAudio').val();
+        p.audio = $('#dadEURLAudio').val().trim();
 
-        if (p.definition.length == 0) {
+        // A card is a text and the image or sound it is matched with; the game
+        // only shows a file whose address has more than 3 characters.
+        if (
+            p.definition.length == 0 ||
+            (p.url.length < 4 && p.audio.length < 4)
+        ) {
             message = msgs.msgCompleteData;
-        }
-        if (p.url.length < 0 && p.audio.length < 4) {
-            message = msgs.msgCompleteDataBack;
         }
         if (message.length == 0) {
             $exeDevice.cardsGame[$exeDevice.active] = p;
             message = true;
         } else {
-            $exeDevice.showMessage(message);
+            if (!options.silent) $exeIDevicesEdition.iDevice.common.showMessage(message);
             message = false;
         }
         return message;
@@ -497,17 +496,16 @@ var $exeDevice = {
     enableForm: function () {
         $exeDevice.initCards();
 
-        const root = document.getElementById('dragDropIdeviceForm') || document;
-        $exeDevicesEdition.iDevice.voiceRecorder.initVoiceRecorders(root);
+        const root = document.getElementById('dragdropQIdeviceForm') || document;
+        $exeIDevicesEdition.iDevice.voiceRecorder.initVoiceRecorders(root);
 
         $exeDevice.loadPreviousValues();
         $exeDevice.addEvents();
-        $exeDevice.addEventCard();
     },
 
     updateCardsNumber: function () {
         let percentaje = parseInt(
-            $exeDevice.removeTags($('#dadEPercentajeCards').val())
+            $exeIDevicesEdition.iDevice.common.removeTags($('#dadEPercentajeCards').val())
         );
         if (isNaN(percentaje)) return;
         percentaje = Math.min(Math.max(percentaje, 1), 100);
@@ -518,94 +516,6 @@ var $exeDevice = {
         let num = Math.max(Math.round((percentaje * totalQuestions) / 100), 1);
 
         $('#dadENumeroPercentaje').text(`${num}/${totalQuestions}`);
-    },
-
-    addEventCard: function () {
-        const loadAndPlayImage = (index) => $exeDevice?.loadImage(index),
-            loadAndPlayAudio = (selector) =>
-                $exeDevice?.loadAudio($(selector).val());
-
-        $('#dadEURLImage').on('change', () => loadAndPlayImage(0));
-        $('#dadEURLImageBack').on('change', () => loadAndPlayImage(1));
-
-        $('#dadEPlayImage').on('click', (e) => {
-            e.preventDefault();
-            loadAndPlayImage(0);
-        });
-        $('#dadEPlayImageBack').on('click', (e) => {
-            e.preventDefault();
-            loadAndPlayImage(1);
-        });
-
-        $('#dadEURLAudio, #dadEURLAudioBack').on('change', function () {
-            loadAndPlayAudio(this);
-        });
-
-        $('#dadEPlayAudio').on('click', (e) => {
-            e.preventDefault();
-            loadAndPlayAudio('#dadEURLAudio');
-        });
-        $('#dadEPlayAudioBack').on('click', (e) => {
-            e.preventDefault();
-            loadAndPlayAudio('#dadEURLAudioBack');
-        });
-
-        $('#dadEText, #dadETextBack').on('keyup', function () {
-            const textDiv = $(this).is('#dadEText')
-                ? '#dadETextDiv'
-                : '#dadETextDivBack';
-            $(textDiv)
-                .html($(this).val())
-                .toggle($(this).val().trim().length > 0);
-        });
-
-        $('#dadEColor, #dadEColorBack').on('change', function () {
-            const textDiv = $(this).is('#dadEColor')
-                ? '#dadETextDiv'
-                : '#dadETextDivBack';
-            $(textDiv).css('color', $(this).val());
-        });
-
-        $('#dadEBgColor, #dadEBgColorBack').on('change', function () {
-            if (!$exeDevice) return;
-            const textDiv = $(this).is('#dadEBgColor')
-                    ? '#dadETextDiv'
-                    : '#dadETextDivBack',
-                bc = $exeDevice.hexToRgba($(this).val(), 0.7);
-            $(textDiv).css('background-color', bc);
-        });
-
-        $('#dadEImage').on('click', (e) =>
-            $exeDevice?.clickImage(e.pageX, e.pageY)
-        );
-
-        $('#dadECursor').on('click', function () {
-            $(this).hide();
-            $('#dadEX, #dadEY').val(0);
-        });
-
-        $('#dadEImageBack').on('click', (e) =>
-            $exeDevice?.clickImageBack(e.pageX, e.pageY)
-        );
-
-        $('#dadECursorBack').on('click', function () {
-            $(this).hide();
-            $('#dadEXBack, #dadEYBack').val(0);
-        });
-    },
-
-    hexToRgba: function (hex, opacity) {
-        return (
-            'rgba(' +
-            (hex = hex.replace('#', ''))
-                .match(new RegExp('(.{' + hex.length / 3 + '})', 'g'))
-                .map(function (l) {
-                    return parseInt(hex.length % 2 ? l + l : l, 16);
-                })
-                .concat(isFinite(opacity) ? opacity : 1)
-                .join(',') +
-            ')'
-        );
     },
 
     getDefaultCard: function () {
@@ -626,9 +536,11 @@ var $exeDevice = {
         if (originalHTML && Object.keys(originalHTML).length > 0) {
             const wrapper = $('<div></div>').html(originalHTML);
             let json = $('.dragdrop-DataGame', wrapper).text();
-            json = $exeDevices.iDevice.gamification.helpers.sanitizeJSONString(json);
-            const dataGame =
-                    $exeDevices.iDevice.gamification.helpers.isJsonString(json),
+            const helpers = $exeDevices?.iDevice?.gamification?.helpers || $exeIDevicesEdition?.iDevice?.gamification?.helpers;
+            if (helpers?.sanitizeJSONString) {
+                json = helpers.sanitizeJSONString(json);
+            }
+            const dataGame = helpers?.isJsonString ? helpers.isJsonString(json) : JSON.parse(json),
                 cards = dataGame.cardsGame,
                 $imagesLink = $('.dragdrop-LinkImages', wrapper),
                 $audiosLink = $('.dragdrop-LinkAudios', wrapper),
@@ -693,20 +605,11 @@ var $exeDevice = {
                 $('#eXeIdeviceTextAfter').val(textAfter);
             }
 
-            $exeDevicesEdition.iDevice.gamification.common.setLanguageTabValues(
+            $exeIDevicesEdition.iDevice.gamification.common.setLanguageTabValues(
                 dataGame.msgs
             );
             $exeDevice.showCard(0);
         }
-    },
-
-    escapeHtml: function (string) {
-        return String(string)
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;')
-            .replace(/'/g, '&#39;');
     },
 
     save: function () {
@@ -735,7 +638,10 @@ var $exeDevice = {
         let html = '<div class="dragdrop-IDevice">';
         html += `<div class="game-evaluation-ids js-hidden" data-id="${$exeDevice.getIdeviceID()}" data-evaluationb="${dataGame.evaluation}" data-evaluationid="${dataGame.evaluationID}"></div>`;
         html += `${divContent}<div class="dragdrop-DataGame js-hidden">${json}</div>${linksMedias}`;
-        const textAfter = tinyMCE.get('eXeIdeviceTextAfter').getContent();
+        const textAfter =
+            $exeIDevicesEdition.iDevice.common.getEditorContent(
+                'eXeIdeviceTextAfter'
+            );
         if (textAfter) {
             html += `<div class="dragdrop-extra-content">${textAfter}</div>`;
         }
@@ -784,10 +690,6 @@ var $exeDevice = {
             .join('');
     },
 
-    showMessage: function (msg) {
-        eXe.app.alert(msg);
-    },
-
     getIdeviceID: function () {
         const ideviceid =
             $('#dragdropQIdeviceForm')
@@ -798,28 +700,32 @@ var $exeDevice = {
     },
 
     validateData: function () {
-        const clear = $exeDevice.removeTags,
-            instructions = tinyMCE.get('eXeGameInstructions').getContent(),
-            textAfter = tinyMCE.get('eXeIdeviceTextAfter').getContent(),
+        const clear = $exeIDevicesEdition.iDevice.common.removeTags,
+            instructions = $exeIDevicesEdition.iDevice.common.getEditorContent(
+                'eXeGameInstructions'
+            ),
+            textAfter = $exeIDevicesEdition.iDevice.common.getEditorContent(
+                'eXeIdeviceTextAfter'
+            ),
             showMinimize = $('#dadEShowMinimize').is(':checked'),
             showSolution = $('#dadEShowSolution').is(':checked'),
             timeShowSolution = parseInt(
                 clear($('#dadETimeShowSolution').val())
             ),
             itinerary =
-                $exeDevicesEdition.iDevice.gamification.itinerary.getValues(),
+                $exeIDevicesEdition.iDevice.gamification.itinerary.getValues(),
             percentajeCards = parseInt(clear($('#dadEPercentajeCards').val())),
             author = $('#dadEAuthory').val(),
             cardsGame = $exeDevice.cardsGame,
-            scorm = $exeDevicesEdition.iDevice.gamification.scorm.getValues(),
+            scorm = $exeIDevicesEdition.iDevice.gamification.scorm.getValues(),
             type = parseInt($('input[name=flctype]:checked').val()),
             typeDrag = parseInt($('input[name=flctypedrag]:checked').val()),
             mode = 1,
             time = parseInt($('#dadETime').val()),
             progressBar =
-                $exeDevicesEdition.iDevice.gamification.progressBar.getValues(),
+                $exeIDevicesEdition.iDevice.gamification.progressBar.getValues(),
             passScore =
-                $exeDevicesEdition.iDevice.gamification.passScore.getValues(),
+                $exeIDevicesEdition.iDevice.gamification.passScore.getValues(),
             id = $exeDevice.getIdeviceID();
 
         if (!itinerary) return false;
@@ -889,7 +795,7 @@ var $exeDevice = {
                         this.naturalWidth,
                         this.naturalHeight
                     );
-                    $exeDevice.drawImage(this, mData);
+                    $exeIDevicesEdition.iDevice.common.drawImage(this, mData, true);
                     $image.show();
                     $nimage.hide();
                     return true;
@@ -899,27 +805,6 @@ var $exeDevice = {
             .on('error', function () {
                 return false;
             });
-    },
-
-    playSound: function (selectedFile) {
-        const lifecycle = this.$lifecycle;
-        const selectFile = $exeDevices.iDevice.gamification.media.extractURLGD(selectedFile);
-        $exeDevice.playerAudio = new Audio(selectFile);
-        // The element is never inserted in the form, so closing the editor
-        // would otherwise leave it playing and downloading.
-        lifecycle.ownMedia($exeDevice.playerAudio, 'previewAudio');
-        lifecycle.addEventListener($exeDevice.playerAudio, 'canplaythrough', () => {
-            $exeDevice?.playerAudio.play();
-        });
-    },
-
-    stopSound: function () {
-        if (
-            $exeDevice.playerAudio &&
-            typeof $exeDevice.playerAudio.pause === 'function'
-        ) {
-            $exeDevice.playerAudio.pause();
-        }
     },
 
     paintMouse: function (image, cursor, x, y) {
@@ -940,24 +825,12 @@ var $exeDevice = {
         }
     },
 
-    drawImage: function (image, mData) {
-        $(image).css({
-            position: 'absolute',
-            left: `${mData.x}px`,
-            top: `${mData.y}px`,
-            width: `${mData.w}px`,
-            height: `${mData.h}px`,
-        });
-    },
-
     addEvents: function () {
         const lifecycle = this.$lifecycle;
         $('#dadEPasteC').hide();
-        // Inicializar toggles (sin afectar lógica existente)
+        // Show or hide the block each switch controls (data-target).
         const initToggle = function ($input) {
             const checked = $input.is(':checked');
-            const $item = $input.closest('.toggle-item[role="switch"]');
-            if ($item.length) $item.attr('aria-checked', checked);
             const targetSel = $input.data('target');
             if (targetSel) {
                 const $target = $(targetSel);
@@ -1019,50 +892,6 @@ var $exeDevice = {
             }
         );
 
-        if (
-            window.File &&
-            window.FileReader &&
-            window.FileList &&
-            window.Blob
-        ) {
-            $('#eXeGameExportImport .exe-field-instructions')
-                .eq(0)
-                .text(`${_('Supported formats')}: json`);
-            $('#eXeGameExportImport').show();
-            $('#eXeGameImportGame').attr('accept', '.json');
-            $('#eXeGameImportGame').on('change', (e) => {
-                const file = e.target.files[0];
-                if (!file) {
-                    eXe.app.alert(_('Please select a JSON file (.json)'));
-                    return;
-                }
-                if (
-                    !file.type ||
-                    !(
-                        file.type.match('text/plain') ||
-                        file.type.match('application/json') ||
-                        file.type.match('application/xml') ||
-                        file.type.match('text/xml')
-                    )
-                ) {
-                    eXe.app.alert(_('Please select a JSON file (.json)'));
-                    return;
-                }
-                const reader = new FileReader();
-                // A read still in flight is aborted on teardown, and a read
-                // that lands first cannot import into a later iDevice.
-                lifecycle.ownFileReader(reader);
-                reader.onload = lifecycle.bind(event => {
-                    $exeDevice?.importGame(event.target.result, file.type);
-                });
-                reader.readAsText(file);
-            });
-            $('#eXeGameExportQuestions').on('click', () => {
-                $exeDevice?.exportQuestions();
-            });
-        } else {
-            $('#eXeGameExportImport').hide();
-        }
         $('#dadEPercentajeCards')
             .on('keyup', function () {
                 let v = this.value.replace(/\D/g, '').substring(0, 3);
@@ -1079,10 +908,6 @@ var $exeDevice = {
             .on('click', () => {
                 $exeDevice?.updateCardsNumber();
             });
-
-        $('#dadEURLAudioDefinition').on('change', function () {
-            $exeDevice?.loadAudio($(this).val());
-        });
 
         $('#dadENumberCard').keyup(function (e) {
             if (!$exeDevice) return;
@@ -1131,29 +956,8 @@ var $exeDevice = {
                 .toggleClass('d-none', $(this).val() !== '2')
                 .toggleClass('d-flex', $(this).val() === '2');
         });
-        $exeDevicesEdition.iDevice.gamification.progressBar.addEvents();
-        $exeDevicesEdition.iDevice.gamification.passScore.addEvents();
-
-        $('#dadEURLImage').on('change', function () {
-            const url = $(this).val().trim();
-            $exeDevice?.loadImage(url);
-        });
-
-        $('#dadEPlayImage').on('click', function (e) {
-            e.preventDefault();
-            const url = $('#dadEURLImage').val().trim();
-            $exeDevice?.loadImage(url);
-        });
-
-        $('#dadEURLAudio').on('change', function () {
-            $exeDevice?.loadAudio($(this).val());
-        });
-
-        $('#dadEPlayAudio').on('click', function (e) {
-            e.preventDefault();
-            const audio = $('#dadEURLAudio').val();
-            $exeDevice?.loadAudio(audio);
-        });
+        $exeIDevicesEdition.iDevice.gamification.progressBar.addEvents();
+        $exeIDevicesEdition.iDevice.gamification.passScore.addEvents();
 
         $('#dadEURLImage').on('change', function () {
             const url = $(this).val().trim();
@@ -1188,7 +992,7 @@ var $exeDevice = {
                 });
             }
         });
-        $exeDevicesEdition.iDevice.gamification.itinerary.addEvents();
+        $exeIDevicesEdition.iDevice.gamification.itinerary.addEvents();
 
         //eXe 3.0 Dismissible messages
         $('.exe-block-dismissible .exe-block-close').click(function () {
@@ -1203,7 +1007,7 @@ var $exeDevice = {
             ext = url.split('.').pop().toLowerCase();
 
         if (url.indexOf('files') == 0 && validExt.indexOf(ext) == -1) {
-            $exeDevice.showMessage(
+            $exeIDevicesEdition.iDevice.common.showMessage(
                 _('Supported formats') + ': jpg, jpeg, gif, png, svg,  webp'
             );
             return false;
@@ -1216,19 +1020,19 @@ var $exeDevice = {
             ext = url.split('.').pop().toLowerCase();
 
         if (url.startsWith('files') && !validExt.includes(ext)) {
-            $exeDevice.showMessage(`${_('Supported formats')}: mp3, ogg, waw`);
+            $exeIDevicesEdition.iDevice.common.showMessage(`${_('Supported formats')}: mp3, ogg, waw`);
             return false;
         }
 
         if (url.length > 4) {
-            $exeDevicesEdition.iDevice.gamification.helpers.playSound(url);
+            $exeIDevicesEdition.iDevice.gamification.helpers.playSound(url);
         }
     },
 
     updateFieldGame: function (game) {
         $exeDevice.active = 0;
         $exeDevice.active = 0;
-        $exeDevicesEdition.iDevice.gamification.itinerary.setValues(
+        $exeIDevicesEdition.iDevice.gamification.itinerary.setValues(
             game.itinerary
         );
         game.evaluation =
@@ -1255,11 +1059,11 @@ var $exeDevice = {
             true
         );
         $('#dadETimeDiv').removeClass('d-flex').addClass('d-none');
-        $exeDevicesEdition.iDevice.gamification.progressBar.setValues({
+        $exeIDevicesEdition.iDevice.gamification.progressBar.setValues({
             evaluation: game.evaluation,
             evaluationID: game.evaluationID,
         });
-        $exeDevicesEdition.iDevice.gamification.passScore.setValues({
+        $exeIDevicesEdition.iDevice.gamification.passScore.setValues({
             passScoreMode: game.passScoreMode,
             passScoreCustom: game.passScoreCustom,
         });
@@ -1269,7 +1073,7 @@ var $exeDevice = {
         $exeDevice.cardsGame = game.cardsGame;
         $('#dadENumCards').text($exeDevice.cardsGame.length);
         $('#dadEDragDiv').show();
-        $exeDevicesEdition.iDevice.gamification.scorm.setValues(
+        $exeIDevicesEdition.iDevice.gamification.scorm.setValues(
             game.isScorm,
             game.textButtonScorm,
             game.repeatActivity,
@@ -1277,282 +1081,6 @@ var $exeDevice = {
         );
 
         $exeDevice.updateCardsNumber();
-    },
-
-    exportQuestions: function () {
-        const dataGame = this.validateData();
-        if (!dataGame) return false;
-
-        const lines = this.getLinesQuestions(dataGame.wordsGame);
-        const fileContent = lines.join('\n');
-        const newBlob = new Blob([fileContent], { type: 'text/plain' });
-        return $exeDevicesEdition.iDevice.gamification.share.downloadBlob(
-            newBlob,
-            `${_('words')}-dragdrop.txt`,
-            'dragdropQIdeviceForm'
-        );
-    },
-
-    getLinesQuestions: function (words) {
-        let lineswords = [];
-        for (let i = 0; i < words.length; i++) {
-            let word = `${words[i].word}#${words[i].definition}`;
-            lineswords.push(word);
-        }
-        return lineswords;
-    },
-
-    exportGame: function () {
-        const dataGame = this.validateData();
-
-        if (!dataGame) return false;
-
-        const newBlob = new Blob([JSON.stringify(dataGame)], { type: 'text/plain' });
-        return $exeDevicesEdition.iDevice.gamification.share.downloadBlob(
-            newBlob,
-            `${_('Activity')}-DragDrop.json`,
-            'dragdropQIdeviceForm'
-        );
-    },
-
-    importMoodle: function (xmlString) {
-        let type = parseInt($('input[name=flctype]:checked').val());
-        if (type) {
-            eXe.app.alert(
-                _(
-                    'You can only import data from text or XML files for “connect with arrows” matching games.'
-                )
-            );
-            return;
-        }
-        const xmlDoc = $.parseXML(xmlString),
-            $xml = $(xmlDoc);
-        if ($xml.find('GLOSSARY').length > 0) {
-            $exeDevice.importGlosary(xmlString);
-        } else if ($xml.find('quiz').length > 0) {
-            $exeDevice.importCuestionaryXML(xmlString);
-        } else {
-            eXe.app.alert(_('Sorry, wrong file format'));
-        }
-    },
-
-    importGame(content, filetype) {
-        const game =
-            $exeDevices.iDevice.gamification.helpers.isJsonString(content);
-
-        let cards = [];
-        if (content && content.includes('\u0000')) {
-            $exeDevice.showMessage(_('Sorry, wrong file format'));
-            return;
-        } else if (!game && content) {
-            if (filetype.match('text/plain')) {
-                $exeDevice.importText(content);
-            } else if (
-                filetype.match('application/xml') ||
-                filetype.match('text/xml')
-            ) {
-                $exeDevice.importMoodle(content);
-            } else {
-                eXe.app.alert(_('Sorry, wrong file format'));
-            }
-            return;
-        } else if (game && game.typeGame && game.typeGame == 'Relaciona') {
-            return this.handleGame(game);
-        } else if (game && game.typeGame) {
-            let type = parseInt($('input[name=flctype]:checked').val());
-            if (type) {
-                eXe.app.alert(
-                    _(
-                        'You can only import data from text or XML files for “connect with arrows” matching games.'
-                    )
-                );
-                return;
-            }
-            switch (game.typeGame) {
-                case 'Rosco':
-                    cards = $exeDevice.importRosco(game);
-                    break;
-                case 'QuExt':
-                    cards = $exeDevice.importQuExt(game);
-                    break;
-                case 'Sopa':
-                    cards = $exeDevice.importSopa(game);
-                    break;
-                case 'Adivina':
-                    cards = $exeDevice.importAdivina(game);
-                    break;
-                default:
-                    return $exeDevice.showMessage(
-                        $exeDevice.msgs.msgESelectFile
-                    );
-            }
-        } else {
-            return $exeDevice.showMessage($exeDevice.msgs.msgESelectFile);
-        }
-
-        if (cards && cards.length > 0) {
-            $exeDevice.cardsGame = cards;
-        } else {
-            $exeDevice.showMessage(_('Sorry, wrong file format'));
-            return;
-        }
-
-        this.postImportProcessing();
-    },
-
-    handleGame(game) {
-        $exeDevice.active = 0;
-        game.id = $exeDevice.getIdeviceID();
-        $exeDevice.updateFieldGame(game);
-
-        const instructions = unescape(
-                game.instructionsExe || game.instructions
-            ),
-            tAfter = unescape(game.textAfter || '');
-
-        tinyMCE.get('eXeGameInstructions')
-            ? tinyMCE.get('eXeGameInstructions').setContent(instructions)
-            : $('#eXeGameInstructions').val(instructions);
-        tinyMCE.get('eXeIdeviceTextAfter')
-            ? tinyMCE.get('eXeIdeviceTextAfter').setContent(tAfter)
-            : $('#eXeIdeviceTextAfter').val(tAfter);
-        this.postImportProcessing();
-    },
-
-    importQuExt: function (data) {
-        data.questionsGame.forEach((cuestion) => {
-            const p = $exeDevice.getDefaultCard();
-            p.eText = cuestion.quextion;
-            p.url = cuestion.url;
-            p.audio = cuestion.audio || '';
-            p.x = cuestion.x;
-            p.y = cuestion.y;
-            p.author = cuestion.author;
-            p.alt = cuestion.alt;
-            p.solution = '';
-            p.eTextBk = '';
-
-            if (
-                Array.isArray(cuestion.options) &&
-                cuestion.options.length > cuestion.solution
-            ) {
-                p.eTextBk = cuestion.options[cuestion.solution];
-            }
-            if (p.eText.length > 0) {
-                $exeDevice.cardsGame.push(p);
-            }
-        });
-        return $exeDevice.cardsGame;
-    },
-
-    importRosco: function (data) {
-        data.wordsGame.forEach((cuestion) => {
-            const p = $exeDevice.getDefaultCard();
-            Object.assign(p, {
-                eText: cuestion.definition,
-                url: cuestion.url,
-                audio: cuestion.audio || '',
-                x: cuestion.x,
-                y: cuestion.y,
-                author: cuestion.author,
-                alt: cuestion.alt,
-                solution: '',
-                eTextBk: cuestion.word,
-            });
-            if (
-                (p.url && p.url.length > 3) ||
-                (p.audio && p.audio.length > 3) ||
-                (p.eText && p.eText.length > 0)
-            ) {
-                $exeDevice.cardsGame.push(p);
-            }
-        });
-        return $exeDevice.cardsGame;
-    },
-
-    importAdivina: function (data) {
-        data.wordsGame.forEach((cuestion) => {
-            const p = $exeDevice.getDefaultCard();
-            Object.assign(p, {
-                eText: cuestion.word,
-                url: cuestion.url,
-                audio: cuestion.audio || '',
-                x: cuestion.x,
-                y: cuestion.y,
-                author: cuestion.author,
-                alt: cuestion.alt,
-                solution: '',
-                eTextBk: cuestion.definition,
-            });
-            if (
-                (p.url && p.url.length > 3) ||
-                (p.audio && p.audio.length > 3) ||
-                (p.eText && p.eText.length > 0)
-            ) {
-                $exeDevice.cardsGame.push(p);
-            }
-        });
-        return $exeDevice.cardsGame;
-    },
-
-    addCards: function (cards) {
-        if (!cards || cards.length == 0) {
-            eXe.app.alert(
-                _('Sorry, there are no questions for this type of activity.')
-            );
-            return;
-        }
-        for (let i = 0; i < cards.length; i++) {
-            let card = cards[i];
-            if (card.eTextBk && card.eText) {
-                $exeDevice.cardsGame.push(card);
-            }
-        }
-        $exeDevice.postImportProcessing();
-    },
-
-    postImportProcessing() {
-        $exeDevice.active = 0;
-        $exeDevice.showCard($exeDevice.active);
-        $exeDevice.deleteEmptyQuestion();
-        $exeDevice.updateCardsNumber();
-        //$('.exe-form-tabs li:first-child a').click();
-    },
-
-    importSopa: function (data) {
-        data.wordsGame.forEach((cuestion) => {
-            const p = $exeDevice.getDefaultCard();
-            Object.assign(p, {
-                eText: cuestion.definition,
-                url: cuestion.url,
-                audio: cuestion.audio || '',
-                x: cuestion.x,
-                y: cuestion.y,
-                author: cuestion.author,
-                alt: cuestion.alt,
-                solution: '',
-                eTextBk: cuestion.word,
-            });
-            if (
-                (p.url && p.url.length > 3) ||
-                (p.audio && p.audio.length > 3) ||
-                (p.eText && p.eText.length > 0)
-            ) {
-                $exeDevice.cardsGame.push(p);
-            }
-        });
-        return $exeDevice.cardsGame;
-    },
-
-    deleteEmptyQuestion: function () {
-        let url = $('#dadEURLImage').val().trim(),
-            audio = $('#dadEURLAudio').val().trim(),
-            eText = $('#dadEDefinition').val().trim();
-        if ($exeDevice.cardsGame.length > 1) {
-            if (url.length == 0 && audio.length == 0 && eText.length == 0) {
-                $exeDevice.removeCard();
-            }
-        }
     },
 
     validTime: function (time) {
@@ -1581,55 +1109,5 @@ var $exeDevice = {
         }
 
         return { w: wImage, h: hImage, x: xImagen, y: yImagen };
-    },
-
-    clickImage: function (epx, epy) {
-        const $cursor = $('#dadECursor'),
-            $image = $('#dadEImage'),
-            $x = $('#dadEX'),
-            $y = $('#dadEY'),
-            posX = epx - $image.offset().left,
-            posY = epy - $image.offset().top,
-            wI = $image.width() || 1,
-            hI = $image.height() || 1,
-            lI = $image.position().left,
-            tI = $image.position().top;
-
-        $x.val(posX / wI);
-        $y.val(posY / hI);
-        $cursor
-            .css({
-                left: posX + lI,
-                top: posY + tI,
-                'z-index': 50,
-            })
-            .show();
-    },
-
-    clickImageBack: function (epx, epy) {
-        const $cursor = $('#dadECursorBack'),
-            $image = $('#dadEImageBack'),
-            $x = $('#dadEXBack'),
-            $y = $('#dadEYBack'),
-            posX = epx - $image.offset().left,
-            posY = epy - $image.offset().top,
-            wI = $image.width() || 1,
-            hI = $image.height() || 1,
-            lI = $image.position().left,
-            tI = $image.position().top;
-
-        $x.val(posX / wI);
-        $y.val(posY / hI);
-        $cursor
-            .css({
-                left: posX + lI,
-                top: posY + tI,
-                'z-index': 50,
-            })
-            .show();
-    },
-
-    removeTags: function (str) {
-        return $('<div>').html(str).text();
     },
 };

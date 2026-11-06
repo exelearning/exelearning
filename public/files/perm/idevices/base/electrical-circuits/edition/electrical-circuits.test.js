@@ -1,5 +1,6 @@
 /* eslint-disable no-undef */
 import { readFileSync } from 'fs';
+import { useGradingHelpHarness } from '../../../../../../app/common/grading-help.test-util.js';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 
@@ -45,46 +46,50 @@ describe('electrical-circuits iDevice edition', () => {
         const code = readFileSync(join(__dirname, 'electrical-circuits.js'), 'utf-8');
         $exeDevice = loadIdevice(code);
         $exeDevice.setMessagesInfo();
-        $exeDevicesEdition.iDevice.gamification.helpers.stopSound = vi.fn();
+        $exeIDevicesEdition.iDevice.gamification.helpers.stopSound = vi.fn();
     });
 
     describe('progress report help', () => {
+        useGradingHelpHarness();
         let previousGamification;
         let previousLearning;
 
         beforeEach(() => {
-            previousGamification = global.$exeDevicesEdition.iDevice.gamification;
+            previousGamification = global.$exeIDevicesEdition.iDevice.gamification;
             previousLearning = global.eXeLearning;
             const { progressBar, itinerary } =
-                require('../../../../../../app/common/common_edition.js').iDevice.gamification;
-            global.$exeDevicesEdition.iDevice.gamification = { ...previousGamification, progressBar, itinerary };
-            global.eXeLearning = { app: { project: { odeId: 'report-id' } } };
+                global.$exeIDevicesEdition.iDevice.gamification;
+            global.$exeIDevicesEdition.iDevice.gamification = { ...previousGamification, progressBar, itinerary };
+            global.eXeLearning = { app: { ...previousLearning.app, project: { odeId: 'report-id' } } };
             document.body.innerHTML = `<div id="electricalCircuitsIdeviceForm">${progressBar.getContents('/idevice/')}</div>`;
             $exeDevice.addEvents();
         });
 
         afterEach(() => {
-            $(document).off('click.exeProgressReportHelp', '#eXeProgressReportHelpLnk');
             document.body.innerHTML = '';
-            global.$exeDevicesEdition.iDevice.gamification = previousGamification;
+            global.$exeIDevicesEdition.iDevice.gamification = previousGamification;
             global.eXeLearning = previousLearning;
         });
 
         it.each([
-            ['link', '#eXeProgressReportHelpLnk', false],
-            ['icon', '#eXeProgressReportHelpLnk img', false],
-            ['link', '#eXeProgressReportHelpLnk', true],
-            ['icon', '#eXeProgressReportHelpLnk img', true],
-        ])('toggles help through the %s (%s), reporting enabled=%s', (_target, selector, enabled) => {
+            ['button', '.exe-progress-report-wrapper .exe-idevice-help', false],
+            ['icon', '.exe-progress-report-wrapper .info-icon-solid-green', false],
+            ['button', '.exe-progress-report-wrapper .exe-idevice-help', true],
+            ['icon', '.exe-progress-report-wrapper .info-icon-solid-green', true],
+        ])('opens and closes information through the %s (%s), reporting enabled=%s', (_target, selector, enabled) => {
             const checkbox = $('#eXeProgressReport').prop('checked', enabled).trigger('change');
             const identifier = $('#eXeProgressReportID');
-            const note = $('#eXeProgressReportHelp');
+            const note = $('.exe-progress-report-wrapper .help-content');
 
-            expect(note.hasClass('d-none')).toBe(true);
-            $(selector).trigger('click');
-            expect(note.hasClass('d-none')).toBe(false);
-            $(selector).trigger('click');
-            expect(note.hasClass('d-none')).toBe(true);
+            expect(note.hasClass('help-hidden')).toBe(true);
+            document.querySelector(selector).click();
+            expect(note.hasClass('help-hidden')).toBe(false);
+            document.querySelector(selector).click();
+            expect(note.hasClass('help-hidden')).toBe(true);
+            document.querySelector(selector).click();
+            expect(note.hasClass('help-hidden')).toBe(false);
+            document.body.click();
+            expect(note.hasClass('help-hidden')).toBe(true);
             expect(checkbox.prop('checked')).toBe(enabled);
             expect(identifier.prop('disabled')).toBe(!enabled);
             expect(identifier.val()).toBe('report-id');
@@ -145,12 +150,13 @@ describe('electrical-circuits iDevice edition', () => {
         $('#elceTikzCode').val('\\draw (0,0);');
         $exeDevice.selectsGame = [{}];
         $exeDevice.active = 0;
-        const showMessage = vi.spyOn($exeDevice, 'showMessage').mockImplementation(() => {});
+        const showMessage = vi.spyOn($exeIDevicesEdition.iDevice.common, 'showMessage').mockImplementation(() => {});
 
         const isValid = $exeDevice.validateQuestion();
 
         expect(isValid).toBe(false);
         expect(showMessage).toHaveBeenCalledWith($exeDevice.msgs.msgERenderCircuitPreview);
+        showMessage.mockRestore();
     });
 
     it('collapses line breaks in the TikZ code before compiling', () => {
@@ -435,25 +441,29 @@ describe('electrical-circuits iDevice edition', () => {
         // the user are validated against the wrong (adaptative-quiz, id 10)
         // format and silently rejected. Guards the 10 -> 11 fix.
         const shareAddEvents = vi.fn();
-        $exeDevicesEdition.iDevice.gamification.itinerary = { addEvents: vi.fn() };
-        $exeDevicesEdition.iDevice.gamification.share = { addEvents: shareAddEvents };
+        const originalItinerary = $exeIDevicesEdition.iDevice.gamification.itinerary;
+        const originalShare = $exeIDevicesEdition.iDevice.gamification.share;
+        $exeIDevicesEdition.iDevice.gamification.itinerary = { ...originalItinerary, addEvents: vi.fn() };
+        $exeIDevicesEdition.iDevice.gamification.share = { ...originalShare, addEvents: shareAddEvents };
 
-        $exeDevice.addEvents();
+        try {
+            $exeDevice.addEvents();
 
-        // The AI save button renders every circuit before inserting, so the
-        // registered callback is the async insertAIQuestions (not insertQuestions,
-        // which stays for the file-import path).
-        expect(shareAddEvents).toHaveBeenCalledWith(11, $exeDevice.insertAIQuestions);
+            // The AI save button renders every circuit before inserting, so the
+            // registered callback is the async insertAIQuestions (not insertQuestions,
+            // which stays for the file-import path).
+            expect(shareAddEvents).toHaveBeenCalledWith(11, $exeDevice.insertAIQuestions);
+        } finally {
+            $exeIDevicesEdition.iDevice.gamification.itinerary = originalItinerary;
+            $exeIDevicesEdition.iDevice.gamification.share = originalShare;
+        }
     });
 
-    it('insertQuestions normalizes AI-generated TikZ before adding questions', () => {
-        const addQuestions = vi.spyOn($exeDevice, 'addQuestions').mockImplementation(() => {});
+    it('parseAIQuestions normalizes AI-generated TikZ', () => {
         const line =
             'Circuito#\\begin{circuitikz}\\draw (0,0) to[battery1,l={$5,\\mathrm{V}$}] (0,2) to[R,l={$220,\\Omega$}] (2,2) to[lD] (2,0) -- (0,0);\\end{circuitikz}#A#Question#Correct#Wrong';
 
-        $exeDevice.insertQuestions([line]);
-
-        expect(addQuestions).toHaveBeenCalledWith([
+        expect($exeDevice.parseAIQuestions([line]).questions).toEqual([
             expect.objectContaining({
                 tikzCode:
                     '\\begin{circuitikz}\\draw (0,0) to[battery1,l={$5\\,\\mathrm{V}$}] (0,2) to[R,l={$220\\,\\Omega$}] (2,2) to[leD] (2,0) -- (0,0);\\end{circuitikz}',
@@ -461,14 +471,11 @@ describe('electrical-circuits iDevice edition', () => {
         ]);
     });
 
-    it('insertQuestions converts visible TeX units to Unicode without changing TikZ rules', () => {
-        const addQuestions = vi.spyOn($exeDevice, 'addQuestions').mockImplementation(() => {});
+    it('parseAIQuestions converts visible TeX units to Unicode without changing TikZ rules', () => {
         const line =
             'Circuito \\Omega#\\begin{circuitikz}\\draw (0,0) to[R,l={$220\\,\\Omega$}] (2,0);\\end{circuitikz}#A#Valor de \\Omega#{$1{,}22,\\mathrm{k}\\Omega$}#220 \\Omega#100\\,\\mu\\mathrm{F}';
 
-        $exeDevice.insertQuestions([line]);
-
-        expect(addQuestions).toHaveBeenCalledWith([
+        expect($exeDevice.parseAIQuestions([line]).questions).toEqual([
             expect.objectContaining({
                 description: 'Circuito Ω',
                 tikzCode:
@@ -477,6 +484,29 @@ describe('electrical-circuits iDevice edition', () => {
                 options: ['1,22 kΩ', '220 Ω', '100 µF', ''],
             }),
         ]);
+    });
+
+    it('insertQuestions draws the circuits of an imported file before adding them, as the AI does', async () => {
+        vi.spyOn($exeDevice, 'showCircuitGenerationModal').mockImplementation(() => {});
+        vi.spyOn($exeDevice, 'hideCircuitGenerationModal').mockImplementation(() => {});
+        const addQuestions = vi.spyOn($exeDevice, 'addQuestions').mockImplementation(() => {});
+        const render = vi.spyOn($exeDevice, 'renderTikzCodeToSvg').mockResolvedValue('<svg></svg>');
+        const line = 'Desc#\\begin{circuitikz}\\draw (0,0);\\end{circuitikz}#A#Q#Opt A#Opt B';
+
+        await $exeDevice.insertQuestions([line, '']);
+
+        expect(render).toHaveBeenCalledTimes(1);
+        expect(addQuestions.mock.calls[0][0]).toEqual([expect.objectContaining({ tikzSvg: '<svg></svg>' })]);
+        expect(eXe.app.getLastAlert()).toBe($exeDevice.msgs.msgQuestionsAdded);
+    });
+
+    it('insertQuestions tells the author when the file has no question', () => {
+        const render = vi.spyOn($exeDevice, 'renderTikzCodeToSvg');
+
+        $exeDevice.insertQuestions(['not a question', '']);
+
+        expect(render).not.toHaveBeenCalled();
+        expect(eXe.app.getLastAlert()).toBe('Sorry, there are no questions for this type of activity.');
     });
 
     it('round-trips tikzCode and tikzSvg without tikzSvgHash', () => {
@@ -700,6 +730,79 @@ describe('electrical-circuits iDevice edition', () => {
             questions: [],
             lines: [],
             invalidLines: [],
+        });
+    });
+
+    describe('exported lines', () => {
+        const circuit = '\\begin{circuitikz}\\draw (0,0) to[R] (2,0);\\end{circuitikz}';
+        const question = (fields) => ({ ...$exeDevice.getCuestionDefault(), ...fields });
+        // What a line holds: a word question has no circuit in the format.
+        const fields = (q) =>
+            q.typeSelect === 2
+                ? { typeSelect: q.typeSelect, quextion: q.quextion, solutionQuestion: q.solutionQuestion }
+                : {
+                      typeSelect: q.typeSelect,
+                      description: q.description,
+                      tikzCode: q.tikzCode,
+                      solution: q.solution,
+                      quextion: q.quextion,
+                      options: q.options,
+                      numberOptions: q.numberOptions,
+                  };
+
+        it('are read back by Import and the AI as the same questions', () => {
+            const questions = [
+                question({
+                    description: 'A resistor',
+                    tikzCode: circuit,
+                    solution: 'B',
+                    quextion: 'What is shown?',
+                    options: ['A lamp', 'A resistor', 'A battery', ''],
+                    numberOptions: 3,
+                }),
+                question({ description: '', tikzCode: '', solution: 'AC', quextion: 'Which conduct?', options: ['Copper', 'Glass', 'Iron', 'Wood'] }),
+                question({ typeSelect: 2, quextion: 'Unit of resistance', solutionQuestion: 'Ohm' }),
+            ];
+
+            const lines = $exeDevice.getLinesQuestions(questions);
+            const parsed = $exeDevice.parseAIQuestions(lines);
+            const formats = $exeIDevicesEdition.iDevice.gamification.share.getAllowedFormats(11);
+
+            expect(lines).toEqual([
+                `A resistor#${circuit}#B#What is shown?#A lamp#A resistor#A battery`,
+                '##AC#Which conduct?#Copper#Glass#Iron#Wood',
+                'Ohm#Unit of resistance',
+            ]);
+            expect(lines.every((line) => formats.allowRegex.test(line))).toBe(true);
+            expect(parsed.invalidLines).toEqual([]);
+            expect(parsed.questions.map(fields)).toEqual(questions.map(fields));
+        });
+
+        it('turn the separator and line breaks of the texts into spaces', () => {
+            const lines = $exeDevice.getLinesQuestions([
+                question({
+                    description: 'Lamp\n#1',
+                    tikzCode: '',
+                    quextion: 'On #or off?',
+                    options: ['On', 'Off', '', ''],
+                    numberOptions: 2,
+                    solution: 'A',
+                }),
+            ]);
+
+            expect(lines).toEqual(['Lamp 1##A#On or off?#On#Off']);
+        });
+
+        it('leave out the questions the format cannot hold', () => {
+            const lines = $exeDevice.getLinesQuestions([
+                question({ quextion: '', options: ['On', 'Off', '', ''], numberOptions: 2, solution: 'A' }),
+                question({ quextion: 'On or off?', options: ['On', '', '', ''], numberOptions: 2, solution: 'A' }),
+                question({ quextion: 'On or off?', options: ['On', 'Off', '', ''], numberOptions: 2, solution: '' }),
+                question({ tikzCode: '\\def\\x#1{#1}', quextion: 'On or off?', options: ['On', 'Off', '', ''], numberOptions: 2, solution: 'A' }),
+                question({ typeSelect: 2, quextion: 'Unit of resistance', solutionQuestion: '' }),
+            ]);
+
+            expect(lines).toEqual([]);
         });
     });
 
@@ -1020,7 +1123,7 @@ describe('electrical-circuits iDevice edition', () => {
                     .mockImplementation(() => {});
                 vi.spyOn($exeDevice, 'showCircuitGenerationModal').mockImplementation(() => {});
                 const addQuestions = vi.spyOn($exeDevice, 'addQuestions').mockImplementation(() => {});
-                const showMessage = vi.spyOn($exeDevice, 'showMessage').mockImplementation(() => {});
+                const showMessage = vi.spyOn($exeIDevicesEdition.iDevice.common, 'showMessage').mockImplementation(() => {});
                 const render = vi
                     .spyOn($exeDevice, 'renderTikzCodeToSvg')
                     .mockImplementation(() => {
@@ -1039,6 +1142,7 @@ describe('electrical-circuits iDevice edition', () => {
                 expect(addQuestions).not.toHaveBeenCalled();
                 expect(showMessage).not.toHaveBeenCalled();
                 expect(result).toEqual({ handledMessaging: true });
+                showMessage.mockRestore();
             });
 
             it('still reports a render that fails for another reason', async () => {
@@ -1203,10 +1307,22 @@ describe('electrical-circuits iDevice edition', () => {
         });
 
         describe('exportQuestions', () => {
+            it('stores the question on screen, and tells the author when no question can be written', () => {
+                const validateQuestion = vi.spyOn($exeDevice, 'validateQuestion').mockReturnValue(true);
+                vi.spyOn($exeDevice, 'validateData').mockReturnValue({ selectsGame: [] });
+                const createObjectURL = vi.spyOn(window.URL, 'createObjectURL');
+
+                expect($exeDevice.exportQuestions()).toBe(false);
+                expect(validateQuestion).toHaveBeenCalled();
+                expect(createObjectURL).not.toHaveBeenCalled();
+                expect(eXe.app.getLastAlert()).toBe('Sorry, there are no questions for this type of activity.');
+            });
+
             it('revokes the download object URL when the edition closes first', () => {
                 vi.useFakeTimers();
                 document.body.innerHTML =
                     '<div id="electricalCircuitsIdeviceForm"></div>';
+                vi.spyOn($exeDevice, 'validateQuestion').mockReturnValue(true);
                 vi.spyOn($exeDevice, 'validateData').mockReturnValue({
                     selectsGame: [],
                 });
@@ -1376,7 +1492,7 @@ describe('loadTikzFontPack (static-dist zstd font pack)', () => {
             // so rendering them again would show each control twice.
             expect(source).not.toContain('passScore.getContents(');
             expect(source).not.toContain('progressBar.getContents(');
-            expect(source).toContain('gamification.scorm.getTab(');
+            expect(source).toMatch(/tabs\.getHtml\([\s\S]*grading: true/);
         });
 
         it('restores the control when the iDevice is reopened', () => {
@@ -1409,3 +1525,453 @@ describe('electrical-circuits minimum score text', () => {
         expect(device.ci18n.msgPassScore).toBe('Minimum score needed to pass this activity: %s');
     });
 });
+
+describe('electrical-circuits edition: shared form tabs and feedback', () => {
+    const PATH = '/files/perm/idevices/base/electrical-circuits/edition/';
+    const edition = () => global.$exeIDevicesEdition.iDevice;
+    const feedback = () => edition().gamification.feedback;
+    const tabNames = () =>
+        [...document.querySelectorAll('#electricalCircuitsIdeviceForm-tabs [data-exe-tab]')].map((tab) =>
+            tab.getAttribute('data-exe-tab')
+        );
+    const panel = (name) => document.getElementById(`electricalCircuitsIdeviceForm-panel-${name}`);
+    const game = (overrides = {}) => ({
+        typeGame: 'ElectricalCircuits',
+        activityMode: 'test',
+        showMinimize: false,
+        answersRamdon: false,
+        questionsRandom: false,
+        showSolution: false,
+        timeShowSolution: 3,
+        percentajeQuestions: 100,
+        modeBoard: false,
+        globalTime: 0,
+        itinerary: {
+            showClue: false,
+            clueGame: '',
+            percentageClue: 40,
+            showCodeAccess: false,
+            codeAccess: '',
+            messageCodeAccess: '',
+        },
+        selectsGame: [
+            {
+                type: 0,
+                time: 0,
+                numberOptions: 4,
+                typeSelect: 0,
+                customScore: 1,
+                tikzCode: '\\begin{circuitikz}\\draw (0,0) to[R] (2,0);\\end{circuitikz}',
+                tikzSvg: '<svg viewBox="0 0 10 10"><path d="M0 0"></path></svg>',
+                quextion: 'What circuit is shown?',
+                options: ['A', 'B', 'C', 'D'],
+                solution: 'A',
+                solutionQuestion: '',
+                percentageShow: 35,
+                description: 'Description',
+            },
+        ],
+        feedBack: false,
+        percentajeFB: 100,
+        isScorm: 0,
+        textButtonScorm: 'Save score',
+        ...overrides,
+    });
+    const exportHelpers = {
+        isJsonString: (text) => {
+            try {
+                return JSON.parse(text);
+            } catch {
+                return false;
+            }
+        },
+        decrypt: (text) => text,
+        encrypt: (text) => text,
+    };
+    let device;
+    let previousApp;
+    let tooltips;
+
+    beforeEach(() => {
+        global.$exeDevice = undefined;
+        previousApp = global.eXeLearning?.app;
+        tooltips = new Map();
+        global.eXeLearning = {
+            ...global.eXeLearning,
+            app: {
+                ...previousApp,
+                common: {
+                    initTooltips: vi.fn((scope) => {
+                        scope.querySelectorAll('.exe-app-tooltip').forEach((button) => {
+                            if (!tooltips.has(button)) tooltips.set(button, { hide: vi.fn(), dispose: vi.fn() });
+                        });
+                    }),
+                },
+            },
+        };
+        vi.stubGlobal('bootstrap', { Tooltip: { getInstance: (button) => tooltips.get(button) } });
+        Object.assign(global.$exeDevices.iDevice.gamification.helpers, exportHelpers);
+        document.body.innerHTML = '<div id="elceBody"></div>';
+        const code = readFileSync(join(__dirname, 'electrical-circuits.js'), 'utf-8');
+        device = loadIdevice(code);
+        device.renderTikzPreview = vi.fn();
+        device.init(document.getElementById('elceBody'), {}, PATH);
+    });
+
+    afterEach(() => {
+        device.$lifecycle?.destroy();
+        if (global.eXeLearning) {
+            global.eXeLearning.app = previousApp;
+        }
+        vi.unstubAllGlobals();
+        Object.keys(exportHelpers).forEach((name) => delete global.$exeDevices.iDevice.gamification.helpers[name]);
+        global.$exeDevice = undefined;
+        document.body.innerHTML = '';
+    });
+
+    it('leaves the state of each switch to its native checkbox', () => {
+        document.querySelectorAll('.toggle-input:not(:disabled)').forEach((input) => input.click());
+
+        expect(document.querySelectorAll('[role="switch"], [aria-checked]')).toHaveLength(0);
+    });
+
+    it('lays the form out in the shared tabs, and opens on its questions', () => {
+        expect(tabNames()).toEqual([
+            'instructions',
+            'options',
+            'contents',
+            'passwords',
+            'feedback',
+            'after',
+            'grading',
+            'texts',
+        ]);
+        expect(document.getElementById('electricalCircuitsIdeviceForm-tab-contents').textContent.trim()).toBe('Activities');
+        expect(panel('contents').classList.contains('active')).toBe(true);
+    });
+
+    it('puts each part of the form in its tab', () => {
+        expect(panel('instructions').querySelector('#eXeGameInstructions').value).toContain('Observe the electrical circuit');
+        expect(panel('options').querySelector('#elceOptions')).not.toBeNull();
+        expect(panel('contents').querySelector('#elcePanel')).not.toBeNull();
+        expect(panel('passwords').querySelector('#eXeGameShowClue')).not.toBeNull();
+        expect(panel('after').querySelector('#eXeIdeviceTextAfter')).not.toBeNull();
+        expect(panel('grading').querySelector('.exe-progress-report-wrapper')).not.toBeNull();
+        expect(panel('texts').querySelector('#ci18n_msgScore').value).toBe('Score');
+    });
+
+    it('provides one accessible information button at the end of each options row', () => {
+        const options = panel('options');
+        const helpButtons = [...options.querySelectorAll('#elceOptions .exe-idevice-help')];
+        expect(helpButtons).toHaveLength(8);
+        for (const help of helpButtons) {
+            const row = help.closest('.d-flex');
+            expect(row).not.toBeNull();
+            expect(row.lastElementChild.contains(help)).toBe(true);
+            expect(help.tagName).toBe('BUTTON');
+            expect(help.type).toBe('button');
+            expect(help.getAttribute('aria-label')).toMatch(/^Information about \S/);
+            expect(help.title).toBe('Information');
+            expect(document.getElementById(help.getAttribute('aria-controls')).textContent.length).toBeGreaterThan(15);
+            expect(help.querySelector('[aria-hidden="true"].info-icon-solid-green')).not.toBeNull();
+            const controls = [...row.querySelectorAll('input, select')];
+            const checked = controls.map((control) => control.checked);
+            help.click();
+            expect(controls.map((control) => control.checked)).toEqual(checked);
+        }
+        expect(global.eXeLearning.app.common.initTooltips).toHaveBeenCalledWith(
+            document.getElementById('electricalCircuitsIdeviceForm-panels')
+        );
+    });
+
+    it('escapes translated help text in the explanation', () => {
+        const text = 'Use "Accept" <once> & keep the learner\'s answer.';
+        const container = document.createElement('div');
+        container.innerHTML = edition().common.getHelpTooltip(text);
+        const button = container.querySelector('button');
+        expect(button.title).toBe('Information');
+        expect(container.querySelector('.help-content').textContent).toBe(text);
+        expect(container.querySelector('once')).toBeNull();
+    });
+
+    it('disposes all option tooltips when the edition closes', () => {
+        expect(tooltips.size).toBe(17); // Options, the six shared Grading helpers and the three links of Questions.
+        device.$lifecycle.destroy();
+        for (const tooltip of tooltips.values()) {
+            expect(tooltip.dispose).toHaveBeenCalledTimes(1);
+        }
+    });
+
+    it('leaves the feedback to the shared block, without controls of its own', () => {
+        expect(panel('feedback').querySelector('#eXeGameHasFeedBack')).not.toBeNull();
+        expect(document.getElementById('elceHasFeedBack')).toBeNull();
+        expect(document.getElementById('elcePercentajeFB')).toBeNull();
+        expect(document.getElementById('elceFeedbackP')).toBeNull();
+        expect(document.getElementById('elceFeedBackEditor')).toBeNull();
+    });
+
+    it('switches tabs when one is clicked', () => {
+        document.getElementById('electricalCircuitsIdeviceForm-tab-options').click();
+
+        expect(panel('options').classList.contains('active')).toBe(true);
+        expect(panel('contents').classList.contains('active')).toBe(false);
+    });
+
+    it('enables the solution time again when solutions are switched back on', () => {
+        device.updateFieldGame(game({ showSolution: false }));
+        const time = document.getElementById('elceTimeShowSolution');
+        expect(time.disabled).toBe(true);
+
+        document.getElementById('elceShowSolution').click();
+        expect(time.disabled).toBe(false);
+
+        document.getElementById('elceShowSolution').click();
+        expect(time.disabled).toBe(true);
+    });
+
+    it('restores the feedback with the game', () => {
+        // Saved with its message: without one, the feedback loads off.
+        $exeIDevicesEdition.iDevice.gamification.feedback.setText('<p>Well done</p>');
+        device.updateFieldGame(game({ feedBack: true, percentajeFB: 80 }));
+
+        expect(document.getElementById('eXeGameHasFeedBack').checked).toBe(true);
+        expect(document.getElementById('eXeGamePercentajeFB').value).toBe('80');
+    });
+
+    it('keeps the custom texts when the iDevice is edited again', () => {
+        device.idevicePreviousData = `
+            <div class="electrical-circuits-IDevice">
+                <div class="electrical-circuits-DataGame js-hidden">${JSON.stringify(game({ msgs: { msgScore: 'Points' } }))}</div>
+            </div>`;
+        vi.spyOn(device, 'showQuestion').mockImplementation(() => {});
+
+        device.loadPreviousValues();
+
+        expect(document.getElementById('ci18n_msgScore').value).toBe('Points');
+    });
+
+    it('loads the saved message into the shared editor', () => {
+        device.idevicePreviousData = `
+            <div class="electrical-circuits-IDevice">
+                <div class="electrical-circuits-version js-hidden">3.1</div>
+                <div class="electrical-circuits-feedback-game"><p>Well done</p></div>
+                <div class="electrical-circuits-DataGame js-hidden">${JSON.stringify(game({ feedBack: true }))}</div>
+            </div>`;
+        vi.spyOn(device, 'showQuestion').mockImplementation(() => {});
+
+        device.loadPreviousValues();
+
+        expect(feedback().getText()).toBe('<p>Well done</p>');
+        expect(document.getElementById('eXeGameHasFeedBack').checked).toBe(true);
+    });
+
+    describe('saving', () => {
+        let editors;
+        let tinymceGet;
+
+        beforeEach(() => {
+            editors = {
+                eXeGameInstructions: '<p>Instructions</p>',
+                eXeIdeviceTextAfter: '',
+                eXeGameFeedBackEditor: '',
+            };
+            tinymceGet = vi.spyOn(global.tinymce, 'get').mockImplementation((id) =>
+                id in editors
+                    ? {
+                          initialized: true,
+                          getContent: () => editors[id],
+                          setContent: (html) => (editors[id] = html),
+                          hide: vi.fn(),
+                          show: vi.fn(),
+                      }
+                    : null
+            );
+            device.selectsGame = [
+                {
+                    ...device.getCuestionDefault(),
+                    tikzCode: '\\draw (0,0);',
+                    tikzSvg: '<svg viewBox="0 0 10 10"><path d="M0 0"></path></svg>',
+                    quextion: 'Question 1',
+                    options: ['A', 'B', 'C', 'D'],
+                    solution: 'A',
+                },
+            ];
+        });
+
+        afterEach(() => {
+            tinymceGet.mockRestore();
+        });
+
+        it('saves the feedback values the export reads', () => {
+            // Saved with its message: without one, the feedback loads off.
+            editors.eXeGameFeedBackEditor = '<p>Bravo</p>';
+            device.updateFieldGame(game({ selectsGame: device.selectsGame, feedBack: true, percentajeFB: 70 }));
+            vi.spyOn(device, 'validateQuestion').mockReturnValue(true);
+
+            const data = device.validateData();
+
+            expect(data.feedBack).toBe(true);
+            expect(data.percentajeFB).toBe(70);
+            expect(unescape(data.textFeedBack)).toBe('<p>Bravo</p>');
+            expect(device.save()).toContain('<div class="electrical-circuits-feedback-game"><p>Bravo</p></div>');
+        });
+
+        it('requires feedback message if feedback is enabled and text is empty', () => {
+            device.updateFieldGame(game({ selectsGame: device.selectsGame }));
+            editors.eXeGameFeedBackEditor = '';
+            // The author switches the feedback on and leaves its message empty.
+            $('#eXeGameHasFeedBack').prop('checked', true).trigger('change');
+            vi.spyOn(device, 'validateQuestion').mockReturnValue(true);
+
+            expect(device.validateData()).toBe(false);
+            expect(global.eXe.app.alert).toHaveBeenCalledWith('Message to display when passing the game');
+        });
+    });
+
+    describe('importing', () => {
+        const chooseFile = (file) => {
+            const input = document.getElementById('eXeGameImportGame');
+            Object.defineProperty(input, 'files', { value: [file], configurable: true });
+            input.dispatchEvent(new Event('change'));
+        };
+
+        it('offers plain text files only', () => {
+            const link = document.querySelector('[data-exe-share="import"]');
+            const modal = document.getElementById(link.getAttribute('aria-controls'));
+
+            expect(modal.querySelector('.modal-body').firstElementChild.textContent).toBe(
+                'You can import questions compatible with this activity from txt files.'
+            );
+            expect(modal.querySelector('.exe-field-instructions').textContent).toBe('Supported formats: txt');
+            expect(document.getElementById('eXeGameImportGame').getAttribute('accept')).toBe('.txt');
+        });
+
+        it('reads the lines of a text file', () => {
+            const importText = vi.spyOn(device, 'importText').mockImplementation(() => {});
+
+            device.importGame('Ohm#Unit of resistance', 'text/plain');
+
+            expect(importText).toHaveBeenCalledWith('Ohm#Unit of resistance');
+        });
+
+        it('refuses Moodle xml and game json files', () => {
+            const importText = vi.spyOn(device, 'importText');
+
+            for (const [content, type] of [
+                ['<quiz></quiz>', 'text/xml'],
+                ['<GLOSSARY></GLOSSARY>', 'application/xml'],
+                ['{"typeGame":"ElectricalCircuits"}', 'application/json'],
+            ]) {
+                device.importGame(content, type);
+                expect(global.eXe.app.getLastAlert()).toBe('Sorry, wrong file format');
+            }
+            expect(importText).not.toHaveBeenCalled();
+        });
+
+        it('asks for a text file when another one is chosen', () => {
+            const readAsText = vi.spyOn(FileReader.prototype, 'readAsText');
+
+            chooseFile(new File(['<quiz></quiz>'], 'questions.xml', { type: 'text/xml' }));
+
+            expect(global.eXe.app.getLastAlert()).toBe('Please select a text file (.txt)');
+            expect(readAsText).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('Show mode', () => {
+        const hidden = (id) => document.getElementById(id).classList.contains('d-none');
+        const openInShowMode = () => {
+            device.updateFieldGame(game({ activityMode: 'show' }));
+            device.active = 0;
+            device.showQuestion(0);
+        };
+
+        it('keeps the question, though its fields are hidden', () => {
+            openInShowMode();
+
+            expect(hidden('elceContents')).toBe(true);
+            expect(hidden('elceInputNumbers')).toBe(true);
+            expect(device.validateQuestion()).toBe(true);
+            expect(device.selectsGame[0]).toMatchObject({
+                quextion: 'What circuit is shown?',
+                options: ['A', 'B', 'C', 'D'],
+                solution: 'A',
+            });
+        });
+
+        it('gives the question back when the activity becomes a test again', () => {
+            openInShowMode();
+
+            document.getElementById('elceModeTest').click();
+
+            expect(hidden('elceContents')).toBe(false);
+            expect(hidden('elceInputNumbers')).toBe(false);
+            expect(hidden('elcePercentageSpan')).toBe(true);
+            expect(document.getElementById('elceQuestion').value).toBe('What circuit is shown?');
+            expect(device.validateQuestion()).toBe(true);
+            expect(device.selectsGame[0].quextion).toBe('What circuit is shown?');
+        });
+    });
+
+    describe('adding questions to the one on screen', () => {
+        const question = (text, options) => ({
+            ...device.getCuestionDefault(),
+            quextion: text,
+            options,
+            solution: 'A',
+            tikzCode: '',
+            tikzSvg: '',
+        });
+        // The author typed it in a new activity: it is on screen, not in the list yet.
+        const typeOnScreen = (options) => {
+            device.selectsGame = [question('Which lamp lights up?', options)];
+            device.active = 0;
+            device.showQuestion(0);
+            device.selectsGame = [device.getCuestionDefault()];
+        };
+        const added = () => [question('What does a fuse protect?', ['The circuit', 'The lamp', 'The switch', 'The wire'])];
+        const questions = () => device.selectsGame.map((item) => item.quextion);
+
+        it('keeps it when it is complete', () => {
+            typeOnScreen(['L1', 'L2', 'Both', 'None']);
+
+            device.addQuestions(added());
+
+            expect(questions()).toEqual(['Which lamp lights up?', 'What does a fuse protect?']);
+        });
+
+        it('keeps it when a copied question is pasted', () => {
+            typeOnScreen(['L1', 'L2', 'Both', 'None']);
+            device.typeEdit = 0;
+            [device.clipBoard] = added();
+
+            device.pasteQuestion();
+
+            expect(questions()).toEqual(['Which lamp lights up?', 'What does a fuse protect?']);
+        });
+
+        it('leaves it out, without its warning, when it is incomplete', () => {
+            typeOnScreen(['L1', '', '', '']);
+            global.eXe.app.alert.mockClear();
+
+            device.addQuestions(added());
+
+            // What stays is the sample question a new activity starts with.
+            expect(questions()).toEqual([device.getCuestionDefault().quextion, 'What does a fuse protect?']);
+            expect(global.eXe.app.alert).not.toHaveBeenCalled();
+        });
+
+        it('leaves it out of a paste, without its warning, when it is incomplete', () => {
+            typeOnScreen(['L1', '', '', '']);
+            device.typeEdit = 0;
+            [device.clipBoard] = added();
+
+            global.eXe.app.alert.mockClear();
+            device.pasteQuestion();
+
+            expect(questions()).toContain('What does a fuse protect?');
+            expect(global.eXe.app.alert).not.toHaveBeenCalled();
+        });
+    });
+});
+

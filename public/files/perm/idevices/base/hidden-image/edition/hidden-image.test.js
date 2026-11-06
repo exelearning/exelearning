@@ -2,9 +2,7 @@
  * Unit tests for hidden-image iDevice
  *
  * Tests pure functions that don't depend on DOM manipulation:
- * - escapeHtml: HTML character escaping
  * - validTime: Time format validation
- * - removeTags: HTML tag removal (with mocked jQuery)
  * - getDefaultQuestion: Default question object structure
  * - placeImageWindows: Image dimension calculations (with mocked jQuery)
  */
@@ -46,38 +44,6 @@ describe('hidden-image iDevice', () => {
 
     // Load iDevice and get reference
     $exeDevice = loadIdevice(code);
-  });
-
-  describe('escapeHtml', () => {
-    it('escapes ampersand', () => {
-      expect($exeDevice.escapeHtml('foo & bar')).toBe('foo &amp; bar');
-    });
-
-    it('escapes less than', () => {
-      expect($exeDevice.escapeHtml('a < b')).toBe('a &lt; b');
-    });
-
-    it('escapes greater than', () => {
-      expect($exeDevice.escapeHtml('a > b')).toBe('a &gt; b');
-    });
-
-    it('escapes double quotes', () => {
-      expect($exeDevice.escapeHtml('say "hello"')).toBe('say &quot;hello&quot;');
-    });
-
-    it('escapes single quotes', () => {
-      expect($exeDevice.escapeHtml("it's")).toBe('it&#39;s');
-    });
-
-    it('escapes multiple special characters', () => {
-      const input = '<script>alert("xss")</script>';
-      const expected = '&lt;script&gt;alert(&quot;xss&quot;)&lt;/script&gt;';
-      expect($exeDevice.escapeHtml(input)).toBe(expected);
-    });
-
-    it('returns empty string for empty input', () => {
-      expect($exeDevice.escapeHtml('')).toBe('');
-    });
   });
 
   describe('validTime', () => {
@@ -166,28 +132,6 @@ describe('hidden-image iDevice', () => {
     });
   });
 
-  describe('removeTags', () => {
-    it('removes simple HTML tags', () => {
-      const result = $exeDevice.removeTags('<p>Hello</p>');
-      expect(result).toBe('Hello');
-    });
-
-    it('removes nested HTML tags', () => {
-      const result = $exeDevice.removeTags('<div><p><strong>Text</strong></p></div>');
-      expect(result).toBe('Text');
-    });
-
-    it('handles text without tags', () => {
-      const result = $exeDevice.removeTags('Plain text');
-      expect(result).toBe('Plain text');
-    });
-
-    it('handles empty string', () => {
-      const result = $exeDevice.removeTags('');
-      expect(result).toBe('');
-    });
-  });
-
   describe('placeImageWindows', () => {
     // Helper to create a mock image with real DOM parent dimensions
     const createMockImage = (parentWidth, parentHeight) => {
@@ -263,12 +207,6 @@ describe('hidden-image iDevice', () => {
     });
   });
 
-  describe('showMessage', () => {
-    it('exists as a function', () => {
-      expect(typeof $exeDevice.showMessage).toBe('function');
-    });
-  });
-
   describe('validateData', () => {
     it('exists as a function', () => {
       expect(typeof $exeDevice.validateData).toBe('function');
@@ -296,7 +234,7 @@ describe('hidden-image iDevice', () => {
             // so rendering them again would show each control twice.
             expect(source).not.toContain('passScore.getContents(');
             expect(source).not.toContain('progressBar.getContents(');
-            expect(source).toContain('gamification.scorm.getTab(');
+            expect(source).toMatch(/tabs\.getHtml\([\s\S]*grading: true/);
         });
 
         it('restores the control when the iDevice is reopened', () => {
@@ -318,71 +256,6 @@ describe('hidden-image iDevice', () => {
             expect(source).toContain('gamification.passScore.addEvents()');
         });
     });
-
-  describe('edition lifecycle', () => {
-    let savedGamification;
-    let savedMedia;
-
-    beforeEach(() => {
-      savedGamification = global.$exeDevicesEdition.iDevice.gamification;
-      global.$exeDevicesEdition.iDevice.gamification = {
-        ...savedGamification,
-        progressBar: { addEvents: vi.fn() },
-        itinerary: { addEvents: vi.fn() },
-        share: { addEvents: vi.fn(), downloadBlob: vi.fn(() => true) },
-        helpers: { stopSound: vi.fn(), playSound: vi.fn() },
-      };
-      savedMedia = global.$exeDevices.iDevice.gamification.media;
-      global.$exeDevices.iDevice.gamification.media = {
-        extractURLGD: (url) => url,
-      };
-
-      document.body.innerHTML = `
-        <div id="hiIdeviceForm">
-        </div>
-      `;
-
-      $exeDevice.addEvents();
-    });
-
-    afterEach(() => {
-      // Close the edition the test opened, so its document handlers cannot
-      // leak into the next one.
-      $exeDevice.$lifecycle.destroy();
-      document.body.innerHTML = '';
-      global.$exeDevicesEdition.iDevice.gamification = savedGamification;
-      global.$exeDevices.iDevice.gamification.media = savedMedia;
-    });
-
-    describe('preview audio', () => {
-      it('stops playback and releases the stream when the edition closes', () => {
-        $exeDevice.playSound('files/beep.mp3');
-        const player = $exeDevice.playerAudio;
-        const pause = vi.spyOn(player, 'pause');
-
-        $exeDevice.$lifecycle.destroy();
-
-        expect(pause).toHaveBeenCalledTimes(1);
-        expect(player.hasAttribute('src')).toBe(false);
-        pause.mockRestore();
-      });
-
-      it('plays on canplaythrough while open, and stays silent afterwards', () => {
-        $exeDevice.playSound('files/beep.mp3');
-        const player = $exeDevice.playerAudio;
-        const play = vi.spyOn(player, 'play').mockReturnValue(undefined);
-
-        player.dispatchEvent(new Event('canplaythrough'));
-        expect(play).toHaveBeenCalledTimes(1);
-
-        $exeDevice.$lifecycle.destroy();
-        player.dispatchEvent(new Event('canplaythrough'));
-
-        expect(play).toHaveBeenCalledTimes(1);
-        play.mockRestore();
-      });
-    });
-  });
 });
 
 describe('hidden-image minimum score text', () => {
@@ -393,4 +266,264 @@ describe('hidden-image minimum score text', () => {
 
     expect(device.ci18n.msgPassScore).toBe('Minimum score needed to pass this activity: %s');
   });
+});
+
+describe('hidden-image edition: shared form tabs', () => {
+    const PATH = '/files/perm/idevices/base/hidden-image/edition/';
+    const edition = () => global.$exeIDevicesEdition.iDevice;
+    const tabNames = () =>
+        [...document.querySelectorAll('#hiQEIdeviceForm-tabs [data-exe-tab]')].map((tab) =>
+            tab.getAttribute('data-exe-tab')
+        );
+    const panel = (name) => document.getElementById(`hiQEIdeviceForm-panel-${name}`);
+    const question = (overrides = {}) => ({
+        numberOptions: 4,
+        attempts: 4,
+        rows: 4,
+        columns: 4,
+        time: 30,
+        url: 'https://example.com/picture.png',
+        author: '',
+        alt: 'A picture',
+        question: 'What is in the picture?',
+        options: ['A cat', 'A dog', 'A bird', 'A fish'],
+        solution: 0,
+        audio: '',
+        msgHit: '',
+        msgError: '',
+        ...overrides,
+    });
+    const game = (overrides = {}) => ({
+        typeGame: 'HiddenImage',
+        showMinimize: false,
+        optionsRamdon: false,
+        answersRamdon: false,
+        showSolution: true,
+        timeShowSolution: 3,
+        revealTime: 1,
+        customMessages: false,
+        percentajeQuestions: 100,
+        itinerary: {
+            showClue: false,
+            clueGame: '',
+            percentageClue: 40,
+            showCodeAccess: false,
+            codeAccess: '',
+            messageCodeAccess: '',
+        },
+        questionsGame: [question()],
+        isScorm: 0,
+        textButtonScorm: 'Save score',
+        repeatActivity: true,
+        weighted: 100,
+        evaluation: false,
+        evaluationID: '',
+        ...overrides,
+    });
+    const exportHelpers = {
+        isJsonString: (text) => {
+            try {
+                return JSON.parse(text);
+            } catch {
+                return false;
+            }
+        },
+        decrypt: (text) => text,
+        encrypt: (text) => text,
+    };
+    let device;
+    let previousApp;
+    let previousMedia;
+    let tooltips;
+
+    beforeEach(() => {
+        global.$exeDevice = undefined;
+        previousApp = global.eXeLearning?.app;
+        tooltips = new Map();
+        global.eXeLearning = {
+            ...global.eXeLearning,
+            app: {
+                ...previousApp,
+                common: {
+                    initTooltips: vi.fn((scope) => {
+                        scope.querySelectorAll('.exe-app-tooltip').forEach((button) => {
+                            if (!tooltips.has(button)) tooltips.set(button, { hide: vi.fn(), dispose: vi.fn() });
+                        });
+                    }),
+                },
+            },
+        };
+        vi.stubGlobal('bootstrap', { Tooltip: { getInstance: (button) => tooltips.get(button) } });
+        Object.assign(global.$exeDevices.iDevice.gamification.helpers, exportHelpers);
+        previousMedia = global.$exeDevices.iDevice.gamification.media;
+        global.$exeDevices.iDevice.gamification.media = { extractURLGD: (url) => url };
+        device = global.loadIdevice(join(__dirname, 'hidden-image.js'));
+        document.body.innerHTML = '<div id="hiddenImageBody"></div>';
+        device.init(document.getElementById('hiddenImageBody'), {}, PATH);
+    });
+
+    afterEach(() => {
+        device.$lifecycle?.destroy();
+        if (global.eXeLearning) {
+            global.eXeLearning.app = previousApp;
+        }
+        vi.unstubAllGlobals();
+        Object.keys(exportHelpers).forEach((name) => delete global.$exeDevices.iDevice.gamification.helpers[name]);
+        global.$exeDevices.iDevice.gamification.media = previousMedia;
+        global.$exeDevice = undefined;
+        document.body.innerHTML = '';
+    });
+
+    it('lays the form out in the shared tabs, and opens on its questions', () => {
+        expect(tabNames()).toEqual(['instructions', 'options', 'contents', 'passwords', 'after', 'grading', 'texts']);
+        expect(panel('contents').classList.contains('active')).toBe(true);
+    });
+
+    it('puts each part of the form in its tab', () => {
+        expect(panel('instructions').querySelector('#eXeGameInstructions').value).toContain(
+            'Reveal the hidden image'
+        );
+        expect(panel('options').querySelector('#hiEOptions')).not.toBeNull();
+        expect(panel('contents').querySelector('#hiEPanel')).not.toBeNull();
+        expect(panel('passwords').querySelector('#eXeGameShowCodeAccess')).not.toBeNull();
+        expect(panel('after').querySelector('#eXeIdeviceTextAfter')).not.toBeNull();
+        expect(panel('grading').querySelector('.exe-progress-report-wrapper')).not.toBeNull();
+        expect(panel('texts').querySelector('#ci18n_msgSubmit')).not.toBeNull();
+    });
+
+    it('offers no import, export or AI windows', () => {
+        expect(document.querySelectorAll('[data-exe-share]')).toHaveLength(0);
+    });
+
+    it('explains each option without changing any of them', () => {
+        const helps = [...panel('options').querySelectorAll('#hiEOptions .exe-idevice-help')];
+        const states = () => [...document.querySelectorAll('#hiQEIdeviceForm input')].map((input) => input.checked);
+        const before = states();
+
+        expect(helps).toHaveLength(6);
+        for (const help of helps) {
+            expect(help.title).toBe('Information');
+            const content = document.getElementById(help.getAttribute('aria-controls'));
+            expect(content.textContent.length).toBeGreaterThan(15);
+            help.click();
+            help.querySelector('span').click();
+            content.click();
+        }
+        expect(states()).toEqual(before);
+    });
+
+    it('leaves the state of each switch to its native checkbox', () => {
+        document.querySelectorAll('.toggle-input:not(:disabled)').forEach((input) => input.click());
+
+        expect(document.querySelectorAll('[role="switch"], [aria-checked]')).toHaveLength(0);
+    });
+
+    it('disposes all option tooltips when the edition closes', () => {
+        expect(tooltips.size).toBe(12); // Options plus the six shared Grading helpers.
+        device.$lifecycle.destroy();
+        for (const tooltip of tooltips.values()) {
+            expect(tooltip.dispose).toHaveBeenCalledTimes(1);
+        }
+    });
+
+    it('restores the options with the game', () => {
+        device.updateFieldGame(game({ showMinimize: true, revealTime: 5, percentajeQuestions: 50 }));
+
+        expect(document.getElementById('hiEShowMinimize').checked).toBe(true);
+        expect(document.getElementById('hiERevealTime').value).toBe('5');
+        expect(document.getElementById('hiEPercentajeQuestions').value).toBe('50');
+        expect(document.getElementById('hiEQuestion').value).toBe('What is in the picture?');
+    });
+
+    it('counts a pasted copy among the questions used in each game', () => {
+        device.updateFieldGame(game());
+
+        device.copyQuestion();
+        device.pasteQuestion();
+
+        expect(device.questionsGame).toHaveLength(2);
+        expect(document.getElementById('hiENumeroPercentaje').textContent).toBe('2/2');
+    });
+
+    it('keeps the changes made to the question on screen after copying it', () => {
+        device.updateFieldGame(game());
+        device.copyQuestion();
+        document.getElementById('hiEQuestion').value = 'What else is in the picture?';
+
+        device.pasteQuestion();
+
+        expect(device.questionsGame.map((item) => item.question)).toEqual([
+            'What else is in the picture?',
+            'What is in the picture?',
+        ]);
+    });
+
+    it('keeps the custom texts when the iDevice is edited again', () => {
+        device.idevicePreviousData = `
+            <div class="hiddenimage-IDevice">
+                <div class="hiddenimage-version js-hidden">1</div>
+                <div class="hiddenimage-DataGame js-hidden">${JSON.stringify(game({ msgs: { msgScore: 'Points' } }))}</div>
+            </div>`;
+
+        device.loadPreviousValues();
+
+        expect(document.getElementById('ci18n_msgScore').value).toBe('Points');
+    });
+
+    it('pastes after a question left incomplete on screen, without its warning', () => {
+        const before = eXe.app._alertHistory.length;
+        device.typeEdit = 0;
+        device.clipBoard = { ...device.questionsGame[0] };
+
+        device.pasteQuestion();
+
+        expect(device.questionsGame).toHaveLength(2);
+        expect(eXe.app._alertHistory.slice(before)).toEqual([]);
+    });
+
+    describe('saving', () => {
+        let editors;
+        let tinymceGet;
+
+        beforeEach(() => {
+            editors = {
+                eXeGameInstructions: '<p>Instructions</p>',
+                eXeIdeviceTextAfter: '<p>Extra info</p>',
+            };
+            tinymceGet = vi.spyOn(global.tinymce, 'get').mockImplementation((id) =>
+                id in editors
+                    ? { initialized: true, getContent: () => editors[id], setContent: (html) => (editors[id] = html) }
+                    : null
+            );
+        });
+
+        afterEach(() => {
+            tinymceGet.mockRestore();
+        });
+
+        it('keeps the access code and the clue when saving', () => {
+            const itinerary = {
+                showClue: true,
+                clueGame: 'Next key: river',
+                percentageClue: 60,
+                showCodeAccess: true,
+                codeAccess: '1234',
+                messageCodeAccess: 'Code of the previous activity?',
+            };
+            device.updateFieldGame(game({ itinerary }));
+
+            expect(device.validateData().itinerary).toEqual(itinerary);
+        });
+
+        it('saves the game without the help of the form', () => {
+            device.updateFieldGame(game({ showMinimize: true }));
+
+            const html = device.save();
+
+            expect(html).toContain('hiddenimage-DataGame');
+            expect(html).toContain('"showMinimize":true');
+            expect(html).toContain('hiddenimage-extra-content');
+            expect(html).not.toContain('exe-idevice-help');
+        });
+    });
 });

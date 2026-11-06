@@ -13,6 +13,7 @@ describe('isMinifiableJs', () => {
         expect(isMinifiableJs('app/core/RuntimeConfig.js')).toBe(true);
 
         expect(isMinifiableJs('app/common/common_edition.js')).toBe(true);
+        expect(isMinifiableJs('app/common/common_idevices_edition.js')).toBe(true);
     });
 
     it('never touches bundles, already-minified files, vendored trees or export-copied libraries', () => {

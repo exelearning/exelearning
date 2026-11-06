@@ -3,8 +3,6 @@
  *
  * Tests cover:
  * - hexToRgba: Color conversion utility
- * - escapeHtml: HTML character escaping
- * - removeTags: HTML tag stripping
  * - getCardDefault / getPhraseDefault: Default data structures
  * - validateCard: Card validation logic
  * - addPickerButton: The fixed file-picker flow (issue #1449)
@@ -83,67 +81,6 @@ describe('select-media-files iDevice', () => {
     });
 
     // -------------------------------------------------------------------------
-    // escapeHtml
-    // -------------------------------------------------------------------------
-    describe('escapeHtml', () => {
-        it('escapes ampersand', () => {
-            expect($exeDevice.escapeHtml('a & b')).toBe('a &amp; b');
-        });
-
-        it('escapes less-than sign', () => {
-            expect($exeDevice.escapeHtml('a < b')).toBe('a &lt; b');
-        });
-
-        it('escapes greater-than sign', () => {
-            expect($exeDevice.escapeHtml('a > b')).toBe('a &gt; b');
-        });
-
-        it('escapes double quotes', () => {
-            expect($exeDevice.escapeHtml('say "hi"')).toBe(
-                'say &quot;hi&quot;'
-            );
-        });
-
-        it('escapes single quotes', () => {
-            expect($exeDevice.escapeHtml("it's")).toBe("it&#39;s");
-        });
-
-        it('escapes a full XSS payload', () => {
-            const input = '<script>alert("xss")</script>';
-            const expected =
-                '&lt;script&gt;alert(&quot;xss&quot;)&lt;/script&gt;';
-            expect($exeDevice.escapeHtml(input)).toBe(expected);
-        });
-
-        it('returns empty string for empty input', () => {
-            expect($exeDevice.escapeHtml('')).toBe('');
-        });
-    });
-
-    // -------------------------------------------------------------------------
-    // removeTags
-    // -------------------------------------------------------------------------
-    describe('removeTags', () => {
-        it('strips simple HTML tags', () => {
-            expect($exeDevice.removeTags('<p>Hello</p>')).toBe('Hello');
-        });
-
-        it('strips nested tags', () => {
-            expect(
-                $exeDevice.removeTags('<div><strong>Text</strong></div>')
-            ).toBe('Text');
-        });
-
-        it('returns plain text unchanged', () => {
-            expect($exeDevice.removeTags('plain text')).toBe('plain text');
-        });
-
-        it('returns empty string for empty input', () => {
-            expect($exeDevice.removeTags('')).toBe('');
-        });
-    });
-
-    // -------------------------------------------------------------------------
     // getCardDefault
     // -------------------------------------------------------------------------
     describe('getCardDefault', () => {
@@ -215,9 +152,14 @@ describe('select-media-files iDevice', () => {
     // validateCard
     // -------------------------------------------------------------------------
     describe('validateCard', () => {
+        let showMessage;
+
         beforeEach(() => {
-            // showMessage delegates to eXe.app.alert; mock it so it doesn't throw
-            $exeDevice.showMessage = vi.fn();
+            showMessage = vi.spyOn($exeIDevicesEdition.iDevice.common, 'showMessage').mockImplementation(() => {});
+        });
+
+        afterEach(() => {
+            showMessage.mockRestore();
         });
 
         it('returns true (invalid) when card has no url, no audio, no text', () => {
@@ -247,13 +189,13 @@ describe('select-media-files iDevice', () => {
         it('calls showMessage when card is invalid', () => {
             const card = { url: '', audio: '', eText: '' };
             $exeDevice.validateCard(card);
-            expect($exeDevice.showMessage).toHaveBeenCalledOnce();
+            expect(showMessage).toHaveBeenCalledOnce();
         });
 
         it('does not call showMessage when card is valid', () => {
             const card = { url: 'files/image.jpg', audio: '', eText: '' };
             $exeDevice.validateCard(card);
-            expect($exeDevice.showMessage).not.toHaveBeenCalled();
+            expect(showMessage).not.toHaveBeenCalled();
         });
 
         it('treats url shorter than 5 chars as absent', () => {
@@ -536,38 +478,6 @@ describe('select-media-files iDevice', () => {
     // Structure checks
     // -------------------------------------------------------------------------
     describe('structure', () => {
-        it('exports validated data through the edition share helper', () => {
-            const dataGame = { phrasesGame: [] };
-            const exportGame = vi.fn();
-
-            document.body.innerHTML = `
-                <div id="eXeGameExportImport">
-                    <input id="eXeGameImportGame" type="file" />
-                    <button id="eXeGameExportQuestions" type="button"></button>
-                </div>
-            `;
-            global.$exeDevicesEdition.iDevice.gamification.share = { exportGame };
-            global.$exeDevicesEdition.iDevice.gamification.itinerary = {
-                addEvents: vi.fn(),
-            };
-            global.$exeDevicesEdition.iDevice.gamification.progressBar = {
-                getContents: vi.fn(() => '<div></div>'),
-                setValues: vi.fn(),
-                getValues: vi.fn(() => ({ evaluation: false, evaluationID: '' })),
-                addEvents: vi.fn(),
-            };
-            vi.spyOn($exeDevice, 'validateData').mockReturnValue(dataGame);
-
-            $exeDevice.addEvents();
-            $('#eXeGameExportQuestions').trigger('click');
-
-            expect(exportGame).toHaveBeenCalledWith(
-                dataGame,
-                'gameQEIdeviceForm',
-                'Select media files'
-            );
-        });
-
         it('exposes i18n with name and category', () => {
             expect($exeDevice.i18n).toBeDefined();
             expect($exeDevice.i18n.name).toBeDefined();
@@ -586,7 +496,7 @@ describe('select-media-files iDevice', () => {
             const methods = [
                 'init', 'save', 'addPickerButton', 'addCard',
                 'validateCard', 'validatePhrase', 'validateData',
-                'showMessage', 'hexToRgba', 'escapeHtml',
+                'hexToRgba',
                 'getCardDefault', 'getPhraseDefault',
             ];
             methods.forEach((m) => {
@@ -596,7 +506,7 @@ describe('select-media-files iDevice', () => {
     });
 
     /**
-     * The pass-score control is a shared block in common_edition.js, exercised
+     * The pass-score control is a shared block in common_idevices_edition.js, exercised
      * by its own tests. What is specific to this iDevice -- and what silently
      * breaks if someone edits the form -- is the wiring: all four call sites
      * have to be present, and the two saved fields have to reach the stored
@@ -616,7 +526,7 @@ describe('select-media-files iDevice', () => {
             // so rendering them again would show each control twice.
             expect(source).not.toContain('passScore.getContents(');
             expect(source).not.toContain('progressBar.getContents(');
-            expect(source).toContain('gamification.scorm.getTab(');
+            expect(source).toMatch(/tabs\.getHtml\([\s\S]*grading: true/);
         });
 
         it('restores the control when the iDevice is reopened', () => {
@@ -638,176 +548,6 @@ describe('select-media-files iDevice', () => {
             expect(source).toContain('gamification.passScore.addEvents()');
         });
     });
-
-    // -------------------------------------------------------------------------
-    // Edition lifecycle teardown
-    // -------------------------------------------------------------------------
-    /**
-     * The editor previews audio with `new Audio()` and imports games with a
-     * FileReader. Both used to survive the form: the sound kept playing after
-     * the editor closed, and a late `onload` resolved `$exeDevice` from the
-     * global — by then a different iDevice.
-     */
-    describe('edition lifecycle teardown', () => {
-        /** Audio double: the platform element does nothing useful under happy-dom. */
-        class FakeAudio {
-            constructor(src) {
-                FakeAudio.instances.push(this);
-                this.src = src;
-                this.pause = vi.fn();
-                this.load = vi.fn();
-                this.removeAttribute = vi.fn(() => {
-                    this.src = '';
-                });
-                this.play = vi.fn(() => Promise.resolve());
-            }
-        }
-
-        /** FileReader double that only fires when a test says so. */
-        class FakeFileReader {
-            constructor() {
-                FakeFileReader.instances.push(this);
-                this.readyState = 0;
-                this.onload = null;
-                this.abort = vi.fn(() => {
-                    this.readyState = 2;
-                });
-            }
-
-            readAsText() {
-                this.readyState = 1;
-            }
-
-            fire(result) {
-                this.readyState = 2;
-                if (this.onload) this.onload({ target: { result } });
-            }
-        }
-
-        let originalAudio;
-        let originalFileReader;
-        let originalMedia;
-        let originalItinerary;
-
-        beforeEach(() => {
-            FakeAudio.instances = [];
-            FakeFileReader.instances = [];
-
-            originalAudio = global.Audio;
-            originalFileReader = global.FileReader;
-            originalMedia = $exeDevices.iDevice.gamification.media;
-            originalItinerary = $exeDevicesEdition.iDevice.gamification.itinerary;
-
-            global.Audio = FakeAudio;
-            window.Audio = FakeAudio;
-            global.FileReader = FakeFileReader;
-            window.FileReader = FakeFileReader;
-            $exeDevices.iDevice.gamification.media = { extractURLGD: u => u };
-            $exeDevicesEdition.iDevice.gamification.itinerary = { addEvents: vi.fn() };
-        });
-
-        afterEach(() => {
-            global.Audio = originalAudio;
-            window.Audio = originalAudio;
-            global.FileReader = originalFileReader;
-            window.FileReader = originalFileReader;
-            $exeDevices.iDevice.gamification.media = originalMedia;
-            $exeDevicesEdition.iDevice.gamification.itinerary = originalItinerary;
-        });
-
-        it('stops the audio preview when the edition closes', () => {
-            $exeDevice.playSound('song.mp3');
-            const audio = FakeAudio.instances[0];
-            expect(audio.play).toHaveBeenCalled();
-            expect(audio.pause).not.toHaveBeenCalled();
-
-            $exeDevice.$lifecycle.destroy();
-
-            expect(audio.pause).toHaveBeenCalledTimes(1);
-            expect(audio.removeAttribute).toHaveBeenCalledWith('src');
-            expect(audio.load).toHaveBeenCalledTimes(1);
-        });
-
-        it('stops every audio preview the edition created', () => {
-            $exeDevice.playSound('one.mp3');
-            $exeDevice.playSound('two.mp3');
-
-            $exeDevice.$lifecycle.destroy();
-
-            expect(FakeAudio.instances).toHaveLength(2);
-            FakeAudio.instances.forEach(audio => {
-                expect(audio.pause).toHaveBeenCalledTimes(1);
-            });
-        });
-
-        describe('game import', () => {
-            const selectFile = () => {
-                const input = document.getElementById('eXeGameImportGame');
-                Object.defineProperty(input, 'files', {
-                    value: [{ name: 'game.json', type: 'application/json' }],
-                    configurable: true,
-                });
-                $(input).trigger('change');
-            };
-
-            beforeEach(() => {
-                ['eXeGameImportGame', 'eXeGameExportQuestions', 'eXeGameExportImport'].forEach(id => {
-                    const input = document.createElement('input');
-                    input.type = 'file';
-                    input.id = id;
-                    document.body.appendChild(input);
-                });
-                $exeDevice.phrasesGame = [];
-                $exeDevice.addEvents();
-            });
-
-            it('imports the game while the edition is open', () => {
-                const importGame = vi.spyOn($exeDevice, 'importGame').mockImplementation(() => {});
-
-                selectFile();
-                FakeFileReader.instances[0].fire('{"x":1}');
-
-                expect(importGame).toHaveBeenCalledWith('{"x":1}');
-                importGame.mockRestore();
-            });
-
-            it('aborts an in-flight read when the edition closes', () => {
-                selectFile();
-                const reader = FakeFileReader.instances[0];
-                expect(reader.readyState).toBe(1);
-
-                $exeDevice.$lifecycle.destroy();
-
-                expect(reader.abort).toHaveBeenCalledTimes(1);
-            });
-
-            it('ignores a late read callback instead of importing into a closed edition', () => {
-                const importGame = vi.spyOn($exeDevice, 'importGame').mockImplementation(() => {});
-
-                selectFile();
-                const reader = FakeFileReader.instances[0];
-                $exeDevice.$lifecycle.destroy();
-                reader.fire('{"x":1}');
-
-                expect(importGame).not.toHaveBeenCalled();
-                importGame.mockRestore();
-            });
-
-            it('never imports into the iDevice that replaced this one', () => {
-                const first = $exeDevice;
-                selectFile();
-                const reader = FakeFileReader.instances[0];
-                first.$lifecycle.destroy();
-
-                const second = { importGame: vi.fn() };
-                global.$exeDevice = second;
-                reader.fire('{"x":1}');
-
-                expect(second.importGame).not.toHaveBeenCalled();
-                global.$exeDevice = first;
-            });
-        });
-    });
 });
 
 describe('select-media-files minimum score text', () => {
@@ -817,5 +557,432 @@ describe('select-media-files minimum score text', () => {
         device.refreshTranslations();
 
         expect(device.ci18n.msgPassScore).toBe('Minimum score needed to pass this activity: %s');
+    });
+});
+
+describe('select-media-files edition: shared form tabs and feedback', () => {
+    const PATH = '/files/perm/idevices/base/select-media-files/edition/';
+    const edition = () => global.$exeIDevicesEdition.iDevice;
+    const feedback = () => edition().gamification.feedback;
+    const helpers = () => global.$exeDevices.iDevice.gamification.helpers;
+    const tabNames = () =>
+        [...document.querySelectorAll('#gameQEIdeviceForm-tabs [data-exe-tab]')].map((tab) =>
+            tab.getAttribute('data-exe-tab')
+        );
+    const panel = (name) => document.getElementById(`gameQEIdeviceForm-panel-${name}`);
+    const card = (eText, state = false) => ({
+        id: '',
+        type: 2,
+        url: '',
+        audio: '',
+        author: '',
+        alt: '',
+        eText,
+        color: '#000000',
+        backcolor: '#ffffff',
+        state,
+    });
+    const phrase = (overrides = {}) => ({
+        cards: [card('Cat', true), card('Car')],
+        msgError: '',
+        msgHit: '',
+        definition: 'Choose the animal',
+        audioDefinition: '',
+        audioHit: '',
+        audioError: '',
+        url: '',
+        alt: '',
+        author: '',
+        ...overrides,
+    });
+    const game = (overrides = {}) => ({
+        typeGame: 'SeleccionaMedias',
+        author: '',
+        instructions: '',
+        showMinimize: false,
+        showSolution: true,
+        itinerary: {
+            showClue: false,
+            clueGame: '',
+            percentageClue: 40,
+            showCodeAccess: false,
+            codeAccess: '',
+            messageCodeAccess: '',
+        },
+        phrasesGame: [phrase()],
+        isScorm: 0,
+        textButtonScorm: 'Save score',
+        repeatActivity: true,
+        weighted: 100,
+        textFeedBack: '',
+        textAfter: '',
+        feedBack: false,
+        percentajeFB: 100,
+        customMessages: false,
+        percentajeQuestions: 100,
+        timeShowSolution: 4,
+        time: 0,
+        version: 1.5,
+        evaluation: false,
+        evaluationID: '',
+        attempsNumber: 1,
+        numberMaxCards: 30,
+        modeTable: false,
+        ...overrides,
+    });
+    const stored = (data, extra = '') => `
+        <div class="seleccionamedias-IDevice">
+            ${extra}
+            <div class="seleccionamedias-DataGame js-hidden">${JSON.stringify(data)}</div>
+        </div>`;
+    let device;
+    let previousApp;
+    let tooltips;
+    let previousHelpers;
+    let previousMedia;
+
+    beforeEach(() => {
+        global.$exeDevice = undefined;
+        previousApp = global.eXeLearning?.app;
+        tooltips = new Map();
+        global.eXeLearning = {
+            ...global.eXeLearning,
+            app: {
+                ...previousApp,
+                common: {
+                    initTooltips: vi.fn((scope) => {
+                        scope.querySelectorAll('.exe-app-tooltip').forEach((button) => {
+                            if (!tooltips.has(button)) tooltips.set(button, { hide: vi.fn(), dispose: vi.fn() });
+                        });
+                    }),
+                },
+            },
+        };
+        vi.stubGlobal('bootstrap', { Tooltip: { getInstance: (button) => tooltips.get(button) } });
+        previousHelpers = { ...helpers() };
+        Object.assign(helpers(), {
+            isJsonString: (text) => {
+                try {
+                    return JSON.parse(text);
+                } catch {
+                    return false;
+                }
+            },
+            decrypt: (text) => text,
+            encrypt: (text) => text,
+            arrayMove: (list, from, to) => list.splice(to, 0, list.splice(from, 1)[0]),
+        });
+        previousMedia = global.$exeDevices.iDevice.gamification.media;
+        global.$exeDevices.iDevice.gamification.media = { extractURLGD: (url) => url };
+        device = global.loadIdevice(join(__dirname, 'select-media-files.js'));
+        device.phrasesGame = [];
+        document.body.innerHTML = '<div id="selectMediaBody"></div>';
+        device.init(document.getElementById('selectMediaBody'), {}, PATH);
+    });
+
+    afterEach(() => {
+        device.$lifecycle?.destroy();
+        if (global.eXeLearning) {
+            global.eXeLearning.app = previousApp;
+        }
+        vi.unstubAllGlobals();
+        for (const key of ['isJsonString', 'decrypt', 'encrypt', 'arrayMove']) {
+            if (key in previousHelpers) helpers()[key] = previousHelpers[key];
+            else delete helpers()[key];
+        }
+        global.$exeDevices.iDevice.gamification.media = previousMedia;
+        global.$exeDevice = undefined;
+        document.body.innerHTML = '';
+    });
+
+    it('lays the form out in the shared tabs, and opens on its activities', () => {
+        expect(tabNames()).toEqual([
+            'instructions',
+            'options',
+            'contents',
+            'passwords',
+            'feedback',
+            'after',
+            'grading',
+            'texts',
+        ]);
+        expect(panel('contents').classList.contains('active')).toBe(true);
+    });
+
+    it('edits the activities in Questions and the game in Options', () => {
+        expect(panel('contents').firstElementChild.textContent).toContain('Add the activities and their cards');
+        expect(panel('contents').querySelector('#slcmEPanel #slcmEDefinition')).not.toBeNull();
+        expect(panel('contents').querySelector('#slcmEPanel .SLCME-EDatosCarta')).not.toBeNull();
+        expect(panel('options').querySelector('#slcmEOptions #slcmEModeTable')).not.toBeNull();
+        expect(panel('options').querySelector('#slcmEOptions #slcmEANumberMaxCard')).not.toBeNull();
+        expect(panel('passwords').querySelector('#eXeGameShowCodeAccess')).not.toBeNull();
+        expect(panel('feedback').querySelector('#eXeGameHasFeedBack')).not.toBeNull();
+        expect(panel('grading').querySelector('.exe-progress-report-wrapper')).not.toBeNull();
+        expect(panel('texts').querySelector('#ci18n_msgCheck')).not.toBeNull();
+    });
+
+    it('offers no import, export or AI windows', () => {
+        expect(document.querySelectorAll('[data-exe-share]')).toHaveLength(0);
+    });
+
+    it('leaves the feedback to the shared block, without controls of its own', () => {
+        for (const id of ['slcmEHasFeedBack', 'slcmEPercentajeFB', 'slcmEFeedbackP', 'slcmEFeedBackEditor']) {
+            expect(document.getElementById(id)).toBeNull();
+        }
+        expect(document.querySelector('.Games-Reportdiv')).toBeNull();
+    });
+
+    it('explains each option without changing any of them', () => {
+        const helps = [...document.querySelectorAll('#slcmEOptions .exe-idevice-help')];
+        const states = () => [...document.querySelectorAll('#gameQEIdeviceForm input')].map((input) => input.checked);
+        const before = states();
+
+        expect(helps).toHaveLength(9);
+        for (const help of helps) {
+            expect(help.title).toBe('Information');
+            const content = document.getElementById(help.getAttribute('aria-controls'));
+            expect(content.textContent.length).toBeGreaterThan(15);
+            help.click();
+            help.querySelector('span').click();
+            content.click();
+        }
+        expect(states()).toEqual(before);
+    });
+
+    it('leaves the state of each switch to its native checkbox', () => {
+        document.querySelectorAll('.toggle-input:not(:disabled)').forEach((input) => input.click());
+
+        expect(document.querySelectorAll('[role="switch"], [aria-checked]')).toHaveLength(0);
+    });
+
+    it('disposes all tooltips when the edition closes', () => {
+        expect(tooltips.size).toBe(15); // Options plus the six shared Grading helpers.
+        device.$lifecycle.destroy();
+        for (const tooltip of tooltips.values()) {
+            expect(tooltip.dispose).toHaveBeenCalledTimes(1);
+        }
+    });
+
+    it('restores the options, the activities and the feedback with the game', () => {
+        device.idevicePreviousData = stored(
+            game({ modeTable: true, attempsNumber: 3, feedBack: true, percentajeFB: 80 }),
+            '<div class="seleccionamedias-feedback-game"><p>Well done</p></div>'
+        );
+
+        device.loadPreviousValues();
+
+        expect(document.getElementById('slcmEModeTable').checked).toBe(true);
+        expect(document.getElementById('slcmEAttemptsNumber').value).toBe('3');
+        expect(document.getElementById('slcmEDefinition').value).toBe('Choose the animal');
+        expect(document.querySelectorAll('#slcmEPhrase .SLCME-EDatosCarta')).toHaveLength(2);
+        expect(document.getElementById('eXeGameHasFeedBack').checked).toBe(true);
+        expect(document.getElementById('eXeGamePercentajeFB').value).toBe('80');
+        expect(feedback().getText()).toBe('<p>Well done</p>');
+    });
+
+    it('shows the custom messages of a game reopened with them', () => {
+        device.updateFieldGame(game({ customMessages: true }));
+
+        const rows = [...document.querySelectorAll('.SLCME-ECustomMessageDiv')];
+        expect(rows).toHaveLength(2);
+        for (const row of rows) expect(row.classList.contains('d-none')).toBe(false);
+    });
+
+    it('shows the text of a card in its preview while it is typed', () => {
+        const input = document.querySelector('#slcmEPhrase .SLCME-EText');
+        const id = input.id.replace('slcmEText-', '');
+        const preview = document.getElementById(`slcmETextDiv-${id}`);
+
+        input.value = 'Cat';
+        $(input).trigger('keyup');
+
+        expect(preview.textContent).toBe('Cat');
+        expect(preview.classList.contains('d-none')).toBe(false);
+
+        input.value = '';
+        $(input).trigger('keyup');
+
+        expect(preview.classList.contains('d-none')).toBe(true);
+    });
+
+    it('starts a new activity without the audio and messages of the previous one', () => {
+        for (const id of ['slcmEURLAudioDefinition', 'slcmEMessageOK', 'slcmEMessageKO', 'slcmEURLAudioOK', 'slcmEURLAudioKO']) {
+            document.getElementById(id).value = 'files/previous.mp3';
+        }
+
+        device.clearPhrase();
+
+        for (const id of ['slcmEURLAudioDefinition', 'slcmEMessageOK', 'slcmEMessageKO', 'slcmEURLAudioOK', 'slcmEURLAudioKO']) {
+            expect(document.getElementById(id).value).toBe('');
+        }
+    });
+
+    it('names every field of the activity and of its cards', () => {
+        const fields = [
+            ...document.querySelectorAll('#slcmEPanel input[type="text"], #slcmEPanel input[type="color"]'),
+        ];
+
+        expect(fields.length).toBeGreaterThan(10);
+        for (const field of fields) expect(field.labels, field.id).toHaveLength(1);
+    });
+
+    it('drops a stored image link too short to be a file', () => {
+        device.idevicePreviousData = stored(
+            game(),
+            '<a href="x" class="js-hidden seleccionamedias-LinkImages-0">0</a>'
+        );
+        device.phrasesGame = [];
+
+        device.loadPreviousValues();
+
+        expect(device.phrasesGame[0].cards[0].url).toBe('');
+    });
+
+    it('writes the links of the files without leaking a global', () => {
+        delete globalThis.linkImage;
+
+        const links = device.createlinksImage([phrase({ url: 'files/statement.jpg' })]);
+
+        expect(links).toContain('seleccionamedias-LinkImagesDef');
+        expect(globalThis.linkImage).toBeUndefined();
+    });
+
+    it('names wav among the audio formats it supports', () => {
+        device.loadAudio('files/sound.flac');
+
+        expect(eXe.app.getLastAlert()).toBe('Supported formats: mp3, ogg, wav');
+    });
+
+    it('pastes after a phrase left incomplete on screen, without its warning', () => {
+        const before = eXe.app._alertHistory.length;
+        device.typeEdit = 0;
+        device.clipBoard = { ...device.phrasesGame[0] };
+
+        device.pastePhrase();
+
+        expect(device.phrasesGame).toHaveLength(2);
+        expect(eXe.app._alertHistory.slice(before)).toEqual([]);
+    });
+
+    describe('saving', () => {
+        let editors;
+
+        beforeEach(() => {
+            editors = {
+                eXeGameInstructions: '<p>Instructions</p>',
+                eXeIdeviceTextAfter: '',
+                eXeGameFeedBackEditor: '',
+            };
+            vi.spyOn(global.tinymce, 'get').mockImplementation((id) =>
+                id in editors
+                    ? {
+                          initialized: true,
+                          getContent: () => editors[id],
+                          setContent: (html) => (editors[id] = html),
+                      }
+                    : null
+            );
+            device.updateFieldGame(game());
+            device.showPhrase(0, true);
+        });
+
+        afterEach(() => {
+            vi.restoreAllMocks();
+        });
+
+        it('saves the feedback values the export reads', () => {
+            // Saved with its message: without one, the feedback loads off.
+            editors.eXeGameFeedBackEditor = '<p>Bravo</p>';
+            device.updateFieldGame(game({ feedBack: true, percentajeFB: 70 }));
+
+            const data = device.validateData();
+
+            expect(data.feedBack).toBe(true);
+            expect(data.percentajeFB).toBe(70);
+            expect(unescape(data.textFeedBack)).toBe('<p>Bravo</p>');
+            const html = device.save();
+            expect(html).toContain('<div class="seleccionamedias-feedback-game"><p>Bravo</p></div>');
+            expect(html).not.toContain('exe-idevice-help');
+        });
+
+        it('keeps the id of each card, so saving it again changes nothing', () => {
+            const cards = [
+                { ...card('Cat', true), id: 111 },
+                { ...card('Car'), id: 222 },
+                { ...card('Cup'), id: 222 },
+                { ...card('Cow'), id: '' },
+            ];
+            device.updateFieldGame(game({ phrasesGame: [phrase({ cards })] }));
+            device.showPhrase(0, true);
+
+            const ids = [...document.querySelectorAll('.SLCME-EDatosCarta')].map((element) => $(element).data('id'));
+
+            expect(ids.slice(0, 2)).toEqual([111, 222]);
+            // A repeated or missing id gets a new one of its own.
+            expect(new Set(ids).size).toBe(4);
+            expect(ids.slice(2).every((id) => /^\d+$/.test(String(id)))).toBe(true);
+        });
+
+        it('does not save when the feedback is on without a message', () => {
+            device.updateFieldGame(game());
+            // The author switches the feedback on and leaves its message empty.
+            $('#eXeGameHasFeedBack').prop('checked', true).trigger('change');
+
+            expect(device.save()).toBe(false);
+            expect(eXe.app.getLastAlert()).toBe('Message to display when passing the game');
+        });
+
+        it('loads with the feedback off an activity saved with it on and no message, and saves it', () => {
+            device.updateFieldGame(game({ feedBack: true, percentajeFB: 70 }));
+
+            expect(document.getElementById('eXeGameHasFeedBack').checked).toBe(false);
+            expect(device.validateData().feedBack).toBe(false);
+            expect(device.save()).toContain('seleccionamedias-DataGame');
+        });
+
+        it('keeps the access code and the clue when saving', () => {
+            const itinerary = {
+                showClue: true,
+                clueGame: 'Next key: river',
+                percentageClue: 60,
+                showCodeAccess: true,
+                codeAccess: '1234',
+                messageCodeAccess: 'Code of the previous activity?',
+            };
+            device.updateFieldGame(game({ itinerary }));
+
+            expect(device.validateData().itinerary).toEqual(itinerary);
+        });
+
+        it('moves an activity with the cut and paste buttons', () => {
+            device.updateFieldGame(game({ phrasesGame: [phrase({ definition: 'First' }), phrase({ definition: 'Second' })] }));
+            device.showPhrase(0, true);
+
+            document.getElementById('slcmECut').click();
+            // Moved to the second one, as the arrows do.
+            device.active = 1;
+            device.showPhrase(1);
+            document.getElementById('slcmEPaste').click();
+
+            expect(device.phrasesGame.map((p) => p.definition)).toEqual(['Second', 'First']);
+        });
+
+        it('counts a pasted copy in the activities per game', () => {
+            device.copyPhrase();
+            device.pastePhrase();
+
+            expect(device.phrasesGame).toHaveLength(2);
+            expect(document.getElementById('slcmENumeroPercentaje').textContent).toBe('2/2');
+        });
+
+        it('keeps the changes made to the activity on screen after copying it', () => {
+            device.copyPhrase();
+            const copied = device.phrasesGame[0].definition;
+            document.getElementById('slcmEDefinition').value = 'Edited after copying';
+
+            device.pastePhrase();
+
+            expect(device.phrasesGame.map((p) => p.definition)).toEqual(['Edited after copying', copied]);
+        });
     });
 });

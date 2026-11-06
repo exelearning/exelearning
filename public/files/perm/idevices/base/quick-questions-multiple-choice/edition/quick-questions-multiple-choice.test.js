@@ -12,6 +12,7 @@
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
+import { runInThisContext } from 'node:vm';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -301,7 +302,7 @@ describe('quick-questions-multiple-choice edition: $exeDevice guards (#2271)', (
             // so rendering them again would show each control twice.
             expect(source).not.toContain('passScore.getContents(');
             expect(source).not.toContain('progressBar.getContents(');
-            expect(source).toContain('gamification.scorm.getTab(');
+            expect(source).toMatch(/tabs\.getHtml\([\s\S]*grading: true/);
         });
 
         it('restores the control when the iDevice is reopened', () => {
@@ -573,5 +574,484 @@ describe('quick-questions-multiple-choice minimum score text', () => {
         device.refreshTranslations();
 
         expect(device.ci18n.msgPassScore).toBe('Minimum score needed to pass this activity: %s');
+    });
+});
+
+describe('quick-questions-multiple-choice edition: shared form tabs and feedback', () => {
+    const PATH = '/files/perm/idevices/base/quick-questions-multiple-choice/edition/';
+    const edition = () => global.$exeIDevicesEdition.iDevice;
+    const feedback = () => edition().gamification.feedback;
+    const tabNames = () =>
+        [...document.querySelectorAll('#quickMultipleQEIdeviceForm-tabs [data-exe-tab]')].map((tab) =>
+            tab.getAttribute('data-exe-tab')
+        );
+    const panel = (name) => document.getElementById(`quickMultipleQEIdeviceForm-panel-${name}`);
+    const game = (overrides = {}) => ({
+        typeGame: 'Selecciona',
+        itinerary: {
+            showClue: false,
+            clueGame: '',
+            percentageClue: 40,
+            showCodeAccess: false,
+            codeAccess: '',
+            messageCodeAccess: '',
+        },
+        selectsGame: [
+            {
+                typeSelect: 0,
+                type: 0,
+                time: 0,
+                numberOptions: 4,
+                url: '',
+                x: 0,
+                y: 0,
+                author: '',
+                alt: '',
+                soundVideo: 1,
+                imageVideo: 1,
+                iVideo: 0,
+                fVideo: 0,
+                eText: '',
+                quextion: '',
+                options: ['', '', '', ''],
+                solution: '0',
+                silentVideo: 0,
+                tSilentVideo: 0,
+                solutionWord: '',
+                audio: '',
+                hit: -1,
+                error: -1,
+                msgHit: '',
+                msgError: '',
+            },
+        ],
+        gameMode: 1,
+        feedBack: false,
+        percentajeFB: 100,
+        isScorm: 0,
+        textButtonScorm: 'Save score',
+        ...overrides,
+    });
+    const exportHelpers = {
+        isJsonString: (text) => {
+            try {
+                return JSON.parse(text);
+            } catch {
+                return false;
+            }
+        },
+        decrypt: (text) => text,
+        encrypt: (text) => text,
+        secondsToHour: (sec) => '00:00:00',
+        hourToSeconds: (time) => 0,
+    };
+    let device;
+    let tinymceInit;
+    let tinymceGet;
+    let editorReady;
+    let previousApp;
+    let tooltips;
+
+    beforeEach(() => {
+        global.$exeDevice = undefined;
+        previousApp = global.eXeLearning.app;
+        editorReady = undefined;
+        tooltips = new Map();
+        global.eXeLearning.app = {
+            ...previousApp,
+            common: {
+                initTooltips: vi.fn((scope) => {
+                    scope.querySelectorAll('.exe-app-tooltip').forEach((button) => {
+                        if (!tooltips.has(button)) tooltips.set(button, { hide: vi.fn(), dispose: vi.fn() });
+                    });
+                }),
+            },
+        };
+        vi.stubGlobal('bootstrap', { Tooltip: { getInstance: (button) => tooltips.get(button) } });
+        Object.assign(global.$exeDevices.iDevice.gamification.helpers, exportHelpers);
+        let text = '';
+        const editor = {
+            initialized: true,
+            getContent: () => text,
+            setContent: (html) => (text = html),
+            hide: vi.fn(),
+            show: vi.fn(),
+            on: (event, callback) => {
+                if (event === 'init') editorReady = callback;
+            },
+        };
+        tinymceGet = vi.spyOn(global.tinymce, 'get').mockImplementation((id) => id === 'seleccionaEText' ? editor : null);
+        tinymceInit = vi.spyOn(global.tinymce, 'init').mockImplementation((config) => {
+            config.setup(editor);
+            return Promise.resolve([editor]);
+        });
+        document.body.innerHTML = '<div id="seleccionaBody"></div>';
+        const filename = join(__dirname, 'quick-questions-multiple-choice.js');
+        runInThisContext(readFileSync(filename, 'utf8'), { filename });
+        device = global.$exeDevice;
+        global.attachEditionLifecycle(device);
+        vi.spyOn(device, 'loadYoutubeApi').mockImplementation(() => {});
+        vi.spyOn(device, 'enableForm');
+        vi.spyOn(device, 'loadPreviousValues');
+        vi.spyOn(device, 'addEvents');
+        device.init(document.getElementById('seleccionaBody'), {}, PATH);
+        editorReady();
+    });
+
+    afterEach(() => {
+        device.$lifecycle?.destroy();
+        global.eXeLearning.app = previousApp;
+        vi.unstubAllGlobals();
+        tinymceInit.mockRestore();
+        tinymceGet.mockRestore();
+        Object.keys(exportHelpers).forEach((name) => delete global.$exeDevices.iDevice.gamification.helpers[name]);
+        global.$exeDevice = undefined;
+        document.body.innerHTML = '';
+    });
+
+    it('lays the form out in the shared tabs, and opens on its questions', () => {
+        expect(device.enableForm).toHaveBeenCalledOnce();
+        expect(device.loadPreviousValues).toHaveBeenCalledOnce();
+        expect(device.addEvents).toHaveBeenCalledOnce();
+        expect(tabNames()).toEqual([
+            'instructions',
+            'options',
+            'contents',
+            'passwords',
+            'feedback',
+            'after',
+            'grading',
+            'texts',
+        ]);
+        expect(document.getElementById('quickMultipleQEIdeviceForm-tab-contents').textContent.trim()).toBe('Activities');
+        expect(panel('contents').classList.contains('active')).toBe(true);
+    });
+
+    it('puts each part of the form in its tab', () => {
+        expect(panel('instructions').querySelector('#eXeGameInstructions').value).toBe(
+            'Choose the right answers and click on the Check button.'
+        );
+        expect(panel('options').querySelector('#seleccionaEOptions')).not.toBeNull();
+        expect(panel('options').querySelector('#seleccionaEVIDiv #seleccionaEVILocal')).not.toBeNull();
+        expect(panel('contents').querySelector('#seleccionaEVIDiv')).toBeNull();
+        expect(panel('contents').querySelector('#seleccionaEPanel')).not.toBeNull();
+        expect(panel('passwords').querySelector('#eXeGameShowClue')).not.toBeNull();
+        expect(panel('after').querySelector('#eXeIdeviceTextAfter')).not.toBeNull();
+        expect(panel('grading').querySelector('.exe-progress-report-wrapper')).not.toBeNull();
+        expect(panel('texts').querySelector('#ci18n_msgSubmit').value).toBe('Submit');
+    });
+
+    it('provides one accessible information button at the end of each options row', () => {
+        const options = panel('options');
+        const rows = [...options.querySelector('#seleccionaEOptions').children];
+        expect(rows).toHaveLength(13);
+        for (const row of rows) {
+            const buttons = row.querySelectorAll('.exe-idevice-help');
+            expect(buttons).toHaveLength(1);
+            const help = buttons[0];
+            expect(row.lastElementChild.contains(help)).toBe(true);
+            expect(help.tagName).toBe('BUTTON');
+            expect(help.type).toBe('button');
+            expect(help.getAttribute('aria-label')).toMatch(/^Information about \S/);
+            expect(help.title).toBe('Information');
+            expect(document.getElementById(help.getAttribute('aria-controls')).textContent.length).toBeGreaterThan(30);
+            expect(help.querySelector('[aria-hidden="true"].info-icon-solid-green')).not.toBeNull();
+            const controls = [...row.querySelectorAll('input, select')];
+            const checked = controls.map((control) => control.checked);
+            help.click();
+            expect(controls.map((control) => control.checked)).toEqual(checked);
+        }
+        expect(global.eXeLearning.app.common.initTooltips).toHaveBeenCalledWith(
+            document.getElementById('quickMultipleQEIdeviceForm-panels')
+        );
+    });
+
+    it('names the share of questions without a switch that does nothing', () => {
+        const value = document.getElementById('seleccionaEPercentajeQuestionsValue');
+
+        expect(document.getElementById('seleccionaEPercentajeQuestions')).toBeNull();
+        expect(value.closest('.toggle-item')).toBeNull();
+        expect([...value.labels].map((label) => label.textContent)).toEqual(['%Questions:']);
+    });
+
+    it('explains every control in each combined options row', () => {
+        const groups = [
+            ['seleccionaEOrderLinear', 'Default', 'Random', 'Tree'],
+            ['seleccionaEShowSolution', 'Show solutions', 'Show solution time (seconds)'],
+            ['seleccionaETypeActivity', 'From 0 to 10', 'Points and lives', 'No score'],
+            ['seleccionaEUseLives', 'Use lives', 'Number of lives'],
+        ];
+        for (const [id, ...labels] of groups) {
+            const row = [...document.querySelector('#seleccionaEOptions').children].find((item) => item.querySelector(`#${id}`));
+            const text = row.querySelector('.help-content').textContent;
+            for (const label of labels) expect(text).toContain(`${label}:`);
+            expect(text.split('\n\n')).toHaveLength(labels.length);
+        }
+    });
+
+    it('handles option changes after TinyMCE initializes without toggling them from help', () => {
+        const checkbox = document.getElementById('seleccionaEShowMinimize');
+        const row = checkbox.closest('.toggle-item');
+        row.click();
+        expect(checkbox.checked).toBe(true);
+        row.querySelector('.exe-idevice-help').click();
+        expect(checkbox.checked).toBe(true);
+        row.click();
+        expect(checkbox.checked).toBe(false);
+        document.querySelector('input[name="slcgamemode"][value="2"]').click();
+        expect(feedback().isRequired()).toBe(true);
+    });
+
+    it('does not switch an option when its help or open explanation is clicked', () => {
+        const helps = [...document.querySelectorAll('.toggle-item .exe-idevice-help')];
+        const states = () => [...document.querySelectorAll('.toggle-input')].map((input) => input.checked);
+        const before = states();
+
+        expect(helps.length).toBeGreaterThan(0);
+        for (const help of helps) {
+            help.click();
+            help.querySelector('span').click();
+            document.getElementById(help.getAttribute('aria-controls')).click();
+        }
+
+        expect(states()).toEqual(before);
+    });
+
+    it('shows the clock of a local video', () => {
+        const clock = document.getElementById('seleccionaEVideoTime');
+        clock.style.display = 'none';
+        device.localPlayer = { play: vi.fn() };
+        vi.spyOn(device.clockVideo, 'start').mockImplementation(() => {});
+
+        device.startVideo('video.mp4', 0, 10, 1);
+
+        expect(clock.style.display).not.toBe('none');
+    });
+
+    it('keeps a locked switch and its message when its row is clicked', () => {
+        document.querySelector('input[name="slcgamemode"][value="2"]').click();
+        const feedbackSwitch = document.getElementById('eXeGameHasFeedBack');
+
+        feedbackSwitch.closest('.toggle-item').click();
+
+        expect(feedbackSwitch.checked).toBe(true);
+        expect(feedbackSwitch.disabled).toBe(true);
+        expect(document.getElementById('eXeGameFeedbackP').classList.contains('d-none')).toBe(false);
+    });
+
+    it('escapes translated help text in the explanation', () => {
+        const text = 'Use "Accept" <once> & keep the learner\'s answer.';
+        const container = document.createElement('div');
+        container.innerHTML = edition().common.getHelpTooltip(text);
+        const button = container.querySelector('button');
+        expect(button.title).toBe('Information');
+        expect(container.querySelector('.help-content').textContent).toBe(text);
+        expect(container.querySelector('once')).toBeNull();
+    });
+
+    it('disposes all option tooltips when the edition closes', () => {
+        expect(tooltips.size).toBe(22); // Options, the six shared Grading helpers and the three links of Questions.
+        device.$lifecycle.destroy();
+        for (const tooltip of tooltips.values()) {
+            expect(tooltip.dispose).toHaveBeenCalledTimes(1);
+        }
+    });
+
+    it('offers Import, Export and Create with AI on its Questions tab', () => {
+        const links = [...panel('contents').querySelectorAll('[data-exe-share]')];
+
+        expect(links.map((link) => link.getAttribute('data-exe-share'))).toEqual(['import', 'ai']);
+        expect(document.querySelector('body > #eXeShareModal-import #eXeGameImportGame')).not.toBeNull();
+        // Export has no window: it saves the file at once.
+        expect(panel('contents').querySelector('.exe-share-tools #eXeGameExportQuestions')).not.toBeNull();
+        expect(document.querySelector('body > #eXeShareModal-ai #eXeEPromptArea')).not.toBeNull();
+    });
+
+    it('leaves the feedback to the shared block, without controls of its own', () => {
+        expect(panel('feedback').querySelector('#eXeGameHasFeedBack')).not.toBeNull();
+        expect(document.getElementById('seleccionaEHasFeedBack')).toBeNull();
+        expect(document.getElementById('seleccionaEPercentajeFB')).toBeNull();
+        expect(document.getElementById('seleccionaEFeedBackEditor')).toBeNull();
+    });
+
+    it('switches tabs when one is clicked', () => {
+        document.getElementById('quickMultipleQEIdeviceForm-tab-options').click();
+
+        expect(panel('options').classList.contains('active')).toBe(true);
+        expect(panel('contents').classList.contains('active')).toBe(false);
+    });
+
+    it('makes the feedback compulsory in "No score" mode only', () => {
+        device.updateGameMode(2, false);
+        expect(feedback().isRequired()).toBe(true);
+        expect(document.getElementById('eXeGameHasFeedBack').disabled).toBe(true);
+
+        device.updateGameMode(0, true);
+        expect(feedback().isRequired()).toBe(false);
+        expect(document.getElementById('eXeGameHasFeedBack').disabled).toBe(false);
+        expect(document.getElementById('seleccionaEUseLives').disabled).toBe(false);
+    });
+
+    it('enables the solution time again when solutions are switched back on', () => {
+        device.updateFieldGame(game({ showSolution: false }));
+        const time = document.getElementById('seleccionaETimeShowSolution');
+        expect(time.disabled).toBe(true);
+
+        document.getElementById('seleccionaEShowSolution').click();
+        expect(time.disabled).toBe(false);
+
+        document.getElementById('seleccionaEShowSolution').click();
+        expect(time.disabled).toBe(true);
+    });
+
+    it('restores the feedback and its mode with the game', () => {
+        // Saved with its message: without one, the feedback loads off.
+        $exeIDevicesEdition.iDevice.gamification.feedback.setText('<p>Well done</p>');
+        device.updateFieldGame(game({ gameMode: 2, feedBack: false, percentajeFB: 60 }));
+
+        expect(feedback().isRequired()).toBe(true);
+        expect(document.getElementById('eXeGamePercentajeFB').value).toBe('60');
+
+        device.updateFieldGame(game({ gameMode: 1, feedBack: true, percentajeFB: 80 }));
+
+        expect(feedback().isRequired()).toBe(false);
+        expect(document.getElementById('eXeGameHasFeedBack').checked).toBe(true);
+        expect(document.getElementById('eXeGamePercentajeFB').value).toBe('80');
+    });
+
+    it('loads the saved message into the shared editor', () => {
+        device.idevicePreviousData = `
+            <div class="selecciona-IDevice">
+                <div class="selecciona-version js-hidden">3.1</div>
+                <div class="selecciona-feedback-game"><p>Well done</p></div>
+                <div class="selecciona-DataGame js-hidden">${JSON.stringify(game({ feedBack: true }))}</div>
+            </div>`;
+        vi.spyOn(device, 'showQuestion').mockImplementation(() => {});
+
+        device.loadPreviousValues();
+
+        expect(feedback().getText()).toBe('<p>Well done</p>');
+        expect(document.getElementById('eXeGameHasFeedBack').checked).toBe(true);
+    });
+
+    describe('saving', () => {
+        let editors;
+        let tinymceGet;
+
+        beforeEach(() => {
+            editors = {
+                eXeGameInstructions: '<p>Instructions</p>',
+                eXeIdeviceTextAfter: '',
+                eXeGameFeedBackEditor: '',
+                seleccionaEText: '',
+            };
+            tinymceGet = vi.spyOn(global.tinymce, 'get').mockImplementation((id) =>
+                id in editors
+                    ? {
+                          initialized: true,
+                          getContent: () => editors[id],
+                          setContent: (html) => (editors[id] = html),
+                          hide: vi.fn(),
+                          show: vi.fn(),
+                      }
+                    : null
+            );
+            device.selectsGame = [
+                {
+                    ...device.getCuestionDefault(),
+                    quextion: 'Question 1',
+                    options: ['A', 'B', 'C', 'D'],
+                    solution: 0,
+                },
+            ];
+        });
+
+        afterEach(() => {
+            tinymceGet.mockRestore();
+        });
+
+        it('saves the feedback values the export reads', () => {
+            // Saved with its message: without one, the feedback loads off.
+            editors.eXeGameFeedBackEditor = '<p>Bravo</p>';
+            device.updateFieldGame(game({ selectsGame: device.selectsGame, feedBack: true, percentajeFB: 70 }));
+            vi.spyOn(device, 'validateQuestion').mockReturnValue(true);
+
+            const data = device.validateData();
+
+            expect(data.feedBack).toBe(true);
+            expect(data.percentajeFB).toBe(70);
+            expect(unescape(data.textFeedBack)).toBe('<p>Bravo</p>');
+            expect(device.save()).toContain('<div class="selecciona-feedback-game"><p>Bravo</p></div>');
+        });
+
+        it('asks for the message in "No score" mode', () => {
+            device.updateFieldGame(game({ selectsGame: device.selectsGame, gameMode: 2 }));
+
+            expect(device.validateData()).toBe(false);
+            expect(global.eXe.app.alert).toHaveBeenCalledWith('Message to display when passing the game');
+        });
+    });
+
+    describe('adding questions to the one on screen', () => {
+        // The author typed it in a new activity: it is on screen, not in the list yet.
+        const typeOnScreen = (options) => {
+            device.selectsGame = [
+                { ...device.getCuestionDefault(), quextion: 'Capital of France?', options, solution: 'A' },
+            ];
+            device.active = 0;
+            device.showQuestion(0);
+            device.selectsGame = [device.getCuestionDefault()];
+        };
+        const questions = () => device.selectsGame.map((item) => item.quextion);
+
+        it('keeps it when it is complete', () => {
+            typeOnScreen(['Paris', 'Rome', 'Madrid', 'Berlin']);
+
+            device.insertQuestions(['B#Capital of Italy?#Paris#Rome#Madrid#Berlin']);
+
+            expect(questions()).toEqual(['Capital of France?', 'Capital of Italy?']);
+        });
+
+        it('keeps it when a copied question is pasted', () => {
+            typeOnScreen(['Paris', 'Rome', 'Madrid', 'Berlin']);
+            device.typeEdit = 0;
+            device.clipBoard = {
+                ...device.getCuestionDefault(),
+                quextion: 'Capital of Italy?',
+                options: ['Paris', 'Rome', 'Madrid', 'Berlin'],
+                solution: 'B',
+            };
+
+            device.pasteQuestion();
+
+            expect(questions()).toEqual(['Capital of France?', 'Capital of Italy?']);
+        });
+
+        it('leaves it out, without its warning, when it is incomplete', () => {
+            typeOnScreen(['Paris', '', '', '']);
+            global.eXe.app.alert.mockClear();
+
+            device.insertQuestions(['B#Capital of Italy?#Paris#Rome#Madrid#Berlin']);
+
+            expect(questions()).toEqual(['Capital of Italy?']);
+            expect(global.eXe.app.alert).not.toHaveBeenCalled();
+        });
+
+        it('leaves it out of a paste, without its warning, when it is incomplete', () => {
+            typeOnScreen(['Paris', '', '', '']);
+            device.typeEdit = 0;
+            device.clipBoard = {
+                ...device.getCuestionDefault(),
+                quextion: 'Capital of Italy?',
+                options: ['Paris', 'Rome', 'Madrid', 'Berlin'],
+                solution: 'B',
+            };
+
+            global.eXe.app.alert.mockClear();
+            device.pasteQuestion();
+
+            expect(questions()).toContain('Capital of Italy?');
+            expect(global.eXe.app.alert).not.toHaveBeenCalled();
+        });
     });
 });

@@ -809,12 +809,12 @@ test.describe('SCORM 1.2 exported SCO runtime', () => {
         await addIdevice(page, 'relate');
         await page.locator('#rclEText').fill('France');
         await page.locator('#rclETextBack').fill('Paris');
-        await page.locator('#relateQIdeviceForm').getByRole('link', { name: 'Options', exact: true }).click();
+        await page.locator('#relateQIdeviceForm-tab-options').click();
         await expect(page.locator('#modalAlert')).toBeHidden();
         await page.locator('#rclETypeNavigation').check();
         // The tab is "Grading" now: it gathers the pass score, the SCORM
         // options and the progress report, which used to be scattered.
-        await page.locator('#relateQIdeviceForm').getByRole('link', { name: 'Grading', exact: true }).click();
+        await page.locator('#relateQIdeviceForm-tab-grading').click();
         await page.locator('#eXeGameSCORMAutoSave').check();
         const ideviceId = await page.locator('#node-content .idevice_node.relate').getAttribute('id');
         expect(ideviceId).toBeTruthy();
@@ -906,10 +906,7 @@ test.describe('SCORM 1.2 exported SCO runtime', () => {
             await rows.nth(index).locator('input.ri_Weight').nth(0).fill('4');
             await rows.nth(index).locator('input.ri_Weight').nth(1).fill('3');
         }
-        await page
-            .locator('.exe-form-tabs a')
-            .filter({ hasText: /^Grading$/ })
-            .click();
+        await page.locator('#ri_IdeviceForm-tab-grading').click();
         await page.locator('#eXeGameSCORMAutoSave').check();
         await page.locator('#eXePassScoreCustom').check();
         await page.locator('#eXePassScoreValue').fill('8');
@@ -1018,10 +1015,10 @@ test.describe('SCORM 1.2 exported SCO runtime', () => {
         await addIdevice(page, 'relate');
         await page.locator('#rclEText').fill('France');
         await page.locator('#rclETextBack').fill('Paris');
-        await page.locator('#relateQIdeviceForm').getByRole('link', { name: 'Options', exact: true }).click();
+        await page.locator('#relateQIdeviceForm-tab-options').click();
         await expect(page.locator('#modalAlert')).toBeHidden();
         await page.locator('#rclETypeNavigation').check();
-        await page.locator('#relateQIdeviceForm').getByRole('link', { name: 'Grading', exact: true }).click();
+        await page.locator('#relateQIdeviceForm-tab-grading').click();
         await page.locator('#eXeGameSCORMAutoSave').check();
         await page.locator('#eXePassScoreCustom').check();
         await page.locator('#eXePassScoreValue').fill('0');

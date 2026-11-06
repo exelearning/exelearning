@@ -198,10 +198,7 @@ test.describe('Project pass score', () => {
             await page.locator('#ri_CreateNewRubric').click();
             const rubric = page.locator('#node-content .idevice_node.rubric');
             const rubricId = (await rubric.getAttribute('id'))!;
-            await page
-                .locator('.exe-form-tabs a')
-                .filter({ hasText: /^Grading$/ })
-                .click();
+            await page.locator('#ri_IdeviceForm-tab-grading').click();
             await page.locator('#eXeProgressReport').check();
             await saveIdevice(page, rubricId);
 

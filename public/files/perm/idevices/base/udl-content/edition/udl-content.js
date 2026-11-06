@@ -131,59 +131,45 @@ var $exeDevice = {
 
     // Create the form to insert HTML in the TEXTAREA
     createForm: function () {
-        var html =
-            '\
-			<div id="udlContentForm" class="udl-udl-contentIdevice" >\
-				<p id="udlContentTypeOptions">\
-					<strong>' +
-            _('Type') +
-            ':</strong> \
-					<label for="udlContentType-engagement" class="active"><input type="radio" name="udlContentType" id="udlContentType-engagement" value="engagement" checked="checked" /> ' +
-            _('Engagement') +
-            '</label> \
-					<label for="udlContentType-representation"><input type="radio" name="udlContentType" id="udlContentType-representation" value="representation" /> ' +
-            _('Representation') +
-            '</label> \
-					<label for="udlContentType-expression"><input type="radio" name="udlContentType" id="udlContentType-expression" value="expression" /> ' +
-            _('Action & Expression') +
-            '</label> \
-				</p>\
-				<p id="udlContentFormAddBlockWrapper"><a href="#" id="udlContentFormAddBlock" title="' +
-            _('New block') +
-            '">' +
-            _('New block') +
-            '</a></p>\
-				<div id="udlContentFormBlocks"></div>\
-			</div>\
-			<p id="udlContentFormInfo">\
-				<a href="#udlContentFormInfoContent" title="' +
-            _('About this iDevice') +
-            '"><span class="sr-av">' +
-            _('About this iDevice') +
-            '</span></a>\
-				<span id="udlContentFormInfoContent">' +
-            _('Cofinanced by:') +
-            ' <span lang="es"><img src="' +
-            this.idevicePath +
-            'udl-content-logos.png" width="600" height="237" title="FEDER - Consejería de Educación y Deporte - Andalucía se mueve con Europa" alt="Unión Europea - FEDER - Junta de Andalucía - Consejería de Educación y Deporte - Andalucía se mueve con Europa" /></span></span>\
-			</p>\
-		';
-        // Language tab (i18n)
+        var edition = $exeIDevicesEdition.iDevice;
+        // The type leads the blocks, as before the shared tabs: there is no
+        // Options tab.
+        var type = `
+            <div id="udlContentTypeOptions" class="d-flex align-items-center gap-2 flex-nowrap mb-3" role="radiogroup" aria-labelledby="udlContentTypeLabel">
+                <strong id="udlContentTypeLabel">${_('Type')}:</strong>
+                <label for="udlContentType-engagement" class="active mb-0"><input type="radio" name="udlContentType" id="udlContentType-engagement" value="engagement" checked="checked" /> ${_('Engagement')}</label>
+                <label for="udlContentType-representation" class="mb-0"><input type="radio" name="udlContentType" id="udlContentType-representation" value="representation" /> ${_('Representation')}</label>
+                <label for="udlContentType-expression" class="mb-0"><input type="radio" name="udlContentType" id="udlContentType-expression" value="expression" /> ${_('Action & Expression')}</label>
+                ${edition.common.getHelpTooltip(_('The principle of Universal Design for Learning this content supports. It sets the colour of its buttons and titles; choosing a UDL icon for the iDevice also changes it.'))}
+            </div>`;
+        var contents = `
+            <div id="udlContentForm" class="udl-udl-contentIdevice">
+                ${type}
+                <p id="udlContentFormAddBlockWrapper"><a href="#" id="udlContentFormAddBlock" title="${_('New block')}">${_('New block')}</a></p>
+                <div id="udlContentFormBlocks"></div>
+            </div>
+            <p id="udlContentFormInfo">
+                <a href="#udlContentFormInfoContent" title="${_('About this iDevice')}"><span class="sr-av">${_('About this iDevice')}</span></a>
+                <span id="udlContentFormInfoContent">${_('Cofinanced by:')} <span lang="es"><img src="${this.idevicePath}udl-content-logos.png" width="600" height="237" title="FEDER - Consejería de Educación y Deporte - Andalucía se mueve con Europa" alt="Unión Europea - FEDER - Junta de Andalucía - Consejería de Educación y Deporte - Andalucía se mueve con Europa" /></span></span>
+            </p>`;
+        // Texts tab (i18n)
         var strs = {};
         for (var i in this.ci18n) {
             strs[i] = _(this.ci18n[i]);
         }
-        var tab =
-            $exeDevicesEdition.iDevice.gamification.common.getLanguageTab(strs);
-        html =
-            '<div id="udlContentEditorWrapper"><div class="exe-form-tab" title="' +
-            _('General settings') +
-            '">' +
-            html +
-            '</div>' +
-            tab +
-            '</div>';
-        this.ideviceBody.innerHTML = html;
+        this.ideviceBody.innerHTML = `
+            <div id="udlContentEditorWrapper">
+                ${edition.tabs.getHtml('udlContentEditorWrapper', {
+                    contents: contents,
+                    texts: strs,
+                    share: false,
+                    titles: { contents: _('Content') },
+                    info: {
+                        contents: _('Write the content in blocks. Each block has a main content and, if you like, an easier-to-read version, an audio and a visual aid; with a button text, it stays hidden until the learner opens it.'),
+                    },
+                })}
+            </div>`;
+        edition.tabs.bind('udlContentEditorWrapper');
         this.addCommonEvents();
         this.loadPreviousValues();
     },
@@ -207,8 +193,6 @@ var $exeDevice = {
             $exeDevice.jsonToForm(data);
             return false;
         });
-        // Enable the tabs
-        $exeDevicesEdition.iDevice.tabs.init('udlContentEditorWrapper');
         // iDevice info
         $('#udlContentFormInfo a').click(function () {
             $('#udlContentFormInfoContent').toggle();
@@ -291,9 +275,12 @@ var $exeDevice = {
         });
         // Button text field
         e = $("input[type='text']", block);
-        e.unbind('keyup')
+        // On input, not keyup: text pasted or dropped with the mouse used to
+        // show its options only on leaving the field, moving the form under
+        // the pointer.
+        e.unbind('input')
             .unbind('blur')
-            .keyup(function () {
+            .on('input', function () {
                 $exeDevice.toggleBtnOptions(this);
             })
             .on('blur', function () {
@@ -406,7 +393,6 @@ var $exeDevice = {
                 });
             }
         );
-        //var originalHTML = field.val();
         var blocks; // JSON (we'll transform the original HTML into a JSON object)
         if (originalHTML != '') {
             var wrapper = $("<div id='udlContentTmpWrapper'></div>");
@@ -430,6 +416,9 @@ var $exeDevice = {
                         }
                     }
                 }
+                // A changed text kept on the iDevice, with or without its content.
+                var savedText = $('.exe-udlContent', wrapper).eq(0).attr('data-udl-' + i);
+                if (savedText) $('#ci18n_' + i).val(savedText);
             }
             // Remove those elements (they are no longer required)
             $(
@@ -526,12 +515,9 @@ var $exeDevice = {
         $('.udlContentFormBlock').each(function (i) {
             var e = $(this);
             $exeDevice.saveToTextareas(e);
-            var contAlt1 = '';
-            var contAlt2 = '';
-            var contAlt3 = '';
 
             var btnTxt = $("input[type='text']", this).val();
-            btnTxt = $exeDevice.removeTags(btnTxt);
+            btnTxt = $exeIDevicesEdition.iDevice.common.removeTags(btnTxt);
             var btnType = $("input[type='radio']:checked", this).val();
             var contMain = $('#udlContentFormTxt-' + i + '-0').val();
             var contAlt1 = $('#udlContentFormTxt-' + i + '-1').val();
@@ -836,13 +822,6 @@ var $exeDevice = {
         return c.replace(/" ><\/source>/g, '" />');
     },
 
-    // Remove any HTML tags
-    removeTags: function (str) {
-        var wrapper = $('<div></div>');
-        wrapper.html(str);
-        return wrapper.text();
-    },
-
     // Remove empty paragraphs
     removeEmptyParagraphs: function (c) {
         if (this.allowEmptyParagraphs) return c;
@@ -985,7 +964,29 @@ var $exeDevice = {
 
         var css =
             'exe-udlContent-' + $("input[name='udlContentType']:checked").val();
-        html = '<div class="exe-udlContent ' + css + '">' + html + '</div>';
+        // A text changed in the Texts tab is also kept here: the title of an
+        // alternative content is only written where that content exists, so
+        // without one it would be lost.
+        var texts = '';
+        for (var key in this.ci18n) {
+            var text = $('#ci18n_' + key).val() || '';
+            if (text != '' && text != _(this.ci18n[key])) {
+                texts +=
+                    ' data-udl-' +
+                    key +
+                    '="' +
+                    $exeIDevicesEdition.iDevice.common.escapeHtml(text) +
+                    '"';
+            }
+        }
+        html =
+            '<div class="exe-udlContent ' +
+            css +
+            '"' +
+            texts +
+            '>' +
+            html +
+            '</div>';
 
         // Return the HTML to save
         return html;

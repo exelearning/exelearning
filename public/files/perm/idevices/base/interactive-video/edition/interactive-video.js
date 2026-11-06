@@ -101,10 +101,6 @@ var $exeDevice = {
             ),
         };
     },
-    scoreNIA: true,
-    evaluation: false,
-    evaluationID: '',
-    ideviceID: false,
 
     testIfVideoExists: function (url, type) {
         if (!top.interactiveVideoEditor) {
@@ -118,122 +114,123 @@ var $exeDevice = {
     // Create the form to insert HTML in the TEXTAREA
     createForm: function () {
         var html = '';
-        var field = $('textarea.jsContentEditor').eq(0);
-        // Only one Interactive Video iDevice per page
-        if ($('.iDevice_wrapper.interactive-videoIdevice').length > 0) {
-            html =
-                '<p>' +
-                _('You can only add one Interactive Video iDevice per page.') +
-                '</p>';
-            field.before(html);
-            return;
-        }
-        html = `
-        <div id="interactiveVideoIdeviceForm">
-            <div class="exe-form-tab" title="${_('General settings')}">
-                ${$exeDevicesEdition.iDevice.common.getTextFieldset('before')}
-                <div class="mb-3">                    
-                    <div class="d-flex align-items-center flex-wrap gap-3">
-                        <strong class="d-block mb-0 me-0">${_('Type')}:</strong>
-                        <div class="form-check form-check-inline d-inline-flex align-items-center">
-                            <input class="form-check-input" type="radio" name="interactiveVideoType" id="interactiveVideoType-local" value="local" checked="checked">
-                            <label class="form-check-label mb-0 ms-1" for="interactiveVideoType-local">${_('Local file')}</label>
-                        </div>
-                        <div class="form-check form-check-inline d-inline-flex align-items-center">
-                            <input class="form-check-input" type="radio" name="interactiveVideoType" id="interactiveVideoType-youtube" value="youtube">
-                            <label class="form-check-label mb-0 ms-1" for="interactiveVideoType-youtube">YouTube</label>
-                        </div>
-                        <div class="form-check form-check-inline d-inline-flex align-items-center">
-                            <input class="form-check-input" type="radio" name="interactiveVideoType" id="interactiveVideoType-mediateca" value="mediateca">
-                            <label class="form-check-label mb-0 ms-1" for="interactiveVideoType-mediateca">${_('Mediateca')}</label>
+        const edition = $exeIDevicesEdition.iDevice,
+            options = `
+                <div id="interactiveVideoOptions">
+                    <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
+                        <span class="toggle-item">
+                            <span class="toggle-control">
+                                <input class="toggle-input" type="checkbox" name="interactiveVideoShowResults" id="interactiveVideoShowResults" checked="checked">
+                                <span class="toggle-visual" aria-hidden="true"></span>
+                            </span>
+                            <label class="toggle-label mb-0" for="interactiveVideoShowResults">${_('Show results')}</label>
+                        </span>
+                        ${edition.common.getHelpTooltip(_('Show the learners the slides they have seen and their score when the video ends.'))}
+                    </div>
+                    <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
+                        <span class="toggle-item">
+                            <span class="toggle-control">
+                                <input class="toggle-input" type="checkbox" name="interactiveVideoScoreNIA" id="interactiveVideoScoreNIA">
+                                <span class="toggle-visual" aria-hidden="true"></span>
+                            </span>
+                            <label class="toggle-label mb-0" for="interactiveVideoScoreNIA">${_('Score non-interactive activities')}</label>
+                        </span>
+                        ${edition.common.getHelpTooltip(_('Count every slide towards the score, texts and images included, not only the questions.'))}
+                    </div>
+                </div>`,
+            contents = `
+                <div id="interactiveVideoContents">
+                    <div class="mb-3">
+                        <div class="d-flex align-items-center flex-wrap gap-3">
+                            <strong class="d-block mb-0 me-0">${_('Type')}:</strong>
+                            <div class="form-check form-check-inline d-inline-flex align-items-center">
+                                <input class="form-check-input" type="radio" name="interactiveVideoType" id="interactiveVideoType-local" value="local" checked="checked">
+                                <label class="form-check-label mb-0 ms-1" for="interactiveVideoType-local">${_('Local file')}</label>
+                            </div>
+                            <div class="form-check form-check-inline d-inline-flex align-items-center">
+                                <input class="form-check-input" type="radio" name="interactiveVideoType" id="interactiveVideoType-youtube" value="youtube">
+                                <label class="form-check-label mb-0 ms-1" for="interactiveVideoType-youtube">YouTube</label>
+                            </div>
+                            <div class="form-check form-check-inline d-inline-flex align-items-center">
+                                <input class="form-check-input" type="radio" name="interactiveVideoType" id="interactiveVideoType-mediateca" value="mediateca">
+                                <label class="form-check-label mb-0 ms-1" for="interactiveVideoType-mediateca">${_('Mediateca')}</label>
+                            </div>
                         </div>
                     </div>
-                </div>
-                <div id="interactiveVideo-local" class="interactiveVideoType flexDisplay gap-2 mb-4">
-                    <label for="interactiveVideoFile" class="form-label mb-0 me-2">${_('File')}:</label>
-                    <input type="text" id="interactiveVideoFile" class="exe-file-picker form-control">
-                </div>
-                <div class="mb-4 info" id="interactiveFormats">
-                    <span class="d-block info"><strong>${_('Supported formats')}:</strong> OGV/OGG, webm, mp4, flv</span>
-                </div>
-                <div id="interactiveVideo-youtube" class="interactiveVideoType mb-4">
-                    <div class="interactiveVideoType d-flex flex-nowrap align-items-center gap-2">
-                        <label for="interactiveVideoYoutubeURL" class="form-label mb-0">${_('URL')}:</label>
-                        <input type="text" id="interactiveVideoYoutubeURL" class="form-control">
-                    </div>                    
-                    <span class="d-block mt-1 info">
-                        <strong>${_('Example')}:</strong>
-                        <a href="https://www.youtube.com/watch?v=g9gPKSGGkEk" target="_blank" rel="noopener">https://www.youtube.com/watch?v=g9gPKSGGkEk</a>
-                    </span>
-                </div>
-                <div id="interactiveVideo-mediateca" class="interactiveVideoType mb-4">
-                    <div class="interactiveVideoType d-flex flex-nowrap align-items-center gap-2">
-                        <label for="interactiveVideoMediatecaURL" class="form-label mb-0">${_('URL')}:</label>
-                        <input type="text" id="interactiveVideoMediatecaURL" class="form-control">
-                    </div>                    
-                    <span class="d-block mt-1 info">
-                        <strong>${_('Example')}:</strong>
-                        <a href="https://mediateca.educa.madrid.org/video/3vmgyeluy8c35xzj" target="_blank" rel="noopener">https://mediateca.educa.madrid.org/video/3vmgyeluy8c35xzj</a>
-                    </span>
-                </div>
-                <div class="toggle-item mb-4">
-                    <span class="toggle-control">
-                        <input class="toggle-input" type="checkbox" name="interactiveVideoShowResults" id="interactiveVideoShowResults" checked="checked">
-                        <span class="toggle-visual"></span>
-                    </span>
-                    <label class="toggle-label mb-0" for="interactiveVideoShowResults">${_('Show results')}</label>
-                </div>
-                <div class="toggle-item mb-4">
-                    <span class="toggle-control">
-                        <input class="toggle-input" type="checkbox" name="interactiveVideoScoreNIA" id="interactiveVideoScoreNIA">
-                        <span class="toggle-visual"></span>
-                    </span>
-                    <label class="toggle-label mb-0" for="interactiveVideoScoreNIA">${_('Score non-interactive activities')}</label>
-                </div>
-                <div class="mb-4">
-                </div>
-                <p class="exe-block-success d-flex align-items-center justify-content-between gap-3">
-                    <span class="me-auto">${_('Open the editor and start adding interaction...')}</span>
-                    <input type="button" id="interactiveVideoOpenEditor" onclick="$exeDevice.editor.start()" value="${_('Editor')}" class="btn btn-primary">
-                </p>
-                ${$exeDevicesEdition.iDevice.common.getTextFieldset('after')}
-            </div>
-            ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
-            ${$exeDevicesEdition.iDevice.gamification.scorm.getTab($exeDevice.idevicePath)}
+                    <div id="interactiveVideo-local" class="interactiveVideoType flexDisplay gap-2 mb-4">
+                        <label for="interactiveVideoFile" class="form-label mb-0 me-2">${_('File')}:</label>
+                        <input type="text" id="interactiveVideoFile" class="exe-file-picker form-control">
+                    </div>
+                    <div class="mb-4 info" id="interactiveFormats">
+                        <span class="d-block info"><strong>${_('Supported formats')}:</strong> OGV/OGG, webm, mp4, flv</span>
+                    </div>
+                    <div id="interactiveVideo-youtube" class="interactiveVideoType mb-4">
+                        <div class="interactiveVideoType d-flex flex-nowrap align-items-center gap-2">
+                            <label for="interactiveVideoYoutubeURL" class="form-label mb-0">${_('URL')}:</label>
+                            <input type="text" id="interactiveVideoYoutubeURL" class="form-control">
+                        </div>
+                        <span class="d-block mt-1 info">
+                            <strong>${_('Example')}:</strong>
+                            <a href="https://www.youtube.com/watch?v=g9gPKSGGkEk" target="_blank" rel="noopener">https://www.youtube.com/watch?v=g9gPKSGGkEk</a>
+                        </span>
+                    </div>
+                    <div id="interactiveVideo-mediateca" class="interactiveVideoType mb-4">
+                        <div class="interactiveVideoType d-flex flex-nowrap align-items-center gap-2">
+                            <label for="interactiveVideoMediatecaURL" class="form-label mb-0">${_('URL')}:</label>
+                            <input type="text" id="interactiveVideoMediatecaURL" class="form-control">
+                        </div>
+                        <span class="d-block mt-1 info">
+                            <strong>${_('Example')}:</strong>
+                            <a href="https://mediateca.educa.madrid.org/video/3vmgyeluy8c35xzj" target="_blank" rel="noopener">https://mediateca.educa.madrid.org/video/3vmgyeluy8c35xzj</a>
+                        </span>
+                    </div>
+                    <p class="d-flex align-items-center justify-content-between gap-3 mb-0">
+                        <span class="me-auto">${_('Open the editor and start adding interaction...')}</span>
+                        <input type="button" id="interactiveVideoOpenEditor" onclick="$exeDevice.editor.start()" value="${_('Editor')}" class="btn btn-primary">
+                    </p>
+                </div>`;
+        html = `
+        <div id="interactiveVideoIdeviceForm">
+            ${edition.tabs.getHtml('interactiveVideoIdeviceForm', {
+                path: $exeDevice.idevicePath,
+                instructions: '',
+                options: options,
+                contents: contents,
+                after: true,
+                grading: true,
+                texts: this.ci18n,
+                share: false,
+                info: {
+                    instructions: _('Write the text the learners will read before the video.'),
+                    contents: _('Choose the video, then open the editor to add its slides: questions, texts and images.'),
+                },
+            })}
         </div>
     `;
 
         this.ideviceBody.innerHTML = html;
 
-        $exeDevicesEdition.iDevice.tabs.init('interactiveVideoIdeviceForm');
-        $exeDevicesEdition.iDevice.gamification.scorm.init();
+        edition.tabs.bind('interactiveVideoIdeviceForm');
+        edition.gamification.scorm.init();
 
         $('input[name=interactiveVideoType]').change(function () {
             $exeDevice.toggleType(this.value);
         });
 
-        $exeDevicesEdition.iDevice.gamification.progressBar.addEvents();
-        $exeDevicesEdition.iDevice.gamification.passScore.addEvents();
+        edition.gamification.progressBar.addEvents();
+        edition.gamification.passScore.addEvents();
 
         $('#interactiveVideoFile')
             .change(function () {
-                var e = $('#interactiveVideoEditorOpener');
                 // Accept legacy files/tmp paths, asset:// URLs and blob: URLs
                 if (this.value.indexOf('files/tmp/') == 0 || this.value.indexOf('asset://') == 0 || this.value.indexOf('blob:') == 0) {
                     $exeDevice.testIfVideoExists(this.value, 'local');
-                    e.fadeIn();
-                } else {
-                    e.hide();
                 }
             })
             .keyup(function () {
-                var e = $('#interactiveVideoEditorOpener');
                 // Accept legacy files/tmp paths, asset:// URLs and blob: URLs
                 if (this.value.indexOf('files/tmp/') == 0 || this.value.indexOf('asset://') == 0 || this.value.indexOf('blob:') == 0) {
                     $exeDevice.testIfVideoExists(this.value, 'local');
-                    e.fadeIn();
-                } else {
-                    e.hide();
                 }
             });
         $('#interactiveVideoYoutubeURL')
@@ -243,14 +240,10 @@ var $exeDevice = {
                     'https://youtu.be/',
                     'https://www.youtube.com/watch?v='
                 );
-                var e = $('#interactiveVideoEditorOpener');
                 if (
                     this.value.indexOf('https://www.youtube.com/watch?v=') == 0
                 ) {
                     $exeDevice.testIfVideoExists(this.value, 'youtube');
-                    e.fadeIn();
-                } else {
-                    e.hide();
                 }
             })
             .keyup(function () {
@@ -259,41 +252,29 @@ var $exeDevice = {
                     'https://youtu.be/',
                     'https://www.youtube.com/watch?v='
                 );
-                var e = $('#interactiveVideoEditorOpener');
                 if (
                     this.value.indexOf('https://www.youtube.com/watch?v=') == 0
                 ) {
                     $exeDevice.testIfVideoExists(this.value, 'youtube');
-                    e.fadeIn();
-                } else {
-                    e.hide();
                 }
             });
         $('#interactiveVideoMediatecaURL')
             .change(function () {
-                var e = $('#interactiveVideoEditorOpener');
                 if (
                     this.value.indexOf(
                         'https://mediateca.educa.madrid.org/video/'
                     ) == 0
                 ) {
                     $exeDevice.testIfVideoExists(this.value, 'mediateca');
-                    e.fadeIn();
-                } else {
-                    e.hide();
                 }
             })
             .keyup(function () {
-                var e = $('#interactiveVideoEditorOpener');
                 if (
                     this.value.indexOf(
                         'https://mediateca.educa.madrid.org/video/'
                     ) == 0
                 ) {
                     $exeDevice.testIfVideoExists(this.value, 'mediateca');
-                    e.fadeIn();
-                } else {
-                    e.hide();
                 }
             });
         // Create the object to contain all data
@@ -308,7 +289,6 @@ var $exeDevice = {
             imageList: [],
         };
         this.loadPreviousValues();
-        // To do now this.addExtjsScript();
     },
 
     // Load the saved values in the form fields
@@ -317,10 +297,11 @@ var $exeDevice = {
         if (originalHTML != '') {
             var wrapper = $("<div id='interactiveVideoTmpWrapper'></div>");
             wrapper.html(originalHTML);
-            // Check the CSS class (Show/Hide results)
+            // Check the CSS class (Show/Hide results). It is on the activity's
+            // own block: the content before and the evaluation ids come first.
             if (
-                $('div', wrapper)
-                    .eq(0)
+                $('.exe-interactive-video', wrapper)
+                    .first()
                     .hasClass('exe-interactive-video-no-results')
             ) {
                 $('#interactiveVideoShowResults').prop('checked', false);
@@ -349,18 +330,17 @@ var $exeDevice = {
                 $('#interactiveVideo' + n)
                     .val(videoURL)
                     .prop('disabled', disabled);
-                $('#interactiveVideoEditorOpener').fadeIn();
                 // Get the video URL and type
                 top.interactiveVideoEditor.videoURL = videoURL;
                 top.interactiveVideoEditor.videoType = type;
-                // Text before
+                // Text before, written in the Instructions tab
                 var textBefore = $(
                     '.exe-interactive-video-content-before',
                     wrapper
                 );
                 if (textBefore.length == 1) {
                     textBefore = textBefore.html();
-                    $('#eXeIdeviceTextBefore').val(textBefore);
+                    $('#eXeGameInstructions').val(textBefore);
                 }
                 // Text after
                 var textAfter = $(
@@ -457,7 +437,7 @@ var $exeDevice = {
                 // i18n
                 InteractiveVideo.scorm =
                     InteractiveVideo.scorm ?? $exeDevice.scorm;
-                $exeDevicesEdition.iDevice.gamification.common.setLanguageTabValues(
+                $exeIDevicesEdition.iDevice.gamification.common.setLanguageTabValues(
                     InteractiveVideo.i18n
                 );
                 // The weight too: setValues defaults it to 100 when the
@@ -466,7 +446,7 @@ var $exeDevice = {
                 // and overwrote it. `undefined` still lands on the helper's
                 // default, which is what a game saved before the field existed
                 // needs.
-                $exeDevicesEdition.iDevice.gamification.scorm.setValues(
+                $exeIDevicesEdition.iDevice.gamification.scorm.setValues(
                     InteractiveVideo.scorm.isScorm,
                     InteractiveVideo.scorm.textButtonScorm,
                     InteractiveVideo.scorm.repeatActivity,
@@ -476,6 +456,10 @@ var $exeDevice = {
                     typeof InteractiveVideo.scoreNIA == 'undefined'
                         ? true
                         : InteractiveVideo.scoreNIA;
+                $('#interactiveVideoScoreNIA').prop(
+                    'checked',
+                    !!InteractiveVideo.scoreNIA
+                );
                 InteractiveVideo.evaluation =
                     typeof InteractiveVideo.evaluation == 'undefined'
                         ? false
@@ -495,12 +479,11 @@ var $exeDevice = {
                     typeof InteractiveVideo.ideviceID != 'undefined'
                         ? InteractiveVideo.ideviceID
                         : false;
-                $exeDevice.ideviceID = $exeDevice.getIdeviceID();
-                $exeDevicesEdition.iDevice.gamification.progressBar.setValues({
+                $exeIDevicesEdition.iDevice.gamification.progressBar.setValues({
                     evaluation: InteractiveVideo.evaluation,
                     evaluationID: InteractiveVideo.evaluationID,
                 });
-                $exeDevicesEdition.iDevice.gamification.passScore.setValues({
+                $exeIDevicesEdition.iDevice.gamification.passScore.setValues({
                     passScoreMode: InteractiveVideo.passScoreMode,
                     passScoreCustom: InteractiveVideo.passScoreCustom,
                 });
@@ -519,8 +502,6 @@ var $exeDevice = {
     },
 
     toggleType: function (v) {
-        var btn = $('#interactiveVideoEditorOpener');
-        // To review: btn.hide();
         $('.interactiveVideoType').hide();
         $('#interactiveVideo-' + v).fadeIn();
         // Show/hide supported formats hint depending on source type
@@ -529,22 +510,8 @@ var $exeDevice = {
         } else {
             $('#interactiveFormats').hide();
         }
-        // Hide the "Please save your iDevice now and edit it to add interaction." message.
-        if (typeof $exeDevice.interactiveVideoEditorOpenerHTML != 'undefined') {
-            btn.html($exeDevice.interactiveVideoEditorOpenerHTML);
-        }
-        // $("#interactiveVideoFile,#interactiveVideoYoutubeURL,#interactiveVideoMediatecaURL").val("");
-        // if (top.interactiveVideoEditor.videoType)
         // Change the video type
         top.interactiveVideoEditor.videoType = v;
-        if ($exeDevice.interactiveVideoEditorOpenerHTML) {
-            // Keep displaying the "Save now" text if needed
-            if (v == 'local') $('#interactiveVideoFile').trigger('change');
-            else
-                $('#interactiveVideoEditorOpener').html(
-                    $exeDevice.interactiveVideoEditorOpenerHTML
-                );
-        }
     },
 
     editor: {
@@ -776,13 +743,13 @@ var $exeDevice = {
         }
 
         var progressBarValues =
-            $exeDevicesEdition.iDevice.gamification.progressBar.getValues();
+            $exeIDevicesEdition.iDevice.gamification.progressBar.getValues();
         if (!progressBarValues) return false;
         var seval = progressBarValues.evaluation,
             sevalid = progressBarValues.evaluationID;
 
         var passScoreValues =
-            $exeDevicesEdition.iDevice.gamification.passScore.getValues();
+            $exeIDevicesEdition.iDevice.gamification.passScore.getValues();
 
         var ideviceID = $exeDevice.getIdeviceID();
 
@@ -815,7 +782,7 @@ var $exeDevice = {
             // over at runtime, the way every other iDevice asks for at least
             // one question.
             var scormValues =
-                $exeDevicesEdition.iDevice.gamification.scorm.getValues();
+                $exeIDevicesEdition.iDevice.gamification.scorm.getValues();
             var scoreNIA = $('#interactiveVideoScoreNIA').is(':checked');
             if (
                 scormValues.isScorm > 0 &&
@@ -898,9 +865,11 @@ var $exeDevice = {
         if ($('#interactiveVideoShowResults').is(':checked') == false)
             extraCSS = ' exe-interactive-video-no-results';
 
-        // Content before
-        var contentBefore = '';
-        var contentBefore = tinymce.editors[0].getContent();
+        // Content before (the Instructions tab)
+        var beforeEditor = tinymce.get('eXeGameInstructions');
+        var contentBefore = beforeEditor
+            ? beforeEditor.getContent()
+            : $('#eXeGameInstructions').val() || '';
         if (contentBefore != '') {
             contentBefore =
                 '<div class="exe-interactive-video-content-before">' +
@@ -909,8 +878,10 @@ var $exeDevice = {
         }
 
         // Content after
-        var contentAfter = '';
-        var contentAfter = tinymce.editors[1].getContent();
+        var afterEditor = tinymce.get('eXeIdeviceTextAfter');
+        var contentAfter = afterEditor
+            ? afterEditor.getContent()
+            : $('#eXeIdeviceTextAfter').val() || '';
         if (contentAfter != '') {
             contentAfter =
                 '<div class="exe-interactive-video-content-after">' +

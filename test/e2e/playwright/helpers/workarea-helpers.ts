@@ -636,10 +636,25 @@ export async function selectNavNode(page: Page, nodeId: string): Promise<void> {
 }
 
 /**
+ * Open the left panels (page tree and iDevices) if they are collapsed: below
+ * COLLAPSE_PANELS_BELOW (1200px) the editor loads with them collapsed, and
+ * collapses them when the window becomes that narrow.
+ */
+export async function openLeftPanels(page: Page): Promise<void> {
+    if (await page.evaluate(() => document.body.classList.contains('left-column-hidden'))) {
+        await page.locator('#exe-panels-toggler').click();
+        await page.waitForFunction(() => !document.body.classList.contains('left-column-hidden'));
+    }
+}
+
+/**
  * Select a non-root page (required before adding iDevices)
  * Selects the first available page if no page is currently selected
  */
 export async function selectFirstPage(page: Page): Promise<void> {
+    // Both the page tree and the iDevice list must be reachable, even when a page is already selected.
+    await openLeftPanels(page);
+
     const isPageSelected = await page.evaluate(() => {
         const selected = document.querySelector('.nav-element.selected:not([nav-id="root"])');
         return !!selected;
@@ -809,8 +824,12 @@ export async function addIdevice(page: Page, ideviceType: string): Promise<void>
     await idevice.scrollIntoViewIfNeeded();
     await idevice.click();
 
-    // Wait for iDevice to appear in content area
-    await page.locator(`#node-content article .idevice_node.${ideviceType}`).first().waitFor({ timeout: 15000 });
+    // Wait for iDevice to appear in content area. The type is matched as a word of
+    // the class attribute: as a class selector, one starting with a digit (3dmol) is invalid.
+    await page
+        .locator(`#node-content article .idevice_node[class~="${ideviceType}"]`)
+        .first()
+        .waitFor({ timeout: 15000 });
 }
 
 /**
@@ -944,7 +963,7 @@ export async function verifyIdeviceInEditor(
             if (!nodeContent) return { found: false, details: { error: 'No #node-content' } };
 
             // Find iDevice node
-            const ideviceNode = nodeContent.querySelector(`.idevice_node.${type}`);
+            const ideviceNode = nodeContent.querySelector(`.idevice_node[class~="${type}"]`);
             if (!ideviceNode) return { found: false, details: { error: `No .idevice_node.${type}` } };
 
             const details: Record<string, unknown> = { ideviceFound: true, elements: {} };
@@ -2201,6 +2220,19 @@ export async function dismissBlockingAlertModal(page: Page, attempts = 3): Promi
         await alertModal.waitFor({ state: 'hidden', timeout: 5000 }).catch(() => {});
         await page.waitForTimeout(100);
     }
+}
+
+/**
+ * Close the notice of a development or demo version (#eXeBetaWarning) if it is shown. It sits over the top of
+ * the content area and can cover the tabs of an edition form. Its text differs between the server ("... is a
+ * development version") and the static build ("This is just a demo version"), so it is found by id.
+ */
+export async function dismissVersionNotice(page: Page): Promise<void> {
+    const close = page.locator('#eXeBetaWarningCloseBtn');
+    if (!(await close.isVisible())) return;
+    await close.click();
+    // Bootstrap fades the alert out before removing it, and until then it still takes the clicks.
+    await page.locator('#eXeBetaWarning').waitFor({ state: 'detached' });
 }
 
 /**

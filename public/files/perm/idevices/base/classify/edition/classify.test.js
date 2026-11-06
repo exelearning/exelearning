@@ -469,7 +469,7 @@ describe('classify iDevice', () => {
           // so rendering them again would show each control twice.
           expect(source).not.toContain('passScore.getContents(');
           expect(source).not.toContain('progressBar.getContents(');
-          expect(source).toContain('gamification.scorm.getTab(');
+          expect(source).toMatch(/tabs\.getHtml\([\s\S]*grading: true/);
       });
 
       it('restores the control when the iDevice is reopened', () => {
@@ -497,8 +497,8 @@ describe('classify iDevice', () => {
     let savedMedia;
 
     beforeEach(() => {
-      savedGamification = global.$exeDevicesEdition.iDevice.gamification;
-      global.$exeDevicesEdition.iDevice.gamification = {
+      savedGamification = global.$exeIDevicesEdition.iDevice.gamification;
+      global.$exeIDevicesEdition.iDevice.gamification = {
         ...savedGamification,
         progressBar: { addEvents: vi.fn() },
         itinerary: { addEvents: vi.fn() },
@@ -524,7 +524,7 @@ describe('classify iDevice', () => {
       // leak into the next one.
       $exeDevice.$lifecycle.destroy();
       document.body.innerHTML = '';
-      global.$exeDevicesEdition.iDevice.gamification = savedGamification;
+      global.$exeIDevicesEdition.iDevice.gamification = savedGamification;
       global.$exeDevices.iDevice.gamification.media = savedMedia;
     });
 
@@ -616,4 +616,541 @@ describe('classify minimum score text', () => {
 
     expect(device.ci18n.msgPassScore).toBe('Minimum score needed to pass this activity: %s');
   });
+});
+
+describe('classify edition: shared form tabs and feedback', () => {
+    const PATH = '/files/perm/idevices/base/classify/edition/';
+    const edition = () => global.$exeIDevicesEdition.iDevice;
+    const tabNames = () =>
+        [...document.querySelectorAll('#clasificaQEIdeviceForm-tabs [data-exe-tab]')].map((tab) =>
+            tab.getAttribute('data-exe-tab')
+        );
+    const panel = (name) => document.getElementById(`clasificaQEIdeviceForm-panel-${name}`);
+    const game = (overrides = {}) => ({
+        typeGame: 'Clasifica',
+        author: 'Test Author',
+        instructions: '<p>Instructions</p>',
+        showMinimize: false,
+        time: 0,
+        gameLevel: 2,
+        numberGroups: 2,
+        groups: ['Group 1', 'Group 2'],
+        customMessages: false,
+        percentajeQuestions: 100,
+        wordsGame: [
+            {
+                type: 1,
+                group: 0,
+                eText: 'Card 1',
+                url: '',
+                audio: '',
+                x: 0,
+                y: 0,
+                color: '#000000',
+                backcolor: '#ffffff',
+                author: '',
+                alt: '',
+                msgHit: '',
+                msgError: '',
+            },
+        ],
+        itinerary: {
+            showClue: false,
+            clueGame: '',
+            percentageClue: 40,
+            showCodeAccess: false,
+            codeAccess: '',
+            messageCodeAccess: '',
+        },
+        feedBack: false,
+        percentajeFB: 100,
+        isScorm: 0,
+        textButtonScorm: 'Save score',
+        repeatActivity: true,
+        weighted: 100,
+        imgCard: '',
+        ...overrides,
+    });
+    const exportHelpers = {
+        isJsonString: (text) => {
+            try {
+                return JSON.parse(text);
+            } catch {
+                return false;
+            }
+        },
+        decrypt: (text) => text,
+        encrypt: (text) => text,
+    };
+    let device;
+    let previousApp;
+    let tooltips;
+
+    beforeEach(() => {
+        global.$exeDevice = undefined;
+        previousApp = global.eXeLearning?.app;
+        tooltips = new Map();
+        global.eXeLearning = {
+            ...global.eXeLearning,
+            app: {
+                ...previousApp,
+                common: {
+                    initTooltips: vi.fn((scope) => {
+                        scope.querySelectorAll('.exe-app-tooltip').forEach((button) => {
+                            if (!tooltips.has(button)) tooltips.set(button, { hide: vi.fn(), dispose: vi.fn() });
+                        });
+                    }),
+                },
+            },
+        };
+        global.$exeDevices = {
+            iDevice: {
+                gamification: {
+                    helpers: exportHelpers,
+                    media: {
+                        extractURLGD: (url) => url,
+                    },
+                },
+            },
+        };
+        vi.stubGlobal('bootstrap', { Tooltip: { getInstance: (button) => tooltips.get(button) } });
+
+        const filePath = join(__dirname, 'classify.js');
+        const code = readFileSync(filePath, 'utf-8');
+        device = loadIdevice(code);
+
+        document.body.innerHTML = '<div id="classifyBody"></div>';
+        device.init(document.getElementById('classifyBody'), {}, PATH);
+    });
+
+    afterEach(() => {
+        device.$lifecycle?.destroy();
+        document.body.innerHTML = '';
+        if (global.eXeLearning) {
+            global.eXeLearning.app = previousApp;
+        }
+        vi.unstubAllGlobals();
+    });
+
+    it('explains what goes in the Questions tab', () => {
+        const info = panel('contents').firstElementChild;
+
+        expect(info.tagName).toBe('P');
+        expect(info.textContent).toContain('Add the cards and choose the group each one belongs to. The groups are named in Options.');
+    });
+
+    it('leaves the state of each switch to its native checkbox', () => {
+        document.querySelectorAll('.toggle-input:not(:disabled)').forEach((input) => input.click());
+
+        expect(document.querySelectorAll('[role="switch"], [aria-checked]')).toHaveLength(0);
+    });
+
+    it('organises the edition form into shared WAI-ARIA tabs', () => {
+        expect(tabNames()).toEqual([
+            'instructions',
+            'options',
+            'contents',
+            'passwords',
+            'feedback',
+            'after',
+            'grading',
+            'texts',
+        ]);
+
+        expect(panel('instructions').querySelector('#eXeGameInstructions')).not.toBeNull();
+        expect(panel('options').querySelector('#clasificaEOptions')).not.toBeNull();
+        expect(panel('contents').querySelector('.CQE-EPanel')).not.toBeNull();
+        expect(panel('passwords').querySelector('#eXeGameShowClue')).not.toBeNull();
+        expect(panel('feedback').querySelector('#eXeGameHasFeedBack')).not.toBeNull();
+        expect(panel('after').querySelector('#eXeIdeviceTextAfter')).not.toBeNull();
+        expect(panel('grading').querySelector('.exe-progress-report-wrapper')).not.toBeNull();
+        expect(panel('texts').querySelector('#ci18n_msgSubmit')).not.toBeNull();
+    });
+
+    it('mounts import, export and AI above the contents', () => {
+        const tools = panel('contents').querySelector('.exe-share-tools');
+        expect(tools).not.toBeNull();
+        const links = [...tools.querySelectorAll('[data-exe-share]')];
+        expect(links.map((link) => link.getAttribute('data-exe-share'))).toEqual(['import', 'ai']);
+        // Export has no window: it saves the file at once.
+        expect(tools.querySelector('#eXeGameExportQuestions')).not.toBeNull();
+    });
+
+    it('offers to import txt files only, without the Moodle xml it does not read', () => {
+        const modal = document.getElementById('eXeShareModal-import');
+
+        expect(modal.querySelector('.modal-body').firstElementChild.textContent).toBe(
+            'You can import questions compatible with this activity from txt files.'
+        );
+        expect(modal.querySelector('.exe-field-instructions').textContent).toBe('Supported formats: txt');
+        expect(document.getElementById('eXeGameImportGame').getAttribute('accept')).toBe('.txt');
+    });
+
+    it('refuses a Moodle xml file before reading it', () => {
+        const read = vi.spyOn(FileReader.prototype, 'readAsText');
+        const input = document.getElementById('eXeGameImportGame');
+        Object.defineProperty(input, 'files', {
+            configurable: true,
+            value: [new File(['<quiz></quiz>'], 'questions.xml', { type: 'text/xml' })],
+        });
+
+        $(input).trigger('change');
+
+        expect(read).not.toHaveBeenCalled();
+        expect(global.eXe.app.getLastAlert()).toBe('Please select a text file (.txt)');
+        read.mockRestore();
+    });
+
+    it('provides accessible help tooltips for option rows', () => {
+        const optionHelps = [...panel('options').querySelectorAll('#clasificaEOptions .exe-idevice-help')];
+        expect(optionHelps.length).toBe(7);
+
+        for (const help of optionHelps) {
+            expect(help.tagName).toBe('BUTTON');
+            expect(help.type).toBe('button');
+            expect(help.title).toBe('Information');
+            const targetId = help.getAttribute('aria-controls');
+            expect(targetId).toBeTruthy();
+            expect(document.getElementById(targetId)?.textContent.length).toBeGreaterThan(10);
+        }
+    });
+
+    it('does not toggle switches when clicking help icons inside toggle-items', () => {
+        const customMsgHelp = document.querySelector('#clasificaECustomMessagesDiv .exe-idevice-help');
+        const customMsgInput = document.getElementById('clasificaECustomMessages');
+        expect(customMsgHelp).not.toBeNull();
+        expect(customMsgInput.checked).toBe(false);
+        customMsgHelp.click();
+        expect(customMsgInput.checked).toBe(false);
+
+        const minimizeHelp = document.getElementById('clasificaEShowMinimize').closest('div').querySelector('.exe-idevice-help');
+        const minimizeInput = document.getElementById('clasificaEShowMinimize');
+        expect(minimizeHelp).not.toBeNull();
+        expect(minimizeInput.checked).toBe(false);
+        minimizeHelp.click();
+        expect(minimizeInput.checked).toBe(false);
+    });
+
+    it('escapes translated help text in the explanation', () => {
+        const text = 'Use "Accept" <once> & keep the learner\'s answer.';
+        const container = document.createElement('div');
+        container.innerHTML = edition().common.getHelpTooltip(text);
+        const button = container.querySelector('button');
+        expect(button.title).toBe('Information');
+        expect(container.querySelector('.help-content').textContent).toBe(text);
+        expect(container.querySelector('once')).toBeNull();
+    });
+
+    it('disposes all option tooltips when the edition closes', () => {
+        expect(tooltips.size).toBeGreaterThanOrEqual(7);
+        device.$lifecycle.destroy();
+        for (const tooltip of tooltips.values()) {
+            expect(tooltip.dispose).toHaveBeenCalledTimes(1);
+        }
+    });
+
+    it('switches tabs when one is clicked', () => {
+        document.getElementById('clasificaQEIdeviceForm-tab-options').click();
+
+        expect(panel('options').classList.contains('active')).toBe(true);
+        expect(panel('instructions').classList.contains('active')).toBe(false);
+    });
+
+    it('restores form values and updates gamification modules on updateFieldGame', () => {
+        // Saved with its message: without one, the feedback loads off.
+        $exeIDevicesEdition.iDevice.gamification.feedback.setText('<p>Well done</p>');
+        device.updateFieldGame(
+            game({
+                showMinimize: true,
+                customMessages: true,
+                numberGroups: 4,
+                groups: ['G1', 'G2', 'G3', 'G4'],
+                gameLevel: 1,
+                feedBack: true,
+                percentajeFB: 75,
+            })
+        );
+
+        expect(document.getElementById('clasificaEShowMinimize').checked).toBe(true);
+        expect(document.getElementById('clasificaECustomMessages').checked).toBe(true);
+        expect(document.getElementById('clasificaENumGroups').value).toBe('4');
+        expect(document.getElementById('clasificaL2').checked).toBe(true);
+        expect(document.getElementById('eXeGameHasFeedBack').checked).toBe(true);
+        expect(document.getElementById('eXeGamePercentajeFB').value).toBe('75');
+    });
+
+    describe('saving and validation', () => {
+        let editors;
+        let tinymceGet;
+
+        beforeEach(() => {
+            editors = {
+                eXeGameInstructions: '<p>Instructions</p>',
+                eXeIdeviceTextAfter: '<p>Extra info</p>',
+                eXeGameFeedBackEditor: '<p>Feedback message</p>',
+            };
+            tinymceGet = vi.spyOn(global.tinymce, 'get').mockImplementation((id) =>
+                id in editors
+                    ? {
+                          initialized: true,
+                          getContent: () => editors[id],
+                          setContent: (html) => (editors[id] = html),
+                          hide: vi.fn(),
+                          show: vi.fn(),
+                      }
+                    : null
+            );
+        });
+
+        afterEach(() => {
+            tinymceGet.mockRestore();
+        });
+
+        it('saves form data with feedback and extra content', () => {
+            device.updateFieldGame(
+                game({
+                    showMinimize: true,
+                    feedBack: true,
+                    percentajeFB: 80,
+                })
+            );
+            device.showQuestion(0);
+            edition().gamification.feedback.setText('<p>Feedback message</p>');
+            const data = device.validateData();
+
+            expect(data.showMinimize).toBe(true);
+            expect(data.feedBack).toBe(true);
+            expect(data.percentajeFB).toBe(80);
+            expect(unescape(data.textFeedBack)).toBe('<p>Feedback message</p>');
+            expect(unescape(data.textAfter)).toBe('<p>Extra info</p>');
+
+            const savedHtml = device.save();
+            expect(savedHtml).toContain('clasifica-feedback-game');
+            expect(savedHtml).toContain('clasifica-extra-content');
+        });
+
+        it('loads with the feedback off an activity saved with it on and no message, and saves it', () => {
+            editors.eXeGameFeedBackEditor = '';
+            device.updateFieldGame(game({ feedBack: true, percentajeFB: 80 }));
+            device.showQuestion(0);
+
+            expect(document.getElementById('eXeGameHasFeedBack').checked).toBe(false);
+            expect(device.validateData().feedBack).toBe(false);
+            expect(device.save()).toContain('clasifica-DataGame');
+        });
+
+        it('saves an emptied Instructions or After editor as empty', () => {
+            device.updateFieldGame(game({ feedBack: true, percentajeFB: 80 }));
+            device.showQuestion(0);
+            edition().gamification.feedback.setText('<p>Feedback message</p>');
+            // TinyMCE does not write back to its textarea, which keeps what the form was loaded with.
+            $('#eXeGameInstructions').val('<p>Old instructions</p>');
+            $('#eXeIdeviceTextAfter').val('<p>Old extra info</p>');
+            editors.eXeGameInstructions = '';
+            editors.eXeIdeviceTextAfter = '';
+
+            const data = device.validateData();
+
+            expect(data.instructions).toBe('');
+            expect(data.textAfter).toBe('');
+            expect(device.save()).not.toContain('Old');
+        });
+
+        it('asks, in the language of the editor, to name a group left without a name', () => {
+            device.updateFieldGame(game());
+            device.showQuestion(0);
+            document.getElementById('clasificaTitle1').value = '  ';
+
+            expect(device.validateData()).toBe(false);
+            expect(eXe.app.getLastAlert()).toBe('Give each group a name in Options');
+            expect(global._).toHaveBeenCalledWith('Give each group a name in Options');
+        });
+
+        it('asks for an image or a sound when an iDevice just added is saved', () => {
+            expect(device.save()).toBe(false);
+            expect(eXe.app.getLastAlert()).toBe('Add an image or a sound to the card');
+        });
+
+        it('keeps the author of the activity apart from the author of each card', () => {
+            device.updateFieldGame(
+                game({
+                    author: 'Activity author',
+                    wordsGame: [{ ...game().wordsGame[0], type: 0, eText: '', url: 'images/lion.png', author: 'Card author' }],
+                })
+            );
+            device.active = 0;
+            device.showQuestion(0);
+
+            expect(document.getElementById('clasificaEAuthor').value).toBe('Card author');
+            document.getElementById('clasificaEAuthor').value = 'New card author';
+            device.validateQuestion();
+
+            expect(device.wordsGame[0].author).toBe('New card author');
+            expect(device.validateData().author).toBe('Activity author');
+        });
+
+        describe('exporting', () => {
+            let downloadBlob;
+            let validateQuestion;
+            const item = (fields) => ({ ...device.getCuestionDefault(), ...fields });
+            const exportItems = (items) => {
+                device.updateFieldGame(game());
+                device.wordsGame = items;
+                device.active = 0;
+                device.showQuestion(0);
+                document.getElementById('eXeGameExportQuestions').click();
+            };
+
+            beforeEach(() => {
+                downloadBlob = vi.spyOn(edition().gamification.share, 'downloadBlob').mockReturnValue(true);
+                // The item on screen is stored first, as on saving; happy-dom
+                // cannot read the selected group back, so that step is stubbed.
+                validateQuestion = vi.spyOn(device, 'validateQuestion').mockReturnValue(true);
+            });
+
+            afterEach(() => {
+                downloadBlob.mockRestore();
+                validateQuestion.mockRestore();
+            });
+
+            it('downloads the items with text as lines the import reads back', async () => {
+                exportItems([
+                    item({ type: 1, group: 0, eText: 'Lion' }),
+                    item({ type: 0, group: 1, url: 'images/rabbit.png' }),
+                    item({ type: 2, group: 1, url: 'images/cow.png', eText: 'Cow #1' }),
+                ]);
+
+                expect(validateQuestion).toHaveBeenCalled();
+                expect(downloadBlob).toHaveBeenCalledTimes(1);
+                const [blob, fileName, containerId] = downloadBlob.mock.calls[0];
+                expect(await blob.text()).toBe('0#Lion\n1#Cow 1');
+                expect(fileName).toBe('Classify.txt');
+                expect(containerId).toBe('clasificaQEIdeviceForm');
+            });
+
+            it('tells the author when no item has a text to export', () => {
+                exportItems([item({ type: 0, group: 0, url: 'images/rabbit.png' })]);
+
+                expect(downloadBlob).not.toHaveBeenCalled();
+                expect(eXe.app.getLastAlert()).toBe('Sorry, there are no questions for this type of activity.');
+            });
+        });
+    });
+
+    describe('adding items to the one on screen', () => {
+        const item = (fields) => ({ ...device.getCuestionDefault(), ...fields });
+        // The author typed it in a new activity: it is on screen, not in the list yet.
+        const typeOnScreen = (fields) => {
+            device.wordsGame = [item(fields)];
+            device.active = 0;
+            device.showQuestion(0);
+            device.wordsGame = [device.getCuestionDefault()];
+        };
+        const alertsWhile = (action) => {
+            const before = eXe.app._alertHistory.length;
+            action();
+            return eXe.app._alertHistory.slice(before);
+        };
+
+        it('keeps it when it is complete', () => {
+            typeOnScreen({ type: 1, group: 0, eText: 'Lion' });
+
+            device.insertWords(['0#Dog', '1#Cow']);
+
+            expect(device.wordsGame.map((entry) => entry.eText)).toEqual(['Lion', 'Dog', 'Cow']);
+        });
+
+        it('keeps it when a copied item is pasted', () => {
+            typeOnScreen({ type: 1, group: 0, eText: 'Lion' });
+            device.typeEdit = 0;
+            device.clipBoard = item({ type: 1, group: 1, eText: 'Cow' });
+
+            device.pasteQuestion();
+
+            expect(device.wordsGame.map((entry) => entry.eText)).toEqual(['Lion', 'Cow']);
+        });
+
+        it('leaves it out, without its warning, when it is incomplete', () => {
+            typeOnScreen({ type: 1, group: 0, eText: '' });
+
+            const alerts = alertsWhile(() => device.insertWords(['0#Dog', '1#Cow']));
+
+            expect(device.wordsGame.map((entry) => entry.eText)).toEqual(['Dog', 'Cow']);
+            expect(alerts).toEqual([]);
+        });
+
+        it('leaves it out of a paste, without its warning, when it is incomplete', () => {
+            typeOnScreen({ type: 1, group: 0, eText: '' });
+            device.typeEdit = 0;
+            device.clipBoard = item({ type: 1, group: 1, eText: 'Cow' });
+
+            const alerts = alertsWhile(() => device.pasteQuestion());
+
+            expect(device.wordsGame.map((entry) => entry.eText)).toContain('Cow');
+            expect(alerts).toEqual([]);
+        });
+    });
+
+    describe('importing lines into an activity', () => {
+        const card = (group, eText) => ({ ...game().wordsGame[0], group, eText });
+        const numberOfGroups = () => document.getElementById('clasificaENumGroups').value;
+        const cards = () => device.wordsGame.map((entry) => `${entry.group}#${entry.eText}`);
+        let validateQuestion;
+
+        beforeEach(() => {
+            // happy-dom cannot read the selected group of the card on screen back.
+            validateQuestion = vi.spyOn(device, 'validateQuestion').mockReturnValue(true);
+        });
+
+        afterEach(() => {
+            validateQuestion.mockRestore();
+        });
+
+        const open = (overrides) => {
+            device.updateFieldGame(game(overrides));
+            device.active = 0;
+            device.showQuestion(0);
+        };
+
+        it('adds the lines to its groups without removing any', () => {
+            open({
+                numberGroups: 3,
+                groups: ['Mammals', 'Birds', 'Fish'],
+                wordsGame: [card(0, 'Lion'), card(1, 'Eagle'), card(2, 'Shark')],
+            });
+
+            device.insertWords(['0#Cow', '1#Owl']);
+
+            expect(numberOfGroups()).toBe('3');
+            expect(cards()).toEqual(['0#Lion', '1#Eagle', '2#Shark', '0#Cow', '1#Owl']);
+        });
+
+        it('reads back an export whose texts are all in one group', () => {
+            open();
+
+            device.insertWords(['0#Rabbit']);
+
+            expect(numberOfGroups()).toBe('2');
+            expect(cards()).toEqual(['0#Card 1', '0#Rabbit']);
+        });
+
+        it('adds the group that follows the last one', () => {
+            open();
+
+            device.insertWords(['2#Eagle']);
+
+            expect(numberOfGroups()).toBe('3');
+            expect(cards()).toEqual(['0#Card 1', '2#Eagle']);
+        });
+
+        it('refuses a file that skips a group after the last one', () => {
+            open();
+
+            device.insertWords(['0#Cow', '3#Eagle']);
+
+            expect(eXe.app.getLastAlert()).toBe('Incorrect group number');
+            expect(numberOfGroups()).toBe('2');
+            expect(cards()).toEqual(['0#Card 1']);
+        });
+    });
 });

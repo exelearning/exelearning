@@ -47,6 +47,7 @@ var $exeDevice = {
         $('#flipcardsETextDiv').hide();
         $('#flipcardsETextDivBack').hide();
         this.active = 0;
+        $('#flipcardsENumCards').text($exeDevice.cardsGame.length);
     },
     refreshTranslations: function () {
         this.ci18n = {
@@ -146,249 +147,277 @@ var $exeDevice = {
 
     createForm: function () {
         const path = $exeDevice.idevicePath,
+            edition = $exeIDevicesEdition.iDevice,
+            optionsHtml = `
+            <div id="flipcardsEOptions">
+                <div class="d-flex align-items-center gap-2 flex-nowrap mb-3" role="radiogroup" aria-labelledby="flipcardsETypeLabel">
+                    <span id="flipcardsETypeLabel">${_('Type')}:</span>
+                    <div class="form-check form-check-inline m-0">
+                        <input class="FLCRDS-Type form-check-input" checked id="flipcardsETypeShow" type="radio" name="flctype" value="0"/>
+                        <label for="flipcardsETypeShow" class="form-check-label">${_('Show')}</label>
+                    </div>
+                    <div class="form-check form-check-inline m-0">
+                        <input class="FLCRDS-Type form-check-input" id="flipcardsETypeNavigation" type="radio" name="flctype" value="1"/>
+                        <label for="flipcardsETypeNavigation" class="form-check-label">${_('Navigation')}</label>
+                    </div>
+                    <div class="form-check form-check-inline m-0">
+                        <input class="FLCRDS-Type form-check-input" id="flipcardsETypeIdentify" type="radio" name="flctype" value="2"/> 
+                        <label for="flipcardsETypeIdentify" class="form-check-label">${_('Identify')}</label>
+                    </div>
+                    <div class="form-check form-check-inline m-0">
+                        <input class="FLCRDS-Type form-check-input" id="flipcardsETypeMemory" type="radio" name="flctype" value="3"/>
+                        <label for="flipcardsETypeMemory" class="form-check-label">${_('Memory')}</label>
+                    </div>
+                    ${edition.common.getHelpTooltip(
+                        _('Game mode: Show (displays cards), Navigation (navigate between cards), Identify (find the indicated card), Memory (classic card matching game).')
+                    )}
+                </div>
+                <div style="display:none" class="mb-3">
+                    <span class="toggle-item">
+                        <span class="toggle-control">
+                            <input type="checkbox" checked id="flipcardsEShowSolution" class="toggle-input" />
+                            <span class="toggle-visual" aria-hidden="true"></span>
+                        </span>
+                        <label class="toggle-label" for="flipcardsEShowSolution">${_('Show solutions')}.</label>
+                    </span>
+                    <label for="flipcardsETimeShowSolution" class="ms-2 mb-0">${_('Show solution time (seconds)')}:</label>
+                    <input type="number" name="flipcardsETimeShowSolution" id="flipcardsETimeShowSolution" value="3" min="1" max="9" class="form-control" style="width:5ch" />
+                    ${edition.common.getHelpTooltip([
+                        `${_('Show solutions')}: ${_('Show the solution if the user fails.')}`,
+                        `${_('Show solution time (seconds)')}: ${_('Number of seconds the solution is displayed before proceeding.')}`,
+                    ].join('\n\n'))}
+                </div>
+                <div id="flipcardsETimeDiv" style="display:none;" class="align-items-center gap-2 flex-nowrap mb-3">
+                    <label for="flipcardsETime" class="mb-0">${_('Time (minutes)')}:</label>
+                    <input type="number" name="flipcardsETime" id="flipcardsETime" value="3" min="0" max="59" class="form-control" style="width:5ch" />
+                    ${edition.common.getHelpTooltip(
+                        _('Set the maximum time in minutes to complete the activity. Set to 0 for unlimited time.')
+                    )}
+                </div>
+                <div class="mb-3 d-flex align-items-center gap-2">
+                    <span class="toggle-item">
+                        <span class="toggle-control">
+                            <input type="checkbox" id="flipcardsEShowMinimize" class="toggle-input" />
+                            <span class="toggle-visual" aria-hidden="true"></span>
+                        </span>
+                        <label class="toggle-label" for="flipcardsEShowMinimize">${_('Show minimized.')}</label>
+                    </span>
+                    ${edition.common.getHelpTooltip(
+                        _('Start with the game collapsed. Learners can expand it when they are ready to play.')
+                    )}
+                </div>
+                <div class="mb-3 d-flex align-items-center gap-2">
+                    <span class="toggle-item">
+                        <span class="toggle-control">
+                            <input type="checkbox" id="flipcardsERandomCards" class="toggle-input" checked />
+                            <span class="toggle-visual" aria-hidden="true"></span>
+                        </span>
+                        <label class="toggle-label" for="flipcardsERandomCards">${_('Random')}</label>
+                    </span>
+                    ${edition.common.getHelpTooltip(
+                        _('Present the cards in a different random order each time the game starts.')
+                    )}
+                </div>
+                <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
+                    <label for="flipcardsEPercentajeCards" class="mb-0">%${_('Cards')}:</label>
+                    <input type="number" name="flipcardsEPercentajeCards" id="flipcardsEPercentajeCards" value="100" min="1" max="100" class="form-control" style="width:6ch" />
+                    <span id="flipcardsENumeroPercentaje">1/1</span>
+                    ${edition.common.getHelpTooltip(
+                        _('Choose the percentage of cards included in each game. The counter shows how many cards will be used.')
+                    )}
+                </div>
+                <div class="d-none align-items-center gap-2 flex-nowrap mb-3">
+                    <label for="flipcardsEAuthory" class="mb-0">${_('Authorship')}:</label>
+                    <input id="flipcardsEAuthory" type="text" class="form-control" />
+                </div>
+                <div id="flipcardBackDiv" style="display:none">
+                    <div class="d-flex align-items-center gap-2 flex-nowrap mb-2">
+                        <label for="flipcardsEURLImgCard" class="mb-0">${_('Image back')}: </label>
+                        <input type="text" class="exe-file-picker FLCRDS-EURLImage form-control me-0" id="flipcardsEURLImgCard"/>
+                        <a href="#" id="flipcardEPlayCard" class="flipcard-ENavigationButton flipcardEEPlayVideo" title="${_('Show')}">
+                             <img src="${path}quextIEPlay.png" alt="${_('Show')}" class="FLCRDS-ENavigationButton " />
+                        </a>
+                        ${edition.common.getHelpTooltip(
+                            _('Custom image displayed on the reverse face of all cards.')
+                        )}
+                    </div>
+                    <p id="flipcardbackground" class="FLCRDS-Back">
+                        <img class="FLCRDS-EImageBack" src="" id="flipcardECard" alt="${_('Image')}" style="display:none" />
+                        <img class="FLCRDS-EImageBack" src="${path}flcsHome.png" id="flipcardENoCard" alt="${_('No image')}" />
+                    </p>
+                </div>
+            </div>
+        `,
+            cardsHtml = `
+            <div class="FLCRDS-EPanel" id="flipcardsEPanel">
+                <div class="FLCRDS-EPhrase" id="flipcardsEPhrase">
+                    <div class="FLCRDS-EDatosCarta FLCRDS-EFront" id="flipcardsEDatosCarta">
+                        <span class="FLCRDS-ECardType mb-3 mt-2">${_('Front side')}</span>
+                        <div class="FLCRDS-EMultimedia mb-3">
+                            <div class="FLCRDS-ECard">
+                                <img class="FLCRDS-EHideFLCRDS-EImage" id="flipcardsEImage" src="${path}quextIEImage.png" alt="${_('No image')}" />
+                                <img class="FLCRDS-ECursor" id="flipcardsECursor" src="${path}quextIECursor.gif" alt="" />
+                                <img class="FLCRDS-EHideFLCRDS-NoImage" id="flipcardsENoImage" src="${path}quextIEImage.png" alt="${_('No image')}" />
+                                <div class="FLCRDS-ETextDiv" id="flipcardsETextDiv"></div>
+                            </div>
+                        </div>
+                        <span>${_('Text')}</span>
+                        <div class="d-flex align-items-center gap-2 flex-nowrap mb-3" id="flipcardsEInputText">
+                            <label class="sr-av">${_('Text')}</label>
+                            <input type="text" id="flipcardsEText" class="form-control" />
+                            <label id="flipcardsELblColor" class="FLCRDS-LblColor">${_('Color')}: </label> 
+                            <input id="flipcardsEColor" type="color"  class="form-control form-control-color" value="#000000">                                       
+                            <label id="flipcardsELblBgColor" class="FLCRDS-LblBgColor">${_('Background')}:   </label> 
+                            <input id="flipcardsEBgColor" type="color"  class="form-control form-control-color" value="#ffffff">
+                         
+                        </div>
+                        <span>${_('Image')}</span>
+                        <div class="d-flex align-items-center gap-2 flex-nowrap mb-3" id="flipcardsEInputImage">
+                            <label for="flipcardsEURLImage" class="sr-av">URL</label>
+                            <input type="text" id="flipcardsEURLImage" class="exe-file-picker FLCRDS-EURLImage form-control me-0"/>
+                            <a href="#" id="flipcardsEPlayImage" class="FLCRDS-ENavigationButton FLCRDS-EPlayVideo" title="${_('Show')}">
+                                <img src="${path}quextIEPlay.png" alt="${_('Show')}" class="FLCRDS-ENavigationButton " />
+                            </a>
+                            <a href="#" id="flipcardsEShowMore" class="FLCRDS-ENavigationButton FLCRDS-EShowMore" title="${_('More')}">
+                                <img src="${path}quextEIMore.png" alt="${_('More')}" class="FLCRDS-ENavigationButton " />
+                            </a>
+                        </div>
+                        <div class="FLCRDS-ECoord">
+                            <label for="flipcardsEX">X:</label>
+                            <input id="flipcardsEX" class="FLCRDS-EX form-control" type="text" value="0" />
+                            <label for="flipcardsEY">Y:</label>
+                            <input id="flipcardsEY" class="FLCRDS-EY form-control" type="text" value="0" />
+                        </div>
+                        <div class="align-items-center gap-2 flex-nowrap mb-3" id="flipcardsEAuthorAlt">
+                            <div class="FLCRDS-EInputAuthor">
+                                <label for="flipcardsEAuthor">${_('Authorship')}</label>
+                                <input id="flipcardsEAuthor" type="text" class="FLCRDS-EAuthor form-control" />
+                            </div>
+                            <div class="FLCRDS-EInputAlt">
+                                <label for="flipcardsEAlt">${_('Alternative text')}</label>
+                                <input id="flipcardsEAlt" type="text" class="FLCRDS-EAlt form-control" />
+                            </div>
+                        </div>
+                        <span>${_('Audio')}</span>
+                        <div class="d-flex align-items-center gap-2 flex-nowrap mb-3" data-voice-recorder data-voice-input="#flipcardsEURLAudio">
+                            <label for="flipcardsEURLAudio" class="sr-av">URL</label>
+                            <input type="text" id="flipcardsEURLAudio" class="exe-file-picker FLCRDS-EURLAudio form-control me-0" />
+                            <a href="#" id="flipcardsEPlayAudio" class="FLCRDS-ENavigationButton FLCRDS-EPlayVideo" title="${_('Audio')}">
+                                <img src="${path}quextIEPlay.png" alt="Play" class="FLCRDS-ENavigationButton " />
+                            </a>
+                        </div>
+                    </div>
+                    <div class="FLCRDS-EDatosCarta FLCRDS-EBack" id="flipcardsEDatosCartaBack">
+                        <span class="FLCRDS-ECardType mb-3 mt-2">${_('Back side')}</span>
+                        <div class="FLCRDS-EMultimedia">
+                            <div class="FLCRDS-ECard">
+                                <img class="FLCRDS-EHideFLCRDS-EImage" id="flipcardsEImageBack" src="${path}quextIEImage.png" alt="${_('No image')}" />
+                                <img class="FLCRDS-ECursor" id="flipcardsECursorBack" src="${path}quextIECursor.gif" alt="" />
+                                <img class="FLCRDS-EHideFLCRDS-NoImage" id="flipcardsENoImageBack" src="${path}quextIEImage.png" alt="${_('No image')}" />
+                                <div class="FLCRDS-ETextDiv" id="flipcardsETextDivBack"></div>
+                            </div>
+                        </div>
+                        <span >${_('Text')}</span>
+                        <div class="d-flex align-items-center flex-nowrap mb-3 gap-2" id="flipcardsEInputTextBack">
+                            <label for="flipcardsETextBack" class="sr-av">${_('Text')}</label>
+                            <input type="text" id="flipcardsETextBack" class="form-control" />
+                            <label id="flipcardsELblColorBack" class="FLCRDS-LblColor ">${_('Color')}:</label> 
+                            <input id="flipcardsEColorBack" type="color" class="form-control form-control-color" value="#000000">
+                            <label id="flipcardsELblBgColorBack" class="FLCRDS-LblBgColor">${_('Background')}:</label> 
+                            <input id="flipcardsEBgColorBack" type="color" class="form-control form-control-color" value="#ffffff">
+                            
+                        </div>
+                        <span> ${_('Image')}</span>
+                        <div class="d-flex align-items-center flex-nowrap gap-2 mb-3" id="flipcardsEInputImageBack">
+                            <label for="flipcardsEURLImageBack" class="sr-av">URL</label>
+                            <input type="text" id="flipcardsEURLImageBack" class="exe-file-picker form-control me-0"/>
+                            <a href="#" id="flipcardsEPlayImageBack" class="FLCRDS-EPlayVideo" title="${_('Show')}">
+                                <img src="${path}quextIEPlay.png" alt="${_('Show')}" class="FLCRDS-ENavigationButton " />
+                            </a>
+                            <a href="#" id="flipcardsEShowMoreBack" title="${_('More')}">
+                                <img src="${path}quextEIMore.png" alt="${_('More')}" class="FLCRDS-ENavigationButton " />
+                            </a>
+                        </div>
+                        <div class="FLCRDS-ECoord">
+                            <label>X:</label>
+                            <input id="flipcardsEXBack" class="FLCRDS-EX form-control" type="text" value="0" />
+                            <label>Y:</label>
+                            <input id="flipcardsEYBack" class="FLCRDS-EY form-control" type="text" value="0" />
+                        </div>
+                        <div class="align-items-center gap-2 flex-nowrap mb-3" id="flipcardsEAuthorAltBack">
+                            <div class="FLCRDS-EInputAuthor">
+                                <label>${_('Authorship')}</label>
+                                <input id="flipcardsEAuthorBack" type="text" class="FLCRDS-EAuthor form-control" />
+                            </div>
+                            <div class="FLCRDS-EInputAlt">
+                                <label>${_('Alternative text')}</label>
+                                <input id="flipcardsEAltBack" type="text" class="FLCRDS-EAlt form-control" />
+                            </div>
+                        </div>
+                        <span>${_('Audio')}</span>
+                        <div class="d-flex align-items-center flex-nowrap mb-3 gap-2" data-voice-recorder data-voice-input="#flipcardsEURLAudioBack">
+                            <label form="flipcardsEURLAudioBack" class="sr-av">URL</label>
+                            <input type="text" id="flipcardsEURLAudioBack" class="exe-file-picker FLCRDS-EURLAudio form-control  me-0" />
+                            <a href="#" id="flipcardsEPlayAudioBack" class="FLCRDS-ENavigationButton FLCRDS-EPlayVideo" title="${_('Audio')}">
+                                <img src="${path}quextIEPlay.png" alt="Play" class="FLCRDS-ENavigationButton " />
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                <div class="FLCRDS-EReverseFacces mt-2">
+                    <a href="#" id="flipcardsEReverseCard" title="${_('Flip down the card')}">${_('Flip down the card')}</a>
+                    <a href="#" id="flipcardsEReverseFaces" title="${_('Flip down all the cards')}">${_('Flip down all the cards')}</a>
+                </div>
+                <div class="FLCRDS-ENavigationButtons gap-2">
+                    <a href="#" id="flipcardsEAddC" class="FLCRDS-ENavigationButton" title="${_('Add question')}"><img src="${path}quextIEAdd.png" alt="${_('Add question')}" class="FLCRDS-ENavigationButton" /></a>
+                    <a href="#" id="flipcardsEFirstC" class="FLCRDS-ENavigationButton" title="${_('First question')}"><img src="${path}quextIEFirst.png" alt="${_('First question')}" class="FLCRDS-ENavigationButton" /></a>
+                    <a href="#" id="flipcardsEPreviousC" class="FLCRDS-ENavigationButton" title="${_('Previous question')}"><img src="${path}quextIEPrev.png" alt="${_('Previous question')}" class="FLCRDS-ENavigationButton" /></a>
+                    <label class="sr-av" for="flipcardsENumberCard">${_('Question number:')}:</label>
+                    <input type="text" class="FLCRDS-NumberCard form-control" id="flipcardsENumberCard" value="1"/>
+                    <a href="#" id="flipcardsENextC" class="FLCRDS-ENavigationButton" title="${_('Next question')}"><img src="${path}quextIENext.png" alt="${_('Next question')}" class="FLCRDS-ENavigationButton" /></a>
+                    <a href="#" id="flipcardsELastC" class="FLCRDS-ENavigationButton" title="${_('Last question')}"><img src="${path}quextIELast.png" alt="${_('Last question')}" class="FLCRDS-ENavigationButton" /></a>
+                    <a href="#" id="flipcardsEDeleteC" class="FLCRDS-ENavigationButton" title="${_('Delete question')}"><img src="${path}quextIEDelete.png" alt="${_('Delete question')}" class="FLCRDS-ENavigationButton" /></a>
+                    <a href="#" id="flipcardsECopyC" class="FLCRDS-ENavigationButton" title="${_('Copy question')}"><img src="${path}quextIECopy.png" alt="${_('Copy question')}" class="FLCRDS-ENavigationButton" /></a>
+                    <a href="#" id="flipcardsECutC" class="FLCRDS-ENavigationButton" title="${_('Cut question')}"><img src="${path}quextIECut.png" alt="${_('Cut question')}" class="FLCRDS-ENavigationButton" /></a>
+                    <a href="#" id="flipcardsEPasteC" class="FLCRDS-ENavigationButton" title="${_('Paste question')}"><img src="${path}quextIEPaste.png" alt="${_('Paste question')}" class="FLCRDS-ENavigationButton" /></a>
+                </div>
+                <div class="FLCRDS-ENumCardDiv" id="flipcardsENumCardsDiv">
+                    <div class="FLCRDS-ENumCardsIcon"><span class="sr-av">${_('Cards')}:</span></div>
+                    <span class="FLCRDS-ENumCards" id="flipcardsENumCards">0</span>
+                </div>
+            </div>
+        `,
             html = `
             <div id="flipcardsQEIdeviceForm">
-                ${$exeDevicesEdition.iDevice.common.getIdeviceDescription(
+                ${edition.common.getIdeviceDescription(
                     _('Create card memory games with images, sounds or rich text.'),
                     'https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe40/html/tarjetas-de-memoria.html',
                 )}
-                <div class="exe-form-tab" title="${_('General settings')}">
-                    ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset(c_('Click on the cards to see what they hide.'))}
-                    <fieldset class="exe-fieldset exe-fieldset-closed">
-                        <legend><a href="#">${_('Options')}</a></legend>
-                        <div>
-                            <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
-                                <span>${_('Type')}:</span>
-                                <div class="form-check form-check-inline m-0">
-                                    <input class="FLCRDS-Type form-check-input" checked id="flipcardsETypeShow" type="radio" name="flctype" value="0"/>
-                                    <label for="flipcardsETypeShow" class="form-check-label">${_('Show')}</label>
-                                </div>
-                                <div class="form-check form-check-inline m-0">
-                                    <input class="FLCRDS-Type form-check-input" id="flipcardsETypeNavigation" type="radio" name="flctype" value="1"/>
-                                    <label for="flipcardsETypeNavigation" class="form-check-label">${_('Navigation')}</label>
-                                </div>
-                                <div class="form-check form-check-inline m-0">
-                                    <input class="FLCRDS-Type form-check-input" id="flipcardsETypeIdentify" type="radio" name="flctype" value="2"/> 
-                                    <label for="flipcardsETypeIdentify" class="form-check-label">${_('Identify')}</label>
-                                </div>
-                                <div class="form-check form-check-inline m-0">
-                                    <input class="FLCRDS-Type form-check-input" id="flipcardsETypeMemory" type="radio" name="flctype" value="3"/>
-                                    <label for="flipcardsETypeMemory" class="form-check-label">${_('Memory')}</label>
-                                </div>
-                            </div>
-                            <div style="display:none" class="mb-3">
-                                <span class="toggle-item" role="switch" aria-checked="true">
-                                    <span class="toggle-control">
-                                        <input type="checkbox" checked id="flipcardsEShowSolution" class="toggle-input" />
-                                        <span class="toggle-visual" aria-hidden="true"></span>
-                                    </span>
-                                    <label class="toggle-label" for="flipcardsEShowSolution">${_('Show solutions')}.</label>
-                                </span>
-                                <label for="flipcardsETimeShowSolution" class="ms-2 mb-0">${_('Show solution time (seconds)')}:</label>
-                                <input type="number" name="flipcardsETimeShowSolution" id="flipcardsETimeShowSolution" value="3" min="1" max="9" class="form-control" style="width:5ch" />
-                                
-                            </div>
-                            <div id="flipcardsETimeDiv" style="display:none;" class="align-items-center gap-2 flex-nowrap mb-3">
-                                <label for="flipcardsETime" class="mb-0">${_('Time (minutes)')}:</label>
-                                <input type="number" name="flipcardsETime" id="flipcardsETime" value="3" min="0" max="59" class="form-control" style="width:5ch" />
-                            </div>
-                            <div class="mb-3">
-                                <span class="toggle-item" role="switch" aria-checked="false">
-                                    <span class="toggle-control">
-                                        <input type="checkbox" id="flipcardsEShowMinimize" class="toggle-input" />
-                                        <span class="toggle-visual" aria-hidden="true"></span>
-                                    </span>
-                                    <label class="toggle-label" for="flipcardsEShowMinimize">${_('Show minimized.')}</label>
-                                </span>
-                            </div>
-                            <div class="mb-3">
-                                <span class="toggle-item" role="switch" aria-checked="true">
-                                    <span class="toggle-control">
-                                        <input type="checkbox" id="flipcardsERandomCards" class="toggle-input" checked />
-                                        <span class="toggle-visual" aria-hidden="true"></span>
-                                    </span>
-                                    <label class="toggle-label" for="flipcardsERandomCards">${_('Random')}</label>
-                                </span>
-                            </div>
-                            <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
-                                <label for="flipcardsEPercentajeCards" class="mb-0">%${_('Cards')}:</label>
-                                <input type="number" name="flipcardsEPercentajeCards" id="flipcardsEPercentajeCards" value="100" min="1" max="100" class="form-control" style="width:6ch" />
-                                <span id="flipcardsENumeroPercentaje">1/1</span>
-                            </div>
-                            <div class="d-none align-items-center gap-2 flex-nowrap mb-3">
-                                <label for="flipcardsEAuthory" class="mb-0">${_('Authorship')}:</label>
-                                <input id="flipcardsEAuthory" type="text" class="form-control" />
-                            </div>
-                            <div id="flipcardBackDiv" style="display:none">
-                                <p class="FLCRDS-EInputImageBack">
-                                    <label for="flipcardsEURLImgCard">${_('Image back')}: </label>
-                                    <input type="text" class="exe-file-picker FLCRDS-EURLImage form-control me-0" id="flipcardsEURLImgCard"/>
-                                    <a href="#" id="flipcardEPlayCard" class="flipcard-ENavigationButton flipcardEEPlayVideo" title="${_('Show')}">
-                                         <img src="${path}quextIEPlay.png" alt="${_('Show')}" class="FLCRDS-ENavigationButton " />
-                                    </a>
-                                </p>
-                                <p id="flipcardbackground" class="FLCRDS-Back">
-                                    <img class="FLCRDS-EImageBack" src="" id="flipcardECard" alt="${_('Image')}" style="display:none" />
-                                    <img class="FLCRDS-EImageBack" src="${path}flcsHome.png" id="flipcardENoCard" alt="${_('No image')}" />
-                                </p>
-                            </div>
-                            <div class="Games-Reportdiv d-flex align-items-center gap-2 flex-nowrap mb-3">
-                            </div>
-                        </div>
-                    </fieldset>
-                    <fieldset class="exe-fieldset">
-                        <legend><a href="#">${_('Cards')}</a></legend>
-                        <div class="FLCRDS-EPanel" id="flipcardsEPanel">
-                            <div class="FLCRDS-EPhrase" id="flipcardsEPhrase">
-                                <div class="FLCRDS-EDatosCarta FLCRDS-EFront" id="flipcardsEDatosCarta">
-                                    <span class="FLCRDS-ECardType mb-3 mt-2">${_('Front side')}</span>
-                                    <div class="FLCRDS-EMultimedia mb-3">
-                                        <div class="FLCRDS-ECard">
-                                            <img class="FLCRDS-EHideFLCRDS-EImage" id="flipcardsEImage" src="${path}quextIEImage.png" alt="${_('No image')}" />
-                                            <img class="FLCRDS-ECursor" id="flipcardsECursor" src="${path}quextIECursor.gif" alt="" />
-                                            <img class="FLCRDS-EHideFLCRDS-NoImage" id="flipcardsENoImage" src="${path}quextIEImage.png" alt="${_('No image')}" />
-                                            <div class="FLCRDS-ETextDiv" id="flipcardsETextDiv"></div>
-                                        </div>
-                                    </div>
-                                    <span>${_('Text')}</span>
-                                    <div class="d-flex align-items-center gap-2 flex-nowrap mb-3" id="flipcardsEInputText">
-                                        <label class="sr-av">${_('Text')}</label>
-                                        <input type="text" id="flipcardsEText" class="form-control" />
-                                        <label id="flipcardsELblColor" class="FLCRDS-LblColor">${_('Color')}: </label> 
-                                        <input id="flipcardsEColor" type="color"  class="form-control form-control-color" value="#000000">                                       
-                                        <label id="flipcardsELblBgColor" class="FLCRDS-LblBgColor">${_('Background')}:   </label> 
-                                        <input id="flipcardsEBgColor" type="color"  class="form-control form-control-color" value="#ffffff">
-                                     
-                                    </div>
-                                    <span>${_('Image')}</span>
-                                    <div class="d-flex align-items-center gap-2 flex-nowrap mb-3" id="flipcardsEInputImage">
-                                        <label for="flipcardsEURLImage" class="sr-av">URL</label>
-                                        <input type="text" id="flipcardsEURLImage" class="exe-file-picker FLCRDS-EURLImage form-control me-0"/>
-                                        <a href="#" id="flipcardsEPlayImage" class="FLCRDS-ENavigationButton FLCRDS-EPlayVideo" title="${_('Show')}">
-                                            <img src="${path}quextIEPlay.png" alt="${_('Show')}" class="FLCRDS-ENavigationButton " />
-                                        </a>
-                                        <a href="#" id="flipcardsEShowMore" class="FLCRDS-ENavigationButton FLCRDS-EShowMore" title="${_('More')}">
-                                            <img src="${path}quextEIMore.png" alt="${_('More')}" class="FLCRDS-ENavigationButton " />
-                                        </a>
-                                    </div>
-                                    <div class="FLCRDS-ECoord">
-                                        <label for="flipcardsEX">X:</label>
-                                        <input id="flipcardsEX" class="FLCRDS-EX form-control" type="text" value="0" />
-                                        <label for="flipcardsEY">Y:</label>
-                                        <input id="flipcardsEY" class="FLCRDS-EY form-control" type="text" value="0" />
-                                    </div>
-                                    <div class="align-items-center gap-2 flex-nowrap mb-3" id="flipcardsEAuthorAlt">
-                                        <div class="FLCRDS-EInputAuthor">
-                                            <label for="flipcardsEAuthor">${_('Authorship')}</label>
-                                            <input id="flipcardsEAuthor" type="text" class="FLCRDS-EAuthor form-control" />
-                                        </div>
-                                        <div class="FLCRDS-EInputAlt">
-                                            <label for="flipcardsEAlt">${_('Alternative text')}</label>
-                                            <input id="flipcardsEAlt" type="text" class="FLCRDS-EAlt form-control" />
-                                        </div>
-                                    </div>
-                                    <span>${_('Audio')}</span>
-                                    <div class="d-flex align-items-center gap-2 flex-nowrap mb-3" data-voice-recorder data-voice-input="#flipcardsEURLAudio">
-                                        <label for="flipcardsEURLAudio" class="sr-av">URL</label>
-                                        <input type="text" id="flipcardsEURLAudio" class="exe-file-picker FLCRDS-EURLAudio form-control me-0" />
-                                        <a href="#" id="flipcardsEPlayAudio" class="FLCRDS-ENavigationButton FLCRDS-EPlayVideo" title="${_('Audio')}">
-                                            <img src="${path}quextIEPlay.png" alt="Play" class="FLCRDS-ENavigationButton " />
-                                        </a>
-                                    </div>
-                                </div>
-                                <div class="FLCRDS-EDatosCarta FLCRDS-EBack" id="flipcardsEDatosCartaBack">
-                                    <span class="FLCRDS-ECardType mb-3 mt-2">${_('Back side')}</span>
-                                    <div class="FLCRDS-EMultimedia">
-                                        <div class="FLCRDS-ECard">
-                                            <img class="FLCRDS-EHideFLCRDS-EImage" id="flipcardsEImageBack" src="${path}quextIEImage.png" alt="${_('No image')}" />
-                                            <img class="FLCRDS-ECursor" id="flipcardsECursorBack" src="${path}quextIECursor.gif" alt="" />
-                                            <img class="FLCRDS-EHideFLCRDS-NoImage" id="flipcardsENoImageBack" src="${path}quextIEImage.png" alt="${_('No image')}" />
-                                            <div class="FLCRDS-ETextDiv" id="flipcardsETextDivBack"></div>
-                                        </div>
-                                    </div>
-                                    <span >${_('Text')}</span>
-                                    <div class="d-flex align-items-center flex-nowrap mb-3 gap-2" id="flipcardsEInputTextBack">
-                                        <label for="flipcardsETextBack" class="sr-av">${_('Text')}</label>
-                                        <input type="text" id="flipcardsETextBack" class="form-control" />
-                                        <label id="flipcardsELblColorBack" class="FLCRDS-LblColor ">${_('Color')}:</label> 
-                                        <input id="flipcardsEColorBack" type="color" class="form-control form-control-color" value="#000000">
-                                        <label id="flipcardsELblBgColorBack" class="FLCRDS-LblBgColor">${_('Background')}:</label> 
-                                        <input id="flipcardsEBgColorBack" type="color" class="form-control form-control-color" value="#ffffff">
-                                        
-                                    </div>
-                                    <span> ${_('Image')}</span>
-                                    <div class="d-flex align-items-center flex-nowrap gap-2 mb-3" id="flipcardsEInputImageBack">
-                                        <label for="flipcardsEURLImageBack" class="sr-av">URL</label>
-                                        <input type="text" id="flipcardsEURLImageBack" class="exe-file-picker form-control me-0"/>
-                                        <a href="#" id="flipcardsEPlayImageBack" class="FLCRDS-EPlayVideo" title="${_('Show')}">
-                                            <img src="${path}quextIEPlay.png" alt="${_('Show')}" class="FLCRDS-ENavigationButton " />
-                                        </a>
-                                        <a href="#" id="flipcardsEShowMoreBack" title="${_('More')}">
-                                            <img src="${path}quextEIMore.png" alt="${_('More')}" class="FLCRDS-ENavigationButton " />
-                                        </a>
-                                    </div>
-                                    <div class="FLCRDS-ECoord">
-                                        <label>X:</label>
-                                        <input id="flipcardsEXBack" class="FLCRDS-EX form-control" type="text" value="0" />
-                                        <label>Y:</label>
-                                        <input id="flipcardsEYBack" class="FLCRDS-EY form-control" type="text" value="0" />
-                                    </div>
-                                    <div class="align-items-center gap-2 flex-nowrap mb-3" id="flipcardsEAuthorAltBack">
-                                        <div class="FLCRDS-EInputAuthor">
-                                            <label>${_('Authorship')}</label>
-                                            <input id="flipcardsEAuthorBack" type="text" class="FLCRDS-EAuthor form-control" />
-                                        </div>
-                                        <div class="FLCRDS-EInputAlt">
-                                            <label>${_('Alternative text')}</label>
-                                            <input id="flipcardsEAltBack" type="text" class="FLCRDS-EAlt form-control" />
-                                        </div>
-                                    </div>
-                                    <span>${_('Audio')}</span>
-                                    <div class="d-flex align-items-center flex-nowrap mb-3 gap-2" data-voice-recorder data-voice-input="#flipcardsEURLAudioBack">
-                                        <label form="flipcardsEURLAudioBack" class="sr-av">URL</label>
-                                        <input type="text" id="flipcardsEURLAudioBack" class="exe-file-picker FLCRDS-EURLAudio form-control  me-0" />
-                                        <a href="#" id="flipcardsEPlayAudioBack" class="FLCRDS-ENavigationButton FLCRDS-EPlayVideo" title="${_('Audio')}">
-                                            <img src="${path}quextIEPlay.png" alt="Play" class="FLCRDS-ENavigationButton " />
-                                        </a>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="FLCRDS-EReverseFacces mt-2">
-                                <a href="#" id="flipcardsEReverseCard" title="${_('Flip down the card')}">${_('Flip down the card')}</a>
-                                <a href="#" id="flipcardsEReverseFaces" title="${_('Flip down all the cards')}">${_('Flip down all the cards')}</a>
-                            </div>
-                            <div class="FLCRDS-ENavigationButtons gap-2">
-                                <a href="#" id="flipcardsEAddC" class="FLCRDS-ENavigationButton" title="${_('Add question')}"><img src="${path}quextIEAdd.png" alt="${_('Add question')}" class="FLCRDS-ENavigationButton" /></a>
-                                <a href="#" id="flipcardsEFirstC" class="FLCRDS-ENavigationButton" title="${_('First question')}"><img src="${path}quextIEFirst.png" alt="${_('First question')}" class="FLCRDS-ENavigationButton" /></a>
-                                <a href="#" id="flipcardsEPreviousC" class="FLCRDS-ENavigationButton" title="${_('Previous question')}"><img src="${path}quextIEPrev.png" alt="${_('Previous question')}" class="FLCRDS-ENavigationButton" /></a>
-                                <label class="sr-av" for="flipcardsENumberCard">${_('Question number:')}:</label>
-                                <input type="text" class="FLCRDS-NumberCard form-control" id="flipcardsENumberCard" value="1"/>
-                                <a href="#" id="flipcardsENextC" class="FLCRDS-ENavigationButton" title="${_('Next question')}"><img src="${path}quextIENext.png" alt="${_('Next question')}" class="FLCRDS-ENavigationButton" /></a>
-                                <a href="#" id="flipcardsELastC" class="FLCRDS-ENavigationButton" title="${_('Last question')}"><img src="${path}quextIELast.png" alt="${_('Last question')}" class="FLCRDS-ENavigationButton" /></a>
-                                <a href="#" id="flipcardsEDeleteC" class="FLCRDS-ENavigationButton" title="${_('Delete question')}"><img src="${path}quextIEDelete.png" alt="${_('Delete question')}" class="FLCRDS-ENavigationButton" /></a>
-                                <a href="#" id="flipcardsECopyC" class="FLCRDS-ENavigationButton" title="${_('Copy question')}"><img src="${path}quextIECopy.png" alt="${_('Copy question')}" class="FLCRDS-ENavigationButton" /></a>
-                                <a href="#" id="flipcardsECutC" class="FLCRDS-ENavigationButton" title="${_('Cut question')}"><img src="${path}quextIECut.png" alt="${_('Cut question')}" class="FLCRDS-ENavigationButton" /></a>
-                                <a href="#" id="flipcardsEPasteC" class="FLCRDS-ENavigationButton" title="${_('Paste question')}"><img src="${path}quextIEPaste.png" alt="${_('Paste question')}" class="FLCRDS-ENavigationButton" /></a>
-                            </div>
-                            <div class="FLCRDS-ENumCardDiv" id="flipcardsENumCardsDiv">
-                                <div class="FLCRDS-ENumCardsIcon"><span class="sr-av">${_('Cards')}:</span></div>
-                                <span class="FLCRDS-ENumCards" id="flipcardsENumCards">0</span>
-                            </div>
-                        </div>
-                    </fieldset>
-                    ${$exeDevicesEdition.iDevice.common.getTextFieldset('after')}
-                </div>
-                ${$exeDevicesEdition.iDevice.gamification.itinerary.getTab()}
-                ${$exeDevicesEdition.iDevice.gamification.scorm.getTab(path)}
-                ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
-                ${$exeDevicesEdition.iDevice.gamification.share.getTab(true, 0, true)}
-                ${$exeDevicesEdition.iDevice.gamification.share.getTabIA(0)}
+                ${edition.tabs.getHtml('flipcardsQEIdeviceForm', {
+                    path: path,
+                    instructions: c_('Click on the cards to see what they hide.'),
+                    options: optionsHtml,
+                    contents: cardsHtml,
+                    passwords: true,
+                    after: true,
+                    grading: true,
+                    texts: this.ci18n,
+                    share: {
+                        importQuestions: true,
+                        formats: ['txt', 'json', 'xml'],
+                        exportQuestions: true,
+                        type: 0,
+                    },
+                    info: {
+                        contents: _('Add the cards with the text, image or sound of each side, and edit them one by one.'),
+                    },
+                })}
             </div>
         `;
 
         this.ideviceBody.innerHTML = html;
-        $exeDevicesEdition.iDevice.tabs.init('flipcardsQEIdeviceForm');
-        $exeDevicesEdition.iDevice.gamification.scorm.init();
+        edition.tabs.bind('flipcardsQEIdeviceForm');
+        edition.gamification.scorm.init();
         this.enableForm();
     },
 
@@ -442,7 +471,7 @@ var $exeDevice = {
 
     removeCard: function () {
         if ($exeDevice.cardsGame.length < 2) {
-            $exeDevice.showMessage($exeDevice.msgs.msgEOneCard);
+            $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgEOneCard);
             return;
         } else {
             $exeDevice.cardsGame.splice($exeDevice.active, 1);
@@ -476,6 +505,9 @@ var $exeDevice = {
     },
 
     pasteCard: function () {
+        $exeIDevicesEdition.iDevice.gamification.share.keepQuestionOnScreen(
+            (options) => $exeDevice.validateCard(options)
+        );
         if ($exeDevice.typeEdit == 0) {
             $exeDevice.active++;
             $exeDevice.cardsGame.splice(
@@ -531,7 +563,7 @@ var $exeDevice = {
                 : num;
         const p = $exeDevice.cardsGame[num];
 
-        $exeDevicesEdition.iDevice.gamification.helpers.stopSound();
+        $exeIDevicesEdition.iDevice.gamification.helpers.stopSound();
 
         $('#flipcardsEURLImage').val(p.url);
         $('#flipcardsEX').val(p.x);
@@ -600,7 +632,7 @@ var $exeDevice = {
         return encodeURIComponent(s.replace('%', '&percnt;'));
     },
 
-    validateCard: function () {
+    validateCard: function (options = {}) {
         const msgs = $exeDevice.msgs,
             p = {};
         let message = '';
@@ -626,10 +658,10 @@ var $exeDevice = {
             $('#flipcardsETextBack').val()
         );
 
+        // The front comes first on screen, so a blank card asks for it first.
         if (p.eText.length == 0 && p.url.length == 0 && p.audio.length == 0) {
             message = msgs.msgCompleteData;
-        }
-        if (
+        } else if (
             p.eTextBk.length == 0 &&
             p.urlBk.length == 0 &&
             p.audioBk.length == 0
@@ -640,11 +672,11 @@ var $exeDevice = {
             $exeDevice.cardsGame[$exeDevice.active] = p;
             message = true;
         } else {
-            $exeDevice.showMessage(message);
+            if (!options.silent) $exeIDevicesEdition.iDevice.common.showMessage(message);
             message = false;
         }
 
-        $exeDevicesEdition.iDevice.gamification.helpers.stopSound();
+        $exeIDevicesEdition.iDevice.gamification.helpers.stopSound();
 
         return message;
     },
@@ -657,7 +689,7 @@ var $exeDevice = {
         $exeDevice.initCards();
 
         const root = document.getElementById('flipcardsQEIdeviceForm') || document;
-        $exeDevicesEdition.iDevice.voiceRecorder.initVoiceRecorders(root);
+        $exeIDevicesEdition.iDevice.voiceRecorder.initVoiceRecorders(root);
 
         $exeDevice.loadPreviousValues();
         $exeDevice.addEvents();
@@ -666,7 +698,7 @@ var $exeDevice = {
 
     updateCardsNumber: function () {
         const percentInput = parseInt(
-            $exeDevice.removeTags($('#flipcardsEPercentajeCards').val())
+            $exeIDevicesEdition.iDevice.common.removeTags($('#flipcardsEPercentajeCards').val())
         );
         if (isNaN(percentInput)) return;
         const percentaje = Math.min(Math.max(percentInput, 1), 100),
@@ -863,27 +895,24 @@ var $exeDevice = {
             $exeDevice.updateFieldGame(dataGame);
 
             const instructions = $('.flipcards-instructions', wrapper);
-            if (instructions.length == 1)
-                $('#eXeGameInstructions').val(instructions.html());
+            if (instructions.length == 1) {
+                const instructionsHtml = instructions.html();
+                $('#eXeGameInstructions').val(instructionsHtml);
+                tinyMCE.get('eXeGameInstructions')?.setContent(instructionsHtml);
+            }
 
             const textAfter = $('.flipcards-extra-content', wrapper);
-            if (textAfter.length == 1)
-                $('#eXeIdeviceTextAfter').val(textAfter.html());
+            if (textAfter.length == 1) {
+                const textAfterHtml = textAfter.html();
+                $('#eXeIdeviceTextAfter').val(textAfterHtml);
+                tinyMCE.get('eXeIdeviceTextAfter')?.setContent(textAfterHtml);
+            }
 
-            $exeDevicesEdition.iDevice.gamification.common.setLanguageTabValues(
+            $exeIDevicesEdition.iDevice.gamification.common.setLanguageTabValues(
                 dataGame.msgs
             );
             $exeDevice.showCard(0);
         }
-    },
-
-    escapeHtml: function (string) {
-        return String(string)
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;')
-            .replace(/'/g, '&#39;');
     },
 
     save: function () {
@@ -926,7 +955,7 @@ var $exeDevice = {
         html += linksMedias;
         html += imgCard;
 
-        const textAfter = tinyMCE.get('eXeIdeviceTextAfter').getContent();
+        const textAfter = $exeIDevicesEdition.iDevice.common.getEditorContent('eXeIdeviceTextAfter');
         if (textAfter != '') {
             html +=
                 '<div class="flipcards-extra-content">' + textAfter + '</div>';
@@ -981,10 +1010,6 @@ var $exeDevice = {
         return html;
     },
 
-    showMessage: function (msg) {
-        eXe.app.alert(msg);
-    },
-
     getIdeviceID: function () {
         const ideviceid =
             $('#flipcardsQEIdeviceForm')
@@ -995,9 +1020,13 @@ var $exeDevice = {
     },
 
     validateData: function () {
-        const clear = $exeDevice.removeTags,
-            instructions = tinyMCE.get('eXeGameInstructions').getContent(),
-            textAfter = tinyMCE.get('eXeIdeviceTextAfter').getContent(),
+        const clear = $exeIDevicesEdition.iDevice.common.removeTags,
+            instructions = $exeIDevicesEdition.iDevice.common.getEditorContent(
+                'eXeGameInstructions'
+            ),
+            textAfter = $exeIDevicesEdition.iDevice.common.getEditorContent(
+                'eXeIdeviceTextAfter'
+            ),
             randomCards = $('#flipcardsERandomCards').is(':checked'),
             showMinimize = $('#flipcardsEShowMinimize').is(':checked'),
             showSolution = $('#flipcardsEShowSolution').is(':checked'),
@@ -1005,19 +1034,19 @@ var $exeDevice = {
                 clear($('#flipcardsETimeShowSolution').val())
             ),
             itinerary =
-                $exeDevicesEdition.iDevice.gamification.itinerary.getValues(),
+                $exeIDevicesEdition.iDevice.gamification.itinerary.getValues(),
             percentajeCards = parseInt(
                 clear($('#flipcardsEPercentajeCards').val())
             ),
             author = $('#flipcardsEAuthory').val(),
             cardsGame = $exeDevice.cardsGame,
-            scorm = $exeDevicesEdition.iDevice.gamification.scorm.getValues(),
+            scorm = $exeIDevicesEdition.iDevice.gamification.scorm.getValues(),
             type = parseInt($('input[name=flctype]:checked').val()),
             time = parseInt($('#flipcardsETime').val()),
             progressBar =
-                $exeDevicesEdition.iDevice.gamification.progressBar.getValues(),
+                $exeIDevicesEdition.iDevice.gamification.progressBar.getValues(),
             passScore =
-                $exeDevicesEdition.iDevice.gamification.passScore.getValues(),
+                $exeIDevicesEdition.iDevice.gamification.passScore.getValues(),
             id = $exeDevice.getIdeviceID(),
             imgCard = $('#flipcardsEURLImgCard').val();
 
@@ -1097,7 +1126,7 @@ var $exeDevice = {
                         this.naturalWidth,
                         this.naturalHeight
                     );
-                    $exeDevice.drawImage(this, mData);
+                    $exeIDevicesEdition.iDevice.common.drawImage(this, mData, true);
                     $image.show();
                     $nimage.hide();
                     $exeDevice.paintMouse(this, $cursor, x, y);
@@ -1170,16 +1199,6 @@ var $exeDevice = {
         }
     },
 
-    drawImage: function (image, mData) {
-        $(image).css({
-            position: 'absolute',
-            left: mData.x + 'px',
-            top: mData.y + 'px',
-            width: mData.w + 'px',
-            height: mData.h + 'px',
-        });
-    },
-
     getCardDefault: function () {
         return {
             id: '',
@@ -1208,11 +1227,9 @@ var $exeDevice = {
 
     addEvents: function () {
         $('#flipcardsEPasteC').hide();
-        // Inicialización accesible de toggles
+        // Show or hide the block each switch controls (data-target).
         const initToggle = function ($input) {
             const checked = $input.is(':checked');
-            const $item = $input.closest('.toggle-item[role="switch"]');
-            if ($item.length) $item.attr('aria-checked', checked);
             const targetSel = $input.data('target');
             if (targetSel) {
                 const $target = $(targetSel);
@@ -1236,7 +1253,7 @@ var $exeDevice = {
         $('#flipcardsEAddC').on('click', function (e) {
             e.preventDefault();
             if ($exeDevice.cardsGame.length > 200) {
-                $exeDevice.showMessage(
+                $exeIDevicesEdition.iDevice.common.showMessage(
                     $exeDevice.msgs.msgMaxCards.replace('%s', 200)
                 );
                 return;
@@ -1262,7 +1279,7 @@ var $exeDevice = {
         $('#flipcardsEPasteC').on('click', function (e) {
             e.preventDefault();
             if ($exeDevice.cardsGame.length > 200) {
-                $exeDevice.showMessage(
+                $exeIDevicesEdition.iDevice.common.showMessage(
                     $exeDevice.msgs.msgMaxCards.replace('%s', 200)
                 );
                 return;
@@ -1306,11 +1323,7 @@ var $exeDevice = {
             window.FileList &&
             window.Blob
         ) {
-            $('#eXeGameExportImport .exe-field-instructions')
-                .eq(0)
-                .text(`${_('Supported formats')}: json, txt, xml(Moodle)`);
             $('#eXeGameExportImport').show();
-            $('#eXeGameImportGame').attr('accept', '.txt, .json, .xml');
             $('#eXeGameImportGame').on('change', (e) => {
                 const file = e.target.files[0];
                 if (!file) {
@@ -1372,10 +1385,6 @@ var $exeDevice = {
 
         $('#flipcardsEPercentajeCards').on('click', function () {
             $exeDevice.updateCardsNumber();
-        });
-
-        $('#flipcardsEURLAudioDefinition').on('change', function () {
-            $exeDevice.loadAudio($(this).val());
         });
 
         $('#flipcardsENumberCard').keyup(function (e) {
@@ -1442,43 +1451,54 @@ var $exeDevice = {
             }
         );
 
-        $exeDevicesEdition.iDevice.gamification.progressBar.addEvents();
-
-        $exeDevicesEdition.iDevice.gamification.passScore.addEvents();
-        $exeDevicesEdition.iDevice.gamification.itinerary.addEvents();
-        $exeDevicesEdition.iDevice.gamification.share.addEvents(
+        $exeIDevicesEdition.iDevice.gamification.progressBar.addEvents();
+        $exeIDevicesEdition.iDevice.gamification.passScore.addEvents();
+        $exeIDevicesEdition.iDevice.gamification.itinerary.addEvents();
+        $exeIDevicesEdition.iDevice.gamification.share.addEvents(
             0,
             $exeDevice.insertCards
         );
-
-        $('.exe-block-dismissible .exe-block-close').click(function () {
-            $(this).parent().fadeOut();
-            return false;
-        });
     },
 
     exportQuestions: function () {
+        // Store the card on screen first, as saving does.
+        if (!$exeDevice.validateCard()) return false;
         const dataGame = this.validateData();
         if (!dataGame) return false;
 
         const lines = this.getLinesQuestions(dataGame.cardsGame);
+        if (lines.length === 0) {
+            eXe.app.alert(_('Sorry, there are no questions for this type of activity.'));
+            return false;
+        }
         const fileContent = lines.join('\n');
         const newBlob = new Blob([fileContent], { type: 'text/plain' });
-        return $exeDevicesEdition.iDevice.gamification.share.downloadBlob(
+        return $exeIDevicesEdition.iDevice.gamification.share.downloadBlob(
             newBlob,
             `${_('Memory cards')}.txt`,
             'flipcardsQEIdeviceForm'
         );
     },
 
+    /**
+     * "front#back" lines, the format Import and the AI read back. Texts are
+     * stored encoded, so they are decoded; cards without text on both sides
+     * have no line.
+     */
     getLinesQuestions: function (cards) {
-        let linequestions = [];
-        for (let i = 0; i < cards.length; i++) {
-            let c = cards[i];
-            let card = `${c.eText}#${c.eTextBk}`;
-            linequestions.push(card);
-        }
-        return linequestions;
+        const plain = (value) => {
+            let text = value || '';
+            try {
+                text = $exeDevice.decodeURIComponentSafe(text) || '';
+            } catch {
+                // A text imported before it was encoded is already plain.
+            }
+            return text.replace(/[#\s]+/g, ' ').trim();
+        };
+        return cards
+            .map((card) => [plain(card.eText), plain(card.eTextBk)])
+            .filter(([front, back]) => front && back)
+            .map(([front, back]) => `${front}#${back}`);
     },
 
     swapProperties: function (card) {
@@ -1532,7 +1552,7 @@ var $exeDevice = {
             ext = url.split('.').pop().toLowerCase();
 
         if (url.indexOf('files') == 0 && validExt.indexOf(ext) == -1) {
-            $exeDevice.showMessage(
+            $exeIDevicesEdition.iDevice.common.showMessage(
                 _('Supported formats') + ': jpg, jpeg, gif, png, svg, webp'
             );
             return false;
@@ -1545,11 +1565,11 @@ var $exeDevice = {
             ext = url.split('.').pop().toLowerCase();
 
         if (url.indexOf('files') == 0 && validExt.indexOf(ext) == -1) {
-            $exeDevice.showMessage(_('Supported formats') + ': mp3, ogg, waw');
+            $exeIDevicesEdition.iDevice.common.showMessage(_('Supported formats') + ': mp3, ogg, waw');
             return false;
         } else {
             if (url.length > 4) {
-                $exeDevicesEdition.iDevice.gamification.helpers.playSound(url);
+                $exeIDevicesEdition.iDevice.gamification.helpers.playSound(url);
             }
         }
     },
@@ -1560,7 +1580,7 @@ var $exeDevice = {
             ext = url.split('.').pop().toLowerCase();
 
         if (url.indexOf('files') == 0 && validExt.indexOf(ext) == -1) {
-            $exeDevice.showMessage(
+            $exeIDevicesEdition.iDevice.common.showMessage(
                 _('Supported formats') + ': jpg, jpeg, gif, png, svg, webp'
             );
             return false;
@@ -1570,7 +1590,7 @@ var $exeDevice = {
 
     updateFieldGame: function (game) {
         $exeDevice.active = 0;
-        $exeDevicesEdition.iDevice.gamification.itinerary.setValues(
+        $exeIDevicesEdition.iDevice.gamification.itinerary.setValues(
             game.itinerary
         );
         game.evaluation =
@@ -1597,11 +1617,11 @@ var $exeDevice = {
         );
         $('#flipcardsETimeDiv').hide();
         $('#flipcardBackDiv').hide();
-        $exeDevicesEdition.iDevice.gamification.progressBar.setValues({
+        $exeIDevicesEdition.iDevice.gamification.progressBar.setValues({
             evaluation: game.evaluation,
             evaluationID: game.evaluationID,
         });
-        $exeDevicesEdition.iDevice.gamification.passScore.setValues({
+        $exeIDevicesEdition.iDevice.gamification.passScore.setValues({
             passScoreMode: game.passScoreMode,
             passScoreCustom: game.passScoreCustom,
         });
@@ -1612,7 +1632,7 @@ var $exeDevice = {
             $('#flipcardBackDiv').show();
         }
 
-        $exeDevicesEdition.iDevice.gamification.scorm.setValues(
+        $exeIDevicesEdition.iDevice.gamification.scorm.setValues(
             game.isScorm,
             game.textButtonScorm,
             game.repeatActivity,
@@ -1684,10 +1704,10 @@ var $exeDevice = {
                     }
                 });
                 const bktext = {
-                    eTextBk: $exeDevice.removeTags(
+                    eTextBk: $exeIDevicesEdition.iDevice.common.removeTags(
                         $question.find('questiontext').first().text().trim()
                     ),
-                    eText: $exeDevice.removeTags(eText),
+                    eText: $exeIDevicesEdition.iDevice.common.removeTags(eText),
                 };
                 return eText ? bktext : null;
             })
@@ -1743,6 +1763,16 @@ var $exeDevice = {
         $exeDevice.addCards(cardsjs);
     },
 
+    /**
+     * Cards coming from a file, another game or the AI carry plain text; the
+     * form and the activity read it encoded (a plain "%" would break them).
+     */
+    encodeCardTexts: function (card) {
+        card.eText = $exeDevice.encodeURIComponentSafe(card.eText);
+        card.eTextBk = $exeDevice.encodeURIComponentSafe(card.eTextBk);
+        return card;
+    },
+
     addCards: function (cards) {
         if (!cards || cards.length == 0) {
             eXe.app.alert(
@@ -1750,10 +1780,13 @@ var $exeDevice = {
             );
             return;
         }
+        $exeIDevicesEdition.iDevice.gamification.share.keepQuestionOnScreen(
+            (options) => $exeDevice.validateCard(options)
+        );
         for (let i = 0; i < cards.length; i++) {
             let card = cards[i];
             if (card.eTextBk && card.eText) {
-                $exeDevice.cardsGame.push(card);
+                $exeDevice.cardsGame.push($exeDevice.encodeCardTexts(card));
             }
         }
         $exeDevice.postImportProcessing();
@@ -1765,7 +1798,7 @@ var $exeDevice = {
 
         let cards = [];
         if (content && content.includes('\u0000')) {
-            $exeDevice.showMessage(_('Sorry, wrong file format'));
+            $exeIDevicesEdition.iDevice.common.showMessage(_('Sorry, wrong file format'));
             return;
         } else if (!game && content) {
             if (filetype.match('text/plain')) {
@@ -1796,18 +1829,18 @@ var $exeDevice = {
                     cards = $exeDevice.importAdivina(game);
                     break;
                 default:
-                    return $exeDevice.showMessage(
+                    return $exeIDevicesEdition.iDevice.common.showMessage(
                         $exeDevice.msgs.msgESelectFile
                     );
             }
         } else {
-            return $exeDevice.showMessage($exeDevice.msgs.msgESelectFile);
+            return $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgESelectFile);
         }
 
         if (cards && cards.length > 0) {
-            $exeDevice.cardsGame = cards;
+            $exeDevice.cardsGame = cards.map((card) => $exeDevice.encodeCardTexts(card));
         } else {
-            $exeDevice.showMessage(_('Sorry, wrong file format'));
+            $exeIDevicesEdition.iDevice.common.showMessage(_('Sorry, wrong file format'));
             return;
         }
 
@@ -1978,11 +2011,5 @@ var $exeDevice = {
             'z-index': 5,
         });
         $cursor.show();
-    },
-
-    removeTags: function (str) {
-        const wrapper = $('<div></div>');
-        wrapper.html(str);
-        return wrapper.text();
     },
 };

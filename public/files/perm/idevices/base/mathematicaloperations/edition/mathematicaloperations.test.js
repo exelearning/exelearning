@@ -200,10 +200,10 @@ describe('mathematicaloperations iDevice', () => {
     let previousItinerary;
 
     beforeEach(() => {
-      previousItinerary = $exeDevicesEdition.iDevice.gamification.itinerary;
+      previousItinerary = $exeIDevicesEdition.iDevice.gamification.itinerary;
       // addEvents wires the whole editor. The itinerary component lives outside
       // this iDevice's source, so it is stubbed rather than exercised here.
-      $exeDevicesEdition.iDevice.gamification.itinerary = {
+      $exeIDevicesEdition.iDevice.gamification.itinerary = {
         addEvents: () => {},
         getTab: () => '',
         init: () => {},
@@ -219,7 +219,7 @@ describe('mathematicaloperations iDevice', () => {
 
     afterEach(() => {
       $exeDevice.$lifecycle.destroy();
-      $exeDevicesEdition.iDevice.gamification.itinerary = previousItinerary;
+      $exeIDevicesEdition.iDevice.gamification.itinerary = previousItinerary;
       document.body.innerHTML = '';
     });
 
@@ -257,7 +257,7 @@ describe('mathematicaloperations iDevice', () => {
             // so rendering them again would show each control twice.
             expect(source).not.toContain('passScore.getContents(');
             expect(source).not.toContain('progressBar.getContents(');
-            expect(source).toContain('gamification.scorm.getTab(');
+            expect(source).toMatch(/tabs\.getHtml\([\s\S]*grading: true/);
         });
 
         it('restores the control when the iDevice is reopened', () => {
@@ -279,98 +279,6 @@ describe('mathematicaloperations iDevice', () => {
             expect(source).toContain('gamification.passScore.addEvents()');
         });
     });
-
-  describe('edition lifecycle teardown', () => {
-    let itinerary;
-
-    beforeEach(() => {
-      // The edition is loaded through the shared helper so it gets the same
-      // real lifecycle IdeviceNode hands it in the workarea.
-      global.$exeDevice = undefined;
-      $exeDevice = global.loadIdevice(join(__dirname, 'mathematicaloperations.js'));
-
-      itinerary = { addEvents: vi.fn() };
-      global.$exeDevicesEdition.iDevice.gamification.itinerary = itinerary;
-
-      document.body.innerHTML = `
-        <form id="mathematicaloperationsQEIdeviceForm">
-          <div class="toggle-item" role="switch">
-            <input type="checkbox" class="toggle-input" data-target="#mopToggleTarget" />
-          </div>
-          <div id="mopToggleTarget"></div>
-          <div id="eXeGameExportImport">
-            <input type="file" id="eXeGameImportGame" />
-            <button id="eXeGameExportQuestions"></button>
-          </div>
-        </form>`;
-    });
-
-    afterEach(() => {
-      if (!$exeDevice.$lifecycle.isDestroyed()) $exeDevice.$lifecycle.destroy();
-      delete global.$exeDevicesEdition.iDevice.gamification.itinerary;
-      document.body.innerHTML = '';
-    });
-
-    it('keeps the toggles in sync through the delegated document handler', () => {
-      $exeDevice.addEvents();
-
-      $('.toggle-input').prop('checked', true).trigger('change');
-
-      expect($('.toggle-item').attr('aria-checked')).toBe('true');
-      expect($('#mopToggleTarget').css('display')).toBe('flex');
-    });
-
-    it('stops handling toggle changes on document once the edition is closed', () => {
-      $exeDevice.addEvents();
-
-      $exeDevice.$lifecycle.destroy();
-      $('.toggle-input').prop('checked', true).trigger('change');
-
-      expect($('.toggle-item').attr('aria-checked')).toBe('false');
-    });
-
-    it('leaves unrelated document handlers in place after teardown', () => {
-      const unrelated = vi.fn();
-      $(document).on('change.mopUnrelated', '.toggle-input', unrelated);
-      $exeDevice.addEvents();
-
-      $exeDevice.$lifecycle.destroy();
-      $('.toggle-input').trigger('change');
-
-      expect(unrelated).toHaveBeenCalledTimes(1);
-      $(document).off('change.mopUnrelated');
-    });
-
-    it('imports a game file read by the edition', async () => {
-      const importGame = vi.fn();
-      $exeDevice.importGame = importGame;
-      $exeDevice.addEvents();
-
-      const event = $.Event('change');
-      event.target = { files: [new File(['{"a":1}'], 'game.json', { type: 'application/json' })] };
-      $('#eXeGameImportGame').trigger(event);
-
-      await vi.waitFor(() => expect(importGame).toHaveBeenCalledWith('{"a":1}'));
-    });
-
-    it('aborts an in-flight import read and never imports into a closed edition', async () => {
-      const abortSpy = vi.spyOn(window.FileReader.prototype, 'abort');
-      const importGame = vi.fn();
-      $exeDevice.importGame = importGame;
-      $exeDevice.addEvents();
-
-      const event = $.Event('change');
-      event.target = { files: [new File(['{"a":1}'], 'game.json', { type: 'application/json' })] };
-      $('#eXeGameImportGame').trigger(event);
-
-      $exeDevice.$lifecycle.destroy();
-      await new Promise((resolve) => setTimeout(resolve, 20));
-
-      expect(abortSpy).toHaveBeenCalledTimes(1);
-      expect(importGame).not.toHaveBeenCalled();
-      abortSpy.mockRestore();
-    });
-  });
 });
 
 describe('mathematicaloperations minimum score text', () => {
@@ -381,4 +289,293 @@ describe('mathematicaloperations minimum score text', () => {
 
     expect(device.ci18n.msgPassScore).toBe('Minimum score needed to pass this activity: %s');
   });
+});
+
+describe('mathematicaloperations edition: shared form tabs and feedback', () => {
+    const PATH = '/files/perm/idevices/base/mathematicaloperations/edition/';
+    const edition = () => global.$exeIDevicesEdition.iDevice;
+    const feedback = () => edition().gamification.feedback;
+    const tabNames = () =>
+        [...document.querySelectorAll('#gameQEIdeviceForm-tabs [data-exe-tab]')].map((tab) =>
+            tab.getAttribute('data-exe-tab')
+        );
+    const panel = (name) => document.getElementById(`gameQEIdeviceForm-panel-${name}`);
+    const game = (overrides = {}) => ({
+        typeGame: 'MathOperations',
+        showMinimize: false,
+        type: 'result',
+        number: 10,
+        operations: '0010',
+        min: 1,
+        max: 9,
+        decimalsInOperands: 0,
+        decimalsInResults: false,
+        negative: false,
+        zero: false,
+        mode: 0,
+        solution: true,
+        negativeFractions: false,
+        errorType: 0,
+        errorRelative: 0,
+        errorAbsolute: 0,
+        time: 0,
+        itinerary: {
+            showClue: false,
+            clueGame: '',
+            percentageClue: 40,
+            showCodeAccess: false,
+            codeAccess: '',
+            messageCodeAccess: '',
+        },
+        feedBack: false,
+        percentajeFB: 100,
+        isScorm: 0,
+        textButtonScorm: 'Save score',
+        repeatActivity: true,
+        weighted: 100,
+        evaluation: false,
+        evaluationID: '',
+        ...overrides,
+    });
+    let device;
+    let previousApp;
+    let tooltips;
+
+    beforeEach(() => {
+        global.$exeDevice = undefined;
+        previousApp = global.eXeLearning?.app;
+        tooltips = new Map();
+        global.eXeLearning = {
+            ...global.eXeLearning,
+            app: {
+                ...previousApp,
+                common: {
+                    initTooltips: vi.fn((scope) => {
+                        scope.querySelectorAll('.exe-app-tooltip').forEach((button) => {
+                            if (!tooltips.has(button)) tooltips.set(button, { hide: vi.fn(), dispose: vi.fn() });
+                        });
+                    }),
+                },
+            },
+        };
+        vi.stubGlobal('bootstrap', { Tooltip: { getInstance: (button) => tooltips.get(button) } });
+        global.$exeDevices.iDevice.gamification.helpers.isJsonString = (text) => {
+            try {
+                return JSON.parse(text);
+            } catch {
+                return false;
+            }
+        };
+        device = global.loadIdevice(join(__dirname, 'mathematicaloperations.js'));
+        document.body.innerHTML = '<div id="mathOperationsBody"></div>';
+        device.init(document.getElementById('mathOperationsBody'), {}, PATH);
+    });
+
+    afterEach(() => {
+        device.$lifecycle?.destroy();
+        if (global.eXeLearning) {
+            global.eXeLearning.app = previousApp;
+        }
+        vi.unstubAllGlobals();
+        delete global.$exeDevices.iDevice.gamification.helpers.isJsonString;
+        global.$exeDevice = undefined;
+        document.body.innerHTML = '';
+    });
+
+    it('lays the form out in the shared tabs, and opens on its operations', () => {
+        expect(tabNames()).toEqual([
+            'instructions',
+            'options',
+            'contents',
+            'passwords',
+            'feedback',
+            'after',
+            'grading',
+            'texts',
+        ]);
+        expect(panel('contents').classList.contains('active')).toBe(true);
+    });
+
+    it('puts the operations in the Questions tab and the rest in Options', () => {
+        expect(panel('contents').firstElementChild.textContent).toContain('Choose the operations the activity creates');
+        expect(panel('contents').querySelector('#eRMQEPanel #eRMQtype')).not.toBeNull();
+        expect(panel('contents').querySelector('#eRMQEPanel #eRMQmult')).not.toBeNull();
+        expect(panel('options').querySelector('#eRMQEOptions #eRMQRelative')).not.toBeNull();
+        expect(panel('options').querySelector('#eRMQEOptions #eRMQTime')).not.toBeNull();
+        expect(panel('passwords').querySelector('#eXeGameShowCodeAccess')).not.toBeNull();
+        expect(panel('feedback').querySelector('#eXeGameHasFeedBack')).not.toBeNull();
+        expect(panel('grading').querySelector('.exe-progress-report-wrapper')).not.toBeNull();
+        expect(panel('texts').querySelector('#ci18n_msgSubmit')).not.toBeNull();
+    });
+
+    it('offers no import, export or AI windows', () => {
+        expect(document.querySelectorAll('[data-exe-share]')).toHaveLength(0);
+    });
+
+    it('leaves the feedback to the shared block, without controls of its own', () => {
+        for (const id of ['eRMQHasFeedBack', 'eRMQPercentajeFB', 'eRMQFeedbackP', 'eRMQFeedBackEditor']) {
+            expect(document.getElementById(id)).toBeNull();
+        }
+    });
+
+    it('explains each setting without changing any of them', () => {
+        const helps = [...document.querySelectorAll('#eRMQEPanel .exe-idevice-help, #eRMQEOptions .exe-idevice-help')];
+        const states = () => [...document.querySelectorAll('#gameQEIdeviceForm input')].map((input) => input.checked);
+        const before = states();
+
+        expect(helps).toHaveLength(15);
+        for (const help of helps) {
+            expect(help.title).toBe('Information');
+            const content = document.getElementById(help.getAttribute('aria-controls'));
+            expect(content.textContent.length).toBeGreaterThan(15);
+            help.click();
+            help.querySelector('span').click();
+            content.click();
+        }
+        expect(states()).toEqual(before);
+    });
+
+    it('leaves the state of each switch to its native checkbox', () => {
+        document.querySelectorAll('.toggle-input:not(:disabled)').forEach((input) => input.click());
+
+        expect(document.querySelectorAll('[role="switch"], [aria-checked]')).toHaveLength(0);
+    });
+
+    it('disposes all tooltips when the edition closes', () => {
+        expect(tooltips.size).toBe(21); // Options plus the six shared Grading helpers.
+        device.$lifecycle.destroy();
+        for (const tooltip of tooltips.values()) {
+            expect(tooltip.dispose).toHaveBeenCalledTimes(1);
+        }
+    });
+
+    it('restores the operations and the feedback with the game', () => {
+        // Saved with its message: without one, the feedback loads off.
+        $exeIDevicesEdition.iDevice.gamification.feedback.setText('<p>Well done</p>');
+        device.updateFieldGame(game({ operations: '1100', number: 20, feedBack: true, percentajeFB: 80 }));
+
+        expect(document.getElementById('eRMQadd').checked).toBe(true);
+        expect(document.getElementById('eRMQmult').checked).toBe(false);
+        expect(document.getElementById('eRMQnum').value).toBe('20');
+        expect(document.getElementById('eXeGameHasFeedBack').checked).toBe(true);
+        expect(document.getElementById('eXeGamePercentajeFB').value).toBe('80');
+    });
+
+    it('loads the saved feedback message into the shared editor', () => {
+        device.idevicePreviousData = `
+            <div class="mathoperations-IDevice">
+                <div class="mathoperations-feedback-game"><p>Well done</p></div>
+                <div class="mathoperations-DataGame js-hidden">${JSON.stringify(game({ feedBack: true }))}</div>
+            </div>`;
+
+        device.loadPreviousValues();
+
+        expect(feedback().getText()).toBe('<p>Well done</p>');
+    });
+
+    it('restores the custom texts with the game', () => {
+        device.idevicePreviousData = `
+            <div class="mathoperations-IDevice">
+                <div class="mathoperations-DataGame js-hidden">${JSON.stringify(game({ msgs: { msgSubmit: 'Check it' } }))}</div>
+            </div>`;
+
+        device.loadPreviousValues();
+
+        expect(document.getElementById('ci18n_msgSubmit').value).toBe('Check it');
+    });
+
+    it('shows the settings of a fractions game and hides the decimal ones', () => {
+        const shown = (id) => document.getElementById(id).style.display !== 'none';
+
+        device.updateFieldGame(game({ mode: 1, negativeFractions: true }));
+
+        expect(shown('eRMQNegativesFractionsDiv')).toBe(true);
+        expect(shown('eRMQErrorAbsoluteDiv')).toBe(false);
+        expect(document.getElementById('eRMQNegativesFractions').checked).toBe(true);
+
+        device.changeGameMode(0);
+
+        expect(shown('eRMQNegativesFractionsDiv')).toBe(false);
+        expect(shown('eRMQErrorAbsoluteDiv')).toBe(true);
+    });
+
+    describe('saving', () => {
+        let editors;
+        let tinymceGet;
+
+        beforeEach(() => {
+            editors = {
+                eXeGameInstructions: '<p>Instructions</p>',
+                eXeIdeviceTextAfter: '',
+                eXeGameFeedBackEditor: '',
+            };
+            tinymceGet = vi.spyOn(global.tinymce, 'get').mockImplementation((id) =>
+                id in editors
+                    ? {
+                          initialized: true,
+                          getContent: () => editors[id],
+                          setContent: (html) => (editors[id] = html),
+                          hide: vi.fn(),
+                          show: vi.fn(),
+                      }
+                    : null
+            );
+        });
+
+        afterEach(() => {
+            tinymceGet.mockRestore();
+        });
+
+        it('saves the feedback values the export reads', () => {
+            // Saved with its message: without one, the feedback loads off.
+            editors.eXeGameFeedBackEditor = '<p>Bravo</p>';
+            device.updateFieldGame(game({ feedBack: true, percentajeFB: 70 }));
+
+            const data = device.validateData();
+
+            expect(data.feedBack).toBe(true);
+            expect(data.percentajeFB).toBe(70);
+            expect(unescape(data.textFeedBack)).toBe('<p>Bravo</p>');
+            const html = device.save();
+            expect(html).toContain('<div class="mathoperations-feedback-game"><p>Bravo</p></div>');
+            expect(html).not.toContain('exe-idevice-help');
+        });
+
+        it('does not save when the feedback is on without a message', () => {
+            device.updateFieldGame(game());
+            // The author switches the feedback on and leaves its message empty.
+            $('#eXeGameHasFeedBack').prop('checked', true).trigger('change');
+
+            expect(device.validateData()).toBe(false);
+            expect(eXe.app.getLastAlert()).toBe('Message to display when passing the game');
+        });
+
+        it('loads with the feedback off an activity saved with it on and no message, and saves it', () => {
+            device.updateFieldGame(game({ feedBack: true, percentajeFB: 70 }));
+
+            expect(document.getElementById('eXeGameHasFeedBack').checked).toBe(false);
+            expect(device.validateData().feedBack).toBe(false);
+            expect(device.save()).toContain('mathoperations-DataGame');
+        });
+
+        it('keeps the access code and the clue when saving', () => {
+            const itinerary = {
+                showClue: true,
+                clueGame: 'Next key: river',
+                percentageClue: 60,
+                showCodeAccess: true,
+                codeAccess: '1234',
+                messageCodeAccess: 'Code of the previous activity?',
+            };
+            device.updateFieldGame(game({ itinerary }));
+
+            expect(device.validateData().itinerary).toEqual(itinerary);
+        });
+
+        it('keeps the negative fractions of a fractions game', () => {
+            device.updateFieldGame(game({ mode: 1, negativeFractions: true }));
+
+            expect(device.validateData().negativeFractions).toBe(true);
+        });
+    });
 });

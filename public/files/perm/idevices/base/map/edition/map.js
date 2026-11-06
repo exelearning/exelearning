@@ -20,17 +20,11 @@ var $exeDevice = {
     activeTest: 0,
     slides: [],
     tests: [],
-    testsPoint: [],
-    points: [],
     selectsGame: [],
     qActive: 0,
-    youtubeLoaded: false,
     player: '',
     timeUpdateInterval: '',
-    timeUpdateVIInterval: '',
     timeVideoFocus: 0,
-    timeVIFocus: true,
-    timePoint: 30,
     typeEdit: -1,
     typeEditSlide: -1,
     qTypeEdit: -1,
@@ -42,20 +36,16 @@ var $exeDevice = {
     sClipBoard: '',
     qClipBoard: '',
     idevicePath: '',
-    playerAudio: '',
     isVideoType: false,
     xA: 0,
     yA: 0,
-    iconType: 0,
     iconX: 0,
     iconY: 0,
     levels: [],
     level: 0,
     url: '',
-    map: {},
     hasYoutube: false,
     activeMap: {},
-    parentMap: {},
     localPlayer: '',
     id: false,
     currentPoints: [],
@@ -63,7 +53,6 @@ var $exeDevice = {
     canvas: null,
     ctx: null,
     version: 3,
-    areas: [],
     ci18n: {},
     init: function (element, previousData, path) {
 
@@ -195,17 +184,12 @@ var $exeDevice = {
 
     setMessagesInfo: function () {
         const msgs = this.msgs;
-        msgs.msgEProvideDefinition = _(
-            'Please provide the definition of the word or phrase'
-        );
         msgs.msgEURLValid = _(
             'You must upload or indicate the valid URL of an image'
         );
-        msgs.msgECompletePoint = _('You have to complete the question');
         msgs.msgECompleteAllOptions = _(
             'You have to complete all the selected options'
         );
-        msgs.msgESelectSolution = _('Choose the right answer');
         msgs.msgECompleteURLYoutube = _('Please type or paste a valid URL.');
         msgs.msgEStartEndVideo = _(
             'You have to indicate the start and the end of the video that you want to show'
@@ -218,29 +202,14 @@ var $exeDevice = {
             'Please check all the answers in the right order'
         );
         msgs.msgTimeFormat = _('Please check the time format: hh:mm:ss');
-        msgs.msgProvideFB = _('Message to display when passing the game');
         msgs.msgNoSuportBrowser = _(
             'Your browser is not compatible with this tool.'
         );
-        msgs.msgESelectFile = _(
-            'The selected file does not contain a valid game'
-        );
         msgs.msgEProvideWord = _('Please provide one word or phrase');
         msgs.msgEOneQuestion = _('Please provide at least one question');
-        msgs.msgEUnavailableVideo = _('This video is not currently available');
         msgs.msgECompleteQuestion = _('You have to complete the question');
-        msgs.msgSilentPoint = _(
-            'The silence time is wrong. Check the video duration.'
-        );
-        msgs.msgProvideSolution = _('Please write the solution');
         msgs.msgEDefintion = _(
             'Please provide the definition of the word or phrase'
-        );
-        msgs.msgNotHitCuestion = _(
-            'The question marked as next in case of success does not exist.'
-        );
-        msgs.msgNotErrorCuestion = _(
-            'The question marked as next in case of error does not exist.'
         );
         msgs.msgProvideTitle = _('You must indicate a title for this point.');
         msgs.msgMarkPoint = _('You must mark a point on the map.');
@@ -270,268 +239,283 @@ var $exeDevice = {
 
     createForm: function () {
         const path = $exeDevice.idevicePath,
+            edition = $exeIDevicesEdition.iDevice,
+            help = (text) => edition.common.getHelpTooltip(text),
+            toggle = (id, label, checked) => `
+                                <span class="toggle-item">
+                                    <span class="toggle-control">
+                                        <input type="checkbox" class="toggle-input" id="${id}"${checked ? ' checked' : ''} />
+                                        <span class="toggle-visual" aria-hidden="true"></span>
+                                    </span>
+                                    <label class="toggle-label mb-0" for="${id}">${label}</label>
+                                </span>`,
+            options = `
+                <div id="mapaEOptions">
+                    <div class="mb-3 d-flex flex-wrap align-items-center gap-2" role="radiogroup" aria-labelledby="mapaEEvaluationLabel">
+                        <span id="mapaEEvaluationLabel">${_('Assessment')}:</span>
+                        ${help(_('How the activity is assessed: by the points visited, by naming or finding points, with a questionnaire, or by clicking the points in order.'))}
+                        <div class="form-check form-check-inline m-0 p-0">
+                            <input class="form-check-input MQE-TypeEvaluation" checked id="mapaEEvaluationPoints" type="radio" name="mpevaluation" value="0" />
+                            <label class="form-check-label" for="mapaEEvaluationPoints">${_('Visited points')}</label>
+                        </div>
+                        <div class="form-check form-check-inline m-0 p-0">
+                            <input class="form-check-input MQE-TypeEvaluation" id="mapaEEvaluationSearch" type="radio" name="mpevaluation" value="2" />
+                            <label class="form-check-label" for="mapaEEvaluationSearch">${_('Identify')}</label>
+                        </div>
+                        <div class="form-check form-check-inline m-0 p-0">
+                            <input class="form-check-input MQE-TypeEvaluation" id="mapaEEvaluationIdentify" type="radio" name="mpevaluation" value="3" />
+                            <label class="form-check-label" for="mapaEEvaluationIdentify">${_('Find')}</label>
+                        </div>
+                        <div class="form-check form-check-inline m-0 p-0">
+                            <input class="form-check-input MQE-TypeEvaluation" id="mapaEEvaluationTX" type="radio" name="mpevaluation" value="1" />
+                            <label class="form-check-label" for="mapaEEvaluationTX">${_('Identify Spot')}</label>
+                        </div>
+                        <div class="form-check form-check-inline m-0 p-0">
+                            <input class="form-check-input MQE-TypeEvaluation" id="mapaEEvaluationTest" type="radio" name="mpevaluation" value="4" />
+                            <label class="form-check-label" for="mapaEEvaluationTest">${_('Quiz')}</label>
+                        </div>
+                        <div class="form-check form-check-inline m-0 p-0">
+                            <input class="form-check-input MQE-TypeEvaluation" id="mapaEEvaluationOrder" type="radio" name="mpevaluation" value="5" />
+                            <label class="form-check-label" for="mapaEEvaluationOrder">${_('Order')}</label>
+                        </div>
+                    </div>
+                    <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
+                        ${toggle('mapaEShowMinimize', _('Show minimized.'))}
+                        ${help(_('Start with the game collapsed. Learners can expand it when they are ready to play.'))}
+                    </div>
+                    <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
+                        ${toggle('mapaEHideScoreBar', _('Hide score bar'))}
+                        ${help(_('Hide the bar with the score, the hits and the errors.'))}
+                    </div>
+                    <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
+                        ${toggle('mapaEHideAreas', _('Hide areas'))}
+                        ${help(_('Do not let the learners see where the active areas of the image are.'))}
+                    </div>
+                    <div class="MQE-EHide mb-3 align-items-center gap-2 flex-nowrap" id="mapaSolutionOrderDiv">
+                        <label for="mapaSolutionOrder" class="mb-0">${_('Solution')}:</label>
+                        <input type="text" id="mapaSolutionOrder" class="form-control" style="max-width:30ch" />
+                        ${help(_('Indicate, using commas, the correct order in which points must be clicked'))}
+                    </div>
+                    <div class="MQE-EHide align-items-center mb-3 gap-2 flex-nowrap" id="mapaNumOptionsData">
+                        <label for="mapaNumOptions" class="mb-0">${_('Options Number')}:</label>
+                        <input type="number" name="mapaNumOptions" id="mapaNumOptions" value="0" min="0" max="100" class="form-control" />
+                        ${help(_('How many names to offer for each spot. With 0 or 1, all of them are offered.'))}
+                    </div>
+                    <div class="MQE-EHide align-items-center flex-nowrap gap-2 mb-3" id="mapaSolutionData">
+                        <div class="toggle-item toggle-related m-0">
+                            <span class="toggle-control">
+                                <input type="checkbox" class="toggle-input" checked id="mapaEShowSolution" />
+                                <span class="toggle-visual" aria-hidden="true"></span>
+                            </span>
+                            <label class="toggle-label" for="mapaEShowSolution">${_('Show solutions')}.</label>
+                        </div>
+                        <label for="mapaETimeShowSolution" class="mb-0 d-flex align-items-center gap-1">${_('Show solution time (seconds)')}:</label>
+                        <input type="number" name="mapaETimeShowSolution" id="mapaETimeShowSolution" value="3" min="1" max="9" class="form-control" style="width:70px" />
+                        ${help(_('After each answer, show the correct one for the number of seconds given.'))}
+                    </div>
+                    <div class="MQE-EHide mb-3" id="mapaEvaluationData">
+                        <div class="d-flex align-items-center gap-2 flex-wrap mb-3">
+                            <span class="d-flex align-items-center gap-2 flex-nowrap" style="max-width:60%">
+                                <label for="mapaPercentajeShowQ" class="mb-0">${_('Percentage of visited contents necessary to be able to carry out the activity questionnaire')}: </label>
+                                ${help(_('The learners have to visit this share of the contents before they can take the questionnaire. The counter shows how many contents that is.'))}
+                            </span>
+                            <span class="d-flex align-items-center gap-2">
+                                <input type="number" name="mapaPercentajeShowQ" id="mapaPercentajeShowQ" value="100" min="1" max="100" class="form-control" />
+                                <span id="mapaPShowQuestions">1/1</span>
+                            </span>
+                        </div>
+                        <div class="d-flex align-items-center gap-2 flex-wrap mb-0">
+                            <span class="d-flex align-items-center gap-2 flex-nowrap" style="max-width:60%">
+                                <label for="mapaPercentajeQuestions" class="mb-0">${_('Percentage of questionnaire questions')}: </label>
+                                ${help(_('The share of the questionnaire questions asked in each game. The counter shows how many questions that is.'))}
+                            </span>
+                            <span class="d-flex align-items-center gap-2">
+                                <input type="number" name="mapaPercentajeQuestions" id="mapaPercentajeQuestions" value="100" min="1" max="100" class="form-control" />
+                                <span id="mapaNumberQuestions">1/1</span>
+                            </span>
+                        </div>
+                    </div>
+                    <div class="MQE-EHide mb-3 align-items-center gap-2 flex-nowrap" id="mapaEvaluationIdentify">
+                        <label for="mapaPercentajeIdentify" class="mb-0">${_('Percentage of questions')}: </label>
+                        <input type="number" name="mapaPercentajeIdentify" id="mapaPercentajeIdentify" value="100" min="1" max="100" class="form-control" />
+                        <span id="mapaNumberPercentaje">1/1</span>
+                        ${help(_('The share of the points asked for in each game. The counter shows how many points that is.'))}
+                    </div>
+                    <div id="mapaEAutoShowDiv">
+                        <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
+                            ${toggle('mapaEAutoShow', `${_('Show when the mouse is over the icon or active area')}.`)}
+                            ${help(_('Open the content of a point as soon as the pointer is over its icon or area, without clicking.'))}
+                        </div>
+                    </div>
+                    <div id="mapaEAutoAudioDiv">
+                        <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
+                            ${toggle('mapaEAutoAudio', `${_('Play the sound when scrolling the mouse over the points.')}.`, true)}
+                            ${help(_('Play the sound of a point as soon as the pointer is over it.'))}
+                        </div>
+                    </div>
+                </div>`,
+            contents = `
+                <div class="MQE-FieldPanel">
+                    <div class="MQE-EPanel" id="mapaEPanel">
+                        <div id="mapaImageSelect">
+                            <p class="MQE-CloseDetail" id="mapaCloseDetail">
+                                <a href="#" id="mapaCloseLevel" title="${_('Close map')}">${_('Close map')}
+                                    <img src="${path}mapacerrarventana.svg" class="ms-1 MQE-ENavigationButton MQE-EActivo" alt="" />
+                                </a>
+                            </p>
+                            <div class="d-flex align-items-center gap-2 mb-4 w-100" style="width:100%">
+                                <label for="mapaURLImageMap" class="m-0">${_('Image')}:</label>
+                                <input type="text" id="mapaURLImageMap" class="form-control exe-file-picker me-0" style="flex:1 1 auto; min-width:0;" />
+                                <a href="#" id="mapaShowImageMap" class="MQE-ENavigationButton MQE-EActivo MQE-Play flex-shrink-0" title="${_('Show image')}"></a>
+                                <a href="#" id="mapaMoreImageMap" class="MQE-ENavigationButton MQE-EActivo MQE-More flex-shrink-0" title="${_('More')}"></a>
+                            </div>
+                            <div class="MQE-EHide align-items-center gap-2 mb-4 w-100" id="mapaMoreImage" style="width:100%">
+                                <label for="mapaAuthorImageMap">${_('Authorship')}:</label>
+                                <input id="mapaAuthorImageMap" type="text" class="form-control" />
+                                <label for="mapaAltImageMap">${_('Alt')}:</label>
+                                <input id="mapaAltImageMap" type="text" class="form-control me-0" />
+                            </div>
+                            <div class="MQE-EFlex MQE-EHide">
+                                <label for="mapaX">X:</label>
+                                <input id="mapaX" type="text" value="0" class="form-control" />
+                                <label for="mapaY">Y:</label>
+                                <input id="mapaY" type="text" value="0" class="form-control" />
+                                <label for="mapaX1">X1:</label>
+                                <input id="mapaX1" type="text" value="0" class="form-control" />
+                                <label for="mapaY1">Y1:</label>
+                                <input id="mapaY1" type="text" value="0" class="form-control" />
+                            </div>
+                        </div>
+                        <div class="MQE-EMultimedias mb-4">
+                            <div class="d-flex align-items-center justify-content-center gap-2 mb-4 w-100">
+                                <div class="MQE-EMultimedia">
+                                    <img id="mapaImage" class="MQE-EImage" src="${path}quextIEImage.png" alt="" />
+                                    <div class="MQE-ECursorPoint" id="mapaCursor"></div>
+                                    <div id="mapaArea" class="MQE-EArea"></div>
+                                    <div id="mapaTextLink" class="MQE-ETextLink"></div>
+                                    <img id="mapaNoImage" class="MQE-EImageCover" src="${path}quextIEImage.png" alt="" />
+                                    <div id="mapaProtector" class="MQE-EProtector"></div>
+                                    <canvas id="mapaCanvas" style="display:none"></canvas>
+                                </div>
+                            </div>
+                            <div id="mapaControls" style="display:none" class="align-items-center justify-content-center gap-2 mb-4">
+                                <button class="btn btn-primary" id="mapaClearButton">${_('Clear')}</button>
+                                <button class="btn btn-primary" id="mapaRedoButton">${_('Redo')}</button>
+                                <button class="btn btn-primary" id="mapaUndoButton">${_('Undo')}</button>
+                            </div>
+                            ${$exeDevice.getMultimediaPoint(path)}
+                            ${$exeDevice.getSlide(path)}
+                            ${$exeDevice.getPointTest()}
+
+                        </div>
+                        ${$exeDevice.getSelectType()}
+                        <div id="mapaDataImage" class="mb-4">
+                            <div class="d-flex align-items-center gap-2 flex-nowrap">
+                                <label for="mapaURLImage">${_('Image')}:</label>
+                                <input type="text" id="mapaURLImage" class="exe-file-picker form-control me-0"  />
+                                <a href="#" id="mapaShowImage" class="MQE-ENavigationButton MQE-EActivo MQE-Play" title="${_('Show image')}"></a>
+                            </div>
+                        </div>
+                        <div id="mapaDataVideo" class="MQE-EHide mb-4">
+                            <div class="d-flex align-items-center gap-2 flex-nowrap">
+                                <label for="mapaURLYoutube">${_('URL:')}</label>
+                                <input type="text" id="mapaURLYoutube" class="form-control" />
+                                <a href="#" id="mapaPlayVideo" class="MQE-ENavigationButton MQE-EActivo MQE-Play" title="${_('Play video')}"></a>
+                            </div>
+                        </div>
+                        <div id="mapaDataLink" class="MQE-EHide  mb-4">
+                            <div class="d-flex align-items-center gap-2 flex-nowrap">
+                                <label for="mapaLink">${_('Link')}</label>
+                                <input type="text" id="mapaLink" class="form-control" />
+                            </div>
+                        </div>
+                        <div id="mapaDataAudio" class="MQE-EHide mb-4">
+                            <div class="d-flex align-items-center gap-2 flex-nowrap" data-voice-recorder data-voice-input="#mapaURLAudio">
+                                <label for="mapaURLAudio">${_('Audio')}:</label>
+                                <input type="text" id="mapaURLAudio" class="exe-file-picker form-control me-0" />
+                                <a href="#" id="mapaEPlayAudio" class="MQE-ENavigationButton MQE-EActivo MQE-Play" title="${_('Play audio')}"></a>
+                            </div>
+                        </div>
+                        <div id="mapaDataFooter" class="MQE-EHide  mb-4">
+                            <div class="d-flex align-items-center gap-2 flex-nowrap">
+                                <label for="mapaFooter">${_('Footer')}:</label>
+                                <input type="text" id="mapaFooter" class="form-control" />
+                            </div>
+                        </div>
+                        <div id="mapaDataToolTip" class="MQE-EHide  mb-4">
+                            <label for="mapaToolTip">${_('Text')}</label>
+                            <textarea id="mapaToolTip" class="MQE-EText"></textarea>
+                        </div>
+                        <div id="mapaDataText" class="MQE-EHide mb-4 ">
+                            <label for="mapaText">${_('Text')}</label>
+                            <textarea id="mapaText" class="exe-html-editor MQE-EText form-control"></textarea>
+                        </div>
+                        <div id="mapaDataIdentifica" class="MQE-EHide mb-4">
+                            <div class="d-flex align-items-center gap-2 flex-nowrap">
+                                <label for="mapaIdentify">${_('Identify')}:</label>
+                                <input type="text" id="mapaIdentify" class="form-control" />
+                                <a href="#" id="mapaIdentifyMoreAudio" class="MQE-ENavigationButton MQE-EActivo MQE-More" title="${_('Audio')}"></a>
+                            </div>
+                            <div id="mapaDataIdentifyAudio" class="MQE-EHide mb-4">
+                                <div class="d-flex align-items-center gap-2 flex-nowrap" data-voice-recorder data-voice-input="#mapaURLAudioIdentify">
+                                    <label for="mapaURLAudioIdentify">${_('Audio')}:</label>
+                                    <input type="text" id="mapaURLAudioIdentify" class="form-control exe-file-picker me-0" />
+                                    <a href="#" id="mapaPlayAudioIdentify" class="MQE-ENavigationButton MQE-EActivo MQE-Play" title="${_('Play audio')}"></a>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="MQE-EContents">
+                            <div class="MQE-ENavigationButtons gap-1">
+                                <a href="#" id="mapaEAdd" class="MQE-ENavigationButton MQE-EActivo MQE-Add" title="${_('Add point')}"></a>
+                                <a href="#" id="mapaEFirst" class="MQE-ENavigationButton MQE-EActivo MQE-First" title="${_('First point')}"></a>
+                                <a href="#" id="mapaEPrevious" class="MQE-ENavigationButton MQE-EActivo MQE-Previous" title="${_('Previous point')}"></a>
+                                <label class="sr-av" for="mapaNumberPoint">${_('Point number')}:</label>
+                                <input type="text" class="MQE-NumberPoint form-control" id="mapaNumberPoint" value="1" />
+                                <a href="#" id="mapaENext" class="MQE-ENavigationButton MQE-EActivo MQE-Next" title="${_('Next Point')}"></a>
+                                <a href="#" id="mapaELast" class="MQE-ENavigationButton MQE-EActivo MQE-Last" title="${_('Last point')}"></a>
+                                <a href="#" id="mapaEDelete" class="MQE-ENavigationButton MQE-EActivo MQE-Delete" title="${_('Delete point')}"></a>
+                                <a href="#" id="mapaECopy" class="MQE-ENavigationButton MQE-EActivo MQE-Copy" title="${_('Copy point')}"></a>
+                                <a href="#" id="mapaECut" class="MQE-ENavigationButton MQE-EActivo MQE-Cut" title="${_('Cut point')}"></a>
+                                <a href="#" id="mapaEPaste" class="MQE-ENavigationButton MQE-EActivo MQE-Paste" title="${_('Paste point')}"></a>
+                            </div>
+                        </div>
+                        <div class="MQE-ENumQuestionDiv">
+                            <div class="MQE-ENumQ">
+                                <span class="sr-av">${_('Number of points')}:</span>
+                            </div>
+                            <span class="MQE-ENumQuestions" id="mapaENumPoints">1</span>
+                        </div>
+                        <div class="MQE-Cubierta" id="mapaCubierta"></div>
+                    </div>
+                </div>
+                ${$exeDevice.getCuestionario()}`,
             html = `
             <div id="gameQEIdeviceForm">
-                ${$exeDevicesEdition.iDevice.common.getIdeviceDescription(
+                ${edition.common.getIdeviceDescription(
                     _('Create image maps: Images with interactive hotspots to reveal images, videos, sounds, texts...'),
                     'https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe40/html/mapa.html',
                 )}
-                <div class="exe-form-tab" title="${_('General settings')}">
-                    ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset(c_('Click on the active areas or image icons.'))}
-                    <fieldset class="exe-fieldset exe-fieldset-closed">
-                        <legend><a href="#">${_('Options')}</a></legend>
-                        <div id="mapaEOptions" class="mb-3">
-                            <div class="mb-3 d-flex flex-wrap align-items-center gap-2">
-                                <span>${_('Assessment')}:</span>
-                                <div class="form-check form-check-inline m-0 p-0">
-                                    <input class="form-check-input MQE-TypeEvaluation" checked id="mapaEEvaluationPoints" type="radio" name="mpevaluation" value="0" />
-                                    <label class="form-check-label" for="mapaEEvaluationPoints">${_('Visited points')}</label>
-                                </div>
-                                <div class="form-check form-check-inline m-0 p-0">
-                                    <input class="form-check-input MQE-TypeEvaluation" id="mapaEEvaluationSearch" type="radio" name="mpevaluation" value="2" />
-                                    <label class="form-check-label" for="mapaEEvaluationSearch">${_('Identify')}</label>
-                                </div>
-                                <div class="form-check form-check-inline m-0 p-0">
-                                    <input class="form-check-input MQE-TypeEvaluation" id="mapaEEvaluationIdentify" type="radio" name="mpevaluation" value="3" />
-                                    <label class="form-check-label" for="mapaEEvaluationIdentify">${_('Find')}</label>
-                                </div>
-                                <div class="form-check form-check-inline m-0 p-0">
-                                    <input class="form-check-input MQE-TypeEvaluation" id="mapaEEvaluationTX" type="radio" name="mpevaluation" value="1" />
-                                    <label class="form-check-label" for="mapaEEvaluationTX">${_('Identify Spot')}</label>
-                                </div>
-                                <div class="form-check form-check-inline m-0 p-0">
-                                    <input class="form-check-input MQE-TypeEvaluation" id="mapaEEvaluationTest" type="radio" name="mpevaluation" value="4" />
-                                    <label class="form-check-label" for="mapaEEvaluationTest">${_('Quiz')}</label>
-                                </div>
-                                <div class="form-check form-check-inline m-0 p-0">
-                                    <input class="form-check-input MQE-TypeEvaluation" id="mapaEEvaluationOrder" type="radio" name="mpevaluation" value="5" />
-                                    <label class="form-check-label" for="mapaEEvaluationOrder">${_('Order')}</label>
-                                </div>
-                            </div>
-                            <div class="toggle-item mb-3" data-target="mapaEShowMinimize">
-                                <span class="toggle-control">
-                                    <input type="checkbox" class="toggle-input" id="mapaEShowMinimize" />
-                                    <span class="toggle-visual"></span>
-                                </span>
-                                <label class="toggle-label" for="mapaEShowMinimize">${_('Show minimized.')}</label>
-                            </div>
-                            <div class="toggle-item mb-3" data-target="mapaEHideScoreBar">
-                                <span class="toggle-control">
-                                    <input type="checkbox" class="toggle-input" id="mapaEHideScoreBar" />
-                                    <span class="toggle-visual"></span>
-                                </span>
-                                <label class="toggle-label" for="mapaEHideScoreBar">${_('Hide score bar')}</label>
-                            </div>
-                            <div class="toggle-item mb-3" data-target="mapaEHideAreas">
-                                <span class="toggle-control">
-                                    <input type="checkbox" class="toggle-input" id="mapaEHideAreas" />
-                                    <span class="toggle-visual"></span>
-                                </span>
-                                <label class="toggle-label" for="mapaEHideAreas">${_('Hide areas')}</label>
-                            </div>
-                            <div class="MQE-EHide mb-3  align-items-center flex-nowrap" id="mapaSolutionOrderDiv">
-                                <label for="mapaSolutionOrder">${_('Solution')}:</label>
-                                <input type="text" id="mapaSolutionOrder" class="form-control" />
-                            </div>
-                            <div class="MQE-EHide align-items-center mb-3 gap-2" id="mapaNumOptionsData">
-                                <label for="mapaNumOptions">${_('Options Number')}:</label>
-                                <input type="number" name="mapaNumOptions" id="mapaNumOptions" value="0" min="0" max="100" class="form-control" />
-                            </div>
-                            <div class="MQE-EHide align-items-center flex-wrap gap-2 mb-3" id="mapaSolutionData">
-                                <div class="toggle-item toggle-related m-0 d-flex align-items-center" data-target="mapaEShowSolution">
-                                    <span class="toggle-control">
-                                        <input type="checkbox" class="toggle-input" checked id="mapaEShowSolution" />
-                                        <span class="toggle-visual"></span>
-                                    </span>
-                                    <label class="toggle-label" for="mapaEShowSolution">${_('Show solutions')}.</label>
-                                </div>
-                                <label for="mapaETimeShowSolution" class="mb-0 d-flex align-items-center gap-1">${_('Show solution time (seconds)')}:</label>
-                                <input type="number" name="mapaETimeShowSolution" id="mapaETimeShowSolution" value="3" min="1" max="9" class="form-control" style="width:70px" />
-                            </div>
-                            <div class="MQE-EHide mb-3" id="mapaEvaluationData">
-                                <div class="d-flex align-items-center gap-2 mb-3">
-                                    <label for="mapaPercentajeShowQ">${_('Percentage of visited contents necessary to be able to carry out the activity questionnaire')}: </label>
-                                    <input type="number" name="mapaPercentajeShowQ" id="mapaPercentajeShowQ" value="100" min="1" max="100" class="form-control" />
-                                    <span id="mapaPShowQuestions">1/1</span>
-                                </div>
-                                <div class="d-flex align-items-center gap-2 mb-0">
-                                    <label for="mapaPercentajeQuestions">${_('Percentage of questionnaire questions')}: </label>
-                                    <input type="number" name="mapaPercentajeQuestions" id="mapaPercentajeQuestions" value="100" min="1" max="100" class="form-control" />
-                                    <span id="mapaNumberQuestions">1/1</span>
-                                </div>
-                            </div>
-                            <div class="MQE-EHide mb-3 align-items-center gap-2" id="mapaEvaluationIdentify">
-                                <label for="mapaPercentajeIdentify">${_('Percentage of questions')}: </label>
-                                <input type="number" name="mapaPercentajeIdentify" id="mapaPercentajeIdentify" value="100" min="1" max="100" class="form-control" />
-                                <span id="mapaNumberPercentaje">1/1</span>
-                            </div>
-                            <div id="mapaEAutoShowDiv" class="toggle-item mb-3" data-target="mapaEAutoShow">
-                                <span class="toggle-control">
-                                    <input type="checkbox" class="toggle-input" id="mapaEAutoShow" />
-                                    <span class="toggle-visual"></span>
-                                </span>
-                                <label class="toggle-label" for="mapaEAutoShow">${_('Show when the mouse is over the icon or active area')}.</label>
-                            </div>
-                            <div id="mapaEAutoAudioDiv" class="MQE-EHide toggle-item mb-3" data-target="mapaEAutoAudio">
-                                <span class="toggle-control">
-                                    <input type="checkbox" class="toggle-input" id="mapaEAutoAudio" checked />
-                                    <span class="toggle-visual"></span>
-                                </span>
-                                <label class="toggle-label" for="mapaEAutoAudio">${_('Play the sound when scrolling the mouse over the points.')}.</label>
-                            </div>
-                            <div class="d-flex flex-nowrap align-items-center gap-2">
-                            </div>
-                        </div>
-                    </fieldset>
-                    
-                    <fieldset class="exe-fieldset MQE-FieldPanel">
-                        <legend><a href="#">${_('Map')}</a></legend>
-                        <div class="MQE-EPanel" id="mapaEPanel">
-                            <div id="mapaImageSelect">
-                                <p class="MQE-CloseDetail" id="mapaCloseDetail">
-                                    <a href="#" id="mapaCloseLevel" title="${_('Close map')}">${_('Close map')} 
-                                        <img src="${path}mapacerrarventana.svg" class="ms-1 MQE-ENavigationButton MQE-EActivo" alt="" />
-                                    </a>
-                                </p>
-                                <div class="d-flex align-items-center gap-2 mb-4 w-100" style="width:100%">
-                                    <label for="mapaURLImageMap" class="m-0">${_('Image')}:</label>
-                                    <input type="text" id="mapaURLImageMap" class="form-control exe-file-picker me-0" style="flex:1 1 auto; min-width:0;" />
-                                    <a href="#" id="mapaShowImageMap" class="MQE-ENavigationButton MQE-EActivo MQE-Play flex-shrink-0" title="${_('Show image')}"></a>
-                                    <a href="#" id="mapaMoreImageMap" class="MQE-ENavigationButton MQE-EActivo MQE-More flex-shrink-0" title="${_('More')}"></a>
-                                </div>
-                                <div class="MQE-EHide align-items-center gap-2 mb-4 w-100" id="mapaMoreImage" style="width:100%">
-                                    <label for="mapaAuthorImageMap">${_('Authorship')}:</label>
-                                    <input id="mapaAuthorImageMap" type="text" class="form-control" />
-                                    <label for="mapaAltImageMap">${_('Alt')}:</label>
-                                    <input id="mapaAltImageMap" type="text" class="form-control me-0" />
-                                </div>
-                                <div class="MQE-EFlex MQE-EHide">
-                                    <label for="mapaX">X:</label>
-                                    <input id="mapaX" type="text" value="0" class="form-control" />
-                                    <label for="mapaY">Y:</label>
-                                    <input id="mapaY" type="text" value="0" class="form-control" />
-                                    <label for="mapaX1">X1:</label>
-                                    <input id="mapaX1" type="text" value="0" class="form-control" />
-                                    <label for="mapaY1">Y1:</label>
-                                    <input id="mapaY1" type="text" value="0" class="form-control" />
-                                </div>
-                            </div>
-                            <div class="MQE-EMultimedias mb-4">
-                                <div class="d-flex align-items-center justify-content-center gap-2 mb-4 w-100">
-                                    <div class="MQE-EMultimedia">
-                                        <img id="mapaImage" class="MQE-EImage" src="${path}quextIEImage.png" alt="" />
-                                        <div class="MQE-ECursorPoint" id="mapaCursor"></div>
-                                        <div id="mapaArea" class="MQE-EArea"></div>
-                                        <div id="mapaTextLink" class="MQE-ETextLink"></div>
-                                        <img id="mapaNoImage" class="MQE-EImageCover" src="${path}quextIEImage.png" alt="" />
-                                        <div id="mapaProtector" class="MQE-EProtector"></div>
-                                        <canvas id="mapaCanvas" style="display:none"></canvas>
-                                    </div>
-                                </div>
-                                <div id="mapaControls" style="display:none" class="align-items-center justify-content-center gap-2 mb-4">
-                                    <button class="btn btn-primary" id="mapaClearButton">Limpiar</button>
-                                    <button class="btn btn-primary" id="mapaRedoButton">Rehacer</button>
-                                    <button class="btn btn-primary" id="mapaUndoButton">Deshacer</button>
-                                </div>
-                                ${$exeDevice.getMultimediaPoint(path)}
-                                ${$exeDevice.getSlide(path)}
-                                ${$exeDevice.getPointTest()}
-
-                            </div>
-                            ${$exeDevice.getSelectType()}
-                            <div id="mapaDataImage" class="mb-4">
-                                <div class="d-flex align-items-center gap-2 flex-nowrap">
-                                    <label for="mapaURLImage">${_('Image')}:</label>
-                                    <input type="text" id="mapaURLImage" class="exe-file-picker form-control me-0"  />
-                                    <a href="#" id="mapaShowImage" class="MQE-ENavigationButton MQE-EActivo MQE-Play" title="${_('Show image')}"></a>
-                                </div>
-                            </div>
-                            <div id="mapaDataVideo" class="MQE-EHide mb-4">
-                                <div class="d-flex align-items-center gap-2 flex-nowrap">
-                                    <label for="mapaURLYoutube">${_('URL:')}</label>
-                                    <input type="text" id="mapaURLYoutube" class="form-control" />
-                                    <a href="#" id="mapaPlayVideo" class="MQE-ENavigationButton MQE-EActivo MQE-Play" title="${_('Play video')}"></a>
-                                </div>
-                            </div>
-                            <div id="mapaDataLink" class="MQE-EHide  mb-4">
-                                <div class="d-flex align-items-center gap-2 flex-nowrap">
-                                    <label for="mapaLink">${_('Link')}</label>
-                                    <input type="text" id="mapaLink" class="form-control" />
-                                </div>
-                            </div>
-                            <div id="mapaDataAudio" class="MQE-EHide mb-4">
-                                <div class="d-flex align-items-center gap-2 flex-nowrap" data-voice-recorder data-voice-input="#mapaURLAudio">
-                                    <label for="mapaURLAudio">${_('Audio')}:</label>
-                                    <input type="text" id="mapaURLAudio" class="exe-file-picker form-control me-0" />
-                                    <a href="#" id="mapaEPlayAudio" class="MQE-ENavigationButton MQE-EActivo MQE-Play" title="${_('Play audio')}"></a>
-                                </div>
-                            </div>
-                            <div id="mapaDataFooter" class="MQE-EHide  mb-4">
-                                <div class="d-flex align-items-center gap-2 flex-nowrap">
-                                    <label for="mapaFooter">${_('Footer')}:</label>
-                                    <input type="text" id="mapaFooter" class="form-control" />
-                                </div>
-                            </div>
-                            <div id="mapaDataToolTip" class="MQE-EHide  mb-4">
-                                <label for="mapaToolTip">${_('Text')}</label>
-                                <textarea id="mapaToolTip" class="MQE-EText"></textarea>
-                            </div>
-                            <div id="mapaDataText" class="MQE-EHide mb-4 ">
-                                <label for="mapaText">${_('Text')}</label>
-                                <textarea id="mapaText" class="exe-html-editor MQE-EText form-control"></textarea>
-                            </div>
-                            <div id="mapaDataIdentifica" class="MQE-EHide mb-4">
-                                <div class="d-flex align-items-center gap-2 flex-nowrap">
-                                    <label for="mapaIdentify">${_('Identify')}:</label>
-                                    <input type="text" id="mapaIdentify" class="form-control" />
-                                    <a href="#" id="mapaIdentifyMoreAudio" class="MQE-ENavigationButton MQE-EActivo MQE-More" title="${_('Audio')}"></a>
-                                </div>
-                                <div id="mapaDataIdentifyAudio" class="MQE-EHide mb-4">
-                                    <div class="d-flex align-items-center gap-2 flex-nowrap" data-voice-recorder data-voice-input="#mapaURLAudioIdentify">
-                                        <label for="mapaURLAudioIdentify">${_('Audio')}:</label>
-                                        <input type="text" id="mapaURLAudioIdentify" class="form-control exe-file-picker me-0" />
-                                        <a href="#" id="mapaPlayAudioIdentify" class="MQE-ENavigationButton MQE-EActivo MQE-Play" title="${_('Play audio')}"></a>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="MQE-EContents">
-                                <div class="MQE-ENavigationButtons gap-1">
-                                    <a href="#" id="mapaEAdd" class="MQE-ENavigationButton MQE-EActivo MQE-Add" title="${_('Add point')}"></a>
-                                    <a href="#" id="mapaEFirst" class="MQE-ENavigationButton MQE-EActivo MQE-First" title="${_('First point')}"></a>
-                                    <a href="#" id="mapaEPrevious" class="MQE-ENavigationButton MQE-EActivo MQE-Previous" title="${_('Previous point')}"></a>
-                                    <label class="sr-av" for="mapaNumberPoint">${_('Point number')}:</label>
-                                    <input type="text" class="MQE-NumberPoint form-control" id="mapaNumberPoint" value="1" />
-                                    <a href="#" id="mapaENext" class="MQE-ENavigationButton MQE-EActivo MQE-Next" title="${_('Next Point')}"></a>
-                                    <a href="#" id="mapaELast" class="MQE-ENavigationButton MQE-EActivo MQE-Last" title="${_('Last point')}"></a>
-                                    <a href="#" id="mapaEDelete" class="MQE-ENavigationButton MQE-EActivo MQE-Delete" title="${_('Delete point')}"></a>
-                                    <a href="#" id="mapaECopy" class="MQE-ENavigationButton MQE-EActivo MQE-Copy" title="${_('Copy point')}"></a>
-                                    <a href="#" id="mapaECut" class="MQE-ENavigationButton MQE-EActivo MQE-Cut" title="${_('Cut point')}"></a>
-                                    <a href="#" id="mapaEPaste" class="MQE-ENavigationButton MQE-EActivo MQE-Paste" title="${_('Paste point')}"></a>
-                                </div>
-                            </div>
-                            <div class="MQE-ENumQuestionDiv">
-                                <div class="MQE-ENumQ">
-                                    <span class="sr-av">${_('Number of points')}:</span>
-                                </div>
-                                <span class="MQE-ENumQuestions" id="mapaENumPoints">1</span>
-                            </div>
-                            <div class="MQE-Cubierta" id="mapaCubierta"></div>
-                        </div>
-                    </fieldset>
-                    ${$exeDevice.getCuestionario()}
-                    ${$exeDevice.getTextFieldset('after')}
-                </div>
-                ${$exeDevicesEdition.iDevice.gamification.itinerary.getTab()}
-                ${$exeDevicesEdition.iDevice.gamification.scorm.getTab(path)}
-                ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
-                <p class="exe-block-warning exe-block-dismissible">
+                ${edition.tabs.getHtml('gameQEIdeviceForm', {
+                    path: path,
+                    instructions: c_('Click on the active areas or image icons.'),
+                    options: options,
+                    contents: contents,
+                    passwords: true,
+                    after: true,
+                    grading: true,
+                    texts: this.ci18n,
+                    share: false,
+                    info: {
+                        contents: _('Choose the image of the map, add its points and edit them one by one. In Quiz mode, write the questionnaire below the map.'),
+                    },
+                })}
+                <p class="alert alert-warning mt-3 mb-0">
                     ${_('This game may present accessibility problems for some users. You should provide an accessible alternative if the users need it.')}
-                    <a href="#" class="exe-block-close" title="${_('Hide')}"><span class="sr-av">${_('Hide')} </span>×</a>
                 </p>
             </div>`;
         this.ideviceBody.innerHTML = html;
-        $exeDevicesEdition.iDevice.tabs.init('gameQEIdeviceForm');
-        $exeDevicesEdition.iDevice.gamification.scorm.init();
+        edition.tabs.bind('gameQEIdeviceForm');
+        edition.gamification.scorm.init();
 
         tinymce.init({
             selector: '#mapaToolTip',
@@ -561,10 +545,12 @@ var $exeDevice = {
     getSelectType: function () {
         return `
             <div id="mapaMutimediaType" class="mb-4">
-                <div class="flex-nowrap align-items-center gap-2" style="display:flex;width:100%">
+                <div class="flex-wrap align-items-center gap-2" style="display:flex;width:100%">
                     ${$exeDevice.getDrowpBox()}
-                    <label for="mapaTitle" class="m-0">${_('Title')}:</label>
-                    <input id="mapaTitle" type="text" class="form-control" />
+                    <div class="d-flex flex-nowrap align-items-center gap-2">
+                        <label for="mapaTitle" class="m-0">${_('Title')}:</label>
+                        <input id="mapaTitle" type="text" class="form-control" />
+                    </div>
                     <div class="d-flex justify-content-start flex-nowrap align-items-center gap-2">
                         <label for="mapaTypePointSelect" class="m-0">${_('Type')}:</label>
                         <select id="mapaTypePointSelect" name="mapaTypePointSelect" class="form-select">
@@ -581,7 +567,7 @@ var $exeDevice = {
                         </select>
                         <button type="button" id="mapaEditPointsMap" class="MQE-EditPointsMap btn btn-primary btn-sm" title="${_('Edit map points')}">${_('Edit')}</button>
                         <button type="button" id="mapaEditSlide" class="MQE-EditPointsMap btn btn-primary btn-sm" title="${_('Edit presentation points')}">${_('Edit')}</button>
-                        <button type="button" id="mapaEditPointTest" class="MQE-EditPointsMap btn btn-primary btn-sm" title="${_('Editar cuestionario')}">${_('Edit')}</button>
+                        <button type="button" id="mapaEditPointTest" class="MQE-EditPointsMap btn btn-primary btn-sm" title="${_('Edit questionnaire')}">${_('Edit')}</button>
                     </div>
                 </div>
             </div>`;
@@ -622,16 +608,6 @@ var $exeDevice = {
                     $exeDevice.pointEnd = 100000;
                 }
             }
-        }
-    },
-
-    updateProgressBarLocal: function () {
-        if ($exeDevice.localPlayer) {
-            $('#progress-bar').val(
-                (Math.round($exeDevice.localPlayer.currentTime) /
-                    Math.round($exeDevice.localPlayer.duration)) *
-                    100
-            );
         }
     },
 
@@ -853,8 +829,8 @@ var $exeDevice = {
 
     getCuestionario: function () {
         const html = `
-            <fieldset class="exe-fieldset exe-fieldset-closed" id="mapaFQuestions">
-                <legend><a href="#">${_('Questionnaire')}</a></legend>
+            <div id="mapaFQuestions" class="mt-4">
+                <h3 class="h6 mb-3">${_('Questionnaire')}</h3>
                 <div class="MQE-EContents">
                     <div id="mapaDataQuestion" class="MQE-EFlexSolution mb-3 ">
                         <div class="MQE-EInputType d-flex flex-nowrap  gap-2 align-items-center">
@@ -972,38 +948,15 @@ var $exeDevice = {
                     </div>
                     <span class="MQE-ENumQuestions" id="mapaENumQuestions">0</span>
                 </div>
-            </fieldset>`;
+            </div>`;
         return html;
-    },
-
-    getTextFieldset: function (position) {
-        if (
-            typeof position !== 'string' ||
-            (position !== 'after' && position !== 'before')
-        )
-            return '';
-        const tit =
-                position === 'before'
-                    ? _('Content before')
-                    : _('Content after'),
-            id = position === 'before' ? 'Before' : 'After';
-        return `
-            <fieldset class='exe-fieldset exe-feedback-fieldset exe-fieldset-closed'>
-                <legend><a href='#'>${_('Additional content')} (${_('Optional').toLowerCase()})</a></legend>
-                <div>
-                    <p>
-                        <label for='eXeIdeviceText${id}' class='sr-av'>${tit}:</label>
-                        <textarea id='eXeIdeviceText${id}' class='exe-html-editor'></textarea>
-                    </p>
-                </div>
-            </fieldset>`;
     },
 
     enableForm: function () {
         $exeDevice.initPoints();
 
         const root = document.getElementById('gameQEIdeviceForm') || document;
-        $exeDevicesEdition.iDevice.voiceRecorder.initVoiceRecorders(root);
+        $exeIDevicesEdition.iDevice.voiceRecorder.initVoiceRecorders(root);
 
         $exeDevice.loadPreviousValues();
         $exeDevice.showPoint(0);
@@ -1095,7 +1048,7 @@ var $exeDevice = {
         });
 
         $exeDevice.changeIcon(p.iconType, p.x, p.y);
-        $exeDevicesEdition.iDevice.gamification.helpers.stopSound();
+        $exeIDevicesEdition.iDevice.gamification.helpers.stopSound();
 
         $('#mapaURLAudio').val(p.audio);
         $('#mapaNumberPoint').val(i + 1);
@@ -1104,8 +1057,6 @@ var $exeDevice = {
     },
 
     initPoints: function () {
-        $('#mapaEInputVideo').css('display', 'flex');
-        $('#mapaEInputImage').css('display', 'flex');
         $('#mapaMoreImage').css('display', 'flex');
         $('#mapaCloseDetail').hide();
         $('#mapaMoreImage').hide();
@@ -1155,7 +1106,6 @@ var $exeDevice = {
         $('#mapaDataFooter').show();
         $('#mapaPDataImage').hide();
         $('#mapaPDataVideo').hide();
-        $('#mapaPMap').hide();
         $('#mapaEditPointsMap').hide();
         $('#mapaEditSlide').hide();
         $('#mapaEditPointTest').hide();
@@ -1319,11 +1269,8 @@ var $exeDevice = {
         }
     },
 
-    updateProgressBar: function () {
-        // $('#progress-bar').val((player.getCurrentTime() / player.getDuration()) * 100);
-    },
     onPlayerError: function () {
-        //$exeDevice.showMessage("El video mapaEdo no está disponible")
+        //$exeIDevicesEdition.iDevice.common.showMessage("El video mapaEdo no está disponible")
     },
 
     startVideo: function (id, start, end, type) {
@@ -1352,19 +1299,6 @@ var $exeDevice = {
                 });
             }
             lifecycle.clearInterval($exeDevice.timeUpdateInterval);
-            $exeDevice.timeUpdateInterval = lifecycle.setInterval(function () {
-                $exeDevice?.updateTimerDisplay();
-            }, 1000);
-        }
-    },
-
-    playVideo: function () {
-        const lifecycle = this.$lifecycle;
-        if ($exeDevice.player) {
-            lifecycle.clearInterval($exeDevice.timeUpdateInterval);
-            if (typeof $exeDevice.player.playVideo === 'function') {
-                $exeDevice.player.playVideo();
-            }
             $exeDevice.timeUpdateInterval = lifecycle.setInterval(function () {
                 $exeDevice?.updateTimerDisplay();
             }, 1000);
@@ -1451,61 +1385,6 @@ var $exeDevice = {
         return vertices;
     },
 
-    drawCurrentArea1: function () {
-        const ctx = $exeDevice.ctx,
-            currentPoints = $exeDevice.currentPoints,
-            canvas = $exeDevice.canvas;
-
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-        const rect = $('#mapaImage')[0].getBoundingClientRect();
-
-        if (currentPoints.length < 2) return;
-
-        ctx.beginPath();
-        ctx.moveTo(
-            Math.round(currentPoints[0].x * rect.width),
-            Math.round(currentPoints[0].y * rect.height)
-        );
-        currentPoints.forEach((point) =>
-            ctx.lineTo(
-                Math.round(rect.width * point.x),
-                Math.round(point.y * rect.height)
-            )
-        );
-        ctx.closePath();
-        ctx.fillStyle = 'rgba(0, 0, 255, 0.5)';
-        ctx.fill();
-    },
-
-    drawCurrentArea2: function () {
-        const ctx = $exeDevice.ctx,
-            currentPoints = $exeDevice.currentPoints,
-            canvas = $exeDevice.canvas;
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        const rect = $('#mapaImage')[0].getBoundingClientRect();
-
-        if (currentPoints.length < 2) return;
-
-        ctx.beginPath();
-        ctx.moveTo(
-            Math.round(currentPoints[0].x * rect.width),
-            Math.round(currentPoints[0].y * rect.height)
-        );
-        currentPoints.forEach((point) =>
-            ctx.lineTo(
-                Math.round(rect.width * point.x),
-                Math.round(point.y * rect.height)
-            )
-        );
-        ctx.closePath();
-        ctx.fillStyle = 'rgba(0, 0, 255, 0.5)';
-        ctx.fill();
-        ctx.strokeStyle = 'black';
-        ctx.lineWidth = 1;
-        ctx.stroke();
-    },
-
     drawCurrentArea: function () {
         const ctx = $exeDevice.ctx,
             currentPoints = $exeDevice.currentPoints,
@@ -1542,29 +1421,6 @@ var $exeDevice = {
             ctx.lineWidth = 1;
             ctx.stroke();
         }
-    },
-
-    drawSavedAreas: function (backgroundImage) {
-        const ctx = $exeDevice.ctx,
-            canvas = $exeDevice.canvas,
-            areas = $exeDevice.areas;
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.drawImage(
-            backgroundImage,
-            0,
-            0,
-            backgroundImage.width,
-            backgroundImage.height
-        );
-        areas.forEach((area) => {
-            if (area.length < 2) return;
-            ctx.beginPath();
-            ctx.moveTo(area[0].x, area[0].y);
-            area.forEach((point) => ctx.lineTo(point.x, point.y));
-            ctx.closePath;
-            ctx.fillStyle = 'rgba(0, 255, 0, 0.5)';
-            ctx.fill();
-        });
     },
 
     getDefaultSlide: function () {
@@ -1640,7 +1496,7 @@ var $exeDevice = {
                 textAfter = $exeDevice.clearTags(textAfter.html()) || '';
                 $('#eXeIdeviceTextAfter').val(textAfter);
             }
-            $exeDevicesEdition.iDevice.gamification.common.setLanguageTabValues(
+            $exeIDevicesEdition.iDevice.gamification.common.setLanguageTabValues(
                 dataGame.msgs
             );
 
@@ -1868,28 +1724,19 @@ var $exeDevice = {
         });
     },
 
-    escapeHtml: function (string) {
-        return String(string)
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;')
-            .replace(/'/g, '&#39;');
-    },
-
     save: function () {
         if ($exeDevice.levels.length > 1) {
-            $exeDevice.showMessage($exeDevice.msgs.msgCloseMap);
+            $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgCloseMap);
             return false;
         }
 
         if ($exeDevice.slides.length > 0) {
-            $exeDevice.showMessage($exeDevice.msgs.msgCloseSlide);
+            $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgCloseSlide);
             return false;
         }
 
         if ($exeDevice.tests && $exeDevice.tests.length > 0) {
-            $exeDevice.showMessage($exeDevice.msgs.msgCloseTest);
+            $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgCloseTest);
             return false;
         }
 
@@ -2100,7 +1947,7 @@ var $exeDevice = {
             alt = $('#mapaAltImageMap').val();
 
         if (url.length < 4) {
-            $exeDevice.showMessage($exeDevice.msgs.msgEURLValid);
+            $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgEURLValid);
             return false;
         }
 
@@ -2115,7 +1962,7 @@ var $exeDevice = {
         return true;
     },
 
-    validatePoint: function (p) {
+    validatePoint: function (p, options = {}) {
         const msgs = $exeDevice.msgs,
             url = $('#mapaURLImageMap').val();
         let message = '';
@@ -2167,10 +2014,10 @@ var $exeDevice = {
 
         if (p.fVideo <= p.iVideo) p.fVideo = 36000;
 
-        $exeDevicesEdition.iDevice.gamification.helpers.stopSound();
+        $exeIDevicesEdition.iDevice.gamification.helpers.stopSound();
         $exeDevice.stopVideo();
         if (url.length < 4) {
-            $exeDevice.showMessage($exeDevice.msgs.msgEURLValid);
+            if (!options.silent) $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgEURLValid);
             return false;
         }
 
@@ -2242,7 +2089,7 @@ var $exeDevice = {
             $exeDevice.updateQuestionsNumber();
             message = p;
         } else {
-            $exeDevice.showMessage(message);
+            if (!options.silent) $exeIDevicesEdition.iDevice.common.showMessage(message);
             message = false;
         }
         return message;
@@ -2459,10 +2306,6 @@ var $exeDevice = {
         return $exeDevice.activeMap.pts;
     },
 
-    showMessage: function (msg) {
-        eXe.app.alert(msg);
-    },
-
     getIdeviceID: function () {
         const ideviceid =
             $('#gameQEIdeviceForm')
@@ -2473,18 +2316,17 @@ var $exeDevice = {
     },
 
     validateData: function () {
-        const clear = $exeDevice.removeTags,
+        const clear = $exeIDevicesEdition.iDevice.common.removeTags,
             instructions = tinyMCE.get('eXeGameInstructions').getContent(),
             textAfter = tinyMCE.get('eXeIdeviceTextAfter').getContent(),
             showMinimize = $('#mapaEShowMinimize').is(':checked'),
             hideScoreBar = $('#mapaEHideScoreBar').is(':checked'),
             hideAreas = $('#mapaEHideAreas').is(':checked'),
-            showActiveAreas = $('#mapaEShowActiveAreas').is(':checked'),
             url = $('#mapaURLImageMap').val(),
             authorImage = $('#mapaAuthorImageMap').val(),
             altImage = $('#mapaAltImageMap').val(),
             itinerary =
-                $exeDevicesEdition.iDevice.gamification.itinerary.getValues(),
+                $exeIDevicesEdition.iDevice.gamification.itinerary.getValues(),
             evaluationG = parseInt($('input[name=mpevaluation]:checked').val()),
             showSolution = $('#mapaEShowSolution').is(':checked'),
             timeShowSolution = parseInt(
@@ -2500,9 +2342,9 @@ var $exeDevice = {
             autoShow = $('#mapaEAutoShow').is(':checked') || false,
             optionsNumber = parseInt(clear($('#mapaNumOptions').val())),
             progressBar =
-                $exeDevicesEdition.iDevice.gamification.progressBar.getValues(),
+                $exeIDevicesEdition.iDevice.gamification.progressBar.getValues(),
             passScore =
-                $exeDevicesEdition.iDevice.gamification.passScore.getValues(),
+                $exeIDevicesEdition.iDevice.gamification.passScore.getValues(),
             id = $exeDevice.getIdeviceID(),
             order = $('#mapaSolutionOrder').val();
 
@@ -2518,22 +2360,22 @@ var $exeDevice = {
         }
 
         if (url.length < 4) {
-            $exeDevice.showMessage($exeDevice.msgs.msgEURLValid);
+            $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgEURLValid);
             return false;
         }
 
         if (evaluationG == 5 && order && order.length == 0) {
-            $exeDevice.showMessage($exeDevice.msgs.msgSolutionOrder);
+            $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgSolutionOrder);
             return false;
         }
 
         for (let i = 0; i < points.length; i++) {
             let mpoint = points[i];
             if (mpoint.title.length == 0) {
-                $exeDevice.showMessage($exeDevice.msgs.msgProvideTitle);
+                $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgProvideTitle);
                 return false;
             } else if (mpoint.type == 0 && mpoint.url.length < 5) {
-                $exeDevice.showMessage($exeDevice.msgs.msgEURLValid);
+                $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgEURLValid);
                 return false;
             } else if (
                 mpoint.type == 1 &&
@@ -2542,29 +2384,29 @@ var $exeDevice = {
                 ) &&
                 !$exeDevice.getIDMediaTeca(mpoint.video)
             ) {
-                $exeDevice.showMessage($exeDevice.msgs.msgECompleteURLYoutube);
+                $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgECompleteURLYoutube);
                 return false;
             } else if (mpoint.type == 2 && mpoint.eText.length == 0) {
-                $exeDevice.showMessage($exeDevice.msgs.msgWriteText);
+                $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgWriteText);
                 return false;
             } else if (mpoint.type == 5) {
                 if (mpoint.map.url.length < 4) {
-                    $exeDevice.showMessage($exeDevice.msgs.msgEURLValid);
+                    $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgEURLValid);
                     return false;
                 } else if (
                     typeof mpoint.map.pts == 'undefined' ||
                     mpoint.map.pts.length == 0
                 ) {
-                    $exeDevice.showMessage($exeDevice.msgs.msgEOneQuestion);
+                    $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgEOneQuestion);
                     return false;
                 }
                 for (let j = 0; j < mpoint.map.pts.length; j++) {
                     let vpp = mpoint.map.pts[j];
                     if (vpp.title.length == 0) {
-                        $exeDevice.showMessage($exeDevice.msgs.msgProvideTitle);
+                        $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgProvideTitle);
                         return false;
                     } else if (vpp.type == 0 && vpp.url.length < 5) {
-                        $exeDevice.showMessage($exeDevice.msgs.msgEURLValid);
+                        $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgEURLValid);
                         return false;
                     } else if (
                         vpp.type == 1 &&
@@ -2575,18 +2417,18 @@ var $exeDevice = {
                             mpoint.video
                         )
                     ) {
-                        $exeDevice.showMessage(
+                        $exeIDevicesEdition.iDevice.common.showMessage(
                             $exeDevice.msgs.msgECompleteURLYoutube
                         );
                         return false;
                     } else if (vpp.type == 2 && vpp.eText.length == 0) {
-                        $exeDevice.showMessage($exeDevice.msgs.msgWriteText);
+                        $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgWriteText);
                         return false;
                     } else if (vpp.type == 3 && vpp.audio.trim().length == 0) {
-                        $exeDevice.showMessage($exeDevice.msgs.msgSelectAudio);
+                        $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgSelectAudio);
                         return false;
                     } else if (vpp.x == 0 && vpp.y == 0) {
-                        $exeDevice.showMessage($exeDevice.msgs.msgMarkPoint);
+                        $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgMarkPoint);
                     }
                 }
             }
@@ -2595,12 +2437,12 @@ var $exeDevice = {
         if (evaluationG == 2 || evaluationG == 3) autoAudio = true;
         points = $exeDevice.clearSavePoints();
 
-        let scorm = $exeDevicesEdition.iDevice.gamification.scorm.getValues();
+        let scorm = $exeIDevicesEdition.iDevice.gamification.scorm.getValues();
         let data = {
             typeGame: 'Mapa',
             instructions: instructions,
             showMinimize: showMinimize,
-            showActiveAreas: showActiveAreas,
+            showActiveAreas: false,
             author: '',
             url: url,
             authorImage: authorImage,
@@ -2660,7 +2502,8 @@ var $exeDevice = {
                         this.naturalWidth,
                         this.naturalHeight
                     );
-                    $exeDevice.drawImage(this, mData);
+                    $exeIDevicesEdition.iDevice.common.drawImage(this, mData);
+                    $image.show();
                     $exeDevice.canvas.width = mData.w;
                     $exeDevice.canvas.height = mData.h;
                     $noImage.hide();
@@ -2721,7 +2564,7 @@ var $exeDevice = {
                         this.naturalWidth,
                         this.naturalHeight
                     );
-                    $exeDevice.drawImage(this, mData);
+                    $exeIDevicesEdition.iDevice.common.drawImage(this, mData);
                     $image.show();
                     $noImage.hide();
                     return true;
@@ -2755,7 +2598,7 @@ var $exeDevice = {
                         this.naturalWidth,
                         this.naturalHeight
                     );
-                    $exeDevice.drawImage(this, mData);
+                    $exeIDevicesEdition.iDevice.common.drawImage(this, mData);
                     $image.show();
                     $noImage.hide();
                     return true;
@@ -2764,32 +2607,6 @@ var $exeDevice = {
             .on('error', function () {
                 return false;
             });
-    },
-
-    playSound: function (selectedFile) {
-        const lifecycle = this.$lifecycle;
-        let selectFile =
-            $exeDevices.iDevice.gamification.media.extractURLGD(selectedFile);
-        $exeDevice.playerAudio = new Audio(selectFile);
-        // The element is never inserted in the form, so closing the editor
-        // would otherwise leave it playing and downloading.
-        lifecycle.ownMedia($exeDevice.playerAudio, 'previewAudio');
-        lifecycle.addEventListener(
-            $exeDevice.playerAudio,
-            'canplaythrough',
-            function () {
-                $exeDevice?.playerAudio.play();
-            }
-        );
-    },
-
-    stopSound: function () {
-        if (
-            $exeDevice.playerAudio &&
-            typeof $exeDevice.playerAudio.pause == 'function'
-        ) {
-            $exeDevice.playerAudio.pause();
-        }
     },
 
     paintMouse: function (x, y) {
@@ -2805,7 +2622,6 @@ var $exeDevice = {
         $canvas.hide();
         $control.hide();
         $('#mapaTextLinkDiv').hide();
-        $('#mapaIconPoint').show();
         if (x > 0 || y > 0) {
             const wI = $image.width() > 0 ? $image.width() : 1,
                 hI = $image.height() > 0 ? $image.height() : 1,
@@ -2834,7 +2650,6 @@ var $exeDevice = {
         $area.hide();
         $canvas.show();
         $control.css('display', 'flex');
-        $('#mapaIconPoint').show();
         $('#mapaTextLinkDiv').hide();
         $exeDevice.currentPoints = [];
         $exeDevice.redoPoints = [];
@@ -2860,7 +2675,6 @@ var $exeDevice = {
         $canvas.hide();
         $control.hide();
         $('#mapaTextLinkDiv').css('display', 'flex');
-        $('#mapaIconPoint').hide();
         if (x > 0 || y > 0) {
             const wI = $image.width() > 0 ? $image.width() : 1,
                 hI = $image.height() > 0 ? $image.height() : 1,
@@ -2875,16 +2689,6 @@ var $exeDevice = {
         }
         $textLink.text(text);
         $textLink.show();
-    },
-
-    drawImage: function (image, mData) {
-        $(image).css({
-            left: mData.x + 'px',
-            top: mData.y + 'px',
-            width: mData.w + 'px',
-            height: mData.h + 'px',
-        });
-        $(image).show();
     },
 
     addEvents: function () {
@@ -3236,7 +3040,7 @@ var $exeDevice = {
                 selectedFile.indexOf('files') == 0 &&
                 validExt.indexOf(ext) == -1
             ) {
-                $exeDevice.showMessage(
+                $exeIDevicesEdition.iDevice.common.showMessage(
                     _('Supported formats') + ': jpg, jpeg, gif, png, svg, webp'
                 );
                 return false;
@@ -3256,7 +3060,7 @@ var $exeDevice = {
                 selectedFile = $('#mapaURLImageMap').val(),
                 ext = selectedFile.split('.').pop().toLowerCase();
             if (selectedFile.length < 5) {
-                $exeDevice.showMessage(
+                $exeIDevicesEdition.iDevice.common.showMessage(
                     _('Supported formats') + ': jpg, jpeg, gif, png, svg, webp'
                 );
             }
@@ -3264,7 +3068,7 @@ var $exeDevice = {
                 selectedFile.indexOf('files') == 0 &&
                 validExt.indexOf(ext) == -1
             ) {
-                $exeDevice.showMessage(
+                $exeIDevicesEdition.iDevice.common.showMessage(
                     _('Supported formats') + ': jpg, jpeg, gif, png, svg, webp'
                 );
                 return false;
@@ -3284,7 +3088,7 @@ var $exeDevice = {
                 selectedFile = $('#mapaURLImage').val(),
                 ext = selectedFile.split('.').pop().toLowerCase();
             if (selectedFile.length < 5) {
-                $exeDevice.showMessage(
+                $exeIDevicesEdition.iDevice.common.showMessage(
                     _('Supported formats') + ': jpg, jpeg, gif, png, svg, webp'
                 );
             }
@@ -3292,7 +3096,7 @@ var $exeDevice = {
                 selectedFile.indexOf('files') == 0 &&
                 validExt.indexOf(ext) == -1
             ) {
-                $exeDevice.showMessage(
+                $exeIDevicesEdition.iDevice.common.showMessage(
                     _('Supported formats') + ': jpg, jpeg, gif, png, svg, webp'
                 );
                 return false;
@@ -3300,7 +3104,6 @@ var $exeDevice = {
             const url = selectedFile,
                 alt = $('#mapaAltImageMap').val();
             $exeDevice.showImage(url, alt);
-            $('#mapaMultimediaPoint').fadeIn();
         });
 
         $('#mapaSShowImage').on('click', function (e) {
@@ -3310,7 +3113,7 @@ var $exeDevice = {
                 selectedFile = $('#mapaSURLImage').val(),
                 ext = selectedFile.split('.').pop().toLowerCase();
             if (selectedFile.length < 5) {
-                $exeDevice.showMessage(
+                $exeIDevicesEdition.iDevice.common.showMessage(
                     _('Supported formats') + ': jpg, jpeg, gif, png, svg, webp'
                 );
             }
@@ -3318,7 +3121,7 @@ var $exeDevice = {
                 selectedFile.indexOf('files') == 0 &&
                 validExt.indexOf(ext) == -1
             ) {
-                $exeDevice.showMessage(
+                $exeIDevicesEdition.iDevice.common.showMessage(
                     _('Supported formats') + ': jpg, jpeg, gif, png, svg, webp'
                 );
                 return false;
@@ -3336,17 +3139,13 @@ var $exeDevice = {
                 selectedFile.indexOf('files') == 0 &&
                 validExt.indexOf(ext) == -1
             ) {
-                $exeDevice.showMessage(
+                $exeIDevicesEdition.iDevice.common.showMessage(
                     _('Supported formats') + ': jpg, jpeg, gif, png, svg, webp'
                 );
                 return false;
             }
             const alt = $('#mapaSAltImage').val();
             $exeDevice.showImageSlide(selectedFile, alt);
-        });
-
-        $('#mapaMultimediaPoint').on('click', function () {
-            $(this).fadeOut();
         });
 
         $('#gameQEIdeviceForm').on('click', 'input.MQE-Number', function () {
@@ -3448,27 +3247,34 @@ var $exeDevice = {
             }
         });
 
-        $('#mapaNumberPoint1').keyup(function (e) {
+        $('#mapaENumberQuestionQ').keyup(function (e) {
             if (!$exeDevice) return;
             if (e.keyCode == 13) {
-                let num = parseInt($(this).val());
-                if (!isNaN(num) && num > 0) {
-                    num =
-                        num < $exeDevice.activeMap.pts.length
-                            ? num - 1
-                            : $exeDevice.activeMap.pts.length - 1;
-                    if (
-                        $exeDevice.validatePoint(
-                            $exeDevice.activeMap.pts[num]
-                        ) !== false
-                    ) {
-                        $exeDevice.activeMap.active = num;
-                        $exeDevice.showPoint($exeDevice.activeMap.active);
-                    } else {
-                        $(this).val($exeDevice.activeMap.active + 1);
-                    }
+                const num = parseInt($(this).val());
+                if (!isNaN(num) && num > 0 && $exeDevice.validateQuestion()) {
+                    $exeDevice.qActive =
+                        Math.min(num, $exeDevice.selectsGame.length) - 1;
+                    $exeDevice.showQuestion($exeDevice.qActive);
                 } else {
-                    $(this).val($exeDevice.activeMap.active + 1);
+                    $(this).val($exeDevice.qActive + 1);
+                }
+            }
+        });
+
+        $('#mapaENumberQuestionQ1').keyup(function (e) {
+            if (!$exeDevice) return;
+            if (e.keyCode == 13) {
+                const num = parseInt($(this).val());
+                if (
+                    !isNaN(num) &&
+                    num > 0 &&
+                    $exeDevice.validatePointQuestion()
+                ) {
+                    $exeDevice.activeTest =
+                        Math.min(num, $exeDevice.tests.length) - 1;
+                    $exeDevice.showPointQuestion($exeDevice.activeTest);
+                } else {
+                    $(this).val($exeDevice.activeTest + 1);
                 }
             }
         });
@@ -3498,8 +3304,7 @@ var $exeDevice = {
                 if (type == 4) {
                     $('#mapaFQuestions').show();
                     $('#mapaEvaluationData').show();
-                    $('#mapaEShowSolution').show();
-                    $('label[for=mapaEShowSolution]').show();
+                    $('#mapaEShowSolution').closest('.toggle-item').show();
                     $('#mapaETimeShowSolution').prop(
                         'disabled',
                         !$('#mapaEShowSolution').is(':checked')
@@ -3507,8 +3312,7 @@ var $exeDevice = {
                 } else {
                     $('#mapaFQuestions').hide();
                     $('#mapaEvaluationData').hide();
-                    $('#mapaEShowSolution').hide();
-                    $('label[for=mapaEShowSolution]').hide();
+                    $('#mapaEShowSolution').closest('.toggle-item').hide();
                     $('#mapaETimeShowSolution').prop('disabled', false);
                 }
                 $('#mapaSolutionOrderDiv').hide();
@@ -3532,10 +3336,6 @@ var $exeDevice = {
                 } else {
                     $('#mapaDataIdentifica').hide();
                 }
-                $('#mapaIconTypeDiv').show();
-                if (type == 1) {
-                    $('#mapaIconTypeDiv').hide();
-                }
                 $('#mapaEvaluationIdentify').hide();
                 if (type == 2 || type == 3) {
                     $('#mapaEvaluationIdentify').css('display', 'flex');
@@ -3556,7 +3356,7 @@ var $exeDevice = {
                 selectedFile.indexOf('files') == 0 &&
                 validExt.indexOf(ext) == -1
             ) {
-                $exeDevice.showMessage(
+                $exeIDevicesEdition.iDevice.common.showMessage(
                     _('Supported formats') + ': jpg, jpeg, gif, png, svg, webp'
                 );
                 return false;
@@ -3580,7 +3380,7 @@ var $exeDevice = {
                 selectedFile.indexOf('files') == 0 &&
                 validExt.indexOf(ext) == -1
             ) {
-                $exeDevice.showMessage(
+                $exeIDevicesEdition.iDevice.common.showMessage(
                     _('Supported formats') + ': jpg, jpeg, gif, png, svg, webp'
                 );
                 return false;
@@ -3604,7 +3404,7 @@ var $exeDevice = {
                 selectedFile = $('#mapaURLImage').val(),
                 ext = selectedFile.split('.').pop().toLowerCase();
             if (selectedFile.length < 5) {
-                $exeDevice.showMessage(
+                $exeIDevicesEdition.iDevice.common.showMessage(
                     _('Supported formats') + ': jpg, jpeg, gif, png, svg, webp'
                 );
             }
@@ -3612,7 +3412,7 @@ var $exeDevice = {
                 selectedFile.indexOf('files') == 0 &&
                 validExt.indexOf(ext) == -1
             ) {
-                $exeDevice.showMessage(
+                $exeIDevicesEdition.iDevice.common.showMessage(
                     _('Supported formats') + ': jpg, jpeg, gif, png, svg, webp'
                 );
                 return false;
@@ -3634,7 +3434,7 @@ var $exeDevice = {
                 selectedFile = $('#mapaPURLImage').val(),
                 ext = selectedFile.split('.').pop().toLowerCase();
             if (selectedFile.length < 5) {
-                $exeDevice.showMessage(
+                $exeIDevicesEdition.iDevice.common.showMessage(
                     _('Supported formats') + ': jpg, jpeg, gif, png, svg, webp'
                 );
             }
@@ -3642,7 +3442,7 @@ var $exeDevice = {
                 selectedFile.indexOf('files') == 0 &&
                 validExt.indexOf(ext) == -1
             ) {
-                $exeDevice.showMessage(
+                $exeIDevicesEdition.iDevice.common.showMessage(
                     _('Supported formats') + ': jpg, jpeg, gif, png, svg, webp'
                 );
                 return false;
@@ -3661,7 +3461,7 @@ var $exeDevice = {
             $('#mapaFooter').val($('#mapaPFooter').val());
             $('#mapaURLYoutube').val($('#mapaPURLYoutube').val());
             $exeDevice?.stopVideo();
-            $exeDevicesEdition.iDevice.gamification.helpers.stopSound();
+            $exeIDevicesEdition.iDevice.gamification.helpers.stopSound();
             $('#mapaPContainer').fadeOut();
             $('#mapaCubierta').hide();
         });
@@ -3687,7 +3487,7 @@ var $exeDevice = {
                 $('#mapaPURLYoutube').val($('#mapaURLYoutube').val());
                 $exeDevice.showVideoPoint();
             } else {
-                $exeDevice.showMessage($exeDevice.msgs.msgECompleteURLYoutube);
+                $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgECompleteURLYoutube);
                 return;
             }
             $('#mapaPTitle').val($('#mapaTitle').val());
@@ -3715,7 +3515,7 @@ var $exeDevice = {
                 $('#mapaURLYoutube').val($('#mapaPURLYoutube').val());
                 $exeDevice.showVideoPoint();
             } else {
-                $exeDevice.showMessage($exeDevice.msgs.msgECompleteURLYoutube);
+                $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgECompleteURLYoutube);
                 return;
             }
 
@@ -3728,19 +3528,19 @@ var $exeDevice = {
             e.preventDefault();
             const selectedFile = $('#mapaURLAudio').val().trim();
             if (selectedFile.length > 4) {
-                $exeDevicesEdition.iDevice.gamification.helpers.playSound(selectedFile);
+                $exeIDevicesEdition.iDevice.gamification.helpers.playSound(selectedFile);
             }
         });
 
         $('#mapaURLAudio').on('change', function () {
             const selectedFile = $(this).val().trim();
             if (selectedFile.length == 0) {
-                $exeDevice?.showMessage(
+                if ($exeDevice) $exeIDevicesEdition.iDevice.common.showMessage(
                     _('Supported formats') + ': mp3, ogg, wav'
                 );
             } else {
                 if (selectedFile.length > 4) {
-                      $exeDevicesEdition.iDevice.gamification.helpers.playSound(selectedFile);
+                      $exeIDevicesEdition.iDevice.gamification.helpers.playSound(selectedFile);
                 }
             }
         });
@@ -3749,20 +3549,20 @@ var $exeDevice = {
             e.preventDefault();
             const selectedFile = $('#mapaURLAudioIdentify').val().trim();
             if (selectedFile.length > 4) {
-                $exeDevicesEdition.iDevice.gamification.helpers.playSound(selectedFile);
+                $exeIDevicesEdition.iDevice.gamification.helpers.playSound(selectedFile);
             }
         });
 
         $('#mapaURLAudioIdentify').on('change', function () {
             const selectedFile = $(this).val().trim();
             if (selectedFile.length == 0) {
-                $exeDevice?.showMessage(
+                if ($exeDevice) $exeIDevicesEdition.iDevice.common.showMessage(
                     _('Supported formats') + ': mp3, ogg, wav'
                 );
             } else {
                 if (selectedFile.length > 4) {
-                    $exeDevicesEdition.iDevice.gamification.helpers.stopSound();
-                    $exeDevicesEdition.iDevice.gamification.helpers.playSound(selectedFile);
+                    $exeIDevicesEdition.iDevice.gamification.helpers.stopSound();
+                    $exeIDevicesEdition.iDevice.gamification.helpers.playSound(selectedFile);
                 }
             }
         });
@@ -3797,9 +3597,9 @@ var $exeDevice = {
             $exeDevice?.closePointTest();
         });
 
-        $exeDevicesEdition.iDevice.gamification.progressBar.addEvents();
+        $exeIDevicesEdition.iDevice.gamification.progressBar.addEvents();
 
-        $exeDevicesEdition.iDevice.gamification.passScore.addEvents();
+        $exeIDevicesEdition.iDevice.gamification.passScore.addEvents();
 
         $('#mapaTitle').on('input', function () {
             $('#mapaTextLink').text($(this).val());
@@ -3873,12 +3673,7 @@ var $exeDevice = {
         // Detaching the form does not stop a media element that is already
         // playing, so the edition stops the local player itself.
         this.$lifecycle.ownMedia($exeDevice.localPlayer);
-        $exeDevicesEdition.iDevice.gamification.itinerary.addEvents();
-
-        $('.exe-block-dismissible .exe-block-close').click(function () {
-            $(this).parent().fadeOut();
-            return false;
-        });
+        $exeIDevicesEdition.iDevice.gamification.itinerary.addEvents();
     },
 
     showSlides: function () {
@@ -3931,7 +3726,7 @@ var $exeDevice = {
         $('#mapaCubierta').css('display', 'flex');
         $('#mapaCubierta').show();
         $('#mapaTContainer').show();
-        $exeDevicesEdition.iDevice.gamification.helpers.stopSound();
+        $exeIDevicesEdition.iDevice.gamification.helpers.stopSound();
         $exeDevice.stopVideo();
     },
 
@@ -3952,7 +3747,7 @@ var $exeDevice = {
             $('#mapaSURLImage').val(),
             $('#mapaSAltImage').val()
         );
-        $exeDevicesEdition.iDevice.gamification.helpers.stopSound();
+        $exeIDevicesEdition.iDevice.gamification.helpers.stopSound();
         $exeDevice.stopVideo();
     },
 
@@ -3992,7 +3787,7 @@ var $exeDevice = {
         $('#mapaCubierta').fadeOut();
     },
 
-    validateSlide: function () {
+    validateSlide: function (options = {}) {
         let msg = '';
         if ($('#mapaSTitle').val().trim().length == 0) {
             msg = $exeDevice.msgs.msgTitle;
@@ -4000,7 +3795,7 @@ var $exeDevice = {
             msg = $exeDevice.msgs.msgEURLValid;
         }
         if (msg.length > 0) {
-            $exeDevice.showMessage(msg);
+            if (!options.silent) $exeIDevicesEdition.iDevice.common.showMessage(msg);
         } else {
             let slide = $exeDevice.slides[$exeDevice.activeSlide];
             slide.title = $('#mapaSTitle').val();
@@ -4014,7 +3809,7 @@ var $exeDevice = {
 
     updateQuestionsNumber: function () {
         let percentaje = parseInt(
-            $exeDevice.removeTags($('#mapaPercentajeIdentify').val())
+            $exeIDevicesEdition.iDevice.common.removeTags($('#mapaPercentajeIdentify').val())
         );
         if (isNaN(percentaje)) return;
 
@@ -4033,7 +3828,7 @@ var $exeDevice = {
 
     updateShowQ: function () {
         let percentaje = parseInt(
-            $exeDevice.removeTags($('#mapaPercentajeShowQ').val())
+            $exeIDevicesEdition.iDevice.common.removeTags($('#mapaPercentajeShowQ').val())
         );
         if (isNaN(percentaje)) return;
         percentaje = Math.max(1, Math.min(percentaje, 100));
@@ -4050,7 +3845,7 @@ var $exeDevice = {
 
     updateNumberQuestions: function () {
         let percentaje = parseInt(
-                $exeDevice.removeTags($('#mapaPercentajeQuestions').val())
+                $exeIDevicesEdition.iDevice.common.removeTags($('#mapaPercentajeQuestions').val())
             ),
             nq = $exeDevice.selectsGame.length;
         if (isNaN(percentaje)) return;
@@ -4059,24 +3854,11 @@ var $exeDevice = {
         $('#mapaNumberQuestions').text(num + '/' + nq);
     },
 
-    updateNumberPointQuestions: function () {
-        let percentaje = parseInt(
-                $exeDevice.removeTags($('#mapaPercentajeQuestions1').val())
-            ),
-            nq = $exeDevice.tests.length;
-
-        if (isNaN(percentaje)) return;
-
-        percentaje = Math.max(1, Math.min(percentaje, 100));
-        let num = Math.max(1, Math.round((percentaje * nq) / 100));
-        $('#mapaNumberQuestions1').text(num + '/' + nq);
-    },
-
     getDrowpBox() {
         const select = `
             <div class="MQP-Dropdown">
                 <div class="d-flex align-items-center gap-2">
-                    <div>Icono:</div>
+                    <div>${_('Icon')}:</div>
                     <div id="mapaBtnDrop" class="MQP-Dropbtn" data-value="0">
                         <div class="MQE-P0"></div>
                         ${_('Magnifier')}
@@ -4250,9 +4032,6 @@ var $exeDevice = {
             icon = 19;
         }
         let icon1 = `url(${mI})`;
-        $('#mapaIconPoint').css({
-            'background-image': icon1,
-        });
         $('#mapaCursor').css({
             'background-image': icon1,
         });
@@ -4309,10 +4088,8 @@ var $exeDevice = {
 
         if (icon == 84 && evaluationG != 1) {
             $('#mapaTextLinkDiv').css('display', 'flex');
-            $('#mapaIconPoint').hide();
         } else {
             $('#mapaTextLinkDiv').hide();
-            $('#mapaIconPoint').show();
         }
 
         if (icon == 84 && evaluationG != 1) {
@@ -4357,7 +4134,7 @@ var $exeDevice = {
             $exeDevice.qActive = $exeDevice.selectsGame.length - 1;
             $exeDevice.qTypeEdit = -1;
             $('#mapaEPasteQ').hide();
-            $('#mapaENumQuestionsQ').text($exeDevice.selectsGame.length);
+            $('#mapaENumQuestions').text($exeDevice.selectsGame.length);
             $('#mapaENumberQuestionQ').val($exeDevice.selectsGame.length);
             $exeDevice.updateNumberQuestions();
         }
@@ -4382,7 +4159,7 @@ var $exeDevice = {
 
     removeQuestion: function () {
         if ($exeDevice.selectsGame.length < 2) {
-            $exeDevice.showMessage($exeDevice.msgs.msgEOneQuestion);
+            $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgEOneQuestion);
             return;
         } else {
             $exeDevice.selectsGame.splice($exeDevice.qActive, 1);
@@ -4392,7 +4169,7 @@ var $exeDevice = {
             $exeDevice.showQuestion($exeDevice.qActive);
             $exeDevice.qTypeEdit = -1;
             $('#mapaEPasteQ').hide();
-            $('#mapaENumQuestionsQ').text($exeDevice.selectsGame.length);
+            $('#mapaENumQuestions').text($exeDevice.selectsGame.length);
             $('#mapaENumberQuestionQ').val($exeDevice.qActive + 1);
             $exeDevice.updateNumberQuestions();
         }
@@ -4401,7 +4178,7 @@ var $exeDevice = {
         if ($exeDevice.validateQuestion()) {
             $exeDevice.qTypeEdit = 0;
             $exeDevice.qClipBoard = JSON.parse(
-                JSON.stringify($exeDevice.selectsGame[$exeDevice.active])
+                JSON.stringify($exeDevice.selectsGame[$exeDevice.qActive])
             );
             $('#mapaEPasteQ').show();
         }
@@ -4415,6 +4192,9 @@ var $exeDevice = {
         }
     },
     pasteQuestion: function () {
+        $exeIDevicesEdition.iDevice.gamification.share.keepQuestionOnScreen(
+            (options) => $exeDevice.validateQuestion(options)
+        );
         if ($exeDevice.qTypeEdit == 0) {
             $exeDevice.qActive++;
             $exeDevice.selectsGame.splice(
@@ -4423,16 +4203,17 @@ var $exeDevice = {
                 $exeDevice.qClipBoard
             );
             $exeDevice.showQuestion($exeDevice.qActive);
+            $exeDevice.updateNumberQuestions();
         } else if ($exeDevice.qTypeEdit == 1) {
             $('#mapaEPasteQ').hide();
             $exeDevice.qTypeEdit = -1;
-            $exeDevice.arrayMove(
+            $exeDevices.iDevice.gamification.helpers.arrayMove(
                 $exeDevice.selectsGame,
                 $exeDevice.numberCutCuestion,
                 $exeDevice.qActive
             );
             $exeDevice.showQuestion($exeDevice.qActive);
-            $('#mapaENumQuestionsQ').text($exeDevice.selectsGame.length);
+            $('#mapaENumQuestions').text($exeDevice.selectsGame.length);
         }
     },
 
@@ -4477,15 +4258,14 @@ var $exeDevice = {
             $exeDevice.activeTest = $exeDevice.tests.length - 1;
             $exeDevice.pTypeEdit = -1;
             $('#mapaEPasteQ1').hide();
-            $('#mapaENumQuestionsQ1').text($exeDevice.tests.length);
+            $('#mapaENumQuestions1').text($exeDevice.tests.length);
             $('#mapaENumberQuestionQ1').val($exeDevice.tests.length);
-            $exeDevice.updateNumberPointQuestions();
         }
     },
 
     removePointQuestion: function () {
         if ($exeDevice.tests.length < 2) {
-            $exeDevice.showMessage($exeDevice.msgs.msgEOneQuestion);
+            $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgEOneQuestion);
             return;
         } else {
             $exeDevice.tests.splice($exeDevice.activeTest, 1);
@@ -4495,9 +4275,8 @@ var $exeDevice = {
             $exeDevice.showPointQuestion($exeDevice.activeTest);
             $exeDevice.pTypeEdit = -1;
             $('#mapaEPasteQ1').hide();
-            $('#mapaENumQuestionsQ1').text($exeDevice.tests.length);
+            $('#mapaENumQuestions1').text($exeDevice.tests.length);
             $('#mapaENumberQuestionQ1').val($exeDevice.activeTest + 1);
-            $exeDevice.updateNumberPointQuestions();
         }
     },
 
@@ -4516,11 +4295,13 @@ var $exeDevice = {
             $exeDevice.numberCutPointQuestion = $exeDevice.activeTest;
             $exeDevice.pTypeEdit = 1;
             $('#mapaEPasteQ1').show();
-            $exeDevice.updateNumberPointQuestions();
         }
     },
 
     pastePointQuestion: function () {
+        $exeIDevicesEdition.iDevice.gamification.share.keepQuestionOnScreen(
+            (options) => $exeDevice.validatePointQuestion(options)
+        );
         if ($exeDevice.pTypeEdit == 0) {
             $exeDevice.activeTest++;
             $exeDevice.tests.splice(
@@ -4538,7 +4319,7 @@ var $exeDevice = {
                 $exeDevice.activeTest
             );
             $exeDevice.showPointQuestion($exeDevice.activeTest);
-            $('#mapaENumQuestionsQ1').text($exeDevice.tests.length);
+            $('#mapaENumQuestions1').text($exeDevice.tests.length);
         }
     },
 
@@ -4576,7 +4357,7 @@ var $exeDevice = {
         }
     },
 
-    validatePointQuestion: function () {
+    validatePointQuestion: function (options = {}) {
         let message = '',
             msgs = $exeDevice.msgs,
             p = {};
@@ -4624,7 +4405,7 @@ var $exeDevice = {
             $exeDevice.tests[$exeDevice.activeTest] = p;
             message = true;
         } else {
-            $exeDevice.showMessage(message);
+            if (!options.silent) $exeIDevicesEdition.iDevice.common.showMessage(message);
             message = false;
         }
         return message;
@@ -4705,8 +4486,6 @@ var $exeDevice = {
             $(this).val(option);
         });
 
-        $('#mapaENumberQuestion1').val(i + 1);
-        $('#mapaEScoreQuestion1').val(1);
         $(
             "input.MQE-PNumber[name='mpnumber1'][value='" +
                 p.numberOptions +
@@ -4759,7 +4538,7 @@ var $exeDevice = {
         }
     },
 
-    validateQuestion: function () {
+    validateQuestion: function (options = {}) {
         let message = '',
             msgs = $exeDevice.msgs,
             p = {};
@@ -4808,7 +4587,7 @@ var $exeDevice = {
             $exeDevice.selectsGame[$exeDevice.qActive] = p;
             message = true;
         } else {
-            $exeDevice.showMessage(message);
+            if (!options.silent) $exeIDevicesEdition.iDevice.common.showMessage(message);
             message = false;
         }
         return message;
@@ -4892,8 +4671,6 @@ var $exeDevice = {
         });
         $('#mapaEMessageOK').val(p.msgHit);
         $('#mapaEMessageKO').val(p.msgError);
-        $('#mapaENumberQuestion').val(i + 1);
-        $('#mapaEScoreQuestion').val(1);
         $(
             "input.MQE-Number[name='mpnumber'][value='" + p.numberOptions + "']"
         ).prop('checked', true);
@@ -4973,7 +4750,7 @@ var $exeDevice = {
             $('#mapaPNoVideo').hide();
             $('#mapaEVideoLocal').show();
         } else {
-            $exeDevice.showMessage(_('This video is not currently available'));
+            $exeIDevicesEdition.iDevice.common.showMessage(_('This video is not currently available'));
         }
 
         $('#mapaPContainer').css('display', 'flex');
@@ -5038,7 +4815,7 @@ var $exeDevice = {
     },
     removeSlide: function () {
         if ($exeDevice.slides.length < 2) {
-            $exeDevice.showMessage($exeDevice.msgs.msgEOneSlide);
+            $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgEOneSlide);
         } else {
             $exeDevice.slides.splice($exeDevice.activeSlide, 1);
             if ($exeDevice.activeSlide >= $exeDevice.slides.length - 1) {
@@ -5070,6 +4847,9 @@ var $exeDevice = {
     },
 
     pasteSlide: function () {
+        $exeIDevicesEdition.iDevice.gamification.share.keepQuestionOnScreen(
+            (options) => $exeDevice.validateSlide(options)
+        );
         if ($exeDevice.typeEditSlide == 0) {
             $exeDevice.activeSlide++;
             let slide = $.extend(true, {}, $exeDevice.sClipBoard);
@@ -5147,7 +4927,7 @@ var $exeDevice = {
 
     removePoint: function () {
         if ($exeDevice.activeMap.pts.length < 2) {
-            $exeDevice.showMessage($exeDevice.msgs.msgEOnePoint);
+            $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgEOnePoint);
         } else {
             $exeDevice.activeMap.pts.splice($exeDevice.activeMap.active, 1);
             if (
@@ -5196,6 +4976,14 @@ var $exeDevice = {
     },
 
     pastePoint: function () {
+        $exeIDevicesEdition.iDevice.gamification.share.keepQuestionOnScreen(
+            (options) => {
+                const pts = $exeDevice.activeMap.pts,
+                    point = $exeDevice.validatePoint(pts[$exeDevice.activeMap.active], options);
+                if (point === false) return false;
+                pts[$exeDevice.activeMap.active] = point;
+            }
+        );
         if ($exeDevice.typeEdit == 0) {
             $exeDevice.activeMap.active++;
             let p = $.extend(true, {}, $exeDevice.clipBoard);
@@ -5305,7 +5093,7 @@ var $exeDevice = {
         game.weighted =
             typeof game.weighted !== 'undefined' ? game.weighted : 100;
         $exeDevice.id = $exeDevice.getIdeviceID();
-        $exeDevicesEdition.iDevice.gamification.itinerary.setValues(
+        $exeIDevicesEdition.iDevice.gamification.itinerary.setValues(
             game.itinerary
         );
 
@@ -5313,7 +5101,6 @@ var $exeDevice = {
         $('#mapaEShowMinimize').prop('checked', game.showMinimize);
         $('#mapaEHideScoreBar').prop('checked', game.hideScoreBar);
         $('#mapaEHideAreas').prop('checked', game.hideAreas);
-        $('#mapaEShowActiveAreas').prop('checked', game.showActiveAreas);
         $('#mapaURLImageMap').val(game.url);
         $('#mapaAuthorImageMap').val(game.authorImage);
         $('#mapaAltImageMap').val(game.altImage);
@@ -5325,11 +5112,11 @@ var $exeDevice = {
         $('#mapaPercentajeIdentify').val(game.percentajeIdentify || 100);
         $('#mapaPercentajeShowQ').val(game.percentajeShowQ || 100);
         $('#mapaPercentajeQuestions').val(game.percentajeQuestions || 100);
-        $exeDevicesEdition.iDevice.gamification.progressBar.setValues({
+        $exeIDevicesEdition.iDevice.gamification.progressBar.setValues({
             evaluation: game.evaluation,
             evaluationID: game.evaluationID,
         });
-        $exeDevicesEdition.iDevice.gamification.passScore.setValues({
+        $exeIDevicesEdition.iDevice.gamification.passScore.setValues({
             passScoreMode: game.passScoreMode,
             passScoreCustom: game.passScoreCustom,
         });
@@ -5341,7 +5128,7 @@ var $exeDevice = {
             game.points[0].alt,
             game.points[0].iconType
         );
-        $exeDevicesEdition.iDevice.gamification.scorm.setValues(
+        $exeIDevicesEdition.iDevice.gamification.scorm.setValues(
             game.isScorm,
             game.textButtonScorm,
             game.repeatActivity,
@@ -5384,14 +5171,8 @@ var $exeDevice = {
             game.evaluationG == 3
         ) {
             $('#mapaDataIdentifica').show();
-            $('#mapaEShowSolution').hide();
-            $('label[for=mapaEShowSolution]').hide();
+            $('#mapaEShowSolution').closest('.toggle-item').hide();
             $('#mapaETimeShowSolution').prop('disabled', false);
-        }
-
-        $('#mapaIconTypeDiv').show();
-        if (game.evaluationG == 1) {
-            $('#mapaIconTypeDiv').hide();
         }
 
         if (game.evaluationG == 0) {
@@ -5401,8 +5182,7 @@ var $exeDevice = {
         if (game.evaluationG == 4) {
             $('#mapaFQuestions').show();
             $('#mapaEvaluationData').show();
-            $('#mapaEShowSolution').show();
-            $('label[for=mapaEShowSolution]').show();
+            $('#mapaEShowSolution').closest('.toggle-item').show();
             $('#mapaETimeShowSolution').prop('disabled', !game.showSolution);
         }
 
@@ -5613,59 +5393,8 @@ var $exeDevice = {
             $('#mapaCloseDetail').show();
         }
 
-        $exeDevicesEdition.iDevice.gamification.helpers.stopSound();
+        $exeIDevicesEdition.iDevice.gamification.helpers.stopSound();
         $exeDevice.stopVideo();
-    },
-
-    getPointValues: function () {
-        let p = {};
-        p.title = $('#mapaTitle').val().trim();
-        p.type = parseInt($('#mapaTypePointSelect').val());
-        p.x = parseFloat($('#mapaX').val());
-        p.y = parseFloat($('#mapaY').val());
-        p.x1 = parseFloat($('#mapaX1').val());
-        p.y1 = parseFloat($('#mapaY1').val());
-        p.footer = $('#mapaFooter').val();
-        p.author = $('#mapaPAuthorImage').val();
-        p.alt = $('#mapaPAltImage').val();
-        p.url = $('#mapaURLImage').val().trim();
-        p.video = $('#mapaURLYoutube').val().trim();
-        p.iVideo = $exeDevices.iDevice.gamification.helpers.hourToSeconds(
-            $('#mapaPInitVideo').val()
-        );
-        p.fVideo = $exeDevices.iDevice.gamification.helpers.hourToSeconds(
-            $('#mapaPEndVideo').val()
-        );
-        p.audio = $('#mapaURLAudio').val().trim();
-        p.iVideo = isNaN(p.iVideo) ? 0 : p.iVideo;
-        p.fVideo = isNaN(p.fVideo) ? 3600 : p.fVideo;
-        p.iconType = parseInt($('#mapaBtnDrop').data('value'));
-        p.question = $('#mapaIdentify').val();
-        p.question_audio = $('#mapaURLAudioIdentify').val();
-        if ($('#mapaPContainer').is(':visible')) {
-            p.video = $('#mapaPURLYoutube').val().trim();
-            p.url = $('#mapaPURLImage').val().trim();
-            p.title = $('#mapaPTitle').val().trim();
-            p.footer = $('#mapaPFooter').val();
-        }
-        if (p.fVideo <= p.iVideo) p.fVideo = 36000;
-        if (p.type == 1) {
-            p.video = $exeDevices.iDevice.gamification.media.getIDYoutube(
-                $('#mapaURLYoutube').val().trim()
-            )
-                ? $('#mapaURLYoutube').val()
-                : '';
-            if (p.video == '') {
-                p.video = $exeDevice.getIDMediaTeca(
-                    $('#mapaURLYoutube').val().trim()
-                )
-                    ? $('#mapaURLYoutube').val()
-                    : '';
-            }
-        }
-        p.eText = tinyMCE.get('mapaText').getContent();
-        p.toolTip = tinyMCE.get('mapaToolTip').getContent();
-        return p;
     },
 
     clickArea: function (epx, epy, epx1, epy1) {
@@ -5701,11 +5430,5 @@ var $exeDevice = {
             'z-index': 9,
         });
         $area.show();
-    },
-
-    removeTags: function (str) {
-        const wrapper = $('<div></div>');
-        wrapper.html(str);
-        return wrapper.text();
     },
 };

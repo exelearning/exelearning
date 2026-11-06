@@ -42,7 +42,7 @@ var $exeDevice = {
         this.addEvents();
 
         const root = document.getElementById('roscoIdeviceForm') || document;
-        $exeDevicesEdition.iDevice.voiceRecorder.initVoiceRecorders(root);
+        $exeIDevicesEdition.iDevice.voiceRecorder.initVoiceRecorders(root);
     },
 
     refreshTranslations: function () {
@@ -167,41 +167,36 @@ var $exeDevice = {
     },
 
     createForm: function () {
-        let path = this.idevicePath,
+        const path = this.idevicePath,
+            edition = $exeIDevicesEdition.iDevice,
+            // The message of the Activities tab: how the words are written.
             wordInstructions = _(
                 "Provide a word and its definition. May toggle between: 'Word starts' or 'Word contains', by clicking on %s"
-            );
-        wordInstructions = wordInstructions.replace(
-            '%s',
-            `<img src="${path}roscoIcoStart.png" alt="${_('Starts with/Contains')}" title="${_('Starts with/Contains')}" />`
-        );
-        const html = `
-            <div id="roscoIdeviceForm">
-                ${$exeDevicesEdition.iDevice.common.getIdeviceDescription(
-                    _('Create activities in which students are given a definition and they have to guess the word that starts with a letter or contains a letter.'),
-                    'https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe40/html/rosco.html',
-                )}
-                <div class="exe-form-tab" title="${_('General settings')}">
-                    ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset(c_('Observe the letters, identify and fill in the missing words.'))}
-                    <fieldset class="exe-fieldset exe-fieldset-closed">
-                        <legend><a href="#">${_('Options')}</a></legend>
-                            <div>
+            ).replace(
+                '%s',
+                `<img src="${path}roscoIcoStart.png" alt="${_('Starts with/Contains')}" title="${_('Starts with/Contains')}" />`
+            ),
+            options = `
+                            <div id="roscoOptions">
                                 <div class="toggle-item" idevice-id="roscoShowMinimize">
                                     <div class="toggle-control">
                                         <input type="checkbox" id="roscoShowMinimize" class="toggle-input">
                                         <span class="toggle-visual"></span>
                                     </div>
                                     <label class="toggle-label idevice-title" for="roscoShowMinimize">${_('Show minimized.')}</label>
+                                    ${edition.common.getHelpTooltip(_('Start with the game collapsed. Learners can expand it when they are ready to play.'))}
                                 </div>
-                                <div>
+                                <div class="d-flex align-items-center gap-2">
                                     <label for="roscoDuration">${_('Game time (seconds)')}: </label>
                                     <input type="number" class="form-control form-control-sm" name="roscoDuration" id="roscoDuration" value="240" min="5" max="9999" step="10" required />
+                                    ${edition.common.getHelpTooltip(_('Set the time available to complete the word wheel, in seconds. The game ends when the countdown reaches zero.'))}
                                 </div>
-                                <div>
+                                <div class="d-flex align-items-center gap-2">
                                     <label for="roscoNumberTurns">${_('Number of rounds')}: </label>
                                     <input type="number" class="form-control form-control-sm" value="1" min="0" max="2" id="roscoNumberTurns" required />
+                                    ${edition.common.getHelpTooltip(_('Allow one or two rounds through the letters. Set 0 for unlimited rounds while time remains. Words skipped with Move on can be answered on a later round.'))}
                                 </div>
-                                <div class="roscoShowSolutionRow d-flex align-items-center flex-wrap">
+                                <div class="roscoShowSolutionRow d-flex align-items-center flex-nowrap">
                                     <div class="toggle-item m-0" idevice-id="roscoShowSolution">
                                         <div class="toggle-control">
                                             <input type="checkbox" checked id="roscoShowSolution" class="toggle-input">
@@ -214,6 +209,10 @@ var $exeDevice = {
                                     </label>
                                     <input type="number" class="form-control form-control-sm" name="roscoTimeShowSolution" id="roscoTimeShowSolution" value="3" min="1" max="9" />
                                     <span>${_('seconds')}</span>
+                                    ${edition.common.getHelpTooltip([
+                                        `${_('Show solutions')}: ${_('Show the correct word after checking an answer.')}`,
+                                        `${_('Show solution in')}: ${_('Set how many seconds the solution remains visible before moving to the next word, from 1 to 9.')}`,
+                                    ].join('\n\n'))}
                                 </div>
                                 <div class="toggle-item" idevice-id="roscoCaseSensitive">
                                     <div class="toggle-control">
@@ -221,6 +220,7 @@ var $exeDevice = {
                                         <span class="toggle-visual"></span>
                                     </div>
                                     <label class="toggle-label" for="roscoCaseSensitive">${_('Case sensitive')}.</label>
+                                    ${edition.common.getHelpTooltip(_('Require uppercase and lowercase letters to match the answer exactly.'))}
                                 </div>
 
                                 <div class="toggle-item" idevice-id="roscoModeBoard">
@@ -229,29 +229,33 @@ var $exeDevice = {
                                         <span class="toggle-visual"></span>
                                     </div>
                                     <label class="toggle-label" for="roscoModeBoard">${_('Digital whiteboard mode')}.</label>
+                                    ${edition.common.getHelpTooltip(_('Show buttons to mark an answer as correct or incorrect, or move on, when playing together on a digital whiteboard.'))}
                                 </div>
-                            </div>
-                    </fieldset>
-                    <fieldset class="exe-fieldset">
-                        <legend><a href="#">${_('Words')}</a></legend>
-                        <div id="roscoDataWord">
-                            <div class="exe-idevice-info">${wordInstructions}</div>
-                            ${this.getWords().join('')}
-                        </div>
-                    </fieldset>
-                    ${$exeDevicesEdition.iDevice.common.getTextFieldset('after')}
-                </div>
-                ${$exeDevicesEdition.iDevice.gamification.itinerary.getTab()}
-                ${$exeDevicesEdition.iDevice.gamification.scorm.getTab(path)}
-                ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
-                ${$exeDevicesEdition.iDevice.gamification.share.getTab(true, 1, true)}
-                ${$exeDevicesEdition.iDevice.gamification.share.getTabIA(1)}
+                            </div>`,
+            html = `
+            <div id="roscoIdeviceForm">
+                ${edition.common.getIdeviceDescription(
+                    _('Create activities in which students are given a definition and they have to guess the word that starts with a letter or contains a letter.'),
+                    'https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe40/html/rosco.html',
+                )}
+                ${edition.tabs.getHtml('roscoIdeviceForm', {
+                    path: path,
+                    info: { contents: wordInstructions },
+                    instructions: c_('Observe the letters, identify and fill in the missing words.'),
+                    options: options,
+                    contents: `<div id="roscoDataWord">${this.getWords().join('')}</div>`,
+                    passwords: true,
+                    after: true,
+                    grading: true,
+                    texts: this.ci18n,
+                    share: { type: 1 },
+                })}
             </div>
         `;
 
         this.ideviceBody.innerHTML = html;
-        $exeDevicesEdition.iDevice.tabs.init('roscoIdeviceForm');
-        $exeDevicesEdition.iDevice.gamification.scorm.init();
+        edition.tabs.bind('roscoIdeviceForm');
+        edition.gamification.scorm.init();
 
         this.loadPreviousValues();
     },
@@ -268,7 +272,6 @@ var $exeDevice = {
             );
             if (swords.length > 0) {
                 $exeDevice.updateImportFields(swords);
-                //$('.exe-form-tabs li:first-child a').click();
             } else {
                 eXe.app.alert(_('Sorry, wrong file format'));
             }
@@ -315,11 +318,11 @@ var $exeDevice = {
         $('#roscoTimeShowSolution').val(dataGame.timeShowSolution);
         $('#roscoModeBoard').prop('checked', dataGame.modeBoard);
         $('#roscoTimeShowSolution').prop('disabled', !dataGame.showSolution);
-        $exeDevicesEdition.iDevice.gamification.progressBar.setValues({
+        $exeIDevicesEdition.iDevice.gamification.progressBar.setValues({
             evaluation: dataGame.evaluation,
             evaluationID: dataGame.evaluationID,
         });
-        $exeDevicesEdition.iDevice.gamification.passScore.setValues({
+        $exeIDevicesEdition.iDevice.gamification.passScore.setValues({
             passScoreMode: dataGame.passScoreMode,
             passScoreCustom: dataGame.passScoreCustom,
         });
@@ -441,11 +444,11 @@ var $exeDevice = {
             $(this).css('background-color', color);
         });
 
-        $exeDevicesEdition.iDevice.gamification.itinerary.setValues(
+        $exeIDevicesEdition.iDevice.gamification.itinerary.setValues(
             dataGame.itinerary
         );
 
-        $exeDevicesEdition.iDevice.gamification.scorm.setValues(
+        $exeIDevicesEdition.iDevice.gamification.scorm.setValues(
             dataGame.isScorm,
             dataGame.textButtonScorm,
             dataGame.repeatActivity,
@@ -514,7 +517,7 @@ var $exeDevice = {
                 $('#eXeIdeviceTextAfter').val(textAfter);
             }
 
-            $exeDevicesEdition.iDevice.gamification.common.setLanguageTabValues(
+            $exeIDevicesEdition.iDevice.gamification.common.setLanguageTabValues(
                 dataGame.msgs
             );
         }
@@ -654,7 +657,7 @@ var $exeDevice = {
                         this.naturalWidth,
                         this.naturalHeight
                     );
-                    $exeDevice.drawImage(this, mData);
+                    $exeIDevicesEdition.iDevice.common.drawImage(this, mData);
                     image.attr('alt', alt).show();
                     $cursor.show();
                     $noImage.hide();
@@ -675,24 +678,6 @@ var $exeDevice = {
                 }
                 return false;
             });
-    },
-
-    drawImage: function (image, mData) {
-        $(image).css({
-            left: `${mData.x}px`,
-            top: `${mData.y}px`,
-            width: `${mData.w}px`,
-            height: `${mData.h}px`,
-        });
-    },
-
-    escapeHtml: function (string) {
-        return String(string)
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;')
-            .replace(/'/g, '&#39;');
     },
 
     save: function () {
@@ -724,7 +709,7 @@ var $exeDevice = {
 
         const linksImages = $exeDevice.createlinksImage(dataGame.wordsGame),
             linksAudios = $exeDevice.createlinksAudio(dataGame.wordsGame),
-            textAfter = tinymce.editors[1].getContent();
+            textAfter = tinymce.get('eXeIdeviceTextAfter').getContent();
 
         let html = '<div class="rosco-IDevice">';
         html += `<div class="game-evaluation-ids js-hidden" data-id="${$exeDevice.getIdeviceID()}" data-evaluationb="${dataGame.evaluation}" data-evaluationid="${dataGame.evaluationID}"></div>`;
@@ -754,7 +739,7 @@ var $exeDevice = {
     validateAlt: function () {
         $exeDevice.accesibilityIsOk = true;
 
-        const clear = $exeDevice.removeTags;
+        const clear = $exeIDevicesEdition.iDevice.common.removeTags;
         let words = [],
             alts = [],
             urls = [];
@@ -777,7 +762,7 @@ var $exeDevice = {
             return true;
         }
 
-        $exeDevicesEdition.iDevice.gamification.helpers.stopSound();
+        $exeIDevicesEdition.iDevice.gamification.helpers.stopSound();
 
         words.every((word, index) => {
             if (word !== '' && urls[index] !== '' && alts[index] === '') {
@@ -824,10 +809,6 @@ var $exeDevice = {
             html += linkAudio;
         });
         return html;
-    },
-
-    removeTags: function (str) {
-        return $('<div></div>').html(str).text();
     },
 
     startContains: function (letter, word, type) {
@@ -949,10 +930,11 @@ var $exeDevice = {
     },
 
     validateData: function () {
-        const clear = $exeDevice.removeTags,
+        const clear = $exeIDevicesEdition.iDevice.common.removeTags,
             msgs = $exeDevice.msgs,
-            instructions = tinymce.editors[0].getContent(),
-            textAfter = tinymce.editors[1].getContent(),
+            // By id: their order among the editors follows the tabs.
+            instructions = tinymce.get('eXeGameInstructions').getContent(),
+            textAfter = tinymce.get('eXeIdeviceTextAfter').getContent(),
             showMinimize = $('#roscoShowMinimize').is(':checked'),
             showSolution = $('#roscoShowSolution').is(':checked'),
             modeBoard = $('#roscoModeBoard').is(':checked'),
@@ -961,12 +943,12 @@ var $exeDevice = {
             durationGame = parseInt(clear($('#roscoDuration').val())) || 0,
             numberTurns = parseInt(clear($('#roscoNumberTurns').val())) || 0,
             itinerary =
-                $exeDevicesEdition.iDevice.gamification.itinerary.getValues(),
+                $exeIDevicesEdition.iDevice.gamification.itinerary.getValues(),
             caseSensitive = $('#roscoCaseSensitive').is(':checked'),
             progressBar =
-                $exeDevicesEdition.iDevice.gamification.progressBar.getValues(),
+                $exeIDevicesEdition.iDevice.gamification.progressBar.getValues(),
             passScore =
-                $exeDevicesEdition.iDevice.gamification.passScore.getValues(),
+                $exeIDevicesEdition.iDevice.gamification.passScore.getValues(),
             id = $exeDevice.getIdeviceID();
 
         if (!itinerary) return false;
@@ -1090,7 +1072,7 @@ var $exeDevice = {
             });
         }
 
-        const scorm = $exeDevicesEdition.iDevice.gamification.scorm.getValues();
+        const scorm = $exeIDevicesEdition.iDevice.gamification.scorm.getValues();
 
         return {
             typeGame: 'Rosco',
@@ -1187,7 +1169,7 @@ var $exeDevice = {
             });
             if (word && questionText) {
                 words.push(
-                    `${$exeDevice.removeTags(word)}#${$exeDevice.removeTags(questionText)}`
+                    `${$exeIDevicesEdition.iDevice.common.removeTags(word)}#${$exeIDevicesEdition.iDevice.common.removeTags(questionText)}`
                 );
             }
         });
@@ -1199,7 +1181,6 @@ var $exeDevice = {
             );
             if (swords.length > 0) {
                 $exeDevice.updateImportFields(swords);
-                //$('.exe-form-tabs li:first-child a').click();
             } else {
                 eXe.app.alert(_('Sorry, wrong file format'));
             }
@@ -1237,7 +1218,6 @@ var $exeDevice = {
             );
             if (swords.length > 0) {
                 $exeDevice.updateImportFields(swords);
-                //$('.exe-form-tabs li:first-child a').click();
             } else {
                 eXe.app.alert(_('Sorry, wrong file format'));
             }
@@ -1275,10 +1255,9 @@ var $exeDevice = {
 
         game.id = $exeDevice.getIdeviceID();
         $exeDevice.updateFieldGame(game);
-        tinymce.editors[0].setContent(game.instructions);
+        tinymce.get('eXeGameInstructions').setContent(game.instructions);
         const tAfter = game.textAfter || '';
-        tinymce.editors[1].setContent(unescape(tAfter));
-        //$('.exe-form-tabs li:first-child a').click();
+        tinymce.get('eXeIdeviceTextAfter').setContent(unescape(tAfter));
     },
 
     addEvents: function () {
@@ -1352,7 +1331,7 @@ var $exeDevice = {
                 if (!selectedFile) {
                     eXe.app.alert(_('Supported formats') + ': mp3, ogg, wav');
                 } else if (selectedFile.length > 4) {
-                    $exeDevicesEdition.iDevice.gamification.helpers.playSound(selectedFile);
+                    $exeIDevicesEdition.iDevice.gamification.helpers.playSound(selectedFile);
                 }
 
                 // Sincroniza icono activo/inactivo
@@ -1383,7 +1362,7 @@ var $exeDevice = {
             if (!selectedFile) {
                 eXe.app.alert(_('Supported formats') + ": mp3', 'ogg', 'wav'");
             } else if (selectedFile.length > 4) {
-                $exeDevicesEdition.iDevice.gamification.helpers.playSound(selectedFile);
+                $exeIDevicesEdition.iDevice.gamification.helpers.playSound(selectedFile);
             }
         });
 
@@ -1416,7 +1395,7 @@ var $exeDevice = {
                         parseFloat($panel.find('.roscoXImageEdition').val()) ||
                         0;
 
-                    $exeDevicesEdition.iDevice.gamification.helpers.stopSound();
+                    $exeIDevicesEdition.iDevice.gamification.helpers.stopSound();
                     this.showImage(img, url, x, y, alt, 0);
 
                     // Sincroniza icono activo/inactivo también aquí
@@ -1446,7 +1425,7 @@ var $exeDevice = {
 
         $('#roscoDataWord a.roscoLinkClose').on('click', function (e) {
             e.preventDefault();
-            $exeDevicesEdition.iDevice.gamification.helpers.stopSound();
+            $exeIDevicesEdition.iDevice.gamification.helpers.stopSound();
             const $container = $(this).closest('.roscoWordMutimediaEdition');
             const hasImage =
                 $.trim($container.find('.roscoURLImageEdition').val() || '')
@@ -1597,11 +1576,7 @@ var $exeDevice = {
             window.FileList &&
             window.Blob
         ) {
-            $('#eXeGameExportImport .exe-field-instructions')
-                .eq(0)
-                .text(_('Supported formats') + ': txt, xml(Moodle)');
             $('#eXeGameExportImport').show();
-            $('#eXeGameImportGame').attr('accept', '.txt, .xml');
             $('#eXeGameImportGame').on('change', (e) => {
                 const file = e.target.files[0];
                 if (!file) {
@@ -1645,32 +1620,29 @@ var $exeDevice = {
             $('#eXeGameExportImport').hide();
         }
 
-        $exeDevicesEdition.iDevice.gamification.progressBar.addEvents();
-        $exeDevicesEdition.iDevice.gamification.passScore.addEvents();
+        $exeIDevicesEdition.iDevice.gamification.progressBar.addEvents();
+        $exeIDevicesEdition.iDevice.gamification.passScore.addEvents();
 
         this.$lifecycle.on(document, 'click', '.toggle-item', function (e) {
-            if ($(e.target).is('input, label, a, button')) return;
+            // The controls live inside the row: they must not switch it.
+            const own = e.target.closest('input, label, a, button');
+            if (own && e.currentTarget.contains(own)) return;
             const id = $(e.currentTarget).attr('idevice-id');
             if (!id) return;
             const $input = $('#' + id);
-            if ($input.length) {
+            // A locked switch stays as it is.
+            if ($input.length && !$input.prop('disabled')) {
                 $input
                     .prop('checked', !$input.is(':checked'))
                     .trigger('change');
             }
         });
 
-        $exeDevicesEdition.iDevice.gamification.itinerary.addEvents();
-        $exeDevicesEdition.iDevice.gamification.share.addEvents(
+        $exeIDevicesEdition.iDevice.gamification.itinerary.addEvents();
+        $exeIDevicesEdition.iDevice.gamification.share.addEvents(
             1,
             $exeDevice.insertWords
         );
-
-        //eXe 3.0 Dismissible messages
-        $('.exe-block-dismissible .exe-block-close').click(function () {
-            $(this).parent().fadeOut();
-            return false;
-        });
     },
 
     exportQuestions: function () {
@@ -1680,7 +1652,7 @@ var $exeDevice = {
         const lines = this.getLinesQuestions(dataGame.wordsGame);
         const fileContent = lines.join('\n');
         const newBlob = new Blob([fileContent], { type: 'text/plain' });
-        return $exeDevicesEdition.iDevice.gamification.share.downloadBlob(
+        return $exeIDevicesEdition.iDevice.gamification.share.downloadBlob(
             newBlob,
             `${_('A-Z quiz')}.txt`,
             'roscoIdeviceForm'
@@ -1826,7 +1798,6 @@ var $exeDevice = {
             );
             if (swords.length > 0) {
                 $exeDevice.updateImportFields(swords);
-                //$('.exe-form-tabs li:first-child a').click();
             } else {
                 eXe.app.alert(_('Sorry, wrong file format'));
             }
@@ -1886,7 +1857,7 @@ var $exeDevice = {
     },
 
     playSound: function (selectedFile) {
-        $exeDevicesEdition.iDevice.gamification.helpers.stopSound();
+        $exeIDevicesEdition.iDevice.gamification.helpers.stopSound();
         const selectFile =
             $exeDevices.iDevice.gamification.media.extractURLGD(selectedFile);
 
@@ -1917,7 +1888,7 @@ var $exeDevice = {
         const blob = new Blob([JSON.stringify(dataGame)], {
             type: 'text/plain',
         });
-        return $exeDevicesEdition.iDevice.gamification.share.downloadBlob(
+        return $exeIDevicesEdition.iDevice.gamification.share.downloadBlob(
             blob,
             _('Activity') + '-Rosco.json'
         );

@@ -1,5 +1,15 @@
 import { test, expect } from '../../fixtures/auth.fixture';
-import { waitForAppReady, reloadPage, gotoWorkarea, editIdevice } from '../../helpers/workarea-helpers';
+import {
+    waitForAppReady,
+    reloadPage,
+    gotoWorkarea,
+    editIdevice,
+    dismissVersionNotice,
+    addIdevice,
+    saveProject,
+    selectFirstPage,
+} from '../../helpers/workarea-helpers';
+import { waitForEditor } from '../../helpers/editor-helpers';
 import { WorkareaPage } from '../../pages/workarea.page';
 import type { Page } from '@playwright/test';
 
@@ -174,9 +184,12 @@ async function typeInTinyMCE(page: Page, text: string): Promise<void> {
 }
 
 /**
- * Helper to select a UDL type
+ * Helper to select a UDL type, above the blocks in the Content tab
  */
 async function selectUdlType(page: Page, type: 'engagement' | 'representation' | 'expression'): Promise<void> {
+    // The form has no description above its tabs, so the notice of a development
+    // version sits over them.
+    await dismissVersionNotice(page);
     const typeSelector = page.locator(`#udlContentTypeOptions input[value="${type}"]`);
     await typeSelector.click();
 }
@@ -672,4 +685,62 @@ test.describe('UDL Content iDevice', () => {
             }
         });
     });
+});
+
+test('UDL content leads its blocks with the type, and keeps it with its blocks and texts', async ({
+    authenticatedPage: page,
+    createProject,
+}) => {
+    // Saving and reloading the project takes most of a minute in Firefox.
+    test.setTimeout(90_000);
+    const uuid = await createProject(page, 'UDL content type and texts');
+    await gotoWorkarea(page, uuid);
+    await waitForAppReady(page);
+    await selectFirstPage(page);
+    // The form has no description above its tabs, so the notice of a development
+    // version would sit over them.
+    await dismissVersionNotice(page);
+    await addIdevice(page, 'udl-content');
+    const id = await page.locator('.idevice_node.udl-content').first().getAttribute('id');
+    expect(id).toBeTruthy();
+    await waitForEditor(page, 'udlContentFormTxt-0');
+    await expect(page.locator('#udlContentEditorWrapper-tab-contents')).toHaveAttribute('aria-selected', 'true');
+    await expect(page.locator('[data-exe-share]')).toHaveCount(0);
+    // The type leads the blocks in Content, as in main: there is no Options tab.
+    await expect(page.locator('#udlContentEditorWrapper-tabs [data-exe-tab]')).toHaveCount(2);
+    await expect(page.locator('#udlContentEditorWrapper-panel-contents #udlContentTypeOptions')).toBeVisible();
+    await page.locator('label[for="udlContentType-expression"]').click();
+    await expect(page.locator('label[for="udlContentType-expression"]')).toHaveClass(/active/);
+
+    await page.locator('#udlContentEditorWrapper-tab-texts').click();
+    await page.locator('#ci18n_simplified').fill('Plain words');
+    await page.locator('#udlContentEditorWrapper-tab-contents').click();
+    await page.evaluate(() => (window as any).tinymce.get('udlContentFormTxt-0').setContent('<p>The main text</p>'));
+    await page.locator('#udlContentFormTabs-0 .udl-a-1').click();
+    await expect(page.locator('#udlContentFormTabs-0 .udl-a-1')).toHaveClass(/active/);
+    await page.evaluate(() => (window as any).tinymce.get('udlContentFormTxt-0').setContent('<p>The easy text</p>'));
+    await page.locator('#udlContentFormBlockButtonTxt-0').fill('Read more');
+
+    await saveIdevice(page);
+    const stored = await page.evaluate(componentId => {
+        const component = (window as any).eXeLearning.app.project._yjsBridge.structureBinding.getComponent(componentId);
+        return component.htmlContent as string;
+    }, id!);
+    expect(stored).toContain('exe-udlContent-expression');
+    expect(stored).toContain('<h2>Plain words</h2>');
+    expect(stored).toContain('The easy text');
+
+    await saveProject(page);
+    await reloadPage(page);
+    await dismissVersionNotice(page);
+    await selectFirstPage(page);
+    await editIdevice(page, id!);
+    await waitForEditor(page, 'udlContentFormTxt-0');
+    await expect(page.locator('#udlContentFormBlockButtonTxt-0')).toHaveValue('Read more');
+    await expect
+        .poll(() => page.evaluate(() => (window as any).tinymce.get('udlContentFormTxt-0').getContent()))
+        .toContain('The main text');
+    await expect(page.locator('#udlContentType-expression')).toBeChecked();
+    await page.locator('#udlContentEditorWrapper-tab-texts').click();
+    await expect(page.locator('#ci18n_simplified')).toHaveValue('Plain words');
 });

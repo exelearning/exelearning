@@ -12,6 +12,7 @@ import { readFileSync } from 'fs';
 
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
+import { runInThisContext } from 'node:vm';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -80,7 +81,7 @@ describe('quick-questions iDevice edition', () => {
             // so rendering them again would show each control twice.
             expect(source).not.toContain('passScore.getContents(');
             expect(source).not.toContain('progressBar.getContents(');
-            expect(source).toContain('gamification.scorm.getTab(');
+            expect(source).toMatch(/tabs\.getHtml\([\s\S]*grading: true/);
         });
 
         it('restores the control when the iDevice is reopened', () => {
@@ -385,3 +386,499 @@ describe('quick-questions minimum score text', () => {
     expect(device.ci18n.msgPassScore).toBe('Minimum score needed to pass this activity: %s');
   });
 });
+
+describe('quick-questions edition: shared form tabs and feedback', () => {
+  const PATH = '/files/perm/idevices/base/quick-questions/edition/';
+  const edition = () => global.$exeIDevicesEdition.iDevice;
+  const feedback = () => edition().gamification.feedback;
+  const tabNames = () =>
+    [...document.querySelectorAll('#gameQEIdeviceForm-tabs [data-exe-tab]')].map((tab) =>
+      tab.getAttribute('data-exe-tab')
+    );
+  const panel = (name) => document.getElementById(`gameQEIdeviceForm-panel-${name}`);
+  const game = (overrides = {}) => ({
+    typeGame: 'Quext',
+    itinerary: {
+      showClue: false,
+      clueGame: '',
+      percentageClue: 40,
+      showCodeAccess: false,
+      codeAccess: '',
+      messageCodeAccess: '',
+    },
+    questionsGame: [
+      {
+        type: 0,
+        time: 0,
+        numberOptions: 4,
+        url: '',
+        x: 0,
+        y: 0,
+        author: '',
+        alt: '',
+        soundVideo: 1,
+        imageVideo: 1,
+        iVideo: 0,
+        fVideo: 0,
+        eText: '',
+        quextion: '',
+        options: ['', '', '', ''],
+        solution: 0,
+        silentVideo: 0,
+        tSilentVideo: 0,
+        audio: '',
+        msgHit: '',
+        msgError: '',
+      },
+    ],
+    gameMode: 1,
+    feedBack: false,
+    percentajeFB: 100,
+    isScorm: 0,
+    textButtonScorm: 'Save score',
+    ...overrides,
+  });
+  const exportHelpers = {
+    isJsonString: (text) => {
+      try {
+        return JSON.parse(text);
+      } catch {
+        return false;
+      }
+    },
+    decrypt: (text) => text,
+    encrypt: (text) => text,
+    secondsToHour: (sec) => '00:00:00',
+    hourToSeconds: (time) => 0,
+  };
+  let device;
+  let tinymceInit;
+  let tinymceGet;
+  let editorReady;
+  let previousApp;
+  let tooltips;
+
+  beforeEach(() => {
+    global.$exeDevice = undefined;
+    previousApp = global.eXeLearning.app;
+    editorReady = undefined;
+    tooltips = new Map();
+    global.eXeLearning.app = {
+      ...previousApp,
+      common: {
+        initTooltips: vi.fn((scope) => {
+          scope.querySelectorAll('.exe-app-tooltip').forEach((button) => {
+            if (!tooltips.has(button)) tooltips.set(button, { hide: vi.fn(), dispose: vi.fn() });
+          });
+        }),
+      },
+    };
+    vi.stubGlobal('bootstrap', { Tooltip: { getInstance: (button) => tooltips.get(button) } });
+    Object.assign(global.$exeDevices.iDevice.gamification.helpers, exportHelpers);
+    let text = '';
+    const editor = {
+      initialized: true,
+      getContent: () => text,
+      setContent: (html) => (text = html),
+      hide: vi.fn(),
+      show: vi.fn(),
+      on: (event, callback) => {
+        if (event === 'init') editorReady = callback;
+      },
+    };
+    tinymceGet = vi.spyOn(global.tinymce, 'get').mockImplementation((id) => id === 'quextEText' ? editor : null);
+    tinymceInit = vi.spyOn(global.tinymce, 'init').mockImplementation((config) => {
+      config.setup(editor);
+      return Promise.resolve([editor]);
+    });
+    document.body.innerHTML = '<div id="quextBody"></div>';
+    const filename = join(__dirname, 'quick-questions.js');
+    runInThisContext(readFileSync(filename, 'utf8'), { filename });
+    device = global.$exeDevice;
+    global.attachEditionLifecycle(device);
+    vi.spyOn(device, 'loadYoutubeApi').mockImplementation(() => {});
+    vi.spyOn(device, 'enableForm');
+    vi.spyOn(device, 'loadPreviousValues');
+    vi.spyOn(device, 'addEvents');
+    device.init(document.getElementById('quextBody'), {}, PATH);
+    editorReady();
+  });
+
+  afterEach(() => {
+    device.$lifecycle?.destroy();
+    global.eXeLearning.app = previousApp;
+    vi.unstubAllGlobals();
+    tinymceInit.mockRestore();
+    tinymceGet.mockRestore();
+    Object.keys(exportHelpers).forEach((name) => delete global.$exeDevices.iDevice.gamification.helpers[name]);
+    global.$exeDevice = undefined;
+    document.body.innerHTML = '';
+  });
+
+  it('lays the form out in the shared tabs, and opens on its questions', () => {
+    expect(device.enableForm).toHaveBeenCalledOnce();
+    expect(device.loadPreviousValues).toHaveBeenCalledOnce();
+    expect(device.addEvents).toHaveBeenCalledOnce();
+    expect(tabNames()).toEqual([
+      'instructions',
+      'options',
+      'contents',
+      'passwords',
+      'feedback',
+      'after',
+      'grading',
+      'texts',
+    ]);
+    expect(document.getElementById('gameQEIdeviceForm-tab-contents').textContent.trim()).toBe('Activities');
+    expect(panel('contents').classList.contains('active')).toBe(true);
+  });
+
+  it('puts each part of the form in its tab', () => {
+    expect(panel('instructions').querySelector('#eXeGameInstructions').value).toBe(
+      'Choose the right answer'
+    );
+    expect(panel('options').querySelector('#quextEOptions')).not.toBeNull();
+    expect(panel('options').querySelector('#quextEVIDiv #quextEVILocal')).not.toBeNull();
+    expect(panel('contents').querySelector('#quextEVIDiv')).toBeNull();
+    expect(panel('contents').querySelector('#quextEPanel')).not.toBeNull();
+    expect(panel('passwords').querySelector('#eXeGameShowClue')).not.toBeNull();
+    expect(panel('after').querySelector('#eXeIdeviceTextAfter')).not.toBeNull();
+    expect(panel('grading').querySelector('.exe-progress-report-wrapper')).not.toBeNull();
+    expect(panel('texts').querySelector('#ci18n_msgSubmit').value).toBe('Submit');
+  });
+
+  it('provides one accessible information button at the end of each options row', () => {
+    const options = panel('options');
+    const rows = [...options.querySelector('#quextEOptions').children];
+    expect(rows).toHaveLength(10);
+    for (const row of rows) {
+      const buttons = row.querySelectorAll('.exe-idevice-help');
+      expect(buttons).toHaveLength(1);
+      const help = buttons[0];
+      expect(row.lastElementChild.contains(help)).toBe(true);
+      expect(help.tagName).toBe('BUTTON');
+      expect(help.type).toBe('button');
+      expect(help.getAttribute('aria-label')).toMatch(/^Information about \S/);
+      expect(help.title).toBe('Information');
+      expect(document.getElementById(help.getAttribute('aria-controls')).textContent.length).toBeGreaterThan(30);
+      expect(help.querySelector('[aria-hidden="true"].info-icon-solid-green')).not.toBeNull();
+      const controls = [...row.querySelectorAll('input, select')];
+      const checked = controls.map((control) => control.checked);
+      help.click();
+      expect(controls.map((control) => control.checked)).toEqual(checked);
+    }
+    expect(global.eXeLearning.app.common.initTooltips).toHaveBeenCalledWith(
+      document.getElementById('gameQEIdeviceForm-panels')
+    );
+  });
+
+  it('explains every control in each combined options row', () => {
+    const groups = [
+      ['quextEQuestionsRamdon', 'Random questions', 'Random options'],
+      ['quextEShowSolution', 'Show solutions', 'Show solution time (seconds)'],
+      ['quextETypeActivity', 'From 0 to 10', 'Points and lives', 'No score'],
+      ['quextEUseLives', 'Use lives', 'Number of lives'],
+    ];
+    for (const [id, ...labels] of groups) {
+      const row = [...document.querySelector('#quextEOptions').children].find((item) => item.querySelector(`#${id}`));
+      const text = row.querySelector('.help-content').textContent;
+      for (const label of labels) expect(text).toContain(`${label}:`);
+      expect(text.split('\n\n')).toHaveLength(labels.length);
+    }
+  });
+
+  it('handles option changes after TinyMCE initializes without toggling them from help', () => {
+    const checkbox = document.getElementById('quextEShowMinimize');
+    const row = checkbox.closest('.toggle-item');
+    row.click();
+    expect(checkbox.checked).toBe(true);
+    row.querySelector('.exe-idevice-help').click();
+    expect(checkbox.checked).toBe(true);
+    row.click();
+    expect(checkbox.checked).toBe(false);
+    document.querySelector('input[name="qxtgamemode"][value="2"]').click();
+    expect(feedback().isRequired()).toBe(true);
+  });
+
+  it('does not toggle an option when its open explanation is clicked', () => {
+    // The explanation opens inside the row, so a click on its text reaches
+    // the row's own handler too.
+    for (const row of document.querySelector('#quextEOptions').children) {
+      const controls = [...row.querySelectorAll('input, select')];
+      const checked = controls.map((control) => control.checked);
+      row.querySelector('.exe-idevice-help').click();
+      row.querySelector('.help-content').click();
+      expect(controls.map((control) => control.checked)).toEqual(checked);
+    }
+  });
+
+  it('escapes translated help text in the explanation', () => {
+    const text = 'Use "Accept" <once> & keep the learner\'s answer.';
+    const container = document.createElement('div');
+    container.innerHTML = edition().common.getHelpTooltip(text);
+    const button = container.querySelector('button');
+    expect(button.title).toBe('Information');
+    expect(container.querySelector('.help-content').textContent).toBe(text);
+    expect(container.querySelector('once')).toBeNull();
+  });
+
+  it('disposes all option tooltips when the edition closes', () => {
+    expect(tooltips.size).toBe(19); // Options, the six shared Grading helpers and the three links of Questions.
+    device.$lifecycle.destroy();
+    for (const tooltip of tooltips.values()) {
+      expect(tooltip.dispose).toHaveBeenCalledTimes(1);
+    }
+  });
+
+  it('offers Import, Export and Create with AI on its Questions tab', () => {
+    const links = [...panel('contents').querySelectorAll('[data-exe-share]')];
+
+    expect(links.map((link) => link.getAttribute('data-exe-share'))).toEqual(['import', 'ai']);
+    expect(document.querySelector('body > #eXeShareModal-import #eXeGameImportGame')).not.toBeNull();
+    // Export has no window: it saves the file at once.
+    expect(panel('contents').querySelector('.exe-share-tools #eXeGameExportQuestions')).not.toBeNull();
+    expect(document.querySelector('body > #eXeShareModal-ai #eXeEPromptArea')).not.toBeNull();
+  });
+
+  it('leaves the feedback to the shared block, without controls of its own', () => {
+    expect(panel('feedback').querySelector('#eXeGameHasFeedBack')).not.toBeNull();
+    expect(document.getElementById('quextEHasFeedBack')).toBeNull();
+    expect(document.getElementById('quextEPercentajeFB')).toBeNull();
+    expect(document.getElementById('quextEFeedBackEditor')).toBeNull();
+  });
+
+  it('switches tabs when one is clicked', () => {
+    document.getElementById('gameQEIdeviceForm-tab-options').click();
+
+    expect(panel('options').classList.contains('active')).toBe(true);
+    expect(panel('contents').classList.contains('active')).toBe(false);
+  });
+
+  it('makes the feedback compulsory in "No score" mode only', () => {
+    device.updateGameMode(2, false);
+    expect(feedback().isRequired()).toBe(true);
+    expect(document.getElementById('eXeGameHasFeedBack').disabled).toBe(true);
+
+    device.updateGameMode(0, true);
+    expect(feedback().isRequired()).toBe(false);
+    expect(document.getElementById('eXeGameHasFeedBack').disabled).toBe(false);
+    expect(document.getElementById('quextEUseLives').disabled).toBe(false);
+  });
+
+  it('restores the feedback and its mode with the game', () => {
+    // Saved with its message: without one, the feedback loads off.
+    $exeIDevicesEdition.iDevice.gamification.feedback.setText('<p>Well done</p>');
+    device.updateFieldGame(game({ gameMode: 2, feedBack: false, percentajeFB: 60 }));
+
+    expect(feedback().isRequired()).toBe(true);
+    expect(document.getElementById('eXeGamePercentajeFB').value).toBe('60');
+
+    device.updateFieldGame(game({ gameMode: 1, feedBack: true, percentajeFB: 80 }));
+
+    expect(feedback().isRequired()).toBe(false);
+    expect(document.getElementById('eXeGameHasFeedBack').checked).toBe(true);
+    expect(document.getElementById('eXeGamePercentajeFB').value).toBe('80');
+  });
+
+  it('loads the saved message into the shared editor', () => {
+    device.idevicePreviousData = `
+      <div class="quext-IDevice">
+        <div class="quext-version js-hidden">2</div>
+        <div class="quext-feedback-game"><p>Well done</p></div>
+        <div class="quext-DataGame js-hidden">${JSON.stringify(game({ feedBack: true }))}</div>
+      </div>`;
+    vi.spyOn(device, 'showQuestion').mockImplementation(() => {});
+
+    device.loadPreviousValues();
+
+    expect(feedback().getText()).toBe('<p>Well done</p>');
+    expect(document.getElementById('eXeGameHasFeedBack').checked).toBe(true);
+  });
+
+  describe('saving', () => {
+    let editors;
+    let tinymceGet;
+
+    beforeEach(() => {
+      editors = {
+        eXeGameInstructions: '<p>Instructions</p>',
+        eXeIdeviceTextAfter: '',
+        eXeGameFeedBackEditor: '',
+      };
+      tinymceGet = vi.spyOn(global.tinymce, 'get').mockImplementation((id) =>
+        id in editors ? { initialized: true, getContent: () => editors[id], setContent: (html) => (editors[id] = html) } : null
+      );
+      device.questionsGame = [{ ...device.getCuestionDefault(), quextion: 'Question 1', options: ['A', 'B', 'C', 'D'], solution: 0 }];
+    });
+
+    afterEach(() => {
+      tinymceGet.mockRestore();
+    });
+
+    it('saves the feedback values the export reads', () => {
+      // Saved with its message: without one, the feedback loads off.
+      editors.eXeGameFeedBackEditor = '<p>Bravo</p>';
+      device.updateFieldGame(game({ questionsGame: device.questionsGame, feedBack: true, percentajeFB: 70 }));
+      vi.spyOn(device, 'validateQuestion').mockReturnValue(true);
+
+      const data = device.validateData();
+
+      expect(data.feedBack).toBe(true);
+      expect(data.percentajeFB).toBe(70);
+      expect(unescape(data.textFeedBack)).toBe('<p>Bravo</p>');
+      expect(device.save()).toContain('<div class="quext-feedback-game"><p>Bravo</p></div>');
+    });
+
+    it('keeps the lives as they were saved', () => {
+      vi.spyOn(device, 'validateQuestion').mockReturnValue(true);
+
+      device.updateFieldGame(game({ questionsGame: device.questionsGame, gameMode: 0, useLives: false, numberLives: 5 }));
+      expect(document.getElementById('quextEUseLives').checked).toBe(false);
+      expect(document.getElementById('quextENumberLives').disabled).toBe(true);
+      expect(device.validateData()).toMatchObject({ useLives: false, numberLives: 5 });
+
+      device.updateFieldGame(game({ questionsGame: device.questionsGame, gameMode: 0, useLives: true, numberLives: 2 }));
+      expect(document.getElementById('quextEUseLives').checked).toBe(true);
+      expect(document.getElementById('quextENumberLives').disabled).toBe(false);
+      expect(device.validateData()).toMatchObject({ useLives: true, numberLives: 2 });
+    });
+
+    it('offers three lives for a game saved without them', () => {
+      device.updateFieldGame(game({ questionsGame: device.questionsGame, gameMode: 0 }));
+
+      expect(document.getElementById('quextENumberLives').value).toBe('3');
+    });
+
+    it('asks for the message in "No score" mode', () => {
+      device.updateFieldGame(game({ questionsGame: device.questionsGame, gameMode: 2 }));
+
+      expect(device.validateData()).toBe(false);
+      expect(global.eXe.app.alert).toHaveBeenCalledWith('Message to display when passing the game');
+    });
+  });
+
+  describe('adding questions to the one on screen', () => {
+    // The author typed it in a new activity: it is on screen, not in the list yet.
+    const typeOnScreen = (options) => {
+      device.questionsGame = [{ ...device.getCuestionDefault(), quextion: 'Capital of France?', options, solution: 0 }];
+      device.active = 0;
+      device.showQuestion(0);
+      device.questionsGame = [device.getCuestionDefault()];
+    };
+    const questions = () => device.questionsGame.map((item) => item.quextion);
+
+    it('keeps it when it is complete', () => {
+      typeOnScreen(['Paris', 'Rome', 'Madrid', 'Berlin']);
+
+      device.insertQuestions(['1#Capital of Italy?#Paris#Rome#Madrid#Berlin']);
+
+      expect(questions()).toEqual(['Capital of France?', 'Capital of Italy?']);
+    });
+
+    it('keeps it when a copied question is pasted', () => {
+      typeOnScreen(['Paris', 'Rome', 'Madrid', 'Berlin']);
+      device.typeEdit = 0;
+      device.clipBoard = {
+        ...device.getCuestionDefault(),
+        quextion: 'Capital of Italy?',
+        options: ['Paris', 'Rome', 'Madrid', 'Berlin'],
+        solution: 1,
+      };
+
+      device.pasteQuestion();
+
+      expect(questions()).toEqual(['Capital of France?', 'Capital of Italy?']);
+    });
+
+    it('leaves it out, without its warning, when it is incomplete', () => {
+      typeOnScreen(['Paris', '', '', '']);
+      global.eXe.app.alert.mockClear();
+
+      device.insertQuestions(['1#Capital of Italy?#Paris#Rome#Madrid#Berlin']);
+
+      expect(questions()).toEqual(['Capital of Italy?']);
+      expect(global.eXe.app.alert).not.toHaveBeenCalled();
+    });
+
+    it('leaves it out of a paste, without its warning, when it is incomplete', () => {
+      typeOnScreen(['Paris', '', '', '']);
+      device.typeEdit = 0;
+      device.clipBoard = {
+        ...device.getCuestionDefault(),
+        quextion: 'Capital of Italy?',
+        options: ['Paris', 'Rome', 'Madrid', 'Berlin'],
+        solution: 1,
+      };
+
+      global.eXe.app.alert.mockClear();
+      device.pasteQuestion();
+
+      expect(questions()).toContain('Capital of Italy?');
+      expect(global.eXe.app.alert).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('importing Moodle questions', () => {
+    const answer = ([fraction, text]) =>
+      `<answer fraction="${fraction}" format="moodle_auto_format"><text>${text}</text>` +
+      '<feedback format="html"><text></text></feedback></answer>';
+    // Moodle wraps the HTML in CDATA, which happy-dom does not read; escaped
+    // HTML has the same text in a browser.
+    const question = (type, text, answers) =>
+      `<question type="${type}"><questiontext format="html"><text>&lt;p&gt;${text}&lt;/p&gt;</text></questiontext>` +
+      `${answers.map(answer).join('')}</question>`;
+    const france = question('multichoice', 'Capital of France?', [
+      [0, 'Madrid'],
+      [100, 'Paris'],
+      [0, 'Rome'],
+      [0, 'Berlin'],
+    ]);
+    const importQuiz = (...questions) => {
+      device.questionsGame = [device.getCuestionDefault()];
+      device.importCuestionaryXML(`<?xml version="1.0" encoding="UTF-8"?><quiz>${questions.join('')}</quiz>`);
+    };
+    const imported = () =>
+      device.questionsGame.map((item) => [item.quextion, item.options.slice(0, item.numberOptions), item.solution]);
+
+    it('marks the answer worth 100% as the right one', () => {
+      importQuiz(
+        france,
+        question('truefalse', 'The Moon is a star.', [
+          [0, 'true'],
+          [100, 'false'],
+        ])
+      );
+
+      expect(imported()).toEqual([
+        ['Capital of France?', ['Madrid', 'Paris', 'Rome', 'Berlin'], 1],
+        ['The Moon is a star.', ['True', 'False'], 1],
+      ]);
+    });
+
+    it('leaves out a numerical question, which has no options to choose from', () => {
+      importQuiz(question('numerical', 'How much is 2 + 2?', [[100, '4']]), france);
+
+      expect(imported().map(([text]) => text)).toEqual(['Capital of France?']);
+    });
+
+    it('leaves out a question without exactly one answer worth 100%', () => {
+      importQuiz(
+        question('multichoice', 'Which numbers are prime?', [
+          [50, '2'],
+          [50, '3'],
+          [-100, '4'],
+          [-100, '9'],
+        ]),
+        question('multichoice', 'Which are capitals?', [
+          [100, 'Paris'],
+          [100, 'Rome'],
+          [0, 'Valencia'],
+        ]),
+        france
+      );
+
+      expect(imported().map(([text]) => text)).toEqual(['Capital of France?']);
+    });
+  });
+});
+

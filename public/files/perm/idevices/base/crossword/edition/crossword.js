@@ -156,221 +156,216 @@ var $exeDevice = {
 
     createForm: function () {
         const path = $exeDevice.idevicePath,
-            html = `
-        <div id="ccgmQEIdeviceForm">
-            ${$exeDevicesEdition.iDevice.common.getIdeviceDescription(
-                _('Create crossword-type activities'),
-                'https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe40/html/crucigrama.html',
-            )}
-            <div class="exe-form-tab" title="${_('General settings')}">
-                ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset(c_('Complete the following crossword puzzle.'))}
-                <fieldset class="exe-fieldset exe-fieldset-closed">
-                    <legend><a href="#">${_('Options')}</a></legend>
-                    <div>
-                        <div class="mb-3">
-                            <span class="toggle-item" role="switch" aria-checked="false">
-                                <span class="toggle-control">
-                                    <input type="checkbox" id="ccgmEShowMinimize" class="toggle-input" />
-                                    <span class="toggle-visual" aria-hidden="true"></span>
-                                </span>
-                                <label class="toggle-label" for="ccgmEShowMinimize">${_('Show minimized.')}</label>
+            edition = $exeIDevicesEdition.iDevice,
+            options = `
+                <div id="ccgmEOptions">
+                    <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
+                        <span class="toggle-item">
+                            <span class="toggle-control">
+                                <input type="checkbox" id="ccgmEShowMinimize" class="toggle-input" />
+                                <span class="toggle-visual" aria-hidden="true"></span>
                             </span>
-                        </div>
-                        <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
-                            <label for="ccgmETime" class="mb-0">${_('Time (minutes)')}:</label>
-                            <input type="number" name="ccgmETime" id="ccgmETime" value="0" min="0" max="59" class="form-control" style="width:6ch" /> 
-                        </div>
-                        <div class="mb-3">
-                            <span class="toggle-item" role="switch" aria-checked="true">
-                                <span class="toggle-control">
-                                    <input type="checkbox" checked id="ccgmEShowSolution" class="toggle-input" />
-                                    <span class="toggle-visual" aria-hidden="true"></span>
-                                </span>
-                                <label class="toggle-label" for="ccgmEShowSolution">${_('Show solutions')}.</label> 
+                            <label class="toggle-label" for="ccgmEShowMinimize">${_('Show minimized.')}</label>
+                        </span>
+                        ${edition.common.getHelpTooltip(_('Start with the game collapsed. Learners can expand it when they are ready to play.'))}
+                    </div>
+                    <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
+                        <label for="ccgmETime" class="mb-0">${_('Time (minutes)')}:</label>
+                        <input type="number" name="ccgmETime" id="ccgmETime" value="0" min="0" max="59" class="form-control" style="width:6ch" />
+                        ${edition.common.getHelpTooltip(_('Set the maximum time in minutes to complete the crossword puzzle. Set to 0 for unlimited time.'))}
+                    </div>
+                    <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
+                        <span class="toggle-item">
+                            <span class="toggle-control">
+                                <input type="checkbox" checked id="ccgmEShowSolution" class="toggle-input" />
+                                <span class="toggle-visual" aria-hidden="true"></span>
                             </span>
-                        </div>
-                        <div class="mb-3">
-                            <span class="toggle-item" role="switch" aria-checked="false">
-                                <span class="toggle-control">
-                                    <input type="checkbox" id="ccgmECaseSensitive" class="toggle-input" />
-                                    <span class="toggle-visual" aria-hidden="true"></span>
-                                </span>
-                                <label class="toggle-label" for="ccgmECaseSensitive">${_('Case sensitive')}</label>
+                            <label class="toggle-label" for="ccgmEShowSolution">${_('Show solutions')}.</label>
+                        </span>
+                        ${edition.common.getHelpTooltip(_('Show the solution when completing the crossword or when the time runs out.'))}
+                    </div>
+                    <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
+                        <span class="toggle-item">
+                            <span class="toggle-control">
+                                <input type="checkbox" id="ccgmECaseSensitive" class="toggle-input" />
+                                <span class="toggle-visual" aria-hidden="true"></span>
                             </span>
-                        </div>
-                        <div class="mb-3">
-                            <span class="toggle-item" role="switch" aria-checked="false">
-                                <span class="toggle-control">
-                                    <input type="checkbox" checked id="ccgmETilde" class="toggle-input" />
-                                    <span class="toggle-visual" aria-hidden="true"></span>
-                                </span>
-                                <label class="toggle-label" for="ccgmETilde">${_('Accent marks')}</label>
+                            <label class="toggle-label" for="ccgmECaseSensitive">${_('Case sensitive')}</label>
+                        </span>
+                        ${edition.common.getHelpTooltip(_('Require uppercase and lowercase letters to match the answer exactly.'))}
+                    </div>
+                    <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
+                        <span class="toggle-item">
+                            <span class="toggle-control">
+                                <input type="checkbox" checked id="ccgmETilde" class="toggle-input" />
+                                <span class="toggle-visual" aria-hidden="true"></span>
                             </span>
-                        </div>
-                        <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
-                            <label for="ccgmEDifficulty" class="mb-0">%${_('Difficulty')}:</label>
-                            <input type="number" name="ccgmEDifficulty" id="ccgmEDifficulty" value="100" min="0" max="100" class="form-control" style="width:6ch" /> 
-                        </div>
-                        <div class="mb-3 d-flex align-items-center gap-2 flex-nowrap">
-                            <span class="toggle-item" role="switch" aria-checked="false">
-                                <span class="toggle-control">
-                                    <input type="checkbox" id="ccgmEHasFeedBack" class="toggle-input" />
-                                    <span class="toggle-visual" aria-hidden="true"></span>
-                                </span>
-                                <label class="toggle-label" for="ccgmEHasFeedBack">${_('Feedback')}.</label>
+                            <label class="toggle-label" for="ccgmETilde">${_('Accent marks')}</label>
+                        </span>
+                        ${edition.common.getHelpTooltip(_('Require typing correct accent marks.'))}
+                    </div>
+                    <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
+                        <label for="ccgmEDifficulty" class="mb-0">%${_('Difficulty')}:</label>
+                        <input type="number" name="ccgmEDifficulty" id="ccgmEDifficulty" value="100" min="0" max="100" class="form-control" style="width:6ch" />
+                        ${edition.common.getHelpTooltip(_('Percentage of letters revealed in the crossword initially.'))}
+                    </div>
+                    <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
+                        <label for="ccgmEPercentajeQuestions" class="mb-0">% ${_('Questions')}:</label>
+                        <input type="number" name="ccgmEPercentajeQuestions" id="ccgmEPercentajeQuestions" value="100" min="1" max="100" class="form-control" style="width:6ch" />
+                        <span id="ccgmENumeroPercentaje">1/1</span>
+                        ${edition.common.getHelpTooltip(_('Choose the percentage of words included in each game. The counter shows how many words will be used.'))}
+                    </div>
+                    <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
+                        <span class="toggle-item">
+                            <span class="toggle-control">
+                                <input type="checkbox" id="ccgmBack0" class="toggle-input" checked />
+                                <span class="toggle-visual" aria-hidden="true"></span>
                             </span>
-                           <input type="number" name="ccgmEPercentajeFB" id="ccgmEPercentajeFB" value="100" min="5" max="100" step="5" disabled class="form-control" style="width:6ch" />
-                           <label for="ccgmEPercentajeFB" class="ms-0">${_('% right to see the feedback')}</label>
+                            <label class="toggle-label" for="ccgmBack0">${_('Background')}:</label>
+                        </span>
+                        <div class="d-flex align-items-center gap-2 flex-nowrap" id="ccgmbackground1">
+                            <label for="ccgmEURLBack" class="mb-0">${_('URL')}: </label>
+                            <input type="text" class="exe-file-picker CCGM-EURLImage form-control me-0" id="ccgmEURLBack"/>
+                            <a href="#" id="ccgmEPlayBack" class="CCGM-ENavigationButton CCGMEEPlayVideo" title="${_('Show')}">
+                                <img src="${path}quextIEPlay.png" alt="${_('Show')}" class="CCGM-EButtonImage " />
+                            </a>
                         </div>
-                        <div id="ccgmEFeedbackP" class="CCGM-EFeedbackP">
-                            <textarea id="ccgmEFeedBackEditor" class="exe-html-editor form-control" rows="4"></textarea>
-                        </div>
-                        <div class=" d-flex align-items-center gap-2 flex-nowrap mb-3">
-                            <label for="ccgmEPercentajeQuestions" class="mb-0">% ${_('Questions')}:</label>
-                            <input type="number" name="ccgmEPercentajeQuestions" id="ccgmEPercentajeQuestions" value="100" min="1" max="100" class="form-control" style="width:6ch" /> 
-                            <span id="ccgmENumeroPercentaje">1/1</span>
-                        </div>
-                        <div class="d-flex align-items-center gap-2 flex-nowrap">
-                            <span class="toggle-item" role="switch" aria-checked="true">
-                                <span class="toggle-control">
-                                    <input type="checkbox" id="ccgmBack0" class="toggle-input" checked />
-                                    <span class="toggle-visual" aria-hidden="true"></span>
-                                </span>
-                                <label class="toggle-label" for="ccgmBack0">${_('Background')}:</label>
-                            </span>                            
-                            <div class="d-flex align-items-center gap-2 flex-nowrap" id="ccgmbackground1">
-                                <label for="ccgmEURLBack" class="mb-0">${_('URL')}: </label>
-                                <input type="text" class="exe-file-picker CCGM-EURLImage form-control me-0" id="ccgmEURLBack"/>
-                                <a href="#" id="ccgmEPlayBack" class="CCGM-ENavigationButton CCGMEEPlayVideo" title="${_('Show')}">
+                        ${edition.common.getHelpTooltip(_('Display a custom background image behind the crossword puzzle.'))}
+                    </div>
+                    <div id="ccgmbackground" class="CCGM-Back mb-3">
+                        <img class="CCGM-EMedia1" src="" id="ccgmEImageBack" alt="${_('Image')}" />
+                        <img class="CCGM-EMedia1" src="${path.replace(/\/edition\/?$/, '/export/')}ccgmbackground.jpg" id="ccgmEImageNoBack" alt="${_('No image')}" />
+                    </div>
+                    <div id="ccgmAuthorBackDiv" class="CCGM-AuthorBack d-none align-items-center gap-2 flex-nowrap mb-3">
+                        <label for="ccgmAuthorBack" class="mb-0">${_('Authorship')}: </label>
+                        <input type="text" class="CCGM-EURLImage form-control" id="ccgmAuthorBack"/>
+                    </div>
+                </div>`,
+            words = `
+                <div class="CCGM-EPanel" id="ccgmEPanel">
+                    <div class="CCGM-EOptionsMedia">
+                        <div class="CCGM-EOptionsGame">
+                            <span id="ccgmETitleWord">${_('Word')}</span>
+                            <div class="CCGM-EInputImage align-items-center gap-2 mb-3 flex-nowrap" id="ccgmEWordDiv">
+                                <label class="sr-av" for="ccgmESolutionWord">${_('Word')}: </label>
+                                <input type="text" id="ccgmESolutionWord" maxlength="14" class="form-control"/>
+                            </div>
+                            <span id="ccgmETitleDefinition">${_('Definition')}</span>
+                            <div class="CCGM-EInputImage align-items-center gap-2 mb-3  flex-nowrap" id="ccgmEDefinitionDiv">
+                                <label class="sr-av" for="ccgmEDefinitionWord">${_('Definition')}: </label>
+                                <input type="text" id="ccgmEDefinitionWord" class="form-control"/>
+                            </div>
+                            <span class="CCGM-ETitleImage" id="ccgmETitleImage">${_('Image URL')}</span>
+                            <div class="CCGM-EInputImage align-items-center gap-2 mb-3  flex-nowrap" id="ccgmEInputImage">
+                                <label class="sr-av" for="ccgmEURLImage">${_('Image URL')}</label>
+                                <input type="text" class="exe-file-picker form-control me-0" id="ccgmEURLImage"/>
+                                <a href="#" id="ccgmEPlayImage" class="CCGM-ENavigationButton CCGM-EPlayVideo" title="${_('Show')}">
                                     <img src="${path}quextIEPlay.png" alt="${_('Show')}" class="CCGM-EButtonImage " />
                                 </a>
+                                <a href="#" id="ccgmEShowMore" class="CCGM-ENavigationButton CCGM-EShowMore" title="${_('More')}">
+                                    <img src="${path}quextEIMore.png" alt="${_('More')}" class="CCGM-EButtonImage " />
+                                </a>
                             </div>
-                         </div>
-                        <div id="ccgmbackground" class="CCGM-Back mb-3">
-                            <img class="CCGM-EMedia1" src="" id="ccgmEImageBack" alt="${_('Image')}" />
-                            <img class="CCGM-EMedia1" src="${path.replace(/\/edition\/?$/, '/export/')}ccgmbackground.jpg" id="ccgmEImageNoBack" alt="${_('No image')}" />
-                        </div>
-                        <div id="ccgmAuthorBackDiv" class="CCGM-AuthorBack d-none align-items-center gap-2 flex-nowrap mb-3">
-                            <label for="ccgmAuthorBack" class="mb-0">${_('Authorship')}: </label>
-                            <input type="text" class="CCGM-EURLImage form-control" id="ccgmAuthorBack"/>
-                        </div>
-                        <div class="d-none align-items-center gap-2 flex-nowrap mb-3">
-                            <span>${_('Quick edit')}</span>
-                            <button id="eXeQuickEditButton" class="btn btn-primary">${_('Show')}</button>
-                        </div>
-                        <div class="Games-Reportdiv d-flex align-items-center gap-2 flex-nowrap mt-3">
-                        </div>
-                     </div>
-                </fieldset>
-                <fieldset class="exe-fieldset">
-                    <legend><a href="#">${_('Words')}</a></legend>
-                    <div class="CCGM-EPanel" id="ccgmEPanel">
-                        <div class="CCGM-EOptionsMedia">
-                            <div class="CCGM-EOptionsGame">
-                                <span id="ccgmETitleWord">${_('Word')}</span>
-                                <div class="CCGM-EInputImage align-items-center gap-2 mb-3 flex-nowrap" id="ccgmEWordDiv">
-                                    <label class="sr-av" for="ccgmESolutionWord">${_('Word')}: </label>
-                                    <input type="text" id="ccgmESolutionWord" maxlength="14" class="form-control"/>
+                            <div class="CCGM-ECoord align-items-center gap-2 mb-3 flex-nowrap">
+                                <label for="ccgmEXImage">X:</label>
+                                <input id="ccgmEXImage" type="text" value="0" class="form-control" />
+                                <label for="ccgmEYImage">Y:</label>
+                                <input id="ccgmEYImage" type="text" value="0" class="form-control" />
+                            </div>
+                            <div class="CCGM-EAuthorAlt mb-3" id="ccgmEAuthorAlt">
+                                <div class="CCGM-EInputAuthor align-items-center gap-2 flex-nowrap">
+                                    <label class="mb-0">${_('Authorship')}</label><input id="ccgmEAuthor" type="text" class="CCGM-EAuthor form-control" />
                                 </div>
-                                <span id="ccgmETitleDefinition">${_('Definition')}</span>
-                                <div class="CCGM-EInputImage align-items-center gap-2 mb-3  flex-nowrap" id="ccgmEDefinitionDiv">
-                                    <label class="sr-av" for="ccgmEDefinitionWord">${_('Definition')}: </label>
-                                    <input type="text" id="ccgmEDefinitionWord" class="form-control"/>
-                                </div>
-                                <span class="CCGM-ETitleImage" id="ccgmETitleImage">${_('Image URL')}</span>
-                                <div class="CCGM-EInputImage align-items-center gap-2 mb-3  flex-nowrap" id="ccgmEInputImage">
-                                    <label class="sr-av" for="ccgmEURLImage">${_('Image URL')}</label>
-                                    <input type="text" class="exe-file-picker form-control me-0" id="ccgmEURLImage"/>
-                                    <a href="#" id="ccgmEPlayImage" class="CCGM-ENavigationButton CCGM-EPlayVideo" title="${_('Show')}">
-                                        <img src="${path}quextIEPlay.png" alt="${_('Show')}" class="CCGM-EButtonImage " />
-                                    </a>
-                                    <a href="#" id="ccgmEShowMore" class="CCGM-ENavigationButton CCGM-EShowMore" title="${_('More')}">
-                                        <img src="${path}quextEIMore.png" alt="${_('More')}" class="CCGM-EButtonImage " />
-                                    </a>
-                                </div>
-                                <div class="CCGM-ECoord align-items-center gap-2 mb-3 flex-nowrap">
-                                    <label for="ccgmEXImage">X:</label>
-                                    <input id="ccgmEXImage" type="text" value="0" class="form-control" />
-                                    <label for="ccgmEYImage">Y:</label>
-                                    <input id="ccgmEYImage" type="text" value="0" class="form-control" />
-                                </div>
-                                <div class="CCGM-EAuthorAlt mb-3" id="ccgmEAuthorAlt">
-                                    <div class="CCGM-EInputAuthor align-items-center gap-2 flex-nowrap">
-                                        <label class="mb-0">${_('Authorship')}</label><input id="ccgmEAuthor" type="text" class="CCGM-EAuthor form-control" />
-                                    </div>
-                                    <div class="CCGM-EInputAlt align-items-center gap-2 flex-nowrap">
-                                        <label class="mb-0">${_('Alt')}</label><input id="ccgmEAlt" type="text" class="CCGM-EAlt form-control" />
-                                    </div>
-                                </div>
-                                <span id="ccgmETitleAudio">${_('Audio')}</span>
-                                <div class="CCGM-EInputAudio mb-3 align-items-center gap-2 flex-nowrap" id="ccgmEInputAudio" data-voice-recorder data-voice-input="#ccgmEURLAudio">
-                                    <label class="sr-av" for="ccgmEURLAudio">${_('URL')}</label>
-                                    <input type="text" class="exe-file-picker CCGM-EURLAudio form-control me-0" id="ccgmEURLAudio"/>
-                                    <a href="#" id="ccgmEPlayAudio" class="CCGM-ENavigationButton CCGM-EPlayVideo" title="${_('Play audio')}">
-                                        <img src="${path}quextIEPlay.png" alt="${_('Play audio')}" class="CCGM-EButtonImage " />
-                                    </a>
+                                <div class="CCGM-EInputAlt align-items-center gap-2 flex-nowrap">
+                                    <label class="mb-0">${_('Alt')}</label><input id="ccgmEAlt" type="text" class="CCGM-EAlt form-control" />
                                 </div>
                             </div>
-                            <div class="CCGM-EMultiMediaOption">
-                                <div class="CCGM-EMultimedia" id="ccgmEMultimedia">
-                                    <img class="CCGM-EMedia" src="${path}quextIEImage.png" id="ccgmEImage" alt="${_('Image')}" />
-                                    <img class="CCGM-EMedia" src="${path}quextIEImage.png" id="ccgmENoImage" alt="${_('No image')}" />
-                                    <img class="CCGM-ECursor" src="${path}quextIECursor.gif" id="ccgmECursor" alt="" />
-                                    <img class="CCGM-EMedia" src="${path}quextIECoverAdivina.png" id="ccgmECover" alt="${_('No image')}" />
-                                </div>
-                            </div>
-                        </div>
-                        <div class="CCGM-EContents">
-                            <div class="CCGM-ENavigationButtons gap-2">
-                                <a href="#" id="ccgmEAdd" class="CCGM-ENavigationButton" title="${_('Add question')}">
-                                    <img src="${path}quextIEAdd.png" alt="${_('Add question')}" class="CCGM-EButtonImage b-add" />
-                                </a>
-                                <a href="#" id="ccgmEFirst" class="CCGM-ENavigationButton" title="${_('First question')}">
-                                    <img src="${path}quextIEFirst.png" alt="${_('First question')}" class="CCGM-EButtonImage b-first" />
-                                </a>
-                                <a href="#" id="ccgmEPrevious" class="CCGM-ENavigationButton" title="${_('Previous question')}">
-                                    <img src="${path}quextIEPrev.png" alt="${_('Previous question')}" class="CCGM-EButtonImage b-prev" />
-                                </a>
-                                <label class="sr-av" for="ccgmENumberQuestion">${_('Question number:')}</label>
-                                <input type="text" class="CCGM-NumberQuestion form-control" id="ccgmENumberQuestion" value="1"/>
-                                <a href="#" id="ccgmENext" class="CCGM-ENavigationButton" title="${_('Next question')}">
-                                    <img src="${path}quextIENext.png" alt="${_('Next question')}" class="CCGM-EButtonImage b-next" />
-                                </a>
-                                <a href="#" id="ccgmELast" class="CCGM-ENavigationButton" title="${_('Last question')}">
-                                    <img src="${path}quextIELast.png" alt="${_('Last question')}" class="CCGM-EButtonImage b-last" />
-                                </a>
-                                <a href="#" id="ccgmEDelete" class="CCGM-ENavigationButton" title="${_('Delete question')}">
-                                    <img src="${path}quextIEDelete.png" alt="${_('Delete question')}" class="CCGM-EButtonImage b-delete" />
-                                </a>
-                                <a href="#" id="ccgmECopy" class="CCGM-ENavigationButton" title="${_('Copy question')}">
-                                    <img src="${path}quextIECopy.png" alt="${_('Copy question')}" class="CCGM-EButtonImage b-copy" />
-                                </a>
-                                <a href="#" id="ccgmECut" class="CCGM-ENavigationButton" title="${_('Cut question')}">
-                                    <img src="${path}quextIECut.png" alt="${_('Cut question')}" class="CCGM-EButtonImage b-cut" />
-                                </a>
-                                <a href="#" id="ccgmEPaste" class="CCGM-ENavigationButton" title="${_('Paste question')}">
-                                    <img src="${path}quextIEPaste.png" alt="${_('Paste question')}" class="CCGM-EButtonImage b-paste" />
+                            <span id="ccgmETitleAudio">${_('Audio')}</span>
+                            <div class="CCGM-EInputAudio mb-3 align-items-center gap-2 flex-nowrap" id="ccgmEInputAudio" data-voice-recorder data-voice-input="#ccgmEURLAudio">
+                                <label class="sr-av" for="ccgmEURLAudio">${_('URL')}</label>
+                                <input type="text" class="exe-file-picker CCGM-EURLAudio form-control me-0" id="ccgmEURLAudio"/>
+                                <a href="#" id="ccgmEPlayAudio" class="CCGM-ENavigationButton CCGM-EPlayVideo" title="${_('Play audio')}">
+                                    <img src="${path}quextIEPlay.png" alt="${_('Play audio')}" class="CCGM-EButtonImage " />
                                 </a>
                             </div>
                         </div>
-                        <div class="CCGM-ENumQuestionDiv" id="ccgmENumQuestionDiv">
-                            <div class="CCGM-ENumQ"><span class="sr-av">${_('Number of questions:')}</span></div>
-                            <span class="CCGM-ENumQuestions" id="ccgmENumQuestions">0</span>
+                        <div class="CCGM-EMultiMediaOption">
+                            <div class="CCGM-EMultimedia" id="ccgmEMultimedia">
+                                <img class="CCGM-EMedia" src="${path}quextIEImage.png" id="ccgmEImage" alt="${_('Image')}" />
+                                <img class="CCGM-EMedia" src="${path}quextIEImage.png" id="ccgmENoImage" alt="${_('No image')}" />
+                                <img class="CCGM-ECursor" src="${path}quextIECursor.gif" id="ccgmECursor" alt="" />
+                                <img class="CCGM-EMedia" src="${path}quextIECoverAdivina.png" id="ccgmECover" alt="${_('No image')}" />
+                            </div>
                         </div>
                     </div>
-                </fieldset>
-                ${$exeDevicesEdition.iDevice.common.getTextFieldset('after')}
+                    <div class="CCGM-EContents">
+                        <div class="CCGM-ENavigationButtons gap-2">
+                            <a href="#" id="ccgmEAdd" class="CCGM-ENavigationButton" title="${_('Add question')}">
+                                <img src="${path}quextIEAdd.png" alt="${_('Add question')}" class="CCGM-EButtonImage b-add" />
+                            </a>
+                            <a href="#" id="ccgmEFirst" class="CCGM-ENavigationButton" title="${_('First question')}">
+                                <img src="${path}quextIEFirst.png" alt="${_('First question')}" class="CCGM-EButtonImage b-first" />
+                            </a>
+                            <a href="#" id="ccgmEPrevious" class="CCGM-ENavigationButton" title="${_('Previous question')}">
+                                <img src="${path}quextIEPrev.png" alt="${_('Previous question')}" class="CCGM-EButtonImage b-prev" />
+                            </a>
+                            <label class="sr-av" for="ccgmENumberQuestion">${_('Question number:')}</label>
+                            <input type="text" class="CCGM-NumberQuestion form-control" id="ccgmENumberQuestion" value="1"/>
+                            <a href="#" id="ccgmENext" class="CCGM-ENavigationButton" title="${_('Next question')}">
+                                <img src="${path}quextIENext.png" alt="${_('Next question')}" class="CCGM-EButtonImage b-next" />
+                            </a>
+                            <a href="#" id="ccgmELast" class="CCGM-ENavigationButton" title="${_('Last question')}">
+                                <img src="${path}quextIELast.png" alt="${_('Last question')}" class="CCGM-EButtonImage b-last" />
+                            </a>
+                            <a href="#" id="ccgmEDelete" class="CCGM-ENavigationButton" title="${_('Delete question')}">
+                                <img src="${path}quextIEDelete.png" alt="${_('Delete question')}" class="CCGM-EButtonImage b-delete" />
+                            </a>
+                            <a href="#" id="ccgmECopy" class="CCGM-ENavigationButton" title="${_('Copy question')}">
+                                <img src="${path}quextIECopy.png" alt="${_('Copy question')}" class="CCGM-EButtonImage b-copy" />
+                            </a>
+                            <a href="#" id="ccgmECut" class="CCGM-ENavigationButton" title="${_('Cut question')}">
+                                <img src="${path}quextIECut.png" alt="${_('Cut question')}" class="CCGM-EButtonImage b-cut" />
+                            </a>
+                            <a href="#" id="ccgmEPaste" class="CCGM-ENavigationButton" title="${_('Paste question')}">
+                                <img src="${path}quextIEPaste.png" alt="${_('Paste question')}" class="CCGM-EButtonImage b-paste" />
+                            </a>
+                        </div>
+                    </div>
+                    <div class="CCGM-ENumQuestionDiv" id="ccgmENumQuestionDiv">
+                        <div class="CCGM-ENumQ"><span class="sr-av">${_('Number of questions:')}</span></div>
+                        <span class="CCGM-ENumQuestions" id="ccgmENumQuestions">0</span>
+                    </div>
+                </div>`,
+            html = `
+            <div id="ccgmQEIdeviceForm">
+                ${edition.common.getIdeviceDescription(
+                    _('Create crossword-type activities'),
+                    'https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe40/html/crucigrama.html',
+                )}
+                ${edition.tabs.getHtml('ccgmQEIdeviceForm', {
+                    path: path,
+                    instructions: c_('Complete the following crossword puzzle.'),
+                    options: options,
+                    contents: words,
+                    passwords: true,
+                    feedback: true,
+                    after: true,
+                    grading: true,
+                    texts: this.ci18n,
+                    share: {
+                        importQuestions: true,
+                        exportQuestions: true,
+                        type: 9,
+                    },
+                    info: {
+                        contents: _('Add the words and their definitions, and edit them one by one.'),
+                    },
+                })}
             </div>
-            ${$exeDevicesEdition.iDevice.gamification.itinerary.getTab()}
-            ${$exeDevicesEdition.iDevice.gamification.scorm.getTab(path)}
-            ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
-            ${$exeDevicesEdition.iDevice.gamification.share.getTab(true, 9, true)}
-            ${$exeDevicesEdition.iDevice.gamification.share.getTabIA(9)}
-        </div>
-    `;
+        `;
         this.ideviceBody.innerHTML = html;
-        $exeDevicesEdition.iDevice.tabs.init('ccgmQEIdeviceForm');
-        $exeDevicesEdition.iDevice.gamification.scorm.init();
+        edition.tabs.bind('ccgmQEIdeviceForm');
+        edition.gamification.scorm.init();
         $exeDevice.enableForm();
     },
 
@@ -378,7 +373,7 @@ var $exeDevice = {
         $exeDevice.initQuestions();
 
         const root = document.getElementById('ccgmQEIdeviceForm') || document;
-        $exeDevicesEdition.iDevice.voiceRecorder.initVoiceRecorders(root);
+        $exeIDevicesEdition.iDevice.voiceRecorder.initVoiceRecorders(root);
 
         $exeDevice.loadPreviousValues();
         $exeDevice.addEvents();
@@ -386,7 +381,7 @@ var $exeDevice = {
 
     updateQuestionsNumber: function () {
         const percentInput = parseInt(
-            $exeDevice.removeTags($('#ccgmEPercentajeQuestions').val())
+            $exeIDevicesEdition.iDevice.common.removeTags($('#ccgmEPercentajeQuestions').val())
         );
 
         if (isNaN(percentInput)) return;
@@ -407,7 +402,6 @@ var $exeDevice = {
         $('#ccgmEDefinitionWord').val(p.definition);
         $('#ccgmENumQuestions').text($exeDevice.wordsGame.length);
         $('#ccgmESolutionWord').val(p.word);
-        $('#ccgmEPercentageShow').val(p.percentageShow);
 
         if (p.url.length > 4) {
             $('#ccgmEURLImage').val(p.url);
@@ -419,7 +413,7 @@ var $exeDevice = {
         }
 
         if (p.audio.trim().length > 4) {
-            $exeDevicesEdition.iDevice.gamification.helpers.playSound(p.audio.trim());
+            $exeIDevicesEdition.iDevice.gamification.helpers.playSound(p.audio.trim());
         }
 
         $('#ccgmEURLAudio').val(p.audio);
@@ -427,8 +421,6 @@ var $exeDevice = {
     },
 
     initQuestions: function () {
-        $('#ccgmEMediaNormal, #ccgmEMediaImage').prop('disabled', false);
-
         if ($exeDevice.wordsGame.length === 0) {
             const question = $exeDevice.getCuestionDefault();
             $exeDevice.wordsGame.push(question);
@@ -436,6 +428,7 @@ var $exeDevice = {
         }
 
         this.active = 0;
+        $('#ccgmENumQuestions').text($exeDevice.wordsGame.length);
     },
 
     changeTypeQuestion: function () {
@@ -526,7 +519,7 @@ var $exeDevice = {
             let textFeedBack = $('.crucigrama-feedback-game', wrapper);
             if (textFeedBack.length === 1) {
                 textFeedBack = textFeedBack.html() || '';
-                $('#ccgmEFeedBackEditor').val(textFeedBack);
+                $exeIDevicesEdition.iDevice.gamification.feedback.setText(textFeedBack);
             }
 
             let textAfter = $('.crucigrama-extra-content', wrapper);
@@ -535,20 +528,11 @@ var $exeDevice = {
                 $('#eXeIdeviceTextAfter').val(textAfter);
             }
 
-            $exeDevicesEdition.iDevice.gamification.common.setLanguageTabValues(
+            $exeIDevicesEdition.iDevice.gamification.common.setLanguageTabValues(
                 dataGame.msgs
             );
             $exeDevice.showQuestion(0);
         }
-    },
-
-    escapeHtml: function (string) {
-        return String(string)
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;')
-            .replace(/'/g, '&#39;');
     },
 
     save: function () {
@@ -558,7 +542,7 @@ var $exeDevice = {
 
         if (!dataGame) return false;
 
-        $exeDevicesEdition.iDevice.gamification.helpers.stopSound();
+        $exeIDevicesEdition.iDevice.gamification.helpers.stopSound();
 
         const fields = this.ci18n,
             i18n = fields;
@@ -572,7 +556,8 @@ var $exeDevice = {
 
         json = $exeDevices.iDevice.gamification.helpers.encrypt(json);
 
-        const textFeedBack = tinyMCE.get('ccgmEFeedBackEditor').getContent();
+        const textFeedBack =
+            $exeIDevicesEdition.iDevice.gamification.feedback.getText();
 
         let divInstructions = '';
         if (dataGame.instructions !== '') {
@@ -587,7 +572,9 @@ var $exeDevice = {
             img = `<a href="${img}" class="js-hidden crucigrama-LinkBack" alt="Back" />Background</a>`;
         }
 
-        let textAfter = tinyMCE.get('eXeIdeviceTextAfter').getContent();
+        let textAfter = $exeIDevicesEdition.iDevice.common.getEditorContent(
+            'eXeIdeviceTextAfter'
+        );
         if (textAfter !== '') {
             textAfter = `<div class="crucigrama-extra-content">${textAfter}</div>`;
         }
@@ -659,7 +646,7 @@ var $exeDevice = {
         return html;
     },
 
-    validateQuestion: function () {
+    validateQuestion: function (options = {}) {
         let message = '',
             p = {
                 word: $('#ccgmESolutionWord').val().trim(),
@@ -670,10 +657,9 @@ var $exeDevice = {
                 alt: $('#ccgmEAlt').val(),
                 url: $('#ccgmEURLImage').val().trim(),
                 audio: $('#ccgmEURLAudio').val(),
-                percentageShow: parseInt($('#ccgmEPercentageShow').val()),
             };
 
-        $exeDevicesEdition.iDevice.gamification.helpers.stopSound();
+        $exeIDevicesEdition.iDevice.gamification.helpers.stopSound();
 
         if (p.word.length === 0) {
             message = $exeDevice.msgs.msgEProvideWord;
@@ -693,22 +679,23 @@ var $exeDevice = {
             $exeDevice.wordsGame[$exeDevice.active] = p;
             return true;
         } else {
-            $exeDevice.showMessage(message);
+            if (!options.silent) $exeIDevicesEdition.iDevice.common.showMessage(message);
             return false;
         }
     },
 
-    showMessage: function (msg) {
-        eXe.app.alert(msg);
-    },
-
     validateData() {
-        $exeDevicesEdition.iDevice.gamification.helpers.stopSound();
+        $exeIDevicesEdition.iDevice.gamification.helpers.stopSound();
 
-        const clear = $exeDevice.removeTags,
-            instructions = tinyMCE.get('eXeGameInstructions').getContent(),
-            textFeedBack = tinyMCE.get('ccgmEFeedBackEditor').getContent(),
-            textAfter = tinyMCE.get('eXeIdeviceTextAfter').getContent(),
+        const instructions =
+                $exeIDevicesEdition.iDevice.common.getEditorContent(
+                    'eXeGameInstructions'
+                ),
+            feedback =
+                $exeIDevicesEdition.iDevice.gamification.feedback.getValues(),
+            textAfter = $exeIDevicesEdition.iDevice.common.getEditorContent(
+                'eXeIdeviceTextAfter'
+            ),
             time = $('#ccgmETime').val(),
             difficulty = $('#ccgmEDifficulty').val(),
             showMinimize = $('#ccgmEShowMinimize').is(':checked'),
@@ -716,28 +703,23 @@ var $exeDevice = {
             hasBack = $('#ccgmBack0').is(':checked'),
             urlBack = $('#ccgmEURLBack').val().trim(),
             itinerary =
-                $exeDevicesEdition.iDevice.gamification.itinerary.getValues(),
+                $exeIDevicesEdition.iDevice.gamification.itinerary.getValues(),
             caseSensitive = $('#ccgmECaseSensitive').is(':checked'),
             tilde = $('#ccgmETilde').is(':checked'),
-            feedBack = $('#ccgmEHasFeedBack').is(':checked'),
-            percentajeFB = parseInt(clear($('#ccgmEPercentajeFB').val())),
             progressBar =
-                $exeDevicesEdition.iDevice.gamification.progressBar.getValues(),
+                $exeIDevicesEdition.iDevice.gamification.progressBar.getValues(),
             passScore =
-                $exeDevicesEdition.iDevice.gamification.passScore.getValues(),
+                $exeIDevicesEdition.iDevice.gamification.passScore.getValues(),
             percentajeQuestions = $('#ccgmEPercentajeQuestions').val(),
             authorBackImage = $('#ccgmAuthorBack').val(),
             id = $exeDevice.getIdeviceID(),
             wordsGame = $exeDevice.wordsGame,
-            scorm = $exeDevicesEdition.iDevice.gamification.scorm.getValues();
+            scorm = $exeIDevicesEdition.iDevice.gamification.scorm.getValues();
 
+        if (!feedback) return false;
         if (!itinerary) return false;
         if (!progressBar) return false;
 
-        if (feedBack && textFeedBack.trim().length === 0) {
-            eXe.app.alert($exeDevice.msgs.msgProvideFB);
-            return false;
-        }
         if (wordsGame.length < 2) {
             eXe.app.alert($exeDevice.msgs.msgEOneQuestion);
             return false;
@@ -745,14 +727,14 @@ var $exeDevice = {
         for (let i = 0; i < wordsGame.length; i++) {
             const mquestion = wordsGame[i];
             if (mquestion.word.length === 0) {
-                $exeDevice.showMessage($exeDevice.msgs.msgEProvideWord);
+                $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgEProvideWord);
                 return false;
             } else if (
                 mquestion.definition.length === 0 &&
                 mquestion.url.length < 4 &&
                 mquestion.audio.length < 4
             ) {
-                $exeDevice.showMessage(
+                $exeIDevicesEdition.iDevice.common.showMessage(
                     `${$exeDevice.msgs.msgEProvideDefinition} ${mquestion.word}`
                 );
                 return false;
@@ -782,12 +764,12 @@ var $exeDevice = {
             textButtonScorm: scorm.textButtonScorm,
             repeatActivity: scorm.repeatActivity,
             weighted: scorm.weighted || 100,
-            textFeedBack: escape(textFeedBack),
+            textFeedBack: escape(feedback.textFeedBack),
             textAfter: escape(textAfter),
             caseSensitive,
             tilde,
-            feedBack,
-            percentajeFB,
+            feedBack: feedback.feedBack,
+            percentajeFB: feedback.percentajeFB,
             version: 2,
             evaluation: progressBar.evaluation,
             evaluationID: progressBar.evaluationID,
@@ -825,7 +807,7 @@ var $exeDevice = {
                         this.naturalWidth,
                         this.naturalHeight
                     );
-                    $exeDevice.drawImage(this, mData);
+                    $exeIDevicesEdition.iDevice.common.drawImage(this, mData);
                     $image.show();
                     $('#ccgmENoImage').hide();
                     $exeDevice.paintMouse(this, $cursor, x, y);
@@ -889,23 +871,11 @@ var $exeDevice = {
         }
     },
 
-    drawImage: function (image, mData) {
-        $(image).css({
-            left: `${mData.x}px`,
-            top: `${mData.y}px`,
-            width: `${mData.w}px`,
-            height: `${mData.h}px`,
-        });
-    },
-
     addEvents: function () {
         $('#ccgmEPaste').hide();
 
         const initToggle = function ($input) {
             const checked = $input.is(':checked');
-            $input
-                .closest('.toggle-item[role="switch"]')
-                .attr('aria-checked', checked);
             const targetSel = $input.data('target');
             if (targetSel) {
                 const $target = $(targetSel);
@@ -974,7 +944,7 @@ var $exeDevice = {
             e.preventDefault();
             const selectedFile = $('#ccgmEURLAudio').val().trim();
             if (selectedFile.length > 4) {
-                $exeDevicesEdition.iDevice.gamification.helpers.playSound(selectedFile);
+                $exeIDevicesEdition.iDevice.gamification.helpers.playSound(selectedFile);
             }
         });
 
@@ -984,11 +954,7 @@ var $exeDevice = {
             window.FileList &&
             window.Blob
         ) {
-            $('#eXeGameExportImport .exe-field-instructions')
-                .eq(0)
-                .text(`${_('Supported formats')}: txt, xml(Moodle)`);
             $('#eXeGameExportImport').show();
-            $('#eXeGameImportGame').attr('accept', '.txt, .xml');
             $('#eXeGameImportGame').on('change', (e) => {
                 const file = e.target.files[0];
                 if (!file) {
@@ -1037,7 +1003,7 @@ var $exeDevice = {
                 selectedFile = $(this).val(),
                 ext = selectedFile.split('.').pop().toLowerCase();
             if (selectedFile.startsWith('files') && !validExt.includes(ext)) {
-                $exeDevice.showMessage(
+                $exeIDevicesEdition.iDevice.common.showMessage(
                     `${_('Supported formats')}: jpg, jpeg, gif, png, svg, webp`
                 );
                 return false;
@@ -1055,7 +1021,7 @@ var $exeDevice = {
                 selectedFile = $('#ccgmEURLImage').val(),
                 ext = selectedFile.split('.').pop().toLowerCase();
             if (selectedFile.startsWith('files') && !validExt.includes(ext)) {
-                $exeDevice.showMessage(
+                $exeIDevicesEdition.iDevice.common.showMessage(
                     `${_('Supported formats')}: jpg, jpeg, gif, png, svg, webp`
                 );
                 return false;
@@ -1082,24 +1048,14 @@ var $exeDevice = {
         $('#ccgmEURLAudio').on('change', function () {
             const selectedFile = $(this).val().trim();
             if (selectedFile.length === 0) {
-                $exeDevice.showMessage(
+                $exeIDevicesEdition.iDevice.common.showMessage(
                     `${_('Supported formats')}: mp3, ogg, wav`
                 );
             } else {
                 if (selectedFile.length > 4) {
-                    $exeDevicesEdition.iDevice.gamification.helpers.playSound(selectedFile);
+                    $exeIDevicesEdition.iDevice.gamification.helpers.playSound(selectedFile);
                 }
             }
-        });
-
-        $('#ccgmEHasFeedBack').on('change', function () {
-            const checked = $(this).is(':checked');
-            if (checked) {
-                $('#ccgmEFeedbackP').slideDown();
-            } else {
-                $('#ccgmEFeedbackP').slideUp();
-            }
-            $('#ccgmEPercentajeFB').prop('disabled', !checked);
         });
 
         $('#ccgmENumberQuestion').on('keyup', function (e) {
@@ -1121,8 +1077,9 @@ var $exeDevice = {
             }
         });
 
-        $exeDevicesEdition.iDevice.gamification.progressBar.addEvents();
-        $exeDevicesEdition.iDevice.gamification.passScore.addEvents();
+        $exeIDevicesEdition.iDevice.gamification.progressBar.addEvents();
+        $exeIDevicesEdition.iDevice.gamification.passScore.addEvents();
+        $exeIDevicesEdition.iDevice.gamification.feedback.addEvents();
 
         $('#ccgmEShowMore').on('click', (e) => {
             e.preventDefault();
@@ -1171,7 +1128,7 @@ var $exeDevice = {
                 ext = selectedFile.split('.').pop().toLowerCase(),
                 hasBack = $('#ccgmBack0').is(':checked');
             if (selectedFile.startsWith('files') && !validExt.includes(ext)) {
-                $exeDevice.showMessage(
+                $exeIDevicesEdition.iDevice.common.showMessage(
                     `${_('Supported formats')}: jpg, jpeg, gif, png, svg, webp`
                 );
                 return false;
@@ -1185,7 +1142,7 @@ var $exeDevice = {
                 ext = selectedFile.split('.').pop().toLowerCase(),
                 hasBack = $('#ccgmBack0').is(':checked');
             if (selectedFile.startsWith('files') && !validExt.includes(ext)) {
-                $exeDevice.showMessage(
+                $exeIDevicesEdition.iDevice.common.showMessage(
                     `${_('Supported formats')}: jpg, jpeg, gif, png, svg, webp`
                 );
                 return false;
@@ -1197,31 +1154,20 @@ var $exeDevice = {
             $exeDevice.updateQuestionsNumber();
         });
 
-        $exeDevicesEdition.iDevice.gamification.itinerary.addEvents(
+        $exeIDevicesEdition.iDevice.gamification.itinerary.addEvents(
             $exeDevice.insertWords
         );
-        $exeDevicesEdition.iDevice.gamification.share.addEvents(
-            0,
+        $exeIDevicesEdition.iDevice.gamification.share.addEvents(
+            9,
             $exeDevice.insertWords
         );
-
-        //eXe 3.0 Dismissible messages
-        $('.exe-block-dismissible .exe-block-close').on('click', function () {
-            $(this).parent().fadeOut();
-            return false;
-        });
     },
 
-    updateGameMode: function (gamemode, feedback) {
-        $('#ccgmEPercentajeFB').prop('disabled', !feedback && gamemode !== 2);
-        $('#ccgmEHasFeedBack').prop('disabled', gamemode === 2);
-        $('#ccgmEHasFeedBack').prop('checked', feedback);
-
-        if (feedback) {
-            $('#ccgmEFeedbackP').slideDown();
-        } else {
-            $('#ccgmEFeedbackP').slideUp();
-        }
+    updateGameMode: function (gamemode) {
+        gamemode = parseInt(gamemode, 10);
+        $exeIDevicesEdition.iDevice.gamification.feedback.setRequired(
+            gamemode === 2
+        );
     },
 
     clearQuestion: function () {
@@ -1249,7 +1195,7 @@ var $exeDevice = {
 
     removeQuestion: function () {
         if ($exeDevice.wordsGame.length < 3) {
-            $exeDevice.showMessage($exeDevice.msgs.msgEOneQuestion);
+            $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgEOneQuestion);
         } else {
             $exeDevice.wordsGame.splice($exeDevice.active, 1);
             if ($exeDevice.active >= $exeDevice.wordsGame.length - 1) {
@@ -1283,6 +1229,9 @@ var $exeDevice = {
     },
 
     pasteQuestion: function () {
+        $exeIDevicesEdition.iDevice.gamification.share.keepQuestionOnScreen(
+            (options) => $exeDevice.validateQuestion(options)
+        );
         if ($exeDevice.typeEdit === 0) {
             $exeDevice.active++;
             $exeDevice.wordsGame.splice(
@@ -1291,6 +1240,7 @@ var $exeDevice = {
                 $exeDevice.clipBoard
             );
             $exeDevice.showQuestion($exeDevice.active);
+            $exeDevice.updateQuestionsNumber();
         } else if ($exeDevice.typeEdit === 1) {
             $('#ccgmEPaste').hide();
             $exeDevice.typeEdit = -1;
@@ -1341,7 +1291,7 @@ var $exeDevice = {
 
     updateFieldGame: function (game) {
         $exeDevice.active = 0;
-        $exeDevicesEdition.iDevice.gamification.itinerary.setValues(
+        $exeIDevicesEdition.iDevice.gamification.itinerary.setValues(
             game.itinerary
         );
         game.weighted =
@@ -1354,13 +1304,15 @@ var $exeDevice = {
         $('#ccgmEShowSolution').prop('checked', game.showSolution);
         $('#ccgmECaseSensitive').prop('checked', game.caseSensitive);
         $('#ccgmETilde').prop('checked', game.tilde);
-        $('#ccgmEHasFeedBack').prop('checked', game.feedBack);
-        $('#ccgmEPercentajeFB').val(game.percentajeFB);
-        $exeDevicesEdition.iDevice.gamification.progressBar.setValues({
+        $exeIDevicesEdition.iDevice.gamification.feedback.setValues({
+            feedBack: game.feedBack,
+            percentajeFB: game.percentajeFB,
+        });
+        $exeIDevicesEdition.iDevice.gamification.progressBar.setValues({
             evaluation: game.evaluation,
             evaluationID: game.evaluationID,
         });
-        $exeDevicesEdition.iDevice.gamification.passScore.setValues({
+        $exeIDevicesEdition.iDevice.gamification.passScore.setValues({
             passScoreMode: game.passScoreMode,
             passScoreCustom: game.passScoreCustom,
         });
@@ -1368,7 +1320,7 @@ var $exeDevice = {
         $('#ccgmAuthorBack').val(game.authorBackImage);
         $('#ccgmEPercentajeQuestions').val(game.percentajeQuestions);
 
-        $exeDevicesEdition.iDevice.gamification.scorm.setValues(
+        $exeIDevicesEdition.iDevice.gamification.scorm.setValues(
             game.isScorm,
             game.textButtonScorm,
             game.repeatActivity,
@@ -1376,34 +1328,27 @@ var $exeDevice = {
         );
         $exeDevice.wordsGame = game.wordsGame;
 
-        if (game.feedBack) {
-            $('#ccgmEFeedbackP').show();
-        } else {
-            $('#ccgmEFeedbackP').hide();
-        }
-
-        $('#ccgmEPercentajeFB').prop('disabled', !game.feedBack);
         $exeDevice.showImageBack(game.hasBack, game.urlBack);
-        $('#ccgmbackground, #ccgmbackground1').hide();
-
-        if (game.hasBack) {
-            $('#ccgmbackground, #ccgmbackground1, #ccgmAuthorBackDiv')
-                .removeClass('d-none')
-                .addClass('d-flex');
-            if (game.urlBack.length > 4) {
-                $('#ccgmEURLBack').val(game.urlBack);
-            }
+        // The image is kept with the background switched off, so switching it
+        // on again brings it back. The rows follow the switch, as on change:
+        // hide() alone cannot hide a row with Bootstrap's d-flex.
+        if ((game.urlBack || '').length > 4) {
+            $('#ccgmEURLBack').val(game.urlBack);
         }
+        $('#ccgmbackground, #ccgmbackground1, #ccgmAuthorBackDiv')
+            .toggleClass('d-none', !game.hasBack)
+            .toggleClass('d-flex', !!game.hasBack);
         $exeDevice.updateQuestionsNumber();
     },
     exportQuestions: function () {
+        if (!$exeDevice.validateQuestion()) return false;
         const dataGame = this.validateData();
         if (!dataGame) return false;
 
         const lines = this.getLinesQuestions(dataGame.wordsGame);
         const fileContent = lines.join('\n');
         const newBlob = new Blob([fileContent], { type: 'text/plain' });
-        return $exeDevicesEdition.iDevice.gamification.share.downloadBlob(
+        return $exeIDevicesEdition.iDevice.gamification.share.downloadBlob(
             newBlob,
             `${_('words')}-crucigrama.txt`,
             'ccgmQEIdeviceForm'
@@ -1424,7 +1369,7 @@ var $exeDevice = {
             $exeDevices.iDevice.gamification.helpers.isJsonString(content);
         let instructions, tAfter, textFeedBack;
         if (content && content.includes('\u0000')) {
-            $exeDevice.showMessage(_('Sorry, wrong file format'));
+            $exeIDevicesEdition.iDevice.common.showMessage(_('Sorry, wrong file format'));
             return;
         } else if (!game && content) {
             if (filetype.match('text/plain')) {
@@ -1456,13 +1401,9 @@ var $exeDevice = {
             } else {
                 $('#eXeIdeviceTextAfter').val(unescape(tAfter));
             }
-            if (tinyMCE.get('ccgmEFeedBackEditor')) {
-                tinyMCE
-                    .get('ccgmEFeedBackEditor')
-                    .setContent(unescape(textFeedBack));
-            } else {
-                $('#ccgmEFeedBackEditor').val(unescape(textFeedBack));
-            }
+            $exeIDevicesEdition.iDevice.gamification.feedback.setText(
+                unescape(textFeedBack)
+            );
         } else if (game && game.typeGame !== 'Crucigrama') {
             eXe.app.alert($exeDevice.msgs.msgESelectFile);
             return;
@@ -1472,7 +1413,6 @@ var $exeDevice = {
         $exeDevice.showQuestion($exeDevice.active);
         $exeDevice.deleteEmptyQuestion();
         $exeDevice.updateQuestionsNumber();
-        //$('.exe-form-tabs li:first-child a').click();
     },
 
     deleteEmptyQuestion: function () {
@@ -1508,7 +1448,7 @@ var $exeDevice = {
                 }
             }
         });
-        $exeDevice.addWords(words);
+        if (!$exeDevice.addWords(words)) return { handledMessaging: true };
     },
 
     importMoodle: function (xmlString) {
@@ -1519,7 +1459,7 @@ var $exeDevice = {
         } else if ($xml.find('quiz').length > 0) {
             $exeDevice.importCuestionaryXML(xmlString);
         } else {
-            $exeDevice.showMessage(_('Sorry, wrong file format'));
+            $exeIDevicesEdition.iDevice.common.showMessage(_('Sorry, wrong file format'));
         }
     },
 
@@ -1592,8 +1532,8 @@ var $exeDevice = {
             });
             if (word && questionText) {
                 let wd = {
-                    word: $exeDevice.removeTags(word),
-                    definition: $exeDevice.removeTags(questionText),
+                    word: $exeIDevicesEdition.iDevice.common.removeTags(word),
+                    definition: $exeIDevicesEdition.iDevice.common.removeTags(questionText),
                 };
                 words.push(wd);
             }
@@ -1606,7 +1546,7 @@ var $exeDevice = {
             eXe.app.alert(
                 _('Sorry, there are no questions for this type of activity.')
             );
-            return;
+            return false;
         }
         const wordsGame = $exeDevice.wordsGame;
         for (let i = 0; i < words.length; i++) {
@@ -1618,12 +1558,15 @@ var $exeDevice = {
                 wordsGame.push(p);
             }
         }
+        $exeIDevicesEdition.iDevice.gamification.share.keepQuestionOnScreen(
+            (options) => $exeDevice.validateQuestion(options)
+        );
         $exeDevice.wordsGame = wordsGame;
         $exeDevice.active = 0;
         $exeDevice.showQuestion($exeDevice.active);
         $exeDevice.deleteEmptyQuestion();
         $exeDevice.updateQuestionsNumber();
-        //$('.exe-form-tabs li:first-child a').click();
+        return true;
     },
 
     validTime: function (time) {
@@ -1682,11 +1625,5 @@ var $exeDevice = {
             'z-index': 3,
         });
         $cursor.show();
-    },
-
-    removeTags: function (str) {
-        const wrapper = $('<div></div>');
-        wrapper.html(str);
-        return wrapper.text();
     },
 };
