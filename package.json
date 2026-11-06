@@ -128,7 +128,7 @@
     "cross-env": "^10.1.0",
     "dompurify": "^3.4.17",
     "electron": "^45.0.0",
-    "electron-builder": "^26.15.3",
+    "electron-builder": "^26.18.0",
     "esbuild": "^0.28.2",
     "fabric": "^7.4.0",
     "happy-dom": "^21.0.3",
