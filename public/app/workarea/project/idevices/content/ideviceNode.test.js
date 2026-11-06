@@ -4729,6 +4729,28 @@ describe('IdeviceNode', () => {
             expect(btn).not.toBeNull();
         });
 
+        it('informs that the deletion can be undone and does not say it cannot be undone', () => {
+            idevice.block = {
+                idevices: [idevice],
+                remove: vi.fn(),
+            };
+            eXeLearning.app.project.changeUserFlagOnEdit = vi.fn().mockResolvedValue({ responseMessage: 'OK' });
+
+            let capturedOptions;
+            eXeLearning.app.modals.confirm.show = vi.fn((options) => {
+                capturedOptions = options;
+            });
+
+            idevice.addBehaviourDeleteIdeviceButton();
+            const btn = idevice.ideviceButtons.querySelector('#deleteIdeviceidevice-123');
+            btn.click();
+
+            return new Promise((resolve) => setTimeout(resolve, 0)).then(() => {
+                expect(capturedOptions.body).not.toContain('cannot be undone');
+                expect(capturedOptions.body).toContain(_('You can undo this action.'));
+            });
+        });
+
         it('shows checkbox when iDevice is last in block', () => {
             idevice.block = {
                 idevices: [idevice],

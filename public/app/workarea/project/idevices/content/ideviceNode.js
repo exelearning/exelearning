@@ -1172,12 +1172,14 @@ export default class IdeviceNode {
                                    </div>`
                                 : '';
 
+                            const modalBody =
+                                `<p>${_('Do you want to delete this iDevice?')}</p>` +
+                                `<p class="text-muted small">${_('You can undo this action.')}</p>` +
+                                checkboxHtml;
+
                             eXeLearning.app.modals.confirm.show({
                                 title: _('Delete iDevice'),
-                                body:
-                                    _(
-                                        'Delete iDevice? This cannot be undone.'
-                                    ) + checkboxHtml,
+                                body: modalBody,
                                 confirmButtonText: _('Yes'),
                                 confirmExec: () => {
                                     const alsoDeleteBox =
