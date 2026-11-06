@@ -911,6 +911,17 @@ describe('select-media-files edition: shared form tabs and feedback', () => {
         expect(eXe.app.getLastAlert()).toBe('Supported formats: mp3, ogg, wav');
     });
 
+    it('pastes after a phrase left incomplete on screen, without its warning', () => {
+        const before = eXe.app._alertHistory.length;
+        device.typeEdit = 0;
+        device.clipBoard = { ...device.phrasesGame[0] };
+
+        device.pastePhrase();
+
+        expect(device.phrasesGame).toHaveLength(2);
+        expect(eXe.app._alertHistory.slice(before)).toEqual([]);
+    });
+
     describe('saving', () => {
         let editors;
 

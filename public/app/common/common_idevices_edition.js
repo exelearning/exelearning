@@ -2030,17 +2030,11 @@ var $exeIDevicesEdition = {
                  *
                  * @param {Function} validate - The iDevice's check of the
                  *   question on screen, which stores it when it is complete.
+                 *   It is given `{ silent: true }`, and then does not warn.
                  * @returns {boolean} `true` if the question was stored.
                  */
                 keepQuestionOnScreen: function (validate) {
-                    const app = eXe.app;
-                    const alert = app.alert;
-                    app.alert = () => {};
-                    try {
-                        return validate() !== false;
-                    } finally {
-                        app.alert = alert;
-                    }
+                    return validate({ silent: true }) !== false;
                 },
 
                 /**

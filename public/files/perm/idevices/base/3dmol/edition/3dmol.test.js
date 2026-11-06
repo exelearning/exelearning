@@ -1051,6 +1051,19 @@ describe('3dmol edition: shared form tabs and feedback', () => {
         expect(document.getElementById('eXeGameHasFeedBack').checked).toBe(true);
     });
 
+    it('pastes after a question left incomplete on screen, without its warning', async () => {
+        await vi.waitFor(() => expect(document.getElementById('dmoleQuestion').value).not.toBe(''));
+        document.getElementById('dmoleQuestion').value = '';
+        const before = eXe.app._alertHistory.length;
+        device.typeEdit = 0;
+        device.clipBoard = { ...device.selectsGame[0] };
+
+        device.pasteQuestion();
+
+        expect(device.selectsGame).toHaveLength(2);
+        expect(eXe.app._alertHistory.slice(before)).toEqual([]);
+    });
+
     describe('creating questions with AI', () => {
         // enableForm() shows the first question once the default model is in,
         // and only then wires the AI window.

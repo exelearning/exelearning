@@ -1108,5 +1108,17 @@ describe('flipcards edition: shared form tabs, options tooltips, and saving', ()
             expect(fronts()).toEqual(['Moon']);
             expect(eXe.app.alert).not.toHaveBeenCalled();
         });
+
+        it('leaves it out of a paste, without its warning, when it is incomplete', () => {
+            typeOnScreen('', 'Star');
+            device.typeEdit = 0;
+            device.clipBoard = { ...device.getCardDefault(), eText: 'Moon', eTextBk: 'Satellite' };
+
+            eXe.app.alert.mockClear();
+            device.pasteCard();
+
+            expect(fronts()).toContain('Moon');
+            expect(eXe.app.alert).not.toHaveBeenCalled();
+        });
     });
 });

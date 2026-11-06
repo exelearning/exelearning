@@ -506,7 +506,7 @@ var $exeDevice = {
 
     pasteCard: function () {
         $exeIDevicesEdition.iDevice.gamification.share.keepQuestionOnScreen(
-            () => $exeDevice.validateCard()
+            (options) => $exeDevice.validateCard(options)
         );
         if ($exeDevice.typeEdit == 0) {
             $exeDevice.active++;
@@ -632,7 +632,7 @@ var $exeDevice = {
         return encodeURIComponent(s.replace('%', '&percnt;'));
     },
 
-    validateCard: function () {
+    validateCard: function (options = {}) {
         const msgs = $exeDevice.msgs,
             p = {};
         let message = '';
@@ -672,7 +672,7 @@ var $exeDevice = {
             $exeDevice.cardsGame[$exeDevice.active] = p;
             message = true;
         } else {
-            $exeDevice.showMessage(message);
+            if (!options.silent) $exeDevice.showMessage(message);
             message = false;
         }
 
@@ -1804,7 +1804,7 @@ var $exeDevice = {
             return;
         }
         $exeIDevicesEdition.iDevice.gamification.share.keepQuestionOnScreen(
-            () => $exeDevice.validateCard()
+            (options) => $exeDevice.validateCard(options)
         );
         for (let i = 0; i < cards.length; i++) {
             let card = cards[i];

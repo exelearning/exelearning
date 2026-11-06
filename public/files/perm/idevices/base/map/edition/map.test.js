@@ -842,6 +842,75 @@ describe('map edition: shared form tabs', () => {
 
             expect(device.activeMap.pts.slice(0, 2).map((point) => point.title)).toEqual(['Edited', 'Copied']);
         });
+
+        it('leaves out an incomplete question of the game questionnaire, without its warning', () => {
+            chooseMode(4);
+            device.selectsGame = [complete('Capital of France?')];
+            device.qActive = 0;
+            device.showQuestion(0);
+            device.copyQuestion();
+            $('#mapaEQuestion').val('');
+            const before = eXe.app._alertHistory.length;
+
+            device.pasteQuestion();
+
+            expect(device.selectsGame.map((item) => item.quextion)).toEqual(['Capital of France?', 'Capital of France?']);
+            expect(eXe.app._alertHistory.slice(before)).toEqual([]);
+        });
+
+        it('leaves out an incomplete question of a point questionnaire, without its warning', () => {
+            device.tests = [complete('Capital of France?')];
+            device.activeTest = 0;
+            device.showPointQuestion(0);
+            device.copyPointQuestion();
+            $('#mapaEQuestion1').val('');
+            const before = eXe.app._alertHistory.length;
+
+            device.pastePointQuestion();
+
+            expect(device.tests.map((item) => item.quextion)).toEqual(['Capital of France?', 'Capital of France?']);
+            expect(eXe.app._alertHistory.slice(before)).toEqual([]);
+        });
+
+        it('leaves out a slide without its title, without its warning', () => {
+            device.slides = [{ ...device.getDefaultSlide(), title: 'Paris', url: 'images/paris.jpg' }];
+            device.activeSlide = 0;
+            device.showSlide(0);
+            device.copySlide();
+            $('#mapaSTitle').val('');
+            const before = eXe.app._alertHistory.length;
+
+            device.pasteSlide();
+
+            expect(device.slides.map((slide) => slide.title)).toEqual(['Paris', 'Paris']);
+            expect(eXe.app._alertHistory.slice(before)).toEqual([]);
+        });
+
+        it('leaves out the point on screen of a map without its image, without its warning', () => {
+            const points = device.activeMap.pts;
+            device.activeMap.active = 0;
+            device.typeEdit = 0;
+            device.clipBoard = { ...points[0], title: 'Copied' };
+            $('#mapaURLImageMap').val('');
+            const before = eXe.app._alertHistory.length;
+
+            device.pastePoint();
+
+            expect(device.activeMap.pts[1].title).toBe('Copied');
+            expect(eXe.app._alertHistory.slice(before)).toEqual([]);
+        });
+
+        it('checks an incomplete point without its warning when asked to', () => {
+            vi.spyOn(global.tinymce, 'get').mockReturnValue({ getContent: () => '' });
+            $('#mapaURLImageMap').val('map.png');
+            $('#mapaTitle').val('');
+            const before = eXe.app._alertHistory.length;
+
+            expect(device.validatePoint({ ...device.activeMap.pts[0] }, { silent: true })).toBe(false);
+            expect(eXe.app._alertHistory.slice(before)).toEqual([]);
+            expect(device.validatePoint({ ...device.activeMap.pts[0] })).toBe(false);
+            expect(eXe.app._alertHistory).toHaveLength(before + 1);
+        });
     });
 
     it('goes to the question of the point questionnaire whose number is typed', () => {

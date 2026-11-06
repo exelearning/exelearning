@@ -854,7 +854,7 @@ var $exeDevice = {
         };
     },
 
-    validatePhrase: function () {
+    validatePhrase: function (options = {}) {
         let correct = true;
         const phrase = $exeDevice.getPhraseDefault(),
             $cards = $('#ordenaEPhrase').find('div.ODNE-EDatosCarta'),
@@ -866,7 +866,7 @@ var $exeDevice = {
 
         $cards.each(function name() {
             const card = $exeDevice.cardToJson($(this));
-            if (type == 1 && !$exeDevice.validateCard(card)) {
+            if (type == 1 && !$exeDevice.validateCard(card, options)) {
                 correct = false;
             } else {
                 phrase.cards.push(card);
@@ -875,7 +875,7 @@ var $exeDevice = {
 
         if (type == 1 && gameColumns > 1 && orderedColumns) {
             if (phrase.cards.length <= gameColumns) {
-                $exeDevice.showMessage($exeDevice.msgs.msgCardsColumn);
+                if (!options.silent) $exeDevice.showMessage($exeDevice.msgs.msgCardsColumn);
                 return false;
             }
         }
@@ -883,7 +883,7 @@ var $exeDevice = {
         if (type == 0) {
             const ph = $('#ordenaEPraseI').val();
             if (ph.trim().length < 1) {
-                $exeDevice.showMessage($exeDevice.msgs.msgEOneWord);
+                if (!options.silent) $exeDevice.showMessage($exeDevice.msgs.msgEOneWord);
                 return false;
             }
         }
@@ -902,11 +902,11 @@ var $exeDevice = {
         return true;
     },
 
-    validateCard: function (p) {
+    validateCard: function (p, options = {}) {
         let message = '';
         if (p.eText.length == 0 && p.url.length < 5 && p.audio.length == 0) {
             message = $exeDevice.msgs.msgCompleteData;
-            $exeDevice.showMessage(message);
+            if (!options.silent) $exeDevice.showMessage(message);
         }
 
         return message === '';
@@ -1759,7 +1759,7 @@ var $exeDevice = {
 
     pastePhrase: function () {
         $exeIDevicesEdition.iDevice.gamification.share.keepQuestionOnScreen(
-            () => $exeDevice.validatePhrase()
+            (options) => $exeDevice.validatePhrase(options)
         );
         if ($exeDevice.phrasesGame.length >= 20) {
             $exeDevice.showMessage($exeDevice.msgs.msgPairsMax);

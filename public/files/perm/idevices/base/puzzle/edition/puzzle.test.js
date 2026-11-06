@@ -433,6 +433,28 @@ describe('puzzle edition: shared form tabs and feedback', () => {
         expect(globalThis.linkImage).toBeUndefined();
     });
 
+    it('pastes after a puzzle left incomplete on screen, without its warning', () => {
+        const before = eXe.app._alertHistory.length;
+        device.typeEdit = 0;
+        device.clipBoard = { ...device.puzzlesGame[0] };
+
+        device.pastePuzzle();
+
+        expect(device.puzzlesGame).toHaveLength(2);
+        expect(eXe.app._alertHistory.slice(before)).toEqual([]);
+    });
+
+    it('checks the size of the puzzle on screen without its warning when asked to', () => {
+        document.getElementById('puzzleEURLImageDefinition').value = 'files/cat.jpg';
+        $('#puzzleERows').append('<option>9</option>').val('9');
+        const before = eXe.app._alertHistory.length;
+
+        expect(device.validatePuzzle({ silent: true })).toBe(false);
+        expect(eXe.app._alertHistory.slice(before)).toEqual([]);
+        expect(device.validatePuzzle()).toBe(false);
+        expect(eXe.app.getLastAlert()).toBe(device.msgs.msgRowsNumber);
+    });
+
     describe('saving', () => {
         let editors;
         let tinymceGet;

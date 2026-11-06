@@ -230,7 +230,7 @@ var $exeDevice = {
 
     pasteQuestion: function () {
         $exeIDevicesEdition.iDevice.gamification.share.keepQuestionOnScreen(
-            () => $exeDevice.validateQuestion()
+            (options) => $exeDevice.validateQuestion(options)
         );
         if ($exeDevice.typeEdit === 0) {
             $exeDevice.active++;
@@ -817,7 +817,7 @@ var $exeDevice = {
             return;
         }
         $exeIDevicesEdition.iDevice.gamification.share.keepQuestionOnScreen(
-            () => $exeDevice.validateQuestion()
+            (options) => $exeDevice.validateQuestion(options)
         );
         for (let i = 0; i < questions.length; i++) {
             $exeDevice.questionsGame.push(questions[i]);
@@ -923,7 +923,7 @@ var $exeDevice = {
         };
     },
 
-    validateQuestion: function () {
+    validateQuestion: function (options = {}) {
         let message = '';
         const msgs = $exeDevice.msgs,
             p = {};
@@ -959,7 +959,7 @@ var $exeDevice = {
             $exeDevice.questionsGame[$exeDevice.active] = p;
             return true;
         } else {
-            $exeDevice.showMessage(message);
+            if (!options.silent) $exeDevice.showMessage(message);
             return false;
         }
     },

@@ -698,6 +698,17 @@ describe('identify edition: shared form tabs and feedback', () => {
             expect(device.questionsGame.map((item) => item.solution)).toEqual(['Mars']);
             expect(alerts).toEqual([]);
         });
+
+        it('leaves it out of a paste, without its warning, when it is incomplete', () => {
+            typeOnScreen({ solution: 'Venus', clues: ['Second planet', '', '', '', '', '', '', ''] });
+            device.typeEdit = 0;
+            device.clipBoard = question({ solution: 'Mars' });
+
+            const alerts = alertsWhile(() => device.pasteQuestion());
+
+            expect(device.questionsGame.map((item) => item.solution)).toContain('Mars');
+            expect(alerts).toEqual([]);
+        });
     });
 
     it('accepts webp pictures from the project files', () => {

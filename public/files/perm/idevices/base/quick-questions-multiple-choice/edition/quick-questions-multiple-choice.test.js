@@ -1035,5 +1035,22 @@ describe('quick-questions-multiple-choice edition: shared form tabs and feedback
             expect(questions()).toEqual(['Capital of Italy?']);
             expect(global.eXe.app.alert).not.toHaveBeenCalled();
         });
+
+        it('leaves it out of a paste, without its warning, when it is incomplete', () => {
+            typeOnScreen(['Paris', '', '', '']);
+            device.typeEdit = 0;
+            device.clipBoard = {
+                ...device.getCuestionDefault(),
+                quextion: 'Capital of Italy?',
+                options: ['Paris', 'Rome', 'Madrid', 'Berlin'],
+                solution: 'B',
+            };
+
+            global.eXe.app.alert.mockClear();
+            device.pasteQuestion();
+
+            expect(questions()).toContain('Capital of Italy?');
+            expect(global.eXe.app.alert).not.toHaveBeenCalled();
+        });
     });
 });

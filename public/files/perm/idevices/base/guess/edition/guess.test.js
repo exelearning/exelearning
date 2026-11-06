@@ -1028,5 +1028,17 @@ describe('guess edition: shared form tabs and feedback', () => {
       expect(device.wordsGame.map((item) => item.word)).toEqual(['SUN']);
       expect(eXe.app.alert).not.toHaveBeenCalled();
     });
+
+    it('leaves it out of a paste, without its warning, when it is incomplete', () => {
+      typeOnScreen('HEART', '');
+      device.typeEdit = 0;
+      device.clipBoard = { ...device.getCuestionDefault(), word: 'SUN', definition: 'The star of our system' };
+
+      eXe.app.alert.mockClear();
+      device.pasteQuestion();
+
+      expect(device.wordsGame.map((item) => item.word)).toContain('SUN');
+      expect(eXe.app.alert).not.toHaveBeenCalled();
+    });
   });
 });

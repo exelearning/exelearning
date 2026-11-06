@@ -1958,6 +1958,18 @@ describe('electrical-circuits edition: shared form tabs and feedback', () => {
             expect(questions()).toEqual([device.getCuestionDefault().quextion, 'What does a fuse protect?']);
             expect(global.eXe.app.alert).not.toHaveBeenCalled();
         });
+
+        it('leaves it out of a paste, without its warning, when it is incomplete', () => {
+            typeOnScreen(['L1', '', '', '']);
+            device.typeEdit = 0;
+            [device.clipBoard] = added();
+
+            global.eXe.app.alert.mockClear();
+            device.pasteQuestion();
+
+            expect(questions()).toContain('What does a fuse protect?');
+            expect(global.eXe.app.alert).not.toHaveBeenCalled();
+        });
     });
 });
 

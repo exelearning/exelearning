@@ -380,7 +380,7 @@ var $exeDevice = {
 
     pasteCard: function () {
         $exeIDevicesEdition.iDevice.gamification.share.keepQuestionOnScreen(
-            () => $exeDevice.validateCard()
+            (options) => $exeDevice.validateCard(options)
         );
         if ($exeDevice.typeEdit == 0) {
             $exeDevice.active++;
@@ -464,7 +464,7 @@ var $exeDevice = {
         return s ? encodeURIComponent(s.replace('%', '&percnt;')) : s;
     },
 
-    validateCard: function () {
+    validateCard: function (options = {}) {
         let message = '',
             msgs = $exeDevice.msgs,
             p = {};
@@ -487,7 +487,7 @@ var $exeDevice = {
             $exeDevice.cardsGame[$exeDevice.active] = p;
             message = true;
         } else {
-            $exeDevice.showMessage(message);
+            if (!options.silent) $exeDevice.showMessage(message);
             message = false;
         }
         return message;

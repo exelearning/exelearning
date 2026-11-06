@@ -488,7 +488,7 @@ var $exeDevice = {
 
     pasteQuestion: function () {
         $exeIDevicesEdition.iDevice.gamification.share.keepQuestionOnScreen(
-            () => $exeDevice.validateQuestion()
+            (options) => $exeDevice.validateQuestion(options)
         );
         if ($exeDevice.typeEdit == 0) {
             $exeDevice.activesQuestions[$exeDevice.activeTema]++;
@@ -1897,7 +1897,7 @@ var $exeDevice = {
         return true;
     },
 
-    validateQuestion: function () {
+    validateQuestion: function (options = {}) {
         let message = '',
             msgs = $exeDevice.msgs,
             p = {},
@@ -2022,7 +2022,7 @@ var $exeDevice = {
             $exeDevice.nombresTemas[$exeDevice.activeTema] = nombreTema;
             message = true;
         } else {
-            $exeDevice.showMessage(message);
+            if (!options.silent) $exeDevice.showMessage(message);
             message = false;
         }
         return message;

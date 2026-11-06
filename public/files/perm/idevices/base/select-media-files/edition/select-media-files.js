@@ -705,14 +705,14 @@ var $exeDevice = {
         };
     },
 
-    validatePhrase: function () {
+    validatePhrase: function (options = {}) {
         let correct = true,
             phrase = $exeDevice.getPhraseDefault(),
             $cards = $('#slcmEPhrase').find('div.SLCME-EDatosCarta');
 
         $cards.each(function () {
             const card = $exeDevice.cardToJson($(this));
-            if ($exeDevice.validateCard(card)) {
+            if ($exeDevice.validateCard(card, options)) {
                 correct = false;
             } else {
                 phrase.cards.push(card);
@@ -735,10 +735,10 @@ var $exeDevice = {
         return true;
     },
 
-    validateCard: function (p) {
+    validateCard: function (p, options = {}) {
         if (p.eText.length == 0 && p.url.length < 5 && p.audio.length == 0) {
             const message = $exeDevice.msgs.msgCompleteData;
-            $exeDevice.showMessage(message);
+            if (!options.silent) $exeDevice.showMessage(message);
             return true;
         }
         return false;
@@ -1586,7 +1586,7 @@ var $exeDevice = {
 
     pastePhrase: function () {
         $exeIDevicesEdition.iDevice.gamification.share.keepQuestionOnScreen(
-            () => $exeDevice.validatePhrase()
+            (options) => $exeDevice.validatePhrase(options)
         );
         if ($exeDevice.phrasesGame.length >= 30) {
             $exeDevice.showMessage($exeDevice.msgs.msgPairsMax);

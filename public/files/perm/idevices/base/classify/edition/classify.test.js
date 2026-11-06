@@ -1076,6 +1076,17 @@ describe('classify edition: shared form tabs and feedback', () => {
             expect(device.wordsGame.map((entry) => entry.eText)).toEqual(['Dog', 'Cow']);
             expect(alerts).toEqual([]);
         });
+
+        it('leaves it out of a paste, without its warning, when it is incomplete', () => {
+            typeOnScreen({ type: 1, group: 0, eText: '' });
+            device.typeEdit = 0;
+            device.clipBoard = item({ type: 1, group: 1, eText: 'Cow' });
+
+            const alerts = alertsWhile(() => device.pasteQuestion());
+
+            expect(device.wordsGame.map((entry) => entry.eText)).toContain('Cow');
+            expect(alerts).toEqual([]);
+        });
     });
 
     describe('importing lines into an activity', () => {

@@ -420,6 +420,17 @@ describe('dragdrop edition: shared form tabs, options tooltips, and saving', () 
         expect(document.getElementById('dadETimeDiv').classList.contains('d-flex')).toBe(true);
     });
 
+    it('pastes after a card left incomplete on screen, without its warning', () => {
+        const before = eXe.app._alertHistory.length;
+        device.typeEdit = 0;
+        device.clipBoard = { ...device.cardsGame[0] };
+
+        device.pasteCard();
+
+        expect(device.cardsGame).toHaveLength(2);
+        expect(eXe.app._alertHistory.slice(before)).toEqual([]);
+    });
+
     describe('saving and validation', () => {
         let editors;
         let tinymceGet;

@@ -395,6 +395,44 @@ describe('sort edition: shared form tabs and feedback', () => {
         expect(globalThis.$nimage).toBeUndefined();
     });
 
+    it('pastes after a phrase left incomplete on screen, without its warning', () => {
+        const before = eXe.app._alertHistory.length;
+        device.typeEdit = 0;
+        device.clipBoard = { ...device.phrasesGame[0] };
+
+        device.pastePhrase();
+
+        expect(device.phrasesGame).toHaveLength(2);
+        expect(eXe.app._alertHistory.slice(before)).toEqual([]);
+    });
+
+    it('pastes after cards left incomplete on screen, without their warning', () => {
+        $('#odntype1').prop('checked', true).trigger('change');
+        const before = eXe.app._alertHistory.length;
+        device.typeEdit = 0;
+        device.clipBoard = { ...device.phrasesGame[0] };
+
+        device.pastePhrase();
+
+        expect(device.phrasesGame).toHaveLength(2);
+        expect(eXe.app._alertHistory.slice(before)).toEqual([]);
+    });
+
+    it('checks the cards in ordered columns without its warning when asked to', () => {
+        $('#odntype1').prop('checked', true).trigger('change');
+        $('#odn3').prop('checked', true).trigger('change');
+        $('#ordenaOrderedColumns').prop('checked', true);
+        document.querySelectorAll('#ordenaEPhrase .ODNE-EText').forEach((input) => {
+            input.value = 'Cat';
+        });
+        const before = eXe.app._alertHistory.length;
+
+        expect(device.validatePhrase({ silent: true })).toBe(false);
+        expect(eXe.app._alertHistory.slice(before)).toEqual([]);
+        expect(device.validatePhrase()).toBe(false);
+        expect(eXe.app.getLastAlert()).toBe(device.msgs.msgCardsColumn);
+    });
+
     describe('saving', () => {
         let editors;
 

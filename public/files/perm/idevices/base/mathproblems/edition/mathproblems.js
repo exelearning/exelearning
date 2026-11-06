@@ -514,7 +514,7 @@ var $exeDevice = {
 
     pasteQuestion: function () {
         $exeIDevicesEdition.iDevice.gamification.share.keepQuestionOnScreen(
-            () => $exeDevice.validateQuestion()
+            (options) => $exeDevice.validateQuestion(options)
         );
         if ($exeDevice.typeEdit == 0) {
             $exeDevice.active++;
@@ -601,7 +601,7 @@ var $exeDevice = {
         return wrapper.text();
     },
 
-    validateQuestion: function () {
+    validateQuestion: function (options = {}) {
         let message = '';
         const p = {};
 
@@ -670,7 +670,7 @@ var $exeDevice = {
             $exeDevice.questions[$exeDevice.active] = Object.assign({}, p);
             message = true;
         } else {
-            $exeDevice.showMessage(message);
+            if (!options.silent) $exeDevice.showMessage(message);
             message = false;
         }
         return message;

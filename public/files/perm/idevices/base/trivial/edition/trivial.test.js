@@ -728,4 +728,22 @@ describe('trivial edition: shared form tabs', () => {
             'Capital of France?',
         ]);
     });
+
+    it('pastes after a question left incomplete on screen, without its warning', () => {
+        vi.spyOn(global.tinymce, 'get').mockImplementation(() => ({
+            initialized: true,
+            getContent: () => '',
+            setContent: () => {},
+            hide: () => {},
+            show: () => {},
+        }));
+        const before = eXe.app._alertHistory.length;
+        device.typeEdit = 0;
+        device.clipBoard = { ...device.temas[device.activeTema][0] };
+
+        device.pasteQuestion();
+
+        expect(device.temas[device.activeTema]).toHaveLength(2);
+        expect(eXe.app._alertHistory.slice(before)).toEqual([]);
+    });
 });

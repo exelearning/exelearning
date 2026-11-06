@@ -282,7 +282,7 @@ var $exeDevice = {
             return { handledMessaging: true, remainingLines: rejected };
         }
         $exeIDevicesEdition.iDevice.gamification.share.keepQuestionOnScreen(
-            () => $exeDevice.validateQuestion()
+            (options) => $exeDevice.validateQuestion(options)
         );
         $exeDevice.selectsGame.push(...questions);
         $exeDevice.active = $exeDevice.selectsGame.length - questions.length;
@@ -332,7 +332,7 @@ var $exeDevice = {
 
     pasteQuestion: function () {
         $exeIDevicesEdition.iDevice.gamification.share.keepQuestionOnScreen(
-            () => $exeDevice.validateQuestion()
+            (options) => $exeDevice.validateQuestion(options)
         );
         if ($exeDevice.typeEdit == 0) {
             $exeDevice.active++;
@@ -1986,7 +1986,7 @@ var $exeDevice = {
         return html;
     },
 
-    validateQuestion: function () {
+    validateQuestion: function (options = {}) {
         const msgs = $exeDevice.msgs;
         const activityMode = $('input[name="slcactivitymode"]:checked').val() || 'test';
         let p = {},
@@ -2068,7 +2068,7 @@ var $exeDevice = {
             $exeDevice.selectsGame[$exeDevice.active] = p;
             message = true;
         } else {
-            $exeDevice.showMessage(message);
+            if (!options.silent) $exeDevice.showMessage(message);
             message = false;
         }
 

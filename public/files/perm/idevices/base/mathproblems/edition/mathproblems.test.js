@@ -403,6 +403,20 @@ describe('mathproblems edition: shared form tabs and feedback', () => {
         expect(globalThis.value).toBeUndefined();
     });
 
+    it('pastes after a question left incomplete on screen, without its warning', () => {
+        device.questions = [question()];
+        device.active = 0;
+        $('#eCQformula').val('');
+        const before = eXe.app._alertHistory.length;
+        device.typeEdit = 0;
+        device.clipBoard = question();
+
+        device.pasteQuestion();
+
+        expect(device.questions).toHaveLength(2);
+        expect(eXe.app._alertHistory.slice(before)).toEqual([]);
+    });
+
     describe('saving', () => {
         let editors;
         let tinymceGet;

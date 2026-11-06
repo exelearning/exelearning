@@ -1275,7 +1275,7 @@ var $exeDevice = {
         return html;
     },
 
-    validateQuestion: function () {
+    validateQuestion: function (options = {}) {
         let message = '';
         const msgs = $exeDevice.msgs,
             p = {};
@@ -1365,7 +1365,7 @@ var $exeDevice = {
             $exeDevice.wordsGame[$exeDevice.active] = p;
             return true;
         } else {
-            $exeDevice.showMessage(message);
+            if (!options.silent) $exeDevice.showMessage(message);
             return false;
         }
     },
@@ -2197,7 +2197,7 @@ var $exeDevice = {
 
     pasteQuestion: function () {
         $exeIDevicesEdition.iDevice.gamification.share.keepQuestionOnScreen(
-            () => $exeDevice.validateQuestion()
+            (options) => $exeDevice.validateQuestion(options)
         );
         if ($exeDevice.typeEdit === 0) {
             $exeDevice.active++;
@@ -2600,7 +2600,7 @@ var $exeDevice = {
             }
         }
         $exeIDevicesEdition.iDevice.gamification.share.keepQuestionOnScreen(
-            () => $exeDevice.validateQuestion()
+            (options) => $exeDevice.validateQuestion(options)
         );
         $exeDevice.wordsGame = wordsGame;
         $exeDevice.active = 0;

@@ -580,5 +580,17 @@ describe('relate edition: shared form tabs and share windows', () => {
             expect(fronts()).toEqual(['Moon']);
             expect(eXe.app._alertHistory.slice(before)).toEqual([]);
         });
+
+        it('leaves it out of a paste, without its warning, when it is incomplete', () => {
+            typeOnScreen('', 'Sol');
+            device.typeEdit = 0;
+            device.clipBoard = card('Moon', 'Luna');
+
+            const before = eXe.app._alertHistory.length;
+            device.pasteCard();
+
+            expect(fronts()).toContain('Moon');
+            expect(eXe.app._alertHistory.slice(before)).toEqual([]);
+        });
     });
 });

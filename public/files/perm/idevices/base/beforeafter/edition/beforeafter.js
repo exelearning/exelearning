@@ -358,7 +358,7 @@ var $exeDevice = {
 
     pasteCard: function () {
         $exeIDevicesEdition.iDevice.gamification.share.keepQuestionOnScreen(
-            () => $exeDevice.validateCard()
+            (options) => $exeDevice.validateCard(options)
         );
         let cards = $exeDevice.cardsGame,
             active = $exeDevice.active;
@@ -440,7 +440,7 @@ var $exeDevice = {
         $exeDevice.showImage(1);
     },
 
-    validateCard: function () {
+    validateCard: function (options = {}) {
         const msgs = $exeDevice.msgs;
         let p = {
             url: $('#bfafEURLImage').val().trim(),
@@ -473,7 +473,7 @@ var $exeDevice = {
             $exeDevice.cardsGame[$exeDevice.active] = p;
             return true;
         } else {
-            $exeDevice.showMessage(message);
+            if (!options.silent) $exeDevice.showMessage(message);
             return false;
         }
     },

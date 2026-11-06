@@ -1050,6 +1050,17 @@ describe('discover edition: shared form tabs, options tooltips, and feedback', (
         expect(global.eXe.app.getLastAlert()).toBe('Sorry, wrong file format');
     });
 
+    it('pastes after a question left incomplete on screen, without its warning', () => {
+        const before = eXe.app._alertHistory.length;
+        device.typeEdit = 0;
+        device.clipBoard = { ...device.wordsGame[0] };
+
+        device.pasteQuestion();
+
+        expect(device.wordsGame).toHaveLength(2);
+        expect(eXe.app._alertHistory.slice(before)).toEqual([]);
+    });
+
     describe('saving and validation', () => {
         let editors;
         let tinymceGet;

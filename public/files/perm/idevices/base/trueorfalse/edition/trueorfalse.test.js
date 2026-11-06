@@ -856,5 +856,17 @@ describe('trueorfalse edition: shared form tabs', () => {
             expect(questions()).toEqual(['The Sun is a star']);
             expect(eXe.app._alertHistory.slice(before)).toEqual([]);
         });
+
+        it('leaves it out of a paste, without its warning, when it is incomplete', () => {
+            typeOnScreen('');
+            device.typeEdit = 0;
+            device.clipBoard = { question: 'The Sun is a star', solution: 1, feedback: '', suggestion: '' };
+
+            const before = eXe.app._alertHistory.length;
+            device.pasteQuestion();
+
+            expect(questions()).toContain('The Sun is a star');
+            expect(eXe.app._alertHistory.slice(before)).toEqual([]);
+        });
     });
 });

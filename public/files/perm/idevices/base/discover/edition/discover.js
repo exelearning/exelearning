@@ -974,7 +974,7 @@ var $exeDevice = {
         return html;
     },
 
-    validateQuestion: function () {
+    validateQuestion: function (options = {}) {
         let message = '',
             msgs = $exeDevice.msgs,
             gameMode = parseInt($('input[name=qtxgamemode]:checked').val()),
@@ -1023,7 +1023,7 @@ var $exeDevice = {
             $exeDevice.wordsGame[$exeDevice.active] = q;
             message = true;
         } else {
-            $exeDevice.showMessage(message);
+            if (!options.silent) $exeDevice.showMessage(message);
             message = false;
         }
         return message;
@@ -1852,7 +1852,7 @@ var $exeDevice = {
 
     pasteQuestion: function () {
         $exeIDevicesEdition.iDevice.gamification.share.keepQuestionOnScreen(
-            () => $exeDevice.validateQuestion()
+            (options) => $exeDevice.validateQuestion(options)
         );
         if ($exeDevice.wordsGame.length >= 20) {
             $exeDevice.showMessage($exeDevice.msgs.msgPairsMax);

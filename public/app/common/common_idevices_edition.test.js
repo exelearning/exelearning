@@ -4579,28 +4579,23 @@ describe('common_idevices_edition.js', () => {
         expect(validate).toHaveBeenCalledTimes(1);
       });
 
-      it('leaves out an incomplete question without its warning, and restores the warnings', () => {
-        const alert = globalThis.eXe.app.alert;
-        alert.mockClear();
-        const validate = () => {
-          globalThis.eXe.app.alert('The question is incomplete');
-          return false;
-        };
+      it('leaves out an incomplete question, asking its validation not to warn', () => {
+        const validate = vi.fn(() => false);
 
         expect(iDevice().gamification.share.keepQuestionOnScreen(validate)).toBe(false);
-        expect(alert).not.toHaveBeenCalled();
-        expect(globalThis.eXe.app.alert).toBe(alert);
+        expect(validate).toHaveBeenCalledWith({ silent: true });
       });
 
-      it('restores the warnings even if the validation fails', () => {
+      it('leaves the warnings of the application as they are', () => {
         const alert = globalThis.eXe.app.alert;
+        let during;
 
-        expect(() =>
-          iDevice().gamification.share.keepQuestionOnScreen(() => {
-            throw new Error('broken form');
-          })
-        ).toThrow('broken form');
-        expect(globalThis.eXe.app.alert).toBe(alert);
+        iDevice().gamification.share.keepQuestionOnScreen(() => {
+          during = globalThis.eXe.app.alert;
+          return false;
+        });
+
+        expect(during).toBe(alert);
       });
     });
 

@@ -375,9 +375,9 @@ var $exeDevice = {
         $exeDevice.puzzlesGame.push($exeDevice.getPuzzleDefault());
     },
 
-    validatePuzzle: function () {
+    validatePuzzle: function (options = {}) {
         if ($('#puzzleEURLImageDefinition').val().length < 3) {
-            $exeDevice.showMessage($exeDevice.msgs.msgSelectPuzzleImage);
+            if (!options.silent) $exeDevice.showMessage($exeDevice.msgs.msgSelectPuzzleImage);
             return false;
         }
 
@@ -386,7 +386,7 @@ var $exeDevice = {
         puzzle.url = $('#puzzleEURLImageDefinition').val();
 
         if (puzzle.url.length < 3) {
-            $exeDevice.showMessage($exeDevice.msgs.msgSelectImage);
+            if (!options.silent) $exeDevice.showMessage($exeDevice.msgs.msgSelectImage);
             return false;
         }
 
@@ -401,7 +401,7 @@ var $exeDevice = {
             puzzle.columns >= 2 &&
             puzzle.columns <= 6;
         if (!pcc) {
-            $exeDevice.showMessage($exeDevice.msgs.msgRowsNumber);
+            if (!options.silent) $exeDevice.showMessage($exeDevice.msgs.msgRowsNumber);
             return false;
         }
 
@@ -967,7 +967,7 @@ var $exeDevice = {
 
     pastePuzzle: function () {
         $exeIDevicesEdition.iDevice.gamification.share.keepQuestionOnScreen(
-            () => $exeDevice.validatePuzzle()
+            (options) => $exeDevice.validatePuzzle(options)
         );
         if ($exeDevice.puzzlesGame.length >= 30) {
             $exeDevice.showMessage($exeDevice.msgs.msgPairsMax);

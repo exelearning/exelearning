@@ -1971,7 +1971,7 @@ var $exeDevice = {
         return true;
     },
 
-    validatePoint: function (p) {
+    validatePoint: function (p, options = {}) {
         const msgs = $exeDevice.msgs,
             url = $('#mapaURLImageMap').val();
         let message = '';
@@ -2026,7 +2026,7 @@ var $exeDevice = {
         $exeIDevicesEdition.iDevice.gamification.helpers.stopSound();
         $exeDevice.stopVideo();
         if (url.length < 4) {
-            $exeDevice.showMessage($exeDevice.msgs.msgEURLValid);
+            if (!options.silent) $exeDevice.showMessage($exeDevice.msgs.msgEURLValid);
             return false;
         }
 
@@ -2098,7 +2098,7 @@ var $exeDevice = {
             $exeDevice.updateQuestionsNumber();
             message = p;
         } else {
-            $exeDevice.showMessage(message);
+            if (!options.silent) $exeDevice.showMessage(message);
             message = false;
         }
         return message;
@@ -3809,7 +3809,7 @@ var $exeDevice = {
         $('#mapaCubierta').fadeOut();
     },
 
-    validateSlide: function () {
+    validateSlide: function (options = {}) {
         let msg = '';
         if ($('#mapaSTitle').val().trim().length == 0) {
             msg = $exeDevice.msgs.msgTitle;
@@ -3817,7 +3817,7 @@ var $exeDevice = {
             msg = $exeDevice.msgs.msgEURLValid;
         }
         if (msg.length > 0) {
-            $exeDevice.showMessage(msg);
+            if (!options.silent) $exeDevice.showMessage(msg);
         } else {
             let slide = $exeDevice.slides[$exeDevice.activeSlide];
             slide.title = $('#mapaSTitle').val();
@@ -4215,7 +4215,7 @@ var $exeDevice = {
     },
     pasteQuestion: function () {
         $exeIDevicesEdition.iDevice.gamification.share.keepQuestionOnScreen(
-            () => $exeDevice.validateQuestion()
+            (options) => $exeDevice.validateQuestion(options)
         );
         if ($exeDevice.qTypeEdit == 0) {
             $exeDevice.qActive++;
@@ -4322,7 +4322,7 @@ var $exeDevice = {
 
     pastePointQuestion: function () {
         $exeIDevicesEdition.iDevice.gamification.share.keepQuestionOnScreen(
-            () => $exeDevice.validatePointQuestion()
+            (options) => $exeDevice.validatePointQuestion(options)
         );
         if ($exeDevice.pTypeEdit == 0) {
             $exeDevice.activeTest++;
@@ -4379,7 +4379,7 @@ var $exeDevice = {
         }
     },
 
-    validatePointQuestion: function () {
+    validatePointQuestion: function (options = {}) {
         let message = '',
             msgs = $exeDevice.msgs,
             p = {};
@@ -4427,7 +4427,7 @@ var $exeDevice = {
             $exeDevice.tests[$exeDevice.activeTest] = p;
             message = true;
         } else {
-            $exeDevice.showMessage(message);
+            if (!options.silent) $exeDevice.showMessage(message);
             message = false;
         }
         return message;
@@ -4560,7 +4560,7 @@ var $exeDevice = {
         }
     },
 
-    validateQuestion: function () {
+    validateQuestion: function (options = {}) {
         let message = '',
             msgs = $exeDevice.msgs,
             p = {};
@@ -4609,7 +4609,7 @@ var $exeDevice = {
             $exeDevice.selectsGame[$exeDevice.qActive] = p;
             message = true;
         } else {
-            $exeDevice.showMessage(message);
+            if (!options.silent) $exeDevice.showMessage(message);
             message = false;
         }
         return message;
@@ -4870,7 +4870,7 @@ var $exeDevice = {
 
     pasteSlide: function () {
         $exeIDevicesEdition.iDevice.gamification.share.keepQuestionOnScreen(
-            () => $exeDevice.validateSlide()
+            (options) => $exeDevice.validateSlide(options)
         );
         if ($exeDevice.typeEditSlide == 0) {
             $exeDevice.activeSlide++;
@@ -4999,9 +4999,9 @@ var $exeDevice = {
 
     pastePoint: function () {
         $exeIDevicesEdition.iDevice.gamification.share.keepQuestionOnScreen(
-            () => {
+            (options) => {
                 const pts = $exeDevice.activeMap.pts,
-                    point = $exeDevice.validatePoint(pts[$exeDevice.activeMap.active]);
+                    point = $exeDevice.validatePoint(pts[$exeDevice.activeMap.active], options);
                 if (point === false) return false;
                 pts[$exeDevice.activeMap.active] = point;
             }
