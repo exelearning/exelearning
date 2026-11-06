@@ -390,6 +390,8 @@ var $exeIDevicesEdition = {
                     var evaluation = $('#eXeProgressReport').is(':checked');
                     var evaluationID = $.trim($('#eXeProgressReportID').val());
                     if (evaluation && evaluationID.length < 5) {
+                        // Behind the warning, the tab where the identifier is written.
+                        $exeIDevicesEdition.iDevice.tabs.showTabOf('eXeProgressReportID');
                         eXe.app.alert(_('The report identifier must have at least 5 characters'));
                         return false;
                     }
@@ -585,18 +587,21 @@ var $exeIDevicesEdition = {
                         showCodeAccess = $('#eXeGameShowCodeAccess').is(':checked'),
                         codeAccess = $.trim($('#eXeGameCodeAccess').val()),
                         messageCodeAccess = $.trim($('#eXeGameMessageCodeAccess').val());
+                    // Behind the warning, the tab of the field it is about.
+                    const warn = function (field, message) {
+                        $exeIDevicesEdition.iDevice.tabs.showTabOf(field);
+                        eXe.app.alert(message);
+                        return false;
+                    };
 
                     if (showClue && clueGame.length == 0) {
-                        eXe.app.alert(_("You must write a clue"));
-                        return false;
+                        return warn('eXeGameClue', _("You must write a clue"));
                     }
                     if (showCodeAccess && codeAccess.length == 0) {
-                        eXe.app.alert(_("You must provide the code to play this game"));
-                        return false;
+                        return warn('eXeGameCodeAccess', _("You must provide the code to play this game"));
                     }
                     if (showCodeAccess && messageCodeAccess.length == 0) {
-                        eXe.app.alert(_("Please explain how to obtain the code to play this game"));
-                        return false;
+                        return warn('eXeGameMessageCodeAccess', _("Please explain how to obtain the code to play this game"));
                     }
                     var a = {
                         'showClue': showClue,

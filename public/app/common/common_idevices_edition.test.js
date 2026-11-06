@@ -830,6 +830,22 @@ describe('common_idevices_edition.js', () => {
         expect(globalThis.eXe.app.alert).toHaveBeenCalled();
       });
 
+      it('opens the Grading tab behind the warning, where the identifier is written', () => {
+        const tabs = globalThis.$exeIDevicesEdition.iDevice.tabs;
+        document.body.innerHTML = tabs.getHtml('testForm', { contents: '', grading: true, path: '/path/to/' });
+        tabs.bind('testForm');
+        const gradingTab = () => document.getElementById('testForm-tab-grading');
+        progressBar().setValues({ evaluation: true, evaluationID: 'VALIDID' });
+
+        expect(progressBar().getValues()).not.toBe(false);
+        expect(gradingTab().getAttribute('aria-selected')).toBe('false');
+
+        $('#eXeProgressReportID').val('abc');
+        expect(progressBar().getValues()).toBe(false);
+        expect(gradingTab().getAttribute('aria-selected')).toBe('true');
+        expect(globalThis.eXe.app.alert).toHaveBeenCalledWith('The report identifier must have at least 5 characters');
+      });
+
       it('addEvents toggles input disabled state when checkbox changes', () => {
         mountHtml();
         progressBar().addEvents();
@@ -2074,6 +2090,32 @@ describe('common_idevices_edition.js', () => {
 
       const result = globalThis.$exeIDevicesEdition.iDevice.gamification.itinerary.getValues();
       expect(result).toBe(false);
+    });
+
+    it('opens the Passwords tab behind each warning, where its field is', () => {
+      const tabs = globalThis.$exeIDevicesEdition.iDevice.tabs;
+      const itinerary = globalThis.$exeIDevicesEdition.iDevice.gamification.itinerary;
+      document.body.innerHTML = tabs.getHtml('testForm', { contents: '', passwords: true });
+      tabs.bind('testForm');
+      const passwordsTab = () => document.getElementById('testForm-tab-passwords');
+      const warns = (message) => {
+        tabs.show('testForm', 'contents');
+        expect(itinerary.getValues()).toBe(false);
+        expect(passwordsTab().getAttribute('aria-selected')).toBe('true');
+        expect(globalThis.eXe.app.alert).toHaveBeenLastCalledWith(message);
+      };
+
+      $('#eXeGameShowClue').prop('checked', true);
+      warns('You must write a clue');
+      $('#eXeGameShowClue').prop('checked', false);
+      $('#eXeGameShowCodeAccess').prop('checked', true);
+      warns('You must provide the code to play this game');
+      $('#eXeGameCodeAccess').val('code123');
+      warns('Please explain how to obtain the code to play this game');
+      $('#eXeGameMessageCodeAccess').val('Enter the code');
+      tabs.show('testForm', 'contents');
+      expect(itinerary.getValues()).not.toBe(false);
+      expect(passwordsTab().getAttribute('aria-selected')).toBe('false');
     });
 
     it('getValues returns object when all valid', () => {
