@@ -2263,10 +2263,10 @@ describe('LOMLOE Euskadi (ES-PV) real-dataset render', () => {
         return el;
     }
 
-    it('renders the three Basque etapas in canonical order', async () => {
+    it('renders the four Basque etapas in canonical order', async () => {
         await initEsPv();
         const order = Array.from(el.querySelectorAll('.lomloe-etapa-btn')).map(b => b.dataset.etapa);
-        expect(order).toEqual(['Haur Hezkuntza', 'Lehen Hezkuntza', 'Derrigorrezko Bigarren Hezkuntza']);
+        expect(order).toEqual(['Haur Hezkuntza', 'Lehen Hezkuntza', 'Derrigorrezko Bigarren Hezkuntza', 'Batxilergoa']);
     });
 
     it('renders niveles when each etapa is opened', async () => {
@@ -2279,6 +2279,7 @@ describe('LOMLOE Euskadi (ES-PV) real-dataset render', () => {
         expect(open('Haur Hezkuntza')).toEqual(['Lehen zikloa (0-3 urte)', 'Bigarren zikloa (3-6 urte)']);
         expect(open('Lehen Hezkuntza')).toContain('Lehen Hezkuntzako 1. maila');
         expect(open('Derrigorrezko Bigarren Hezkuntza')).toContain('DBHko 1. maila');
+        expect(open('Batxilergoa')).toEqual(['Batxilergoko 1. maila', 'Batxilergoko 2. maila']);
     });
 
     async function materiasAfter(etapa, nivel) {
@@ -2313,6 +2314,28 @@ describe('LOMLOE Euskadi (ES-PV) real-dataset render', () => {
         expect(eso1).not.toContain('AA');
         expect(eso2).not.toContain('AA');
         expect(eso3).not.toContain('AA');
+    });
+
+    it('round-trips real Baccalaureate criteria, knowledge and fractional descriptors', async () => {
+        await initEsPv();
+        await materiasAfter('Batxilergoa', 'Batxilergoko 2. maila');
+        el.querySelector('.lomloe-materia-item[data-codarea="APDAMT"]').click();
+        el.querySelectorAll('input[data-type="criterio"]')[1].click();
+        const descriptor = el.querySelector('.lomloe-desc-cb[data-cc="KAKK3.1"]');
+        expect(descriptor).toBeTruthy();
+        descriptor.click();
+        el.querySelector('.lomloe-tab-btn[data-tab="saberes"]').click();
+        el.querySelector('input[data-type="saber"]').click();
+        const saved = dev.save();
+        expect(saved.lomloeSelections).toHaveLength(2);
+        expect(saved.lomloeSelections[0].codigoCriterio).toBe('ES-PV-BACH2-APDAMT-CE02-CR01');
+        expect(saved.lomloeDescriptors['KAKK3.1']).toBe(esPvDataset.descriptors['KAKK3.1']);
+        expect(saved.lomloeSummaryHtml).toContain('Batxilergoko 2. maila');
+        expect(saved.lomloeSummaryHtml).toContain('Patroiak eta mosaikoak');
+        el.remove();
+        await initEsPv(saved);
+        expect(dev.save().lomloeSelections).toEqual(saved.lomloeSelections);
+        expect(el.querySelector('input[data-type="saber"]').checked).toBe(true);
     });
 
     it('renders a selected Primaria materia curriculum and competencia descriptors', async () => {
