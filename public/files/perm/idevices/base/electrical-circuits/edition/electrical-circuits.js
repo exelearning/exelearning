@@ -1420,8 +1420,8 @@ var $exeDevice = {
             edition = $exeIDevicesEdition.iDevice,
             options = `
                 <div id="elceOptions">
-                    <div class="d-flex align-items-center gap-3 flex-nowrap mb-3" id="elceActivityMode">
-                        <span>${_('Mode')}:</span>
+                    <div class="d-flex align-items-center gap-3 flex-nowrap mb-3" id="elceActivityMode" role="radiogroup" aria-labelledby="elceModeLabel">
+                        <span id="elceModeLabel">${_('Mode')}:</span>
                         <div class="form-check form-check-inline m-0">
                             <input class="form-check-input" type="radio" name="slcactivitymode" id="elceModeTest" value="test" checked />
                             <label class="form-check-label" for="elceModeTest">${_('Test')}</label>

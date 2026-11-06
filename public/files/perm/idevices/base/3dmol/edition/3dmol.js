@@ -1348,8 +1348,8 @@ var $exeDevice = {
             edition = $exeIDevicesEdition.iDevice,
             options = `
                 <div id="dmoleOptions">
-                    <div class="d-flex align-items-center gap-3 flex-nowrap mb-3" id="dmoleActivityMode">
-                        <span>${_('Mode')}:</span>
+                    <div class="d-flex align-items-center gap-3 flex-nowrap mb-3" id="dmoleActivityMode" role="radiogroup" aria-labelledby="dmoleModeLabel">
+                        <span id="dmoleModeLabel">${_('Mode')}:</span>
                         <div class="form-check form-check-inline m-0">
                             <input class="form-check-input" type="radio" name="slcactivitymode" id="dmoleModeTest" value="test" checked />
                             <label class="form-check-label" for="dmoleModeTest">${_('Test')}</label>

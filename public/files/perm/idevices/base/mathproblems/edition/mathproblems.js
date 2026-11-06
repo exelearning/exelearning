@@ -212,13 +212,13 @@ var $exeDevice = {
                     </div>
                     <div id="eQCVariablesContainer" class="mb-3"></div>
                     <div id="eCQAleaContainer">
-                        <div class="mb-3 d-flex align-items-center gap-2 flex-nowrap">
+                        <div class="mb-3 d-flex align-items-center gap-2 flex-nowrap" role="group" aria-labelledby="eCQminLabel eCQmaxLabel">
                             <span class="d-flex align-items-center gap-2 flex-nowrap me-2">
-                                <label for="eCQmin" class="mb-0">${_('Smallest number')}:</label>
+                                <label id="eCQminLabel" for="eCQmin" class="mb-0">${_('Smallest number')}:</label>
                                 <input id="eCQmin" type="text" value="1" onkeyup="$exeDevice.onlyNumbers(this)" class="form-control" style="width:8ch; text-align:center" />
                             </span>
                             <span class="d-flex align-items-center gap-2 flex-nowrap">
-                                <label for="eCQmax" class="mb-0">${_('Highest number')}:</label>
+                                <label id="eCQmaxLabel" for="eCQmax" class="mb-0">${_('Highest number')}:</label>
                                 <input id="eCQmax" type="text" value="10" onkeyup="$exeDevice.onlyNumbers(this)" class="form-control" style="width:8ch; text-align:center" />
                             </span>
                             ${help(_('Range of the random numbers given to the variables.'))}

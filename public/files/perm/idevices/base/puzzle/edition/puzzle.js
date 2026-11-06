@@ -174,8 +174,8 @@ var $exeDevice = {
                 </div>`,
             puzzles = `
                 <div class="PZLE-EPanel" id="puzzleEPanel">
-                    <div class="mb-3 d-flex align-items-center gap-2 flex-nowrap">
-                        <span>${_('Type')}:</span>
+                    <div class="mb-3 d-flex align-items-center gap-2 flex-nowrap" role="radiogroup" aria-labelledby="puzzleETypeLabel">
+                        <span id="puzzleETypeLabel">${_('Type')}:</span>
                         <div class="form-check form-check-inline m-0">
                             <input class="PZLP-Type form-check-input" checked id="puzzleESliding" type="radio" name="pzltype" value="0" />
                             <label class="form-check-label" for="puzzleESliding">${_('Slide')}</label>
@@ -191,9 +191,9 @@ var $exeDevice = {
                             ].join('\n\n'),
                         )}
                     </div>
-                    <div class="mb-3 d-flex align-items-center flex-nowrap gap-2">
+                    <div class="mb-3 d-flex align-items-center flex-nowrap gap-2" role="group" aria-labelledby="puzzleERowsLabel puzzleEColumnsLabel">
                         <span class="d-flex align-items-center flex-nowrap gap-2 me-2">
-                            <label for="puzzleERows" class="mb-0">${_('Rows')}:</label>
+                            <label id="puzzleERowsLabel" for="puzzleERows" class="mb-0">${_('Rows')}:</label>
                             <select id="puzzleERows" class="form-select form-select-sm" style="min-width:8ch">
                                 <option>2</option>
                                 <option selected>3</option>
@@ -203,7 +203,7 @@ var $exeDevice = {
                             </select>
                         </span>
                         <span class="d-flex align-items-center flex-nowrap gap-2">
-                            <label for="puzzleEColumns" class="mb-0">${_('Columns')}:</label>
+                            <label id="puzzleEColumnsLabel" for="puzzleEColumns" class="mb-0">${_('Columns')}:</label>
                             <select id="puzzleEColumns" class="form-select form-select-sm" style="min-width:8ch">
                                 <option>2</option>
                                 <option selected>3</option>

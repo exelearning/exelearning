@@ -356,8 +356,8 @@ var $exeDevice = {
                         </span>
                         ${edition.common.getHelpTooltip(_('Show a button that ends the game and reveals where all the words are hidden.'))}
                     </div>
-                    <div class="d-flex align-items-center gap-3 flex-nowrap mb-3">
-                        <span>${_('Accept')}:</span>
+                    <div class="d-flex align-items-center gap-3 flex-nowrap mb-3" role="group" aria-labelledby="sopaEAcceptLabel">
+                        <span id="sopaEAcceptLabel">${_('Accept')}:</span>
                         <span class="toggle-item">
                             <span class="toggle-control">
                                 <input type="checkbox" id="sopaEDiagonals" class="toggle-input" />

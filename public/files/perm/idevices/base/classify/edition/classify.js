@@ -195,8 +195,8 @@ var $exeDevice = {
         const edition = $exeIDevicesEdition.iDevice;
         const optionsHtml = `
             <div id="clasificaEOptions">
-                <div class="d-flex align-items-center flex-wrap gap-2 mb-3">
-                    <span>${_('Difficulty level')}:</span>
+                <div class="d-flex align-items-center flex-wrap gap-2 mb-3" role="radiogroup" aria-labelledby="clasificaLevelLabel">
+                    <span id="clasificaLevelLabel">${_('Difficulty level')}:</span>
                     <div class="form-check form-check-inline m-0">
                         <input class="form-check-input CQE-ELevel" id="clasificaL1" type="radio" name="qtxgamelevel" value="0" />
                         <label class="form-check-label" for="clasificaL1">${_('Essential')}</label>

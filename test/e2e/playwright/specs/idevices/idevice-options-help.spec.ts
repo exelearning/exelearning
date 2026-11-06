@@ -774,13 +774,37 @@ function helpProblems(page: Page, scope: string): Promise<string[]> {
                     fail(`is not right after what precedes it (gap ${Math.round(gap)})`);
                 }
             }
-            const control = [...container.parentElement!.querySelectorAll('input, select, textarea')].find(
+            const rowControls = [...container.parentElement!.querySelectorAll('input, select, textarea')].filter(
                 element => shown(element) && !container.contains(element),
             );
+            const control = rowControls[0];
             if (control) {
                 const box = control.getBoundingClientRect();
                 if (!(icon.top < box.bottom && box.top < icon.bottom)) fail('is not on the line of its control');
             }
+            // The explanation describes the control it is about or, in a group, each of them, and the group
+            // names the help. Several choices or switches with one help make a group; a switch with the
+            // value it enables (seconds, lives...) does not.
+            const note = button.getAttribute('aria-controls')!;
+            const describes = (element: Element) =>
+                (element.getAttribute('aria-describedby') || '').split(/\s+/).includes(note);
+            const common = (window as any).$exeIDevicesEdition.iDevice.common;
+            const group = common.getHelpGroup(container);
+            if (group) {
+                const name = common.getHelpGroupName(group);
+                if (!name) fail('names no group');
+                else if (!button.getAttribute('aria-label')!.endsWith(name)) fail(`is not named after "${name}"`);
+                group
+                    .querySelectorAll('input:not([type="hidden"]), select, textarea')
+                    .forEach((element: Element) => describes(element) || fail(`does not describe #${element.id}`));
+            } else {
+                const radios = rowControls.filter(element => (element as HTMLInputElement).type === 'radio');
+                const switches = rowControls.filter(element => (element as HTMLInputElement).type === 'checkbox');
+                const sameName =
+                    new Set(radios.map(element => (element as HTMLInputElement).name)).size < radios.length;
+                if (sameName || switches.length > 1) fail('explains several options outside a group');
+            }
+            if (!form.querySelector(`[aria-describedby~="${note}"]`)) fail('describes no control');
             button.click();
             await nextFrame();
             const content = document.getElementById(button.getAttribute('aria-controls')!)!;
@@ -839,8 +863,8 @@ async function setChecked(page: Page, input: Locator, checked: boolean) {
 }
 
 // Each case creates a project, checks every help at two widths, then saves, reloads and reopens it: up to
-// 40 s in Chromium, and about a minute in Firefox.
-test.describe.configure({ timeout: 90_000 });
+// 40 s in Chromium, and over a minute in Firefox for the forms with most variants (Map).
+test.describe.configure({ timeout: 120_000 });
 
 for (const c of CASES) {
     test(`${c.name} explains each option inline without changing it`, async ({

@@ -379,14 +379,14 @@ var $exeDevice = {
                         </span>
                         ${edition.common.getHelpTooltip(_('Start with the game collapsed. Learners can expand it when they are ready to play.'))}
                     </div>
-                    <div class="d-flex align-items-center gap-3 flex-nowrap mb-3">
+                    <div class="d-flex align-items-center gap-3 flex-nowrap mb-3" role="group" aria-labelledby="hiEQuestionsRamdonLabel hiEAnswersRamdonLabel">
                         <span class="toggle-item">
                             <span class="toggle-control"><input type="checkbox" class="toggle-input" id="hiEQuestionsRamdon" /><span class="toggle-visual"></span></span>
-                            <label class="toggle-label" for="hiEQuestionsRamdon">${_('Random questions')}</label>
+                            <label id="hiEQuestionsRamdonLabel" class="toggle-label" for="hiEQuestionsRamdon">${_('Random questions')}</label>
                         </span>
                         <span class="toggle-item">
                             <span class="toggle-control"><input type="checkbox" class="toggle-input" id="hiEAnswersRamdon" /><span class="toggle-visual"></span></span>
-                            <label class="toggle-label" for="hiEAnswersRamdon">${_('Random options')}</label>
+                            <label id="hiEAnswersRamdonLabel" class="toggle-label" for="hiEAnswersRamdon">${_('Random options')}</label>
                         </span>
                         ${edition.common.getHelpTooltip([
                             `${_('Random questions')}: ${_('Present the questions in a different random order each time the game starts.')}`,

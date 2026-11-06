@@ -615,22 +615,24 @@ var $exeDevice = {
             // author sees the list change as they pick an option.
             contents = `
                 <div id="informeEContents">
-                    <div class="d-flex align-items-center gap-2 flex-nowrap mb-1">
-                        <span>${_('Show')}:</span>
-                        ${edition.common.getHelpTooltip(_('Choose which pages and iDevices the report lists.'))}
-                    </div>
-                    <div class="d-flex align-items-center flex-wrap gap-2 mb-3">
-                        <div class="form-check form-check-inline d-inline-flex align-items-center">
-                            <input type="radio" id="showtype0" name="showtype" class="form-check-input" value="0" checked>
-                            <label class="form-check-label mb-0 ms-1" for="showtype0">${_('All pages and iDevices')}</label>
+                    <div role="radiogroup" aria-labelledby="informeEShowLabel">
+                        <div class="d-flex align-items-center gap-2 flex-nowrap mb-1">
+                            <span id="informeEShowLabel">${_('Show')}:</span>
+                            ${edition.common.getHelpTooltip(_('Choose which pages and iDevices the report lists.'))}
                         </div>
-                        <div class="form-check form-check-inline d-inline-flex align-items-center">
-                            <input type="radio" id="showtype1" name="showtype" class="form-check-input" value="1">
-                            <label class="form-check-label mb-0 ms-1" for="showtype1">${_('All pages and only evaluable iDevices')}</label>
-                        </div>
-                        <div class="form-check form-check-inline d-inline-flex align-items-center">
-                            <input type="radio" id="showtype2" name="showtype" class="form-check-input" value="2">
-                            <label class="form-check-label mb-0 ms-1" for="showtype2">${_('Only pages with evaluable activities')}</label>
+                        <div class="d-flex align-items-center flex-wrap gap-2 mb-3">
+                            <div class="form-check form-check-inline d-inline-flex align-items-center">
+                                <input type="radio" id="showtype0" name="showtype" class="form-check-input" value="0" checked>
+                                <label class="form-check-label mb-0 ms-1" for="showtype0">${_('All pages and iDevices')}</label>
+                            </div>
+                            <div class="form-check form-check-inline d-inline-flex align-items-center">
+                                <input type="radio" id="showtype1" name="showtype" class="form-check-input" value="1">
+                                <label class="form-check-label mb-0 ms-1" for="showtype1">${_('All pages and only evaluable iDevices')}</label>
+                            </div>
+                            <div class="form-check form-check-inline d-inline-flex align-items-center">
+                                <input type="radio" id="showtype2" name="showtype" class="form-check-input" value="2">
+                                <label class="form-check-label mb-0 ms-1" for="showtype2">${_('Only pages with evaluable activities')}</label>
+                            </div>
                         </div>
                     </div>
                     <div class="d-flex align-items-center gap-2 mb-3">

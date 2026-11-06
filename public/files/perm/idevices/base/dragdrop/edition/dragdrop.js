@@ -130,8 +130,8 @@ var $exeDevice = {
 
         const optionsHtml = `
             <div id="dragdropEOptions">
-                <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
-                    <span>${_('Source')}:</span>
+                <div class="d-flex align-items-center gap-2 flex-nowrap mb-3" role="radiogroup" aria-labelledby="dadEDragLabel">
+                    <span id="dadEDragLabel">${_('Source')}:</span>
                     <div class="form-check form-check-inline m-0">
                         <input class="DAD-Drags form-check-input" checked id="dadEDragMedia" type="radio" name="flctypedrag" value="0"/>
                         <label for="dadEDragMedia" class="form-check-label">${_('Media')}</label>
@@ -144,8 +144,8 @@ var $exeDevice = {
                         _('Select whether players drag media (images or audio) onto text or text onto media.')
                     )}
                 </div>
-                <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
-                    <span>${_('Level')}:</span>
+                <div class="d-flex align-items-center gap-2 flex-nowrap mb-3" role="radiogroup" aria-labelledby="dadETypeLabel">
+                    <span id="dadETypeLabel">${_('Level')}:</span>
                     <div class="form-check form-check-inline m-0">
                         <input class="DAD-Type form-check-input" id="dadETypeShow" type="radio" name="flctype" value="0"/>
                         <label for="dadETypeShow" class="form-check-label">${_('Essential')}</label>

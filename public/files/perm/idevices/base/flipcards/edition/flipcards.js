@@ -150,8 +150,8 @@ var $exeDevice = {
             edition = $exeIDevicesEdition.iDevice,
             optionsHtml = `
             <div id="flipcardsEOptions">
-                <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
-                    <span>${_('Type')}:</span>
+                <div class="d-flex align-items-center gap-2 flex-nowrap mb-3" role="radiogroup" aria-labelledby="flipcardsETypeLabel">
+                    <span id="flipcardsETypeLabel">${_('Type')}:</span>
                     <div class="form-check form-check-inline m-0">
                         <input class="FLCRDS-Type form-check-input" checked id="flipcardsETypeShow" type="radio" name="flctype" value="0"/>
                         <label for="flipcardsETypeShow" class="form-check-label">${_('Show')}</label>

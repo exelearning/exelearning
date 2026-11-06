@@ -14,6 +14,10 @@ import { waitForEditor } from '../../helpers/editor-helpers';
  * ten of them. idevice-options-help.spec.ts checks, for each iDevice, where its helps sit and that reading
  * them leaves its options alone.
  */
+
+// Each test opens a project and a Guess form: 20-45 s in Firefox, with the other help specs running.
+test.describe.configure({ timeout: 90_000 });
+
 async function openGuessOptions(page: Page, createProject: (page: Page, title: string) => Promise<string>) {
     const uuid = await createProject(page, 'Shared iDevice help');
     await gotoWorkarea(page, uuid);
@@ -216,8 +220,6 @@ test('Each help is named after the option it explains, and describes it', async 
     authenticatedPage: page,
     createProject,
 }) => {
-    // Its accessible names take most of a minute in Firefox.
-    test.setTimeout(90_000);
     const help = await openGuessOptions(page, createProject);
     const names = new Set<string>();
     for (const button of await help.all()) {
@@ -233,4 +235,19 @@ test('Each help is named after the option it explains, and describes it', async 
     // The hover label stays short.
     await help.first().hover();
     await expect(page.getByRole('tooltip')).toHaveText('Information');
+});
+
+test('A help that explains a group of options is named after it and describes each option', async ({
+    authenticatedPage: page,
+    createProject,
+}) => {
+    await openGuessOptions(page, createProject);
+    const score = page.getByRole('radiogroup', { name: 'Score:' });
+    await expect(score.getByRole('button')).toHaveAccessibleName('Information about Score');
+    const choices = score.getByRole('radio');
+    await expect(choices).toHaveCount(3);
+    // Each one: a screen reader reads the description of the choice it lands on.
+    for (const choice of await choices.all()) {
+        await expect(choice).toHaveAccessibleDescription(/^From 0 to 10: No lives.*No score: No score and no lives/);
+    }
 });

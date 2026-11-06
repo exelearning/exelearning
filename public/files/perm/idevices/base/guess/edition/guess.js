@@ -243,8 +243,8 @@ var $exeDevice = {
                                 <label class="toggle-label" for="adivinaECaseSensitive">${_('Case sensitive')}</label>
                                 ${edition.common.getHelpTooltip(_('Require uppercase and lowercase letters to match the answer exactly.'))}
                             </div>
-                            <div class="d-flex align-items-center flex-nowrap gap-2 mb-3">
-                                <span>${_('Score')}: </span>
+                            <div class="d-flex align-items-center flex-nowrap gap-2 mb-3" role="radiogroup" aria-labelledby="adivinaEScoreLabel">
+                                <span id="adivinaEScoreLabel">${_('Score')}: </span>
                                 <div class="form-check form-check-inline m-0">
                                     <input class="form-check-input ADVNE-TypeGame" checked="checked" id="adivinaETypeActivity" type="radio" name="qxtgamemode" value="1" />
                                     <label class="form-check-label" for="adivinaETypeActivity">${_('From 0 to 10')}</label>

@@ -326,8 +326,8 @@ var $exeDevice = {
                             </div>`,
             contents = `
                 <div id="ptEPanel">
-                    <div class="mb-3 d-flex align-items-center gap-2 flex-nowrap">
-                        <span>${_('Mode')}:</span>
+                    <div class="mb-3 d-flex align-items-center gap-2 flex-nowrap" role="radiogroup" aria-labelledby="ptEModeLabel">
+                        <span id="ptEModeLabel">${_('Mode')}:</span>
                         ${radio('ptEGame', 'ptmode', 0, _('Game'), true)}
                         ${radio('ptEComplete', 'ptmode', 1, _('Complete'))}
                         ${radio('ptEMobile', 'ptmode', 2, _('Mobile'))}
@@ -340,8 +340,8 @@ var $exeDevice = {
                         )}
                     </div>
                     <div id="ptCompleteData" class="mb-3" style="display:none">
-                        <div class="d-flex align-items-center gap-2 flex-wrap">
-                            <span>${_('Data to complete')}:</span>
+                        <div class="d-flex align-items-center gap-2 flex-wrap" role="group" aria-labelledby="ptECompleteDataLabel">
+                            <span id="ptECompleteDataLabel">${_('Data to complete')}:</span>
                             ${help(_('Data learners have to fill in for each marked element. Choose at least one.'))}
                             ${toggle('ptEnumber', _('Number'))}
                             ${toggle('ptEname', _('Name'))}
@@ -352,8 +352,8 @@ var $exeDevice = {
                         </div>
                     </div>
                     <div id="ptGameType" class="mb-3">
-                        <div class="d-flex align-items-center gap-2 flex-nowrap">
-                            <span>${_('Type')}:</span>
+                        <div class="d-flex align-items-center gap-2 flex-nowrap" role="radiogroup" aria-labelledby="ptETypeLabel">
+                            <span id="ptETypeLabel">${_('Type')}:</span>
                             ${radio('ptETypeNumber', 'ptgametype', 0, _('Number'), false, 'PTP-TypeGame ')}
                             ${radio('ptETypeName', 'ptgametype', 1, _('Name'), false, 'PTP-TypeGame ')}
                             ${radio('ptETypeSymbol', 'ptgametype', 2, _('Symbol'), true, 'PTP-TypeGame ')}
@@ -557,8 +557,8 @@ var $exeDevice = {
             _('Actinides'),
         ];
 
-        let html = '<div class="d-flex align-items-center gap-2 flex-wrap">';
-        html += `<span>${_('Element Groups')}:</span>`;
+        let html = '<div class="d-flex align-items-center gap-2 flex-wrap" role="group" aria-labelledby="ptEGroupsLabel">';
+        html += `<span id="ptEGroupsLabel">${_('Element Groups')}:</span>`;
         html += $exeIDevicesEdition.iDevice.common.getHelpTooltip(
             _('Groups of elements the questions are taken from. Choose All, or one or more groups.')
         );

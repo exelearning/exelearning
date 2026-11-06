@@ -853,8 +853,8 @@ var $exeDevice = {
                             ].join('\n\n'),
                         )}
                     </div>
-                    <div class="mb-3 d-flex align-items-center gap-2 flex-nowrap">
-                        <span>${_('Score')}:</span>
+                    <div class="mb-3 d-flex align-items-center gap-2 flex-nowrap" role="radiogroup" aria-labelledby="vquextEScoreLabel">
+                        <span id="vquextEScoreLabel">${_('Score')}:</span>
                         <div class="form-check form-check-inline m-0">
                             <input class="form-check-input VDQXTE-TypeGame" checked="checked" id="vquextETypeActivity" type="radio" name="vqxtgamemode" value="1" />
                             <label for="vquextETypeActivity">${_('From 0 to 10')}</label>

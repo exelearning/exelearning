@@ -201,13 +201,13 @@ var $exeDevice = {
                         <input id="eRMQnum" type="text" value="10" onkeyup="$exeDevice.onlyNumbers(this)" class="form-control" style="width:8ch" />
                         ${help(_('How many operations each game has.'))}
                     </div>
-                    <div class="mb-3 d-flex align-items-center gap-2 flex-nowrap">
+                    <div class="mb-3 d-flex align-items-center gap-2 flex-nowrap" role="group" aria-labelledby="eRMQminLabel eRMQmaxLabel">
                         <span class="d-flex align-items-center gap-2 flex-nowrap me-2">
-                            <label for="eRMQmin" class="mb-0">${_('Smallest number:')}</label>
+                            <label id="eRMQminLabel" for="eRMQmin" class="mb-0">${_('Smallest number:')}</label>
                             <input id="eRMQmin" type="text" value="1" onkeyup="$exeDevice.onlyNumbers(this)" class="form-control" style="width:8ch" />
                         </span>
                         <span class="d-flex align-items-center gap-2 flex-nowrap">
-                            <label for="eRMQmax" class="mb-0">${_('Biggest number:')}</label>
+                            <label id="eRMQmaxLabel" for="eRMQmax" class="mb-0">${_('Biggest number:')}</label>
                             <input id="eRMQmax" type="text" value="9" onkeyup="$exeDevice.onlyNumbers(this)" class="form-control" style="width:8ch" />
                         </span>
                         ${help(_('Range of the numbers used in the operations.'))}
@@ -224,8 +224,8 @@ var $exeDevice = {
                         </div>
                     </div>
                     <div class="mb-3">
-                        <strong class="d-block mb-2">${_('Operations:')}</strong>
-                        <div class="d-flex align-items-center gap-3 flex-nowrap">
+                        <strong id="eRMQOperationsLabel" class="d-block mb-2">${_('Operations:')}</strong>
+                        <div class="d-flex align-items-center gap-3 flex-nowrap" role="group" aria-labelledby="eRMQOperationsLabel">
                             ${toggle('eRMQadd', _('Addition'))}
                             ${toggle('eRMQsubs', _('Subtraction'))}
                             ${toggle('eRMQmult', _('Multiplication'), true)}

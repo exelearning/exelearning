@@ -199,8 +199,8 @@ var $exeDevice = {
         const edition = $exeIDevicesEdition.iDevice;
         const options = `
             <div id="adaptativeQuizEOptions">
-                <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
-                    <span>${_('Number of levels')}:</span>
+                <div class="d-flex align-items-center gap-2 flex-nowrap mb-3" role="radiogroup" aria-labelledby="adaptativeQuizNumLevelsLabel">
+                    <span id="adaptativeQuizNumLevelsLabel">${_('Number of levels')}:</span>
                     <span class="ADQ-EInputLevels d-flex align-items-center gap-2 flex-nowrap">
                         <div class="form-check form-check-inline m-0">
                             <input class="form-check-input" id="adaptativeQuizNumLevels3" type="radio" name="adqnumlevels" value="3" checked="checked" />

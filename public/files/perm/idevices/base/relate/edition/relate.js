@@ -133,8 +133,8 @@ var $exeDevice = {
             help = edition.common.getHelpTooltip,
             options = `
                 <div id="rclEOptions">
-                    <div class="d-flex align-items-center flex-nowrap gap-2 mb-3">
-                        <span>${_('Level')}:</span>
+                    <div class="d-flex align-items-center flex-nowrap gap-2 mb-3" role="radiogroup" aria-labelledby="rclETypeLabel">
+                        <span id="rclETypeLabel">${_('Level')}:</span>
                         <div class="form-check form-check-inline m-0">
                             <input class="RLC-Type form-check-input" checked id="rclETypeShow" type="radio" name="flctype" value="0"/>
                             <label for="rclETypeShow">${_('Essential')}</label>

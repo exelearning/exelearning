@@ -251,8 +251,8 @@ var $exeDevice = {
                                 </span>`,
             options = `
                 <div id="mapaEOptions">
-                    <div class="mb-3 d-flex flex-wrap align-items-center gap-2">
-                        <span>${_('Assessment')}:</span>
+                    <div class="mb-3 d-flex flex-wrap align-items-center gap-2" role="radiogroup" aria-labelledby="mapaEEvaluationLabel">
+                        <span id="mapaEEvaluationLabel">${_('Assessment')}:</span>
                         ${help(_('How the activity is assessed: by the points visited, by naming or finding points, with a questionnaire, or by clicking the points in order.'))}
                         <div class="form-check form-check-inline m-0 p-0">
                             <input class="form-check-input MQE-TypeEvaluation" checked id="mapaEEvaluationPoints" type="radio" name="mpevaluation" value="0" />

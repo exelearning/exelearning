@@ -1006,20 +1006,20 @@ var $exeDevice = {
                         <label for="quextEShowMinimize" class="toggle-label">${_('Show minimized.')}</label>
                         ${edition.common.getHelpTooltip(_('Start with the game collapsed. Learners can expand it when they are ready to play.'))}
                     </div>
-                    <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
+                    <div class="d-flex align-items-center gap-2 flex-nowrap mb-3" role="group" aria-labelledby="quextEQuestionsRamdonLabel quextEAnswersRamdonLabel">
                         <div class="toggle-item" data-target="quextEQuestionsRamdon">
                             <span class="toggle-control">
                                 <input type="checkbox" id="quextEQuestionsRamdon" class="toggle-input" />
                                 <span class="toggle-visual"></span>
                             </span>
-                            <label for="quextEQuestionsRamdon" class="toggle-label">${_('Random questions')}</label>
+                            <label id="quextEQuestionsRamdonLabel" for="quextEQuestionsRamdon" class="toggle-label">${_('Random questions')}</label>
                         </div>
                         <div class="toggle-item" data-target="quextEAnswersRamdon">
                             <span class="toggle-control">
                                 <input type="checkbox" id="quextEAnswersRamdon" class="toggle-input" />
                                 <span class="toggle-visual"></span>
                             </span>
-                            <label for="quextEAnswersRamdon" class="toggle-label">${_('Random options')}</label>
+                            <label id="quextEAnswersRamdonLabel" for="quextEAnswersRamdon" class="toggle-label">${_('Random options')}</label>
                         </div>
                         ${edition.common.getHelpTooltip([
                             `${_('Random questions')}: ${_('Present the questions in a different random order each time the game starts.')}`,
@@ -1058,8 +1058,8 @@ var $exeDevice = {
                         <label for="quextECustomScore" class="toggle-label">${_('Custom score')}.</label>
                         ${edition.common.getHelpTooltip(_('Assign a specific score value to each question individually in the Activities tab.'))}
                     </div>
-                    <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
-                        <span>${_('Score')}:</span>
+                    <div class="d-flex align-items-center gap-2 flex-nowrap mb-3" role="radiogroup" aria-labelledby="quextEScoreLabel">
+                        <span id="quextEScoreLabel">${_('Score')}:</span>
                         <div class="form-check form-check-inline m-0">
                             <input class="QXTE-TypeGame form-check-input" checked="checked" id="quextETypeActivity" type="radio" name="qxtgamemode" value="1" />
                             <label for="quextETypeActivity">${_('From 0 to 10')}</label>

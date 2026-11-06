@@ -131,8 +131,8 @@ var $exeDevice = {
         const edition = $exeIDevicesEdition.iDevice;
         const optionsHtml = `
             <div id="cmptEOptions">
-                <div class="mb-3 d-flex align-items-center gap-2">
-                    <span>${_('Type')}:</span>
+                <div class="mb-3 d-flex align-items-center gap-2" role="radiogroup" aria-labelledby="cmptTypeLabel">
+                    <span id="cmptTypeLabel">${_('Type')}:</span>
                     <div class="form-check form-check-inline m-0">
                         <input class="CMPT-Type form-check-input" checked="checked" id="cmpttype0" type="radio" name="cmpttype" value="0" />
                         <label class="form-check-label" for="cmpttype0">${_('Complete')}</label>

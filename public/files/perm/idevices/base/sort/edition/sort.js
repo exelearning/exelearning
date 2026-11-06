@@ -160,8 +160,8 @@ var $exeDevice = {
                         </div>`,
             options = `
                 <div id="ordenaEOptions">
-                    <div class="d-flex flex-nowrap align-items-center gap-2 mb-3">
-                        <span>${_('Type')}:</span>
+                    <div class="d-flex flex-nowrap align-items-center gap-2 mb-3" role="radiogroup" aria-labelledby="ordenaETypeLabel">
+                        <span id="ordenaETypeLabel">${_('Type')}:</span>
                         <div class="form-check form-check-inline m-0">
                             <input class="ODNE-EType form-check-input" id="odntype0" checked type="radio" name="odntype" value="0" />
                             <label for="odntype0" class="mb-0">${_('Phrases')}</label>
@@ -209,8 +209,8 @@ var $exeDevice = {
                         <label for="ordenaEAuthor" class="mb-0">${_('Author')}:</label>
                         <input id="ordenaEAuthor" type="text" class="form-control" />
                     </div>
-                    <div id="ordenaColumnsDiv" class="d-none flex-nowrap align-items-center gap-2 mb-3">
-                        <span>${_('Columns')}:</span>
+                    <div id="ordenaColumnsDiv" class="d-none flex-nowrap align-items-center gap-2 mb-3" role="radiogroup" aria-labelledby="ordenaEColumnsLabel">
+                        <span id="ordenaEColumnsLabel">${_('Columns')}:</span>
                         <div class="form-check form-check-inline m-0">
                             <input class="ODNE-EColumns form-check-input" id="odn0" checked type="radio" name="odncolumns" value="0" />
                             <label for="odn0" class="mb-0">No</label>

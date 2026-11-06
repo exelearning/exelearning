@@ -956,8 +956,8 @@ var $exeDevice = {
                             </div>`,
             options = `
                 <div id="trivialEOptions">
-                    <div class="d-flex align-items-center flex-nowrap mb-3 gap-2">
-                        <span class="mb-0">${_('Number of topics')}: </span>
+                    <div class="d-flex align-items-center flex-nowrap mb-3 gap-2" role="radiogroup" aria-labelledby="trivialNumTopicsLabel">
+                        <span id="trivialNumTopicsLabel" class="mb-0">${_('Number of topics')}: </span>
                         <div class="form-check form-check-inline mb-0">
                             <input class="TRVLE-NumeroTemas form-check-input" checked id="trivialNG2" type="radio" name="tvlnt" value="2" />
                             <label for="trivialNG2" class="form-check-label mb-0">2</label>

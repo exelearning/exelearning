@@ -180,8 +180,8 @@ var $exeDevice = {
                         _('Start with the game collapsed. Learners can expand it when they are ready to play.')
                     )}
                 </div>
-                <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
-                    <span class="me-2">${_('Type')}:</span>
+                <div class="d-flex align-items-center gap-2 flex-nowrap mb-3" role="radiogroup" aria-labelledby="descubreGameModeLabel">
+                    <span id="descubreGameModeLabel" class="me-2">${_('Type')}:</span>
                     <div class="form-check form-check-inline m-0">                               
                         <input class="Descubre-GameMode form-check-input" checked id="descubreGame2" type="radio" name="qtxgamemode" value="0" />
                         <label for="descubreGame2" class="form-check-label me-2">${_('Pairs')}</label>
@@ -198,8 +198,8 @@ var $exeDevice = {
                         _('Select how many matching cards players need to find for each item: pairs (2), trios (3), or quartets (4).')
                     )}
                 </div>
-                <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
-                    <span class="me-2">${_('Difficulty levels')}:</span>
+                <div class="d-flex align-items-center gap-2 flex-nowrap mb-3" role="radiogroup" aria-labelledby="descubreLevelsLabel">
+                    <span id="descubreLevelsLabel" class="me-2">${_('Difficulty levels')}:</span>
                     <div class="form-check form-check-inline m-0"> 
                         <input class="Descubre-GameLevel form-check-input" checked id="descubreL1" type="radio" name="qtxgamelevels" value="1" />
                         <label for="descubreL1" class="form-check-label me-2">1</label>

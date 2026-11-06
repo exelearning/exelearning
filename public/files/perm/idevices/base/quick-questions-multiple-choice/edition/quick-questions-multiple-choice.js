@@ -1285,8 +1285,8 @@ var $exeDevice = {
                                 <label class="toggle-label" for="seleccionaEShowMinimize">${_('Show minimized.')} </label>
                                 ${edition.common.getHelpTooltip(_('Start with the game collapsed. Learners can expand it when they are ready to play.'))}
                             </div>
-                            <div class="d-flex align-items-center gap-2 mb-3" data-target="seleccionaEOrderLinear">
-                                <span>${_('Questions order')}:</span>
+                            <div class="d-flex align-items-center gap-2 mb-3" data-target="seleccionaEOrderLinear" role="radiogroup" aria-labelledby="seleccionaEOrderLabel">
+                                <span id="seleccionaEOrderLabel">${_('Questions order')}:</span>
                                 <span class="d-flex align-items-center gap-2 flex-nowrap">
                                     <div class="form-check form-check-inline m-0">
                                         <input class="form-check-input SLCNE-TypeOrder" checked="checked" id="seleccionaEOrderLinear" type="radio" name="slcgameorder" value="0" />
@@ -1356,8 +1356,8 @@ var $exeDevice = {
                                 <label class="toggle-label" for="seleccionaECustomScore">${_('Custom score')}.</label>
                                 ${edition.common.getHelpTooltip(_('Assign a specific score value to each question individually in the Activities tab.'))}
                             </div>
-                            <div class="d-flex align-items-center gap-2 mb-3" data-target="seleccionaETypeActivity">
-                                <span> ${_('Score')}:</span> 
+                            <div class="d-flex align-items-center gap-2 mb-3" data-target="seleccionaETypeActivity" role="radiogroup" aria-labelledby="seleccionaEScoreLabel">
+                                <span id="seleccionaEScoreLabel"> ${_('Score')}:</span> 
                                 <span class="d-flex align-items-center gap-2 flex-nowrap">
                                     <div class="form-check form-check-inline m-0">                               
                                         <input class="form-check-input SLCNE-TypeGame" checked="checked" id="seleccionaETypeActivity" type="radio" name="slcgamemode" value="1" />
