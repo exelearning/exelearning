@@ -296,6 +296,64 @@ describe('common_idevices_edition.js', () => {
         expect(document.getElementById('b').hasAttribute('aria-describedby')).toBe(false);
       });
 
+      it('describes each option of a group with its help, named after the group, until the edition closes', () => {
+        const help = (text) => common().getHelpTooltip(text);
+        document.body.innerHTML = `
+          <div id="radios" role="radiogroup" aria-labelledby="scoreLabel">
+            <span id="scoreLabel">Score: </span>${help('A')}
+            <input type="radio" id="a1"><input type="radio" id="a2" aria-describedby="own">
+          </div>
+          <div id="pair" role="group" aria-labelledby="rowsLabel columnsLabel">
+            <label id="rowsLabel" for="b1">Rows:</label><select id="b1"></select>
+            <label id="columnsLabel" for="b2">Columns:</label><select id="b2"></select>${help('B')}
+          </div>
+          <div role="radiogroup" aria-labelledby="showLabel">
+            <div id="show"><span id="showLabel">Show:</span>${help('C')}</div>
+            <div><input type="radio" id="c1"><input type="radio" id="c2"></div>
+          </div>
+          <div id="accept" role="group" aria-label="Accept."><input type="checkbox" id="d1">${help('D')}</div>
+          <div role="group" aria-labelledby="outerLabel">
+            <span id="outerLabel">Outer</span>
+            <div id="inner"><input type="checkbox" id="e1"><label for="e1">Own option</label>${help('E')}</div>
+            <input type="checkbox" id="e2">
+          </div>`;
+        common().initHelpTooltips(document.body);
+        const name = (row) => document.querySelector(`#${row} button`).getAttribute('aria-label');
+        const note = (row) => document.querySelector(`#${row} .help-content`).id;
+        const describedBy = (id) => document.getElementById(id).getAttribute('aria-describedby');
+
+        expect(name('radios')).toBe('Information about Score');
+        expect(describedBy('a1')).toBe(note('radios'));
+        expect(describedBy('a2')).toBe(`own ${note('radios')}`);
+        // Named by the labels of its options.
+        expect(name('pair')).toBe('Information about Rows, Columns');
+        expect(describedBy('b1')).toBe(note('pair'));
+        expect(describedBy('b2')).toBe(note('pair'));
+        // A row with only the help and its title: the group around it.
+        expect(name('show')).toBe('Information about Show');
+        expect(describedBy('c1')).toBe(note('show'));
+        expect(describedBy('c2')).toBe(note('show'));
+        expect(name('accept')).toBe('Information about Accept');
+        expect(describedBy('d1')).toBe(note('accept'));
+        // A row with an option of its own explains that one, also inside a group.
+        expect(name('inner')).toBe('Information about Own option');
+        expect(describedBy('e1')).toBe(note('inner'));
+        expect(describedBy('e2')).toBeNull();
+
+        lifecycle.destroy();
+        expect(describedBy('a2')).toBe('own');
+        for (const id of ['a1', 'b1', 'b2', 'c1', 'c2', 'd1', 'e1']) expect(describedBy(id)).toBeNull();
+      });
+
+      it('names a group without a name after its first option', () => {
+        document.body.innerHTML = `<div id="unnamed" role="group">
+            <input type="checkbox" id="x"><label for="x">Diagonals</label>${common().getHelpTooltip('X')}
+          </div>`;
+        common().initHelpTooltips(document.body);
+        expect(document.querySelector('#unnamed button').getAttribute('aria-label')).toBe('Information about Diagonals');
+        expect(common().getHelpGroupName(document.getElementById('unnamed'))).toBe('');
+      });
+
       it('supports forms without an active edition lifecycle', () => {
         window.$exeEditionLifecycle = null;
         document.body.innerHTML = common().getHelpTooltip('Explain the option');

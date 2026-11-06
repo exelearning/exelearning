@@ -142,14 +142,23 @@ var $exeIDevicesEdition = {
                     };
                     const container = button.parentElement;
                     // The help names the option it explains and is the description
-                    // of its control.
-                    const option = $exeIDevicesEdition.iDevice.common.getHelpOption(container);
-                    const name = $exeIDevicesEdition.iDevice.common.getHelpOptionName(container, option);
+                    // of its control. In a group of options, of each of them: a
+                    // screen reader reads the description of the control it is
+                    // on, and not always that of the group around it.
+                    const common = $exeIDevicesEdition.iDevice.common;
+                    const group = common.getHelpGroup(container);
+                    const option = common.getHelpOption(container);
+                    const options = group
+                        ? Array.from(group.querySelectorAll('input:not([type="hidden"]), select, textarea'))
+                        : [option].filter(Boolean);
+                    const name = (group && common.getHelpGroupName(group)) || common.getHelpOptionName(container, option);
                     if (name) button.setAttribute('aria-label', _('Information about %s').replace('%s', () => name));
-                    const describedBy = (option?.getAttribute('aria-describedby') || '').split(/\s+/).filter(Boolean);
-                    if (option && !describedBy.includes(content.id)) {
-                        option.setAttribute('aria-describedby', [...describedBy, content.id].join(' '));
-                    }
+                    options.forEach((control) => {
+                        const describedBy = (control.getAttribute('aria-describedby') || '').split(/\s+/).filter(Boolean);
+                        if (!describedBy.includes(content.id)) {
+                            control.setAttribute('aria-describedby', [...describedBy, content.id].join(' '));
+                        }
+                    });
                     const hide = function () {
                         content.classList.add('help-hidden');
                         button.setAttribute('aria-expanded', 'false');
@@ -208,13 +217,13 @@ var $exeIDevicesEdition = {
                         $(content).off('.exeHelpTooltip');
                         container.removeEventListener('focusout', focusOut);
                         document.removeEventListener('click', outsideClick, true);
-                        if (option) {
-                            const ids = (option.getAttribute('aria-describedby') || '')
+                        options.forEach((control) => {
+                            const ids = (control.getAttribute('aria-describedby') || '')
                                 .split(/\s+/)
                                 .filter((id) => id && id !== content.id);
-                            if (ids.length) option.setAttribute('aria-describedby', ids.join(' '));
-                            else option.removeAttribute('aria-describedby');
-                        }
+                            if (ids.length) control.setAttribute('aria-describedby', ids.join(' '));
+                            else control.removeAttribute('aria-describedby');
+                        });
                         tooltip.dispose();
                     };
                     return lifecycle ? lifecycle.own(dispose) : dispose;
@@ -241,6 +250,40 @@ var $exeIDevicesEdition = {
                         (control) => control.compareDocumentPosition(container) & Node.DOCUMENT_POSITION_FOLLOWING
                     ) || null
                 );
+            },
+            /**
+             * The group of options a help explains together: its row, when
+             * the row is marked as a group (role group or radiogroup), or the
+             * group around a row that holds only the help and its title.
+             *
+             * @param {HTMLElement} container The help (.exe-idevice-help-container).
+             * @returns {HTMLElement|null}
+             */
+            getHelpGroup: function (container) {
+                const isGroup = (element) => !!element?.matches?.('[role="group"], [role="radiogroup"]');
+                const row = container.parentElement;
+                if (!row) return null;
+                if (isGroup(row)) return row;
+                const ownControls = row.querySelectorAll('input:not([type="hidden"]), select, textarea');
+                return !ownControls.length && isGroup(row.parentElement) ? row.parentElement : null;
+            },
+            /**
+             * The name of a group of options: the texts that name it, each
+             * without the colon or full stop that ends some of them. For a
+             * group named by the labels of its options, "Rows, Columns".
+             *
+             * @param {HTMLElement} group From getHelpGroup.
+             * @returns {string}
+             */
+            getHelpGroupName: function (group) {
+                const ids = (group.getAttribute('aria-labelledby') || '').split(/\s+/).filter(Boolean);
+                const texts = ids.length
+                    ? ids.map((id) => document.getElementById(id)?.textContent || '')
+                    : [group.getAttribute('aria-label') || ''];
+                return texts
+                    .map((text) => text.replace(/\s+/g, ' ').trim().replace(/[\s:.]+$/, ''))
+                    .filter(Boolean)
+                    .join(', ');
             },
             /**
              * The name of the option a help explains: the label of its
