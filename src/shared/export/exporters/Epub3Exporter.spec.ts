@@ -270,6 +270,121 @@ describe('Epub3Exporter', () => {
         exporter = new Epub3Exporter(document, resources, assets, zip);
     });
 
+    it('ships pre-rendered pages, supporting CSS and the selected font', async () => {
+        Object.assign(resources, {
+            fetchGlobalFontFiles: async () => new Map([['fonts/coverage.woff2', Buffer.from('font-bytes')]]),
+        });
+        const doc = new MockDocument({ globalFont: 'opendyslexic' }, samplePages);
+        const tested = new Epub3Exporter(doc, resources, assets, zip);
+        const result = await tested.export({
+            preRenderDataGameLatex: async html => ({
+                html: html.replace('</body>', '<p id="datagame-rendered">Math</p></body>'),
+                count: 1,
+            }),
+            preRenderLatex: async html => ({
+                html: html.replace('</body>', '<p id="latex-rendered">Equation</p></body>'),
+                latexRendered: true,
+                hasLatex: true,
+                count: 1,
+            }),
+            preRenderMermaid: async html => ({
+                html: html.replace('</body>', '<svg id="mermaid-rendered"></svg></body>'),
+                mermaidRendered: true,
+                hasMermaid: true,
+                count: 1,
+            }),
+        });
+        expect(result.success).toBe(true);
+        const html = String(zip.files.get('EPUB/index.xhtml'));
+        expect(html).toContain('latex-rendered');
+        expect(html).toContain('mermaid-rendered');
+        const cssBytes = zip.files.get('EPUB/content/css/base.css');
+        const css = typeof cssBytes === 'string' ? cssBytes : new TextDecoder().decode(cssBytes as Uint8Array);
+        expect(css).toContain('exe-math-rendered');
+        expect(css).toContain('exe-mermaid-rendered');
+        expect(zip.files.has('EPUB/fonts/coverage.woff2')).toBe(true);
+    });
+
+    it('keeps author content when optional rendering and resources fail', async () => {
+        const fail = async () => {
+            throw new Error('optional resource unavailable');
+        };
+        resources.fetchTheme = fail;
+        resources.fetchBaseLibraries = fail;
+        resources.fetchLibraryFiles = fail;
+        resources.fetchIdeviceResources = fail;
+        resources.fetchScormFiles = fail;
+        Object.assign(resources, { fetchGlobalFontFiles: fail });
+        const tested = new Epub3Exporter(
+            new MockDocument({ globalFont: 'opendyslexic' }, samplePages),
+            resources,
+            assets,
+            zip,
+        );
+        const result = await tested.export({
+            preRenderDataGameLatex: fail,
+            preRenderLatex: fail,
+            preRenderMermaid: fail,
+        });
+        expect(result.success).toBe(true);
+        const html = String(zip.files.get('EPUB/index.xhtml'));
+        expect(html).toContain(samplePages[0].title);
+        expect(html).not.toContain('latex-rendered');
+        expect(zip.files.has('EPUB/theme/style.css')).toBe(true);
+    });
+
+    it('packages browser-safe music scripts and prevents repeated initialization in EPUB readers', async () => {
+        const umd =
+            '!function(e,t){"object"==typeof exports&&"object"==typeof module?module.exports=t():"function"==typeof define&&define.amd?define([],t):"object"==typeof exports?exports.abcjs=t():e.ABCJS=t()}(this,function(){return {version:"coverage-fixture"}});';
+        resources.fetchLibraryFiles = async () =>
+            new Map([
+                ['abcjs/abcjs-basic-min.js', Buffer.from(umd)],
+                [
+                    'exe_abc_music/exe_abc_music.js',
+                    Buffer.from('class CursorControl {}; window.musicRuns=(window.musicRuns || 0)+1;'),
+                ],
+            ]);
+        const result = await exporter.export();
+        expect(result.success).toBe(true);
+        const abc = zip.files.get('EPUB/libs/abcjs/abcjs-basic-min.js')!;
+        const abcSource = typeof abc === 'string' ? abc : new TextDecoder().decode(abc);
+        const browser: Record<string, any> = {};
+        new Function('window', 'module', 'exports', abcSource)(browser, { exports: {} }, {});
+        expect(browser.ABCJS.version).toBe('coverage-fixture');
+        const music = zip.files.get('EPUB/libs/exe_abc_music/exe_abc_music.js')!;
+        const musicSource = typeof music === 'string' ? music : new TextDecoder().decode(music);
+        const initialize = new Function('window', musicSource);
+        initialize(browser);
+        initialize(browser);
+        expect(browser.musicRuns).toBe(1);
+        expect(String(zip.files.get('EPUB/package.opf'))).toContain('application/javascript');
+    });
+
+    it('includes iDevice styles and scripts in the manifest but excludes templates and tests', async () => {
+        resources.fetchIdeviceResources = async () =>
+            new Map([
+                ['coverage-style.css', Buffer.from('.coverage {color:red}')],
+                ['coverage-runtime.js', Buffer.from('window.coverageLoaded=true;')],
+                ['template.html', Buffer.from('<div>{content}</div>')],
+                ['runtime.test.js', Buffer.from('test-only')],
+                ['runtime.spec.js', Buffer.from('test-only')],
+            ]);
+        const result = await exporter.export();
+        expect(result.success).toBe(true);
+        const paths = zip.getFilePaths();
+        expect(paths.some(path => path.endsWith('/coverage-style.css'))).toBe(true);
+        expect(paths.some(path => path.endsWith('/coverage-runtime.js'))).toBe(true);
+        expect(
+            paths.some(
+                path => path.endsWith('/template.html') || path.endsWith('.test.js') || path.endsWith('.spec.js'),
+            ),
+        ).toBe(false);
+        const manifest = String(zip.files.get('EPUB/package.opf'));
+        expect(manifest).toContain('coverage-style.css');
+        expect(manifest).toContain('coverage-runtime.js');
+        expect(manifest).not.toContain('template.html');
+    });
+
     describe('subtitle .srt -> WebVTT conversion (issue #2034)', () => {
         it('ships a converted .vtt subtitle (never raw .srt bytes) with a text/vtt manifest entry', async () => {
             const SRT_UUID = 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee';

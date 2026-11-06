@@ -194,3 +194,30 @@ describe('BrowserElpxImporter runtime policy', () => {
         ydoc.destroy();
     });
 });
+
+describe('browser importer global registration', () => {
+    it('exposes the importer, legacy handlers and runtime policy to the browser', async () => {
+        const original = Object.getOwnPropertyDescriptor(globalThis, 'window');
+        const browser: Record<string, any> = { Logger: { log() {}, warn() {}, error() {} } };
+        Object.defineProperty(globalThis, 'window', { value: browser, configurable: true, writable: true });
+        const { manager, ydoc } = makeManager();
+        try {
+            const entry = './index.ts?browser-registration-coverage';
+            const exports = await import(entry);
+            expect(browser.ElpxImporter).toBe(exports.BrowserElpxImporter);
+            expect(browser.SharedImporters.createBrowserImporter).toBe(browser.createBrowserImporter);
+            expect(browser.SharedImporters.LegacyHandlerRegistry).toBe(browser.LegacyHandlerRegistry);
+            expect(browser.SharedImporters.importPolicy).toBe(browser.ExeImportPolicy);
+            expect(browser.SharedImporters.MultichoiceHandler).toBe(exports.MultichoiceHandler);
+            expect(browser.SharedImporters.GeogebraHandler).toBe(exports.GeogebraHandler);
+            expect(browser.ExeImportPolicy.CONSERVATIVE_ZIP_LIMITS.maxEntryBytes).toBeGreaterThan(0);
+            const importer = browser.createBrowserImporter(manager);
+            const result = await importer.importFromFile(makeFile(await buildElpx(16)));
+            expect(result).toBeDefined();
+        } finally {
+            ydoc.destroy();
+            if (original) Object.defineProperty(globalThis, 'window', original);
+            else Reflect.deleteProperty(globalThis, 'window');
+        }
+    });
+});

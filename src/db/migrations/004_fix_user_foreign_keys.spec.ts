@@ -7,7 +7,17 @@
  * 3. app_settings.updated_by - Add FK with ON DELETE SET NULL
  */
 import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
-import { Kysely, sql } from 'kysely';
+import {
+    Kysely,
+    sql,
+    DummyDriver,
+    MysqlAdapter,
+    MysqlIntrospector,
+    MysqlQueryCompiler,
+    PostgresAdapter,
+    PostgresIntrospector,
+    PostgresQueryCompiler,
+} from 'kysely';
 import { BunSqliteDialect } from 'kysely-bun-worker/normal';
 import { up, down, configure, resetDependencies } from './004_fix_user_foreign_keys';
 
@@ -1062,5 +1072,54 @@ describe('004_fix_user_foreign_keys migration', () => {
             expect(byAdmin1After?.updated_by).toBeNull(); // SET NULL by cascade
             expect(byAdmin2After?.updated_by).toBe(2); // Still valid
         });
+    });
+});
+
+describe('user foreign key migration SQL contracts', () => {
+    it.each(['mysql', 'postgres'] as const)('preserves cleanup and cascade order for %s', async dialect => {
+        const statements: string[] = [];
+        const database = new Kysely<unknown>({
+            dialect: {
+                createDriver: () => new DummyDriver(),
+                createAdapter: () => (dialect === 'mysql' ? new MysqlAdapter() : new PostgresAdapter()),
+                createIntrospector: db =>
+                    dialect === 'mysql' ? new MysqlIntrospector(db) : new PostgresIntrospector(db),
+                createQueryCompiler: () =>
+                    dialect === 'mysql' ? new MysqlQueryCompiler() : new PostgresQueryCompiler(),
+            },
+            log: event => {
+                if (event.level === 'query') statements.push(event.query.sql.replace(/\s+/g, ' ').trim());
+            },
+        });
+        configure({ getDialect: () => dialect });
+        try {
+            await up(database);
+            const forward = statements.join('\n');
+            expect(forward).toContain('REFERENCES users(id) ON DELETE CASCADE');
+            expect(forward).toContain('REFERENCES users(id) ON DELETE SET NULL');
+            expect(forward).toContain(dialect === 'mysql' ? 'CAST(user_id AS UNSIGNED)' : 'CAST(user_id AS INTEGER)');
+            const cleanup = statements.findIndex(query => query.startsWith('DELETE FROM users_preferences'));
+            const required = statements.findIndex(query =>
+                query.includes(
+                    dialect === 'mysql'
+                        ? 'MODIFY COLUMN owner_id INTEGER NOT NULL'
+                        : 'ALTER COLUMN owner_id SET NOT NULL',
+                ),
+            );
+            expect(cleanup).toBeGreaterThan(-1);
+            expect(cleanup).toBeLessThan(required);
+            expect(forward).toContain('owner_id NOT IN (SELECT id FROM users)');
+            expect(forward).toContain('updated_by NOT IN (SELECT id FROM users)');
+            statements.length = 0;
+            await down(database);
+            expect(statements[0]).toContain('app_settings_updated_by_fk');
+            const rollback = statements.join('\n');
+            expect(rollback).toContain('ADD COLUMN user_id VARCHAR(255)');
+            expect(rollback).toContain('DROP COLUMN owner_id');
+            expect(rollback).not.toContain('ON DELETE CASCADE');
+        } finally {
+            resetDependencies();
+            await database.destroy();
+        }
     });
 });
