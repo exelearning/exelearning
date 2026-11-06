@@ -12,6 +12,10 @@ export interface IdeviceConfigCache {
     cssClass: string;
     componentType: 'json' | 'html';
     template: string;
+    /** `<export-js>` filenames in config.xml order; empty when the iDevice declares none */
+    exportJs: string[];
+    /** `<export-css>` filenames in config.xml order; empty when the iDevice declares none */
+    exportCss: string[];
 }
 
 // In-memory cache - null means not loaded
@@ -80,12 +84,31 @@ export function loadIdeviceConfigs(customBasePath?: string): void {
                 return '';
             };
 
+            // `<export-js>` / `<export-css>` keep the order the author declared, which is the
+            // order the editor loads them in. The exporter must not reorder them: dependencies
+            // such as three.min.js have to run before OrbitControls.js (issue #2705).
+            const getFilenameList = (key: string): string[] => {
+                const node = idevice[key];
+                if (!node || typeof node !== 'object') return [];
+                const filenames = (node as Record<string, unknown>).filename;
+                const list = Array.isArray(filenames) ? filenames : [filenames];
+                return list
+                    .map(item => {
+                        if (typeof item === 'string') return item;
+                        if (item && typeof item === 'object' && '#text' in item) return String(item['#text']);
+                        return '';
+                    })
+                    .filter((filename): filename is string => filename !== '');
+            };
+
             const config: IdeviceConfigCache = {
                 // The folder, not <css-class>: exports package the iDevice under its folder name, and
                 // its export JS finds the node by that name (3dmol declares <css-class>dmole</css-class>)
                 cssClass: entry.name,
                 componentType: (getValue('component-type') || 'html') as 'json' | 'html',
                 template: getValue('export-template-filename') || `${entry.name}.html`,
+                exportJs: getFilenameList('export-js'),
+                exportCss: getFilenameList('export-css'),
             };
 
             // Store by iDevice name (from config.xml)
@@ -163,6 +186,8 @@ export function getIdeviceConfig(type: string): IdeviceConfigCache {
         cssClass: normalizedType,
         componentType: 'html', // Default to HTML for unknown iDevices
         template: `${normalizedType}.html`,
+        exportJs: [],
+        exportCss: [],
     };
 }
 
@@ -200,12 +225,16 @@ export function getAllIdeviceConfigs(): Map<string, IdeviceConfigCache> | null {
 
 /**
  * Get all export files for an iDevice type (JS or CSS)
- * Scans the export folder and returns all files matching the extension,
- * with the main iDevice file first.
+ * Scans the export folder and returns every file matching the extension.
  *
- * This ensures dependencies like html2canvas.js are included. When asked for
- * '.js' we also collect '.mjs' siblings so plugin authors can ship ES modules
- * using the standard extension.
+ * The order declared in `config.xml` (`<export-js>` / `<export-css>`) wins, because it
+ * is the order the editor loads the files in and some iDevices depend on it (OrbitControls
+ * needs the THREE global created by three.min.js). Files present in the folder but not
+ * declared are appended afterwards, main file first and then alphabetically, which keeps
+ * the previous behaviour for iDevices that declare no list (issue #2705).
+ *
+ * When asked for '.js' we also collect '.mjs' siblings so plugin authors can ship ES
+ * modules using the standard extension.
  *
  * @param typeName - The iDevice type name (e.g., 'checklist')
  * @param extension - The file extension to look for ('.js' or '.css')
@@ -241,7 +270,30 @@ export function getIdeviceExportFiles(typeName: string, extension: '.js' | '.css
                 return a.localeCompare(b);
             });
 
-        return files.length > 0 ? files : [`${typeName}${extension}`];
+        if (files.length === 0) {
+            return [`${typeName}${extension}`];
+        }
+
+        const config = getIdeviceConfig(typeName);
+        const declaredFiles = extension === '.js' ? config.exportJs : config.exportCss;
+        if (declaredFiles.length === 0) {
+            return files;
+        }
+
+        const pending = new Set(files);
+        const ordered: string[] = [];
+        for (const declaredFile of declaredFiles) {
+            if (pending.delete(declaredFile)) {
+                ordered.push(declaredFile);
+            }
+        }
+        for (const file of files) {
+            if (pending.delete(file)) {
+                ordered.push(file);
+            }
+        }
+
+        return ordered;
     } catch {
         return [`${typeName}${extension}`];
     }
