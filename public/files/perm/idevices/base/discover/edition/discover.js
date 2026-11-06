@@ -478,7 +478,7 @@ var $exeDevice = {
 
     updateQuestionsNumber: function () {
         const percentInput = parseInt(
-            $exeDevice.removeTags($('#descubreEPercentajeQuestions').val())
+            $exeIDevicesEdition.iDevice.common.removeTags($('#descubreEPercentajeQuestions').val())
         );
 
         if (isNaN(percentInput)) return;
@@ -1034,7 +1034,7 @@ var $exeDevice = {
     },
 
     validateData: function () {
-        const clear = $exeDevice.removeTags,
+        const clear = $exeIDevicesEdition.iDevice.common.removeTags,
             instructions = $exeIDevicesEdition.iDevice.common.getEditorContent('eXeGameInstructions'),
             textAfter = $exeIDevicesEdition.iDevice.common.getEditorContent('eXeIdeviceTextAfter'),
             showMinimize = $('#descubreEShowMinimize').is(':checked'),
@@ -2147,11 +2147,5 @@ var $exeDevice = {
             'z-index': 3,
         });
         $cursor.show();
-    },
-
-    removeTags: function (str) {
-        const wrapper = $('<div></div>');
-        wrapper.html(str);
-        return wrapper.text();
     },
 };

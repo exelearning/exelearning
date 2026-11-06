@@ -928,8 +928,4 @@ var $exeDevice = {
 
         return { w: wImage, h: hImage, x: xImagen, y: yImagen };
     },
-
-    removeTags: function (str) {
-        return $('<div>').html(str).text();
-    },
 };

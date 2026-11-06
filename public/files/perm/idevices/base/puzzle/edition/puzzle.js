@@ -330,7 +330,7 @@ var $exeDevice = {
 
     updateQuestionsNumber: function () {
         const percentInput = parseInt(
-            $exeDevice.removeTags($('#puzzleEPercentajeQuestions').val())
+            $exeIDevicesEdition.iDevice.common.removeTags($('#puzzleEPercentajeQuestions').val())
         );
 
         if (isNaN(percentInput)) return;
@@ -676,7 +676,7 @@ var $exeDevice = {
     },
 
     validateData: function () {
-        const clear = $exeDevice.removeTags,
+        const clear = $exeIDevicesEdition.iDevice.common.removeTags,
             instructions = tinyMCE.get('eXeGameInstructions').getContent(),
             textAfter = tinyMCE.get('eXeIdeviceTextAfter').getContent(),
             showMinimize = $('#puzzleEShowMinimize').is(':checked'),
@@ -1101,11 +1101,5 @@ var $exeDevice = {
             x: xImage,
             y: yImage,
         };
-    },
-
-    removeTags: function (str) {
-        let wrapper = $('<div></div>');
-        wrapper.html(str);
-        return wrapper.text();
     },
 };

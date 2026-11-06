@@ -505,7 +505,7 @@ var $exeDevice = {
 
     updateCardsNumber: function () {
         let percentaje = parseInt(
-            $exeDevice.removeTags($('#dadEPercentajeCards').val())
+            $exeIDevicesEdition.iDevice.common.removeTags($('#dadEPercentajeCards').val())
         );
         if (isNaN(percentaje)) return;
         percentaje = Math.min(Math.max(percentaje, 1), 100);
@@ -704,7 +704,7 @@ var $exeDevice = {
     },
 
     validateData: function () {
-        const clear = $exeDevice.removeTags,
+        const clear = $exeIDevicesEdition.iDevice.common.removeTags,
             instructions = $exeIDevicesEdition.iDevice.common.getEditorContent(
                 'eXeGameInstructions'
             ),
@@ -1123,9 +1123,5 @@ var $exeDevice = {
         }
 
         return { w: wImage, h: hImage, x: xImagen, y: yImagen };
-    },
-
-    removeTags: function (str) {
-        return $('<div>').html(str).text();
     },
 };

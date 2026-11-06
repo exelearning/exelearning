@@ -698,7 +698,7 @@ var $exeDevice = {
 
     updateCardsNumber: function () {
         const percentInput = parseInt(
-            $exeDevice.removeTags($('#flipcardsEPercentajeCards').val())
+            $exeIDevicesEdition.iDevice.common.removeTags($('#flipcardsEPercentajeCards').val())
         );
         if (isNaN(percentInput)) return;
         const percentaje = Math.min(Math.max(percentInput, 1), 100),
@@ -1024,7 +1024,7 @@ var $exeDevice = {
     },
 
     validateData: function () {
-        const clear = $exeDevice.removeTags,
+        const clear = $exeIDevicesEdition.iDevice.common.removeTags,
             instructions = $exeIDevicesEdition.iDevice.common.getEditorContent(
                 'eXeGameInstructions'
             ),
@@ -1718,10 +1718,10 @@ var $exeDevice = {
                     }
                 });
                 const bktext = {
-                    eTextBk: $exeDevice.removeTags(
+                    eTextBk: $exeIDevicesEdition.iDevice.common.removeTags(
                         $question.find('questiontext').first().text().trim()
                     ),
-                    eText: $exeDevice.removeTags(eText),
+                    eText: $exeIDevicesEdition.iDevice.common.removeTags(eText),
                 };
                 return eText ? bktext : null;
             })
@@ -2025,11 +2025,5 @@ var $exeDevice = {
             'z-index': 5,
         });
         $cursor.show();
-    },
-
-    removeTags: function (str) {
-        const wrapper = $('<div></div>');
-        wrapper.html(str);
-        return wrapper.text();
     },
 };

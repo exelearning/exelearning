@@ -3,7 +3,6 @@
  *
  * Tests pure functions that don't depend on DOM manipulation:
  * - validTime: Time format validation
- * - removeTags: HTML tag removal (with mocked jQuery)
  * - getCuestionDefault: Default question object structure
  * - placeImageWindows: Image dimension calculations (with mocked jQuery)
  */
@@ -132,28 +131,6 @@ describe('guess iDevice', () => {
       const q1 = $exeDevice.getCuestionDefault();
       const q2 = $exeDevice.getCuestionDefault();
       expect(q1).not.toBe(q2);
-    });
-  });
-
-  describe('removeTags', () => {
-    it('removes simple HTML tags', () => {
-      const result = $exeDevice.removeTags('<p>Hello</p>');
-      expect(result).toBe('Hello');
-    });
-
-    it('removes nested HTML tags', () => {
-      const result = $exeDevice.removeTags('<div><p><strong>Text</strong></p></div>');
-      expect(result).toBe('Text');
-    });
-
-    it('handles text without tags', () => {
-      const result = $exeDevice.removeTags('Plain text');
-      expect(result).toBe('Plain text');
-    });
-
-    it('handles empty string', () => {
-      const result = $exeDevice.removeTags('');
-      expect(result).toBe('');
     });
   });
 

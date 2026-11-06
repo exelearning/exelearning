@@ -2290,7 +2290,7 @@ var $exeDevice = {
     validateData: function () {
         $exeDevice.numeroTemas = parseInt($('input[name=tvlnt]:checked').val());
 
-        const clear = $exeDevice.removeTags,
+        const clear = $exeIDevicesEdition.iDevice.common.removeTags,
             instructions = $('#eXeGameInstructions').text(),
             instructionsExe = tinyMCE.get('eXeGameInstructions').getContent(),
             textAfter = '',
@@ -2440,12 +2440,6 @@ var $exeDevice = {
             globalTime: globalTime,
             id: id,
         };
-    },
-
-    removeTags: function (str) {
-        let wrapper = $('<div></div>');
-        wrapper.html(str);
-        return wrapper.text();
     },
 
     showTypeQuestion: function (type) {
@@ -2891,7 +2885,7 @@ var $exeDevice = {
             if (typeSelect == 0) {
                 for (let j = 0; j < answers.length; j++) {
                     let answer = answers[j],
-                        answerHtml = $exeDevice.removeTags(
+                        answerHtml = $exeIDevicesEdition.iDevice.common.removeTags(
                             $(answer).find('text').eq(0).text().trim()
                         ),
                         answerTextParts = answerHtml.split('\n'),
@@ -2919,7 +2913,7 @@ var $exeDevice = {
             }
             questionsJson.push({
                 typeSelect: typeSelect,
-                question: $exeDevice.removeTags(questionText.trim()),
+                question: $exeIDevicesEdition.iDevice.common.removeTags(questionText.trim()),
                 options: options,
                 solution: solution,
                 solutionQuestion: solutionQuestion,

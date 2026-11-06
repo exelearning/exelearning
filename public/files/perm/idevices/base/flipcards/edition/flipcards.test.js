@@ -3,7 +3,6 @@
  *
  * Tests pure functions that don't depend on DOM manipulation:
  * - validTime: Time format validation
- * - removeTags: HTML tag removal (with mocked jQuery)
  * - getCardDefault: Default card object structure
  * - placeImageWindows: Image dimension calculations (with mocked jQuery)
  */
@@ -138,28 +137,6 @@ describe('flipcards iDevice', () => {
       const c1 = $exeDevice.getCardDefault();
       const c2 = $exeDevice.getCardDefault();
       expect(c1).not.toBe(c2);
-    });
-  });
-
-  describe('removeTags', () => {
-    it('removes simple HTML tags', () => {
-      const result = $exeDevice.removeTags('<p>Hello</p>');
-      expect(result).toBe('Hello');
-    });
-
-    it('removes nested HTML tags', () => {
-      const result = $exeDevice.removeTags('<div><p><strong>Text</strong></p></div>');
-      expect(result).toBe('Text');
-    });
-
-    it('handles text without tags', () => {
-      const result = $exeDevice.removeTags('Plain text');
-      expect(result).toBe('Plain text');
-    });
-
-    it('handles empty string', () => {
-      const result = $exeDevice.removeTags('');
-      expect(result).toBe('');
     });
   });
 

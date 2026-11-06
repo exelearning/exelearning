@@ -661,7 +661,7 @@ var $exeDevice = {
 
     updateCardsNumber: function () {
         let percentaje = parseInt(
-            $exeDevice.removeTags($('#rclEPercentajeCards').val())
+            $exeIDevicesEdition.iDevice.common.removeTags($('#rclEPercentajeCards').val())
         );
         if (isNaN(percentaje)) return;
         percentaje = Math.min(Math.max(percentaje, 1), 100);
@@ -972,7 +972,7 @@ var $exeDevice = {
     },
 
     validateData: function () {
-        const clear = $exeDevice.removeTags,
+        const clear = $exeIDevicesEdition.iDevice.common.removeTags,
             instructions = tinyMCE.get('eXeGameInstructions').getContent(),
             textAfter = tinyMCE.get('eXeIdeviceTextAfter').getContent(),
             showMinimize = $('#rclEShowMinimize').is(':checked'),
@@ -1569,10 +1569,10 @@ var $exeDevice = {
                     }
                 });
                 const et = {
-                    eTextBk: $exeDevice.removeTags(
+                    eTextBk: $exeIDevicesEdition.iDevice.common.removeTags(
                         $question.find('questiontext').first().text().trim()
                     ),
-                    eText: $exeDevice.removeTags(eText),
+                    eText: $exeIDevicesEdition.iDevice.common.removeTags(eText),
                 };
                 return eText ? et : null;
             })
@@ -1718,9 +1718,5 @@ var $exeDevice = {
                 'z-index': 50,
             })
             .show();
-    },
-
-    removeTags: function (str) {
-        return $('<div>').html(str).text();
     },
 };

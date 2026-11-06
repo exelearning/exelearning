@@ -748,7 +748,7 @@ var $exeDevice = {
     validateAlt: function () {
         $exeDevice.accesibilityIsOk = true;
 
-        const clear = $exeDevice.removeTags;
+        const clear = $exeIDevicesEdition.iDevice.common.removeTags;
         let words = [],
             alts = [],
             urls = [];
@@ -818,10 +818,6 @@ var $exeDevice = {
             html += linkAudio;
         });
         return html;
-    },
-
-    removeTags: function (str) {
-        return $('<div></div>').html(str).text();
     },
 
     startContains: function (letter, word, type) {
@@ -943,7 +939,7 @@ var $exeDevice = {
     },
 
     validateData: function () {
-        const clear = $exeDevice.removeTags,
+        const clear = $exeIDevicesEdition.iDevice.common.removeTags,
             msgs = $exeDevice.msgs,
             // By id: their order among the editors follows the tabs.
             instructions = tinymce.get('eXeGameInstructions').getContent(),
@@ -1182,7 +1178,7 @@ var $exeDevice = {
             });
             if (word && questionText) {
                 words.push(
-                    `${$exeDevice.removeTags(word)}#${$exeDevice.removeTags(questionText)}`
+                    `${$exeIDevicesEdition.iDevice.common.removeTags(word)}#${$exeIDevicesEdition.iDevice.common.removeTags(questionText)}`
                 );
             }
         });

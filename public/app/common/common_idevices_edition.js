@@ -44,6 +44,15 @@ var $exeIDevicesEdition = {
                     .replace(/"/g, '&quot;')
                     .replace(/'/g, '&#39;');
             },
+            /**
+             * The text of an HTML fragment, without its tags.
+             *
+             * @param {string} html
+             * @returns {string}
+             */
+            removeTags: function (html) {
+                return $('<div></div>').html(html).text();
+            },
             helpTooltipId: 0,
             /**
              * Inline information button: a short hover label and an explanation
@@ -2215,8 +2224,8 @@ var $exeIDevicesEdition = {
                             });
                             if (word && questionText) {
                                 let wd = {
-                                    word: $exeDevice.removeTags(word),
-                                    definition: $exeDevice.removeTags(questionText)
+                                    word: $exeIDevicesEdition.iDevice.common.removeTags(word),
+                                    definition: $exeIDevicesEdition.iDevice.common.removeTags(questionText)
                                 }
                                 words.push(wd);
                             }

@@ -629,7 +629,7 @@ var $exeDevice = {
 
     updateQuestionsNumber: function () {
         let percentage = parseInt(
-            $exeDevice.removeTags($('#tofEPercentageQuestions').val())
+            $exeIDevicesEdition.iDevice.common.removeTags($('#tofEPercentageQuestions').val())
         );
         if (isNaN(percentage)) return;
 
@@ -638,12 +638,6 @@ var $exeDevice = {
         let num = Math.max(Math.round((percentage * totalQuestions) / 100), 1);
 
         $('#tofENumeroPercentaje').text(`${num}/${totalQuestions}`);
-    },
-
-    removeTags: function (str) {
-        const wrapper = $('<div></div>');
-        wrapper.html(str);
-        return wrapper.text();
     },
 
     importText: function (content) {
@@ -1000,7 +994,7 @@ var $exeDevice = {
     validateData: function () {
         const questionsRandom = $('#tofEQuestionsRandom').is(':checked'),
             percentageQuestions = parseInt(
-                $exeDevice.removeTags($('#tofEPercentageQuestions').val())
+                $exeIDevicesEdition.iDevice.common.removeTags($('#tofEPercentageQuestions').val())
             ),
             isTest = $('#tofEIsTest').is(':checked'),
             id = $exeDevice.id,

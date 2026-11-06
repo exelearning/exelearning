@@ -584,7 +584,7 @@ var $exeDevice = {
     },
     updateQuestionsNumber: function () {
         let percentaje = parseInt(
-            $exeDevice.removeTags($('#eCQPercentajeQuestions').val()),
+            $exeIDevicesEdition.iDevice.common.removeTags($('#eCQPercentajeQuestions').val()),
             10
         );
         if (isNaN(percentaje)) return;
@@ -593,12 +593,6 @@ var $exeDevice = {
         const totalQuestions = $exeDevice.questions.length,
             num = Math.max(1, Math.round((percentaje * totalQuestions) / 100));
         $('#eCQNumeroPercentaje').text(num + '/' + totalQuestions);
-    },
-
-    removeTags: function (str) {
-        const wrapper = $('<div></div>');
-        wrapper.html(str);
-        return wrapper.text();
     },
 
     validateQuestion: function (options = {}) {
@@ -690,7 +684,7 @@ var $exeDevice = {
     },
 
     validateData: function () {
-        const clear = $exeDevice.removeTags,
+        const clear = $exeIDevicesEdition.iDevice.common.removeTags,
             showMinimize = $('#eCQShowMinimize').is(':checked'),
             optionsRamdon = $('#eCQOptionsRamdon').is(':checked'),
             showSolution = $('#eCQShowSolution').is(':checked'),

@@ -397,6 +397,20 @@ describe('common_idevices_edition.js', () => {
       });
     });
 
+    describe('removeTags', () => {
+      const removeTags = (html) => globalThis.$exeIDevicesEdition.iDevice.common.removeTags(html);
+
+      it('keeps the text of an HTML fragment, nested or with attributes, without its tags', () => {
+        expect(removeTags('<div class="x"><p>Hello <strong>World</strong></p></div>')).toBe('Hello World');
+        expect(removeTags('<a href="http://example.com">Link</a> &amp; more')).toBe('Link & more');
+      });
+
+      it('leaves plain text and an empty string as they are', () => {
+        expect(removeTags('Plain text')).toBe('Plain text');
+        expect(removeTags('')).toBe('');
+      });
+    });
+
     describe('getTextEditor', () => {
       const getTextEditor = (position) => globalThis.$exeIDevicesEdition.iDevice.common.getTextEditor(position);
 

@@ -600,7 +600,7 @@ var $exeDevice = {
 
     updateQuestionsNumber: function () {
         const percentInput = parseInt(
-            $exeDevice.removeTags($('#adivinaEPercentajeQuestions').val())
+            $exeIDevicesEdition.iDevice.common.removeTags($('#adivinaEPercentajeQuestions').val())
         );
         if (isNaN(percentInput)) return;
         const percentaje = Math.min(Math.max(percentInput, 1), 100),
@@ -1375,7 +1375,7 @@ var $exeDevice = {
     },
 
     validateData: function () {
-        const clear = $exeDevice.removeTags,
+        const clear = $exeIDevicesEdition.iDevice.common.removeTags,
             instructions = tinyMCE.get('eXeGameInstructions').getContent(),
             textAfter = tinyMCE.get('eXeIdeviceTextAfter').getContent(),
             showMinimize = $('#adivinaEShowMinimize').is(':checked'),
@@ -2564,8 +2564,8 @@ var $exeDevice = {
             });
             if (word && questionText) {
                 let wd = {
-                    word: $exeDevice.removeTags(word),
-                    definition: $exeDevice.removeTags(questionText),
+                    word: $exeIDevicesEdition.iDevice.common.removeTags(word),
+                    definition: $exeIDevicesEdition.iDevice.common.removeTags(questionText),
                 };
                 words.push(wd);
             }
@@ -2674,9 +2674,5 @@ var $exeDevice = {
             'z-index': 3,
         });
         $cursor.show();
-    },
-
-    removeTags: function (str) {
-        return $('<div>').html(str).text();
     },
 };

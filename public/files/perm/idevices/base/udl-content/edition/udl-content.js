@@ -517,7 +517,7 @@ var $exeDevice = {
             $exeDevice.saveToTextareas(e);
 
             var btnTxt = $("input[type='text']", this).val();
-            btnTxt = $exeDevice.removeTags(btnTxt);
+            btnTxt = $exeIDevicesEdition.iDevice.common.removeTags(btnTxt);
             var btnType = $("input[type='radio']:checked", this).val();
             var contMain = $('#udlContentFormTxt-' + i + '-0').val();
             var contAlt1 = $('#udlContentFormTxt-' + i + '-1').val();
@@ -820,13 +820,6 @@ var $exeDevice = {
     // Avoid wrong HTML: <source></source>
     fixHTML: function (c) {
         return c.replace(/" ><\/source>/g, '" />');
-    },
-
-    // Remove any HTML tags
-    removeTags: function (str) {
-        var wrapper = $('<div></div>');
-        wrapper.html(str);
-        return wrapper.text();
     },
 
     // Remove empty paragraphs

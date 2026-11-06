@@ -2,7 +2,6 @@
  * Unit tests for padlock iDevice
  *
  * Tests pure functions that don't depend on DOM manipulation:
- * - removeTags: HTML tag removal (with mocked jQuery)
  */
 
 /* eslint-disable no-undef */
@@ -39,43 +38,6 @@ describe('padlock iDevice', () => {
 
     // Load iDevice and get reference
     $exeDevice = loadIdevice(code);
-  });
-
-  describe('removeTags', () => {
-    it('removes simple HTML tags', () => {
-      const result = $exeDevice.removeTags('<p>Hello</p>');
-      expect(result).toBe('Hello');
-    });
-
-    it('removes nested HTML tags', () => {
-      const result = $exeDevice.removeTags('<div><p><strong>Text</strong></p></div>');
-      expect(result).toBe('Text');
-    });
-
-    it('handles text without tags', () => {
-      const result = $exeDevice.removeTags('Plain text');
-      expect(result).toBe('Plain text');
-    });
-
-    it('handles empty string', () => {
-      const result = $exeDevice.removeTags('');
-      expect(result).toBe('');
-    });
-
-    it('removes multiple tags and preserves text', () => {
-      const result = $exeDevice.removeTags('<h1>Title</h1><p>Paragraph</p>');
-      expect(result).toBe('TitleParagraph');
-    });
-
-    it('handles self-closing tags', () => {
-      const result = $exeDevice.removeTags('Line 1<br/>Line 2');
-      expect(result).toBe('Line 1Line 2');
-    });
-
-    it('removes tags with attributes', () => {
-      const result = $exeDevice.removeTags('<a href="http://example.com">Link</a>');
-      expect(result).toBe('Link');
-    });
   });
 
   describe('i18n', () => {

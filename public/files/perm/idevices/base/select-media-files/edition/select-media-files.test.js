@@ -3,7 +3,6 @@
  *
  * Tests cover:
  * - hexToRgba: Color conversion utility
- * - removeTags: HTML tag stripping
  * - getCardDefault / getPhraseDefault: Default data structures
  * - validateCard: Card validation logic
  * - addPickerButton: The fixed file-picker flow (issue #1449)
@@ -78,29 +77,6 @@ describe('select-media-files iDevice', () => {
         it('uses alpha = 1 when opacity is not finite', () => {
             const result = $exeDevice.hexToRgba('#ffffff', NaN);
             expect(result).toBe('rgba(255,255,255,1)');
-        });
-    });
-
-    // -------------------------------------------------------------------------
-    // removeTags
-    // -------------------------------------------------------------------------
-    describe('removeTags', () => {
-        it('strips simple HTML tags', () => {
-            expect($exeDevice.removeTags('<p>Hello</p>')).toBe('Hello');
-        });
-
-        it('strips nested tags', () => {
-            expect(
-                $exeDevice.removeTags('<div><strong>Text</strong></div>')
-            ).toBe('Text');
-        });
-
-        it('returns plain text unchanged', () => {
-            expect($exeDevice.removeTags('plain text')).toBe('plain text');
-        });
-
-        it('returns empty string for empty input', () => {
-            expect($exeDevice.removeTags('')).toBe('');
         });
     });
 

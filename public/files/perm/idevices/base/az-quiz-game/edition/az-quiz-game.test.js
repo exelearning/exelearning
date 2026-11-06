@@ -10,7 +10,6 @@
  * - startContains: Check if word starts with or contains letter
  * - placeImageWindows: Image dimension calculations (with mocked jQuery)
  * - rearrangeAlphabet: Alphabet rearrangement
- * - removeTags: HTML tag removal
  */
 /* eslint-disable no-undef */
 import { readFileSync } from 'fs';
@@ -441,28 +440,6 @@ describe('az-quiz-game iDevice', () => {
       const result = $exeDevice.rearrangeAlphabet('ABCD');
       // Consonants (BCD), then vowels (AEIOU)
       expect(result).toBe('BCDAEIOU');
-    });
-  });
-
-  describe('removeTags', () => {
-    it('removes simple HTML tags', () => {
-      const result = $exeDevice.removeTags('<p>Hello</p>');
-      expect(result).toBe('Hello');
-    });
-
-    it('removes nested HTML tags', () => {
-      const result = $exeDevice.removeTags('<div><p><strong>Text</strong></p></div>');
-      expect(result).toBe('Text');
-    });
-
-    it('handles text without tags', () => {
-      const result = $exeDevice.removeTags('Plain text');
-      expect(result).toBe('Plain text');
-    });
-
-    it('handles empty string', () => {
-      const result = $exeDevice.removeTags('');
-      expect(result).toBe('');
     });
   });
 

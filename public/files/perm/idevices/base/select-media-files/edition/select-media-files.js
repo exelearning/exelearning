@@ -424,7 +424,7 @@ var $exeDevice = {
 
     updateQuestionsNumber: function () {
         const percentInput = parseInt(
-            $exeDevice.removeTags($('#slcmEPercentajeQuestions').val())
+            $exeIDevicesEdition.iDevice.common.removeTags($('#slcmEPercentajeQuestions').val())
         );
         if (isNaN(percentInput)) return;
         const percentaje = Math.min(Math.max(percentInput, 1), 100),
@@ -1130,7 +1130,7 @@ var $exeDevice = {
     },
 
     validateData: function () {
-        const clear = $exeDevice.removeTags,
+        const clear = $exeIDevicesEdition.iDevice.common.removeTags,
             instructions = tinyMCE.get('eXeGameInstructions').getContent(),
             textAfter = tinyMCE.get('eXeIdeviceTextAfter').getContent(),
             showMinimize = $('#slcmEShowMinimize').is(':checked'),
@@ -1720,12 +1720,6 @@ var $exeDevice = {
             x: xImagen,
             y: yImagen,
         };
-    },
-
-    removeTags: function (str) {
-        let wrapper = $('<div></div>');
-        wrapper.html(str);
-        return wrapper.text();
     },
     showFlex: function ($el) {
         if ($el && $el.length) {

@@ -263,7 +263,7 @@ var $exeDevice = {
 
     updateQuestionsNumber: function () {
         let percentaje = parseInt(
-            $exeDevice.removeTags($('#idfEPercentajeQuestions').val())
+            $exeIDevicesEdition.iDevice.common.removeTags($('#idfEPercentajeQuestions').val())
         );
         if (isNaN(percentaje)) return;
         percentaje = percentaje < 1 ? 1 : percentaje;
@@ -1145,12 +1145,6 @@ var $exeDevice = {
         $exeDevice.updateQuestionsNumber();
     },
 
-    removeTags: function (str) {
-        let wrapper = $('<div></div>');
-        wrapper.html(str);
-        return wrapper.text();
-    },
-
     getIdeviceID: function () {
         const ideviceid =
             $('#identifyQEIdeviceForm')
@@ -1171,13 +1165,13 @@ var $exeDevice = {
             questionsRamdon = $('#idfEQuestionRamdon').is(':checked'),
             showSolution = $('#idfEShowSolution').is(':checked'),
             timeShowSolution = parseInt(
-                $exeDevice.removeTags($('#idfETimeShowSolution').val())
+                $exeIDevicesEdition.iDevice.common.removeTags($('#idfETimeShowSolution').val())
             ),
             itinerary =
                 $exeIDevicesEdition.iDevice.gamification.itinerary.getValues(),
             customMessages = $('#idfECustomMessages').is(':checked'),
             percentajeQuestions = parseInt(
-                $exeDevice.removeTags($('#idfEPercentajeQuestions').val())
+                $exeIDevicesEdition.iDevice.common.removeTags($('#idfEPercentajeQuestions').val())
             ),
             progressBar =
                 $exeIDevicesEdition.iDevice.gamification.progressBar.getValues(),
