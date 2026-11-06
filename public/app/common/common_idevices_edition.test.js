@@ -1578,6 +1578,11 @@ describe('common_idevices_edition.js', () => {
       expect(buttons()[1]).toBe(exportButton());
       expect(exportButton().hasAttribute('aria-haspopup')).toBe(false);
       expect(exportButton().hasAttribute('aria-controls')).toBe(false);
+      // What the window used to say, its tooltip says.
+      expect(exportButton().classList.contains('exe-app-tooltip')).toBe(true);
+      expect(exportButton().getAttribute('title')).toBe(
+        'You can export its questions in txt format to integrate them into other compatible activities.'
+      );
     });
 
     it('leaves Import or Export out for an iDevice without them, and all of them with share: false', () => {
@@ -1733,6 +1738,40 @@ describe('common_idevices_edition.js', () => {
       window.bootstrap = { Modal };
       expect(() => share().close('import')).not.toThrow();
       expect(() => share().close('missing')).not.toThrow();
+    });
+
+    it('starts the tooltip of Export once, and disposes of it when the edition closes', () => {
+      const disposers = [];
+      const previousLifecycle = window.$exeEditionLifecycle;
+      const previousCommon = eXeLearning.app.common;
+      const instances = new Map();
+      window.bootstrap = { Modal, Tooltip: { getInstance: (el) => instances.get(el) || null } };
+      eXeLearning.app.common = {
+        initTooltips: vi.fn((scope) => {
+          scope.querySelectorAll('.exe-app-tooltip').forEach((el) => instances.set(el, { dispose: vi.fn() }));
+        }),
+      };
+      window.$exeEditionLifecycle = {
+        isActive: () => true,
+        own: (dispose) => {
+          disposers.push(dispose);
+          return dispose;
+        },
+        addEventListener: (target, type, handler) => target.addEventListener(type, handler),
+      };
+      try {
+        render({ contents: '' });
+        share().mount();
+        const tooltip = instances.get(exportButton());
+
+        expect(eXeLearning.app.common.initTooltips).toHaveBeenCalledTimes(1);
+        expect(eXeLearning.app.common.initTooltips).toHaveBeenCalledWith(exportButton().parentElement);
+        disposers.forEach((dispose) => dispose());
+        expect(tooltip.dispose).toHaveBeenCalledTimes(1);
+      } finally {
+        window.$exeEditionLifecycle = previousLifecycle;
+        eXeLearning.app.common = previousCommon;
+      }
     });
 
     it('removes the windows, with their Bootstrap instances, when the edition closes', () => {

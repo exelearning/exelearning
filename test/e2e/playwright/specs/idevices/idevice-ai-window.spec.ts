@@ -28,6 +28,10 @@ test('The Import, Export and Create with AI buttons are each reached with Tab', 
     await importButton.focus();
     await page.keyboard.press('Tab');
     await expect(exportButton).toBeFocused();
+    // Export opens no window: its tooltip says what it saves.
+    await expect(page.getByRole('tooltip')).toHaveText(
+        'You can export its questions in txt format to integrate them into other compatible activities.',
+    );
     await page.keyboard.press('Tab');
     await expect(aiButton).toBeFocused();
     await page.keyboard.press('Shift+Tab');
