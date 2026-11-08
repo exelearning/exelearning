@@ -30,8 +30,9 @@ test('True or false shares its questions', async ({ authenticatedPage: page, cre
 
     // Import a real text file: its statements replace the empty first question.
     await page.locator('#trueorfalseIdeviceForm-tab-contents').click();
-    await importText(page, 'statements.txt', '1#The Sun is a star\n0#The Moon is a planet\n');
-    await expect(page.locator('#tofENumQuestions')).toHaveText('2');
+    await importText(page, 'statements.txt', '1#The Sun is a star\n0#The Moon is a planet\n', () =>
+        expect(page.locator('#tofENumQuestions')).toHaveText('2'),
+    );
     await expect
         .poll(() => page.evaluate(() => (window as any).tinymce.get('tofEQuestionEditor').getContent()))
         .toContain('The Sun is a star');

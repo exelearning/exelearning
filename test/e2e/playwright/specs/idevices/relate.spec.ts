@@ -543,8 +543,9 @@ test('Relate shares its pairs', async ({ authenticatedPage: page, createProject 
 
     // Import a real text file: its pairs replace the empty first card.
     await page.locator('#relateQIdeviceForm-tab-contents').click();
-    await importText(page, 'pairs.txt', 'Sun#Sol\nMoon#Luna\n');
-    await expect(page.locator('#rclENumCards')).toHaveText('2');
+    await importText(page, 'pairs.txt', 'Sun#Sol\nMoon#Luna\n', () =>
+        expect(page.locator('#rclENumCards')).toHaveText('2'),
+    );
     await expect(page.locator('#rclEText')).toHaveValue('Sun');
     // The AI window adds the lines it is given.
     await addWithAi(page, 'Star#Estrella');

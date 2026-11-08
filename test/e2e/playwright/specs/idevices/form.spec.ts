@@ -713,9 +713,10 @@ test('Form imports its questions and adds those the AI gives it', async ({
 
     // Import a real text file: each line becomes a question.
     await page.locator('#formIdeviceForm-tab-contents').click();
-    await importText(page, 'questions.txt', '1#The Sun is a star\n0#The Moon is a planet\n');
     const questions = page.locator('#formPreview > li');
-    await expect(questions).toHaveCount(2);
+    await importText(page, 'questions.txt', '1#The Sun is a star\n0#The Moon is a planet\n', () =>
+        expect(questions).toHaveCount(2),
+    );
     await expect(questions.first()).toContainText('The Sun is a star');
     // The AI window adds the questions it is given.
     await addWithAi(page, '0#Water boils at 50 degrees');

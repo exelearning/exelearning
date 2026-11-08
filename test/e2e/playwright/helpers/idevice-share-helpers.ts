@@ -6,8 +6,8 @@ import { expect, type Page } from '@playwright/test';
  * that shows them.
  */
 
-/** Imports a text file through the Import window, which closes once it is read. */
-export async function importText(page: Page, name: string, text: string): Promise<void> {
+/** Imports a text file, then waits for the caller's assertion on the imported content. */
+export async function importText(page: Page, name: string, text: string, imported: () => Promise<void>): Promise<void> {
     await page.locator('[data-exe-share="import"]').click();
     await expect(page.locator('#eXeShareModal-import')).toBeVisible();
     await page.locator('#eXeGameImportGame').setInputFiles({
@@ -16,6 +16,8 @@ export async function importText(page: Page, name: string, text: string): Promis
         buffer: Buffer.from(text),
     });
     await expect(page.locator('#eXeShareModal-import')).toBeHidden();
+    // Selecting a file closes the window before FileReader has processed it.
+    await imported();
 }
 
 /** Writes lines in the Create with AI window and adds them. What the app answers is up to the test. */

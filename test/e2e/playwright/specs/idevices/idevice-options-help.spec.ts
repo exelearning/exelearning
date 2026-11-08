@@ -99,6 +99,7 @@ const CASES: HelpCase[] = [
                     '0@2#B#Capital of Italy?#Paris#Rome',
                     '',
                 ].join('\n'),
+                () => expect(page.locator('#adaptativeQuizENumQuestions')).toHaveText('6'),
             );
         },
         keeps: {
@@ -278,7 +279,9 @@ const CASES: HelpCase[] = [
         areas: [{ tab: 'options', scope: '#frmEOptions', helps: 5 }],
         prepare: async page => {
             await page.locator('#formIdeviceForm-tab-contents').click();
-            await importText(page, 'questions.txt', '1#The Sun is a star\n0#The Moon is a planet\n');
+            await importText(page, 'questions.txt', '1#The Sun is a star\n0#The Moon is a planet\n', () =>
+                expect(page.locator('#formPreview > li')).toHaveCount(2),
+            );
         },
         keeps: {
             '#checkAddBtnAnswers': false,

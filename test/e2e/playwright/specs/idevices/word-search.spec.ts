@@ -24,8 +24,9 @@ test('Word search shares its words', async ({ authenticatedPage: page, createPro
 
     // Import a real text file: its words replace the empty first one.
     await page.locator('#sopaQEIdeviceForm-tab-contents').click();
-    await importText(page, 'words.txt', 'SUN#The star of our system\nMOON#Natural satellite of the Earth\n');
-    await expect(page.locator('#sopaENumQuestions')).toHaveText('2');
+    await importText(page, 'words.txt', 'SUN#The star of our system\nMOON#Natural satellite of the Earth\n', () =>
+        expect(page.locator('#sopaENumQuestions')).toHaveText('2'),
+    );
     await expect(page.locator('#sopaESolutionWord')).toHaveValue('SUN');
     // The AI window adds the lines it is given.
     await addWithAi(page, 'STAR#A sun far away');

@@ -36,8 +36,9 @@ test('Adaptative quiz shares its questions and keeps its access code', async ({
 
     // Import a real text file: its questions replace the empty first one.
     await page.locator('#adaptativeQuizIdeviceForm-tab-contents').click();
-    await importText(page, 'questions.txt', `${QUESTIONS.join('\n')}\n`);
-    await expect(page.locator('#adaptativeQuizENumQuestions')).toHaveText('6');
+    await importText(page, 'questions.txt', `${QUESTIONS.join('\n')}\n`, () =>
+        expect(page.locator('#adaptativeQuizENumQuestions')).toHaveText('6'),
+    );
     await expect(page.locator('#adaptativeQuizEQuestion')).toHaveValue('Which is a star?');
     // The AI window adds the questions it is given.
     await addWithAi(page, '2@0#Sun#The star of our system');
