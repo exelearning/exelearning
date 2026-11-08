@@ -267,7 +267,7 @@ var $exeDevice = {
             options = `
                 <div id="eRMQEOptions">
                     <div id="eRMQErrorRelativeDiv" class="mb-3">
-                        <div class="d-flex align-items-center gap-2 flex-nowrap">
+                        <div class="d-flex align-items-center gap-2 flex-nowrap" role="group" aria-label="${_('Relative error')}">
                             <span class="toggle-item">
                                 <span class="toggle-control">
                                     <input class="MTOE-ErrorType toggle-input" id="eRMQRelative" type="checkbox" name="eRMQtype" value="0" />
@@ -280,7 +280,7 @@ var $exeDevice = {
                         </div>
                     </div>
                     <div id="eRMQErrorAbsoluteDiv" class="mb-3">
-                        <div class="d-flex align-items-center gap-2 flex-nowrap">
+                        <div class="d-flex align-items-center gap-2 flex-nowrap" role="group" aria-label="${_('Absolute error')}">
                             <span class="toggle-item">
                                 <span class="toggle-control">
                                     <input class="MTOE-ErrorType toggle-input" id="eRMQAbsolute" type="checkbox" name="eRMQtype" value="1" />

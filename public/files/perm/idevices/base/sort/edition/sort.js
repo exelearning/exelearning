@@ -237,7 +237,7 @@ var $exeDevice = {
                         </div>
                         ${help(_('Arrange the cards in this number of columns. With No, they are placed freely.'))}
                     </div>
-                    <div id="ordenaCustomizeCard" class="d-none flex-nowrap align-items-center gap-2 mb-3">
+                    <div id="ordenaCustomizeCard" class="d-none flex-nowrap align-items-center gap-2 mb-3" role="group" aria-label="${_('Maximum width')}">
                         ${toggle('ordenaMaxWidth', `${_('Maximum width')}.`, true)}
                         <label for="ordenaCardHeight" class="mb-0">${_('Height (px)')}:</label>
                         <input type="number" class="form-control" name="ordenaCardHeight" id="ordenaCardHeight" value="200" min="0" max="1000" />

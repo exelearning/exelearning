@@ -215,7 +215,7 @@ var $exeDevice = {
                         <span id="ccgmENumeroPercentaje">1/1</span>
                         ${edition.common.getHelpTooltip(_('Choose the percentage of words included in each game. The counter shows how many words will be used.'))}
                     </div>
-                    <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
+                    <div class="d-flex align-items-center gap-2 flex-nowrap mb-3" role="group" aria-label="${_('Background')}">
                         <span class="toggle-item">
                             <span class="toggle-control">
                                 <input type="checkbox" id="ccgmBack0" class="toggle-input" checked />

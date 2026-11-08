@@ -315,8 +315,18 @@ const CASES: HelpCase[] = [
             '#adivinaESolutionWord': 'planet',
             '#adivinaEDefinitionWord': 'A world orbiting a star',
             '#adivinaEOptionsRamdon': true,
+            '#adivinaEGameMode': true,
+            '#adivinaEUseLives': true,
+            '#adivinaETimeShowSolution': '5',
+            '#adivinaENumberLives': '4',
         },
         stored: 'adivina-DataGame',
+        explains: {
+            '#adivinaEShowSolution': ['Show solutions:', 'Show solution time (seconds):'],
+            '#adivinaETimeShowSolution': ['Show solutions:', 'Show solution time (seconds):'],
+            '#adivinaEUseLives': ['Use lives:', 'Number of lives:'],
+            '#adivinaENumberLives': ['Use lives:', 'Number of lives:'],
+        },
     },
     {
         type: 'hidden-image',
@@ -782,21 +792,29 @@ function helpProblems(page: Page, scope: string): Promise<string[]> {
                 const box = control.getBoundingClientRect();
                 if (!(icon.top < box.bottom && box.top < icon.bottom)) fail('is not on the line of its control');
             }
-            // The explanation describes the control it is about or, in a group, each of them, and the group
-            // names the help. Several choices or switches with one help make a group; a switch with the
-            // value it enables (seconds, lives...) does not.
+            // One explanation for a row describes every visible field, including disabled dependent
+            // values (seconds, lives...). Check the DOM independently of the production group helper.
+            // Not the buttons, such as "Select a file" by an image field: an action named by its own
+            // text, while the help explains the field it fills.
             const note = button.getAttribute('aria-controls')!;
+            const isField = (element: Element) =>
+                !/^(button|submit|reset|image)$/.test((element as HTMLInputElement).type);
             const describes = (element: Element) =>
                 (element.getAttribute('aria-describedby') || '').split(/\s+/).includes(note);
+            if (container.parentElement!.querySelectorAll('.exe-idevice-help').length === 1) {
+                for (const element of rowControls.filter(isField)) {
+                    if (!describes(element)) fail(`does not describe #${element.id}`);
+                }
+            }
             const common = (window as any).$exeIDevicesEdition.iDevice.common;
             const group = common.getHelpGroup(container);
             if (group) {
                 const name = common.getHelpGroupName(group);
                 if (!name) fail('names no group');
                 else if (!button.getAttribute('aria-label')!.endsWith(name)) fail(`is not named after "${name}"`);
-                group
-                    .querySelectorAll('input:not([type="hidden"]), select, textarea')
-                    .forEach((element: Element) => describes(element) || fail(`does not describe #${element.id}`));
+                for (const element of group.querySelectorAll('input:not([type="hidden"]), select, textarea')) {
+                    if (isField(element) && !describes(element)) fail(`does not describe #${element.id}`);
+                }
             } else {
                 const radios = rowControls.filter(element => (element as HTMLInputElement).type === 'radio');
                 const switches = rowControls.filter(element => (element as HTMLInputElement).type === 'checkbox');
@@ -925,6 +943,9 @@ for (const c of CASES) {
             await button.click();
             const explanation = page.locator(`#${await button.getAttribute('aria-controls')}`);
             for (const text of texts) await expect(explanation).toContainText(text);
+            await expect(page.locator(control)).toHaveAccessibleDescription(
+                (await explanation.textContent())!.replace(/\s+/g, ' ').trim(),
+            );
             await button.press('Escape');
         }
 
@@ -962,6 +983,14 @@ for (const c of CASES) {
             await showTabOf(page, field);
             if (typeof value === 'boolean') await expect(field).toBeChecked({ checked: value });
             else await expect(field).toHaveValue(value);
+        }
+        // Descriptions are restored on reopening too, including the now enabled dependent fields.
+        for (const [control, texts] of Object.entries(c.explains ?? {})) {
+            for (const text of texts) {
+                await expect(page.locator(control)).toHaveAccessibleDescription(
+                    new RegExp(text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')),
+                );
+            }
         }
         // The helps work again in the reopened form.
         await firstTab.click();

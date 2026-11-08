@@ -157,7 +157,7 @@ var $exeDevice = {
                         ${toggle('eCQOptionsRamdon', `${_('Random questions')}.`)}
                         ${help(_('Present the questions in a different random order each time the game starts.'))}
                     </div>
-                    <div class="mb-3 d-flex align-items-center gap-2 flex-nowrap">
+                    <div class="mb-3 d-flex align-items-center gap-2 flex-nowrap" role="group" aria-label="${_('Show solutions')}">
                         ${toggle('eCQShowSolution', `${_('Show solutions')}.`, true)}
                         <label for="eCQTimeShowSolution" class="sr-av">${_('Show solution time (seconds)')}</label>
                         <input type="number" name="eCQTimeShowSolution" id="eCQTimeShowSolution" value="3" min="1" max="9" step="1" class="form-control" style="width:6ch" />
@@ -169,12 +169,12 @@ var $exeDevice = {
                             ].join('\n\n'),
                         )}
                     </div>
-                    <div id="eCQErrorRelativeDiv" class="mb-3 d-flex align-items-center gap-2 flex-nowrap">
+                    <div id="eCQErrorRelativeDiv" class="mb-3 d-flex align-items-center gap-2 flex-nowrap" role="group" aria-label="${_('Relative error')}">
                         ${toggle('eCQRelative', `${_('Relative error')}.`, false, 'MTOE-ErrorType ')}
                         <input type="number" name="eCQPercentajeRelative" id="eCQPercentajeRelative" value="0" min="0" max="1" step="0.01" class="form-control" style="display:none; width:7ch" />
                         ${help(_('Accept answers that differ from the right one by up to this fraction of it, from 0 to 1 (0.1 is 10%).'))}
                     </div>
-                    <div id="eCQErrorAbsoluteDiv" class="mb-3 d-flex align-items-center gap-2 flex-nowrap">
+                    <div id="eCQErrorAbsoluteDiv" class="mb-3 d-flex align-items-center gap-2 flex-nowrap" role="group" aria-label="${_('Absolute error')}">
                         ${toggle('eCQAbsolute', `${_('Absolute error')}.`, false, 'MTOE-ErrorType ')}
                         <input type="number" name="eCQPercentajeAbsolute" id="eCQPercentajeAbsolute" value="0" min="0" max="99.0" step="0.01" class="form-control" style="display:none; width:7ch" />
                         ${help(_('Accept answers that differ from the right one by up to this amount.'))}

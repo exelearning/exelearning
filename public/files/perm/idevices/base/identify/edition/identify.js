@@ -451,7 +451,7 @@ var $exeDevice = {
                         </span>
                         ${edition.common.getHelpTooltip(_('Add a custom message for correct and incorrect answers to each question in the Activities tab.'))}
                     </div>
-                    <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
+                    <div class="d-flex align-items-center gap-2 flex-nowrap mb-3" role="group" aria-label="${_('Show solutions')}">
                         <span class="toggle-item">
                             <span class="toggle-control">
                                 <input type="checkbox" id="idfEShowSolution" class="toggle-input" checked />

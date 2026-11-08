@@ -194,7 +194,7 @@ var $exeDevice = {
                         _('Allow learners to see the answers when they run out of attempts.')
                     )}
                 </div>
-                <div class="mb-3 d-flex align-items-center gap-2 flex-nowrap">
+                <div class="mb-3 d-flex align-items-center gap-2 flex-nowrap" role="group" aria-label="${_('Allow errors in typed words')}">
                     <span class="toggle-item">
                         <span class="toggle-control">
                             <input type="checkbox" id="cmptEEstrictCheck" class="toggle-input" />
@@ -246,7 +246,7 @@ var $exeDevice = {
                         _('The activity will show collapsed on startup until the user clicks to start.')
                     )}
                 </div>
-                <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
+                <div class="d-flex align-items-center gap-2 flex-nowrap mb-3" role="group" aria-label="${_('Background')}">
                     <span class="toggle-item">
                         <span class="toggle-control">
                             <input type="checkbox" id="cmptBack0" class="toggle-input" />

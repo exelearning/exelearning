@@ -260,7 +260,7 @@ var $exeDevice = {
                     <input type="number" id="adaptativeQuizETime" class="form-control form-control-sm ADQ-ENumberInput" value="0" min="0" max="59" />
                     ${edition.common.getHelpTooltip(_('Set the maximum time in minutes to complete the quiz. Set to 0 for unlimited time.'))}
                 </div>
-                <div class="adaptativeQuizShowSolutionRow d-flex align-items-center flex-nowrap gap-2 mb-3">
+                <div class="adaptativeQuizShowSolutionRow d-flex align-items-center flex-nowrap gap-2 mb-3" role="group" aria-label="${_('Show solutions')}">
                     <div class="toggle-item m-0">
                         <span class="toggle-control"><input type="checkbox" id="adaptativeQuizShowSolution" class="toggle-input" checked/><span class="toggle-visual" aria-hidden="true"></span></span>
                         <label for="adaptativeQuizShowSolution" class="toggle-label mb-0">${_('Show solutions')}.</label>

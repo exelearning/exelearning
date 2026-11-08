@@ -841,7 +841,7 @@ var $exeDevice = {
                         ${toggle('vquextECustomMessages', `${_('Custom messages')}.`)}
                         ${help(_('Add a custom message for correct and incorrect answers to each question in the Activities tab.'))}
                     </div>
-                    <div class="mb-3 d-flex align-items-center gap-2 flex-nowrap">
+                    <div class="mb-3 d-flex align-items-center gap-2 flex-nowrap" role="group" aria-label="${_('Show solutions')}">
                         ${toggle('vquextEShowSolution', `${_('Show solutions')}.`, true)}
                         <label for="vquextETimeShowSolution" class="sr-av">${_('Show solution time (seconds)')}</label>
                         <input class="form-control" type="number" name="vquextETimeShowSolution" id="vquextETimeShowSolution" value="3" min="1" max="9" />
@@ -875,7 +875,7 @@ var $exeDevice = {
                             ].join('\n\n'),
                         )}
                     </div>
-                    <div class="mb-3 d-flex align-items-center gap-2 flex-nowrap">
+                    <div class="mb-3 d-flex align-items-center gap-2 flex-nowrap" role="group" aria-label="${_('Use lives')}">
                         ${toggle('vquextEUseLives', `${_('Use lives')}.`, true)}
                         <label for="vquextENumberLives" class="sr-av">${_('Number of lives')}</label>
                         <input class="form-control" type="number" name="vquextENumberLives" id="vquextENumberLives" value="3" min="1" max="5" />

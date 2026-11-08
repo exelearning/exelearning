@@ -984,7 +984,7 @@ var $exeDevice = {
                         ${toggle('trivialEShowMinimize', _('Show minimized.'))}
                         ${help(_('Start with the game collapsed. Learners can expand it when they are ready to play.'))}
                     </div>
-                    <div class="d-flex align-items-center flex-nowrap mb-3 gap-2">
+                    <div class="d-flex align-items-center flex-nowrap mb-3 gap-2" role="group" aria-label="${_('Show solutions')}">
                         ${toggle('trivialEShowSolution', `${_('Show solutions')}.`, true)}
                         <label for="trivialETimeShowSolution" class="sr-av">${_('Show solution time (seconds)')}</label>
                         <input type="number" name="trivialETimeShowSolution" id="trivialETimeShowSolution" value="3" min="1" max="9" class="form-control" style="width:6ch" />

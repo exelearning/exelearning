@@ -1462,7 +1462,7 @@ var $exeDevice = {
                         </span>
                         ${edition.common.getHelpTooltip(_('Shuffle questions so they appear in random order for each learner.'))}
                     </div>
-                    <div class="d-flex align-items-center gap-2 flex-nowrap mb-3" id="elceShowSolutionDiv">
+                    <div class="d-flex align-items-center gap-2 flex-nowrap mb-3" id="elceShowSolutionDiv" role="group" aria-label="${_('Show solutions')}">
                         <span class="toggle-item toggle-related" data-target="elceShowSolution">
                             <span class="toggle-control">
                                 <input type="checkbox" class="toggle-input" id="elceShowSolution" checked />

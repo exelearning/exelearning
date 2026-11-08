@@ -301,7 +301,7 @@ var $exeDevice = {
                         <input type="number" name="mapaNumOptions" id="mapaNumOptions" value="0" min="0" max="100" class="form-control" />
                         ${help(_('How many names to offer for each spot. With 0 or 1, all of them are offered.'))}
                     </div>
-                    <div class="MQE-EHide align-items-center flex-nowrap gap-2 mb-3" id="mapaSolutionData">
+                    <div class="MQE-EHide align-items-center flex-nowrap gap-2 mb-3" id="mapaSolutionData" role="group" aria-label="${_('Show solutions')}">
                         <div class="toggle-item toggle-related m-0">
                             <span class="toggle-control">
                                 <input type="checkbox" class="toggle-input" checked id="mapaEShowSolution" />

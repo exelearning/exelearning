@@ -1034,7 +1034,7 @@ var $exeDevice = {
                         <label for="quextECustomMessages" class="toggle-label">${_('Custom messages')}.</label>
                         ${edition.common.getHelpTooltip(_('Add a custom message for correct and incorrect answers to each question in the Activities tab.'))}
                     </div>
-                    <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
+                    <div class="d-flex align-items-center gap-2 flex-nowrap mb-3" role="group" aria-label="${_('Show solutions')}">
                         <div class="toggle-item toggle-related m-0" data-target="quextEShowSolution">
                             <span class="toggle-control">
                                 <input type="checkbox" checked id="quextEShowSolution" class="toggle-input" />
@@ -1078,7 +1078,7 @@ var $exeDevice = {
                             `${_('No score')}: ${_('No score and no lives. You have to answer right to get some information (a feedback).')}`,
                         ].join('\n\n'))}
                     </div>
-                    <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
+                    <div class="d-flex align-items-center gap-2 flex-nowrap mb-3" role="group" aria-label="${_('Use lives')}">
                         <div class="toggle-item toggle-related m-0" data-target="quextEUseLives">
                             <span class="toggle-control">
                                 <input type="checkbox" checked id="quextEUseLives" class="toggle-input" />

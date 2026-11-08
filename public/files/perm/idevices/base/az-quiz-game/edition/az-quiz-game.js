@@ -196,7 +196,7 @@ var $exeDevice = {
                                     <input type="number" class="form-control form-control-sm" value="1" min="0" max="2" id="roscoNumberTurns" required />
                                     ${edition.common.getHelpTooltip(_('Allow one or two rounds through the letters. Set 0 for unlimited rounds while time remains. Words skipped with Move on can be answered on a later round.'))}
                                 </div>
-                                <div class="roscoShowSolutionRow d-flex align-items-center flex-nowrap">
+                                <div class="roscoShowSolutionRow d-flex align-items-center flex-nowrap" role="group" aria-label="${_('Show solutions')}">
                                     <div class="toggle-item m-0" idevice-id="roscoShowSolution">
                                         <div class="toggle-control">
                                             <input type="checkbox" checked id="roscoShowSolution" class="toggle-input">

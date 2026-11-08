@@ -172,7 +172,7 @@ var $exeDevice = {
                         _('Game mode: Show (displays cards), Navigation (navigate between cards), Identify (find the indicated card), Memory (classic card matching game).')
                     )}
                 </div>
-                <div style="display:none" class="mb-3">
+                <div style="display:none" class="mb-3" role="group" aria-label="${_('Show solutions')}">
                     <span class="toggle-item">
                         <span class="toggle-control">
                             <input type="checkbox" checked id="flipcardsEShowSolution" class="toggle-input" />

@@ -312,6 +312,9 @@ describe('common_idevices_edition.js', () => {
             <div><input type="radio" id="c1"><input type="radio" id="c2"></div>
           </div>
           <div id="accept" role="group" aria-label="Accept."><input type="checkbox" id="d1">${help('D')}</div>
+          <div id="dependent" role="group" aria-label="Show solutions">
+            <input type="checkbox" id="enabled"><input type="number" id="seconds" disabled aria-describedby="range">${help('Seconds')}
+          </div>
           <div role="group" aria-labelledby="outerLabel">
             <span id="outerLabel">Outer</span>
             <div id="inner"><input type="checkbox" id="e1"><label for="e1">Own option</label>${help('E')}</div>
@@ -335,6 +338,11 @@ describe('common_idevices_edition.js', () => {
         expect(describedBy('c2')).toBe(note('show'));
         expect(name('accept')).toBe('Information about Accept');
         expect(describedBy('d1')).toBe(note('accept'));
+        // Disabled dependent fields receive the explanation before they become focusable.
+        expect(describedBy('enabled')).toBe(note('dependent'));
+        expect(describedBy('seconds')).toBe(`range ${note('dependent')}`);
+        document.getElementById('seconds').disabled = false;
+        expect(describedBy('seconds')).toBe(`range ${note('dependent')}`);
         // A row with an option of its own explains that one, also inside a group.
         expect(name('inner')).toBe('Information about Own option');
         expect(describedBy('e1')).toBe(note('inner'));
@@ -342,7 +350,8 @@ describe('common_idevices_edition.js', () => {
 
         lifecycle.destroy();
         expect(describedBy('a2')).toBe('own');
-        for (const id of ['a1', 'b1', 'b2', 'c1', 'c2', 'd1', 'e1']) expect(describedBy(id)).toBeNull();
+        expect(describedBy('seconds')).toBe('range');
+        for (const id of ['a1', 'b1', 'b2', 'c1', 'c2', 'd1', 'e1', 'enabled']) expect(describedBy(id)).toBeNull();
       });
 
       it('names a group without a name after its first option', () => {

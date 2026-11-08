@@ -1323,7 +1323,7 @@ var $exeDevice = {
                                 <label class="toggle-label" for="seleccionaEAnswersRamdon">${_('Random options')}</label>
                                 ${edition.common.getHelpTooltip(_('Display the answer options in a different random order each time.'))}
                             </div>
-                            <div class="d-flex align-items-center flex-wrap gap-2 mb-3">
+                            <div class="d-flex align-items-center flex-wrap gap-2 mb-3" role="group" aria-label="${_('Show solutions')}">
                                 <div class="toggle-item toggle-related" data-target="seleccionaEShowSolution">
                                     <span class="toggle-control">
                                         <input type="checkbox" class="toggle-input" id="seleccionaEShowSolution" checked />
@@ -1357,7 +1357,7 @@ var $exeDevice = {
                                 ${edition.common.getHelpTooltip(_('Assign a specific score value to each question individually in the Activities tab.'))}
                             </div>
                             <div class="d-flex align-items-center gap-2 mb-3" data-target="seleccionaETypeActivity" role="radiogroup" aria-labelledby="seleccionaEScoreLabel">
-                                <span id="seleccionaEScoreLabel"> ${_('Score')}:</span> 
+                                <span id="seleccionaEScoreLabel"> ${_('Score')}:</span>
                                 <span class="d-flex align-items-center gap-2 flex-nowrap">
                                     <div class="form-check form-check-inline m-0">                               
                                         <input class="form-check-input SLCNE-TypeGame" checked="checked" id="seleccionaETypeActivity" type="radio" name="slcgamemode" value="1" />
@@ -1378,7 +1378,7 @@ var $exeDevice = {
                                     `${_('No score')}: ${_('No score and no lives. You have to answer right to get some information (a feedback).')}`,
                                 ].join('\n\n'))}
                             </div>
-                            <div class="d-flex align-items-center flex-wrap gap-2 mb-3">
+                            <div class="d-flex align-items-center flex-wrap gap-2 mb-3" role="group" aria-label="${_('Use lives')}">
                                 <div class="toggle-item toggle-related" data-target="seleccionaEUseLives">
                                     <span class="toggle-control">
                                         <input type="checkbox" class="toggle-input" id="seleccionaEUseLives" checked />

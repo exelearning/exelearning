@@ -220,7 +220,7 @@ var $exeDevice = {
                                 <label class="toggle-label" for="adivinaECustomMessages">${_('Custom messages')}.</label>
                                 ${edition.common.getHelpTooltip(_('Add a custom message for correct and incorrect answers to each question in the Activities tab.'))}
                             </div>
-                            <div class="d-flex align-items-center flex-nowrap mb-3 gap-2">
+                            <div class="d-flex align-items-center flex-nowrap mb-3 gap-2" role="group" aria-label="${_('Show solutions')}">
                                 <div class="toggle-item toggle-related m-0" data-target="adivinaEShowSolution">
                                     <span class="toggle-control">
                                         <input type="checkbox" class="toggle-input" id="adivinaEShowSolution" checked />
@@ -263,7 +263,7 @@ var $exeDevice = {
                                     `${_('No score')}: ${_('No score and no lives. You have to answer right to get some information (a feedback).')}`,
                                 ].join('\n\n'))}
                             </div>
-                            <div class="d-flex align-items-center flex-wrap gap-2 mb-3">
+                            <div class="d-flex align-items-center flex-wrap gap-2 mb-3" role="group" aria-label="${_('Use lives')}">
                                 <div class="toggle-item toggle-related m-0" data-target="adivinaEUseLives">
                                     <span class="toggle-control">
                                         <input type="checkbox" class="toggle-input" id="adivinaEUseLives" checked />
