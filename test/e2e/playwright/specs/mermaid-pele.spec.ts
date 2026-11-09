@@ -142,7 +142,7 @@ test.describe('Mermaid with Pele in the editor', () => {
         });
 
         const message = page.locator('#pele-error-test .exe-mermaid-error[role="alert"]');
-        await expect(message).toContainText('Parse error on line 3');
+        await expect(message).toContainText('Parse error on line 2');
         await expect(page.locator('#pele-error-test pre.mermaid')).toHaveText('flowchart LR\n  A -->');
     });
 });
