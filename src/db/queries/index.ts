@@ -156,6 +156,7 @@ export {
     updateUserStatus,
     createUserAsAdmin,
     updateUserQuota,
+    updateAllUsersQuota,
     getSystemStats,
 } from './admin';
 export type { AppSetting } from './admin';

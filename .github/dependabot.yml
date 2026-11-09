@@ -87,6 +87,7 @@ updates:
           - "mermaid"
           - "three"
           - "@google/model-viewer"
+          - "simplelightbox"
 
   # Electron main-process dependencies. app/ has its own manifest and lockfile,
   # which the "/" entry above does not cover, so electron-updater, electron-log,

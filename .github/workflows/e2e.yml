@@ -77,6 +77,8 @@ jobs:
             public/files/perm/idevices/base/three-d-viewer/export/OrbitControls.js
             public/files/perm/idevices/base/three-d-viewer/export/STLLoader.js
             public/files/perm/idevices/base/three-sixty-viewer/export/three.min.js
+            public/files/perm/idevices/base/image-gallery/export/simple-lightbox.min.js
+            public/files/perm/idevices/base/image-gallery/export/simple-lightbox.min.css
 
       - name: Upload static distribution (static project)
         uses: actions/upload-artifact@v7
