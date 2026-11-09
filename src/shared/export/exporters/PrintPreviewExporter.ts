@@ -85,7 +85,9 @@ export interface PrintPreviewOptions {
     themeFromFiles?: boolean;
     /**
      * Optional hook to pre-render LaTeX expressions to SVG+MathML.
-     * When provided and successful, MathJax library will NOT be included in the output.
+     * Always applied, whether or not the project includes MathJax: the preview never ships the
+     * MathJax library, because the printed copy runs no scripts. Without the hook, or if it fails,
+     * formulas print as LaTeX source.
      */
     preRenderLatex?: (html: string) => Promise<LatexPreRenderResult>;
     /**
@@ -290,7 +292,7 @@ export class PrintPreviewExporter {
 
             // Post-process HTML:
             // 1. Pre-render LaTeX/Mermaid (if hooks provided)
-            html = await this.preRenderContent(html, meta, options);
+            html = await this.preRenderContent(html, options);
 
             // 2. Patch relative paths (libs/, theme/) to server absolute paths, once the translated
             // strings the export scripts read are in the page itself
@@ -668,30 +670,32 @@ ${includeActivityStyles ? WORKSHEET_ACTIVITY_STYLES + APPENDIX_PRINT_STYLES : ''
     /**
      * Pre-render dynamic content (LaTeX, Mermaid) using provided hooks
      */
-    private async preRenderContent(
-        html: string,
-        meta: ReturnType<ExportDocument['getMetadata']>,
-        options: PrintPreviewOptions,
-    ): Promise<string> {
+    private async preRenderContent(html: string, options: PrintPreviewOptions): Promise<string> {
         let finalHtml = html;
 
-        // LaTeX Pre-rendering
-        if (!meta.addMathJax) {
-            if (options.preRenderDataGameLatex) {
-                try {
-                    const result = await options.preRenderDataGameLatex(finalHtml);
-                    if (result.count > 0) finalHtml = result.html;
-                } catch (e) {
-                    console.warn('DataGame LaTeX pre-render error:', e);
-                }
+        // LaTeX is pre-rendered even when the project includes MathJax. Paper has no use for what
+        // MathJax adds (its accessibility menu, typesetting in the reader's browser), and the
+        // printed page is rendered without the MathJax script and printed from a copy without
+        // scripts, so a formula left to MathJax would print as LaTeX source. The worksheet does the same.
+        if (options.preRenderDataGameLatex) {
+            try {
+                const result = await options.preRenderDataGameLatex(finalHtml);
+                if (result.count > 0) finalHtml = result.html;
+            } catch (e) {
+                console.warn('DataGame LaTeX pre-render error:', e);
             }
-            if (options.preRenderLatex) {
-                try {
-                    const result = await options.preRenderLatex(finalHtml);
-                    if (result.latexRendered) finalHtml = result.html;
-                } catch (e) {
-                    console.warn('LaTeX pre-render error:', e);
+        }
+        if (options.preRenderLatex) {
+            try {
+                const result = await options.preRenderLatex(finalHtml);
+                if (result.latexRendered) finalHtml = result.html;
+                else if (result.hasLatex) {
+                    // Nothing else will typeset these formulas on paper, so say so instead of
+                    // letting them print as source in silence (e.g. MathJax not ready in time).
+                    console.warn('LaTeX pre-render did not render the formulas: they will print as LaTeX source.');
                 }
+            } catch (e) {
+                console.warn('LaTeX pre-render error:', e);
             }
         }
 
