@@ -717,7 +717,9 @@ var $exeDevice = {
             $exeDevice.endSilent = p.silentVideo + p.tSilentVideo;
             $exeDevice.playVideoQuestion();
         } else if (p.type === 3) {
-            tinyMCE.get('quextEText').setContent($exeDevices.iDevice.gamification.helpers.decodeStoredText(p.eText));
+            // Loading and importing decoded it already; decoding again would take one more
+            // level off a text that still looks escaped.
+            tinyMCE.get('quextEText').setContent(p.eText);
         }
 
         $('.QXTE-EAnwersOptions').each(function (j) {
