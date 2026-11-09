@@ -190,6 +190,14 @@ describe('AzQuizGameWorksheetAdapter', () => {
             expect(activity?.items[0].prompt).toContain('Empieza por D');
         });
 
+        it('prints the links of a definition as their words, since they may lead to the answer', () => {
+            const definition = 'Este <a href="https://es.wikipedia.org/wiki/Perro">animal</a> ladra';
+            const activity = AzQuizGameWorksheetAdapter.build(roscoHtml({ wordsGame: [word({ definition })] }), {});
+
+            expect(activity?.items[0].prompt).toContain('Este animal ladra');
+            expect(activity?.items[0].prompt).not.toContain('wiki/Perro');
+        });
+
         it('leaves room to answer, one blank box per letter', () => {
             const activity = AzQuizGameWorksheetAdapter.build(roscoHtml(), {});
 

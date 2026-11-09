@@ -964,7 +964,7 @@ describe('ModalPrintPreview and its options panel', () => {
             expect(lastOptions().activities.mode).toBe(ACTIVITY_MODE_OMIT);
         });
 
-        it('cannot be chosen for the worksheet, which has no links to show', async () => {
+        it('cannot be chosen for the worksheet, which always writes them', async () => {
             await showWithActivities(PREVIEW_MODE_IDEVICES, null);
             expect(linkUrls().disabled).toBe(true);
 
@@ -981,6 +981,63 @@ describe('ModalPrintPreview and its options panel', () => {
             expect(options.showLinkUrls).toBe(false);
             expect(options.baseUrl).toBe('http://localhost:8080');
             expect(options).not.toHaveProperty('activities');
+        });
+    });
+
+    describe('following a link in the preview', () => {
+        /** Click a link of the loaded preview; returns whether the frame was kept from following it. */
+        const click = (doc, selector) => {
+            const event = new MouseEvent('click', { bubbles: true, cancelable: true });
+            doc.querySelector(selector).dispatchEvent(event);
+            return event.defaultPrevented;
+        };
+
+        it('opens a link to the web in a tab of its own, leaving the preview in the frame', async () => {
+            const open = vi.spyOn(window, 'open').mockReturnValue(null);
+            for (const mode of [PREVIEW_MODE_DOCUMENT, PREVIEW_MODE_IDEVICES]) {
+                open.mockClear();
+                await showWithActivities(mode, mode === PREVIEW_MODE_DOCUMENT ? ACTIVITY_MODE_IN_PLACE : null);
+                const doc = frameDocument();
+                doc.body.innerHTML = '<p><a href="https://es.wikipedia.org/wiki/Toledo"><strong>Toledo</strong></a></p>';
+                loaded();
+
+                expect(click(doc, 'strong')).toBe(true);
+                expect(open).toHaveBeenCalledWith('https://es.wikipedia.org/wiki/Toledo', '_blank', 'noopener');
+            }
+        });
+
+        it('follows no link that leads anywhere else', async () => {
+            const open = vi.spyOn(window, 'open').mockReturnValue(null);
+            await modal.show(PREVIEW_MODE_DOCUMENT);
+            const doc = frameDocument();
+            doc.body.innerHTML = '<a href="html/tema-2.html">Tema 2</a>';
+            loaded();
+
+            expect(click(doc, 'a')).toBe(true);
+            expect(open).not.toHaveBeenCalled();
+        });
+
+        it('still goes to a place within the preview', async () => {
+            const open = vi.spyOn(window, 'open').mockReturnValue(null);
+            await modal.show(PREVIEW_MODE_DOCUMENT);
+            const doc = frameDocument();
+            doc.body.innerHTML = '<a href="#section-p2">Tema 2</a><section id="section-p2"></section>';
+            loaded();
+
+            expect(click(doc, 'a')).toBe(false);
+            expect(open).not.toHaveBeenCalled();
+        });
+
+        it('leaves a document that cannot be reached alone', async () => {
+            await modal.show(PREVIEW_MODE_DOCUMENT);
+            Object.defineProperty(modal.iframe, 'contentDocument', {
+                configurable: true,
+                get: () => {
+                    throw new DOMException('Blocked a frame', 'SecurityError');
+                },
+            });
+
+            expect(() => loaded()).not.toThrow();
         });
     });
 

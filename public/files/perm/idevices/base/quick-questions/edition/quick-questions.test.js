@@ -385,3 +385,45 @@ describe('quick-questions minimum score text', () => {
     expect(device.ci18n.msgPassScore).toBe('Minimum score needed to pass this activity: %s');
   });
 });
+
+describe('quick-questions edition: a rich-text question', () => {
+  const helpers = () => global.$exeDevices.iDevice.gamification.helpers;
+  const editionHelpers = () => global.$exeDevicesEdition.iDevice.gamification.helpers;
+  let previousDecode;
+  let previousStopSound;
+  let setContent;
+
+  beforeEach(() => {
+    global.$exeDevice = undefined;
+    buildForm();
+    previousDecode = helpers().decodeStoredText;
+    previousStopSound = editionHelpers().stopSound;
+    editionHelpers().stopSound = vi.fn();
+    // As common.js decodes it: this text is one escape() could have written.
+    helpers().decodeStoredText = vi.fn((text) => unescape(text));
+    setContent = vi.fn();
+    vi.spyOn(global.tinyMCE, 'get').mockReturnValue({ setContent, getContent: () => '', hide: vi.fn(), show: vi.fn() });
+  });
+
+  afterEach(() => {
+    helpers().decodeStoredText = previousDecode;
+    editionHelpers().stopSound = previousStopSound;
+    vi.restoreAllMocks();
+    global.$exeDevice = undefined;
+    document.body.innerHTML = '';
+  });
+
+  it('shows the text it was loaded with, already decoded, as it is', () => {
+    const $exeDevice = global.loadIdevice(join(__dirname, 'quick-questions.js'));
+    const question = $exeDevice.getCuestionDefault();
+    question.type = 3;
+    // Loading or importing decoded it once already; a second pass would turn %2F into "/".
+    question.eText = 'wiki/AC%2FDC';
+    $exeDevice.questionsGame = [question];
+
+    $exeDevice.showQuestion(0);
+
+    expect(setContent).toHaveBeenCalledWith('wiki/AC%2FDC');
+    expect(question.eText).toBe('wiki/AC%2FDC');
+  });
+});
