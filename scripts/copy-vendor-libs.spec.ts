@@ -75,6 +75,15 @@ describe('copy-vendor-libs', () => {
             expect(lightbox.some(d => d.endsWith('image-gallery/export/simple-lightbox.min.css'))).toBe(true);
         });
 
+        it('copies stock Tobii next to the exe_lightbox adapter', () => {
+            // LIBRARY_PATTERNS, workarea.njk and static-index.html load these exact paths.
+            const tobii = COPIES.filter(c => c.src.replace(/\\/g, '/').includes('/@midzer/tobii/dist/')).map(c =>
+                c.dest.replace(/\\/g, '/'),
+            );
+            expect(tobii.some(d => d.endsWith('app/common/exe_lightbox/tobii.min.js'))).toBe(true);
+            expect(tobii.some(d => d.endsWith('app/common/exe_lightbox/tobii.min.css'))).toBe(true);
+        });
+
         it('copies the legacy pdf.js build, which polyfills Map.getOrInsertComputed and Math.sumPrecise', () => {
             // The modern build calls those APIs with no polyfill, so preview fails
             // on browsers that do not ship them yet (pdf.js 6.3).

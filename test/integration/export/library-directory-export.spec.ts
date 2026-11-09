@@ -7,7 +7,9 @@
  *
  * Related libraries:
  * - exe_atools: Accessibility toolbar with font files (.woff, .woff2) and icon (.png)
- * - exe_lightbox: Lightbox with sprite images (.png, .gif)
+ *
+ * exe_lightbox (Tobii + the eXe adapter) has no images any more, so it lists its
+ * files explicitly instead.
  */
 
 import { describe, it, expect } from 'bun:test';
@@ -78,88 +80,32 @@ describe('Library Directory Export (Issue #904)', () => {
         });
     });
 
-    describe('exe_lightbox directory', () => {
-        it('should include all sprite images when exe_lightbox is detected via rel="lightbox"', async () => {
+    describe('exe_lightbox (explicit files, no directory)', () => {
+        const LIGHTBOX_FILES = [
+            'exe_lightbox/tobii.min.js',
+            'exe_lightbox/exe_lightbox.js',
+            'exe_lightbox/tobii.min.css',
+            'exe_lightbox/exe_lightbox.css',
+        ];
+
+        it.each([
+            ['rel="lightbox" links', '<a href="image.jpg" rel="lightbox">View image</a>', 'exe_lightbox'],
+            ['legacy imageGallery galleries', '<div class="imageGallery">Gallery content</div>', 'exe_lightbox_gallery'],
+        ])('exports exactly Tobii and the adapter for %s', async (_label, html, name) => {
             const provider = new FileSystemResourceProvider(PUBLIC_DIR);
-
-            // HTML content that uses lightbox via rel attribute
-            const html = '<a href="image.jpg" rel="lightbox">View image</a>';
-
-            // Detect libraries
             const detector = new LibraryDetector(LIBRARY_PATTERNS);
             const detection = detector.detectLibraries(html);
 
-            // Should detect exe_lightbox with isDirectory flag
-            const lightboxPattern = detection.patterns.find(p => p.name === 'exe_lightbox');
-            expect(lightboxPattern).toBeDefined();
-            expect(lightboxPattern?.isDirectory).toBe(true);
+            const pattern = detection.patterns.find(p => p.name === name);
+            expect(pattern).toBeDefined();
+            expect(pattern?.isDirectory).toBeUndefined();
 
-            // Fetch library files with patterns
             const files = await provider.fetchLibraryFiles(detection.files, detection.patterns);
-
-            // Main files should be included
-            expect(files.has('exe_lightbox/exe_lightbox.js')).toBe(true);
-            expect(files.has('exe_lightbox/exe_lightbox.css')).toBe(true);
-
-            // Sprite/image files should also be included (referenced from CSS)
-            const imageExtensions = ['.png', '.gif'];
-            const imageFiles = Array.from(files.keys()).filter(f => imageExtensions.some(ext => f.endsWith(ext)));
-            expect(imageFiles.length).toBeGreaterThan(0);
-        });
-
-        it('should include all sprite images when exe_lightbox_gallery is detected via imageGallery class', async () => {
-            const provider = new FileSystemResourceProvider(PUBLIC_DIR);
-
-            // HTML content that uses lightbox gallery
-            const html = '<div class="imageGallery">Gallery content</div>';
-
-            // Detect libraries
-            const detector = new LibraryDetector(LIBRARY_PATTERNS);
-            const detection = detector.detectLibraries(html);
-
-            // Should detect exe_lightbox_gallery with isDirectory flag
-            const galleryPattern = detection.patterns.find(p => p.name === 'exe_lightbox_gallery');
-            expect(galleryPattern).toBeDefined();
-            expect(galleryPattern?.isDirectory).toBe(true);
-
-            // Fetch library files with patterns
-            const files = await provider.fetchLibraryFiles(detection.files, detection.patterns);
-
-            // Main files should be included (shares files with exe_lightbox)
-            expect(files.has('exe_lightbox/exe_lightbox.js')).toBe(true);
-            expect(files.has('exe_lightbox/exe_lightbox.css')).toBe(true);
-
-            // Sprite/image files should also be included
-            const imageExtensions = ['.png', '.gif'];
-            const imageFiles = Array.from(files.keys()).filter(
-                f => f.startsWith('exe_lightbox/') && imageExtensions.some(ext => f.endsWith(ext)),
-            );
-            expect(imageFiles.length).toBeGreaterThan(0);
-        });
-
-        it('should include all actual exe_lightbox directory files', async () => {
-            const provider = new FileSystemResourceProvider(PUBLIC_DIR);
-
-            // Get detection for exe_lightbox
-            const html = '<a rel="lightbox" href="test.jpg">Image</a>';
-            const detector = new LibraryDetector(LIBRARY_PATTERNS);
-            const detection = detector.detectLibraries(html);
-
-            // Fetch with patterns
-            const files = await provider.fetchLibraryFiles(detection.files, detection.patterns);
-
-            // Read actual directory contents for comparison
-            const lightboxDir = path.join(PUBLIC_DIR, 'app/common/exe_lightbox');
-            if (await fs.pathExists(lightboxDir)) {
-                const actualFiles = await fs.readdir(lightboxDir);
-                const nonTestFiles = actualFiles.filter(f => !f.endsWith('.test.js') && !f.endsWith('.spec.js'));
-
-                // All non-test files should be included
-                for (const file of nonTestFiles) {
-                    const key = `exe_lightbox/${file}`;
-                    expect(files.has(key)).toBe(true);
-                }
-            }
+            const lightboxFiles = Array.from(files.keys())
+                .filter(f => f.startsWith('exe_lightbox/'))
+                .sort();
+            // Tobii is copied from npm by `bundle:vendor`; the adapter files are tracked.
+            expect(lightboxFiles).toEqual([...LIGHTBOX_FILES].sort());
         });
     });
 
@@ -224,34 +170,34 @@ describe('Library Directory Export (Issue #904)', () => {
         it('should include all directory files when multiple isDirectory libraries are detected', async () => {
             const provider = new FileSystemResourceProvider(PUBLIC_DIR);
 
-            // HTML content that uses both exe_atools and exe_lightbox
+            // HTML content that uses both exe_atools and exe_math (both isDirectory)
             const html = `
                 <div class="exe-atools">Toolbar</div>
-                <a href="photo.jpg" rel="lightbox">View photo</a>
+                <span class="exe-math">\\(x^2\\)</span>
             `;
 
             // Detect libraries
             const detector = new LibraryDetector(LIBRARY_PATTERNS);
-            const detection = detector.detectLibraries(html);
+            const detection = detector.detectLibraries(html, { includeAccessibilityToolbar: true });
 
             // Both should be detected with isDirectory
             const atoolsPattern = detection.patterns.find(p => p.name === 'exe_atools');
-            const lightboxPattern = detection.patterns.find(p => p.name === 'exe_lightbox');
+            const mathPattern = detection.patterns.find(p => p.name === 'exe_math');
             expect(atoolsPattern?.isDirectory).toBe(true);
-            expect(lightboxPattern?.isDirectory).toBe(true);
+            expect(mathPattern?.isDirectory).toBe(true);
 
             // Fetch library files
             const files = await provider.fetchLibraryFiles(detection.files, detection.patterns);
 
             // Both directories should have their complete contents
             const atoolsFiles = Array.from(files.keys()).filter(f => f.startsWith('exe_atools/'));
-            const lightboxFiles = Array.from(files.keys()).filter(f => f.startsWith('exe_lightbox/'));
+            const mathFiles = Array.from(files.keys()).filter(f => f.startsWith('exe_math/'));
 
             // exe_atools should have fonts + js + css + png
             expect(atoolsFiles.length).toBeGreaterThan(2);
 
-            // exe_lightbox should have sprites + js + css
-            expect(lightboxFiles.length).toBeGreaterThan(2);
+            // exe_math should have the MathJax files, not just js + css
+            expect(mathFiles.length).toBeGreaterThan(2);
         });
     });
 
@@ -259,12 +205,13 @@ describe('Library Directory Export (Issue #904)', () => {
         it('should not include .test.js files in directory export', async () => {
             const provider = new FileSystemResourceProvider(PUBLIC_DIR);
 
-            // HTML content that uses exe_lightbox
-            const html = '<a rel="lightbox" href="test.jpg">Image</a>';
+            // exe_atools is exported as a directory; exe_lightbox keeps its tests
+            // (exe_lightbox.test.js) next to the files it exports.
+            const html = '<div class="exe-atools">Toolbar</div><a rel="lightbox" href="test.jpg">Image</a>';
 
             // Detect libraries
             const detector = new LibraryDetector(LIBRARY_PATTERNS);
-            const detection = detector.detectLibraries(html);
+            const detection = detector.detectLibraries(html, { includeAccessibilityToolbar: true });
 
             // Fetch library files
             const files = await provider.fetchLibraryFiles(detection.files, detection.patterns);

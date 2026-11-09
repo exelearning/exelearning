@@ -86,6 +86,7 @@ updates:
           - "pdfjs-dist"
           - "mermaid"
           - "simplelightbox"
+          - "@midzer/tobii"
 
   # Electron main-process dependencies. app/ has its own manifest and lockfile,
   # which the "/" entry above does not cover, so electron-updater, electron-log,

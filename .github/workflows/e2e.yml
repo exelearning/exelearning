@@ -72,6 +72,8 @@ jobs:
             public/files/perm/idevices/base/rubric/export/html2canvas.js
             public/files/perm/idevices/base/image-gallery/export/simple-lightbox.min.js
             public/files/perm/idevices/base/image-gallery/export/simple-lightbox.min.css
+            public/app/common/exe_lightbox/tobii.min.js
+            public/app/common/exe_lightbox/tobii.min.css
 
       - name: Upload static distribution (static project)
         uses: actions/upload-artifact@v7

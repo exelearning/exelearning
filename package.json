@@ -114,6 +114,7 @@
     "@codecov/bundle-analyzer": "^2.0.1",
     "@electron/notarize": "^3.1.2",
     "@material-symbols/svg-400": "^0.48.0",
+    "@midzer/tobii": "3.2.0",
     "@playwright/test": "~1.58.2",
     "@types/css-tree": "^3.2.0",
     "@types/fs-extra": "^11.0.4",

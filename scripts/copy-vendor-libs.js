@@ -155,6 +155,11 @@ const COPIES = [
         dest: pub('files/perm/idevices/base/image-gallery/export/simple-lightbox.min.css'),
     },
 
+    // Tobii — content lightbox for rel="lightbox" links. exe_lightbox.js adapts
+    // eXe's link conventions to it; exports load both from libs/exe_lightbox/.
+    { src: nm('@midzer/tobii/dist/tobii.min.js'), dest: pub('app/common/exe_lightbox/tobii.min.js') },
+    { src: nm('@midzer/tobii/dist/tobii.min.css'), dest: pub('app/common/exe_lightbox/tobii.min.css') },
+
     // DOMPurify (slide iDevice — loaded lazily by edition/slide.js before the editor bundle)
     { src: nm('dompurify/dist/purify.min.js'), dest: pub('libs/dompurify/purify.min.js') },
 
