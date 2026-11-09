@@ -1751,7 +1751,7 @@ var $quickquestionsmultiplechoice = {
         if (mQuestion.type === 1) {
             $quickquestionsmultiplechoice.showImage(mQuestion.url, instance);
         } else if (mQuestion.type === 3) {
-            const text = unescape(mQuestion.eText);
+            const text = $exeDevices.iDevice.gamification.helpers.decodeStoredText(mQuestion.eText);
             $(`#seleccionaEText-${instance}`).html(text).show();
             $(`#seleccionaCover-${instance}`).hide();
             $quickquestionsmultiplechoice.showMessage(0, '', instance);

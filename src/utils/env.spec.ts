@@ -29,6 +29,12 @@ describe('isInsecureJwtSecret', () => {
     it('accepts a strong custom secret', () => {
         expect(isInsecureJwtSecret('b9f1c0c8e3a14e7d8f2a6c0b5e9d1a3c')).toBe(false);
     });
+
+    it('flags the published Compose defaults and secrets shorter than 32 bytes', () => {
+        expect(isInsecureJwtSecret('ChangeThisToASecretForSQLiteDeployment')).toBe(true);
+        expect(isInsecureJwtSecret('ChangeThisToASecretForHADeployment')).toBe(true);
+        expect(isInsecureJwtSecret('short-but-private')).toBe(true);
+    });
 });
 
 describe('jwtSecretBootError', () => {
@@ -44,6 +50,14 @@ describe('jwtSecretBootError', () => {
     it('still fires for the Docker path (NODE_ENV=production)', () => {
         const env = { NODE_ENV: 'production', API_JWT_SECRET: 'dev_secret_change_me' } as NodeJS.ProcessEnv;
         expect(jwtSecretBootError(env)).not.toBeNull();
+    });
+
+    it('refuses to boot with a published Compose default under NODE_ENV=production', () => {
+        const env = {
+            NODE_ENV: 'production',
+            API_JWT_SECRET: 'ChangeThisToASecretForPostgresDeployment',
+        } as NodeJS.ProcessEnv;
+        expect(jwtSecretBootError(env)).toContain('published JWT secret');
     });
 
     it('allows boot in production with a strong secret', () => {
@@ -62,6 +76,11 @@ describe('isInsecureAppSecret', () => {
         expect(isInsecureAppSecret('')).toBe(true);
         expect(isInsecureAppSecret(undefined)).toBe(true);
         expect(isInsecureAppSecret('CHANGE_THIS_TO_A_SECRET')).toBe(true);
+    });
+
+    it('flags published example APP_SECRET values', () => {
+        expect(isInsecureAppSecret('ChangeThisToASecretForMariaDBDeployment')).toBe(true);
+        expect(isInsecureAppSecret('   ')).toBe(true);
     });
 
     it('accepts a strong custom APP_SECRET', () => {

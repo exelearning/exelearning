@@ -59,6 +59,15 @@ export const COLLABORATIVE_HTML_CONFIG = {
         'sandbox',
         'loading',
         'data',
+        // The Image Gallery carries each image's attribution on the <img>
+        // itself and its lightbox reads it back from the rendered DOM, so
+        // these have to survive sanitization. They are inert for the browser;
+        // the three that hold a URL are scheme-checked through URL_ATTRIBUTES.
+        'titlelink',
+        'author',
+        'authorlink',
+        'license',
+        'licenselink',
     ],
     // DOMPurify's default URI allow-list plus the app-internal schemes stored
     // content uses (asset://, exe-node:, exe-package:) and the blob: URLs that
@@ -98,7 +107,20 @@ function escapeHtmlText(value) {
 /**
  * URL-bearing attributes whose value must not carry a script-executing scheme.
  */
-const URL_ATTRIBUTES = new Set(['href', 'src', 'xlink:href', 'action', 'formaction', 'background', 'poster', 'data']);
+const URL_ATTRIBUTES = new Set([
+    'href',
+    'src',
+    'xlink:href',
+    'action',
+    'formaction',
+    'background',
+    'poster',
+    'data',
+    // Image Gallery attribution links: the lightbox renders them as <a href>.
+    'titlelink',
+    'authorlink',
+    'licenselink',
+]);
 
 /**
  * Schemes that are safe to keep on a URL-bearing attribute. This is an
