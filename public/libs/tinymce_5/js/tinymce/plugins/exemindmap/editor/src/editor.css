@@ -236,13 +236,23 @@ input:focus-visible,
     font-size: 14px;
 }
 
-label[for="map-title"] {
+label[for="map-title"],
+label[for="map-description"] {
     display: block;
     margin-bottom: 4px;
     font-weight: 600;
 }
 
-#map-title {
+label[for="map-description"] {
+    margin-top: 10px;
+}
+
+#map-description {
+    resize: vertical;
+}
+
+#map-title,
+#map-description {
     box-sizing: border-box;
     width: 100%;
     padding: 5px 8px;

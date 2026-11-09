@@ -7,11 +7,11 @@
  * - `exeMindmapReady` (editor): it has started;
  * - `exeMindmapLoad` (plugin): the HTML of the map's `.exe-mindmap-code` paragraph (empty for a
  *   new map), its descriptive title, whether the title is shown as a caption, whether the image
- *   links to itself at full size, and the image's width and height;
+ *   links to itself at full size, the image's width and height, and its text description;
  * - `exeMindmapSave` (plugin, the dialog's Save button): the editor answers `exeMindmapSaved`
  *   with the escaped Mind Elixir JSON, which keeps the map editable, an SVG of the map made by
  *   @erseco/mind-elixir-export-svg, the size to show it at, the title, the caption and full-size
- *   settings, or `exeMindmapFailed` after showing why;
+ *   settings and the text description, or `exeMindmapFailed` after showing why;
  * - `exeMindmapError` (plugin): the map could not be inserted.
  *
  * Legacy mindmaps documents are converted on open (see storedMindmap.ts); the document only
@@ -112,6 +112,7 @@ let previousMeta: Record<string, unknown> | undefined;
 let titleInput: HTMLInputElement;
 let captionInput: HTMLInputElement;
 let fullSizeInput: HTMLInputElement;
+let descriptionInput: HTMLTextAreaElement;
 let widthInput: HTMLInputElement;
 let heightInput: HTMLInputElement;
 let constrainInput: HTMLInputElement;
@@ -440,7 +441,17 @@ function buildInspector(): HTMLElement {
     const fullSize = el('label', { class: 'check' });
     fullSize.append(fullSizeInput, _('Link to full size image'));
     const map = el('section');
-    map.append(el('label', { for: 'map-title' }, _('Descriptive title')), titleInput, caption, fullSize, buildDimensions());
+    // An optional text description, shown under the map for those who cannot see it or want it in words
+    descriptionInput = el('textarea', { id: 'map-description', rows: '3' });
+    map.append(
+        el('label', { for: 'map-title' }, _('Descriptive title')),
+        titleInput,
+        caption,
+        fullSize,
+        buildDimensions(),
+        el('label', { for: 'map-description' }, _('Text description (optional)')),
+        descriptionInput,
+    );
 
     const format = el('section', { 'aria-labelledby': 'format-heading' });
     format.append(
@@ -693,6 +704,7 @@ async function save(): Promise<void> {
             title,
             caption: captionInput.checked,
             fullSize: fullSizeInput.checked,
+            description: descriptionInput.value.trim(),
         });
     } catch (error) {
         // Answered first, so the dialog is never left waiting, even if this page failed to start
@@ -735,6 +747,7 @@ export async function start(load: Record<string, unknown> = {}): Promise<MindEli
     titleFollowsRoot = !title || title === data.nodeData.topic;
     captionInput.checked = load.caption !== false;
     fullSizeInput.checked = load.fullSize === true;
+    descriptionInput.value = typeof load.description === 'string' ? load.description : '';
 
     mind = new MindElixir({
         el: '#map',

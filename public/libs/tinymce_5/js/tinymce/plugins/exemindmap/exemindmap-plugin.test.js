@@ -165,7 +165,16 @@ describe('exemindmap plugin - the editor dialog', () => {
     it('sends a new map nothing to open, with the caption on', () => {
         const { api } = open(loadPlugin());
         expect(api.calls.sent).toEqual([
-            { mceAction: 'exeMindmapLoad', code: '', title: '', caption: true, fullSize: false, width: 0, height: 0 },
+            {
+                mceAction: 'exeMindmapLoad',
+                code: '',
+                title: '',
+                caption: true,
+                fullSize: false,
+                width: 0,
+                height: 0,
+                description: '',
+            },
         ]);
     });
 
@@ -185,6 +194,7 @@ describe('exemindmap plugin - the editor dialog', () => {
                 fullSize: false,
                 width: 300,
                 height: 200,
+                description: '',
             },
         ]);
     });
@@ -209,6 +219,17 @@ describe('exemindmap plugin - the editor dialog', () => {
         plugin.registry.selected = plugin.body.querySelector('img');
         const { api } = open(plugin);
         expect(api.calls.sent[0]).toMatchObject({ fullSize: true, width: 1600, height: 900 });
+    });
+
+    it('sends the text description of a map, line breaks included', () => {
+        const plugin = loadPlugin();
+        plugin.body.innerHTML =
+            '<div class="exe-mind-map"><figure><img src="asset://map.svg" alt="Clima"></figure>' +
+            '<details class="exe-mindmap-description"><summary>Text description</summary><p>Uno &amp; dos<br>Tres</p></details>' +
+            '<p class="exe-mindmap-code">{"nodeData":{"id":"r","topic":"x"}}</p></div>';
+        plugin.registry.selected = plugin.body.querySelector('img');
+        const { api } = open(plugin);
+        expect(api.calls.sent[0].description).toBe('Uno & dos\nTres');
     });
 
     it('asks the editor for the map on Save, once, and only when it is ready', () => {
@@ -289,6 +310,22 @@ describe('exemindmap plugin - the editor dialog', () => {
         await Promise.resolve();
         expect(link.getAttribute('href')).toBe('blob:http://localhost/map');
         expect(link.getAttribute('data-mce-href')).toBe('blob:http://localhost/map');
+    });
+
+    it('adds the text description under the map, escaped, only when there is one', () => {
+        const plugin = loadPlugin();
+        save(open(plugin), { description: '  <b>Uno</b> & dos\nTres  ' });
+        expect(plugin.inserted[0]).toContain(
+            '<details class="exe-mindmap-description"><summary>Text description</summary><p>&lt;b&gt;Uno&lt;/b&gt; &amp; dos<br>Tres</p></details>',
+        );
+        // After the figure and before the source, so the map reads image, description, source
+        const html = plugin.inserted[0];
+        expect(html.indexOf('</figure>')).toBeLessThan(html.indexOf('exe-mindmap-description'));
+        expect(html.indexOf('exe-mindmap-description')).toBeLessThan(html.indexOf('exe-mindmap-code'));
+        for (const description of [undefined, '', '   ', 42]) {
+            save(open(plugin), { description });
+            expect(plugin.inserted.at(-1)).not.toContain('exe-mindmap-description');
+        }
     });
 
     it('uses the dimensions the editor sends', () => {

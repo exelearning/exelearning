@@ -247,7 +247,7 @@ test.describe('Mind map editor (Mind Elixir)', () => {
         await expect(page.locator('#node-content .exe-mind-map img')).toHaveAttribute('alt', 'Sin título');
     });
 
-    test('keeps the full-size link and the dimensions, and names summaries in the author language', async ({
+    test('keeps the full-size link, the dimensions and the text description, and names summaries in the author language', async ({
         authenticatedPage: page,
         createProject,
     }) => {
@@ -284,6 +284,7 @@ test.describe('Mind map editor (Mind Elixir)', () => {
         await width.fill(String(natural * 2));
         await expect(height).toHaveValue(String(naturalHeight * 2));
         await frame.locator('#map-full-size').check();
+        await frame.locator('#map-description').fill('Uno <b>&</b> dos\nTres');
         await saveMindmap(page, frame);
 
         // Reopened, both settings are still there
@@ -291,9 +292,17 @@ test.describe('Mind map editor (Mind Elixir)', () => {
         await expect(frame.locator('#map-full-size')).toBeChecked();
         await expect(frame.locator('#map-width')).toHaveValue(String(natural * 2));
         await expect(frame.locator('#map-constrain')).toBeChecked();
+        await expect(frame.locator('#map-description')).toHaveValue('Uno <b>&</b> dos\nTres');
         expect((await editorData(frame2)).summaries?.map(summary => summary.label)).toEqual(['Summary']);
         await saveMindmap(page, frame);
         await saveIdevice(page, block);
+
+        // The description is text under the map, folded, for everyone
+        const description = page.locator('#node-content .exe-mind-map details.exe-mindmap-description');
+        await expect(description.locator('summary')).toHaveText('Text description');
+        await expect(description.locator('p')).toHaveText('Uno <b>&</b> dosTres');
+        await expect(description.locator('p br')).toHaveCount(1);
+        await expect(description.locator('p b')).toHaveCount(0);
 
         const image = page.locator('#node-content .exe-mind-map a[rel="lightbox"] img');
         await expect(image).toHaveAttribute('width', String(natural * 2));
