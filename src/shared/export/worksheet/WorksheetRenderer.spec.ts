@@ -7,6 +7,7 @@ import {
     renderWorksheet,
     unlinkGaps,
 } from './WorksheetRenderer';
+import { sanitizeHtml } from './sanitizeHtml';
 import type { CharacterBoxGroup, PrintableActivity, WorksheetModel } from './types';
 
 /** Boxes with nothing given away: one group per size. */
@@ -1078,6 +1079,12 @@ describe('pictures alone on their line', () => {
         ['first in the question, with no paragraph around it', '<img src="triangle.png"><p>Area?</p>'],
         ['over a caption in the same paragraph', '<p><img src="triangle.png"><br>Figure 1</p><p>Area?</p>'],
         ['wrapped in emphasis', '<p><strong><img src="triangle.png"></strong></p><p>Area?</p>'],
+        [
+            'over the address of content embedded beside it, which prints on a line of its own',
+            sanitizeHtml(
+                '<p><img src="triangle.png"><iframe src="https://www.geogebra.org/m/x"></iframe></p><p>Area?</p>',
+            ),
+        ],
     ])('marks a picture %s as an illustration', (_case, prompt) => {
         expect(rendered(prompt)).toContain('<img src="triangle.png" class="worksheet-illustration">');
     });
@@ -1320,6 +1327,28 @@ describe('unlinkGaps', () => {
         const html = `<a href="https://x/a">A</a> ${gap} <a href="https://x/b">B</a>`;
 
         expect(unlinkGaps(html)).toBe(html);
+    });
+
+    it('takes off every link round a gap, one inside another included', () => {
+        // The HTML parser lets a link sit inside another across a table cell.
+        const html = sanitizeHtml(
+            '<a href="https://x"><table><tr><td><a href="https://wiki/Toledo">t {{gap}}</a></td></tr></table></a>',
+        ).replace('{{gap}}', gap);
+
+        const unlinked = unlinkGaps(html);
+        expect(unlinked).toContain(`<td>t ${gap}</td>`);
+        expect(unlinked).not.toContain('<a ');
+        expect(unlinked).not.toContain('</a>');
+    });
+
+    it('keeps a link inside another when only the outer one holds the gap', () => {
+        const html = sanitizeHtml(
+            '<a href="https://x"><table><tr><td><a href="https://y">Y</a> {{gap}}</td></tr></table></a>',
+        ).replace('{{gap}}', gap);
+
+        expect(unlinkGaps(html)).toContain(`<td><a href="https://y">Y</a> ${gap}</td>`);
+        expect(unlinkGaps(html)).not.toContain('<a href="https://x">');
+        expect(unlinkGaps(html).match(/<\/a>/g)).toHaveLength(1);
     });
 
     it('takes no notice of the words of a gap written as text, which the sanitiser escapes', () => {
