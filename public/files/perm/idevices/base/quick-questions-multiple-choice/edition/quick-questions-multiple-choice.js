@@ -3476,6 +3476,8 @@ var $exeDevice = {
             p.imageVideo = cuestion.imageVideo;
             p.iVideo = cuestion.iVideo;
             p.fVideo = cuestion.fVideo;
+            // As stored, like a question loaded with the activity: showQuestion decodes it, and
+            // decoding it here too would take one more level off.
             p.eText = cuestion.eText;
             p.quextion = cuestion.quextion;
             p.options = [...cuestion.options];
@@ -3487,10 +3489,6 @@ var $exeDevice = {
                     break;
                 }
                 numOpt++;
-            }
-
-            if (p.type === 3) {
-                p.eText = $exeDevices.iDevice.gamification.helpers.decodeStoredText(p.eText);
             }
 
             p.audio = cuestion.audio || '';
