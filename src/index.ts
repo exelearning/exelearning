@@ -43,7 +43,7 @@ import { migrateAssetStorage } from './services/asset-storage-migration';
 import { findUserByEmail, createUser, updateUser } from './db/queries/users';
 import { upsertBaseTheme, removeOrphanedBaseThemes } from './db/queries/themes';
 import { renderTemplate, setRenderLocale } from './services/template';
-import { getSettingNumber } from './services/app-settings';
+import { getDefaultQuotaMb } from './services/app-settings';
 import { isMaintenanceMode, shouldBypassMaintenance, isAdminRequest } from './services/maintenance';
 import { getBasePath } from './utils/basepath.util';
 import { serveSiteThemeFile } from './utils/site-theme-file';
@@ -731,11 +731,7 @@ async function bootstrap() {
         if (!existingUser) {
             console.log('[DB] Creating test user...');
             const hashedPassword = await Bun.password.hash(testPassword, { algorithm: 'bcrypt' });
-            const defaultQuota = await getSettingNumber(
-                db,
-                'DEFAULT_QUOTA',
-                parseInt(process.env.DEFAULT_QUOTA || '4096', 10),
-            );
+            const defaultQuota = await getDefaultQuotaMb(db);
             await createUser(db, {
                 email: testEmail,
                 // user_id: not set for local users (null)
@@ -760,11 +756,7 @@ async function bootstrap() {
 
         if (!existingAdmin) {
             console.log('[DB] Creating admin user...');
-            const defaultQuota = await getSettingNumber(
-                db,
-                'DEFAULT_QUOTA',
-                parseInt(process.env.DEFAULT_QUOTA || '4096', 10),
-            );
+            const defaultQuota = await getDefaultQuotaMb(db);
             await createUser(db, {
                 email: adminEmail,
                 // user_id: not set for local users (null)
