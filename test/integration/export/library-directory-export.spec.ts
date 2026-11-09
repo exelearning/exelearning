@@ -90,7 +90,11 @@ describe('Library Directory Export (Issue #904)', () => {
 
         it.each([
             ['rel="lightbox" links', '<a href="image.jpg" rel="lightbox">View image</a>', 'exe_lightbox'],
-            ['legacy imageGallery galleries', '<div class="imageGallery">Gallery content</div>', 'exe_lightbox_gallery'],
+            [
+                'legacy imageGallery galleries',
+                '<div class="imageGallery">Gallery content</div>',
+                'exe_lightbox_gallery',
+            ],
         ])('exports exactly Tobii and the adapter for %s', async (_label, html, name) => {
             const provider = new FileSystemResourceProvider(PUBLIC_DIR);
             const detector = new LibraryDetector(LIBRARY_PATTERNS);
