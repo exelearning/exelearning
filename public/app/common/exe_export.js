@@ -701,7 +701,8 @@ window.$exeExport = {
      * Lets a reader present a web site export with the keyboard or a presenter remote:
      * the navigation menu collapses, Left/PageUp go to the previous page and
      * Right/PageDown to the next one, M shows/hides the menu and T toggles Teacher Mode
-     * where its toggle exists (never shadows Ctrl/Cmd+T). Pages stay the navigation unit
+     * where its toggle exists (never shadows Ctrl/Cmd+T). F5 and Shift+F5, sent by a
+     * presenter remote's start/stop button, do nothing. Pages stay the navigation unit
      * and long pages keep scrolling normally (Up/Down are never captured). Nothing is
      * stored in the .elpx and there is no export option: the READER activates the mode,
      * like Teacher Mode.
@@ -967,6 +968,12 @@ window.$exeExport = {
         },
         handleKeydown : function(event){
             if (event.defaultPrevented || event.isComposing) return;
+            // A remote's start/stop button sends F5 or Shift+F5, and a reload would reset the
+            // page's activities, even under an overlay or in a field. Ctrl/Cmd reloads still work.
+            if (event.key === 'F5' && !event.ctrlKey && !event.metaKey && !event.altKey) {
+                if (event.cancelable) event.preventDefault();
+                return;
+            }
             // Plain keys only: never shadow Alt/Ctrl/Cmd/Shift combinations the browser
             // reserves (e.g. Alt+Left/Right for history).
             if (event.ctrlKey || event.metaKey || event.altKey || event.shiftKey) return;
