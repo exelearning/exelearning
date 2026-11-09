@@ -90,7 +90,9 @@ test.describe('Legacy mind maps in the Mind Elixir editor', () => {
         await topic(frame, 'Geología').click();
         await frame.locator('#branch-color').fill('#123456');
         // 10. Expand the folded branch, then collapse it again
-        const expander = topic(frame, SPECIAL).locator('xpath=following-sibling::me-epd');
+        const expander = topic(frame, SPECIAL).locator(
+            'xpath=following-sibling::*[contains(concat(" ", @class, " "), " me-epd ")]',
+        );
         await expander.click();
         await expect(topic(frame, 'Ríos')).toHaveCount(1);
         expect(findNode((await editorData(frame2)).nodeData, SPECIAL)?.expanded).toBe(true);
@@ -208,7 +210,7 @@ test.describe('Legacy mind maps in the Mind Elixir editor', () => {
         const largeBlock = await editTextIdevice(page, 2);
         ({ frame, frame2 } = await openMindmapEditor(page, 0));
         const start = Date.now();
-        await expect(frame.locator('me-tpc')).toHaveCount(311, { timeout: 15000 });
+        await expect(frame.locator('.me-tpc')).toHaveCount(311, { timeout: 15000 });
         expect(Date.now() - start).toBeLessThan(15000);
         expect(countNodes((await editorData(frame2)).nodeData)).toBe(311);
         // The navigator shows the whole map with the visible part framed, and a click moves there

@@ -21,7 +21,7 @@
  */
 
 import MindElixir from 'mind-elixir';
-import type { MindElixirData, MindElixirInstance, NodeObj, Theme, Topic } from 'mind-elixir';
+import type { MindElixirData, NodeObj, Theme, Topic } from 'mind-elixir';
 import 'mind-elixir/style.css';
 import {
     DEFAULT_FONT_FAMILY,
@@ -107,7 +107,7 @@ const THEME: Theme = {
     },
 };
 
-let mind: WithVectorSvgExport<MindElixirInstance>;
+let mind: WithVectorSvgExport<MindElixir>;
 let previousMeta: Record<string, unknown> | undefined;
 let titleInput: HTMLInputElement;
 let captionInput: HTMLInputElement;
@@ -493,7 +493,7 @@ function buildInspector(): HTMLElement {
  */
 function labelNewSummaries(): void {
     const createSummary = mind.createSummary;
-    mind.createSummary = function (this: MindElixirInstance, ...args: Parameters<typeof createSummary>) {
+    mind.createSummary = function (this: MindElixir, ...args: Parameters<typeof createSummary>) {
         const summaries = this.summaries;
         const push = summaries.push;
         summaries.push = (...added) => {
@@ -723,7 +723,7 @@ function contextMenuLocale() {
 }
 
 /** Starts the editor with what the plugin sent (`exeMindmapLoad`): the map, its title and caption. */
-export function start(load: Record<string, unknown> = {}): MindElixirInstance {
+export async function start(load: Record<string, unknown> = {}): Promise<MindElixir> {
     document.documentElement.lang = workarea.document?.documentElement?.lang || 'en';
     const main = el('div', { id: 'main' });
     main.append(el('div', { id: 'map' }), buildInspector());
@@ -745,12 +745,14 @@ export function start(load: Record<string, unknown> = {}): MindElixirInstance {
         contextMenu: { locale: contextMenuLocale(), focus: true, link: false },
         newTopicName: _('New idea'),
         theme: THEME,
-    }) as WithVectorSvgExport<MindElixirInstance>;
+    }) as WithVectorSvgExport<MindElixir>;
     // The SVG draws underline and strike-through, which editor.css makes the editor show
     mind.install(createSvgExportPlugin({ textDecoration: true }));
     // The font the SVG is laid out for, so the map looks the same in the editor and the content
     mind.container.style.fontFamily = DEFAULT_FONT_FAMILY;
-    mind.init(data);
+    // Mind Elixir 6 lays the map out after the fonts load, and only then sets up selection, its
+    // toolbar, keyboard and undo: everything below needs them
+    await mind.init(data);
     labelNewSummaries();
     labelMindElixirToolbars();
     buildNavigator();
@@ -765,7 +767,7 @@ export function start(load: Record<string, unknown> = {}): MindElixirInstance {
     }
     mind.selectNode(mind.findEle(mind.nodeData.id));
     // The running instance, for debugging and for the end-to-end tests
-    (window as Window & { __mindmapEditor?: MindElixirInstance }).__mindmapEditor = mind;
+    (window as Window & { __mindmapEditor?: MindElixir }).__mindmapEditor = mind;
 
     mind.bus.addListener('selectNodes', refreshControls);
     mind.bus.addListener('unselectNodes', refreshControls);
@@ -783,14 +785,18 @@ window.addEventListener('message', (event: MessageEvent) => {
     // Only the plugin's dialog: this page's parent, on this page's origin
     if (event.source !== workarea || event.origin !== location.origin) return;
     const message = event.data as Record<string, unknown> | null;
-    if (message?.mceAction === 'exeMindmapLoad' && !mind) start(message);
+    if (message?.mceAction === 'exeMindmapLoad' && !mind) void start(message).catch(failedToStart);
     else if (message?.mceAction === 'exeMindmapSave') void save();
     else if (message?.mceAction === 'exeMindmapError') showMessage(String(message.message ?? ''), true);
 });
 
+function failedToStart(error: unknown): void {
+    showMessage(`${_('The mind map could not be opened, so a new one was started. The original is kept until you save.')} (${describeMindmapError(error, _)})`, true);
+}
+
 function ready(): void {
     // Opened on its own (not in the plugin's dialog), it starts a new map
-    if (workarea === window) start();
+    if (workarea === window) void start().catch(failedToStart);
     else post({ mceAction: 'exeMindmapReady' });
 }
 

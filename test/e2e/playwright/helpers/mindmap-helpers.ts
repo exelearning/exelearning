@@ -10,7 +10,7 @@ import type { MindElixirData, NodeObj } from 'mind-elixir';
  * a text iDevice, TinyMCE, then the editor in the plugin's dialog.
  *
  * Selectors are the ids the editor assigns (#toolbar, #add-child, #map-title, …), Mind
- * Elixir's own elements (me-tpc, me-epd), whose `data-nodeid` is "me" plus the node id, and
+ * Elixir's own elements (.me-tpc, .me-epd), whose `data-nodeid` is "me" plus the node id, and
  * the Save and Cancel buttons of the TinyMCE dialog.
  */
 
@@ -77,7 +77,7 @@ export async function openMindmapEditor(
     await expect(page.locator('.tox-dialog')).toHaveCount(1);
     const frame = page.frameLocator('.tox-dialog iframe[src*="exemindmap"]');
     await expect(frame.locator('#toolbar')).toBeVisible({ timeout: 15000 });
-    await expect(frame.locator('me-root me-tpc')).toBeVisible({ timeout: 15000 });
+    await expect(frame.locator('.me-root .me-tpc')).toBeVisible({ timeout: 15000 });
     const frame2 = page.frames().find(f => f.url().includes('exemindmap'));
     if (!frame2) throw new Error('mind map editor frame not found');
     return { frame, frame2 };
@@ -96,7 +96,7 @@ export function doubleClick(target: Locator): Promise<void> {
 
 /** A node of the map by its exact caption. */
 export function topic(frame: FrameLocator, caption: string): Locator {
-    return frame.locator('me-tpc').filter({ hasText: new RegExp(`^${escapeRegExp(caption)}$`) });
+    return frame.locator('.me-tpc').filter({ hasText: new RegExp(`^${escapeRegExp(caption)}$`) });
 }
 
 function escapeRegExp(text: string): string {

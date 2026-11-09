@@ -340,7 +340,7 @@ test.describe('Text iDevice', () => {
             // Verify key UI elements are visible inside the iframe (NOT blank):
             // the editor toolbar and Mind Elixir's root node
             await expect(mindmapFrame.locator('#toolbar')).toBeVisible({ timeout: 15000 });
-            await expect(mindmapFrame.locator('me-root me-tpc')).toBeVisible({ timeout: 5000 });
+            await expect(mindmapFrame.locator('.me-root .me-tpc')).toBeVisible({ timeout: 5000 });
 
             // Close it without saving
             await dialog

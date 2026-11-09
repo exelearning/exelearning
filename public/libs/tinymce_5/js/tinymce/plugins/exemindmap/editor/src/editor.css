@@ -120,7 +120,7 @@ input:focus-visible,
 
 /* Mind Elixir applies a topic's style to the box, which leaves out the caption's
    text-decoration; the SVG draws it too (textDecoration option) */
-#map .map-container me-tpc > .text {
+#map .map-container .me-tpc > .text {
     text-decoration: inherit;
 }
 
