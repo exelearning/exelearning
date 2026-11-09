@@ -135,6 +135,11 @@ describe('image-gallery iDevice export', () => {
     };
 
     beforeEach(() => {
+      // SimpleLightbox schedules its 'shown' event and fades on timers. With
+      // real timers they can fire after the file's happy-dom window is torn
+      // down, where `new Event()` no longer belongs to that window and Vitest
+      // reports an unhandled TypeError under a loaded CI run.
+      vi.useFakeTimers();
       preloads = [];
       OriginalImage = window.Image;
       // Capture the lightbox's off-DOM preload image so the test can fire its
@@ -156,6 +161,8 @@ describe('image-gallery iDevice export', () => {
     });
 
     afterEach(() => {
+      vi.clearAllTimers();
+      vi.useRealTimers();
       window.Image = OriginalImage;
       vi.restoreAllMocks();
       document.querySelectorAll('.sl-wrapper, .sl-overlay').forEach(n => n.remove());
