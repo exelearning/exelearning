@@ -265,8 +265,9 @@ describe('exemindmap plugin - the editor dialog', () => {
     it('links the image to itself at full size when asked, as the legacy dialog did', () => {
         const plugin = loadPlugin();
         save(open(plugin), { fullSize: true, title: 'A "b"' });
+        // TinyMCE drops data: links: the link gets the stored image's URL once TinyMCE stores it
         expect(plugin.inserted[0]).toContain(
-            '<a href="data:image/svg+xml;base64,AAAA" rel="lightbox" title="A &quot;b&quot;"><img src="data:image/svg+xml;base64,AAAA" width="120" height="80" alt="A &quot;b&quot;"></a>',
+            '<a rel="lightbox" title="A &quot;b&quot;"><img src="data:image/svg+xml;base64,AAAA" width="120" height="80" alt="A &quot;b&quot;"></a>',
         );
         save(open(plugin), { fullSize: false });
         expect(plugin.inserted[1]).not.toContain('lightbox');

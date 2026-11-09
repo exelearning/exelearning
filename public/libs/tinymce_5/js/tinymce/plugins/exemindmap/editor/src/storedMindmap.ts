@@ -19,6 +19,9 @@
 
 import type { MindElixirData, NodeObj } from 'mind-elixir';
 
+type Arrow = NonNullable<MindElixirData['arrows']>[number];
+type Summary = NonNullable<MindElixirData['summaries']>[number];
+
 /** Version of the eXeLearning data written in `meta.exelearning`. */
 export const STORED_FORMAT_VERSION = 1;
 
@@ -309,11 +312,60 @@ export function sanitizeMindElixirData(value: unknown): MindElixirData {
     };
 
     const data: MindElixirData = { nodeData: clean(value.nodeData, 0) };
+    const summaries = cleanSummaries((value as Record<string, unknown>).summaries, seen);
+    if (summaries.length) data.summaries = summaries;
+    const arrows = cleanArrows((value as Record<string, unknown>).arrows, seen);
+    if (arrows.length) data.arrows = arrows;
     const direction = (value as Record<string, unknown>).direction;
     if (direction === 0 || direction === 1 || direction === 2 || direction === 3) data.direction = direction;
     const meta = (value as Record<string, unknown>).meta;
     if (isObject(meta)) data.meta = meta;
     return data;
+}
+
+/** A style of colours and lengths, without values that could load anything. */
+function cleanStyle(raw: unknown, keys: readonly string[]): Record<string, string | number> | undefined {
+    if (!isObject(raw)) return undefined;
+    const style: Record<string, string | number> = {};
+    for (const key of keys) {
+        const v = raw[key];
+        if ((typeof v === 'string' && !/url\(|expression\(/i.test(v)) || (typeof v === 'number' && Number.isFinite(v))) style[key] = v;
+    }
+    return Object.keys(style).length ? style : undefined;
+}
+
+const isIndex = (n: unknown): n is number => Number.isInteger(n) && (n as number) >= 0;
+const isPoint = (p: unknown): p is { x: number; y: number } =>
+    isObject(p) && Number.isFinite(p.x) && Number.isFinite(p.y);
+
+/** Summaries (brackets over a range of a node's children) whose node exists. */
+function cleanSummaries(raw: unknown, ids: Set<string>): Summary[] {
+    if (!Array.isArray(raw)) return [];
+    return raw.flatMap((s): Summary[] => {
+        if (!isObject(s) || typeof s.id !== 'string' || typeof s.label !== 'string' || typeof s.parent !== 'string') return [];
+        if (!ids.has(s.parent) || !isIndex(s.start) || !isIndex(s.end) || s.start > s.end) return [];
+        const summary: Summary = { id: s.id, label: s.label, parent: s.parent, start: s.start, end: s.end };
+        const style = cleanStyle(s.style, ['stroke', 'labelColor']);
+        if (style) summary.style = style as Summary['style'];
+        return [summary];
+    });
+}
+
+/** Arrows between two existing nodes. */
+function cleanArrows(raw: unknown, ids: Set<string>): Arrow[] {
+    if (!Array.isArray(raw)) return [];
+    return raw.flatMap((a): Arrow[] => {
+        if (!isObject(a) || typeof a.id !== 'string' || typeof a.label !== 'string') return [];
+        if (typeof a.from !== 'string' || typeof a.to !== 'string' || !ids.has(a.from) || !ids.has(a.to)) return [];
+        if ((a.delta1 !== undefined && !isPoint(a.delta1)) || (a.delta2 !== undefined && !isPoint(a.delta2))) return [];
+        const arrow: Arrow = { id: a.id, label: a.label, from: a.from, to: a.to };
+        if (a.delta1) arrow.delta1 = { x: a.delta1.x, y: a.delta1.y };
+        if (a.delta2) arrow.delta2 = { x: a.delta2.x, y: a.delta2.y };
+        if (typeof a.bidirectional === 'boolean') arrow.bidirectional = a.bidirectional;
+        const style = cleanStyle(a.style, ['stroke', 'strokeWidth', 'strokeDasharray', 'opacity', 'labelColor']);
+        if (style) arrow.style = style as Arrow['style'];
+        return [arrow];
+    });
 }
 
 // ---------------------------------------------------------------------------

@@ -268,6 +268,43 @@ describe('sanitizeMindElixirData', () => {
         expect(data.nodeData.children[0].id).not.toBe('r');
     });
 
+    it('keeps summaries and arrows between existing nodes, so they survive saving and reopening', () => {
+        const nodeData = { id: 'r', topic: 'R', children: [{ id: 'a', topic: 'A', children: [{ id: 'a1', topic: 'A1' }, { id: 'a2', topic: 'A2' }] }] };
+        const summary = { id: 's1', label: 'Resumen', parent: 'a', start: 0, end: 1, style: { stroke: '#f00', labelColor: '#00f' } };
+        const arrow = {
+            id: 'x1',
+            label: 'causa',
+            from: 'a1',
+            to: 'a2',
+            delta1: { x: 10, y: -20 },
+            delta2: { x: 0, y: 5 },
+            bidirectional: true,
+            style: { stroke: '#123456', strokeWidth: '2', strokeDasharray: '4,2', labelColor: '#000', opacity: 0.5 },
+        };
+        const data = readStoredCode(serializeStoredCode({ nodeData, summaries: [summary], arrows: [arrow] })).data;
+        expect(data.summaries).toEqual([summary]);
+        expect(data.arrows).toEqual([arrow]);
+    });
+
+    it('drops summaries and arrows that point nowhere or carry unsafe values', () => {
+        const data = sanitizeMindElixirData({
+            nodeData: { id: 'r', topic: 'R', children: [{ id: 'a', topic: 'A' }] },
+            summaries: [
+                { id: 's1', label: 'ok', parent: 'r', start: 0, end: 0, style: { stroke: 'url(https://x/y)', onload: 'x' } },
+                { id: 's2', label: 'missing parent', parent: 'zz', start: 0, end: 0 },
+                { id: 's3', label: 'bad range', parent: 'r', start: 1, end: 0 },
+                'nope',
+            ],
+            arrows: [
+                { id: 'x1', label: 'ok', from: 'r', to: 'a', delta1: { x: 1, y: 2 }, delta2: { x: 3, y: 4 }, style: { stroke: 'expression(alert(1))' } },
+                { id: 'x2', label: 'missing end', from: 'r', to: 'zz', delta1: { x: 0, y: 0 }, delta2: { x: 0, y: 0 } },
+                { id: 'x3', label: 'bad delta', from: 'r', to: 'a', delta1: { x: 'a', y: 0 }, delta2: { x: 0, y: 0 } },
+            ],
+        });
+        expect(data.summaries).toEqual([{ id: 's1', label: 'ok', parent: 'r', start: 0, end: 0 }]);
+        expect(data.arrows).toEqual([{ id: 'x1', label: 'ok', from: 'r', to: 'a', delta1: { x: 1, y: 2 }, delta2: { x: 3, y: 4 } }]);
+    });
+
     it('rejects data without nodeData', () => {
         expect(() => sanitizeMindElixirData({ topic: 'x' })).toThrow(MindmapFormatError);
     });

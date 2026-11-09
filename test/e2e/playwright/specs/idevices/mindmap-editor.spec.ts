@@ -247,6 +247,83 @@ test.describe('Mind map editor (Mind Elixir)', () => {
         await expect(page.locator('#node-content .exe-mind-map img')).toHaveAttribute('alt', 'Sin título');
     });
 
+    test('keeps the full-size link and the dimensions, and names summaries in the author language', async ({
+        authenticatedPage: page,
+        createProject,
+    }) => {
+        const block = await newProjectWithTextIdevice(page, createProject, 'Mind map size');
+        let { frame, frame2 } = await openMindmapEditor(page);
+        await addChild(page, frame, 'Central Idea', 'Uno');
+        await addChild(page, frame, 'Uno', 'A');
+        await addChild(page, frame, 'Uno', 'B');
+
+        // A summary of two sibling ideas gets the translated label, not Mind Elixir's "summary"
+        await frame2.evaluate(() => {
+            const mind = (window as any).__mindmapEditor;
+            const [a, b] = mind.nodeData.children[0].children.map((node: { id: string }) => mind.findEle(node.id));
+            mind.selectNode(a);
+            mind.selectNodes([b]);
+            mind.createSummary();
+        });
+        await expect(frame.locator('#input-box')).toHaveText('Summary');
+        await page.keyboard.press('Enter');
+        expect((await editorData(frame2)).summaries?.map(summary => summary.label)).toEqual(['Summary']);
+
+        // Dimensions start empty (the map's own size); with the proportions constrained, the
+        // width fills in the height
+        const width = frame.locator('#map-width');
+        const height = frame.locator('#map-height');
+        await expect(width).toHaveValue('');
+        const [natural, naturalHeight] = await frame2.evaluate(async () => {
+            const { width, height } = await (window as any).__mindmapEditor.exportVectorSvg();
+            return [Math.round(width), Math.round(height)];
+        });
+        // The placeholders follow the map as it changes
+        await expect(width).toHaveAttribute('placeholder', String(natural));
+        await expect(height).toHaveAttribute('placeholder', String(naturalHeight));
+        await width.fill(String(natural * 2));
+        await expect(height).toHaveValue(String(naturalHeight * 2));
+        await frame.locator('#map-full-size').check();
+        await saveMindmap(page, frame);
+
+        // Reopened, both settings are still there
+        ({ frame, frame2 } = await openMindmapEditor(page, 0));
+        await expect(frame.locator('#map-full-size')).toBeChecked();
+        await expect(frame.locator('#map-width')).toHaveValue(String(natural * 2));
+        await expect(frame.locator('#map-constrain')).toBeChecked();
+        expect((await editorData(frame2)).summaries?.map(summary => summary.label)).toEqual(['Summary']);
+        await saveMindmap(page, frame);
+        await saveIdevice(page, block);
+
+        const image = page.locator('#node-content .exe-mind-map a[rel="lightbox"] img');
+        await expect(image).toHaveAttribute('width', String(natural * 2));
+        await expect(image).toHaveAttribute('height', String(naturalHeight * 2));
+        // The link and the image are one stored asset, not a second inline copy
+        const stored = await page.evaluate(() => {
+            const yDoc = (window as any).eXeLearning.app.project._yjsBridge.getDocumentManager().getDoc();
+            let html = '';
+            const walk = (pageMap: any): void => {
+                for (const b of pageMap?.get('blocks')?.toArray?.() ?? []) {
+                    for (const c of b?.get('components')?.toArray?.() ?? [])
+                        html += c.get('htmlContent')?.toString?.() ?? '';
+                }
+                (pageMap?.get('pages') || pageMap?.get('children'))?.forEach?.(walk);
+            };
+            yDoc.getArray('navigation').forEach(walk);
+            const doc = new DOMParser().parseFromString(html, 'text/html');
+            const link = doc.querySelector('.exe-mind-map a[rel="lightbox"]');
+            return {
+                href: link?.getAttribute('href') ?? '',
+                src: link?.querySelector('img')?.getAttribute('src') ?? '',
+            };
+        });
+        expect(stored.src).toMatch(/^asset:\/\//);
+        expect(stored.href).toBe(stored.src);
+        const [saved] = await storedMaps(page);
+        expect(saved.svg).toContain('>Summary</');
+        expect(saved.svg).not.toContain('>summary</');
+    });
+
     test('cancelling or closing changes nothing; a failed save keeps the dialog and the map', async ({
         authenticatedPage: page,
         createProject,
