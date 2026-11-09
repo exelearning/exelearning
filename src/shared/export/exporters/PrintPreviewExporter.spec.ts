@@ -6,6 +6,7 @@ import { PrintPreviewExporter, type PrintPreviewOptions } from './PrintPreviewEx
 import { PageRenderer } from '../renderers/PageRenderer';
 import { PRERENDERED_LATEX_CSS } from '../constants';
 import { encryptDataGame } from '../utils/dataGameCipher';
+import { LINK_URLS_CSS } from '../utils/linkUrls';
 import type {
     AssetProvider,
     ExportAsset,
@@ -740,7 +741,17 @@ describe('PrintPreviewExporter', () => {
                 expect(marked).toEqual([
                     '<a data-exe-text-is-url href="https://example.com/a?b=1&amp;c=2">https://example.com/a?b=1&amp;c=2</a>',
                 ]);
-                expect(html).toContain('a[href^="http"][data-exe-text-is-url]::after { content: none; }');
+                expect(html).toContain(LINK_URLS_CSS);
+            });
+
+            it('is told from one holding only a picture, and from one with words beside its picture', async () => {
+                const { html } = await preview(
+                    '<p><a href="https://cc.org/"><img src="by.png"></a> ' +
+                        '<a href="https://mapa.es/">Consulta el mapa <img src="icon.png"></a></p>',
+                );
+
+                expect(html).toContain('<a data-exe-image-link href="https://cc.org/">');
+                expect(html).toContain('<a href="https://mapa.es/">Consulta el mapa');
             });
 
             it.each([

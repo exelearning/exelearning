@@ -123,7 +123,8 @@ function buildClue(
     random: RandomSource,
 ): PrintableItem | null {
     const cue = `<strong class="worksheet-letter-cue">${escapeText(letterCue(word, letter, dataGame))}</strong>`;
-    const definition = sanitizeHtml(oneDefinition(word.definition, random));
+    // A link's address, printed after it, can name the word the definition is for.
+    const definition = sanitizeHtml(oneDefinition(word.definition, random), { links: false });
 
     const item: PrintableItem = {
         prompt: cue + definition,
