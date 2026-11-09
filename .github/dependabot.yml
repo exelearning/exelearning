@@ -80,6 +80,7 @@ updates:
           - "fabric"
           - "pdfjs-dist"
           - "pele"
+          - "simplelightbox"
 
   # Electron main-process dependencies. app/ has its own manifest and lockfile,
   # which the "/" entry above does not cover, so electron-updater, electron-log,
