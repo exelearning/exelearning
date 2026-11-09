@@ -171,6 +171,84 @@ test.describe('Print preview', () => {
         await page.emulateMedia({ media: null });
     });
 
+    test('writes the address after a link with words beside its picture, and not after one holding only a picture', async ({
+        authenticatedPage: page,
+        createProject,
+    }) => {
+        test.setTimeout(120000);
+
+        const projectUuid = await createProject(page, 'Print link URLs of pictures');
+        await gotoWorkarea(page, projectUuid);
+        await waitForAppReady(page);
+        await page.evaluate(() => {
+            const pixel = 'data:image/gif;base64,R0lGODlhAQABAAAAACw=';
+            const binding = (window as any).eXeLearning.app.project._yjsBridge.structureBinding;
+            const parent = binding.createPage('Links');
+            binding.createComponent(parent.id, binding.createBlock(parent.id, 'Links'), 'text', {
+                htmlContent:
+                    `<p><a class="picture-only" href="https://creativecommons.org/"><img src="${pixel}" alt="CC"></a></p>` +
+                    `<p><a class="picture-words" href="https://mapa.es/">Consulta el mapa <img src="${pixel}" alt=""></a></p>`,
+            });
+        });
+
+        await page.evaluate(() => (window as any).eXeLearning.app.modals.printpreview.show());
+        const overlay = page.locator('#printPreviewOverlay');
+        await expect(overlay).toHaveAttribute('data-busy', 'false', { timeout: 30000 });
+        const frame = page.frameLocator('.print-preview-iframe');
+        const pictureWords = frame.locator('a.picture-words');
+        await expect(pictureWords).toBeVisible({ timeout: 30000 });
+
+        const textAfter = (selector: string) =>
+            frame.locator(selector).evaluate(a => getComputedStyle(a, '::after').content);
+        for (const media of ['screen', 'print'] as const) {
+            await page.emulateMedia({ media });
+            expect(await textAfter('a.picture-only'), media).toBe('none');
+            // Chromium resolves attr(href); Firefox reports the declared value unresolved.
+            expect(await textAfter('a.picture-words'), media).toMatch(/\[(https:\/\/mapa\.es\/|" attr\(href\) ")\]/);
+        }
+        await page.emulateMedia({ media: null });
+    });
+
+    test('keeps the preview in its frame when one of its links is followed, opening the web in a tab of its own', async ({
+        authenticatedPage: page,
+        createProject,
+    }) => {
+        test.setTimeout(120000);
+
+        const projectUuid = await createProject(page, 'Print preview links followed');
+        await gotoWorkarea(page, projectUuid);
+        await waitForAppReady(page);
+        await page.evaluate(() => {
+            const binding = (window as any).eXeLearning.app.project._yjsBridge.structureBinding;
+            const parent = binding.createPage('Links');
+            binding.createComponent(parent.id, binding.createBlock(parent.id, 'Links'), 'text', {
+                htmlContent: '<p>Visit <a class="web" href="https://cedec.intef.es/">Cedec</a>.</p>',
+            });
+        });
+
+        await page.evaluate(() => (window as any).eXeLearning.app.modals.printpreview.show());
+        const overlay = page.locator('#printPreviewOverlay');
+        await expect(overlay).toHaveAttribute('data-busy', 'false', { timeout: 30000 });
+        const frame = page.frameLocator('.print-preview-iframe');
+        await expect(frame.locator('a.web')).toBeVisible({ timeout: 30000 });
+        const previewUrl = page.frame({ name: 'exe-print-preview' })?.url();
+        expect(previewUrl).toMatch(/^blob:/);
+
+        await page.evaluate(() => {
+            (window as any).__opened = [];
+            window.open = (url?: string | URL) => {
+                (window as any).__opened.push(String(url));
+                return null;
+            };
+        });
+        await frame.locator('a.web').click();
+
+        await expect.poll(() => page.evaluate(() => (window as any).__opened)).toEqual(['https://cedec.intef.es/']);
+        expect(page.frame({ name: 'exe-print-preview' })?.url()).toBe(previewUrl);
+        await expect(frame.locator('a.web')).toBeVisible();
+        await expect(page.locator('.print-preview-print-btn')).toBeEnabled();
+    });
+
     test('underlines external links in the colour of their text, and leaves controls built from links alone', async ({
         authenticatedPage: page,
         createProject,

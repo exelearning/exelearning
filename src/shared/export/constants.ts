@@ -141,12 +141,14 @@ export const LIBRARY_PATTERNS: LibraryPattern[] = [
         isDirectory: true,
     },
 
-    // Lightbox for image galleries
+    // Lightbox for legacy image galleries (`imageGallery` / eXe 2 `exeImageGallery`
+    // class tokens). The image-gallery iDevice's `imageGallery-IDevice` uses
+    // SimpleLightbox instead, so it must not pull in prettyPhoto.
     // isDirectory: true to include sprite images (PNG, GIF) referenced from CSS
     {
         name: 'exe_lightbox_gallery',
-        type: 'class',
-        pattern: 'imageGallery',
+        type: 'regex',
+        pattern: /class\s*=\s*["'](?:[^"']*\s)?(?:exe)?imageGallery["'\s]/i,
         files: ['exe_lightbox/exe_lightbox.js', 'exe_lightbox/exe_lightbox.css'],
         isDirectory: true,
     },
