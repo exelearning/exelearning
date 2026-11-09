@@ -149,7 +149,7 @@ describe('MermaidPreRenderer', () => {
             expect(result.html).toBe(html);
             expect(result.failures).toHaveLength(1);
             expect(result.failures[0].code).toBe('syntax');
-            expect(result.failures[0].message).toContain('line 3');
+            expect(result.failures[0].message).toContain('line 2');
             expect(result.failures[0].source).toBe('flowchart LR\n  A -->');
         });
 

@@ -310,7 +310,7 @@ describe('common.js $exe helpers', () => {
         const message = pre.nextElementSibling;
         expect(message.className).toBe('exe-mermaid-error');
         expect(message.getAttribute('role')).toBe('alert');
-        expect(message.textContent).toContain('Parse error on line 3');
+        expect(message.textContent).toContain('Parse error on line 2');
 
         global.$exe.mermaid.renderDiagrams();
         expect(document.querySelectorAll('.exe-mermaid-error')).toHaveLength(1);

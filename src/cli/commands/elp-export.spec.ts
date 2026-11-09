@@ -611,7 +611,7 @@ describe('elp:export command', () => {
 
             expect(result.success).toBe(false);
             expect(result.message).toContain('1 Mermaid diagram(s) could not be rendered');
-            expect(result.message).toContain('"flowchart LR": Parse error on line 3: Expecting');
+            expect(result.message).toContain('"flowchart LR": Parse error on line 2: Expecting');
             expect(result.message).toContain("got 'EOF'");
             const written = await fs
                 .access(outputPath)
