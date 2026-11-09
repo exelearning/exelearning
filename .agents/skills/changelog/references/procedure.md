@@ -50,6 +50,8 @@ gh pr list \
 
 Sort by `mergedAt` ascending. For each PR, read `title` and the full `body` (the primary source — a PR title alone often hides a real fix mixed in with test changes, or vice versa).
 
+Then run the [completeness check](#completeness-check-both-modes) for this range. Never assume how many PRs a date range holds.
+
 ### A.4 Filter out non-user-facing PRs
 
 Skip PRs that only touch tests, CI, linting, or internal tooling with no behavioral change described in the body — typically titled `test(...)`, `chore(...)`, `ci(...)`. Read the body carefully: a `test(...)`-titled PR can still describe a real bug it fixed in application code (check for phrasing like "real bug", "underlying app race", "actual fix") — in that case extract just the user-facing fix as an entry and drop the test-only parts.
@@ -58,9 +60,11 @@ Skip PRs that only touch tests, CI, linting, or internal tooling with no behavio
 
 Apply the same classification table and style rules as Mode B (see [B.3](#b3-classify-each-change) and [B.4](#b4-write-the-entries) above) to whatever survives the filter in A.4.
 
+Dependency PRs do not add `### Upgraded` bullets one by one. Recompute the whole section against the last published release as described in [Upgraded section](#upgraded-section-compare-against-the-last-published-release) and replace the draft's existing `### Upgraded` bullets with the result.
+
 ### A.6 Insert into the existing top block
 
-Find the **first** `## vX.Y.Z...` block in `public/CHANGELOG.md` (the topmost one — this is the active draft). For each new entry:
+Find the **first** `## vX.Y.Z...` block in `public/CHANGELOG.md` (the topmost one — this is the active draft). Read that whole block, down to the `---` that closes it, before deciding what is missing: a partial read (for example the first 80 lines of the file) hides the end of `### Upgraded` and `### Removed`. For each new entry:
 
 - Insert it as a new bullet under the matching `### Added` / `### Changed` / `### Fixed` / `### Upgraded` / `### Removed` subsection of that block.
 - If the subsection doesn't exist yet in the block, create it in the standard order (Added, Changed, Fixed, Upgraded, Removed).
@@ -72,6 +76,9 @@ Find the **first** `## vX.Y.Z...` block in `public/CHANGELOG.md` (the topmost on
 Tell the user, per PR reviewed:
 - Which PRs were added to the changelog and which bullet/section they landed in.
 - Which PRs were skipped, and why (e.g. "test-only, no user-facing change").
+- Dependency PRs count as reviewed only when the recomputed `### Upgraded` section reflects them.
+
+Every PR from the completeness check must appear in exactly one of these lists. State the total and how it was verified.
 
 Then give the same draft reminder as in [B.7](#b7-remind-the-user-this-is-a-draft) above.
 
@@ -104,6 +111,8 @@ Record:
 - **`tagName`** — the git tag of the last release (e.g. `v4.0.0-rc1`).
 - **`publishedAt`** — the ISO timestamp used to filter merged PRs.
 
+`gh release view` without a tag returns the latest published release and skips drafts and pre-releases. The `### Upgraded` section is compared against this release (see [Upgraded section](#upgraded-section-compare-against-the-last-published-release)).
+
 ---
 
 ### B.2 Collect all merged PRs since the last release
@@ -118,6 +127,8 @@ gh pr list \
 ```
 
 > Replace the timestamp with the `publishedAt` value from step 1.
+
+Then run the [completeness check](#completeness-check-both-modes) for this range.
 
 For **each PR** read:
 - **`title`** — the PR headline.
@@ -134,13 +145,14 @@ gh issue view NNN --repo exelearning/exelearning --json title,body
 
 ### B.3 Classify each change
 
-Map every individual change (one PR may yield several entries) to one of four sections:
+Map every individual change (one PR may yield several entries) to one of five sections:
 
 | Section | What goes here |
 |---------|----------------|
 | **Added** | New features, new iDevices, new CLI commands, new UI options, new documentation |
+| **Changed** | Behaviour or UI changes to existing features, reworked workflows, default changes |
 | **Fixed** | Bug fixes, presentation corrections, performance improvements, security fixes |
-| **Upgraded** | Dependency version bumps |
+| **Upgraded** | Dependency version bumps, computed against the last published release (see [Upgraded section](#upgraded-section-compare-against-the-last-published-release)), never from PR titles |
 | **Removed** | Features, options or files that no longer exist |
 
 **Label hints:**
@@ -166,7 +178,7 @@ Follow the **exact style** of the existing changelog entries in `public/CHANGELO
   - ✅ `Sort iDevice: exercises with identical cards are now correctly validated`
   - ❌ `Fixed a bug in the validation logic of SortIdevice.js`
 - **Avoid technical jargon** unless already used in the existing changelog (e.g. `blob:`, `asset://`, `SCORM`).
-- **Dependency upgrades:** `package-name: OLD → NEW` (lowercase, `→`, no extra words).
+- **Dependency upgrades:** `package-name: OLD → NEW` (lowercase, `→`, no extra words), where OLD is the version in the last published release and NEW the version on `origin/main`; one bullet per dependency.
 - **Group related items** within each section (all TinyMCE entries together, all iDevice entries together, etc.).
 
 ### What NOT to include
@@ -235,6 +247,42 @@ After inserting the block, tell the user:
 > - Merge or remove redundant entries.
 > - Verify dependency version numbers against the actual `package.json` / `bun.lock` diff.
 > - Add anything the PRs may not have described explicitly.
+
+---
+
+## Completeness check (both modes)
+
+Never assume how many PRs were merged after a date or release, and never stop at the PRs that look relevant. Prove that the list is complete:
+
+1. Count the merged PRs with `gh pr list --state merged --base main --search "merged:>TIMESTAMP" --json number --limit 1000`. If the count reaches 1000 (GitHub's search cap), split the date range and repeat.
+2. List the first-parent commits on `origin/main` in the same range: `git log --first-parent --format=%s <REL or cut-off commit>..origin/main`. Extract the last `(#NNN)` of each subject.
+3. Compare both sets. Investigate every PR that appears on only one side and every commit without a PR reference (direct pushes, merges from other branches) before writing entries.
+4. Give every PR a disposition: an entry (new or already in the draft, by section), part of the recomputed `### Upgraded` section, or skipped with a reason. Check entries already in the draft by meaning, not by searching for the PR number, because entries do not cite PRs.
+
+## Upgraded section: compare against the last published release
+
+Dependency PRs (Dependabot, manual bumps) only show one step each. A package bumped twice since the release would otherwise appear twice, or start from an intermediate version that was never released. Build the section from the two trees instead:
+
+1. **Resolve the release commit from GitHub, not from local tags.** Local tags can differ from the remote ones.
+
+   ```
+   git fetch origin --no-tags
+   git ls-remote origin "refs/tags/<tagName>^{}" "refs/tags/<tagName>"
+   ```
+
+   Use the `^{}` line when present (annotated tag), otherwise the plain one. Call it `REL`. If `git cat-file -t REL` fails, run `git fetch origin REL`.
+2. **Compare dependency manifests between `REL` and `origin/main`:**
+
+   ```
+   git diff REL origin/main -- package.json app/package.json .github/workflows
+   ```
+
+   For each dependency or action whose entry changed, read the version actually used at both ends. A range such as `^11.17.2` is not a version: take the resolved one from `bun.lock` (`git show REL:bun.lock`, `git show origin/main:bun.lock`, entry `"name": ["name@x.y.z", …]`).
+3. **Write one bullet per dependency:** `name: <version at REL> → <version on origin/main>`. Skip it when both are equal (bumped and reverted). A dependency that did not exist at `REL` is not an upgrade, and one that no longer exists is not either; mention them under Added or Removed only if users notice.
+4. **Vendored libraries** outside the manifests (for example under `public/libs/`): compare the version recorded in their files at `REL` and on `origin/main` the same way. Most of them are now copied from `bun.lock` by `bundle:vendor`, but a release made before that change may have shipped an older committed copy than its `package.json` declared. Report such a mismatch to the user instead of silently picking one version.
+5. **Container images:** compare `Dockerfile` build arguments and the images in `doc/deploy/*.yml` (for example `bun (Docker image)`, `mariadb (Docker Compose example)`). Images used only by tests or CI are not listed.
+6. **Cross-check against the PRs:** every dependency PR in the range (`build(deps)`, `build(deps-dev)`, grouped updates, manual bumps) must map to a bullet, or to a stated reason for leaving it out (reverted, internal-only action). Include development dependencies unless the user asks for a shorter list.
+7. Keep the existing grouping: runtime and user-visible dependencies first, then development tooling.
 
 ---
 

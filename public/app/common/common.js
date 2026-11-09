@@ -3525,6 +3525,15 @@ var $exeDevices = {
                     return false;
                 },
 
+                // Read back a text a game keeps in its data: escaped, as older projects have it, or
+                // as the editor wrote it, as it saves it now. escape() never leaves a "<" and the
+                // editor's HTML always has one, so only the escaped kind is decoded; unescape() on
+                // the other would turn the "%C3%B3" of a link into "Ã³".
+                decodeStoredText: function (text) {
+                    if (typeof text !== 'string') return '';
+                    return text.indexOf('<') === -1 ? unescape(text) : text;
+                },
+
                 shuffleAds: function (arr) {
                     if (Array.isArray(arr)) {
                         for (let i = arr.length - 1; i > 0; i--) {

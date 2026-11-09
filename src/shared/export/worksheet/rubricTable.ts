@@ -92,7 +92,7 @@ function textOf(node: Node): string {
 }
 
 /** A cell's descriptor and what it is worth, joined as the activity joins them. */
-function describe(cell: StoredCell | string | undefined): string {
+function describeCell(cell: StoredCell | string | undefined): string {
     if (typeof cell === 'string') return sanitizeHtml(cell);
     if (!cell) return '';
 
@@ -112,7 +112,7 @@ function assemble(table: StoredTable, fields: string[], notes: string): Printabl
         const stored = table.descriptions?.[index] ?? [];
         // Padded to the width of the header: a row an author left short would otherwise shift
         // every cell after it into the wrong column.
-        const cells = levels.map((_, column) => describe(stored[column]));
+        const cells = levels.map((_, column) => describeCell(stored[column]));
 
         return { criterion: sanitizeHtml(category), cells };
     });
@@ -229,7 +229,7 @@ function readLegacyTable(table: Element): StoredTable {
                     const weight = (/\(([^)]+)\)/.exec(inSpan)?.[1] ?? '').trim();
 
                     // The weight is written inside the cell it belongs to, so it comes back out
-                    // before the descriptor is read; joining them again is `describe`'s job.
+                    // before the descriptor is read; joining them again is `describeCell`'s job.
                     const text = inSpan ? textOf(cell).replace(inSpan, '').trim() : textOf(cell);
 
                     return { text, weight };

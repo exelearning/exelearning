@@ -19,8 +19,9 @@ import * as path from 'path';
 import * as os from 'os';
 import * as fflate from 'fflate';
 import { SignJWT } from 'jose';
+import { getJwtSecret } from '../utils/jwt-secret';
 
-const TEST_JWT_SECRET = 'dev_secret_change_me';
+const TEST_JWT_SECRET = getJwtSecret();
 
 async function signTestToken(sub: number, roles: string[] = ['ROLE_USER']): Promise<string> {
     const secret = new TextEncoder().encode(TEST_JWT_SECRET);

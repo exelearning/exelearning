@@ -15,7 +15,7 @@
  *     is derived from the real esbuild module graph at build time — never
  *     hardcoded — so new imports are picked up automatically. Files that the
  *     static index.html ALSO loads loose (ES-module entry points) are kept
- *     via KEEP_LOOSE_APP_FILES.
+ *     via KEEP_LOOSE_APP_FILES, together with everything they import.
  *
  * License and attribution files are never prunable: pruneDistPaths refuses
  * any path containing "license" (any case) and the runtime-fetched
@@ -71,22 +71,16 @@ export const STATIC_ONLY_PRUNE_PATHS: string[] = [
 
 /**
  * Bundle inputs that must stay loose anyway: the static index.html loads
- * app_common.js as an ES module, which imports app_date_conversion.js.
+ * app_common.js as an ES module. Its own imports (app_tooltip.js,
+ * app_date_conversion.js, ...) are kept too, derived from its module graph.
  */
-export const KEEP_LOOSE_APP_FILES = ['app/common/app_common.js', 'app/common/app_date_conversion.js'];
+export const KEEP_LOOSE_APP_FILES = ['app/common/app_common.js'];
 
-/**
- * Derive the list of public/app sources that are compiled into app.bundle.js,
- * as dist-relative paths ("app/..."), excluding KEEP_LOOSE_APP_FILES.
- *
- * Uses esbuild's metafile over the same entry point bundle:app uses. The
- * graph is resolved from the real sources at build time, so the result
- * follows the code instead of a hardcoded list.
- */
-export async function computeBundledAppSources(rootDir: string): Promise<string[]> {
-    const entry = path.join(rootDir, 'public/app/app.js');
+/** Dist-relative ("app/...") paths of every module reachable from the given entries. */
+async function appModuleGraph(rootDir: string, entries: string[]): Promise<string[]> {
+    const publicDir = path.join(rootDir, 'public');
     const result = await esbuild.build({
-        entryPoints: [entry],
+        entryPoints: entries.map(entry => path.join(publicDir, entry)),
         bundle: true,
         write: false,
         metafile: true,
@@ -97,11 +91,23 @@ export async function computeBundledAppSources(rootDir: string): Promise<string[
         // the derivation works no matter where the build was launched from.
         absWorkingDir: rootDir,
     });
-    const publicDir = path.join(rootDir, 'public');
-    const inputs = Object.keys(result.metafile.inputs)
+    return Object.keys(result.metafile.inputs)
         .map(input => path.relative(publicDir, path.resolve(rootDir, input)))
         .map(rel => rel.split(path.sep).join('/'))
         .filter(rel => rel.startsWith('app/'));
+}
+
+/**
+ * Derive the list of public/app sources that are compiled into app.bundle.js,
+ * as dist-relative paths ("app/..."), excluding KEEP_LOOSE_APP_FILES and
+ * everything they import.
+ *
+ * Uses esbuild's metafile over the same entry point bundle:app uses. The
+ * graph is resolved from the real sources at build time, so the result
+ * follows the code instead of a hardcoded list.
+ */
+export async function computeBundledAppSources(rootDir: string): Promise<string[]> {
+    const inputs = await appModuleGraph(rootDir, ['app/app.js']);
     // Guard against a broken graph silently pruning nothing (or everything
     // outside app/): the bundle is known to span dozens of modules.
     if (inputs.length < 50 || !inputs.includes('app/app.js')) {
@@ -109,7 +115,8 @@ export async function computeBundledAppSources(rootDir: string): Promise<string[
             `computeBundledAppSources: implausible bundle graph (${inputs.length} inputs) — refusing to prune`,
         );
     }
-    return inputs.filter(rel => !KEEP_LOOSE_APP_FILES.includes(rel)).sort();
+    const keep = new Set(await appModuleGraph(rootDir, KEEP_LOOSE_APP_FILES));
+    return inputs.filter(rel => !keep.has(rel)).sort();
 }
 
 /**

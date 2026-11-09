@@ -658,6 +658,141 @@ test.describe('Print iDevices', () => {
         });
     }
 
+    test('prints where to find what a challenge embedded, and where each of its links goes', async ({
+        authenticatedPage: page,
+        createProject,
+    }) => {
+        // Issue #2634: each challenge pointed at a Genially, and the paper showed a blank instead.
+        const uuid = await createProject(page, 'Printable challenge');
+        await gotoWorkarea(page, uuid);
+        await waitForAppReady(page);
+        const genially = 'https://view.genial.ly/5bb353835b64ad591a0c0924';
+        const article = 'https://es.wikipedia.org/wiki/Gusto';
+        const html =
+            '<div class="desafio-IDevice"><div class="desafio-ChallengeDescription">' +
+            `<p>Revisa la siguiente información:</p><div><iframe src="${genially}" width="1200" height="675"></iframe></div>` +
+            `<p>Lee <a href="${article}">este artículo</a></p></div>` +
+            '<div class="desafio-DataGame js-hidden">' +
+            encryptDataGame(
+                JSON.stringify({
+                    typeGame: 'desafio',
+                    desafioTitle: 'Pandemia',
+                    desafioDescription: '<p>Averigua qué pandemia fue</p>',
+                    desafioSolution: 'Gripe',
+                    challengesGame: [{ title: 'Primer reto', description: '', solution: 'Dulce' }],
+                    msgs: { msgChallenge: 'Reto' },
+                }),
+            ) +
+            '</div></div>';
+        await page.evaluate(html => {
+            const binding = (window as any).eXeLearning.app.project._yjsBridge.structureBinding;
+            const parent = binding.createPage('Printable challenge');
+            binding.createComponent(parent.id, binding.createBlock(parent.id), 'challenge', { htmlContent: html });
+        }, html);
+
+        // Chromium resolves attr(href); Firefox reports the declared value unresolved.
+        const showsArticle = /\[(https:\/\/es\.wikipedia\.org\/wiki\/Gusto|" attr\(href\) ")\]/;
+        const afterContent = (anchor: Locator) =>
+            anchor.evaluate(a => getComputedStyle(a, '::after').content).catch(() => null);
+
+        await openPrintPanel(page);
+        const { frame } = await choosePrintOption(page, 'in-place');
+        const exercise = frame.locator('.worksheet-activity[data-idevice="challenge"]');
+        const embed = exercise.locator('.worksheet-embed-address');
+        const link = exercise.locator(`a[href="${article}"]`);
+        // The address stands where the Genially was, and is not written after itself again.
+        await expect(embed).toHaveText(genially);
+        await expect(embed).toBeVisible();
+        expect(await afterContent(embed.locator('a'))).toBe('none');
+        await expect(link).toHaveText('este artículo');
+        expect(await afterContent(link)).toMatch(showsArticle);
+
+        // Show link URLs takes the address off the link, but not the one the Genially left, which
+        // is all there is of it.
+        const linkUrls = page.locator('#printOptLinkUrls');
+        await linkUrls.uncheck();
+        await expect.poll(() => afterContent(link), { timeout: 30000 }).toBe('none');
+        await waitForPreview(page);
+        await expect(embed).toHaveText(genially);
+        await expect(embed).toBeVisible();
+
+        // The worksheet has no such option and writes both out, as the box, ticked, says too.
+        const { frame: sheet } = await choosePrintOption(page, 'idevices');
+        await expect(linkUrls).toBeDisabled();
+        await expect(linkUrls).toBeChecked();
+        const sheetEmbed = sheet.locator('.worksheet-activity[data-idevice="challenge"] .worksheet-embed-address');
+        await expect(sheetEmbed).toHaveText(genially);
+        await expect(sheetEmbed).toBeVisible();
+        expect(await afterContent(sheetEmbed.locator('a'))).toBe('none');
+        expect(await afterContent(sheet.locator(`a[href="${article}"]`))).toMatch(showsArticle);
+
+        // Back in the document, the box is the user's choice again.
+        await choosePrintOption(page, 'in-place');
+        await expect(linkUrls).toBeEnabled();
+        await expect(linkUrls).not.toBeChecked();
+    });
+
+    test('keeps linked answers hidden when an embed precedes a gap', async ({
+        authenticatedPage: page,
+        createProject,
+    }) => {
+        const uuid = await createProject(page, 'Linked answer print regression');
+        await gotoWorkarea(page, uuid);
+        await waitForAppReady(page);
+        const source = 'https://example.org/map';
+        const sentence = (answer: string) =>
+            `<p>Capital: <a href="https://es.wikipedia.org/wiki/Toledo">` +
+            `<iframe src="${source}"></iframe>${answer}</a>.</p>`;
+        const components = [
+            {
+                type: 'form',
+                html: '',
+                properties: { questionsData: [{ activityType: 'fill', baseText: sentence('<u>Toledo</u>') }] },
+            },
+            {
+                type: 'complete',
+                html:
+                    '<div class="completa-IDevice"><div class="completa-DataGame js-hidden">' +
+                    encryptDataGame(
+                        JSON.stringify({ typeGame: 'Completa', type: 0, textText: escape(sentence('@@Toledo@@')) }),
+                    ) +
+                    '</div></div>',
+                properties: {},
+            },
+        ];
+        await page.evaluate(components => {
+            const binding = (window as any).eXeLearning.app.project._yjsBridge.structureBinding;
+            const parent = binding.createPage('Linked answer regression');
+            for (const component of components) {
+                binding.createComponent(parent.id, binding.createBlock(parent.id), component.type, {
+                    htmlContent: component.html,
+                    jsonProperties: JSON.stringify(component.properties),
+                });
+            }
+        }, components);
+
+        await openPrintPanel(page);
+        for (const mode of ['in-place', 'appendix', 'idevices']) {
+            const { frame } = await choosePrintOption(page, mode);
+            for (const media of ['screen', 'print'] as const) {
+                await page.emulateMedia({ media });
+                for (const type of ['form', 'complete']) {
+                    // In the appendix the body keeps a pointer to the exercise, with the same type.
+                    const exercise = frame.locator(
+                        `.worksheet-activity[data-idevice="${type}"]:not(.worksheet-activity-reference)`,
+                    );
+                    await expect(exercise.locator('.worksheet-gap')).toHaveCount(1);
+                    await expect(exercise.locator('.worksheet-embed-address')).toHaveText(source);
+                    await expect(exercise.locator('.worksheet-embed-address')).toBeVisible();
+                    // An empty anchor still prints its href through ::after, so text alone is insufficient.
+                    await expect(exercise.locator('a')).toHaveCount(0);
+                    await expect(exercise).not.toContainText('Toledo');
+                }
+            }
+            await page.emulateMedia({ media: null });
+        }
+    });
+
     test('waits for real molecule surfaces and reuses the viewer across print previews', async ({
         authenticatedPage: page,
         createProject,
@@ -1798,6 +1933,167 @@ test.describe('Print iDevices', () => {
         expect(heightPx).toBeGreaterThan(15);
         expect(heightPx).toBeLessThan(22);
     });
+
+    // A problem that opened with a picture, in a table cell beside its words or in a paragraph of its
+    // own, used to have its number printed at the foot of the picture instead of in front of the
+    // question (#2635).
+    for (const mode of ['idevices', 'in-place']) {
+        test(`numbers a math problem that opens with a picture level with its top in ${mode} mode`, async ({
+            authenticatedPage: page,
+            createProject,
+        }) => {
+            const uuid = await createProject(page, 'Print iDevices Math Problems Table');
+            await gotoWorkarea(page, uuid);
+            await waitForAppReady(page);
+            const { picture, formula } = await page.evaluate(() => {
+                const canvas = document.createElement('canvas');
+                canvas.width = 200;
+                canvas.height = 122;
+                const context = canvas.getContext('2d')!;
+                context.fillStyle = '#bbccee';
+                context.fillRect(0, 0, 200, 122);
+                const picture = canvas.toDataURL('image/png');
+                canvas.width = 65;
+                canvas.height = 32;
+                context.fillStyle = '#000';
+                context.font = '30px serif';
+                context.fillText('2x+1', 0, 29);
+                return { picture, formula: canvas.toDataURL('image/png') };
+            });
+
+            const payload = JSON.stringify({
+                typeGame: 'MathProblems',
+                optionsRamdon: false,
+                percentajeQuestions: 100,
+                questions: [
+                    {
+                        wordingseg:
+                            `<table><tbody><tr><td><img src="${picture}" width="200" height="122"></td>` +
+                            '<td>Calcula el área de un triángulo de base {b} m y altura {h} m</td></tr></tbody></table>',
+                        min: 6,
+                        max: 6,
+                        decimals: 0,
+                    },
+                    { wordingseg: 'Tiene {a} lápices y regala 1. ¿Cuántos le quedan?', min: 5, max: 5, decimals: 0 },
+                    {
+                        wordingseg:
+                            `<table><tbody><tr><td>Solve <img src="${formula}" width="65" height="32"> = 5.</td>` +
+                            `<th>Check <span><img src="${formula}" width="65" height="32"></span> = 5.</th>` +
+                            '</tr></tbody></table>',
+                    },
+                    {
+                        wordingseg:
+                            `<p>Solve <img src="${formula}" width="65" height="32"> = 5. ` +
+                            `<strong>Check <span><img src="${formula}" width="65" height="32"></span> = 5.</strong></p>`,
+                    },
+                    {
+                        wordingseg:
+                            `<table><tbody><tr><td><img src="${picture}" width="200" height="122"><br>Figura 1</td>` +
+                            '<td>Calcula el perímetro del triángulo de la figura 1</td></tr></tbody></table>',
+                    },
+                    {
+                        wordingseg:
+                            `<p><img src="${picture}" width="200" height="122"></p>` +
+                            '<p>¿Cuántos lados tiene esta figura?</p>',
+                    },
+                ],
+            });
+            const html = `<div class="mathproblems-IDevice"><div class="mathproblems-DataGame js-hidden">${encryptDataGame(payload)}</div></div>`;
+
+            await page.evaluate(
+                ({ htmlContent }) => {
+                    const binding = (window as any).eXeLearning.app.project._yjsBridge.structureBinding;
+                    const parent = binding.createPage('Math Page');
+                    binding.createComponent(parent.id, binding.createBlock(parent.id), 'mathproblems', {
+                        htmlContent,
+                    });
+                },
+                { htmlContent: html },
+            );
+
+            await openPrintPanel(page);
+            const { frame } = await choosePrintOption(page, mode);
+            await page.emulateMedia({ media: 'print' });
+
+            const items = frame.locator('.worksheet-activity[data-idevice="mathproblems"] .worksheet-item');
+            await expect(items).toHaveCount(6);
+            for (const image of await items.locator('img').all()) {
+                await expect
+                    .poll(() => image.evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth > 0))
+                    .toBe(true);
+            }
+
+            // A point outside the frame's viewport hits nothing, and the document printed in place
+            // does not scroll inside it, so the frame is made as tall as what it holds.
+            await page.locator('.print-preview-iframe').evaluate((iframe: HTMLIFrameElement) => {
+                iframe.style.height = `${iframe.contentDocument!.documentElement.scrollHeight}px`;
+            });
+
+            // A list number has no box of its own to measure, but it belongs to its item: walking
+            // down the margin where it is drawn, the rows that land on the item are the number's.
+            const numberPlacement = (item: Locator) =>
+                item.evaluate(element => {
+                    const picture = element.querySelector('img')!.getBoundingClientRect();
+                    const wordsCell = element.querySelectorAll('td')[1];
+                    let words: DOMRect | null = null;
+                    if (wordsCell) {
+                        const range = document.createRange();
+                        range.selectNodeContents(wordsCell);
+                        words = range.getClientRects()[0];
+                    }
+                    const bounds = element.getBoundingClientRect();
+                    const rows: number[] = [];
+                    for (let y = Math.floor(bounds.top); y < bounds.bottom; y++) {
+                        if (document.elementFromPoint(bounds.left - 8, y) === element) rows.push(y);
+                    }
+                    return {
+                        picture: { top: picture.top, height: picture.height },
+                        words: words && { top: words.top, bottom: words.bottom },
+                        number: rows.length === 0 ? null : (rows[0] + rows[rows.length - 1]) / 2,
+                    };
+                });
+
+            // The number at the top of the picture, not at its foot. Beside it, the first line of
+            // the words is there too: level with the number, whether or not the picture has a
+            // caption, rather than both dropped to the foot of the picture together.
+            for (const index of [0, 4, 5]) {
+                const placement = await numberPlacement(items.nth(index));
+                expect(placement.number).not.toBeNull();
+                expect(placement.number!).toBeGreaterThan(placement.picture.top);
+                expect(placement.number!).toBeLessThan(placement.picture.top + placement.picture.height / 4);
+                if (placement.words) {
+                    expect(placement.number!).toBeGreaterThan(placement.words.top);
+                    expect(placement.number!).toBeLessThan(placement.words.bottom);
+                }
+            }
+
+            // A formula among words must align as it does outside a table. The in-place theme
+            // centres inline images, whereas the standalone worksheet uses their baseline.
+            // An empty inline block measures that baseline independently of either stylesheet.
+            const formulas = items.nth(2).locator('img');
+            const controls = items.nth(3).locator('img');
+            await expect(formulas).toHaveCount(2);
+            await expect(controls).toHaveCount(2);
+            const baselineOffset = async (formula: Locator) => {
+                await expect
+                    .poll(() => formula.evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth > 0))
+                    .toBe(true);
+                return formula.evaluate(img => {
+                    const baseline = document.createElement('span');
+                    baseline.style.cssText = 'display:inline-block;width:0;height:0;vertical-align:baseline';
+                    img.after(baseline);
+                    const offset = img.getBoundingClientRect().bottom - baseline.getBoundingClientRect().bottom;
+                    baseline.remove();
+                    return offset;
+                });
+            };
+            for (const index of [0, 1]) {
+                const offset = await baselineOffset(formulas.nth(index));
+                const reference = await baselineOffset(controls.nth(index));
+                expect(Math.abs(offset - reference)).toBeLessThan(1);
+            }
+        });
+    }
 
     test('prints a challenge activity with compact writing spaces for challenge and trials', async ({
         authenticatedPage: page,
