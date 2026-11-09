@@ -15,6 +15,19 @@ mock.module('electron', () => ({
 
 require('./preload');
 
+describe('preview snapshot preload bridge', () => {
+    test('hands the file map and the current id to the main process', async () => {
+        const files = { 'index.html': new Uint8Array([60]) };
+        await exposedApi.previewSnapshot.replace('a'.repeat(32), files);
+        expect(invoke).toHaveBeenLastCalledWith('app:previewSnapshot:replace', { previewId: 'a'.repeat(32), files });
+    });
+
+    test('disposes by id', async () => {
+        await exposedApi.previewSnapshot.dispose('a'.repeat(32));
+        expect(invoke).toHaveBeenLastCalledWith('app:previewSnapshot:dispose', { previewId: 'a'.repeat(32) });
+    });
+});
+
 describe('spell checker preload bridge', () => {
     test('reads spell checker settings through the expected IPC channel', async () => {
         await exposedApi.getSpellCheckerSettings();

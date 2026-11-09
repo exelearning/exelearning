@@ -57,6 +57,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // main process still prompts for unsaved changes.
   closeCurrentWindow: () => ipcRenderer.invoke('app:closeCurrentWindow'),
   readFile: (filePath) => ipcRenderer.invoke('app:readFile', { filePath }),
+  // Opaque preview snapshot for the enabled preview: the generated file map goes to the
+  // main process and comes back as a preview://{id}/index.html capability URL for an
+  // iframe sandboxed without allow-same-origin (preview trust boundary, Electron row).
+  previewSnapshot: {
+    replace: (previewId, files) => ipcRenderer.invoke('app:previewSnapshot:replace', { previewId, files }),
+    dispose: (previewId) => ipcRenderer.invoke('app:previewSnapshot:dispose', { previewId }),
+  },
   getMemoryUsage: () => ipcRenderer.invoke('app:getMemoryUsage'),
   getSpellCheckerSettings: () => ipcRenderer.invoke('app:getSpellCheckerSettings'),
   setSpellCheckerLanguages: (languages) => ipcRenderer.invoke('app:setSpellCheckerLanguages', languages),

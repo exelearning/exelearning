@@ -1,4 +1,5 @@
 import PreviewPanelManager from './previewPanel.js';
+import { ElectronPreviewSnapshot } from './preview/ElectronPreviewSnapshot.js';
 import {
   enableActivePreviewContent,
   isActivePreviewContentEnabled,
@@ -3075,6 +3076,119 @@ describe('PreviewPanelManager', () => {
       expect(global.URL.createObjectURL).toHaveBeenCalledTimes(1);
       expect(global.URL.createObjectURL.mock.calls[0][0].type).toBe('application/octet-stream');
       expect(global.open).toHaveBeenCalledWith('blob:test-url', '_blank');
+    });
+  });
+
+  describe('opaque-on-enable in Electron (preview:// served by the main process)', () => {
+    const ID = 'a'.repeat(32);
+    const PREVIEW_URL = `preview://${ID}/index.html`;
+
+    beforeEach(() => {
+      window.eXeLearning.app.runtimeConfig = { mode: 'static', isEmbedded: false };
+      window.eXeLearning.app.modals.alert = { show: vi.fn() };
+      window.electronAPI = {
+        previewSnapshot: {
+          replace: vi.fn().mockResolvedValue({ previewId: ID, previewUrl: PREVIEW_URL }),
+          dispose: vi.fn().mockResolvedValue(true),
+        },
+      };
+    });
+
+    afterEach(() => {
+      delete window.electronAPI;
+    });
+
+    it('offers enablement and explains the isolated reload (no longer "blocked in the desktop app")', () => {
+      manager._updateActiveContentIndicator({ activeContentFound: true, categories: ['script'], actions: ['disabled'] });
+      manager._showActiveContentDialog();
+      const dialog = window.eXeLearning.app.modals.confirm.show.mock.calls[0][0];
+      expect(dialog.confirmButtonText).toContain('Allow external scripts');
+      expect(dialog.body).toContain('isolated context');
+      expect(dialog.body).not.toContain('desktop application');
+    });
+
+    it('routes an enabled refresh through the Electron snapshot, never the SW, srcdoc or eXe routes', async () => {
+      enableActivePreviewContent('project-a');
+      const electronSpy = vi.spyOn(manager, 'refreshWithElectronSnapshot').mockResolvedValue();
+      const swSpy = vi.spyOn(manager, 'refreshWithServiceWorker').mockResolvedValue();
+      const srcdocSpy = vi.spyOn(manager, 'refreshWithSrcdocSnapshot').mockResolvedValue();
+      const serverSpy = vi.spyOn(manager, 'refreshWithOpaqueSnapshot').mockResolvedValue();
+
+      await manager.refresh();
+
+      expect(electronSpy).toHaveBeenCalledOnce();
+      expect(swSpy).not.toHaveBeenCalled();
+      expect(srcdocSpy).not.toHaveBeenCalled();
+      expect(serverSpy).not.toHaveBeenCalled();
+    });
+
+    it('hands the unfiltered file map to the main process and points the sandboxed frame at preview://', async () => {
+      enableActivePreviewContent('project-a');
+      const files = { 'index.html': new TextEncoder().encode('<html><body><script>x()</script></body></html>') };
+      vi.spyOn(manager, '_generatePreviewFiles').mockResolvedValue({ success: true, files });
+
+      await manager.refreshWithElectronSnapshot();
+
+      expect(manager._generatePreviewFiles).toHaveBeenCalledWith({ forOpaqueSnapshot: true });
+      expect(window.electronAPI.previewSnapshot.replace).toHaveBeenCalledWith(
+        null,
+        expect.objectContaining({ 'index.html': expect.any(Uint8Array) }),
+      );
+      expect(mockElements['preview-iframe'].getAttribute('src')).toBe(PREVIEW_URL);
+      expect(mockElements['preview-iframe'].getAttribute('sandbox')).not.toContain('allow-same-origin');
+      expect(mockElements['preview-pinned-iframe'].getAttribute('sandbox')).toContain('allow-scripts');
+      expect(global.URL.createObjectURL).not.toHaveBeenCalled();
+    });
+
+    it('extractToNewTab opens the preview:// URL with noopener (the main process gives it a window without the preload)', async () => {
+      enableActivePreviewContent('project-a');
+      manager._electronPreviewSnapshot = { previewUrl: PREVIEW_URL, dispose: vi.fn().mockResolvedValue() };
+      const openSpy = vi.spyOn(window, 'open').mockReturnValue(null);
+
+      await manager.extractToNewTab();
+
+      expect(openSpy).toHaveBeenCalledWith(PREVIEW_URL, '_blank', 'noopener');
+    });
+
+    it('fails VISIBLY and stays filtered when the main process refuses the snapshot', async () => {
+      enableActivePreviewContent('project-a');
+      window.electronAPI.previewSnapshot.replace.mockRejectedValue(new Error('IPC channel is not available to this frame'));
+      vi.spyOn(manager, '_generatePreviewFiles').mockResolvedValue({ success: true, files: { 'index.html': 'x' } });
+      vi.spyOn(manager, 'isServiceWorkerPreviewAvailable').mockReturnValue(true);
+      const swSpy = vi.spyOn(manager, 'refreshWithServiceWorker').mockResolvedValue();
+
+      await manager._refreshElectronOpaqueOrStayFiltered();
+
+      expect(isActivePreviewContentEnabled('project-a')).toBe(false);
+      expect(window.eXeLearning.app.modals.alert.show).toHaveBeenCalledWith(expect.objectContaining({ contentId: 'error' }));
+      expect(swSpy).toHaveBeenCalled();
+    });
+
+    it('disposes the Electron snapshot when the user disables and when a remote update revokes', async () => {
+      enableActivePreviewContent('project-a');
+      const snapshot = { previewUrl: PREVIEW_URL, dispose: vi.fn().mockResolvedValue(), applySandbox: vi.fn(), replace: vi.fn() };
+      manager._electronPreviewSnapshot = snapshot;
+      vi.spyOn(manager, 'refresh').mockResolvedValue();
+      manager._updateActiveContentIndicator({ activeContentFound: true, categories: ['script'], actions: ['allowed'] });
+
+      manager._showActiveContentDialog();
+      await window.eXeLearning.app.modals.confirm.show.mock.calls[0][0].confirmExec();
+      expect(snapshot.dispose).toHaveBeenCalledTimes(1);
+
+      enableActivePreviewContent('project-a');
+      vi.spyOn(manager, '_isPreviewVisible').mockReturnValue(true);
+      vi.spyOn(manager, 'scheduleRefresh').mockImplementation(() => {});
+      manager.subscribeToChanges();
+      const handler = mockYdoc.on.mock.calls.find(([event]) => event === 'update')[1];
+      handler(new Uint8Array(), { wsProviderLike: true });
+      expect(snapshot.dispose).toHaveBeenCalledTimes(2);
+      expect(isActivePreviewContentEnabled('project-a')).toBe(false);
+    });
+
+    it('builds the Electron snapshot client lazily and reuses it', () => {
+      const snapshot = manager._getElectronPreviewSnapshot();
+      expect(snapshot).toBeInstanceOf(ElectronPreviewSnapshot);
+      expect(manager._getElectronPreviewSnapshot()).toBe(snapshot);
     });
   });
 

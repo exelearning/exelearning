@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'bun:test';
 import {
+    BLOCKED_DECISION,
     PREVIEW_RUNTIMES,
     PREVIEW_TRANSPORTS,
     canEnableActiveContent,
@@ -29,9 +30,11 @@ describe('preview mode matrix', () => {
         }
     });
 
-    it('isolates in an opaque origin where a backend can mint a capability URL', () => {
+    it('isolates in an opaque origin where a server can mint a capability URL', () => {
         expect(resolvePreviewTransport('cloud', true).transport).toBe('opaque-capability');
         expect(resolvePreviewTransport('embedded', true).transport).toBe('opaque-capability');
+        // Electron's main process is that server: it answers the preview:// scheme.
+        expect(resolvePreviewTransport('electron', true).transport).toBe('opaque-capability');
     });
 
     /**
@@ -44,9 +47,10 @@ describe('preview mode matrix', () => {
         expect(resolvePreviewTransport('static', true).transport).toBe('opaque-srcdoc');
     });
 
-    it('refuses to enable at all in Electron', () => {
-        expect(resolvePreviewTransport('electron', true).transport).toBe('blocked');
-        expect(canEnableActiveContent('electron')).toBe(false);
+    it('lets every modelled runtime grant; blocked is kept only for a preload without the scheme', () => {
+        for (const runtime of PREVIEW_RUNTIMES) expect(canEnableActiveContent(runtime), runtime).toBe(true);
+        expect(BLOCKED_DECISION.transport).toBe('blocked');
+        expect(PREVIEW_TRANSPORTS).toContain('blocked');
     });
 
     /**

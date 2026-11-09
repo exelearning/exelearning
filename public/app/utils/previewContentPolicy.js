@@ -393,8 +393,17 @@ export function isElectronPreview() {
     return typeof window !== 'undefined' && Boolean(window.electronAPI);
 }
 
+/**
+ * Whether this Electron build's preload exposes the `preview://` snapshot bridge. An older
+ * preload has no opaque transport to offer, so enabling stays blocked there (fail closed).
+ */
+export function hasElectronPreviewScheme() {
+    const api = typeof window !== 'undefined' ? window.electronAPI?.previewSnapshot : undefined;
+    return Boolean(api) && typeof api.replace === 'function' && typeof api.dispose === 'function';
+}
+
 export function canEnableActivePreviewContent() {
-    return !isElectronPreview();
+    return !isElectronPreview() || hasElectronPreviewScheme();
 }
 
 /**
@@ -406,7 +415,12 @@ export function canEnableActivePreviewContent() {
  * editor's origin.
  */
 export const PREVIEW_TRANSPORTS = Object.freeze({
-    /** Electron: enabling custom active content is blocked outright. */
+    /**
+     * Electron: opaque snapshot served by the main process on the `preview://` scheme — a
+     * different origin from the editor's `app://localhost` by scheme and by host.
+     */
+    ELECTRON_OPAQUE: 'electron-opaque',
+    /** Electron whose preload predates the preview scheme: enabling is blocked outright. */
     ELECTRON_BLOCKED: 'electron-blocked',
     /** Embedded LMS/CMS host: opaque snapshot via HOST capability routes. */
     EMBEDDED_OPAQUE: 'embedded-opaque',
@@ -430,7 +444,9 @@ export const PREVIEW_TRANSPORTS = Object.freeze({
  * fail-closed direction.
  */
 export function resolvePreviewTransport(runtimeConfig) {
-    if (isElectronPreview()) return PREVIEW_TRANSPORTS.ELECTRON_BLOCKED;
+    if (isElectronPreview()) {
+        return hasElectronPreviewScheme() ? PREVIEW_TRANSPORTS.ELECTRON_OPAQUE : PREVIEW_TRANSPORTS.ELECTRON_BLOCKED;
+    }
     if (runtimeConfig?.isEmbedded) return PREVIEW_TRANSPORTS.EMBEDDED_OPAQUE;
     if (runtimeConfig?.mode === 'static') return PREVIEW_TRANSPORTS.SRCDOC_OPAQUE;
     return PREVIEW_TRANSPORTS.SELF_HOSTED_OPAQUE;
@@ -453,7 +469,8 @@ export const PREVIEW_TRUST_STATES = Object.freeze({
  */
 export function getActivePreviewTrustState(projectId, runtimeConfig) {
     if (!isActivePreviewContentEnabled(projectId)) return PREVIEW_TRUST_STATES.FILTERED;
-    // Electron can never hold a grant (enableActivePreviewContent refuses).
+    // An Electron build without the preview scheme can never hold a grant
+    // (enableActivePreviewContent refuses).
     if (resolvePreviewTransport(runtimeConfig) === PREVIEW_TRANSPORTS.ELECTRON_BLOCKED) {
         return PREVIEW_TRUST_STATES.FILTERED;
     }
