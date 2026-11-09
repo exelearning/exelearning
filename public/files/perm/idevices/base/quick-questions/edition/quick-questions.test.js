@@ -885,7 +885,7 @@ describe('quick-questions edition: shared form tabs and feedback', () => {
 
 describe('quick-questions edition: a rich-text question', () => {
   const helpers = () => global.$exeDevices.iDevice.gamification.helpers;
-  const editionHelpers = () => global.$exeDevicesEdition.iDevice.gamification.helpers;
+  const editionHelpers = () => global.$exeIDevicesEdition.iDevice.gamification.helpers;
   let previousDecode;
   let previousStopSound;
   let setContent;

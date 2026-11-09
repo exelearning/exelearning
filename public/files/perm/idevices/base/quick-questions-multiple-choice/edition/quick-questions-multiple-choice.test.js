@@ -1058,7 +1058,7 @@ describe('quick-questions-multiple-choice edition: shared form tabs and feedback
 
 describe('quick-questions-multiple-choice edition: a rich-text question imported from Quick questions', () => {
     const helpers = () => global.$exeDevices.iDevice.gamification.helpers;
-    const editionHelpers = () => global.$exeDevicesEdition.iDevice.gamification.helpers;
+    const editionHelpers = () => global.$exeIDevicesEdition.iDevice.gamification.helpers;
     let previousDecode;
     let previousStopSound;
     let setContent;
