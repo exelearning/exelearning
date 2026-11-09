@@ -26,7 +26,7 @@
 import { extractDataGame, extractDivContent } from '../dataGameReader';
 import { shuffleWith, type RandomSource } from '../questionSelection';
 import { htmlToText, sanitizeHtml } from '../sanitizeHtml';
-import { renderInlineGap } from '../WorksheetRenderer';
+import { renderInlineGap, unlinkGaps } from '../WorksheetRenderer';
 import type { PrintableActivity, WorksheetAdapter, WorksheetAdapterOptions } from '../types';
 
 /** DataGame and sidecar class prefix used by this iDevice. */
@@ -149,15 +149,18 @@ export const CompleteWorksheetAdapter: WorksheetAdapter = {
         const gaps = words.map(word =>
             renderInlineGap(gapWidth(word), limited ? shuffleWith(alternatives(word), random) : undefined),
         );
-        // Only text nodes can become answer spaces; tokens in attributes must stay attributes.
-        const prompt = sanitizeHtml(text)
-            .split(/(<[^>]+>)/g)
-            .map(part =>
-                part.startsWith('<')
-                    ? part
-                    : part.replace(/\{\{gap-(\d+)\}\}/g, (token, index) => gaps[Number(index)] ?? token),
-            )
-            .join('');
+        // Only text nodes can become answer spaces; tokens in attributes must stay attributes. A link
+        // round a gap would print the address of the word it hides, so it comes off.
+        const prompt = unlinkGaps(
+            sanitizeHtml(text)
+                .split(/(<[^>]+>)/g)
+                .map(part =>
+                    part.startsWith('<')
+                        ? part
+                        : part.replace(/\{\{gap-(\d+)\}\}/g, (token, index) => gaps[Number(index)] ?? token),
+                )
+                .join(''),
+        );
 
         const activity: PrintableActivity = {
             ideviceType: 'complete',

@@ -1276,7 +1276,15 @@ ${userFooterHtml}</div></footer>`;
             version?: string;
             addExeLink?: boolean;
             userFooterContent?: string;
-            navLabels?: { previous?: string; next?: string; page?: string; license?: string };
+            navLabels?: {
+                previous?: string;
+                next?: string;
+                page?: string;
+                license?: string;
+                licenseLabel?: string;
+                madeWith?: string;
+                newWindow?: string;
+            };
             materialIconDataUris?: Map<string, string>;
             printContext?: PrintContext;
             /** The style's root .js and .css files; style.js and style.css when not given. */

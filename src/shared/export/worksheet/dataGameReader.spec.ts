@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'bun:test';
 import { encryptDataGame } from '../utils/dataGameCipher';
 import {
+    decodeStoredText,
     extractDataGame,
     extractDivContent,
     extractDivContents,
@@ -230,5 +231,25 @@ describe('extractKeyedDivContent', () => {
     it('reads nothing from markup that carries none', () => {
         expect(extractKeyedDivContent('<p>Nada</p>', 'mathproblems-LinkWordings').size).toBe(0);
         expect(extractKeyedDivContent('', 'mathproblems-LinkWordings').size).toBe(0);
+    });
+});
+
+describe('decodeStoredText', () => {
+    it('decodes a text stored escaped, as older projects keep it', () => {
+        const text = '<p>Lee el <b>texto</b> de León</p>';
+
+        expect(decodeStoredText(escape(text))).toBe(text);
+    });
+
+    it('leaves a text stored as written, so the percent-encoding of its links survives', () => {
+        // unescape() would read the two bytes of "é" as two Latin-1 characters: "Ã©".
+        const text = '<p><a href="https://es.wikipedia.org/wiki/An%C3%A9lido">anélido</a></p>';
+
+        expect(decodeStoredText(text)).toBe(text);
+    });
+
+    it('returns an empty string for anything but a string', () => {
+        expect(decodeStoredText(undefined)).toBe('');
+        expect(decodeStoredText(null)).toBe('');
     });
 });

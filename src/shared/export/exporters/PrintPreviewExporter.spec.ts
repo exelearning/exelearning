@@ -826,6 +826,58 @@ describe('PrintPreviewExporter', () => {
                 expect(marked).toEqual([]);
             });
 
+            it('reaches the links of an activity converted to an exercise, and the addresses of its embeds', async () => {
+                // Issue #2634: a Challenge pointing at a Genially printed a blank where it had been.
+                const genially = 'https://view.genial.ly/5bb353835b64ad591a0c0924';
+                const payload = JSON.stringify({
+                    typeGame: 'desafio',
+                    desafioTitle: 'Pandemia',
+                    desafioDescription: '',
+                    challengesGame: [{ title: 'Primer reto', description: '', solution: 'Dulce' }],
+                    msgs: { msgChallenge: 'Reto' },
+                });
+                const description =
+                    `<p>Revisa la siguiente información:</p><div><iframe src="${genially}"></iframe></div>` +
+                    '<p>Lee <a href="https://es.wikipedia.org/wiki/Gusto">este artículo</a></p>';
+                const content =
+                    '<div class="desafio-IDevice">' +
+                    `<div class="desafio-ChallengeDescription">${description}</div>` +
+                    `<div class="desafio-DataGame js-hidden">${encryptDataGame(payload)}</div></div>`;
+                const page: ExportPage = {
+                    id: 'page-challenge',
+                    title: 'Desafío',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'block-challenge',
+                            name: 'Desafío',
+                            order: 0,
+                            components: [
+                                { id: 'comp-challenge', type: 'challenge', order: 0, content, properties: {} },
+                            ],
+                        },
+                    ],
+                };
+
+                const challengeExporter = new PrintPreviewExporter(
+                    createMockDocument([page]),
+                    createMockResourceProvider(),
+                );
+                const activities = { mode: 'in-place', labels: {}, ideviceTitles: {} } as const;
+                const { html } = await challengeExporter.generatePreview({ activities });
+
+                expect(html).toContain(
+                    `<span class="worksheet-embed-address"><a data-exe-text-is-url href="${genially}">${genially}</a></span>`,
+                );
+                expect(html).toContain('<a href="https://es.wikipedia.org/wiki/Gusto">este artículo</a>');
+
+                // The address is all that is left of the Genially, so turning the URLs off leaves it.
+                const off = (await challengeExporter.generatePreview({ activities, showLinkUrls: false })).html!;
+                expect(off).toContain(`<span class="worksheet-embed-address"><a href="${genially}">`);
+                expect(off).not.toMatch(/worksheet-embed-address[^{]*\{[^}]*display:\s*none/);
+            });
+
             it('marks multiple start tags without changing their case, attributes or surrounding source', async () => {
                 const content = [
                     '<p>🙂\r\n',
@@ -1056,6 +1108,64 @@ describe('PrintPreviewExporter', () => {
             const result = await exporter.generatePreview();
             expect(result.html).toContain('<footer id="siteFooter">');
             expect(result.html).toContain('CC-BY-SA');
+        });
+
+        describe("the footer's license (#2637)", () => {
+            const license = 'creative commons: attribution - share alike 4.0';
+            const licenseUrl = 'https://creativecommons.org/licenses/by-sa/4.0/';
+            const spanishProject = () =>
+                createMockDocument([{ id: 'p1', title: 'Página', parentId: null, order: 0, blocks: [] }], {
+                    language: 'es',
+                    license,
+                    licenseUrl,
+                });
+            const footerOf = (html = '') => html.slice(html.indexOf('<footer id="siteFooter">'));
+
+            it("prints it in the project's language, linked to the license", async () => {
+                // Strings the renderer's own fallback does not have: in a browser that fallback
+                // cannot translate at all, so the footer has to take them from the provider.
+                const fetchI18nTranslations = async (language: string) =>
+                    new Map(
+                        language === 'es'
+                            ? [
+                                  [license, 'CC BY-SA 4.0 (provider)'],
+                                  ['License', 'Licencia (provider)'],
+                              ]
+                            : [],
+                    );
+                const resources = { ...createMockResourceProvider(), fetchI18nTranslations };
+
+                const result = await new PrintPreviewExporter(spanishProject(), resources).generatePreview();
+                const footer = footerOf(result.html);
+
+                expect(footer).toContain('<span class="license-label">Licencia (provider): </span>');
+                expect(footer).toContain(`<a href="${licenseUrl}" class="license">CC BY-SA 4.0 (provider)</a>`);
+                expect(footer).not.toContain(license);
+            });
+
+            it('still prints it, linked, when the translations cannot be fetched', async () => {
+                const warn = spyOn(console, 'warn').mockImplementation(() => {});
+                const resources = {
+                    ...createMockResourceProvider(),
+                    fetchI18nTranslations: async (): Promise<Map<string, string>> => {
+                        throw new Error('offline');
+                    },
+                };
+
+                try {
+                    const result = await new PrintPreviewExporter(spanishProject(), resources).generatePreview();
+
+                    // The text is then the renderer's own fallback's, which only a server translates
+                    expect(result.success).toBe(true);
+                    expect(footerOf(result.html)).toContain(`<a href="${licenseUrl}" class="license">`);
+                    expect(warn).toHaveBeenCalledWith(
+                        '[PrintPreviewExporter] Could not fetch the translated labels:',
+                        expect.any(Error),
+                    );
+                } finally {
+                    warn.mockRestore();
+                }
+            });
         });
     });
 
