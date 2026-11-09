@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test';
-import { markLinksShowingTheirUrl } from './linkUrls';
+import { LINK_URLS_CSS, markLinksShowingTheirUrl } from './linkUrls';
 
 /** A whole document around this body, as both the preview and the worksheet hand one over. */
 const page = (body: string) => `<!DOCTYPE html><html><head></head><body>${body}</body></html>`;
@@ -42,5 +42,38 @@ describe('markLinksShowingTheirUrl', () => {
         const html = page('<p>No links</p>');
 
         expect(markLinksShowingTheirUrl(html)).toBe(html);
+    });
+
+    it('marks a link holding only pictures, however they are wrapped', () => {
+        const html = page(
+            '<a href="https://cc.org"><img src="by.png"></a>' +
+                '<a href="https://x.org"> <span><img src="a.png"></span> <img src="b.png"> </a>',
+        );
+
+        expect(markLinksShowingTheirUrl(html)).toBe(
+            page(
+                '<a data-exe-image-link href="https://cc.org"><img src="by.png"></a>' +
+                    '<a data-exe-image-link href="https://x.org"> <span><img src="a.png"></span> <img src="b.png"> </a>',
+            ),
+        );
+    });
+
+    it('leaves a link with words beside its picture, whose address print writes after it', () => {
+        const html = page('<a href="https://mapa.es">Consulta el mapa <img src="icon.png"></a>');
+
+        expect(markLinksShowingTheirUrl(html)).toBe(html);
+    });
+});
+
+describe('LINK_URLS_CSS', () => {
+    it('writes the address after each link to the web, but not after those marked as needing none', () => {
+        expect(LINK_URLS_CSS).toContain('a[href^="http"]::after {\n    content: " [" attr(href) "]";');
+        expect(LINK_URLS_CSS).toMatch(
+            /a\[href\^="http"\]\[data-exe-text-is-url\]::after,\s*a\[href\^="http"\]\[data-exe-image-link\]::after \{\s*content: none;/,
+        );
+    });
+
+    it('does not tell a picture-only link by its elements, which would miss the words beside a picture', () => {
+        expect(LINK_URLS_CSS).not.toContain(':only-child');
     });
 });
