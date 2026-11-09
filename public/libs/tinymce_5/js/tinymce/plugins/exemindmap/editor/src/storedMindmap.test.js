@@ -15,6 +15,7 @@ import {
     convertLegacyMindmapToMindElixir,
     countNodes,
     decodeHtmlEntities,
+    describeMindmapError,
     isLegacyMindmapDocument,
     readStoredCode,
     sanitizeMindElixirData,
@@ -290,5 +291,45 @@ describe('serializeStoredCode', () => {
 
     it('decodes numeric and named entities', () => {
         expect(decodeHtmlEntities('&#233;&#x41;&nbsp;&unknown;&amp;lt;')).toBe('éA &unknown;&lt;');
+    });
+});
+
+describe('describeMindmapError', () => {
+    /** A translator that marks what went through it */
+    const translate = (text) => `«${text}»`;
+    const reasonFor = (fn) => {
+        try {
+            fn();
+        } catch (error) {
+            return describeMindmapError(error, translate);
+        }
+        throw new Error('it did not throw');
+    };
+
+    it('translates why a stored map could not be read', () => {
+        expect(reasonFor(() => readStoredCode(''))).toBe('«No mind map data found»');
+        expect(reasonFor(() => readStoredCode('{"a": 1}'))).toBe('«The mind map data is not a format this editor knows»');
+        expect(reasonFor(() => readStoredCode('{"nodeData": {,}'))).toBe('«The mind map data is not valid JSON»');
+        expect(reasonFor(() => sanitizeMindElixirData({}))).toBe('«Not a Mind Elixir map»');
+        expect(reasonFor(() => convertLegacyMindmapToMindElixir({}))).toBe('«Not a mindmaps document»');
+        expect(reasonFor(() => sanitizeMindElixirData({ nodeData: { id: 'r', topic: 'R', children: [1] } }))).toBe(
+            '«A node is not an object»',
+        );
+    });
+
+    it('puts the limits into the translated sentence', () => {
+        const wide = { nodeData: { id: 'r', topic: 'R', children: Array.from({ length: MAX_NODES }, (_, i) => ({ id: `n${i}`, topic: 'n' })) } };
+        expect(reasonFor(() => sanitizeMindElixirData(wide))).toBe(`«The map has more than %1 nodes»`.replace('%1', MAX_NODES));
+        let node = { id: 'leaf', topic: 'leaf' };
+        for (let i = 0; i <= MAX_DEPTH; i++) node = { id: `n${i}`, topic: 'n', children: [node] };
+        expect(reasonFor(() => sanitizeMindElixirData({ nodeData: node }))).toBe(
+            '«The map is deeper than %1 levels»'.replace('%1', MAX_DEPTH),
+        );
+    });
+
+    it('keeps the English message for logs and other errors as they are', () => {
+        expect(() => readStoredCode('')).toThrow('No mind map data found');
+        expect(describeMindmapError(new Error('disk full'), translate)).toBe('disk full');
+        expect(describeMindmapError('offline', translate)).toBe('offline');
     });
 });

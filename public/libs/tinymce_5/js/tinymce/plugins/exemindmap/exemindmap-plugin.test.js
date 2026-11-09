@@ -164,7 +164,9 @@ describe('exemindmap plugin - the editor dialog', () => {
 
     it('sends a new map nothing to open, with the caption on', () => {
         const { api } = open(loadPlugin());
-        expect(api.calls.sent).toEqual([{ mceAction: 'exeMindmapLoad', code: '', title: '', caption: true }]);
+        expect(api.calls.sent).toEqual([
+            { mceAction: 'exeMindmapLoad', code: '', title: '', caption: true, fullSize: false, width: 0, height: 0 },
+        ]);
     });
 
     it('sends a legacy image map selected from any element inside it, captioned by its alt', () => {
@@ -180,6 +182,9 @@ describe('exemindmap plugin - the editor dialog', () => {
                 code: '{"nodeData":{"id":"r","topic":"a &amp; &lt;b&gt;"}}',
                 title: 'Seres vivos',
                 caption: false,
+                fullSize: false,
+                width: 300,
+                height: 200,
             },
         ]);
     });
@@ -193,6 +198,17 @@ describe('exemindmap plugin - the editor dialog', () => {
         plugin.registry.selected = plugin.body.querySelector('figcaption');
         const { api } = open(plugin);
         expect(api.calls.sent[0]).toMatchObject({ title: 'Ciencias', caption: true });
+    });
+
+    it('sends the dimensions and the full-size link of a map, so they survive editing it', () => {
+        const plugin = loadPlugin();
+        plugin.body.innerHTML =
+            '<div class="exe-mind-map"><figure class="exe-figure" style="width: 1600px;">' +
+            '<a href="asset://map.svg" rel="lightbox" title="Grande"><img src="asset://map.svg" width="1600" height="900" alt="Grande"></a>' +
+            '</figure><p class="exe-mindmap-code">{"nodeData":{"id":"r","topic":"x"}}</p></div>';
+        plugin.registry.selected = plugin.body.querySelector('img');
+        const { api } = open(plugin);
+        expect(api.calls.sent[0]).toMatchObject({ fullSize: true, width: 1600, height: 900 });
     });
 
     it('asks the editor for the map on Save, once, and only when it is ready', () => {
@@ -244,6 +260,41 @@ describe('exemindmap plugin - the editor dialog', () => {
         save(open(plugin), { title: '&lt;b&gt; & "q"', caption: false, width: undefined, height: undefined });
         expect(plugin.inserted[0]).toContain('width="600" height="400" alt="&lt;b&gt; &amp; &quot;q&quot;"');
         expect(plugin.inserted[0]).not.toContain('figcaption');
+    });
+
+    it('links the image to itself at full size when asked, as the legacy dialog did', () => {
+        const plugin = loadPlugin();
+        save(open(plugin), { fullSize: true, title: 'A "b"' });
+        expect(plugin.inserted[0]).toContain(
+            '<a href="data:image/svg+xml;base64,AAAA" rel="lightbox" title="A &quot;b&quot;"><img src="data:image/svg+xml;base64,AAAA" width="120" height="80" alt="A &quot;b&quot;"></a>',
+        );
+        save(open(plugin), { fullSize: false });
+        expect(plugin.inserted[1]).not.toContain('lightbox');
+    });
+
+    it('points the full-size link at the stored image once TinyMCE has stored it', async () => {
+        const plugin = loadPlugin();
+        let uploaded;
+        plugin.editor.uploadImages = () =>
+            new Promise((resolve) => {
+                uploaded = resolve;
+            });
+        save(open(plugin), { fullSize: true });
+        const link = plugin.body.querySelector('.exe-mind-map a[rel="lightbox"]');
+        // TinyMCE turns the data: image into a blob it then stores as a project asset
+        link.querySelector('img').setAttribute('src', 'blob:http://localhost/map');
+        uploaded([]);
+        await Promise.resolve();
+        await Promise.resolve();
+        expect(link.getAttribute('href')).toBe('blob:http://localhost/map');
+        expect(link.getAttribute('data-mce-href')).toBe('blob:http://localhost/map');
+    });
+
+    it('uses the dimensions the editor sends', () => {
+        const plugin = loadPlugin();
+        save(open(plugin), { width: 1600.4, height: 899.6 });
+        expect(plugin.inserted[0]).toContain('style="width: 1600px;"');
+        expect(plugin.inserted[0]).toContain('width="1600" height="900"');
     });
 
     it('replaces the map that was opened, where it is, as one undo step', () => {

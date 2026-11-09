@@ -280,6 +280,24 @@ label[for="map-title"] {
     color: var(--exe-muted);
 }
 
+#map-dimensions {
+    margin: 10px 0 0;
+}
+
+#map-dimensions input[type="number"] {
+    box-sizing: border-box;
+    width: 76px;
+    padding: 4px 6px;
+    font: inherit;
+    border: 1px solid var(--exe-border);
+    border-radius: 6px;
+}
+
+#map-dimensions .check {
+    flex: 1 0 100%;
+    margin-top: 2px;
+}
+
 input[type="color"] {
     width: 38px;
     height: 30px;

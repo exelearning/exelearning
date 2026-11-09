@@ -6,11 +6,12 @@
  *
  * - `exeMindmapReady` (editor): it has started;
  * - `exeMindmapLoad` (plugin): the HTML of the map's `.exe-mindmap-code` paragraph (empty for a
- *   new map), its descriptive title and whether the title is shown as a caption;
+ *   new map), its descriptive title, whether the title is shown as a caption, whether the image
+ *   links to itself at full size, and the image's width and height;
  * - `exeMindmapSave` (plugin, the dialog's Save button): the editor answers `exeMindmapSaved`
  *   with the escaped Mind Elixir JSON, which keeps the map editable, an SVG of the map made by
- *   @erseco/mind-elixir-export-svg, the title and the caption setting, or `exeMindmapFailed`
- *   after showing why;
+ *   @erseco/mind-elixir-export-svg, the size to show it at, the title, the caption and full-size
+ *   settings, or `exeMindmapFailed` after showing why;
  * - `exeMindmapError` (plugin): the map could not be inserted.
  *
  * Legacy mindmaps documents are converted on open (see storedMindmap.ts); the document only
@@ -48,10 +49,11 @@ import italicIcon from '@material-symbols/svg-400/outlined/format_italic.svg';
 import underlineIcon from '@material-symbols/svg-400/outlined/format_underlined.svg';
 import strikeIcon from '@material-symbols/svg-400/outlined/format_strikethrough.svg';
 import './editor.css';
+import { type Size, figureSize, isCustomSize, parsePixels } from './figureSize';
 import {
-    MindmapFormatError,
     convertLegacyMindmapToMindElixir,
     decodeHtmlEntities,
+    describeMindmapError,
     isLegacyMindmapDocument,
     readStoredCode,
     sanitizeMindElixirData,
@@ -65,6 +67,18 @@ const workarea = window.parent as ParentWindow;
 
 /** eXeLearning's translator, from the workarea */
 const _ = (text: string): string => (typeof workarea._ === 'function' ? workarea._(text) : text);
+
+/**
+ * Key names for the tooltips, as the author's keyboard labels them (Del is Supr on a Spanish one).
+ * A function, because `_` is only usable once the workarea's translations are loaded.
+ */
+const keyName = () => ({
+    tab: _('Tab'),
+    enter: _('Enter'),
+    del: _('Del'),
+    alt: _('Alt'),
+    ctrl: _('Ctrl'),
+});
 
 const FONT_STEP = 2;
 const FONT_MIN = 8;
@@ -97,6 +111,14 @@ let mind: WithVectorSvgExport<MindElixirInstance>;
 let previousMeta: Record<string, unknown> | undefined;
 let titleInput: HTMLInputElement;
 let captionInput: HTMLInputElement;
+let fullSizeInput: HTMLInputElement;
+let widthInput: HTMLInputElement;
+let heightInput: HTMLInputElement;
+let constrainInput: HTMLInputElement;
+/** The map's own size, as the SVG exporter last drew it */
+let naturalSize: Size = { width: 0, height: 0 };
+/** Whether the map was converted from the legacy editor when it was opened */
+let openedLegacy = false;
 /** Whether the title still follows the central idea (new maps, until the author types one) */
 let titleFollowsRoot = false;
 
@@ -137,11 +159,14 @@ function initialMap(stored: string): MindElixirData {
     try {
         const { format, data } = readStoredCode(stored);
         previousMeta = data.meta;
+        openedLegacy = format === 'legacy';
         if (format === 'legacy') showMessage(_('This mind map was created with the previous editor. It will be saved in the new format.'));
         return data;
     } catch (error) {
-        const reason = error instanceof MindmapFormatError ? error.message : String(error);
-        showMessage(`${_('The mind map could not be opened, so a new one was started. The original is kept until you save.')} (${reason})`, true);
+        showMessage(
+            `${_('The mind map could not be opened, so a new one was started. The original is kept until you save.')} (${describeMindmapError(error, _)})`,
+            true,
+        );
         return newMap();
     }
 }
@@ -296,29 +321,34 @@ function buildToolbar(): HTMLElement {
             mind.clearHistory();
             showMessage('');
         } catch (error) {
-            showMessage(`${_('Sorry, wrong file format')} (${(error as Error).message})`, true);
+            showMessage(`${_('Sorry, wrong file format')} (${describeMindmapError(error, _)})`, true);
         }
     });
 
+    const key = keyName();
     const bar = el('div', { id: 'toolbar', role: 'toolbar', 'aria-label': _('Mind map') });
     bar.append(
         group(
             _('Nodes'),
-            button('add-child', _('Add child'), () => mind.addChild(), { icon: addChildIcon, shortcut: 'Tab' }),
-            button('add-sibling', _('Add sibling'), () => mind.insertSibling('after'), { icon: addSiblingIcon, shortcut: 'Enter' }),
-            button('remove', _('Delete'), () => mind.removeNodes(selectedTopics()), { icon: deleteIcon, shortcut: 'Del' }),
+            button('add-child', _('Add child'), () => mind.addChild(), { icon: addChildIcon, shortcut: key.tab }),
+            button('add-sibling', _('Add sibling'), () => mind.insertSibling('after'), { icon: addSiblingIcon, shortcut: key.enter }),
+            button('remove', _('Delete'), () => mind.removeNodes(selectedTopics()), { icon: deleteIcon, shortcut: key.del }),
             // Also by dragging an idea just above or below another
-            button('move-up', _('Move up'), () => mind.moveUpNode(), { icon: moveUpIcon, iconOnly: true, shortcut: 'Alt+↑' }),
+            button('move-up', _('Move up'), () => mind.moveUpNode(), {
+                icon: moveUpIcon,
+                iconOnly: true,
+                shortcut: `${key.alt}+↑`,
+            }),
             button('move-down', _('Move down'), () => mind.moveDownNode(), {
                 icon: moveDownIcon,
                 iconOnly: true,
-                shortcut: 'Alt+↓',
+                shortcut: `${key.alt}+↓`,
             }),
         ),
         group(
             _('History'),
-            button('undo', _('Undo'), () => mind.undo(), { icon: undoIcon, shortcut: 'Ctrl+Z' }),
-            button('redo', _('Redo'), () => mind.redo(), { icon: redoIcon, shortcut: 'Ctrl+Y' }),
+            button('undo', _('Undo'), () => mind.undo(), { icon: undoIcon, shortcut: `${key.ctrl}+Z` }),
+            button('redo', _('Redo'), () => mind.redo(), { icon: redoIcon, shortcut: `${key.ctrl}+Y` }),
         ),
         el('span', { class: 'spacer' }),
         group(
@@ -332,6 +362,71 @@ function buildToolbar(): HTMLElement {
     return bar;
 }
 
+/**
+ * The legacy Dimensions: the size the image is shown at, the map's own size when empty. With
+ * Constrain proportions, typing one dimension fills in the other.
+ */
+function buildDimensions(): HTMLElement {
+    const sizeInput = (id: string, label: string) =>
+        el('input', { type: 'number', id, min: '1', max: '10000', step: '1', inputmode: 'numeric', 'aria-label': label, title: label });
+    widthInput = sizeInput('map-width', _('Width'));
+    heightInput = sizeInput('map-height', _('Height'));
+    constrainInput = el('input', { type: 'checkbox', id: 'map-constrain' });
+    constrainInput.checked = true;
+    widthInput.addEventListener('input', () => {
+        if (!constrainInput.checked) return;
+        const width = parsePixels(widthInput.value);
+        heightInput.value = width === undefined ? '' : String(figureSize(naturalSize, { width, constrain: true }).height);
+    });
+    heightInput.addEventListener('input', () => {
+        if (!constrainInput.checked) return;
+        const height = parsePixels(heightInput.value);
+        widthInput.value = height === undefined ? '' : String(figureSize(naturalSize, { height, constrain: true }).width);
+    });
+    const constrain = el('label', { class: 'check' });
+    constrain.append(constrainInput, _('Constrain proportions'));
+    const dimensions = field(_('Dimensions'), widthInput, el('span', { 'aria-hidden': 'true' }, '×'), heightInput, constrain);
+    dimensions.id = 'map-dimensions';
+    return dimensions;
+}
+
+/** The size the image will be shown at, from the map's size and the Dimensions. */
+function chosenSize(natural: Size): Size {
+    return figureSize(natural, {
+        width: parsePixels(widthInput.value),
+        height: parsePixels(heightInput.value),
+        constrain: constrainInput.checked,
+    });
+}
+
+/** Shows the map's own size as the Dimensions' placeholder, kept up to date as the map changes. */
+function trackNaturalSize(stored: Partial<Size>): void {
+    let timer = 0;
+    let first = true;
+    const measure = async () => {
+        const { width, height } = await mind.exportVectorSvg();
+        naturalSize = { width: Math.round(width), height: Math.round(height) };
+        widthInput.placeholder = String(naturalSize.width);
+        heightInput.placeholder = String(naturalSize.height);
+        if (!first) return;
+        first = false;
+        // The size the map was stored at: its own size (left empty, so it follows the map) or
+        // the author's Dimensions. A converted legacy map has another shape: keep its width.
+        if (!isCustomSize(stored, naturalSize)) return;
+        const w = stored.width as number;
+        const h = stored.height as number;
+        const proportional = figureSize(naturalSize, { width: w, constrain: true }).height;
+        constrainInput.checked = openedLegacy || Math.abs(proportional - h) <= 1;
+        widthInput.value = String(w);
+        heightInput.value = String(constrainInput.checked ? proportional : h);
+    };
+    mind.bus.addListener('linkDiv', () => {
+        clearTimeout(timer);
+        timer = window.setTimeout(() => void measure().catch(() => {}), 150);
+    });
+    void measure().catch(() => {});
+}
+
 /** The map's title and caption, and the format of the selected ideas, as in the legacy inspector. */
 function buildInspector(): HTMLElement {
     titleInput = el('input', { type: 'text', id: 'map-title', autocomplete: 'off' });
@@ -341,8 +436,11 @@ function buildInspector(): HTMLElement {
     captionInput = el('input', { type: 'checkbox', id: 'map-caption' });
     const caption = el('label', { class: 'check' });
     caption.append(captionInput, _('Show the title under the image'));
+    fullSizeInput = el('input', { type: 'checkbox', id: 'map-full-size' });
+    const fullSize = el('label', { class: 'check' });
+    fullSize.append(fullSizeInput, _('Link to full size image'));
     const map = el('section');
-    map.append(el('label', { for: 'map-title' }, _('Descriptive title')), titleInput, caption);
+    map.append(el('label', { for: 'map-title' }, _('Descriptive title')), titleInput, caption, fullSize, buildDimensions());
 
     const format = el('section', { 'aria-labelledby': 'format-heading' });
     format.append(
@@ -388,6 +486,29 @@ function buildInspector(): HTMLElement {
     return inspector;
 }
 
+/**
+ * Mind Elixir names every new summary "summary", in English, and that label ends up in the SVG.
+ * New summaries get the translated word instead: Mind Elixir adds the summary to `summaries` and
+ * then opens its label for editing, so it is renamed as it is added.
+ */
+function labelNewSummaries(): void {
+    const createSummary = mind.createSummary;
+    mind.createSummary = function (this: MindElixirInstance, ...args: Parameters<typeof createSummary>) {
+        const summaries = this.summaries;
+        const push = summaries.push;
+        summaries.push = (...added) => {
+            for (const summary of added) if (summary.label === 'summary') summary.label = _('Summary');
+            return push.apply(summaries, added);
+        };
+        try {
+            return createSummary.apply(this, args);
+        } finally {
+            // Back to Array.prototype.push
+            delete (summaries as { push?: unknown }).push;
+        }
+    };
+}
+
 /** Names Mind Elixir's own zoom and layout buttons, which only have an icon. */
 function labelMindElixirToolbars(): void {
     const labels: Record<string, string> = {
@@ -426,11 +547,12 @@ function onViewChange(fn: () => void): void {
  */
 function buildNodeActions(): void {
     const map = document.getElementById('map') as HTMLElement;
-    const add = button('node-add', _('Add child'), () => mind.addChild(), { icon: addIcon, iconOnly: true, shortcut: 'Tab' });
+    const key = keyName();
+    const add = button('node-add', _('Add child'), () => mind.addChild(), { icon: addIcon, iconOnly: true, shortcut: key.tab });
     const remove = button('node-remove', _('Delete'), () => mind.removeNodes(selectedTopics()), {
         icon: closeIcon,
         iconOnly: true,
-        shortcut: 'Del',
+        shortcut: key.del,
     });
     add.className = remove.className = 'node-action';
     map.append(add, remove);
@@ -561,20 +683,21 @@ async function save(): Promise<void> {
         }
         // The plugin reads the theme the editor shows, so the SVG looks like the editor
         const { svg, width, height } = await mind.exportVectorSvg({ title });
+        const size = chosenSize({ width: Math.round(width), height: Math.round(height) });
         post({
             mceAction: 'exeMindmapSaved',
             code: serializeStoredCode(data, previousMeta),
             svg: toDataUrl(svg),
-            width: Math.round(width),
-            height: Math.round(height),
+            width: size.width,
+            height: size.height,
             title,
             caption: captionInput.checked,
+            fullSize: fullSizeInput.checked,
         });
     } catch (error) {
         // Answered first, so the dialog is never left waiting, even if this page failed to start
         post({ mceAction: 'exeMindmapFailed' });
-        const reason = error instanceof Error ? error.message : String(error);
-        showMessage(`${_('The mind map could not be saved.')} (${reason})`, true);
+        showMessage(`${_('The mind map could not be saved.')} (${describeMindmapError(error, _)})`, true);
     }
 }
 
@@ -611,6 +734,7 @@ export function start(load: Record<string, unknown> = {}): MindElixirInstance {
     titleInput.value = title || data.nodeData.topic;
     titleFollowsRoot = !title || title === data.nodeData.topic;
     captionInput.checked = load.caption !== false;
+    fullSizeInput.checked = load.fullSize === true;
 
     mind = new MindElixir({
         el: '#map',
@@ -627,9 +751,11 @@ export function start(load: Record<string, unknown> = {}): MindElixirInstance {
     // The font the SVG is laid out for, so the map looks the same in the editor and the content
     mind.container.style.fontFamily = DEFAULT_FONT_FAMILY;
     mind.init(data);
+    labelNewSummaries();
     labelMindElixirToolbars();
     buildNavigator();
     buildNodeActions();
+    trackNaturalSize({ width: Number(load.width), height: Number(load.height) });
     // The whole map in view, unless that makes its text too small to read, and the central
     // idea selected, ready for Tab and Enter
     mind.scaleFit();

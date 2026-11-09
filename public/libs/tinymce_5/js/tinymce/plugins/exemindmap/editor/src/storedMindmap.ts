@@ -31,10 +31,52 @@ const LEFT = 0;
 const RIGHT = 1;
 const SIDE = 2;
 
+/** Why stored or imported data is not a usable map; `describeMindmapError` words it for the author. */
+export type MindmapProblem =
+    | 'no-data'
+    | 'invalid-json'
+    | 'unknown-format'
+    | 'not-legacy'
+    | 'not-mind-elixir'
+    | 'node-not-object'
+    | 'too-many-nodes'
+    | 'too-deep';
+
 export class MindmapFormatError extends Error {
-    constructor(message: string) {
+    /** The message stays in English, for logs; `problem` is what the editor translates. */
+    constructor(
+        readonly problem: MindmapProblem,
+        message: string,
+    ) {
         super(message);
         this.name = 'MindmapFormatError';
+    }
+}
+
+/**
+ * The reason to show the author for `error`, in their language: `translate` is eXeLearning's
+ * `_()`. Each sentence is written out here so the translation extraction finds it.
+ */
+export function describeMindmapError(error: unknown, translate: (text: string) => string): string {
+    const _ = translate;
+    if (!(error instanceof MindmapFormatError)) return error instanceof Error ? error.message : String(error);
+    switch (error.problem) {
+        case 'no-data':
+            return _('No mind map data found');
+        case 'invalid-json':
+            return _('The mind map data is not valid JSON');
+        case 'unknown-format':
+            return _('The mind map data is not a format this editor knows');
+        case 'not-legacy':
+            return _('Not a mindmaps document');
+        case 'not-mind-elixir':
+            return _('Not a Mind Elixir map');
+        case 'node-not-object':
+            return _('A node is not an object');
+        case 'too-many-nodes':
+            return _('The map has more than %1 nodes').replace('%1', String(MAX_NODES));
+        case 'too-deep':
+            return _('The map is deeper than %1 levels').replace('%1', String(MAX_DEPTH));
     }
 }
 
@@ -125,15 +167,15 @@ function legacyFontToStyle(font: LegacyFont | undefined, isRoot: boolean): NodeS
  */
 export function convertLegacyMindmapToMindElixir(doc: LegacyDocument): MindElixirData {
     if (!isLegacyMindmapDocument(doc)) {
-        throw new MindmapFormatError('Not a mindmaps document');
+        throw new MindmapFormatError('not-legacy', 'Not a mindmaps document');
     }
     const seen = new Set<string>();
     let count = 0;
 
     const convert = (node: LegacyNode, depth: number): NodeObj => {
-        if (!isObject(node)) throw new MindmapFormatError('A node is not an object');
-        if (++count > MAX_NODES) throw new MindmapFormatError(`The map has more than ${MAX_NODES} nodes`);
-        if (depth > MAX_DEPTH) throw new MindmapFormatError(`The map is deeper than ${MAX_DEPTH} levels`);
+        if (!isObject(node)) throw new MindmapFormatError('node-not-object', 'A node is not an object');
+        if (++count > MAX_NODES) throw new MindmapFormatError('too-many-nodes', `The map has more than ${MAX_NODES} nodes`);
+        if (depth > MAX_DEPTH) throw new MindmapFormatError('too-deep', `The map is deeper than ${MAX_DEPTH} levels`);
         const isRoot = depth === 0;
 
         let id = typeof node.id === 'string' && node.id ? node.id : `legacy-${count}`;
@@ -230,14 +272,14 @@ const SAFE_IMAGE = /^data:image\/(png|jpeg|gif|webp);base64,/i;
  * outside the properties the editor sets or containing `url(`.
  */
 export function sanitizeMindElixirData(value: unknown): MindElixirData {
-    if (!isMindElixirData(value)) throw new MindmapFormatError('Not a Mind Elixir map');
+    if (!isMindElixirData(value)) throw new MindmapFormatError('not-mind-elixir', 'Not a Mind Elixir map');
     const seen = new Set<string>();
     let count = 0;
 
     const clean = (raw: unknown, depth: number): NodeObj => {
-        if (!isObject(raw)) throw new MindmapFormatError('A node is not an object');
-        if (++count > MAX_NODES) throw new MindmapFormatError(`The map has more than ${MAX_NODES} nodes`);
-        if (depth > MAX_DEPTH) throw new MindmapFormatError(`The map is deeper than ${MAX_DEPTH} levels`);
+        if (!isObject(raw)) throw new MindmapFormatError('node-not-object', 'A node is not an object');
+        if (++count > MAX_NODES) throw new MindmapFormatError('too-many-nodes', `The map has more than ${MAX_NODES} nodes`);
+        if (depth > MAX_DEPTH) throw new MindmapFormatError('too-deep', `The map is deeper than ${MAX_DEPTH} levels`);
         let id = typeof raw.id === 'string' && raw.id ? raw.id : `node-${count}`;
         if (seen.has(id)) id = `${id}-${count}`;
         seen.add(id);
@@ -309,7 +351,7 @@ export interface StoredMindmap {
 export function readStoredCode(innerHtml: string): StoredMindmap {
     let text = decodeHtmlEntities(String(innerHtml ?? '')).trim();
     const end = text.lastIndexOf('}');
-    if (!text.startsWith('{') || end < 0) throw new MindmapFormatError('No mind map data found');
+    if (!text.startsWith('{') || end < 0) throw new MindmapFormatError('no-data', 'No mind map data found');
     // Drops closing tags TinyMCE appended after the JSON (see the file comment)
     text = text.slice(0, end + 1);
 
@@ -318,7 +360,7 @@ export function readStoredCode(innerHtml: string): StoredMindmap {
         try {
             parsed = JSON.parse(text);
         } catch (error) {
-            throw new MindmapFormatError(`The mind map data is not valid JSON: ${(error as Error).message}`);
+            throw new MindmapFormatError('invalid-json', `The mind map data is not valid JSON: ${(error as Error).message}`);
         }
         return { format: 'mind-elixir', data: sanitizeMindElixirData(parsed) };
     }
@@ -337,7 +379,7 @@ export function readStoredCode(innerHtml: string): StoredMindmap {
         return { format: 'legacy', data: convertLegacyMindmapToMindElixir(parsed), legacy: parsed };
     }
     if (isMindElixirData(parsed)) return { format: 'mind-elixir', data: sanitizeMindElixirData(parsed) };
-    throw new MindmapFormatError('The mind map data is not a format this editor knows');
+    throw new MindmapFormatError('unknown-format', 'The mind map data is not a format this editor knows');
 }
 
 /** Removes Mind Elixir's runtime-only `parent` links and keeps the stored fields. */
