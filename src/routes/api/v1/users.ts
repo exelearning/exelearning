@@ -23,6 +23,7 @@ import {
     UpdateUserBody,
     UserIdParam,
 } from './types';
+import { getDefaultQuotaMb } from '../../../services/app-settings';
 
 // ============================================================================
 // HELPERS
@@ -114,7 +115,7 @@ export const usersRoutes = new Elysia({ prefix: '/users' })
                 password: hashedPassword,
                 roles: JSON.stringify(roles),
                 is_lopd_accepted: 1,
-                quota_mb: 4096, // Default quota
+                quota_mb: await getDefaultQuotaMb(db),
                 is_active: 1,
             });
 

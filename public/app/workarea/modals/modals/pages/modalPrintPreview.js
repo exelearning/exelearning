@@ -349,6 +349,32 @@ export default class ModalPrintPreview {
     }
 
     /**
+     * Keep the loaded preview in its frame when one of its links is followed.
+     *
+     * A link followed in the frame replaces the preview with the page it leads to: Print would then
+     * print that page, or fail on one from another site, and the options would no longer reach it.
+     * A link to the web opens in a tab of its own instead, and any other leads nowhere a preview
+     * can go. A link to a place in the preview, such as an entry of its table of contents, still
+     * goes there. The listener goes with the document, which every preview replaces.
+     */
+    keepLinksOutOfFrame() {
+        let doc = null;
+        try {
+            doc = this.iframe?.contentDocument ?? null;
+        } catch {
+            // A document from another origin cannot be reached, nor its links followed from here.
+            return;
+        }
+        doc?.addEventListener('click', (event) => {
+            const link = event.target?.closest?.('a[href]');
+            const href = link?.getAttribute('href') ?? '';
+            if (!link || href.startsWith('#')) return;
+            event.preventDefault();
+            if (/^https?:\/\//i.test(href)) window.open(link.href, '_blank', 'noopener');
+        });
+    }
+
+    /**
      * Tell the print style sheet of the loaded preview how to print folded blocks.
      *
      * Applied to the document in place, never by drawing the preview again: that would bring back
@@ -831,6 +857,7 @@ export default class ModalPrintPreview {
             this.iframe.onload = () => {
                 if (requestId === this.requestId) {
                     this.ready = true;
+                    this.keepLinksOutOfFrame();
                     this.applyFolding();
                     this.applyTeacherMode();
                     this.showLoading(false);

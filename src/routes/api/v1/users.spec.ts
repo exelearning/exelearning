@@ -7,13 +7,12 @@ import { describe, it, expect, beforeAll, afterAll } from 'bun:test';
 import { Elysia } from 'elysia';
 import * as bcrypt from 'bcryptjs';
 import { db, resetClientCacheForTesting } from '../../../db/client';
-import { up } from '../../../db/migrations/001_initial';
-import { up as makeUserIdNullable } from '../../../db/migrations/005_user_id_nullable';
-import { up as createActivityLog } from '../../../db/migrations/007_activity_log';
+import { migrateToLatest } from '../../../db/migrations';
 import { now } from '../../../db/types';
 import { usersRoutes } from './users';
 import { createAuthRoutes } from '../../auth';
 import { findUserByEmail, findUserById, createUser } from '../../../db/queries';
+import { setSetting } from '../../../db/queries/admin';
 
 let originalEnv: Record<string, string | undefined>;
 
@@ -57,9 +56,7 @@ describe('Users API v1', () => {
         process.env.JWT_SECRET = 'test-secret-for-users-tests';
 
         await resetClientCacheForTesting();
-        await up(db);
-        await makeUserIdNullable(db);
-        await createActivityLog(db);
+        await migrateToLatest(db);
 
         app = createTestApp();
 
@@ -197,14 +194,39 @@ describe('Users API v1', () => {
             expect(response.status).toBe(201);
             const data = (await response.json()) as {
                 success: boolean;
-                data: { id: number; email: string };
+                data: { id: number; email: string; roles: string[] };
             };
             expect(data.success).toBe(true);
             expect(data.data.email).toBe('createduser@test.com');
+            expect(data.data.roles).toEqual(['ROLE_USER']);
             const saved = await findUserById(db, data.data.id);
             expect(saved?.user_id).toBeNull();
             expect(saved?.roles).toBe('["ROLE_USER"]');
             expect(await Bun.password.verify('password123', saved!.password)).toBe(true);
+        });
+
+        it('should give the new user the configured DEFAULT_QUOTA', async () => {
+            await setSetting(db, 'DEFAULT_QUOTA', '250', 'number');
+            try {
+                const response = await app.handle(
+                    new Request('http://localhost/users', {
+                        method: 'POST',
+                        headers: {
+                            Authorization: `Bearer ${adminToken}`,
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            email: 'quotauser@test.com',
+                            password: 'password123',
+                        }),
+                    }),
+                );
+                expect(response.status).toBe(201);
+                const created = await findUserByEmail(db, 'quotauser@test.com');
+                expect(created?.quota_mb).toBe(250);
+            } finally {
+                await db.deleteFrom('app_settings').where('key', '=', 'DEFAULT_QUOTA').execute();
+            }
         });
     });
 
