@@ -21,6 +21,8 @@ var $exeDevice = {
     idPaste: '',
     numberCutCuestion: -1,
     clipBoard: '',
+    // The cards loaded without an image or a sound (see validateCard).
+    savedWithoutMedia: new WeakSet(),
     idevicePath: '',
     version: 2.0,
     id: false,
@@ -34,6 +36,7 @@ var $exeDevice = {
         this.ideviceBody = element;
         this.idevicePreviousData = previousData;
         this.idevicePath = path;
+        this.savedWithoutMedia = new WeakSet();
         this.refreshTranslations();
         this.setMessagesInfo();
         this.createForm();
@@ -476,15 +479,19 @@ var $exeDevice = {
         p.audio = $('#dadEURLAudio').val().trim();
 
         // A card is a text and the image or sound it is matched with; the game
-        // only shows a file whose address has more than 3 characters.
-        if (
-            p.definition.length == 0 ||
-            (p.url.length < 4 && p.audio.length < 4)
-        ) {
+        // only shows a file whose address has more than 3 characters. A card
+        // saved without either, before this was checked, keeps working as it
+        // was: only the cards added or copied now need one.
+        const keepsWithoutMedia = $exeDevice.savedWithoutMedia.has(
+            $exeDevice.cardsGame[$exeDevice.active]
+        );
+        const hasMedia = p.url.length > 3 || p.audio.length > 3;
+        if (p.definition.length == 0 || (!hasMedia && !keepsWithoutMedia)) {
             message = msgs.msgCompleteData;
         }
         if (message.length == 0) {
             $exeDevice.cardsGame[$exeDevice.active] = p;
+            if (keepsWithoutMedia && !hasMedia) $exeDevice.savedWithoutMedia.add(p);
             message = true;
         } else {
             if (!options.silent) $exeIDevicesEdition.iDevice.common.showMessage(message);
@@ -1071,6 +1078,12 @@ var $exeDevice = {
             $('#dadETimeDiv').removeClass('d-none').addClass('d-flex');
         }
         $exeDevice.cardsGame = game.cardsGame;
+        // Saved before validateCard asked for an image or a sound.
+        $exeDevice.cardsGame.forEach((card) => {
+            const url = String(card.url || '').trim();
+            const audio = String(card.audio || '').trim();
+            if (url.length < 4 && audio.length < 4) $exeDevice.savedWithoutMedia.add(card);
+        });
         $('#dadENumCards').text($exeDevice.cardsGame.length);
         $('#dadEDragDiv').show();
         $exeIDevicesEdition.iDevice.gamification.scorm.setValues(

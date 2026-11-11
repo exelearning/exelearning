@@ -457,8 +457,8 @@ describe('dragdrop edition: shared form tabs, options tooltips, and saving', () 
             tinymceGet.mockRestore();
         });
 
-        // A valid activity, with its card on screen.
-        const loadGame = () => {
+        // A valid activity, with its card on screen; or the given cards, with the first one on screen.
+        const loadGame = (cardsGame) => {
             device.updateFieldGame({
                 showMinimize: true,
                 percentajeCards: 100,
@@ -477,7 +477,7 @@ describe('dragdrop edition: shared form tabs, options tooltips, and saving', () 
                 textButtonScorm: '',
                 repeatActivity: false,
                 weighted: 100,
-                cardsGame: [
+                cardsGame: cardsGame || [
                     {
                         definition: 'target definition',
                         url: 'images/heart.png',
@@ -487,6 +487,10 @@ describe('dragdrop edition: shared form tabs, options tooltips, and saving', () 
                     },
                 ],
             });
+            if (cardsGame) {
+                device.showCard(0);
+                return;
+            }
             $('#dadEDefinition').val('target definition');
             $('#dadEURLImage').val('images/heart.png');
         };
@@ -555,6 +559,77 @@ describe('dragdrop edition: shared form tabs, options tooltips, and saving', () 
                 $('#dadEURLAudio').val('     ');
 
                 expect(device.save()).toBe(false);
+                expect(eXe.app.getLastAlert()).toBe(message);
+            });
+        });
+
+        // Before the card asked for an image or a sound, an activity could be saved with cards of text only.
+        describe('the cards saved without an image or a sound', () => {
+            const message = 'Add a text and an image or a sound to the card';
+            const card = (definition) => ({ definition, url: '', author: '', alt: '', audio: '' });
+            const loadOldCards = () => loadGame([card('Heart'), card('Lungs')]);
+
+            it('can still be left, edited and saved', () => {
+                loadOldCards();
+                const before = eXe.app._alertHistory.length;
+                $('#dadEDefinition').val('Big heart');
+
+                device.nextCard();
+                expect(device.active).toBe(1);
+                device.previousCard();
+                expect(device.active).toBe(0);
+
+                expect(device.save()).toContain('dragdrop-DataGame');
+                expect(eXe.app._alertHistory.slice(before)).toEqual([]);
+                expect(device.cardsGame.map((item) => item.definition)).toEqual(['Big heart', 'Lungs']);
+            });
+
+            it('still need their text', () => {
+                loadOldCards();
+                $('#dadEDefinition').val('');
+
+                expect(device.save()).toBe(false);
+                expect(eXe.app.getLastAlert()).toBe(message);
+            });
+
+            it('keep working when cut and pasted somewhere else', () => {
+                loadOldCards();
+                // As common.js moves it; the test helpers have no arrayMove.
+                const helpers = global.$exeDevices.iDevice.gamification.helpers;
+                helpers.arrayMove = (list, from, to) => list.splice(to, 0, list.splice(from, 1)[0]);
+                try {
+                    device.cutCard();
+                    device.lastCard();
+                    device.pasteCard();
+                    device.showCard(device.active);
+
+                    expect(device.cardsGame.map((item) => item.definition)).toEqual(['Lungs', 'Heart']);
+                    expect(device.save()).toContain('dragdrop-DataGame');
+                } finally {
+                    delete helpers.arrayMove;
+                }
+            });
+
+            it('do not let a card added now go without one', () => {
+                loadOldCards();
+                device.addCard();
+                $('#dadEDefinition').val('Kidney');
+
+                device.previousCard();
+
+                expect(device.active).toBe(2);
+                expect(eXe.app.getLastAlert()).toBe(message);
+            });
+
+            it('do not let a copy of theirs go without one', () => {
+                loadOldCards();
+                device.copyCard();
+                device.pasteCard();
+                expect(device.active).toBe(1);
+
+                device.nextCard();
+
+                expect(device.active).toBe(1);
                 expect(eXe.app.getLastAlert()).toBe(message);
             });
         });
