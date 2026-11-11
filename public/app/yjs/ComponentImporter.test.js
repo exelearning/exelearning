@@ -3,7 +3,9 @@
  *
  * Tests for importing .idevice and .block files into projects.
  *
- * Run with: bun test public/app/yjs/ComponentImporter.test.js
+ * Run with: npx vitest run public/app/yjs/ComponentImporter.test.js
+ * (the file must be named *.test.js to be picked up by vitest's default include,
+ * and the config needs `test.globals: true` because describe/it/vi are not imported).
  *
  * @vitest-environment happy-dom
  */
@@ -46,7 +48,6 @@ const SAMPLE_COMPONENT_XML = `<?xml version="1.0" encoding="UTF-8"?>
 </ode>`;
 
 // Sample component with asset references
-// Note: Using HTML-escaped content instead of CDATA for happy-dom compatibility
 const SAMPLE_COMPONENT_WITH_ASSET_XML = `<?xml version="1.0" encoding="UTF-8"?>
 <ode xmlns="http://www.intef.es/xsd/ode" version="2.0">
 <odeResources>
@@ -91,14 +92,11 @@ const INVALID_COMPONENT_XML = `<?xml version="1.0" encoding="UTF-8"?>
 </odePagStructures>
 </ode>`;
 
-// Mock fflate
 const createMockFflate = (contentXml, assets = {}) => ({
   unzipSync: vi.fn((data) => {
-    // Simulate ZIP extraction
     const result = {
       'content.xml': new TextEncoder().encode(contentXml),
     };
-    // Add assets
     for (const [path, content] of Object.entries(assets)) {
       result[path] = new TextEncoder().encode(content);
     }
@@ -106,7 +104,63 @@ const createMockFflate = (contentXml, assets = {}) => ({
   }),
 });
 
-// Mock Y.js
+// Faithful fflate simulation: unzipSync only decompresses entries the filter
+// accepts, and records which ones were actually inflated.
+const createFaithfulFflate = (entries) => {
+  const inflated = [];
+  return {
+    inflated,
+    unzipSync: (data, options) => {
+      const zip = {};
+      for (const entry of entries) {
+        const accepted =
+          !options || typeof options.filter !== 'function' || options.filter(entry);
+        if (accepted) {
+          inflated.push(entry.name);
+          zip[entry.name] = entry.data;
+        }
+      }
+      return zip;
+    },
+  };
+};
+
+const createMockImportPolicy = ({ totalBytes = 1024, inspectThrows = null, componentLimits = null } = {}) => {
+  class MockZipLimitError extends Error {
+    constructor(message, details) {
+      super(message);
+      this.name = 'ZipLimitError';
+      this.details = details;
+    }
+  }
+  const policy = {
+    ZipLimitError: MockZipLimitError,
+    inspectZipArchive: vi.fn(() => {
+      if (inspectThrows) throw inspectThrows;
+      return {
+        entries: [{ name: 'content.xml', size: totalBytes }],
+        totalBytes,
+        entryCount: 1,
+        largestEntry: { name: 'content.xml', size: totalBytes },
+      };
+    }),
+    assertInspectionWithinLimits: vi.fn((inspection, limits) => {
+      if (inspection.totalBytes > limits.maxTotalBytes) {
+        throw new MockZipLimitError('Component file exceeds the maximum total decompressed size.', {
+          kind: 'total-size',
+          archiveLabel: 'Component file',
+          actualValue: inspection.totalBytes,
+          limitValue: limits.maxTotalBytes,
+        });
+      }
+    }),
+  };
+  if (componentLimits) {
+    policy.COMPONENT_IMPORT_LIMITS = componentLimits;
+  }
+  return policy;
+};
+
 const createMockY = () => {
   class MockYMap {
     constructor() {
@@ -135,18 +189,13 @@ const createMockY = () => {
     }
   }
 
-  return {
-    Map: MockYMap,
-    Array: MockYArray,
-  };
+  return { Map: MockYMap, Array: MockYArray };
 };
 
-// Mock document manager
 const createMockDocumentManager = (pages = []) => {
   const Y = createMockY();
   const navigation = new Y.Array();
 
-  // Add initial pages
   for (const page of pages) {
     const pageMap = new Y.Map();
     pageMap.set('id', page.id);
@@ -169,7 +218,6 @@ const createMockDocumentManager = (pages = []) => {
   };
 };
 
-// Mock asset manager
 const createMockAssetManager = (assetMap = new Map()) => ({
   extractAssetsFromZip: vi.fn(async () => assetMap),
   convertContextPathToAssetRefs: vi.fn((content) => content),
@@ -177,11 +225,12 @@ const createMockAssetManager = (assetMap = new Map()) => ({
 
 describe('ComponentImporter', () => {
   let originalWindow;
+  let originalUnderscore;
 
   beforeEach(() => {
     originalWindow = { ...global.window };
+    originalUnderscore = global._;
 
-    // Setup global mocks - preserve DOMParser from happy-dom
     const existingDOMParser = global.DOMParser || window.DOMParser;
 
     global.window = {
@@ -201,6 +250,7 @@ describe('ComponentImporter', () => {
 
   afterEach(() => {
     global.window = originalWindow;
+    global._ = originalUnderscore;
   });
 
   describe('constructor', () => {
@@ -274,6 +324,87 @@ describe('ComponentImporter', () => {
       expect(result.error).toBe('fflate library not loaded');
     });
 
+    it('should find the target page when it is not the first in navigation', async () => {
+      const docManager = createMockDocumentManager([
+        { id: 'page-0', name: 'First' },
+        { id: 'page-1', name: 'Target' },
+      ]);
+      const importer = new ComponentImporter(docManager, createMockAssetManager());
+      const file = new File([new Uint8Array([1, 2, 3])], 'test.idevice');
+
+      const result = await importer.importComponent(file, 'page-1');
+
+      expect(result.success).toBe(true);
+      const navigation = docManager._navigation;
+      expect(navigation.get(0).get('blocks').length).toBe(0);
+      expect(navigation.get(1).get('blocks').length).toBe(1);
+    });
+
+    it('still imports a file larger than the component tier compressed cap (no limits on the existing flow, review #2474)', async () => {
+      const docManager = createMockDocumentManager([{ id: 'page-1', name: 'Test Page' }]);
+      const importer = new ComponentImporter(docManager, null);
+
+      const file = {
+        name: 'huge.idevice',
+        size: 60 * 1024 * 1024,
+        arrayBuffer: vi.fn(async () => new ArrayBuffer(8)),
+      };
+
+      const result = await importer.importComponent(file, 'page-1');
+
+      expect(result.success).toBe(true);
+      expect(file.arrayBuffer).toHaveBeenCalled();
+    });
+
+    it('still imports a ZIP whose decompressed contents exceed the component tier cap (no limits on the existing flow, review #2474)', async () => {
+      const docManager = createMockDocumentManager([{ id: 'page-1', name: 'Test Page' }]);
+
+      global.window.fflate = {
+        unzipSync: () => ({
+          'content.xml': new TextEncoder().encode(SAMPLE_COMPONENT_XML),
+          'huge.bin': { byteLength: 201 * 1024 * 1024 },
+        }),
+      };
+
+      const importer = new ComponentImporter(docManager, null);
+      const file = new File([new Uint8Array([1, 2, 3])], 'test.idevice');
+
+      const result = await importer.importComponent(file, 'page-1');
+
+      expect(result.success).toBe(true);
+    });
+
+    it('extracts every entry without a declared-size filter on the existing flow (review #2474)', async () => {
+      const docManager = createMockDocumentManager([{ id: 'page-1', name: 'Test Page' }]);
+
+      const entries = [
+        { name: 'content.xml', originalSize: 1024, data: new TextEncoder().encode(SAMPLE_COMPONENT_XML) },
+        { name: 'huge.bin', originalSize: 201 * 1024 * 1024, data: { byteLength: 0 } },
+      ];
+      const inflated = [];
+      global.window.fflate = {
+        unzipSync: (data, options) => {
+          const zip = {};
+          for (const entry of entries) {
+            const accepted = !options || typeof options.filter !== 'function' || options.filter(entry);
+            if (accepted) {
+              inflated.push(entry.name);
+              zip[entry.name] = entry.data;
+            }
+          }
+          return zip;
+        },
+      };
+
+      const importer = new ComponentImporter(docManager, null);
+      const file = new File([new Uint8Array([1, 2, 3])], 'test.idevice');
+
+      const result = await importer.importComponent(file, 'page-1');
+
+      expect(result.success).toBe(true);
+      expect(inflated).toEqual(['content.xml', 'huge.bin']);
+    });
+
     it('should return error for invalid component file (missing marker)', async () => {
       const docManager = createMockDocumentManager([{ id: 'page-1', name: 'Test Page' }]);
 
@@ -293,7 +424,7 @@ describe('ComponentImporter', () => {
       const docManager = createMockDocumentManager([{ id: 'page-1', name: 'Test Page' }]);
 
       global.window.fflate = {
-        unzipSync: () => ({}), // Empty ZIP
+        unzipSync: () => ({}),
       };
 
       const importer = new ComponentImporter(docManager, null);
@@ -307,10 +438,6 @@ describe('ComponentImporter', () => {
     });
 
     it('should rewrite embedded ideviceId in jsonProperties when component id is regenerated (#1786)', async () => {
-      // Component XML carries an ideviceId inside jsonProperties (text/quiz
-      // iDevices store it for self-reference). ComponentImporter always mints
-      // a fresh component id on import; the embedded value must follow so the
-      // Y.Map field and the JSON payload stay in sync.
       const COMPONENT_WITH_EMBEDDED_ID = `<?xml version="1.0" encoding="UTF-8"?>
 <ode xmlns="http://www.intef.es/xsd/ode" version="2.0">
 <odeResources>
@@ -349,18 +476,16 @@ describe('ComponentImporter', () => {
       const result = await importer.importComponent(file, 'page-1');
       expect(result.success).toBe(true);
 
-      // Inspect the inserted component on page-1.
       const navigation = docManager._navigation;
       const pageMap = navigation.get(0);
       const blocks = pageMap.get('blocks');
-      const blockMap = blocks.get(blocks.length - 1); // last appended
+      const blockMap = blocks.get(blocks.length - 1);
       const components = blockMap.get('components');
       const compMap = components.get(0);
       const newCompId = compMap.get('id');
       const jsonStr = compMap.get('jsonProperties');
       const parsed = JSON.parse(jsonStr);
 
-      // Outer id was regenerated AND the embedded one followed.
       expect(newCompId).not.toBe('idevice-orig-1');
       expect(newCompId).toMatch(/^idevice-/);
       expect(parsed.ideviceId).toBe(newCompId);
@@ -380,12 +505,19 @@ describe('ComponentImporter', () => {
       const result = await importer.importComponent(file, 'page-1');
 
       expect(result.success).toBe(true);
-      // Block ID should be newly generated, not the original
       expect(result.blockId).not.toBe('block-original-123');
       expect(result.blockId).toMatch(/^block-[a-z0-9]+-[a-z0-9]+$/);
+
+      const blockMap = docManager._navigation.get(0).get('blocks').get(0);
+      expect(blockMap.get('id')).toBe(result.blockId);
+      expect(blockMap.get('blockId')).toBe(result.blockId);
+      const compMap = blockMap.get('components').get(0);
+      expect(compMap.get('id')).not.toBe('idevice-original-456');
+      expect(compMap.get('id')).toMatch(/^idevice-[a-z0-9]+-[a-z0-9]+$/);
+      expect(compMap.get('ideviceId')).toBe(compMap.get('id'));
     });
 
-    it('should import assets when assetManager is provided', async () => {
+    it('extracts the zip assets when an assetManager is provided', async () => {
       const assetMap = new Map([
         ['content/resources/old-uuid-123/image.jpg', 'new-asset-uuid-789'],
       ]);
@@ -406,6 +538,47 @@ describe('ComponentImporter', () => {
       expect(assetManager.extractAssetsFromZip).toHaveBeenCalled();
     });
 
+    it('rewrites {{context_path}} references in htmlView and jsonProperties with the new asset ids', async () => {
+      const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<ode xmlns="http://www.intef.es/xsd/ode" version="2.0">
+<odeResources>
+  <odeResource><key>odeComponentsResources</key><value>true</value></odeResource>
+</odeResources>
+<odePagStructures>
+  <odePagStructure>
+    <odeBlockId>block-img</odeBlockId>
+    <blockName>Img</blockName>
+    <odeComponents>
+      <odeComponent>
+        <odeIdeviceId>idevice-img</odeIdeviceId>
+        <odeIdeviceTypeName>text</odeIdeviceTypeName>
+        <htmlView>see {{context_path}}/old.png</htmlView>
+        <jsonProperties>{"image":"{{context_path}}/old.png","plain":"x"}</jsonProperties>
+        <odeComponentsOrder>0</odeComponentsOrder>
+      </odeComponent>
+    </odeComponents>
+  </odePagStructure>
+</odePagStructures>
+</ode>`;
+      const docManager = createMockDocumentManager([{ id: 'page-1' }]);
+      const assetManager = createMockAssetManager(new Map([['old.png', 'new-id']]));
+      assetManager.convertContextPathToAssetRefs = vi.fn((content) =>
+        content.split('{{context_path}}/old.png').join('asset://new-id.png')
+      );
+      global.window.fflate = createMockFflate(xml, { 'old.png': 'bytes' });
+      const importer = new ComponentImporter(docManager, assetManager);
+
+      const result = await importer.importComponent(new File([new Uint8Array([1])], 'a.idevice'), 'page-1');
+
+      expect(result.success).toBe(true);
+      const compMap = docManager._navigation.get(0).get('blocks').get(0).get('components').get(0);
+      expect(compMap.get('htmlView')).toBe('see asset://new-id.png');
+      expect(compMap.get('htmlView')).not.toContain('{{context_path}}');
+      const props = JSON.parse(compMap.get('jsonProperties'));
+      expect(props.image).toBe('asset://new-id.png');
+      expect(props.plain).toBe('x');
+    });
+
     it('should use local clientID as transaction origin for undo tracking', async () => {
       const docManager = createMockDocumentManager([{ id: 'page-1', name: 'Test Page' }]);
       const importer = new ComponentImporter(docManager, null);
@@ -416,6 +589,957 @@ describe('ComponentImporter', () => {
       expect(result.success).toBe(true);
       expect(docManager.getDoc().transact).toHaveBeenCalled();
       expect(docManager.getDoc().transact.mock.calls[0][1]).toBe(docManager.getDoc().clientID);
+    });
+
+    it('does not preflight on the existing flow even when the policy bundle is loaded (review #2474)', async () => {
+      const docManager = createMockDocumentManager([{ id: 'page-1', name: 'Test Page' }]);
+      const importer = new ComponentImporter(docManager, null);
+      global.window.fflate = createMockFflate(SAMPLE_COMPONENT_XML);
+      const policy = createMockImportPolicy();
+      global.window.ExeImportPolicy = policy;
+
+      const file = new File([new Uint8Array([1, 2, 3])], 'test.idevice');
+      const result = await importer.importComponent(file, 'page-1');
+
+      expect(result.success).toBe(true);
+      expect(policy.inspectZipArchive).not.toHaveBeenCalled();
+    });
+
+    // ---- Branch coverage ----
+
+    it('finds the target page by pageId when id is absent in the importComponent loop', async () => {
+      const Y = createMockY();
+      const navigation = new Y.Array();
+      const pageMap = new Y.Map();
+      pageMap.set('pageId', 'page-by-pageid');
+      pageMap.set('pageName', 'Test Page');
+      pageMap.set('blocks', new Y.Array());
+      navigation.push([pageMap]);
+
+      const docManager = {
+        getDoc: () => ({ clientID: 'c', transact: vi.fn((fn) => fn()) }),
+        getNavigation: () => navigation,
+      };
+      global.window.fflate = createMockFflate(SAMPLE_COMPONENT_XML);
+
+      const importer = new ComponentImporter(docManager, null);
+      const file = new File([new Uint8Array([1, 2, 3])], 'test.idevice');
+
+      const result = await importer.importComponent(file, 'page-by-pageid');
+
+      expect(result.success).toBe(true);
+    });
+
+    it('falls back to the generic error message when the import exception has no message', async () => {
+      const docManager = createMockDocumentManager([{ id: 'page-1', name: 'Test Page' }]);
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const badFile = {
+        name: 'test.idevice',
+        arrayBuffer: () => Promise.reject({}),
+      };
+
+      const importer = new ComponentImporter(docManager, null);
+      const result = await importer.importComponent(badFile, 'page-1');
+
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('Import failed');
+      errorSpy.mockRestore();
+    });
+  });
+
+  describe('size limits', () => {
+    const importer = () => new ComponentImporter(createMockDocumentManager(), null);
+
+    it('validateCompressedSize returns null for a file within limits', () => {
+      expect(importer().validateCompressedSize({ size: 1024 })).toBeNull();
+    });
+
+    it('validateCompressedSize tolerates a missing size property', () => {
+      expect(importer().validateCompressedSize({ name: 'no-size.idevice' })).toBeNull();
+    });
+
+    // ---- Review #2474, point 7: Math.ceil instead of Math.round ----
+
+    it('validateCompressedSize rounds up the size to avoid reporting the exact maximum', () => {
+      // 52,500,000 bytes = 50.06 MiB. Math.round would give 50 (the exact
+      // maximum), which reads as "too large (50 MB). Maximum allowed is 50 MB".
+      // Math.ceil gives 51, which is unambiguous (review #2474, point 7).
+      const limits = {
+        maxFileBytes: 50 * 1024 * 1024,
+        maxTotalBytes: 200 * 1024 * 1024,
+        maxEntryBytes: 200 * 1024 * 1024,
+        maxEntries: 10000,
+      };
+      global.window.ExeImportPolicy = { COMPONENT_IMPORT_LIMITS: limits };
+      const message = importer().validateCompressedSize({ size: 52_500_000 });
+      expect(message).toContain('51 MB');
+      expect(message).toContain('Maximum allowed is 50 MB');
+    });
+
+    it('validateUncompressedSize returns null for entries within limits', () => {
+      const zip = { a: new Uint8Array([1, 2, 3]), b: new Uint8Array([4, 5]) };
+      expect(importer().validateUncompressedSize(zip)).toBeNull();
+    });
+
+    it('validateUncompressedSize ignores entries without a numeric byteLength', () => {
+      const zip = { a: { notBytes: true }, b: null, c: 'text' };
+      expect(importer().validateUncompressedSize(zip)).toBeNull();
+    });
+
+    it('validateUncompressedSize returns an error when cumulative size exceeds the limit', () => {
+      const zip = {
+        first: { byteLength: 200 * 1024 * 1024 },
+        second: { byteLength: 1024 },
+      };
+      expect(importer().validateUncompressedSize(zip)).toContain('uncompressed');
+    });
+
+    it('createDeclaredSizeFilter accepts entries while the cumulative declared size stays within the limit', () => {
+      const violation = { error: null };
+      const filter = importer().createDeclaredSizeFilter(violation);
+      expect(filter({ name: 'a', originalSize: 100 * 1024 * 1024 })).toBe(true);
+      expect(filter({ name: 'b', originalSize: 50 * 1024 * 1024 })).toBe(true);
+      expect(violation.error).toBeNull();
+    });
+
+    it('createDeclaredSizeFilter rejects the entry that crosses the limit and records the error', () => {
+      const violation = { error: null };
+      const filter = importer().createDeclaredSizeFilter(violation);
+      expect(filter({ name: 'a', originalSize: 150 * 1024 * 1024 })).toBe(true);
+      expect(filter({ name: 'b', originalSize: 100 * 1024 * 1024 })).toBe(false);
+      expect(violation.error).toContain('uncompressed');
+    });
+
+    it('createDeclaredSizeFilter skips every entry after a violation', () => {
+      const violation = { error: null };
+      const filter = importer().createDeclaredSizeFilter(violation);
+      expect(filter({ name: 'bomb.bin', originalSize: 300 * 1024 * 1024 })).toBe(false);
+      expect(filter({ name: 'small.txt', originalSize: 1 })).toBe(false);
+      expect(filter({ name: 'tiny.txt', originalSize: 1 })).toBe(false);
+    });
+
+    it('createDeclaredSizeFilter tolerates entries without a usable declared size', () => {
+      const violation = { error: null };
+      const filter = importer().createDeclaredSizeFilter(violation);
+      expect(filter({ name: 'a' })).toBe(true);
+      expect(filter({ name: 'b', originalSize: 'not-a-number' })).toBe(true);
+      expect(filter(null)).toBe(true);
+      expect(violation.error).toBeNull();
+    });
+
+    it('createDeclaredSizeFilter returns false immediately when the violation is already set', () => {
+      const violation = { error: 'previous error' };
+      const filter = importer().createDeclaredSizeFilter(violation);
+      expect(filter({ name: 'x', originalSize: 1 })).toBe(false);
+      expect(violation.error).toBe('previous error');
+    });
+
+    // ---- Entry-count cap ----
+
+    it('createDeclaredSizeFilter enforces maxEntries in degraded mode (review #2474, point 6)', () => {
+      global.window.ExeImportPolicy = undefined;
+      const violation = { error: null };
+      const filter = importer().createDeclaredSizeFilter(violation);
+
+      for (let i = 0; i < 10000; i++) {
+        const accepted = filter({ name: `entry-${i}.txt`, originalSize: 1 });
+        if (!accepted) {
+          throw new Error(`filter rejected entry ${i} unexpectedly: ${violation.error}`);
+        }
+      }
+
+      expect(filter({ name: 'entry-10000.txt', originalSize: 1 })).toBe(false);
+      expect(violation.error).toContain('too many entries');
+
+      expect(filter({ name: 'entry-10001.txt', originalSize: 1 })).toBe(false);
+      expect(filter({ name: 'entry-10002.txt', originalSize: 1 })).toBe(false);
+    });
+
+    it('createDeclaredSizeFilter enforces maxEntries even when entries have no usable declared size', () => {
+      global.window.ExeImportPolicy = undefined;
+      const violation = { error: null };
+      const filter = importer().createDeclaredSizeFilter(violation);
+
+      for (let i = 0; i < 10000; i++) {
+        expect(filter({ name: `entry-${i}.txt` })).toBe(true);
+      }
+      expect(filter({ name: 'entry-10000.txt' })).toBe(false);
+      expect(violation.error).toContain('too many entries');
+    });
+
+    it('createDeclaredSizeFilter does not report an entry-count violation when the archive fits', () => {
+      global.window.ExeImportPolicy = undefined;
+      const violation = { error: null };
+      const filter = importer().createDeclaredSizeFilter(violation);
+
+      expect(filter({ name: 'content.xml', originalSize: 1 })).toBe(true);
+      expect(filter({ name: 'asset.png', originalSize: 1024 })).toBe(true);
+      expect(violation.error).toBeNull();
+    });
+
+    it('createDeclaredSizeFilter honours a lower maxEntries exposed by the shared tier', () => {
+      global.window.ExeImportPolicy = createMockImportPolicy({
+        componentLimits: {
+          maxFileBytes: 50 * 1024 * 1024,
+          maxTotalBytes: 200 * 1024 * 1024,
+          maxEntryBytes: 200 * 1024 * 1024,
+          maxEntries: 3,
+        },
+      });
+      const violation = { error: null };
+      const filter = importer().createDeclaredSizeFilter(violation);
+
+      expect(filter({ name: 'a.txt', originalSize: 1 })).toBe(true);
+      expect(filter({ name: 'b.txt', originalSize: 1 })).toBe(true);
+      expect(filter({ name: 'c.txt', originalSize: 1 })).toBe(true);
+      expect(filter({ name: 'd.txt', originalSize: 1 })).toBe(false);
+      expect(violation.error).toContain('too many entries');
+    });
+
+    it('createDeclaredSizeFilter keeps the byte-total message when the SAME entry crosses both limits', () => {
+      // maxEntries: 1 -> the second entry crosses the entry-count limit AND the
+      // byte-total limit. If the checks were swapped, the count message would win.
+      global.window.ExeImportPolicy = createMockImportPolicy({
+        componentLimits: {
+          maxFileBytes: 50 * 1024 * 1024,
+          maxTotalBytes: 10,
+          maxEntryBytes: 10,
+          maxEntries: 1,
+        },
+      });
+      const violation = { error: null };
+      const filter = importer().createDeclaredSizeFilter(violation);
+
+      expect(filter({ name: 'a.txt', originalSize: 6 })).toBe(true);
+      expect(filter({ name: 'b.txt', originalSize: 6 })).toBe(false);
+      expect(violation.error).toContain('uncompressed');
+      expect(violation.error).not.toContain('too many entries');
+    });
+
+    // ---- validateZipPreflight ----
+
+    it('validateZipPreflight returns null when the shared policy bundle is not loaded', () => {
+      global.window.ExeImportPolicy = undefined;
+      expect(importer().validateZipPreflight(new Uint8Array([1, 2, 3]))).toBeNull();
+    });
+
+    it('validateZipPreflight returns null for an inspection within limits', () => {
+      global.window.ExeImportPolicy = createMockImportPolicy();
+      expect(importer().validateZipPreflight(new Uint8Array([1, 2, 3]))).toBeNull();
+    });
+
+    it('validateZipPreflight rejects with the canonical message when the declared total exceeds the limit', () => {
+      global.window.ExeImportPolicy = createMockImportPolicy({ totalBytes: 201 * 1024 * 1024 });
+      expect(importer().validateZipPreflight(new Uint8Array([1, 2, 3]))).toContain('uncompressed');
+    });
+
+    it('validateZipPreflight also recognises a policy error by instanceof, not only by name', () => {
+      const policy = createMockImportPolicy();
+      const instance = new policy.ZipLimitError('too large', { kind: 'total-size' });
+      instance.name = 'CustomLimitError';
+      policy.assertInspectionWithinLimits = vi.fn(() => {
+        throw instance;
+      });
+      global.window.ExeImportPolicy = policy;
+
+      expect(importer().validateZipPreflight(new Uint8Array([1, 2, 3]))).toContain('uncompressed');
+    });
+
+    it('validateZipPreflight passes the shared component tier to the policy', () => {
+      const tier = {
+        maxFileBytes: 50 * 1024 * 1024,
+        maxTotalBytes: 200 * 1024 * 1024,
+        maxEntryBytes: 200 * 1024 * 1024,
+        maxEntries: 10000,
+      };
+      const policy = createMockImportPolicy({ componentLimits: tier });
+      global.window.ExeImportPolicy = policy;
+      importer().validateZipPreflight(new Uint8Array([1, 2, 3]));
+      expect(policy.assertInspectionWithinLimits.mock.calls[0][1]).toEqual(tier);
+    });
+
+    it('validateZipPreflight rejects an over-count archive with the entry-count message (review #2474, point 3)', () => {
+      // Before, every ZipLimitError was mapped to the size message, so an
+      // archive with 20,000 tiny entries told the user the file was too large.
+      // Now the message is chosen from ZipLimitError.details.kind.
+      const tier = {
+        maxFileBytes: 50 * 1024 * 1024,
+        maxTotalBytes: 200 * 1024 * 1024,
+        maxEntryBytes: 200 * 1024 * 1024,
+        maxEntries: 2,
+      };
+      class MockZipLimitError extends Error {
+        constructor(message, details) {
+          super(message);
+          this.name = 'ZipLimitError';
+          this.details = details;
+        }
+      }
+      global.window.ExeImportPolicy = {
+        ZipLimitError: MockZipLimitError,
+        COMPONENT_IMPORT_LIMITS: tier,
+        inspectZipArchive: vi.fn(() => ({
+          entries: [
+            { name: 'a.txt', size: 1 },
+            { name: 'b.txt', size: 1 },
+            { name: 'c.txt', size: 1 },
+          ],
+          totalBytes: 3,
+          entryCount: 3,
+          largestEntry: { name: 'a.txt', size: 1 },
+        })),
+        assertInspectionWithinLimits: (inspection, limits, label) => {
+          if (inspection.entryCount > limits.maxEntries) {
+            throw new MockZipLimitError(`${label} exceeds the maximum allowed number of entries`, {
+              kind: 'entry-count',
+              archiveLabel: label,
+              actualValue: inspection.entryCount,
+              limitValue: limits.maxEntries,
+            });
+          }
+        },
+      };
+
+      expect(importer().validateZipPreflight(new Uint8Array([1, 2, 3]))).toContain('too many entries');
+    });
+
+    it('validateZipPreflight keeps the size message for a total-size violation', () => {
+      const tier = {
+        maxFileBytes: 50 * 1024 * 1024,
+        maxTotalBytes: 200 * 1024 * 1024,
+        maxEntryBytes: 200 * 1024 * 1024,
+        maxEntries: 10000,
+      };
+      class MockZipLimitError extends Error {
+        constructor(message, details) {
+          super(message);
+          this.name = 'ZipLimitError';
+          this.details = details;
+        }
+      }
+      global.window.ExeImportPolicy = {
+        ZipLimitError: MockZipLimitError,
+        COMPONENT_IMPORT_LIMITS: tier,
+        inspectZipArchive: vi.fn(() => ({
+          entries: [{ name: 'a.txt', size: 1 }],
+          totalBytes: 1,
+          entryCount: 1,
+          largestEntry: { name: 'a.txt', size: 1 },
+        })),
+        assertInspectionWithinLimits: (inspection, limits, label) => {
+          throw new MockZipLimitError(`${label} exceeds the maximum total decompressed size`, {
+            kind: 'total-size',
+            archiveLabel: label,
+            actualValue: inspection.totalBytes,
+            limitValue: limits.maxTotalBytes,
+          });
+        },
+      };
+
+      expect(importer().validateZipPreflight(new Uint8Array([1, 2, 3]))).toContain('uncompressed');
+    });
+
+    it('validateZipPreflight falls back to the name check when policy.ZipLimitError is missing', () => {
+      global.window.ExeImportPolicy = {
+        inspectZipArchive: vi.fn(() => ({
+          entries: [{ name: 'content.xml', size: 1 }],
+          totalBytes: 1,
+          entryCount: 1,
+          largestEntry: { name: 'content.xml', size: 1 },
+        })),
+        assertInspectionWithinLimits: vi.fn(() => {
+          const err = new Error('too large');
+          err.name = 'ZipLimitError';
+          throw err;
+        }),
+      };
+
+      expect(importer().validateZipPreflight(new Uint8Array([1, 2, 3]))).toContain('uncompressed');
+    });
+
+    it('validateZipPreflight returns null when the policy bundle lacks inspectZipArchive', () => {
+      global.window.ExeImportPolicy = {
+        assertInspectionWithinLimits: vi.fn(),
+      };
+
+      expect(importer().validateZipPreflight(new Uint8Array([1, 2, 3]))).toBeNull();
+    });
+
+    it('validateZipPreflight returns null when the policy bundle lacks assertInspectionWithinLimits', () => {
+      global.window.ExeImportPolicy = { inspectZipArchive: vi.fn() };
+      expect(importer().validateZipPreflight(new Uint8Array([1, 2, 3]))).toBeNull();
+    });
+
+    it('validateZipPreflight returns null when the caught error is neither named nor a ZipLimitError instance', () => {
+      const policy = createMockImportPolicy();
+      policy.assertInspectionWithinLimits = vi.fn(() => {
+        const err = new Error('unexpected');
+        err.name = 'SomeOtherError';
+        throw err;
+      });
+      global.window.ExeImportPolicy = policy;
+
+      expect(importer().validateZipPreflight(new Uint8Array([1, 2, 3]))).toBeNull();
+    });
+
+    it('validateZipPreflight returns null when the inspection throws a falsy error', () => {
+      const policy = createMockImportPolicy();
+      policy.inspectZipArchive = vi.fn(() => { throw null; });
+      global.window.ExeImportPolicy = policy;
+      expect(importer().validateZipPreflight(new Uint8Array([1, 2, 3]))).toBeNull();
+    });
+
+    it('validateZipPreflight degrades to null when the inspection throws a non-policy error', () => {
+      global.window.ExeImportPolicy = createMockImportPolicy({ inspectThrows: new Error('bad zip') });
+      expect(importer().validateZipPreflight(new Uint8Array([1, 2, 3]))).toBeNull();
+    });
+
+    // ---- resolveComponentLimits ----
+
+    it('resolveComponentLimits returns the shared tier when the policy bundle exposes it', () => {
+      const tier = {
+        maxFileBytes: 25 * 1024 * 1024,
+        maxTotalBytes: 100 * 1024 * 1024,
+        maxEntryBytes: 100 * 1024 * 1024,
+        maxEntries: Number.MAX_SAFE_INTEGER,
+      };
+      global.window.ExeImportPolicy = createMockImportPolicy({ componentLimits: tier });
+      expect(importer().resolveComponentLimits()).toEqual(tier);
+    });
+
+    it('resolveComponentLimits falls back to the local constants when the tier is not exposed', () => {
+      global.window.ExeImportPolicy = createMockImportPolicy();
+      expect(importer().resolveComponentLimits()).toEqual({
+        maxFileBytes: 50 * 1024 * 1024,
+        maxTotalBytes: 200 * 1024 * 1024,
+        maxEntryBytes: 200 * 1024 * 1024,
+        maxEntries: 10000,
+      });
+    });
+
+    it('resolveComponentLimits falls back when the policy bundle is not loaded at all', () => {
+      global.window.ExeImportPolicy = undefined;
+      expect(importer().resolveComponentLimits().maxTotalBytes).toBe(200 * 1024 * 1024);
+    });
+
+    it('resolveComponentLimits falls back when the exposed tier is incomplete', () => {
+      global.window.ExeImportPolicy = createMockImportPolicy({
+        componentLimits: { maxTotalBytes: 100 * 1024 * 1024 },
+      });
+      const limits = importer().resolveComponentLimits();
+      expect(limits.maxFileBytes).toBe(50 * 1024 * 1024);
+      expect(limits.maxTotalBytes).toBe(200 * 1024 * 1024);
+      expect(limits.maxEntryBytes).toBe(200 * 1024 * 1024);
+    });
+
+    it('validateCompressedSize honours the shared tier when present', () => {
+      global.window.ExeImportPolicy = createMockImportPolicy({
+        componentLimits: {
+          maxFileBytes: 1 * 1024 * 1024,
+          maxTotalBytes: 200 * 1024 * 1024,
+          maxEntryBytes: 200 * 1024 * 1024,
+          maxEntries: Number.MAX_SAFE_INTEGER,
+        },
+      });
+      expect(importer().validateCompressedSize({ size: 2 * 1024 * 1024 })).toContain('too large');
+      expect(importer().validateCompressedSize({ size: 512 * 1024 })).toBeNull();
+    });
+
+    it('createDeclaredSizeFilter honours the shared tier when present', () => {
+      global.window.ExeImportPolicy = createMockImportPolicy({
+        componentLimits: {
+          maxFileBytes: 50 * 1024 * 1024,
+          maxTotalBytes: 10 * 1024 * 1024,
+          maxEntryBytes: 10 * 1024 * 1024,
+          maxEntries: Number.MAX_SAFE_INTEGER,
+        },
+      });
+      const violation = { error: null };
+      const filter = importer().createDeclaredSizeFilter(violation);
+      expect(filter({ name: 'a', originalSize: 6 * 1024 * 1024 })).toBe(true);
+      expect(filter({ name: 'b', originalSize: 6 * 1024 * 1024 })).toBe(false);
+      expect(violation.error).toContain('uncompressed');
+    });
+
+    it('validateUncompressedSize honours the shared tier when present', () => {
+      global.window.ExeImportPolicy = createMockImportPolicy({
+        componentLimits: {
+          maxFileBytes: 50 * 1024 * 1024,
+          maxTotalBytes: 10 * 1024 * 1024,
+          maxEntryBytes: 10 * 1024 * 1024,
+          maxEntries: Number.MAX_SAFE_INTEGER,
+        },
+      });
+      const zip = { a: { byteLength: 11 * 1024 * 1024 } };
+      expect(importer().validateUncompressedSize(zip)).toContain('uncompressed');
+    });
+  });
+
+  describe('shared helpers (readComponentZip, parseComponentXml, regenerateComponentIds)', () => {
+    const makeImporter = () =>
+      new ComponentImporter(createMockDocumentManager([{ id: 'page-1' }]), null);
+
+    // ---- readComponentZip ----
+
+    it('readComponentZip unzips without limits by default', async () => {
+      global.window.fflate = createMockFflate(SAMPLE_COMPONENT_XML);
+      const { zip, error } = await makeImporter().readComponentZip(
+        new File([new Uint8Array([1, 2, 3])], 'test.idevice')
+      );
+
+      expect(error).toBeUndefined();
+      expect(zip['content.xml']).toBeDefined();
+    });
+
+    it('readComponentZip applies the compressed-size cap only when withLimits is set', async () => {
+      const importer = makeImporter();
+      const hugeFile = {
+        name: 'huge.idevice',
+        size: 60 * 1024 * 1024,
+        arrayBuffer: vi.fn(),
+      };
+
+      const unlimited = await importer.readComponentZip(hugeFile, { withLimits: false });
+      expect(unlimited.error).toBeUndefined();
+      expect(hugeFile.arrayBuffer).toHaveBeenCalledTimes(1);
+
+      const limited = await importer.readComponentZip(hugeFile, { withLimits: true });
+      expect(limited.error).toContain('too large');
+      expect(hugeFile.arrayBuffer).toHaveBeenCalledTimes(1);
+    });
+
+    it('readComponentZip runs the preflight before unzipping when withLimits is set', async () => {
+      const importer = makeImporter();
+      const unzipSpy = vi.fn(() => ({
+        'content.xml': new TextEncoder().encode(SAMPLE_COMPONENT_XML),
+      }));
+      global.window.fflate = { unzipSync: unzipSpy };
+      global.window.ExeImportPolicy = createMockImportPolicy({ totalBytes: 201 * 1024 * 1024 });
+
+      const { error } = await importer.readComponentZip(
+        new File([new Uint8Array([1, 2, 3])], 'test.idevice'),
+        { withLimits: true }
+      );
+
+      expect(error).toContain('uncompressed');
+      expect(unzipSpy).not.toHaveBeenCalled();
+    });
+
+    it('readComponentZip propagates the fflate-not-loaded error', async () => {
+      global.window.fflate = null;
+      const { error } = await makeImporter().readComponentZip(
+        new File([new Uint8Array([1, 2, 3])], 'test.idevice')
+      );
+      expect(error).toBe('fflate library not loaded');
+    });
+
+    it('readComponentZip propagates an invalid ZIP error', async () => {
+      global.window.fflate = {
+        unzipSync: vi.fn(() => {
+          throw new Error('Invalid ZIP data');
+        }),
+      };
+      const { error } = await makeImporter().readComponentZip(
+        new File([new Uint8Array([1, 2, 3])], 'test.idevice')
+      );
+      expect(error).toBe('Invalid ZIP file: Invalid ZIP data');
+    });
+
+    it('readComponentZip returns the preflight error when withLimits and the preflight rejects', async () => {
+      const importer = makeImporter();
+      global.window.fflate = createMockFflate(SAMPLE_COMPONENT_XML);
+      global.window.ExeImportPolicy = createMockImportPolicy({ totalBytes: 201 * 1024 * 1024 });
+
+      const { error } = await importer.readComponentZip(
+        new File([new Uint8Array([1, 2, 3])], 'test.idevice'),
+        { withLimits: true }
+      );
+      expect(error).toContain('uncompressed');
+    });
+
+    it('readComponentZip returns the declared-size violation when the filter trips', async () => {
+      const importer = makeImporter();
+      global.window.fflate = {
+        unzipSync: (data, options) => {
+          options.filter({ name: 'huge.bin', originalSize: 300 * 1024 * 1024 });
+          return {};
+        },
+      };
+
+      const { error } = await importer.readComponentZip(
+        new File([new Uint8Array([1, 2, 3])], 'test.idevice'),
+        { withLimits: true }
+      );
+      expect(error).toContain('uncompressed');
+    });
+
+    it('readComponentZip returns the uncompressed-size error when the backstop trips', async () => {
+      const importer = makeImporter();
+      global.window.fflate = {
+        unzipSync: () => ({
+          'content.xml': new TextEncoder().encode(SAMPLE_COMPONENT_XML),
+          'huge.bin': { byteLength: 201 * 1024 * 1024 },
+        }),
+      };
+
+      const { error } = await importer.readComponentZip(
+        new File([new Uint8Array([1, 2, 3])], 'test.idevice'),
+        { withLimits: true }
+      );
+      expect(error).toContain('uncompressed');
+    });
+
+    it('readComponentZip returns the invalid-ZIP error inside the withLimits branch', async () => {
+      const importer = makeImporter();
+      global.window.fflate = {
+        unzipSync: () => {
+          throw new Error('unexpected end of data');
+        },
+      };
+
+      const { error } = await importer.readComponentZip(
+        new File([new Uint8Array([1, 2, 3])], 'test.idevice'),
+        { withLimits: true }
+      );
+      expect(error).toBe('Invalid ZIP file: unexpected end of data');
+    });
+
+    // ---- Branch coverage: happy paths of readComponentZip ----
+
+    it('readComponentZip reaches the final return when withLimits is false (else of every withLimits if)', async () => {
+      const importer = makeImporter();
+      global.window.fflate = createMockFflate(SAMPLE_COMPONENT_XML);
+
+      const { zip, error } = await importer.readComponentZip(
+        new File([new Uint8Array([1, 2, 3])], 'test.idevice'),
+        { withLimits: false }
+      );
+
+      expect(error).toBeUndefined();
+      expect(zip['content.xml']).toBeDefined();
+    });
+
+    it('readComponentZip reaches the final return when withLimits is true and nothing trips', async () => {
+      const importer = makeImporter();
+      global.window.fflate = createMockFflate(SAMPLE_COMPONENT_XML);
+      global.window.ExeImportPolicy = createMockImportPolicy();
+
+      const { zip, error } = await importer.readComponentZip(
+        new File([new Uint8Array([1, 2, 3])], 'test.idevice'),
+        { withLimits: true }
+      );
+
+      expect(error).toBeUndefined();
+      expect(zip['content.xml']).toBeDefined();
+    });
+
+    // ---- parseComponentXml ----
+
+    it('parseComponentXml returns the parsed document for a valid zip', () => {
+      const zip = createMockFflate(SAMPLE_COMPONENT_XML).unzipSync();
+      const { xmlDoc, error } = makeImporter().parseComponentXml(zip);
+
+      expect(error).toBeUndefined();
+      expect(xmlDoc.querySelector('odePagStructure')).toBeTruthy();
+    });
+
+    it('parseComponentXml reports a missing content.xml', () => {
+      const { error } = makeImporter().parseComponentXml({ 'other.txt': new Uint8Array([1]) });
+      expect(error).toBe('No content.xml found in component file');
+    });
+
+    // ---- Review #2474, point 1: the XML parse error is NOT interpolated ----
+
+    it('parseComponentXml reports a malformed XML and a missing marker', () => {
+      const importer = makeImporter();
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      const malformed = importer.parseComponentXml(
+        createMockFflate('<?xml version="1.0"?><unclosed>').unzipSync()
+      );
+      // The generic message replaced the interpolated parseError.textContent
+      // (XSS sink: Modal.setBody does innerHTML = body, see #2653).
+      expect(malformed.error).toBe('The component XML is not valid');
+      // The technical detail still reaches the console for diagnostics.
+      expect(errorSpy).toHaveBeenCalled();
+
+      const noMarker = importer.parseComponentXml(
+        createMockFflate(INVALID_COMPONENT_XML).unzipSync()
+      );
+      expect(noMarker.error).toContain('odeComponentsResources');
+
+      errorSpy.mockRestore();
+    });
+
+    it('parseComponentXml does not interpolate the XML error text into the message (review #2474, point 1)', () => {
+      const importer = makeImporter();
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      // Malformed XML carrying an injectable onerror attribute. Before the
+      // fix, its textContent ended up in `error.message`, then in
+      // modals.alert.show({ body }), then in Modal.setBody's innerHTML.
+      const malicious = '<unclosed><img src=x onerror="window.__xss=1">';
+      const { error } = importer.parseComponentXml(
+        createMockFflate(malicious).unzipSync()
+      );
+
+      expect(error).toBe('The component XML is not valid');
+      expect(error).not.toContain('onerror');
+      expect(error).not.toContain('<img');
+      expect(errorSpy).toHaveBeenCalled();
+      errorSpy.mockRestore();
+    });
+
+    // ---- Branch coverage: happy paths of parseComponentXml ----
+
+    it('parseComponentXml returns the parsed document when content.xml exists (else of !contentFile)', () => {
+      const zip = createMockFflate(SAMPLE_COMPONENT_XML).unzipSync();
+      const { xmlDoc, error } = makeImporter().parseComponentXml(zip);
+      expect(error).toBeUndefined();
+      expect(xmlDoc).toBeDefined();
+      expect(xmlDoc.querySelector('odePagStructure')).toBeTruthy();
+    });
+
+    it('parseComponentXml does not report a parse error for well-formed XML (else of if (parseError))', () => {
+      const zip = createMockFflate(SAMPLE_COMPONENT_XML).unzipSync();
+      const result = makeImporter().parseComponentXml(zip);
+      expect(result.error).toBeUndefined();
+      expect(result.xmlDoc).toBeDefined();
+    });
+
+    // ---- regenerateComponentIds ----
+
+    it('regenerateComponentIds regenerates ids and the embedded ideviceId (#1786)', () => {
+      const blockData = {
+        id: 'block-orig',
+        blockId: 'block-orig',
+        components: [
+          {
+            id: 'idevice-orig',
+            ideviceId: 'idevice-orig',
+            properties: { ideviceId: 'idevice-orig', textTextarea: 'x' },
+          },
+          {
+            id: 'idevice-other',
+            ideviceId: 'idevice-other',
+            properties: { ideviceId: 'some-other-id' },
+          },
+        ],
+      };
+
+      const newBlockId = makeImporter().regenerateComponentIds(blockData);
+
+      expect(newBlockId).toBeNull();
+      expect(blockData.id).toBe('block-orig');
+      for (const comp of blockData.components) {
+        expect(comp.id).toMatch(/^idevice-/);
+        expect(comp.id).not.toBe('idevice-orig');
+        expect(comp.ideviceId).toBe(comp.id);
+      }
+      expect(blockData.components[0].properties.ideviceId).toBe(blockData.components[0].id);
+      expect(blockData.components[1].properties.ideviceId).toBe('some-other-id');
+    });
+
+    it('regenerateComponentIds also regenerates the block id when requested', () => {
+      const blockData = {
+        id: 'block-orig',
+        blockId: 'block-orig',
+        components: [],
+      };
+
+      const newBlockId = makeImporter().regenerateComponentIds(blockData, { withBlockId: true });
+
+      expect(newBlockId).toMatch(/^block-/);
+      expect(blockData.id).toBe(newBlockId);
+      expect(blockData.blockId).toBe(newBlockId);
+    });
+
+    it('regenerateComponentIds leaves block id untouched when withBlockId is false (else branch)', () => {
+      const blockData = { id: 'block-orig', blockId: 'block-orig', components: [] };
+      const newBlockId = makeImporter().regenerateComponentIds(blockData, { withBlockId: false });
+      expect(newBlockId).toBeNull();
+      expect(blockData.id).toBe('block-orig');
+    });
+
+    // ---- applyAssetReferencesToComponents ----
+
+    it('applyAssetReferencesToComponents is a no-op without an asset manager', () => {
+      const importer = makeImporter();
+      const components = [{ htmlView: '<p>{{context_path}}/x.png</p>', properties: {} }];
+      importer.applyAssetReferencesToComponents(components);
+      expect(components[0].htmlView).toContain('{{context_path}}');
+    });
+
+    it('applyAssetReferencesToComponents converts htmlView and properties when present', () => {
+      const importer = new ComponentImporter(
+        createMockDocumentManager([{ id: 'page-1' }]),
+        createMockAssetManager(new Map([['x.png', 'uuid']]))
+      );
+      importer.assetMap = new Map([['x.png', 'uuid']]);
+      const components = [
+        { htmlView: '<p>{{context_path}}/x.png</p>', properties: { url: '{{context_path}}/x.png' } },
+      ];
+      importer.applyAssetReferencesToComponents(components);
+      expect(importer.assetManager.convertContextPathToAssetRefs).toHaveBeenCalled();
+    });
+
+    it('applyAssetReferencesToComponents skips components without htmlView or properties', () => {
+      const importer = new ComponentImporter(
+        createMockDocumentManager([{ id: 'page-1' }]),
+        createMockAssetManager(new Map([['x.png', 'uuid']]))
+      );
+      importer.assetMap = new Map([['x.png', 'uuid']]);
+      const components = [{}, { htmlView: '', properties: null }];
+      expect(() => importer.applyAssetReferencesToComponents(components)).not.toThrow();
+    });
+  });
+
+  describe('real fflate integration (vendored bundle)', () => {
+    const realFflate = require('../../libs/fflate/fflate.umd.js');
+
+    it('unzipSync invokes the filter with each entry name and declared size before inflating it', () => {
+      const bytes = realFflate.zipSync({ 'a.txt': new TextEncoder().encode('hello') });
+      const infos = [];
+      const zip = realFflate.unzipSync(bytes, {
+        filter: (info) => {
+          infos.push(info);
+          return true;
+        },
+      });
+      expect(infos.length).toBe(1);
+      expect(infos[0].name).toBe('a.txt');
+      expect(infos[0].originalSize).toBe(5);
+      expect(new TextDecoder().decode(zip['a.txt'])).toBe('hello');
+    });
+
+    it('importIdeviceIntoBlock passes a declared-size filter to the real fflate and rejects bomb metadata', async () => {
+      const Y = createMockY();
+      const navigation = new Y.Array();
+      const pageMap = new Y.Map();
+      pageMap.set('id', 'page-1');
+      pageMap.set('pageId', 'page-1');
+      pageMap.set('blocks', new Y.Array());
+      const blockMap = new Y.Map();
+      blockMap.set('blockId', 'block-1');
+      blockMap.set('id', 'block-1');
+      pageMap.get('blocks').push([blockMap]);
+      navigation.push([pageMap]);
+      const mockDoc = { clientID: 'test-client-id', transact: vi.fn((fn) => fn()) };
+      const docManager = { getDoc: () => mockDoc, getNavigation: () => navigation };
+      const importer = new ComponentImporter(docManager, null);
+
+      const zipBytes = new Uint8Array(
+        realFflate.zipSync({
+          'content.xml': new TextEncoder().encode(SAMPLE_COMPONENT_XML),
+          'small.txt': new TextEncoder().encode('x'),
+        })
+      );
+
+      const forged = new Uint8Array(zipBytes);
+      const view = new DataView(forged.buffer);
+      const decoder = new TextDecoder();
+      for (let i = 0; i < forged.length - 4; i++) {
+        if (view.getUint32(i, true) !== 0x02014b50) continue;
+        const nameLen = view.getUint16(i + 28, true);
+        const name = decoder.decode(forged.subarray(i + 46, i + 46 + nameLen));
+        if (name === 'small.txt') {
+          view.setUint32(i + 24, 201 * 1024 * 1024, true);
+        }
+      }
+
+      let passedFilter = null;
+      global.window.fflate = {
+        unzipSync: (data, options) => {
+          passedFilter = options && typeof options.filter === 'function' ? options.filter : null;
+          return realFflate.unzipSync(data, options);
+        },
+      };
+
+      const file = new File([forged], 'test.idevice');
+      const result = await importer.importIdeviceIntoBlock(file, 'page-1', 'block-1');
+
+      expect(typeof passedFilter).toBe('function');
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('uncompressed');
+    });
+
+    it('preflight rejects bomb metadata before the archive is extracted at all (importIdeviceIntoBlock)', async () => {
+      const Y = createMockY();
+      const navigation = new Y.Array();
+      const pageMap = new Y.Map();
+      pageMap.set('id', 'page-1');
+      pageMap.set('pageId', 'page-1');
+      pageMap.set('blocks', new Y.Array());
+      const blockMap = new Y.Map();
+      blockMap.set('blockId', 'block-1');
+      blockMap.set('id', 'block-1');
+      pageMap.get('blocks').push([blockMap]);
+      navigation.push([pageMap]);
+      const mockDoc = { clientID: 'test-client-id', transact: vi.fn((fn) => fn()) };
+      const docManager = { getDoc: () => mockDoc, getNavigation: () => navigation };
+      const importer = new ComponentImporter(docManager, null);
+
+      const zipBytes = new Uint8Array(
+        realFflate.zipSync({
+          'content.xml': new TextEncoder().encode(SAMPLE_COMPONENT_XML),
+          'small.txt': new TextEncoder().encode('x'),
+        })
+      );
+      const forged = new Uint8Array(zipBytes);
+      const view = new DataView(forged.buffer);
+      const decoder = new TextDecoder();
+      for (let i = 0; i < forged.length - 4; i++) {
+        if (view.getUint32(i, true) !== 0x02014b50) continue;
+        const nameLen = view.getUint16(i + 28, true);
+        const name = decoder.decode(forged.subarray(i + 46, i + 46 + nameLen));
+        if (name === 'small.txt') {
+          view.setUint32(i + 24, 201 * 1024 * 1024, true);
+        }
+      }
+
+      class MockZipLimitError extends Error {
+        constructor(message, details) {
+          super(message);
+          this.name = 'ZipLimitError';
+          this.details = details;
+        }
+      }
+      global.window.ExeImportPolicy = {
+        ZipLimitError: MockZipLimitError,
+        inspectZipArchive: (buffer) => {
+          const entries = [];
+          let totalBytes = 0;
+          let largestEntry = null;
+          realFflate.unzipSync(buffer, {
+            filter: (info) => {
+              entries.push({ name: info.name, size: info.originalSize });
+              totalBytes += info.originalSize;
+              if (largestEntry === null || info.originalSize > largestEntry.size) {
+                largestEntry = { name: info.name, size: info.originalSize };
+              }
+              return false;
+            },
+          });
+          return { entries, totalBytes, entryCount: entries.length, largestEntry };
+        },
+        assertInspectionWithinLimits: (inspection, limits) => {
+          if (inspection.totalBytes > limits.maxTotalBytes) {
+            throw new MockZipLimitError('Component file exceeds the maximum total decompressed size.', {
+              kind: 'total-size',
+            });
+          }
+        },
+      };
+
+      const unzipSpy = vi.fn((data, options) => realFflate.unzipSync(data, options));
+      global.window.fflate = { unzipSync: unzipSpy };
+
+      const file = new File([forged], 'test.idevice');
+      const result = await importer.importIdeviceIntoBlock(file, 'page-1', 'block-1');
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('uncompressed');
+      expect(unzipSpy).not.toHaveBeenCalled();
     });
   });
 
@@ -438,6 +1562,49 @@ describe('ComponentImporter', () => {
       const xmlDoc = parser.parseFromString(INVALID_COMPONENT_XML, 'text/xml');
 
       expect(importer.isComponentExport(xmlDoc)).toBe(false);
+    });
+
+    it('returns false when resources do not match', () => {
+      const docManager = createMockDocumentManager();
+      const importer = new ComponentImporter(docManager, null);
+
+      const XML_OTHER_RESOURCE = `<?xml version="1.0" encoding="UTF-8"?>
+<ode xmlns="http://www.intef.es/xsd/ode" version="2.0">
+<odeResources>
+  <odeResource>
+    <key>otherKey</key>
+    <value>otherValue</value>
+  </odeResource>
+</odeResources>
+</ode>`;
+
+      const parser = new DOMParser();
+      const xmlDoc = parser.parseFromString(XML_OTHER_RESOURCE, 'text/xml');
+
+      expect(importer.isComponentExport(xmlDoc)).toBe(false);
+    });
+
+    it('returns false when the key matches but the value is not "true"', () => {
+      const XML_KEY_MATCH_VALUE_FALSE = `<?xml version="1.0" encoding="UTF-8"?>
+<ode xmlns="http://www.intef.es/xsd/ode" version="2.0">
+<odeResources>
+  <odeResource>
+    <key>odeComponentsResources</key>
+    <value>false</value>
+  </odeResource>
+</odeResources>
+</ode>`;
+      const parser = new DOMParser();
+      const xmlDoc = parser.parseFromString(XML_KEY_MATCH_VALUE_FALSE, 'text/xml');
+      const importer = new ComponentImporter(createMockDocumentManager(), null);
+      expect(importer.isComponentExport(xmlDoc)).toBe(false);
+    });
+
+    it('returns true when both key and value match (else of the &&)', () => {
+      const parser = new DOMParser();
+      const xmlDoc = parser.parseFromString(SAMPLE_COMPONENT_XML, 'text/xml');
+      const importer = new ComponentImporter(createMockDocumentManager(), null);
+      expect(importer.isComponentExport(xmlDoc)).toBe(true);
     });
   });
 
@@ -468,12 +1635,52 @@ describe('ComponentImporter', () => {
 
       expect(blockData).toBeNull();
     });
+
+    it('handles missing odePagStructureProperties without throwing', () => {
+      const XML_NO_PROPS = `<?xml version="1.0" encoding="UTF-8"?>
+<ode xmlns="http://www.intef.es/xsd/ode" version="2.0">
+<odePagStructures>
+  <odePagStructure>
+    <odeBlockId>block-noprops</odeBlockId>
+    <blockName>No Props</blockName>
+    <odeComponents></odeComponents>
+  </odePagStructure>
+</odePagStructures>
+</ode>`;
+
+      const docManager = createMockDocumentManager();
+      const importer = new ComponentImporter(docManager, null);
+      const parser = new DOMParser();
+      const xmlDoc = parser.parseFromString(XML_NO_PROPS, 'text/xml');
+
+      const blockData = importer.parseBlockFromXml(xmlDoc);
+
+      expect(blockData.properties).toEqual({});
+    });
+
+    it('covers both branches of propsText and compData', () => {
+      const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<ode xmlns="http://www.intef.es/xsd/ode" version="2.0">
+<odePagStructures>
+  <odePagStructure>
+    <odeBlockId>b</odeBlockId>
+    <odePagStructureProperties>{"a":1}</odePagStructureProperties>
+    <odeComponents>
+      <odeComponent><odeIdeviceId>i</odeIdeviceId><htmlView>x</htmlView></odeComponent>
+    </odeComponents>
+  </odePagStructure>
+</odePagStructures>
+</ode>`;
+      const parser = new DOMParser();
+      const xmlDoc = parser.parseFromString(xml, 'text/xml');
+      const importer = new ComponentImporter(createMockDocumentManager(), null);
+      const blockData = importer.parseBlockFromXml(xmlDoc);
+      expect(blockData.properties).toEqual({ a: 1 });
+      expect(blockData.components).toHaveLength(1);
+    });
   });
 
   describe('iDevice structure properties (#1991)', () => {
-    // content.xml whose component carries odeComponentsProperties (visibility,
-    // teacherOnly, cssClass). These must be parsed and stored so a re-imported
-    // .block/.idevice keeps "Visible in export", "Teacher only" and CSS classes.
     const COMPONENT_WITH_STRUCTURE_PROPS = `<?xml version="1.0" encoding="UTF-8"?>
 <ode xmlns="http://www.intef.es/xsd/ode" version="2.0">
 <odeResources>
@@ -576,6 +1783,41 @@ describe('ComponentImporter', () => {
       expect(compData.structureProperties).toBeUndefined();
     });
 
+    it('parseComponentStructureProperties skips properties without a key', () => {
+      const docManager = createMockDocumentManager();
+      const importer = new ComponentImporter(docManager, null);
+
+      const XML_MISSING_KEY = `<?xml version="1.0" encoding="UTF-8"?>
+<ode xmlns="http://www.intef.es/xsd/ode" version="2.0">
+<odePagStructures>
+  <odePagStructure>
+    <odeComponents>
+      <odeComponent>
+        <odeIdeviceId>idevice-nokey</odeIdeviceId>
+        <odeComponentsProperties>
+          <odeComponentsProperty>
+            <value>orphan-value</value>
+          </odeComponentsProperty>
+          <odeComponentsProperty>
+            <key>validKey</key>
+            <value>validValue</value>
+          </odeComponentsProperty>
+        </odeComponentsProperties>
+      </odeComponent>
+    </odeComponents>
+  </odePagStructure>
+</odePagStructures>
+</ode>`;
+
+      const parser = new DOMParser();
+      const xmlDoc = parser.parseFromString(XML_MISSING_KEY, 'text/xml');
+      const compNode = xmlDoc.querySelector('odeComponent');
+
+      const result = importer.parseComponentStructureProperties(compNode);
+
+      expect(result).toEqual({ validKey: 'validValue' });
+    });
+
     it('should store structure properties in the component properties Y.Map on import', async () => {
       const docManager = createMockDocumentManager([{ id: 'page-1', name: 'Test Page' }]);
       const assetManager = createMockAssetManager();
@@ -631,7 +1873,7 @@ describe('ComponentImporter', () => {
       expect(id1).toMatch(/^block-/);
       expect(id2).toMatch(/^block-/);
       expect(id3).toMatch(/^idevice-/);
-      expect(id1).not.toBe(id2); // Should be unique
+      expect(id1).not.toBe(id2);
     });
 
     it('should throw on empty prefix (mirrors src/shared/ids.ts)', () => {
@@ -639,45 +1881,6 @@ describe('ComponentImporter', () => {
       const importer = new ComponentImporter(docManager, null);
       expect(() => importer.generateId('')).toThrow('generateId: prefix is required');
       expect(() => importer.generateId(undefined)).toThrow('generateId: prefix is required');
-    });
-  });
-
-  describe('convertAssetPaths', () => {
-    it('should convert asset:// URLs to new asset IDs', () => {
-      const assetMap = new Map([
-        ['content/resources/old-uuid-123/image.jpg', 'new-uuid-456'],
-      ]);
-
-      const docManager = createMockDocumentManager();
-      const assetManager = createMockAssetManager(assetMap);
-
-      const importer = new ComponentImporter(docManager, assetManager);
-      importer.assetMap = assetMap;
-
-      const content = '<img src="asset://old-uuid-123/image.jpg">';
-      const result = importer.convertAssetPaths(content);
-
-      // New format: asset://uuid.ext (extension from filename in assetMap path)
-      expect(result).toBe('<img src="asset://new-uuid-456.jpg">');
-    });
-
-    it('should return unchanged content when no assets match', () => {
-      const docManager = createMockDocumentManager();
-      const importer = new ComponentImporter(docManager, null);
-      importer.assetMap = new Map();
-
-      const content = '<p>No assets here</p>';
-      const result = importer.convertAssetPaths(content);
-
-      expect(result).toBe('<p>No assets here</p>');
-    });
-
-    it('should handle null/undefined content', () => {
-      const docManager = createMockDocumentManager();
-      const importer = new ComponentImporter(docManager, null);
-
-      expect(importer.convertAssetPaths(null)).toBeNull();
-      expect(importer.convertAssetPaths(undefined)).toBeUndefined();
     });
   });
 
@@ -709,6 +1912,11 @@ describe('ComponentImporter', () => {
       expect(importer.decodeHtmlContent('')).toBe('');
       expect(importer.decodeHtmlContent(null)).toBe('');
     });
+
+    it('returns the decoded text when the input is non-empty (else branch)', () => {
+      const importer = new ComponentImporter(createMockDocumentManager(), null);
+      expect(importer.decodeHtmlContent('hello')).toBe('hello');
+    });
   });
 
   describe('error handling', () => {
@@ -734,9 +1942,9 @@ describe('ComponentImporter', () => {
     it('should return error for XML parsing errors', async () => {
       const docManager = createMockDocumentManager([{ id: 'page-1', name: 'Test Page' }]);
 
-      // Create XML with parsererror (malformed XML)
       const malformedXml = '<?xml version="1.0"?><unclosed>';
       global.window.fflate = createMockFflate(malformedXml);
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
       const importer = new ComponentImporter(docManager, null);
       const file = new File([new Uint8Array([1, 2, 3])], 'test.idevice');
@@ -744,14 +1952,16 @@ describe('ComponentImporter', () => {
       const result = await importer.importComponent(file, 'page-1');
 
       expect(result.success).toBe(false);
-      // Either parsing error or missing marker error
-      expect(result.error).toMatch(/XML parsing error|missing odeComponentsResources marker/);
+      // The generic message replaced the interpolated parseError.textContent
+      // (review #2474, point 1); the detail is logged instead.
+      expect(result.error).toBe('The component XML is not valid');
+      errorSpy.mockRestore();
     });
 
     it('should handle general exceptions gracefully', async () => {
       const docManager = createMockDocumentManager([{ id: 'page-1', name: 'Test Page' }]);
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
-      // Cause an error by making arrayBuffer throw
       const badFile = {
         name: 'test.idevice',
         arrayBuffer: () => Promise.reject(new Error('Read error')),
@@ -763,12 +1973,12 @@ describe('ComponentImporter', () => {
 
       expect(result.success).toBe(false);
       expect(result.error).toContain('Read error');
+      errorSpy.mockRestore();
     });
 
     it('should return error when no block structure found in XML', async () => {
       const docManager = createMockDocumentManager([{ id: 'page-1', name: 'Test Page' }]);
 
-      // Valid component file marker but no odePagStructure
       const xmlNoStructure = `<?xml version="1.0" encoding="UTF-8"?>
 <ode xmlns="http://www.intef.es/xsd/ode" version="2.0">
 <odeResources>
@@ -800,10 +2010,8 @@ describe('ComponentImporter', () => {
       ]);
 
       const docManager = createMockDocumentManager();
-      // Create assetManager that converts {{context_path}} to asset://
       const assetManager = {
         convertContextPathToAssetRefs: vi.fn((content, map) => {
-          // Simulate conversion of {{context_path}} to asset://
           return content.replace(
             /\{\{context_path\}\}\/([^\s"']+)/g,
             (match, path) => {
@@ -836,7 +2044,6 @@ describe('ComponentImporter', () => {
       const docManager = createMockDocumentManager();
       const assetManager = {
         convertContextPathToAssetRefs: vi.fn((content, map) => {
-          // Simulate conversion
           return content.replace('{{context_path}}/old-uuid-123/image.jpg', 'asset://new-uuid-456/image.jpg');
         }),
       };
@@ -864,7 +2071,6 @@ describe('ComponentImporter', () => {
       const importer = new ComponentImporter(docManager, assetManager);
       importer.assetMap = new Map();
 
-      // Strings without {{context_path}} should not be converted
       const result = importer.convertAssetPathsInObject('regular string');
       expect(result).toBe('regular string');
     });
@@ -879,49 +2085,32 @@ describe('ComponentImporter', () => {
       expect(importer.convertAssetPathsInObject(null)).toBe(null);
       expect(importer.convertAssetPathsInObject(undefined)).toBe(undefined);
     });
-  });
 
-  describe('convertAssetPaths edge cases', () => {
-    it('should handle asset URL without filename suffix', () => {
-      const assetMap = new Map([
-        ['content/resources/old-uuid-123/image.jpg', 'new-uuid-456'],
-      ]);
-
-      const docManager = createMockDocumentManager();
-      const importer = new ComponentImporter(docManager, null);
-      importer.assetMap = assetMap;
-
-      // Asset URL without suffix - should extract extension from assetMap path
-      const content = 'url: asset://old-uuid-123';
-      const result = importer.convertAssetPaths(content);
-
-      // New format: asset://uuid.ext
-      expect(result).toBe('url: asset://new-uuid-456.jpg');
+    it('returns the original string when it has no {{context_path}} placeholder', () => {
+      const assetManager = createMockAssetManager();
+      const importer = new ComponentImporter(createMockDocumentManager(), assetManager);
+      importer.assetMap = new Map();
+      expect(importer.convertAssetPathsInObject('plain string')).toBe('plain string');
+      expect(assetManager.convertContextPathToAssetRefs).not.toHaveBeenCalled();
     });
 
-    it('should handle multiple asset URLs in content', () => {
-      const assetMap = new Map([
-        ['content/resources/uuid-1/img1.jpg', 'new-1'],
-        ['content/resources/uuid-2/img2.png', 'new-2'],
-      ]);
-
-      const docManager = createMockDocumentManager();
-      const importer = new ComponentImporter(docManager, null);
-      importer.assetMap = assetMap;
-
-      const content = '<img src="asset://uuid-1/img1.jpg"><img src="asset://uuid-2/img2.png">';
-      const result = importer.convertAssetPaths(content);
-
-      // New format: asset://uuid.ext
-      expect(result).toBe('<img src="asset://new-1.jpg"><img src="asset://new-2.png">');
+    it('returns the original string when there is no asset manager', () => {
+      const importer = new ComponentImporter(createMockDocumentManager(), null);
+      importer.assetMap = new Map();
+      expect(importer.convertAssetPathsInObject('{{context_path}}/x.png')).toBe('{{context_path}}/x.png');
     });
 
-    it('should handle non-string content', () => {
-      const docManager = createMockDocumentManager();
-      const importer = new ComponentImporter(docManager, null);
+    it('converts strings with {{context_path}} when an asset manager is present', () => {
+      const assetManager = createMockAssetManager();
+      const importer = new ComponentImporter(createMockDocumentManager(), assetManager);
+      importer.assetMap = new Map([['x.png', 'uuid']]);
 
-      expect(importer.convertAssetPaths(123)).toBe(123);
-      expect(importer.convertAssetPaths({})).toEqual({});
+      importer.convertAssetPathsInObject('{{context_path}}/x.png');
+
+      expect(assetManager.convertContextPathToAssetRefs).toHaveBeenCalledWith(
+        '{{context_path}}/x.png',
+        importer.assetMap
+      );
     });
   });
 
@@ -983,7 +2172,6 @@ describe('ComponentImporter', () => {
 
       const blockData = importer.parseBlockFromXml(xmlDoc);
 
-      // Should not throw, properties should be empty object
       expect(blockData.properties).toEqual({});
     });
 
@@ -1016,10 +2204,9 @@ describe('ComponentImporter', () => {
 
       const blockData = importer.parseBlockFromXml(xmlDoc);
 
-      // Should generate IDs
       expect(blockData.id).toMatch(/^block-/);
       expect(blockData.components[0].id).toMatch(/^idevice-/);
-      expect(blockData.components[0].ideviceType).toBe('FreeTextIdevice'); // default
+      expect(blockData.components[0].ideviceType).toBe('FreeTextIdevice');
     });
   });
 
@@ -1059,7 +2246,6 @@ describe('ComponentImporter', () => {
 
       const blockData = importer.parseBlockFromXml(xmlDoc);
 
-      // Should not throw, properties should be empty
       expect(blockData.components[0].properties).toEqual({});
       expect(warnSpy).toHaveBeenCalled();
 
@@ -1101,6 +2287,33 @@ describe('ComponentImporter', () => {
       expect(blockData.components[0].htmlView).toBe('');
       expect(blockData.components[0].properties.question).toBe('What is 2+2?');
     });
+
+    it('parseComponentFromXml handles missing jsonProperties', () => {
+      const XML_NO_JSON = `<?xml version="1.0" encoding="UTF-8"?>
+<ode xmlns="http://www.intef.es/xsd/ode" version="2.0">
+<odePagStructures>
+  <odePagStructure>
+    <odeComponents>
+      <odeComponent>
+        <odeIdeviceId>idevice-nojson</odeIdeviceId>
+        <odeIdeviceTypeName>text</odeIdeviceTypeName>
+        <htmlView>&lt;p&gt;No JSON&lt;/p&gt;</htmlView>
+      </odeComponent>
+    </odeComponents>
+  </odePagStructure>
+</odePagStructures>
+</ode>`;
+
+      const docManager = createMockDocumentManager();
+      const importer = new ComponentImporter(docManager, null);
+      const parser = new DOMParser();
+      const xmlDoc = parser.parseFromString(XML_NO_JSON, 'text/xml');
+      const compNode = xmlDoc.querySelector('odeComponent');
+
+      const compData = importer.parseComponentFromXml(compNode);
+
+      expect(compData.properties).toEqual({});
+    });
   });
 
   describe('createBlockYMap edge cases', () => {
@@ -1119,8 +2332,8 @@ describe('ComponentImporter', () => {
         properties: {
           style: 'default',
           visible: true,
-          nullValue: null, // should be skipped
-          undefinedValue: undefined, // should be skipped
+          nullValue: null,
+          undefinedValue: undefined,
         },
       };
 
@@ -1129,7 +2342,6 @@ describe('ComponentImporter', () => {
       expect(blockMap.get('properties')).toBeDefined();
       expect(blockMap.get('properties').get('style')).toBe('default');
       expect(blockMap.get('properties').get('visible')).toBe(true);
-      // null and undefined should not be set
       expect(blockMap.get('properties').get('nullValue')).toBeUndefined();
       expect(blockMap.get('properties').get('undefinedValue')).toBeUndefined();
     });
@@ -1166,13 +2378,12 @@ describe('ComponentImporter', () => {
         type: 'quiz',
         order: 0,
         createdAt: '2025-01-01',
-        htmlView: '', // empty
+        htmlView: '',
         properties: { question: 'Test?' },
       };
 
       const compMap = importer.createComponentYMap(compData);
 
-      // htmlView should not be set when empty
       expect(compMap.get('htmlView')).toBeUndefined();
       expect(compMap.get('jsonProperties')).toBe('{"question":"Test?"}');
     });
@@ -1197,6 +2408,22 @@ describe('ComponentImporter', () => {
       expect(compMap.get('htmlView')).toBe('<p>Test</p>');
       expect(compMap.get('jsonProperties')).toBeUndefined();
     });
+
+    it('skips properties and structureProperties when they are empty', () => {
+      const importer = new ComponentImporter(createMockDocumentManager(), null);
+      const compMap = importer.createComponentYMap({
+        id: 'c',
+        ideviceId: 'c',
+        ideviceType: 'text',
+        type: 'text',
+        order: 0,
+        createdAt: '2025-01-01',
+        htmlView: '<p>x</p>',
+        properties: {},
+      });
+      expect(compMap.get('properties')).toBeUndefined();
+      expect(compMap.get('jsonProperties')).toBe('{}');
+    });
   });
 
   describe('getTextContent', () => {
@@ -1215,7 +2442,6 @@ describe('ComponentImporter', () => {
 
   describe('page without blocks array', () => {
     it('should create blocks array when page does not have one', async () => {
-      // Create a page without blocks
       const Y = createMockY();
       const navigation = new Y.Array();
 
@@ -1223,7 +2449,6 @@ describe('ComponentImporter', () => {
       pageMap.set('id', 'page-1');
       pageMap.set('pageId', 'page-1');
       pageMap.set('pageName', 'Test Page');
-      // Note: NOT setting 'blocks' array
       navigation.push([pageMap]);
 
       const mockDoc = {
@@ -1243,7 +2468,6 @@ describe('ComponentImporter', () => {
       const result = await importer.importComponent(file, 'page-1');
 
       expect(result.success).toBe(true);
-      // Verify blocks array was created
       expect(pageMap.get('blocks')).toBeDefined();
       expect(pageMap.get('blocks').length).toBe(1);
     });
@@ -1254,7 +2478,6 @@ describe('ComponentImporter', () => {
       const Y = createMockY();
       const navigation = new Y.Array();
 
-      // Create page with only 'pageId' (not 'id')
       const pageMap = new Y.Map();
       pageMap.set('pageId', 'page-by-pageid');
       pageMap.set('pageName', 'Test Page');
@@ -1277,6 +2500,1508 @@ describe('ComponentImporter', () => {
       const found = importer.findPage('nonexistent');
 
       expect(found).toBeNull();
+    });
+
+    it('skips non-matching pages before finding the target', () => {
+      const Y = createMockY();
+      const navigation = new Y.Array();
+
+      const page1 = new Y.Map();
+      page1.set('id', 'page-a');
+      page1.set('pageId', 'page-a');
+      navigation.push([page1]);
+
+      const page2 = new Y.Map();
+      page2.set('id', 'page-b');
+      page2.set('pageId', 'page-b');
+      navigation.push([page2]);
+
+      const docManager = { getNavigation: () => navigation };
+      const importer = new ComponentImporter(docManager, null);
+
+      expect(importer.findPage('page-b')).toBe(page2);
+    });
+  });
+
+  describe('importIdeviceIntoBlock', () => {
+    const createManagerWithBlock = (pageId = 'page-1', blockId = 'block-1') => {
+      const Y = createMockY();
+      const navigation = new Y.Array();
+      const pageMap = new Y.Map();
+      pageMap.set('id', pageId);
+      pageMap.set('pageId', pageId);
+      pageMap.set('blocks', new Y.Array());
+
+      const blockMap = new Y.Map();
+      blockMap.set('blockId', blockId);
+      blockMap.set('id', blockId);
+      pageMap.get('blocks').push([blockMap]);
+      navigation.push([pageMap]);
+
+      const mockDoc = { clientID: 'test-client-id', transact: vi.fn((fn) => fn()) };
+      return {
+        getDoc: () => mockDoc,
+        getNavigation: () => navigation,
+        _navigation: navigation,
+        _Y: Y,
+      };
+    };
+
+    it('rejects non-.idevice files', async () => {
+      const docManager = createManagerWithBlock();
+      const importer = new ComponentImporter(docManager, createMockAssetManager());
+      const file = new File([new Uint8Array([1, 2, 3])], 'test.block');
+
+      const result = await importer.importIdeviceIntoBlock(file, 'page-1', 'block-1');
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('.idevice');
+    });
+
+    it('rejects a file larger than the maximum compressed size before reading it', async () => {
+      const docManager = createManagerWithBlock();
+      const importer = new ComponentImporter(docManager, createMockAssetManager());
+
+      const file = {
+        name: 'huge.idevice',
+        size: 60 * 1024 * 1024,
+        arrayBuffer: vi.fn(),
+      };
+
+      const result = await importer.importIdeviceIntoBlock(file, 'page-1', 'block-1');
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('too large');
+      expect(file.arrayBuffer).not.toHaveBeenCalled();
+    });
+
+    it('rejects via the preflight before extracting when the policy bundle is loaded', async () => {
+      const docManager = createManagerWithBlock();
+      const importer = new ComponentImporter(docManager, createMockAssetManager());
+
+      const unzipSpy = vi.fn(() => ({
+        'content.xml': new TextEncoder().encode(SAMPLE_COMPONENT_XML),
+      }));
+      global.window.fflate = { unzipSync: unzipSpy };
+      global.window.ExeImportPolicy = createMockImportPolicy({ totalBytes: 201 * 1024 * 1024 });
+
+      const file = new File([new Uint8Array([1, 2, 3])], 'test.idevice');
+      const result = await importer.importIdeviceIntoBlock(file, 'page-1', 'block-1');
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('uncompressed');
+      expect(unzipSpy).not.toHaveBeenCalled();
+    });
+
+    it('imports successfully when the preflight passes with the policy bundle loaded', async () => {
+      const docManager = createManagerWithBlock();
+      const importer = new ComponentImporter(docManager, createMockAssetManager());
+
+      global.window.fflate = createMockFflate(SAMPLE_COMPONENT_XML);
+      const policy = createMockImportPolicy();
+      global.window.ExeImportPolicy = policy;
+
+      const file = new File([new Uint8Array([1, 2, 3])], 'test.idevice');
+      const result = await importer.importIdeviceIntoBlock(file, 'page-1', 'block-1');
+
+      expect(result.success).toBe(true);
+      expect(policy.inspectZipArchive).toHaveBeenCalledTimes(1);
+    });
+
+    it('falls through to unzipSync when the preflight inspection fails on a malformed ZIP', async () => {
+      const docManager = createManagerWithBlock();
+      const importer = new ComponentImporter(docManager, createMockAssetManager());
+
+      const policy = createMockImportPolicy({ inspectThrows: new Error('invalid central directory') });
+      global.window.ExeImportPolicy = policy;
+      global.window.fflate = {
+        unzipSync: () => {
+          throw new Error('unexpected end of data');
+        },
+      };
+
+      const file = new File([new Uint8Array([1, 2, 3])], 'test.idevice');
+      const result = await importer.importIdeviceIntoBlock(file, 'page-1', 'block-1');
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('Invalid ZIP file');
+      expect(policy.inspectZipArchive).toHaveBeenCalledTimes(1);
+    });
+
+    it('honours the shared tier compressed-file cap end to end', async () => {
+      const docManager = createManagerWithBlock();
+      const importer = new ComponentImporter(docManager, createMockAssetManager());
+
+      global.window.ExeImportPolicy = createMockImportPolicy({
+        componentLimits: {
+          maxFileBytes: 1 * 1024 * 1024,
+          maxTotalBytes: 200 * 1024 * 1024,
+          maxEntryBytes: 200 * 1024 * 1024,
+          maxEntries: 10000,
+        },
+      });
+
+      const file = {
+        name: 'tier-limited.idevice',
+        size: 2 * 1024 * 1024,
+        arrayBuffer: vi.fn(),
+      };
+
+      const result = await importer.importIdeviceIntoBlock(file, 'page-1', 'block-1');
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('Maximum allowed is 1 MB');
+      expect(file.arrayBuffer).not.toHaveBeenCalled();
+    });
+
+    it('rejects a ZIP whose decompressed contents exceed the maximum size', async () => {
+      const docManager = createManagerWithBlock();
+      const importer = new ComponentImporter(docManager, createMockAssetManager());
+
+      global.window.fflate = {
+        unzipSync: () => ({
+          'content.xml': new TextEncoder().encode(SAMPLE_COMPONENT_XML),
+          'huge.bin': { byteLength: 201 * 1024 * 1024 },
+        }),
+      };
+
+      const file = new File([new Uint8Array([1, 2, 3])], 'test.idevice');
+      const result = await importer.importIdeviceIntoBlock(file, 'page-1', 'block-1');
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('uncompressed');
+    });
+
+    it('rejects a ZIP whose declared uncompressed size exceeds the limit before inflating it', async () => {
+      const docManager = createManagerWithBlock();
+      const importer = new ComponentImporter(docManager, createMockAssetManager());
+
+      const entries = [
+        { name: 'content.xml', originalSize: 1024, data: new TextEncoder().encode(SAMPLE_COMPONENT_XML) },
+        { name: 'huge.bin', originalSize: 201 * 1024 * 1024, data: { byteLength: 0 } },
+      ];
+      const inflated = [];
+      global.window.fflate = {
+        unzipSync: (data, options) => {
+          const zip = {};
+          for (const entry of entries) {
+            const accepted = !options || typeof options.filter !== 'function' || options.filter(entry);
+            if (accepted) {
+              inflated.push(entry.name);
+              zip[entry.name] = entry.data;
+            }
+          }
+          return zip;
+        },
+      };
+
+      const file = new File([new Uint8Array([1, 2, 3])], 'test.idevice');
+      const result = await importer.importIdeviceIntoBlock(file, 'page-1', 'block-1');
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('uncompressed');
+      expect(inflated).toEqual(['content.xml']);
+    });
+
+    it('rejects an archive with too many entries in degraded mode (review #2474, point 6)', async () => {
+      global.window.ExeImportPolicy = undefined;
+
+      const entries = [
+        {
+          name: 'content.xml',
+          originalSize: 1,
+          data: new TextEncoder().encode(SAMPLE_COMPONENT_XML),
+        },
+      ];
+      for (let i = 0; i < 10000; i++) {
+        entries.push({ name: `tiny-${i}.txt`, originalSize: 1, data: new Uint8Array([1]) });
+      }
+
+      const fflate = createFaithfulFflate(entries);
+      global.window.fflate = { unzipSync: fflate.unzipSync };
+
+      const docManager = createManagerWithBlock();
+      const importer = new ComponentImporter(docManager, createMockAssetManager());
+      const file = new File([new Uint8Array([1, 2, 3])], 'bomb.idevice');
+
+      const result = await importer.importIdeviceIntoBlock(file, 'page-1', 'block-1');
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('too many entries');
+      expect(fflate.inflated).toHaveLength(10000);
+      expect(fflate.inflated[0]).toBe('content.xml');
+      expect(fflate.inflated).not.toContain('tiny-9999.txt');
+
+      const blockMap = docManager.getNavigation().get(0).get('blocks').get(0);
+      expect(blockMap.get('components')).toBeUndefined();
+    });
+
+    it('imports successfully when the archive is within maxEntries in degraded mode', async () => {
+      global.window.ExeImportPolicy = undefined;
+
+      const fflate = createFaithfulFflate([
+        {
+          name: 'content.xml',
+          originalSize: 1,
+          data: new TextEncoder().encode(SAMPLE_COMPONENT_XML),
+        },
+        { name: 'asset.png', originalSize: 1, data: new Uint8Array([1]) },
+      ]);
+      global.window.fflate = { unzipSync: fflate.unzipSync };
+
+      const docManager = createManagerWithBlock();
+      const importer = new ComponentImporter(docManager, createMockAssetManager());
+      const file = new File([new Uint8Array([1, 2, 3])], 'ok.idevice');
+
+      const result = await importer.importIdeviceIntoBlock(file, 'page-1', 'block-1');
+
+      expect(result.success).toBe(true);
+      expect(fflate.inflated).toEqual(['content.xml', 'asset.png']);
+      const blockMap = docManager.getNavigation().get(0).get('blocks').get(0);
+      expect(blockMap.get('components').length).toBe(1);
+    });
+
+    it('rejects via the filter when the shared tier lowers maxEntries', async () => {
+      global.window.ExeImportPolicy = createMockImportPolicy({
+        componentLimits: {
+          maxFileBytes: 50 * 1024 * 1024,
+          maxTotalBytes: 200 * 1024 * 1024,
+          maxEntryBytes: 200 * 1024 * 1024,
+          maxEntries: 2,
+        },
+      });
+
+      const fflate = createFaithfulFflate([
+        {
+          name: 'content.xml',
+          originalSize: 1,
+          data: new TextEncoder().encode(SAMPLE_COMPONENT_XML),
+        },
+        { name: 'a.txt', originalSize: 1, data: new Uint8Array([1]) },
+        { name: 'b.txt', originalSize: 1, data: new Uint8Array([1]) },
+      ]);
+      global.window.fflate = { unzipSync: fflate.unzipSync };
+
+      const docManager = createManagerWithBlock();
+      const importer = new ComponentImporter(docManager, createMockAssetManager());
+      const file = new File([new Uint8Array([1, 2, 3])], 'too-many.idevice');
+
+      const result = await importer.importIdeviceIntoBlock(file, 'page-1', 'block-1');
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('too many entries');
+      expect(fflate.inflated).toEqual(['content.xml', 'a.txt']);
+    });
+
+    it('appends the parsed component to the target block', async () => {
+      const docManager = createManagerWithBlock();
+      const importer = new ComponentImporter(docManager, createMockAssetManager());
+      const file = new File([new Uint8Array([1, 2, 3])], 'test.idevice');
+
+      const result = await importer.importIdeviceIntoBlock(file, 'page-1', 'block-1');
+
+      expect(result.success).toBe(true);
+      expect(result.blockId).toBe('block-1');
+      expect(result.componentIds).toHaveLength(1);
+
+      const pageMap = docManager.getNavigation().get(0);
+      const blockMap = pageMap.get('blocks').get(0);
+      const components = blockMap.get('components');
+      expect(components.length).toBe(1);
+      const compMap = components.get(0);
+      expect(compMap.get('ideviceType')).toBe('text');
+      expect(compMap.get('order')).toBe(0);
+      expect(compMap.get('id')).not.toBe('idevice-original-456');
+      expect(compMap.get('id')).toMatch(/^idevice-/);
+    });
+
+    it('imports a .idevice into an existing block through the full happy path (else of !blocksArray and !inserted)', async () => {
+      const docManager = createManagerWithBlock();
+      global.window.fflate = createMockFflate(SAMPLE_COMPONENT_XML);
+      const importer = new ComponentImporter(docManager, createMockAssetManager());
+      const file = new File([new Uint8Array([1, 2, 3])], 'test.idevice');
+
+      const result = await importer.importIdeviceIntoBlock(file, 'page-1', 'block-1');
+
+      expect(result.success).toBe(true);
+      expect(result.blockId).toBe('block-1');
+      const blockMap = docManager.getNavigation().get(0).get('blocks').get(0);
+      expect(blockMap.get('components').length).toBe(1);
+    });
+
+    it('generates fresh component IDs distinct from the original', async () => {
+      const docManager = createManagerWithBlock();
+      const importer = new ComponentImporter(docManager, createMockAssetManager());
+      const file = new File([new Uint8Array([1, 2, 3])], 'test.idevice');
+
+      const result = await importer.importIdeviceIntoBlock(file, 'page-1', 'block-1');
+
+      expect(result.componentIds[0]).not.toBe('idevice-original-456');
+      expect(result.componentIds[0]).toMatch(/^idevice-/);
+    });
+
+    it('rewrites embedded ideviceId in jsonProperties when component id is regenerated (#1786)', async () => {
+      const COMPONENT_WITH_EMBEDDED_ID = `<?xml version="1.0" encoding="UTF-8"?>
+<ode xmlns="http://www.intef.es/xsd/ode" version="2.0">
+<odeResources>
+  <odeResource>
+    <key>odeComponentsResources</key>
+    <value>true</value>
+  </odeResource>
+</odeResources>
+<odePagStructures>
+  <odePagStructure>
+    <odeBlockId>block-orig-1</odeBlockId>
+    <blockName>Embedded id</blockName>
+    <odeComponents>
+      <odeComponent>
+        <odeIdeviceId>idevice-orig-1</odeIdeviceId>
+        <odeIdeviceTypeName>text</odeIdeviceTypeName>
+        <htmlView>&lt;p&gt;hi&lt;/p&gt;</htmlView>
+        <jsonProperties>{"ideviceId":"idevice-orig-1","textTextarea":"&lt;p&gt;hi&lt;/p&gt;"}</jsonProperties>
+        <odeComponentsOrder>0</odeComponentsOrder>
+      </odeComponent>
+    </odeComponents>
+  </odePagStructure>
+</odePagStructures>
+</ode>`;
+
+      const docManager = createManagerWithBlock();
+      global.window.fflate = createMockFflate(COMPONENT_WITH_EMBEDDED_ID);
+      const importer = new ComponentImporter(docManager, createMockAssetManager());
+      const file = new File([new Uint8Array([1, 2, 3])], 'test.idevice');
+
+      const result = await importer.importIdeviceIntoBlock(file, 'page-1', 'block-1');
+      expect(result.success).toBe(true);
+
+      const pageMap = docManager.getNavigation().get(0);
+      const blockMap = pageMap.get('blocks').get(0);
+      const compMap = blockMap.get('components').get(0);
+      const newCompId = compMap.get('id');
+      const parsed = JSON.parse(compMap.get('jsonProperties'));
+
+      expect(newCompId).not.toBe('idevice-orig-1');
+      expect(parsed.ideviceId).toBe(newCompId);
+    });
+
+    it('appends after existing components and preserves their order', async () => {
+      const docManager = createManagerWithBlock();
+      const Y = docManager._Y;
+      const existing = new Y.Map();
+      existing.set('id', 'existing-1');
+      existing.set('order', 0);
+      const existingComp = new Y.Array();
+      existingComp.push([existing]);
+      docManager.getNavigation().get(0).get('blocks').get(0).set('components', existingComp);
+
+      const importer = new ComponentImporter(docManager, createMockAssetManager());
+      const file = new File([new Uint8Array([1, 2, 3])], 'test.idevice');
+
+      const result = await importer.importIdeviceIntoBlock(file, 'page-1', 'block-1');
+
+      expect(result.success).toBe(true);
+      const components = docManager.getNavigation().get(0).get('blocks').get(0).get('components');
+      expect(components.length).toBe(2);
+      expect(components.get(0).get('id')).toBe('existing-1');
+      expect(components.get(1).get('order')).toBe(1);
+    });
+
+    it('finds the target block when it is not the first in the array', async () => {
+      const Y = createMockY();
+      const navigation = new Y.Array();
+      const pageMap = new Y.Map();
+      pageMap.set('id', 'page-1');
+      pageMap.set('pageId', 'page-1');
+      pageMap.set('blocks', new Y.Array());
+
+      const block1 = new Y.Map();
+      block1.set('blockId', 'block-other');
+      block1.set('id', 'block-other');
+      pageMap.get('blocks').push([block1]);
+
+      const block2 = new Y.Map();
+      block2.set('blockId', 'block-target');
+      block2.set('id', 'block-target');
+      pageMap.get('blocks').push([block2]);
+
+      navigation.push([pageMap]);
+
+      const mockDoc = { clientID: 'test', transact: vi.fn((fn) => fn()) };
+      const docManager = {
+        getDoc: () => mockDoc,
+        getNavigation: () => navigation,
+      };
+
+      const importer = new ComponentImporter(docManager, createMockAssetManager());
+      const file = new File([new Uint8Array([1, 2, 3])], 'test.idevice');
+
+      const result = await importer.importIdeviceIntoBlock(file, 'page-1', 'block-target');
+
+      expect(result.success).toBe(true);
+      expect(result.blockId).toBe('block-target');
+    });
+
+    it('returns error when the target block is not in the page', async () => {
+      const docManager = createManagerWithBlock('page-1', 'block-other');
+      const importer = new ComponentImporter(docManager, createMockAssetManager());
+      const file = new File([new Uint8Array([1, 2, 3])], 'test.idevice');
+
+      const result = await importer.importIdeviceIntoBlock(file, 'page-1', 'block-missing');
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('not found');
+    });
+
+    it('returns error when the target page does not exist', async () => {
+      const docManager = createManagerWithBlock();
+      const importer = new ComponentImporter(docManager, createMockAssetManager());
+      const file = new File([new Uint8Array([1, 2, 3])], 'test.idevice');
+
+      const result = await importer.importIdeviceIntoBlock(file, 'nonexistent-page', 'block-1');
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('Target page not found');
+    });
+
+    it('returns error when the component file has no components', async () => {
+      const XML_WITH_NO_COMPONENTS = `<?xml version="1.0" encoding="UTF-8"?>
+<ode xmlns="http://www.intef.es/xsd/ode" version="2.0">
+<odeResources>
+  <odeResource><key>odeComponentsResources</key><value>true</value></odeResource>
+</odeResources>
+<odePagStructures>
+  <odePagStructure>
+    <odeBlockId>block-empty</odeBlockId>
+    <blockName>Empty</blockName>
+    <odeComponents></odeComponents>
+  </odePagStructure>
+</odePagStructures>
+</ode>`;
+
+      const docManager = createManagerWithBlock();
+      global.window.fflate = createMockFflate(XML_WITH_NO_COMPONENTS);
+      const importer = new ComponentImporter(docManager, createMockAssetManager());
+      const file = new File([new Uint8Array([1, 2, 3])], 'test.idevice');
+
+      const result = await importer.importIdeviceIntoBlock(file, 'page-1', 'block-1');
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('No iDevice');
+    });
+
+    it('returns error for missing content.xml marker', async () => {
+      global.window.fflate = createMockFflate(INVALID_COMPONENT_XML);
+      const docManager = createManagerWithBlock();
+      const importer = new ComponentImporter(docManager, createMockAssetManager());
+      const file = new File([new Uint8Array([1, 2, 3])], 'test.idevice');
+
+      const result = await importer.importIdeviceIntoBlock(file, 'page-1', 'block-1');
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('odeComponentsResources');
+    });
+
+    it('extracts assets from the zip when an asset manager is present', async () => {
+      const docManager = createManagerWithBlock();
+      const assetManager = createMockAssetManager();
+      const importer = new ComponentImporter(docManager, assetManager);
+      const file = new File([new Uint8Array([1, 2, 3])], 'test.idevice');
+
+      await importer.importIdeviceIntoBlock(file, 'page-1', 'block-1');
+
+      expect(assetManager.extractAssetsFromZip).toHaveBeenCalled();
+    });
+
+    it('returns error when fflate is not loaded', async () => {
+      const docManager = createManagerWithBlock();
+      const importer = new ComponentImporter(docManager, createMockAssetManager());
+
+      global.window.fflate = null;
+
+      const file = new File([new Uint8Array([1, 2, 3])], 'test.idevice');
+      const result = await importer.importIdeviceIntoBlock(file, 'page-1', 'block-1');
+
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('fflate library not loaded');
+    });
+
+    const wrapComponentsXml = (componentsXml) => `<?xml version="1.0" encoding="UTF-8"?>
+<ode xmlns="http://www.intef.es/xsd/ode" version="2.0">
+<odeResources>
+  <odeResource><key>odeComponentsResources</key><value>true</value></odeResource>
+</odeResources>
+<odePagStructures>
+  <odePagStructure>
+    <odeBlockId>block-orig</odeBlockId>
+    <blockName>Wrapper</blockName>
+    <odeComponents>${componentsXml}</odeComponents>
+  </odePagStructure>
+</odePagStructures>
+</ode>`;
+
+    const getTargetBlock = (docManager) =>
+      docManager.getNavigation().get(0).get('blocks').get(0);
+
+    it('accepts the .idevice extension case-insensitively', async () => {
+      const docManager = createManagerWithBlock();
+      const importer = new ComponentImporter(docManager, createMockAssetManager());
+      const file = new File([new Uint8Array([1, 2, 3])], 'TEST.IDEVICE');
+
+      const result = await importer.importIdeviceIntoBlock(file, 'page-1', 'block-1');
+
+      expect(result.success).toBe(true);
+    });
+
+    it('returns error when the ZIP cannot be unzipped', async () => {
+      const docManager = createManagerWithBlock();
+      const importer = new ComponentImporter(docManager, createMockAssetManager());
+      global.window.fflate = {
+        unzipSync: vi.fn(() => {
+          throw new Error('Invalid ZIP data');
+        }),
+      };
+      const file = new File([new Uint8Array([1, 2, 3])], 'test.idevice');
+
+      const result = await importer.importIdeviceIntoBlock(file, 'page-1', 'block-1');
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('Invalid ZIP file');
+      expect(result.error).toContain('Invalid ZIP data');
+    });
+
+    it('returns the declared-size violation reported by the unzip filter', async () => {
+      const docManager = createManagerWithBlock();
+      const importer = new ComponentImporter(docManager, createMockAssetManager());
+      vi.spyOn(importer, 'createDeclaredSizeFilter').mockImplementation((violation) => () => {
+        violation.error = 'declared size violation';
+        return false;
+      });
+      global.window.fflate = {
+        unzipSync: (data, options) => {
+          options.filter({ name: 'content.xml', originalSize: 1 });
+          return {};
+        },
+      };
+      const file = new File([new Uint8Array([1, 2, 3])], 'test.idevice');
+
+      const result = await importer.importIdeviceIntoBlock(file, 'page-1', 'block-1');
+
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('declared size violation');
+    });
+
+    it('returns error when content.xml is missing from the ZIP', async () => {
+      const docManager = createManagerWithBlock();
+      const importer = new ComponentImporter(docManager, createMockAssetManager());
+      global.window.fflate = {
+        unzipSync: vi.fn(() => ({ 'other.txt': new TextEncoder().encode('x') })),
+      };
+      const file = new File([new Uint8Array([1, 2, 3])], 'test.idevice');
+
+      const result = await importer.importIdeviceIntoBlock(file, 'page-1', 'block-1');
+
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('No content.xml found in component file');
+    });
+
+    it('returns error for malformed XML', async () => {
+      const docManager = createManagerWithBlock();
+      const importer = new ComponentImporter(docManager, createMockAssetManager());
+      global.window.fflate = createMockFflate('<?xml version="1.0"?><unclosed>');
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const file = new File([new Uint8Array([1, 2, 3])], 'test.idevice');
+
+      const result = await importer.importIdeviceIntoBlock(file, 'page-1', 'block-1');
+
+      expect(result.success).toBe(false);
+      // The generic message replaced the interpolated parseError.textContent
+      // (review #2474, point 1).
+      expect(result.error).toBe('The component XML is not valid');
+      errorSpy.mockRestore();
+    });
+
+    it('returns error when the XML has no odePagStructure', async () => {
+      const docManager = createManagerWithBlock();
+      const importer = new ComponentImporter(docManager, createMockAssetManager());
+      global.window.fflate = createMockFflate(`<?xml version="1.0" encoding="UTF-8"?>
+<ode xmlns="http://www.intef.es/xsd/ode" version="2.0">
+<odeResources>
+  <odeResource><key>odeComponentsResources</key><value>true</value></odeResource>
+</odeResources>
+<odePagStructures></odePagStructures>
+</ode>`);
+      const file = new File([new Uint8Array([1, 2, 3])], 'test.idevice');
+
+      const result = await importer.importIdeviceIntoBlock(file, 'page-1', 'block-1');
+
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('No iDevice found in component file');
+    });
+
+    it('works without an asset manager', async () => {
+      const docManager = createManagerWithBlock();
+      const importer = new ComponentImporter(docManager, null);
+      const file = new File([new Uint8Array([1, 2, 3])], 'test.idevice');
+
+      const result = await importer.importIdeviceIntoBlock(file, 'page-1', 'block-1');
+
+      expect(result.success).toBe(true);
+      expect(getTargetBlock(docManager).get('components').length).toBe(1);
+    });
+
+    it('converts asset references using the extracted asset map', async () => {
+      const docManager = createManagerWithBlock();
+      const assetMap = new Map([['img/photo.png', 'uuid-1/photo.png']]);
+      const assetManager = createMockAssetManager(assetMap);
+      assetManager.convertContextPathToAssetRefs = vi.fn(() => '<p>converted</p>');
+      const importer = new ComponentImporter(docManager, assetManager);
+      const file = new File([new Uint8Array([1, 2, 3])], 'test.idevice');
+
+      const result = await importer.importIdeviceIntoBlock(file, 'page-1', 'block-1');
+
+      expect(result.success).toBe(true);
+      expect(assetManager.convertContextPathToAssetRefs).toHaveBeenCalled();
+      const compMap = getTargetBlock(docManager).get('components').get(0);
+      expect(compMap.get('htmlView')).toBe('<p>converted</p>');
+    });
+
+    it('returns error when the page has no blocks array', async () => {
+      const docManager = createManagerWithBlock();
+      const pageMap = docManager.getNavigation().get(0);
+      pageMap._data.delete('blocks');
+      const importer = new ComponentImporter(docManager, createMockAssetManager());
+      const file = new File([new Uint8Array([1, 2, 3])], 'test.idevice');
+
+      const result = await importer.importIdeviceIntoBlock(file, 'page-1', 'block-1');
+
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('Target block not found');
+    });
+
+    it('creates the components array when the block does not have one', async () => {
+      const docManager = createManagerWithBlock();
+      const blockMap = getTargetBlock(docManager);
+      expect(blockMap.get('components')).toBeUndefined();
+      const importer = new ComponentImporter(docManager, createMockAssetManager());
+      const file = new File([new Uint8Array([1, 2, 3])], 'test.idevice');
+
+      const result = await importer.importIdeviceIntoBlock(file, 'page-1', 'block-1');
+
+      expect(result.success).toBe(true);
+      expect(blockMap.get('components')).toBeDefined();
+      expect(blockMap.get('components').length).toBe(1);
+    });
+
+    it('matches the target block by id when blockId is not set', async () => {
+      const docManager = createManagerWithBlock();
+      const blockMap = getTargetBlock(docManager);
+      blockMap._data.delete('blockId');
+      const importer = new ComponentImporter(docManager, createMockAssetManager());
+      const file = new File([new Uint8Array([1, 2, 3])], 'test.idevice');
+
+      const result = await importer.importIdeviceIntoBlock(file, 'page-1', 'block-1');
+
+      expect(result.success).toBe(true);
+      expect(blockMap.get('components').length).toBe(1);
+    });
+
+    it('matches the target block by id when id and blockId diverge (review #2474, point 7)', async () => {
+      const docManager = createManagerWithBlock();
+      const blockMap = getTargetBlock(docManager);
+      blockMap.set('blockId', 'block-other');
+      const importer = new ComponentImporter(docManager, createMockAssetManager());
+      const file = new File([new Uint8Array([1, 2, 3])], 'test.idevice');
+
+      const result = await importer.importIdeviceIntoBlock(file, 'page-1', 'block-1');
+
+      expect(result.success).toBe(true);
+      expect(result.blockId).toBe('block-1');
+      expect(blockMap.get('components').length).toBe(1);
+    });
+
+    it('matches the target block by blockId when id and blockId diverge (review #2474, point 7)', async () => {
+      const docManager = createManagerWithBlock();
+      const blockMap = getTargetBlock(docManager);
+      blockMap.set('id', 'block-other');
+      const importer = new ComponentImporter(docManager, createMockAssetManager());
+      const file = new File([new Uint8Array([1, 2, 3])], 'test.idevice');
+
+      const result = await importer.importIdeviceIntoBlock(file, 'page-1', 'block-1');
+
+      expect(result.success).toBe(true);
+      expect(blockMap.get('components').length).toBe(1);
+    });
+
+    it('finds the target page by pageId when id is not set', async () => {
+      const docManager = createManagerWithBlock();
+      docManager.getNavigation().get(0)._data.delete('id');
+      const importer = new ComponentImporter(docManager, createMockAssetManager());
+      const file = new File([new Uint8Array([1, 2, 3])], 'test.idevice');
+
+      const result = await importer.importIdeviceIntoBlock(file, 'page-1', 'block-1');
+
+      expect(result.success).toBe(true);
+    });
+
+    it('imports several components with fresh unique IDs and consecutive order', async () => {
+      const xml = wrapComponentsXml(`
+      <odeComponent>
+        <odeIdeviceId>idevice-a</odeIdeviceId>
+        <odeIdeviceTypeName>text</odeIdeviceTypeName>
+        <htmlView>&lt;p&gt;A&lt;/p&gt;</htmlView>
+        <jsonProperties>{"a":1}</jsonProperties>
+        <odeComponentsOrder>0</odeComponentsOrder>
+      </odeComponent>
+      <odeComponent>
+        <odeIdeviceId>idevice-b</odeIdeviceId>
+        <odeIdeviceTypeName>quiz</odeIdeviceTypeName>
+        <htmlView>&lt;p&gt;B&lt;/p&gt;</htmlView>
+        <jsonProperties>{"b":2}</jsonProperties>
+        <odeComponentsOrder>1</odeComponentsOrder>
+      </odeComponent>`);
+      const docManager = createManagerWithBlock();
+      global.window.fflate = createMockFflate(xml);
+      const importer = new ComponentImporter(docManager, createMockAssetManager());
+      const file = new File([new Uint8Array([1, 2, 3])], 'test.idevice');
+
+      const result = await importer.importIdeviceIntoBlock(file, 'page-1', 'block-1');
+
+      expect(result.success).toBe(true);
+      expect(result.componentIds).toHaveLength(2);
+      expect(new Set(result.componentIds).size).toBe(2);
+      expect(result.componentIds).not.toContain('idevice-a');
+      expect(result.componentIds).not.toContain('idevice-b');
+
+      const components = getTargetBlock(docManager).get('components');
+      expect(components.length).toBe(2);
+      expect(components.get(0).get('ideviceType')).toBe('text');
+      expect(components.get(0).get('order')).toBe(0);
+      expect(components.get(1).get('ideviceType')).toBe('quiz');
+      expect(components.get(1).get('order')).toBe(1);
+      expect(components.get(0).get('id')).toBe(result.componentIds[0]);
+      expect(components.get(1).get('ideviceId')).toBe(result.componentIds[1]);
+    });
+
+    it('keeps an embedded ideviceId that does not match the original component id', async () => {
+      const xml = wrapComponentsXml(`
+      <odeComponent>
+        <odeIdeviceId>idevice-orig</odeIdeviceId>
+        <odeIdeviceTypeName>text</odeIdeviceTypeName>
+        <jsonProperties>{"ideviceId":"some-other-id"}</jsonProperties>
+        <odeComponentsOrder>0</odeComponentsOrder>
+      </odeComponent>`);
+      const docManager = createManagerWithBlock();
+      global.window.fflate = createMockFflate(xml);
+      const importer = new ComponentImporter(docManager, createMockAssetManager());
+      const file = new File([new Uint8Array([1, 2, 3])], 'test.idevice');
+
+      const result = await importer.importIdeviceIntoBlock(file, 'page-1', 'block-1');
+
+      expect(result.success).toBe(true);
+      const compMap = getTargetBlock(docManager).get('components').get(0);
+      expect(JSON.parse(compMap.get('jsonProperties')).ideviceId).toBe('some-other-id');
+    });
+
+    it('preserves component structure properties (issue #1991)', async () => {
+      const xml = wrapComponentsXml(`
+      <odeComponent>
+        <odeIdeviceId>idevice-props</odeIdeviceId>
+        <odeIdeviceTypeName>text</odeIdeviceTypeName>
+        <jsonProperties>{}</jsonProperties>
+        <odeComponentsOrder>0</odeComponentsOrder>
+        <odeComponentsProperties>
+          <odeComponentsProperty><key>visibility</key><value>false</value></odeComponentsProperty>
+          <odeComponentsProperty><key>cssClass</key><value>my-class</value></odeComponentsProperty>
+        </odeComponentsProperties>
+      </odeComponent>`);
+      const docManager = createManagerWithBlock();
+      global.window.fflate = createMockFflate(xml);
+      const importer = new ComponentImporter(docManager, createMockAssetManager());
+      const file = new File([new Uint8Array([1, 2, 3])], 'test.idevice');
+
+      const result = await importer.importIdeviceIntoBlock(file, 'page-1', 'block-1');
+
+      expect(result.success).toBe(true);
+      const propsMap = getTargetBlock(docManager).get('components').get(0).get('properties');
+      expect(propsMap.get('visibility')).toBe('false');
+      expect(propsMap.get('cssClass')).toBe('my-class');
+    });
+
+    it('runs the insertion inside a Yjs transaction with the doc clientID', async () => {
+      const docManager = createManagerWithBlock();
+      const importer = new ComponentImporter(docManager, createMockAssetManager());
+      const file = new File([new Uint8Array([1, 2, 3])], 'test.idevice');
+
+      await importer.importIdeviceIntoBlock(file, 'page-1', 'block-1');
+
+      expect(docManager.getDoc().transact).toHaveBeenCalledTimes(1);
+      expect(docManager.getDoc().transact.mock.calls[0][1]).toBe('test-client-id');
+    });
+
+    it('does not modify the block when the target block is missing', async () => {
+      const docManager = createManagerWithBlock('page-1', 'block-other');
+      const importer = new ComponentImporter(docManager, createMockAssetManager());
+      const file = new File([new Uint8Array([1, 2, 3])], 'test.idevice');
+
+      await importer.importIdeviceIntoBlock(file, 'page-1', 'block-missing');
+
+      expect(getTargetBlock(docManager).get('components')).toBeUndefined();
+    });
+
+    it('stores no assets when the target page is missing', async () => {
+      const docManager = createManagerWithBlock();
+      const assetManager = createMockAssetManager();
+      const importer = new ComponentImporter(docManager, assetManager);
+      const file = new File([new Uint8Array([1, 2, 3])], 'test.idevice');
+
+      const result = await importer.importIdeviceIntoBlock(file, 'nonexistent-page', 'block-1');
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('Target page not found');
+      expect(assetManager.extractAssetsFromZip).not.toHaveBeenCalled();
+    });
+
+    it('stores no assets when the target block is missing', async () => {
+      const docManager = createManagerWithBlock('page-1', 'block-other');
+      const assetManager = createMockAssetManager();
+      const importer = new ComponentImporter(docManager, assetManager);
+      const file = new File([new Uint8Array([1, 2, 3])], 'test.idevice');
+
+      const result = await importer.importIdeviceIntoBlock(file, 'page-1', 'block-missing');
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('Target block not found');
+      expect(assetManager.extractAssetsFromZip).not.toHaveBeenCalled();
+    });
+
+    it('stores no assets when the page has no blocks array', async () => {
+      const docManager = createManagerWithBlock();
+      docManager.getNavigation().get(0)._data.delete('blocks');
+      const assetManager = createMockAssetManager();
+      const importer = new ComponentImporter(docManager, assetManager);
+      const file = new File([new Uint8Array([1, 2, 3])], 'test.idevice');
+
+      const result = await importer.importIdeviceIntoBlock(file, 'page-1', 'block-1');
+
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('Target block not found');
+      expect(assetManager.extractAssetsFromZip).not.toHaveBeenCalled();
+    });
+
+    it('stores no assets when the component file has no components', async () => {
+      const docManager = createManagerWithBlock();
+      const assetManager = createMockAssetManager();
+      global.window.fflate = createMockFflate(`<?xml version="1.0" encoding="UTF-8"?>
+<ode xmlns="http://www.intef.es/xsd/ode" version="2.0">
+<odeResources>
+  <odeResource><key>odeComponentsResources</key><value>true</value></odeResource>
+</odeResources>
+<odePagStructures>
+  <odePagStructure>
+    <odeBlockId>block-empty</odeBlockId>
+    <blockName>Empty</blockName>
+    <odeComponents></odeComponents>
+  </odePagStructure>
+</odePagStructures>
+</ode>`);
+      const importer = new ComponentImporter(docManager, assetManager);
+      const file = new File([new Uint8Array([1, 2, 3])], 'test.idevice');
+
+      const result = await importer.importIdeviceIntoBlock(file, 'page-1', 'block-1');
+
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('No iDevice found in component file');
+      expect(assetManager.extractAssetsFromZip).not.toHaveBeenCalled();
+    });
+
+    // ---- Review #2474, point 2: the page is re-resolved inside the transaction ----
+
+    it('fails without inserting when the page disappears during the import (review #2474, point 2)', async () => {
+      // Before the fix, `targetPage` was captured before the transaction, so
+      // a page deleted in between still matched and the components were
+      // written into a detached subtree (and success was reported). The page
+      // is now re-resolved inside the transaction.
+      //
+      // Known limitation (documented in importIdeviceIntoBlock): the assets
+      // are stored before the transaction, so they are already in the project
+      // when the transaction bails. Storing them after the insert would leave
+      // the {{context_path}} references unconverted in the inserted Y.Maps.
+      const docManager = createManagerWithBlock();
+      const assetManager = createMockAssetManager();
+      const importer = new ComponentImporter(docManager, assetManager);
+      const navigation = docManager.getNavigation();
+      const originalFindPage = importer.findPage.bind(importer);
+      let findPageCalls = 0;
+      vi.spyOn(importer, 'findPage').mockImplementation((id) => {
+        findPageCalls += 1;
+        if (findPageCalls === 2) {
+          // Second call: inside the transaction. Simulate a collaborator
+          // removing the whole page while the assets were being stored.
+          navigation._items.length = 0;
+          return null;
+        }
+        return originalFindPage(id);
+      });
+      const file = new File([new Uint8Array([1, 2, 3])], 'test.idevice');
+
+      const result = await importer.importIdeviceIntoBlock(file, 'page-1', 'block-1');
+
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('Target block not found');
+      expect(findPageCalls).toBe(2);
+    });
+
+    it('does not reach the transaction when a component Y.Map fails to build', async () => {
+      const xml = wrapComponentsXml(`
+      <odeComponent>
+        <odeIdeviceId>idevice-a</odeIdeviceId>
+        <odeIdeviceTypeName>text</odeIdeviceTypeName>
+        <htmlView>&lt;p&gt;A&lt;/p&gt;</htmlView>
+        <odeComponentsOrder>0</odeComponentsOrder>
+      </odeComponent>
+      <odeComponent>
+        <odeIdeviceId>idevice-b</odeIdeviceId>
+        <odeIdeviceTypeName>quiz</odeIdeviceTypeName>
+        <htmlView>&lt;p&gt;B&lt;/p&gt;</htmlView>
+        <odeComponentsOrder>1</odeComponentsOrder>
+      </odeComponent>`);
+      const docManager = createManagerWithBlock();
+      global.window.fflate = createMockFflate(xml);
+      const importer = new ComponentImporter(docManager, createMockAssetManager());
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const realCreate = importer.createComponentYMap.bind(importer);
+      let buildCalls = 0;
+      vi.spyOn(importer, 'createComponentYMap').mockImplementation((compData) => {
+        buildCalls += 1;
+        if (buildCalls === 2) throw new Error('build failed');
+        return realCreate(compData);
+      });
+      const file = new File([new Uint8Array([1, 2, 3])], 'test.idevice');
+
+      const result = await importer.importIdeviceIntoBlock(file, 'page-1', 'block-1');
+
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('build failed');
+      expect(getTargetBlock(docManager).get('components')).toBeUndefined();
+      expect(docManager.getDoc().transact).not.toHaveBeenCalled();
+      errorSpy.mockRestore();
+    });
+
+    it('appends after the max existing order, not the array length', async () => {
+      const docManager = createManagerWithBlock();
+      const Y = docManager._Y;
+      const existing = new Y.Array();
+      for (const order of [0, 2]) {
+        const comp = new Y.Map();
+        comp.set('id', `existing-${order}`);
+        comp.set('order', order);
+        existing.push([comp]);
+      }
+      getTargetBlock(docManager).set('components', existing);
+
+      const importer = new ComponentImporter(docManager, createMockAssetManager());
+      const file = new File([new Uint8Array([1, 2, 3])], 'test.idevice');
+
+      const result = await importer.importIdeviceIntoBlock(file, 'page-1', 'block-1');
+
+      expect(result.success).toBe(true);
+      const components = getTargetBlock(docManager).get('components');
+      expect(components.length).toBe(3);
+      expect(components.get(2).get('order')).toBe(3);
+    });
+
+    it('appends to a block whose existing orders are sparse but not sorted', async () => {
+      const docManager = createManagerWithBlock();
+      const Y = docManager._Y;
+      const existing = new Y.Array();
+      for (const order of [5, 2]) {
+        const comp = new Y.Map();
+        comp.set('id', `existing-${order}`);
+        comp.set('order', order);
+        existing.push([comp]);
+      }
+      getTargetBlock(docManager).set('components', existing);
+
+      const importer = new ComponentImporter(docManager, createMockAssetManager());
+      const file = new File([new Uint8Array([1, 2, 3])], 'test.idevice');
+
+      const result = await importer.importIdeviceIntoBlock(file, 'page-1', 'block-1');
+
+      expect(result.success).toBe(true);
+      const components = getTargetBlock(docManager).get('components');
+      expect(components.get(2).get('order')).toBe(6);
+    });
+
+    it('appends several components with consecutive orders after the max order', async () => {
+      const docManager = createManagerWithBlock();
+      const Y = docManager._Y;
+      const existing = new Y.Array();
+      const comp = new Y.Map();
+      comp.set('id', 'existing-5');
+      comp.set('order', 5);
+      existing.push([comp]);
+      getTargetBlock(docManager).set('components', existing);
+
+      const xml = wrapComponentsXml(`
+      <odeComponent>
+        <odeIdeviceId>idevice-a</odeIdeviceId>
+        <odeIdeviceTypeName>text</odeIdeviceTypeName>
+        <htmlView>&lt;p&gt;A&lt;/p&gt;</htmlView>
+        <odeComponentsOrder>0</odeComponentsOrder>
+      </odeComponent>
+      <odeComponent>
+        <odeIdeviceId>idevice-b</odeIdeviceId>
+        <odeIdeviceTypeName>quiz</odeIdeviceTypeName>
+        <htmlView>&lt;p&gt;B&lt;/p&gt;</htmlView>
+        <odeComponentsOrder>1</odeComponentsOrder>
+      </odeComponent>`);
+      global.window.fflate = createMockFflate(xml);
+      const importer = new ComponentImporter(docManager, createMockAssetManager());
+      const file = new File([new Uint8Array([1, 2, 3])], 'test.idevice');
+
+      const result = await importer.importIdeviceIntoBlock(file, 'page-1', 'block-1');
+
+      expect(result.success).toBe(true);
+      const components = getTargetBlock(docManager).get('components');
+      expect(components.get(1).get('order')).toBe(6);
+      expect(components.get(2).get('order')).toBe(7);
+    });
+
+    it('returns error when the block disappears between validation and insertion', async () => {
+      const docManager = createManagerWithBlock();
+      const importer = new ComponentImporter(docManager, createMockAssetManager());
+      const blocksArray = docManager.getNavigation().get(0).get('blocks');
+      const originalFind = importer.findBlockInArray.bind(importer);
+      let findCalls = 0;
+      vi.spyOn(importer, 'findBlockInArray').mockImplementation((array, id) => {
+        findCalls += 1;
+        if (findCalls === 2) {
+          blocksArray._items.length = 0;
+        }
+        return originalFind(array, id);
+      });
+      const file = new File([new Uint8Array([1, 2, 3])], 'test.idevice');
+
+      const result = await importer.importIdeviceIntoBlock(file, 'page-1', 'block-1');
+
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('Target block not found');
+    });
+
+    // ---- Review #2474, point 4: asset references must reach the inserted Y.Maps ----
+
+    it('inserts components whose {{context_path}} references are already converted to asset refs (review #2474, point 4)', async () => {
+      // Regression guard: if the assets were extracted AFTER the insert, the
+      // component Y.Maps would be built from the unconverted htmlView and the
+      // imported images would never resolve.
+      const xml = wrapComponentsXml(`
+      <odeComponent>
+        <odeIdeviceId>idevice-img</odeIdeviceId>
+        <odeIdeviceTypeName>text</odeIdeviceTypeName>
+        <htmlView>&lt;p&gt;{{context_path}}/x.png&lt;/p&gt;</htmlView>
+        <jsonProperties>{"url":"{{context_path}}/x.png"}</jsonProperties>
+        <odeComponentsOrder>0</odeComponentsOrder>
+      </odeComponent>`);
+      const docManager = createManagerWithBlock();
+      global.window.fflate = createMockFflate(xml);
+      const assetManager = createMockAssetManager(new Map([['x.png', 'new-uuid']]));
+      assetManager.convertContextPathToAssetRefs = vi.fn((content) =>
+        content.replace('{{context_path}}/x.png', 'asset://new-uuid/x.png'),
+      );
+      const importer = new ComponentImporter(docManager, assetManager);
+      // convertAssetPathsInObject is exercised separately; keep it simple here.
+      importer.convertAssetPathsInObject = vi.fn((obj) => ({ ...obj, url: 'asset://new-uuid/x.png' }));
+      const file = new File([new Uint8Array([1, 2, 3])], 'test.idevice');
+
+      const result = await importer.importIdeviceIntoBlock(file, 'page-1', 'block-1');
+
+      expect(result.success).toBe(true);
+      const inserted = getTargetBlock(docManager).get('components').get(0);
+      expect(inserted.get('htmlView')).toContain('asset://new-uuid/x.png');
+      expect(inserted.get('htmlView')).not.toContain('{{context_path}}');
+      expect(inserted.get('jsonProperties')).toContain('asset://new-uuid/x.png');
+      expect(inserted.get('jsonProperties')).not.toContain('{{context_path}}');
+    });
+
+    it('extracts the assets before building the component Y.Maps (review #2474, point 4)', async () => {
+      const docManager = createManagerWithBlock();
+      const assetManager = createMockAssetManager();
+      const importer = new ComponentImporter(docManager, assetManager);
+      const order = [];
+      assetManager.extractAssetsFromZip = vi.fn(async () => {
+        order.push('extract');
+        return new Map();
+      });
+      const realCreate = importer.createComponentYMap.bind(importer);
+      vi.spyOn(importer, 'createComponentYMap').mockImplementation((compData) => {
+        order.push('build');
+        return realCreate(compData);
+      });
+      const file = new File([new Uint8Array([1, 2, 3])], 'test.idevice');
+
+      const result = await importer.importIdeviceIntoBlock(file, 'page-1', 'block-1');
+
+      expect(result.success).toBe(true);
+      expect(order[0]).toBe('extract');
+      expect(order.indexOf('build')).toBeGreaterThan(order.indexOf('extract'));
+    });
+
+    it('reports an import error and inserts nothing when asset storage fails (review #2474, point 4)', async () => {
+      // No success-with-broken-images: a storage failure fails the import
+      // BEFORE the Y.Doc is touched, so the user can simply retry.
+      const docManager = createManagerWithBlock();
+      const assetManager = createMockAssetManager();
+      assetManager.extractAssetsFromZip = vi.fn().mockRejectedValue(new Error('disk full'));
+      const importer = new ComponentImporter(docManager, assetManager);
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const file = new File([new Uint8Array([1, 2, 3])], 'test.idevice');
+
+      const result = await importer.importIdeviceIntoBlock(file, 'page-1', 'block-1');
+
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('disk full');
+      expect(getTargetBlock(docManager).get('components')).toBeUndefined();
+      errorSpy.mockRestore();
+    });
+
+    it('handles unexpected exceptions gracefully', async () => {
+      const docManager = createManagerWithBlock();
+      const importer = new ComponentImporter(docManager, createMockAssetManager());
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const badFile = {
+        name: 'test.idevice',
+        size: 10,
+        arrayBuffer: () => Promise.reject(new Error('Read error')),
+      };
+
+      const result = await importer.importIdeviceIntoBlock(badFile, 'page-1', 'block-1');
+
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('Read error');
+      expect(errorSpy).toHaveBeenCalled();
+      errorSpy.mockRestore();
+    });
+
+    it('falls back to a generic error message when the exception has no message', async () => {
+      const docManager = createManagerWithBlock();
+      const importer = new ComponentImporter(docManager, createMockAssetManager());
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const badFile = {
+        name: 'test.idevice',
+        size: 10,
+        arrayBuffer: () => Promise.reject({}),
+      };
+
+      const result = await importer.importIdeviceIntoBlock(badFile, 'page-1', 'block-1');
+
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('Import failed');
+      errorSpy.mockRestore();
+    });
+  });
+
+  // ---- Review #2474, point 8: the module must work without a global _ translator ----
+  //
+  // The module reads `window._` ONCE, when it is loaded. To test the fallback the
+  // module has to be re-evaluated, so these tests clear Node's require cache.
+
+  describe('translator fallback (review #2474, point 8)', () => {
+    const modulePath = require.resolve('./ComponentImporter');
+    const loadFresh = () => {
+      delete require.cache[modulePath];
+      return require('./ComponentImporter');
+    };
+    afterEach(() => {
+      delete require.cache[modulePath];
+    });
+
+    it('falls back to the identity function when window._ is not defined', () => {
+      global.window._ = undefined;
+      const Fresh = loadFresh();
+      const importer = new Fresh(createMockDocumentManager([{ id: 'page-1' }]), null);
+      expect(() => importer.parseComponentXml({})).not.toThrow();
+      expect(importer.parseComponentXml({}).error).toBe('No content.xml found in component file');
+    });
+
+    it('uses window._ when the workarea provides one', () => {
+      global.window._ = (s) => `[tr] ${s}`;
+      const Fresh = loadFresh();
+      const importer = new Fresh(createMockDocumentManager([{ id: 'page-1' }]), null);
+      expect(importer.parseComponentXml({}).error).toBe('[tr] No content.xml found in component file');
+    });
+  });
+  describe('importComponent: inserted block content', () => {
+    it('stores the block metadata and appends later imports with increasing order', async () => {
+      const docManager = createMockDocumentManager([{ id: 'page-1' }]);
+      const importer = new ComponentImporter(docManager, null);
+      const mk = () => new File([new Uint8Array([1, 2, 3])], 'test.block');
+
+      const first = await importer.importComponent(mk(), 'page-1');
+      const second = await importer.importComponent(mk(), 'page-1');
+
+      expect(first.success && second.success).toBe(true);
+      expect(first.blockId).not.toBe(second.blockId);
+
+      const blocks = docManager._navigation.get(0).get('blocks');
+      expect(blocks.length).toBe(2);
+      expect(blocks.get(0).get('order')).toBe(0);
+      expect(blocks.get(1).get('order')).toBe(1);
+      expect(blocks.get(0).get('id')).toBe(first.blockId);
+      expect(blocks.get(1).get('id')).toBe(second.blockId);
+      expect(blocks.get(1).get('blockName')).toBe('Test Block');
+      expect(blocks.get(1).get('iconName')).toBe('');
+      expect(typeof blocks.get(1).get('createdAt')).toBe('string');
+    });
+
+    // Historical behaviour, pinned on purpose: unlike importIdeviceIntoBlock (which
+    // rejects a file without components), importComponent accepts a .block with no
+    // components and inserts an empty block. If this is ever changed, change it here too.
+    it('inserts an empty block when the file has no components (historical behaviour)', async () => {
+      const EMPTY_BLOCK_XML = `<?xml version="1.0" encoding="UTF-8"?>
+<ode xmlns="http://www.intef.es/xsd/ode" version="2.0">
+<odeResources>
+  <odeResource><key>odeComponentsResources</key><value>true</value></odeResource>
+</odeResources>
+<odePagStructures>
+  <odePagStructure>
+    <odeBlockId>block-empty</odeBlockId>
+    <blockName>Empty block</blockName>
+    <odeComponents></odeComponents>
+  </odePagStructure>
+</odePagStructures>
+</ode>`;
+      const docManager = createMockDocumentManager([{ id: 'page-1' }]);
+      global.window.fflate = createMockFflate(EMPTY_BLOCK_XML);
+      const importer = new ComponentImporter(docManager, null);
+
+      const result = await importer.importComponent(new File([new Uint8Array([1])], 'empty.block'), 'page-1');
+
+      expect(result.success).toBe(true);
+      const blocks = docManager._navigation.get(0).get('blocks');
+      expect(blocks.length).toBe(1);
+      expect(blocks.get(0).get('id')).toBe(result.blockId);
+      expect(blocks.get(0).get('blockName')).toBe('Empty block');
+      expect(blocks.get(0).get('components').length).toBe(0);
+    });
+
+    it('copies the component fields (type, html, json properties) into the Y.Map', async () => {
+      const docManager = createMockDocumentManager([{ id: 'page-1' }]);
+      const importer = new ComponentImporter(docManager, null);
+
+      await importer.importComponent(new File([new Uint8Array([1])], 'x.block'), 'page-1');
+
+      const comp = docManager._navigation.get(0).get('blocks').get(0).get('components').get(0);
+      expect(comp.get('ideviceType')).toBe('text');
+      expect(comp.get('type')).toBe('text');
+      // toContain, not toBe: decodeHtmlContent uses textarea.innerHTML, which happy-dom
+      // parses as markup (a real browser keeps '<p>' literal), so tags may be stripped here.
+      expect(comp.get('htmlView')).toContain('Hello World');
+      expect(JSON.parse(comp.get('jsonProperties'))).toEqual({ textTextarea: 'Hello World' });
+    });
+
+    // The page can be removed by a collaborator after the validation and before the
+    // transaction runs. importComponent must then report the failure (like
+    // importIdeviceIntoBlock does) instead of returning success with nothing inserted.
+    it('reports failure when the page disappears before the transaction runs', async () => {
+      const docManager = createMockDocumentManager([{ id: 'page-1' }]);
+      const importer = new ComponentImporter(docManager, null);
+      const nav = docManager._navigation;
+      vi.spyOn(importer, 'findPage').mockImplementation(() => {
+        const page = nav.get(0);
+        nav._items.length = 0; // collaborator removes the page right after validation
+        return page;
+      });
+
+      const result = await importer.importComponent(new File([new Uint8Array([1])], 'x.block'), 'page-1');
+
+      expect(result.success).toBe(false);
+      expect(result.error).toBe('Target page not found');
+      expect(result.blockId).toBeUndefined();
+    });
+  });
+
+  describe('importIdeviceIntoBlock: component ordering', () => {
+    const wrap = (components) => `<?xml version="1.0" encoding="UTF-8"?>
+<ode xmlns="http://www.intef.es/xsd/ode" version="2.0">
+<odeResources>
+  <odeResource><key>odeComponentsResources</key><value>true</value></odeResource>
+</odeResources>
+<odePagStructures>
+  <odePagStructure>
+    <odeBlockId>b</odeBlockId>
+    <odeComponents>${components}</odeComponents>
+  </odePagStructure>
+</odePagStructures>
+</ode>`;
+
+    it('assigns consecutive orders following document order, ignoring odeComponentsOrder', async () => {
+      const Y = createMockY();
+      const nav = new Y.Array();
+      const page = new Y.Map();
+      page.set('id', 'p');
+      page.set('blocks', new Y.Array());
+      const block = new Y.Map();
+      block.set('id', 'b1');
+      page.get('blocks').push([block]);
+      nav.push([page]);
+      const docManager = { getDoc: () => ({ clientID: 'c', transact: (fn) => fn() }), getNavigation: () => nav };
+      global.window.fflate = createMockFflate(wrap(`
+        <odeComponent><odeIdeviceId>a</odeIdeviceId><odeIdeviceTypeName>text</odeIdeviceTypeName><odeComponentsOrder>5</odeComponentsOrder></odeComponent>
+        <odeComponent><odeIdeviceId>b</odeIdeviceId><odeIdeviceTypeName>quiz</odeIdeviceTypeName><odeComponentsOrder>3</odeComponentsOrder></odeComponent>`));
+      const importer = new ComponentImporter(docManager, null);
+
+      const result = await importer.importIdeviceIntoBlock(new File([new Uint8Array([1])], 'x.idevice'), 'p', 'b1');
+
+      expect(result.success).toBe(true);
+      const comps = block.get('components');
+      expect(comps.get(0).get('ideviceType')).toBe('text');
+      expect(comps.get(0).get('order')).toBe(0);
+      expect(comps.get(1).get('ideviceType')).toBe('quiz');
+      expect(comps.get(1).get('order')).toBe(1);
+    });
+  });
+
+  describe('resolveComponentLimits: invalid shared tier', () => {
+    const base = { maxFileBytes: 1, maxTotalBytes: 2, maxEntryBytes: 3 };
+    const fallbackEntries = 10000;
+
+    it.each([
+      ['Infinity', Infinity],
+      ['a fraction', 1.5],
+      ['NaN', NaN],
+      ['a string', '10'],
+      ['undefined', undefined],
+    ])('falls back to the local constants when maxEntries is %s', (_label, value) => {
+      global.window.ExeImportPolicy = { COMPONENT_IMPORT_LIMITS: { ...base, maxEntries: value } };
+      const limits = new ComponentImporter(createMockDocumentManager(), null).resolveComponentLimits();
+      expect(limits.maxEntries).toBe(fallbackEntries);
+      expect(limits.maxFileBytes).toBe(50 * 1024 * 1024);
+    });
+
+    it('falls back when the tier is not an object', () => {
+      global.window.ExeImportPolicy = { COMPONENT_IMPORT_LIMITS: 'nope' };
+      const limits = new ComponentImporter(createMockDocumentManager(), null).resolveComponentLimits();
+      expect(limits.maxEntries).toBe(fallbackEntries);
+    });
+  });
+
+  // Real Yjs: the mocks above accept things real Yjs does not (e.g. reading from a
+  // Y.Map that is not yet attached to a doc). This block runs the real importer against
+  // a real Y.Doc. It is skipped when the `yjs` package cannot be resolved from here;
+  // point the require below at the vendored bundle if it is not in node_modules.
+  let RealY = null;
+  try {
+    RealY = require('yjs');
+  } catch (e) {
+    RealY = null;
+  }
+
+  // Avoid phantom coverage: when the environment is expected to have Yjs (CI, or
+  // REQUIRE_YJS=1) a missing package must FAIL the suite instead of silently skipping
+  // the real-Y.Doc tests. Elsewhere it only warns.
+  const yjsRequired = Boolean(process.env.CI || process.env.REQUIRE_YJS);
+  if (!RealY && !yjsRequired) {
+    console.warn(
+      '[ComponentImporter.test] "yjs" could not be resolved: the "with a real Y.Doc" tests are SKIPPED. ' +
+        'Set REQUIRE_YJS=1 (or run in CI) to make this an error.'
+    );
+  }
+
+  describe('real Yjs availability', () => {
+    it('yjs can be resolved when the environment requires it (CI / REQUIRE_YJS)', () => {
+      expect(RealY !== null || !yjsRequired).toBe(true);
+    });
+  });
+
+  describe.skipIf(!RealY)('with a real Y.Doc', () => {
+    const makeDoc = () => {
+      const ydoc = new RealY.Doc();
+      const nav = ydoc.getArray('navigation');
+      const page = new RealY.Map();
+      nav.push([page]);
+      page.set('id', 'page-1');
+      page.set('pageId', 'page-1');
+      page.set('blocks', new RealY.Array());
+      const block = new RealY.Map();
+      page.get('blocks').push([block]);
+      block.set('id', 'block-1');
+      block.set('blockId', 'block-1');
+      return { ydoc, page, block, manager: { getDoc: () => ydoc, getNavigation: () => nav } };
+    };
+
+    beforeEach(() => {
+      global.window.Y = RealY;
+    });
+
+    it('importComponent inserts a block that survives a Y.Doc round trip', async () => {
+      const { ydoc, page, manager } = makeDoc();
+      global.window.fflate = createMockFflate(SAMPLE_COMPONENT_XML);
+      const importer = new ComponentImporter(manager, null);
+
+      const result = await importer.importComponent(new File([new Uint8Array([1])], 'x.block'), 'page-1');
+
+      expect(result.success).toBe(true);
+      const json = page.toJSON();
+      const inserted = json.blocks.find((b) => b.id === result.blockId);
+      expect(inserted.blockName).toBe('Test Block');
+      expect(inserted.components).toHaveLength(1);
+      expect(inserted.components[0].htmlView).toContain('Hello World');
+
+      // a second doc applying the update sees the same content
+      const other = new RealY.Doc();
+      RealY.applyUpdate(other, RealY.encodeStateAsUpdate(ydoc));
+      expect(other.getArray('navigation').toJSON()[0].blocks.some((b) => b.id === result.blockId)).toBe(true);
+    });
+
+    it('importIdeviceIntoBlock appends components with order after the existing max', async () => {
+      const { block, manager } = makeDoc();
+      const existing = new RealY.Array();
+      block.set('components', existing);
+      const c0 = new RealY.Map();
+      existing.push([c0]);
+      c0.set('id', 'old-0');
+      c0.set('order', 0);
+      const c2 = new RealY.Map();
+      existing.push([c2]);
+      c2.set('id', 'old-2');
+      c2.set('order', 2);
+      global.window.fflate = createMockFflate(SAMPLE_COMPONENT_XML);
+      const importer = new ComponentImporter(manager, null);
+
+      const result = await importer.importIdeviceIntoBlock(
+        new File([new Uint8Array([1])], 'x.idevice'),
+        'page-1',
+        'block-1'
+      );
+
+      expect(result.success).toBe(true);
+      const comps = block.toJSON().components;
+      expect(comps.map((c) => c.id).slice(0, 2)).toEqual(['old-0', 'old-2']);
+      expect(comps[2].order).toBe(3);
+      expect(comps[2].id).toBe(result.componentIds[0]);
+    });
+
+    it('stores component structure properties as a nested Y.Map (issue #1991)', async () => {
+      const { block, manager } = makeDoc();
+      global.window.fflate = createMockFflate(`<?xml version="1.0" encoding="UTF-8"?>
+<ode xmlns="http://www.intef.es/xsd/ode" version="2.0">
+<odeResources><odeResource><key>odeComponentsResources</key><value>true</value></odeResource></odeResources>
+<odePagStructures><odePagStructure><odeBlockId>b</odeBlockId><odeComponents>
+  <odeComponent><odeIdeviceId>i</odeIdeviceId><odeIdeviceTypeName>text</odeIdeviceTypeName>
+    <odeComponentsOrder>0</odeComponentsOrder>
+    <odeComponentsProperties><odeComponentsProperty><key>teacherOnly</key><value>true</value></odeComponentsProperty></odeComponentsProperties>
+  </odeComponent></odeComponents></odePagStructure></odePagStructures>
+</ode>`);
+      const importer = new ComponentImporter(manager, null);
+
+      const result = await importer.importIdeviceIntoBlock(
+        new File([new Uint8Array([1])], 'x.idevice'),
+        'page-1',
+        'block-1'
+      );
+
+      expect(result.success).toBe(true);
+      expect(block.toJSON().components[0].properties).toEqual({ teacherOnly: 'true' });
     });
   });
 });
