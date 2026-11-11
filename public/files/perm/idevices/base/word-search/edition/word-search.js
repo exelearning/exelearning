@@ -783,6 +783,38 @@ var $exeDevice = {
         return ideviceid;
     },
 
+    /**
+     * The words of the activity, checked. Saving asks for more than
+     * this; Export, which only writes the words, for nothing else.
+     *
+     * @returns {Array|false} The words, or false after telling the
+     * author what one of them is missing.
+     */
+    validateQuestions: function () {
+        const wordsGame = $exeDevice.wordsGame;
+        if (wordsGame.length == 0) {
+            eXe.app.alert($exeDevice.msgs.msgEOneQuestion);
+            return false;
+        }
+
+        for (let i = 0; i < wordsGame.length; i++) {
+            const mquestion = wordsGame[i];
+            if (mquestion.word.length == 0) {
+                $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgEProvideWord);
+                return false;
+            } else if (
+                mquestion.definition.length == 0 &&
+                mquestion.url.length < 4
+            ) {
+                $exeIDevicesEdition.iDevice.common.showMessage(
+                    `${$exeDevice.msgs.msgEProvideDefinition} ${mquestion.word}`
+                );
+                return false;
+            }
+        }
+        return wordsGame;
+    },
+
     validateData: function () {
         const clear = $exeIDevicesEdition.iDevice.common.removeTags,
             instructions = tinyMCE.get('eXeGameInstructions').getContent(),
@@ -812,26 +844,7 @@ var $exeDevice = {
 
         if (!feedback) return false;
 
-        if (wordsGame.length == 0) {
-            eXe.app.alert($exeDevice.msgs.msgEOneQuestion);
-            return false;
-        }
-
-        for (let i = 0; i < wordsGame.length; i++) {
-            const mquestion = wordsGame[i];
-            if (mquestion.word.length == 0) {
-                $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgEProvideWord);
-                return false;
-            } else if (
-                mquestion.definition.length == 0 &&
-                mquestion.url.length < 4
-            ) {
-                $exeIDevicesEdition.iDevice.common.showMessage(
-                    `${$exeDevice.msgs.msgEProvideDefinition} ${mquestion.word}`
-                );
-                return false;
-            }
-        }
+        if (!$exeDevice.validateQuestions()) return false;
 
         return {
             typeGame: 'Sopa',
@@ -1335,10 +1348,11 @@ var $exeDevice = {
 
     exportQuestions: function () {
         if (!$exeDevice.validateQuestion()) return false;
-        const dataGame = this.validateData();
-        if (!dataGame) return false;
+        // Only the words are checked: they are all that Export writes.
+        const wordsGame = this.validateQuestions();
+        if (!wordsGame) return false;
 
-        const lines = this.getLinesQuestions(dataGame.wordsGame);
+        const lines = this.getLinesQuestions(wordsGame);
         const fileContent = lines.join('\n');
         const newBlob = new Blob([fileContent], { type: 'text/plain' });
         return $exeIDevicesEdition.iDevice.gamification.share.downloadBlob(

@@ -473,10 +473,13 @@ describe('Discover Edition Functions', () => {
                     global.$exeDevicesEdition.iDevice.gamification.share = { ...prevLegacyShare, downloadBlob };
                 }
                 const validateQuestion = vi.spyOn(realExeDevice, 'validateQuestion').mockReturnValue(true);
-                vi.spyOn(realExeDevice, 'validateData').mockReturnValue(dataGame);
+                // Export checks the sets only, and reads the type of game from the form.
+                vi.spyOn(realExeDevice, 'validateQuestions').mockReturnValue(dataGame.wordsGame);
+                vi.spyOn(realExeDevice, 'getGameMode').mockReturnValue(dataGame.gameMode);
+                const validateData = vi.spyOn(realExeDevice, 'validateData');
 
                 const result = realExeDevice.exportQuestions();
-                return { result, downloadBlob, validateQuestion };
+                return { result, downloadBlob, validateQuestion, validateData };
             } finally {
                 if (global.$exeIDevicesEdition?.iDevice?.gamification && prevShare) {
                     global.$exeIDevicesEdition.iDevice.gamification.share = prevShare;
@@ -488,12 +491,14 @@ describe('Discover Edition Functions', () => {
         };
 
         it('downloads one line per set, with the text of each of its cards, as Import reads it', async () => {
-            const { result, downloadBlob, validateQuestion } = exportGame({
+            const { result, downloadBlob, validateQuestion, validateData } = exportGame({
                 gameMode: 1,
                 wordsGame: [set('Paris', 'France', 'Europe', 'Unused'), set('Lima #1', 'Peru', 'South\nAmerica')],
             });
 
             expect(validateQuestion).toHaveBeenCalled();
+            // The settings (feedback, passwords, report...) are for saving to check.
+            expect(validateData).not.toHaveBeenCalled();
             expect(result).toBe(true);
             expect(downloadBlob).toHaveBeenCalledTimes(1);
             const [blob, fileName, containerId] = downloadBlob.mock.calls[0];

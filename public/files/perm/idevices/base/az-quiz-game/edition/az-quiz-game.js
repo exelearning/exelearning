@@ -929,35 +929,17 @@ var $exeDevice = {
         return ideviceid;
     },
 
-    validateData: function () {
+    /**
+     * The words of the activity, checked. Saving asks for more than
+     * this; Export, which only writes the words, for nothing else.
+     *
+     * @returns {Array|false} The words, or false after telling the
+     * author what one of them is missing.
+     */
+    validateQuestions: function () {
         const clear = $exeIDevicesEdition.iDevice.common.removeTags,
             msgs = $exeDevice.msgs,
-            // By id: their order among the editors follows the tabs.
-            instructions = tinymce.get('eXeGameInstructions').getContent(),
-            textAfter = tinymce.get('eXeIdeviceTextAfter').getContent(),
-            showMinimize = $('#roscoShowMinimize').is(':checked'),
-            showSolution = $('#roscoShowSolution').is(':checked'),
-            modeBoard = $('#roscoModeBoard').is(':checked'),
-            timeShowSolution =
-                parseInt(clear($.trim($('#roscoTimeShowSolution').val()))) || 0,
-            durationGame = parseInt(clear($('#roscoDuration').val())) || 0,
-            numberTurns = parseInt(clear($('#roscoNumberTurns').val())) || 0,
-            itinerary =
-                $exeIDevicesEdition.iDevice.gamification.itinerary.getValues(),
-            caseSensitive = $('#roscoCaseSensitive').is(':checked'),
-            progressBar =
-                $exeIDevicesEdition.iDevice.gamification.progressBar.getValues(),
-            passScore =
-                $exeIDevicesEdition.iDevice.gamification.passScore.getValues(),
-            id = $exeDevice.getIdeviceID();
-
-        if (!itinerary) return false;
-        if (!progressBar) return false;
-
-        if (showSolution && timeShowSolution === 0) {
-            eXe.app.alert(msgs.msgProvideTimeSolution);
-            return false;
-        }
+            modeBoard = $('#roscoModeBoard').is(':checked');
 
         let words = [],
             zr = true;
@@ -1071,6 +1053,41 @@ var $exeDevice = {
                 y: parseFloat(ys[i]) || 0,
             });
         }
+        return wordsGame;
+    },
+
+    validateData: function () {
+        const clear = $exeIDevicesEdition.iDevice.common.removeTags,
+            msgs = $exeDevice.msgs,
+            // By id: their order among the editors follows the tabs.
+            instructions = tinymce.get('eXeGameInstructions').getContent(),
+            textAfter = tinymce.get('eXeIdeviceTextAfter').getContent(),
+            showMinimize = $('#roscoShowMinimize').is(':checked'),
+            showSolution = $('#roscoShowSolution').is(':checked'),
+            modeBoard = $('#roscoModeBoard').is(':checked'),
+            timeShowSolution =
+                parseInt(clear($.trim($('#roscoTimeShowSolution').val()))) || 0,
+            durationGame = parseInt(clear($('#roscoDuration').val())) || 0,
+            numberTurns = parseInt(clear($('#roscoNumberTurns').val())) || 0,
+            itinerary =
+                $exeIDevicesEdition.iDevice.gamification.itinerary.getValues(),
+            caseSensitive = $('#roscoCaseSensitive').is(':checked'),
+            progressBar =
+                $exeIDevicesEdition.iDevice.gamification.progressBar.getValues(),
+            passScore =
+                $exeIDevicesEdition.iDevice.gamification.passScore.getValues(),
+            id = $exeDevice.getIdeviceID();
+
+        if (!itinerary) return false;
+        if (!progressBar) return false;
+
+        if (showSolution && timeShowSolution === 0) {
+            eXe.app.alert(msgs.msgProvideTimeSolution);
+            return false;
+        }
+
+        const wordsGame = this.validateQuestions();
+        if (!wordsGame) return false;
 
         const scorm = $exeIDevicesEdition.iDevice.gamification.scorm.getValues();
 
@@ -1646,10 +1663,12 @@ var $exeDevice = {
     },
 
     exportQuestions: function () {
-        const dataGame = this.validateData();
-        if (!dataGame) return false;
+        // Only the words are checked: they are all that Export writes. They
+        // are read from the form, so the one on screen is among them.
+        const wordsGame = this.validateQuestions();
+        if (!wordsGame) return false;
 
-        const lines = this.getLinesQuestions(dataGame.wordsGame);
+        const lines = this.getLinesQuestions(wordsGame);
         const fileContent = lines.join('\n');
         const newBlob = new Blob([fileContent], { type: 'text/plain' });
         return $exeIDevicesEdition.iDevice.gamification.share.downloadBlob(

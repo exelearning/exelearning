@@ -1370,6 +1370,51 @@ var $exeDevice = {
         return ideviceid;
     },
 
+    /**
+     * The questions of the activity, checked. Saving asks for more than
+     * this; Export, which only writes the questions, for nothing else.
+     *
+     * @returns {Array|false} The questions, or false after telling the
+     * author what one of them is missing.
+     */
+    validateQuestions: function () {
+        const wordsGame = $exeDevice.wordsGame;
+        if (wordsGame.length == 0) {
+            eXe.app.alert($exeDevice.msgs.msgEOneQuestion);
+            return false;
+        }
+        for (let i = 0; i < wordsGame.length; i++) {
+            let mquestion = wordsGame[i];
+            if (mquestion.word.length == 0) {
+                $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgEProvideWord);
+                return false;
+            } else if (
+                mquestion.definition.length == 0 &&
+                mquestion.url.length < 4
+            ) {
+                eXe.app.alert(
+                    $exeDevice.msgs.msgEProvideDefinition + ' ' + mquestion.word
+                );
+                return false;
+            } else if (mquestion.type == 1 && mquestion.url.length < 4) {
+                $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgEURLValid);
+                return false;
+            } else if (
+                mquestion.type == 2 &&
+                !$exeDevices.iDevice.gamification.media.getIDYoutube(
+                    mquestion.url
+                ) &&
+                !$exeDevices.iDevice.gamification.media.getURLVideoMediaTeca(
+                    mquestion.url
+                )
+            ) {
+                $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgECompleteURLYoutube);
+                return false;
+            }
+        }
+        return wordsGame;
+    },
+
     validateData: function () {
         const clear = $exeIDevicesEdition.iDevice.common.removeTags,
             instructions = tinyMCE.get('eXeGameInstructions').getContent(),
@@ -1414,12 +1459,8 @@ var $exeDevice = {
             $exeIDevicesEdition.iDevice.gamification.feedback.getValues();
         if (!feedback) return false;
 
-        let wordsGame = $exeDevice.wordsGame;
-        if (wordsGame.length == 0) {
-            eXe.app.alert($exeDevice.msgs.msgEOneQuestion);
-
-            return false;
-        }
+        const wordsGame = $exeDevice.validateQuestions();
+        if (!wordsGame) return false;
 
         if (itinerary.showClue && itinerary.clueGame.length == '') {
             return false;
@@ -1431,36 +1472,6 @@ var $exeDevice = {
                 itinerary.messageCodeAccess.length == '')
         ) {
             return false;
-        }
-
-        for (let i = 0; i < wordsGame.length; i++) {
-            let mquestion = wordsGame[i];
-            if (mquestion.word.length == 0) {
-                $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgEProvideWord);
-                return false;
-            } else if (
-                mquestion.definition.length == 0 &&
-                mquestion.url.length < 4
-            ) {
-                eXe.app.alert(
-                    $exeDevice.msgs.msgEProvideDefinition + ' ' + mquestion.word
-                );
-                return false;
-            } else if (mquestion.type == 1 && mquestion.url.length < 4) {
-                $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgEURLValid);
-                return false;
-            } else if (
-                mquestion.type == 2 &&
-                !$exeDevices.iDevice.gamification.media.getIDYoutube(
-                    mquestion.url
-                ) &&
-                !$exeDevices.iDevice.gamification.media.getURLVideoMediaTeca(
-                    mquestion.url
-                )
-            ) {
-                $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgECompleteURLYoutube);
-                return false;
-            }
         }
 
         const scorm = $exeIDevicesEdition.iDevice.gamification.scorm.getValues();
@@ -1998,10 +2009,13 @@ var $exeDevice = {
     },
 
     exportQuestions: function () {
-        const dataGame = this.validateData();
-        if (!dataGame) return false;
+        // Store the question on screen first, as saving does. Only the
+        // questions are checked: they are all that Export writes.
+        if (!$exeDevice.validateQuestion()) return false;
+        const wordsGame = this.validateQuestions();
+        if (!wordsGame) return false;
 
-        const lines = this.getLinesQuestions(dataGame.wordsGame);
+        const lines = this.getLinesQuestions(wordsGame);
         const fileContent = lines.join('\n');
         const newBlob = new Blob([fileContent], { type: 'text/plain' });
         return $exeIDevicesEdition.iDevice.gamification.share.downloadBlob(

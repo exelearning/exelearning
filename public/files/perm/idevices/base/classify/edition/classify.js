@@ -897,6 +897,34 @@ var $exeDevice = {
         return ideviceid;
     },
 
+    /**
+     * The cards of the activity, checked. Saving asks for more than
+     * this; Export, which only writes the cards, for nothing else.
+     *
+     * @returns {Array|false} The cards, or false after telling the
+     * author what one of them is missing.
+     */
+    validateQuestions: function () {
+        if ($exeDevice.wordsGame.length === 0) {
+            $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgEOneQuestion);
+            return false;
+        }
+        for (let i = 0; i < $exeDevice.wordsGame.length; i++) {
+            const mquestion = $exeDevice.normalizeQuestionByType(
+                $exeDevice.wordsGame[i]
+            );
+            $exeDevice.wordsGame[i] = mquestion;
+            if (!$exeDevice.isQuestionComplete(mquestion)) {
+                // Bring the offending card up so the message points at something.
+                $exeDevice.active = i;
+                $exeDevice.showQuestion(i);
+                $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgCompleteData);
+                return false;
+            }
+        }
+        return $exeDevice.wordsGame;
+    },
+
     validateData: function () {
         const clear = $exeIDevicesEdition.iDevice.common.removeTags,
             instructions = $exeIDevicesEdition.iDevice.common.getEditorContent(
@@ -929,11 +957,6 @@ var $exeDevice = {
         if (!progressBar) return false;
         if (!feedback) return false;
 
-        if ($exeDevice.wordsGame.length === 0) {
-            $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgEOneQuestion);
-            return false;
-        }
-
         let nogroups = false;
         $('.CQE-EGroup').each(function (i) {
             if (i < numberGroups) {
@@ -950,19 +973,7 @@ var $exeDevice = {
             return false;
         }
 
-        for (let i = 0; i < $exeDevice.wordsGame.length; i++) {
-            const mquestion = $exeDevice.normalizeQuestionByType(
-                $exeDevice.wordsGame[i]
-            );
-            $exeDevice.wordsGame[i] = mquestion;
-            if (!$exeDevice.isQuestionComplete(mquestion)) {
-                // Bring the offending card up so the message points at something.
-                $exeDevice.active = i;
-                $exeDevice.showQuestion(i);
-                $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgCompleteData);
-                return false;
-            }
-        }
+        if (!$exeDevice.validateQuestions()) return false;
 
         const scorm = $exeIDevicesEdition.iDevice.gamification.scorm.getValues();
 
@@ -1743,10 +1754,11 @@ var $exeDevice = {
      */
     exportQuestions: function () {
         if (!$exeDevice.validateQuestion()) return false;
-        const dataGame = $exeDevice.validateData();
-        if (!dataGame) return false;
+        // Only the cards are checked: they are all that Export writes.
+        const wordsGame = $exeDevice.validateQuestions();
+        if (!wordsGame) return false;
 
-        const lines = dataGame.wordsGame
+        const lines = wordsGame
             .filter((word) => word.type !== 0 && (word.eText || '').trim())
             .map((word) => `${word.group}#${word.eText.replace(/[#\s]+/g, ' ').trim()}`);
         if (lines.length === 0) {

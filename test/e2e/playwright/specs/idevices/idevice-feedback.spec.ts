@@ -11,6 +11,7 @@ import {
     waitForAppReady,
 } from '../../helpers/workarea-helpers';
 import { waitForEditor } from '../../helpers/editor-helpers';
+import { exportText } from '../../helpers/idevice-share-helpers';
 
 /**
  * The Feedback tab of the iDevice forms (gamification.feedback): the feedback on needs its message. An activity saved
@@ -97,4 +98,31 @@ test('The feedback the author switches on asks for its message when saving, on i
     // Behind the warning, the tab where the message is written.
     await expect(feedbackTab).toHaveAttribute('aria-selected', 'true');
     await expect(page.locator('#eXeGameFeedbackP')).toBeVisible();
+});
+
+test('Export saves the questions while the feedback has no message, and stays on its tab', async ({
+    authenticatedPage: page,
+    createProject,
+}) => {
+    const uuid = await createProject(page, 'Export with the feedback unfinished');
+    await gotoWorkarea(page, uuid);
+    await waitForAppReady(page);
+    await selectFirstPage(page);
+    await addIdevice(page, 'guess');
+    // The form is built when its question editor starts: wait, or what is typed first is lost.
+    await waitForEditor(page, 'adivinaEText');
+    await page.locator('#adivinaESolutionWord').fill('planet');
+    await page.locator('#adivinaEDefinitionWord').fill('A world orbiting a star');
+
+    // The feedback on, its message still to write: saving would ask for it.
+    await page.locator('#gameQEIdeviceForm-tab-feedback').click();
+    await waitForEditor(page, 'eXeGameFeedBackEditor');
+    await page.locator('#eXeGameHasFeedBack').check();
+
+    // Export writes the questions only, so the feedback is none of its business.
+    const activities = page.locator('#gameQEIdeviceForm-tab-contents');
+    await activities.click();
+    expect(await exportText(page)).toBe('planet#A world orbiting a star');
+    await expect(page.locator('#modalAlert.show')).toHaveCount(0);
+    await expect(activities).toHaveAttribute('aria-selected', 'true');
 });

@@ -1029,6 +1029,48 @@ var $exeDevice = {
         return ideviceid;
     },
 
+    /**
+     * @returns {number} The type of game chosen in Options: 0 pairs, 1 trios,
+     * 2 quartets. It sets how many cards of each set are used.
+     */
+    getGameMode: function () {
+        return parseInt($('input[name=qtxgamemode]:checked').val());
+    },
+
+    /**
+     * The sets of cards of the activity, checked. Saving asks for more than
+     * this; Export, which only writes the sets of cards, for nothing else.
+     *
+     * @returns {Array|false} The sets of cards, or false after telling the
+     * author what one of them is missing.
+     */
+    validateQuestions: function () {
+        const wordsGame = $exeDevice.wordsGame,
+            gameMode = $exeDevice.getGameMode();
+        if (wordsGame.length == 0) {
+            $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgEOneQuestion);
+            return false;
+        }
+
+        let num_cards = 2;
+        if (gameMode == 1) {
+            num_cards = 3;
+        } else if (gameMode == 2) {
+            num_cards = 4;
+        }
+
+        for (let i = 0; i < wordsGame.length; i++) {
+            for (let j = 0; j < num_cards; j++) {
+                const p = wordsGame[i].data[j];
+                if (p.eText == 0 && p.url.length < 5 && p.audio.length < 5) {
+                    $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgCompleteData);
+                    return false;
+                }
+            }
+        }
+        return wordsGame;
+    },
+
     validateData: function () {
         const clear = $exeIDevicesEdition.iDevice.common.removeTags,
             instructions = $exeIDevicesEdition.iDevice.common.getEditorContent('eXeGameInstructions'),
@@ -1063,11 +1105,6 @@ var $exeDevice = {
         const feedback = $exeIDevicesEdition.iDevice.gamification.feedback.getValues();
         if (!feedback) return false;
 
-        if (wordsGame.length == 0) {
-            $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgEOneQuestion);
-            return false;
-        }
-
         if (gameLevels == 3 && wordsGame.length < 3) {
             $exeIDevicesEdition.iDevice.common.showMessage(
                 'Para un juego con tres niveles de dificultad necesita al menos tres cuestiones'
@@ -1080,22 +1117,7 @@ var $exeDevice = {
             return false;
         }
 
-        let num_cards = 2;
-        if (gameMode == 1) {
-            num_cards = 3;
-        } else if (gameMode == 2) {
-            num_cards = 4;
-        }
-
-        for (let i = 0; i < wordsGame.length; i++) {
-            for (let j = 0; j < num_cards; j++) {
-                const p = wordsGame[i].data[j];
-                if (p.eText == 0 && p.url.length < 5 && p.audio.length < 5) {
-                    $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgCompleteData);
-                    return false;
-                }
-            }
-        }
+        if (!$exeDevice.validateQuestions()) return false;
 
         if (
             attempts > 0 &&
@@ -2001,13 +2023,11 @@ var $exeDevice = {
     exportQuestions: function () {
         // Store the set on screen first, as saving does.
         if (!$exeDevice.validateQuestion()) return false;
-        const dataGame = this.validateData();
-        if (!dataGame) return false;
+        // Only the sets are checked: they are all that Export writes.
+        const wordsGame = this.validateQuestions();
+        if (!wordsGame) return false;
 
-        const lines = this.getLinesQuestions(
-            dataGame.wordsGame,
-            dataGame.gameMode
-        );
+        const lines = this.getLinesQuestions(wordsGame, this.getGameMode());
         if (lines.length === 0) {
             eXe.app.alert(
                 _('Sorry, there are no questions for this type of activity.')

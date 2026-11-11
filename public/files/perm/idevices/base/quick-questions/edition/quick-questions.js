@@ -1879,10 +1879,13 @@ var $exeDevice = {
     },
 
     exportQuestions: function () {
-        const dataGame = this.validateData();
-        if (!dataGame) return false;
+        // Store the question on screen first, as saving does. Only the
+        // questions are checked: they are all that Export writes.
+        if (!$exeDevice.validateQuestion()) return false;
+        const questionsGame = this.validateQuestions();
+        if (!questionsGame) return false;
 
-        const lines = this.getLinesQuestions(dataGame.questionsGame);
+        const lines = this.getLinesQuestions(questionsGame);
         const fileContent = lines.join('\n');
         const newBlob = new Blob([fileContent], { type: 'text/plain' });
         return $exeIDevicesEdition.iDevice.gamification.share.downloadBlob(
@@ -2118,6 +2121,53 @@ var $exeDevice = {
         return ideviceid;
     },
 
+    /**
+     * The questions of the activity, checked. Saving asks for more than
+     * this; Export, which only writes the questions, for nothing else.
+     *
+     * @returns {Array|false} The questions, or false after telling the
+     * author what one of them is missing.
+     */
+    validateQuestions: function () {
+        const questionsGame = $exeDevice.questionsGame;
+        for (let i = 0; i < questionsGame.length; i++) {
+            const mquestion = questionsGame[i];
+            mquestion.customScore =
+                typeof mquestion.customScore === 'undefined'
+                    ? 1
+                    : mquestion.customScore;
+            if (mquestion.quextion.length === 0) {
+                $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgECompleteQuestion);
+                return false;
+            } else if (mquestion.type === 1 && mquestion.url.length < 10) {
+                $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgEURLValid);
+                return false;
+            } else if (
+                mquestion.type === 2 &&
+                !$exeDevices.iDevice.gamification.media.getIDYoutube(
+                    mquestion.url
+                ) &&
+                !$exeDevices.iDevice.gamification.media.getURLVideoMediaTeca(
+                    mquestion.url
+                )
+            ) {
+                $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgECompleteURLYoutube);
+                return false;
+            }
+            let completAnswer = true;
+            for (let j = 0; j < mquestion.numberOptions; j++) {
+                if (mquestion.options[j].length === 0) {
+                    completAnswer = false;
+                }
+            }
+            if (!completAnswer) {
+                $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgECompleteAllOptions);
+                return false;
+            }
+        }
+        return questionsGame;
+    },
+
     validateData: function () {
         const clear = $exeIDevicesEdition.iDevice.common.removeTags,
             instructions = $('#eXeGameInstructions').text(),
@@ -2170,41 +2220,7 @@ var $exeDevice = {
             $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgEProvideTimeSolution);
             return false;
         }
-        for (let i = 0; i < questionsGame.length; i++) {
-            const mquestion = questionsGame[i];
-            mquestion.customScore =
-                typeof mquestion.customScore === 'undefined'
-                    ? 1
-                    : mquestion.customScore;
-            if (mquestion.quextion.length === 0) {
-                $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgECompleteQuestion);
-                return false;
-            } else if (mquestion.type === 1 && mquestion.url.length < 10) {
-                $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgEURLValid);
-                return false;
-            } else if (
-                mquestion.type === 2 &&
-                !$exeDevices.iDevice.gamification.media.getIDYoutube(
-                    mquestion.url
-                ) &&
-                !$exeDevices.iDevice.gamification.media.getURLVideoMediaTeca(
-                    mquestion.url
-                )
-            ) {
-                $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgECompleteURLYoutube);
-                return false;
-            }
-            let completAnswer = true;
-            for (let j = 0; j < mquestion.numberOptions; j++) {
-                if (mquestion.options[j].length === 0) {
-                    completAnswer = false;
-                }
-            }
-            if (!completAnswer) {
-                $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgECompleteAllOptions);
-                return false;
-            }
-        }
+        if (!$exeDevice.validateQuestions()) return false;
         for (let i = 0; i < questionsGame.length; i++) {
             const qt = questionsGame[i];
             if (qt.type === 1 && qt.url.length < 8) {

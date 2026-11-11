@@ -1990,10 +1990,11 @@ var $exeDevice = {
     exportQuestions: function () {
         // Store the question on screen first, as saving does.
         if (!$exeDevice.validateQuestion()) return false;
-        const dataGame = this.validateData();
-        if (!dataGame) return false;
+        // Only the questions are checked: they are all that Export writes.
+        const selectsGame = this.validateQuestions();
+        if (!selectsGame) return false;
 
-        const lines = this.getLinesQuestions(dataGame.selectsGame);
+        const lines = this.getLinesQuestions(selectsGame);
         if (lines.length === 0) {
             eXe.app.alert(
                 _('Sorry, there are no questions for this type of activity.')
@@ -2060,6 +2061,63 @@ var $exeDevice = {
         return lines;
     },
 
+    /**
+     * The questions of the activity, checked. Saving asks for more than
+     * this; Export, which only writes the questions, for nothing else.
+     *
+     * @returns {Array|false} The questions, or false after telling the
+     * author what one of them is missing.
+     */
+    validateQuestions: function () {
+        const selectsGame = $exeDevice.selectsGame,
+            activityMode = $('input[name="slcactivitymode"]:checked').val() || 'test';
+
+        for (let i = 0; i < selectsGame.length; i++) {
+            const mquestion = selectsGame[i],
+                tikzCode = (mquestion.tikzCode || '').trim(),
+                tikzSvg = (mquestion.tikzSvg || '').trim();
+
+            if (tikzCode.length > 0 && tikzSvg.length == 0) {
+                $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgERenderCircuitPreview);
+                return false;
+            }
+        }
+
+        if (activityMode === 'test') {
+            for (let i = 0; i < selectsGame.length; i++) {
+                let mquestion = selectsGame[i];
+                mquestion.customScore =
+                    typeof mquestion.customScore == 'undefined'
+                        ? 1
+                        : mquestion.customScore;
+                if (mquestion.quextion.length == 0) {
+                    $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgECompleteQuestion);
+                    return false;
+                }
+                if (mquestion.typeSelect == 2) {
+                    if (mquestion.solutionQuestion.length == 0) {
+                        $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgProvideSolution);
+                        return false;
+                    }
+                } else {
+                    let completAnswer = true;
+                    for (let j = 0; j < mquestion.numberOptions; j++) {
+                        if (mquestion.options[j].length == 0) {
+                            completAnswer = false;
+                        }
+                    }
+                    if (!completAnswer) {
+                        $exeIDevicesEdition.iDevice.common.showMessage(
+                            $exeDevice.msgs.msgECompleteAllOptions
+                        );
+                        return false;
+                    }
+                }
+            }
+        }
+        return selectsGame;
+    },
+
     validateData: function () {
         const clear = $exeIDevicesEdition.iDevice.common.removeTags,
             activityMode = $('input[name="slcactivitymode"]:checked').val() || 'test',
@@ -2110,49 +2168,7 @@ var $exeDevice = {
         }
         const selectsGame = $exeDevice.selectsGame;
 
-        for (let i = 0; i < selectsGame.length; i++) {
-            const mquestion = selectsGame[i],
-                tikzCode = (mquestion.tikzCode || '').trim(),
-                tikzSvg = (mquestion.tikzSvg || '').trim();
-
-            if (tikzCode.length > 0 && tikzSvg.length == 0) {
-                $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgERenderCircuitPreview);
-                return false;
-            }
-        }
-
-        if (activityMode === 'test') {
-            for (let i = 0; i < selectsGame.length; i++) {
-                let mquestion = selectsGame[i];
-                mquestion.customScore =
-                    typeof mquestion.customScore == 'undefined'
-                        ? 1
-                        : mquestion.customScore;
-                if (mquestion.quextion.length == 0) {
-                    $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgECompleteQuestion);
-                    return false;
-                }
-                if (mquestion.typeSelect == 2) {
-                    if (mquestion.solutionQuestion.length == 0) {
-                        $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgProvideSolution);
-                        return false;
-                    }
-                } else {
-                    let completAnswer = true;
-                    for (let j = 0; j < mquestion.numberOptions; j++) {
-                        if (mquestion.options[j].length == 0) {
-                            completAnswer = false;
-                        }
-                    }
-                    if (!completAnswer) {
-                        $exeIDevicesEdition.iDevice.common.showMessage(
-                            $exeDevice.msgs.msgECompleteAllOptions
-                        );
-                        return false;
-                    }
-                }
-            }
-        }
+        if (!$exeDevice.validateQuestions()) return false;
 
         const scorm = $exeIDevicesEdition.iDevice.gamification.scorm.getValues();
         return {

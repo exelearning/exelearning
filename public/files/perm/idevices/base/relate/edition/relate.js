@@ -1275,12 +1275,11 @@ var $exeDevice = {
     },
 
     exportQuestions: function () {
-        // Store the card on screen first, as saving does.
+        // Store the card on screen first, as saving does. Only the cards are
+        // written, and each one is checked as it is left.
         if (!$exeDevice.validateCard()) return false;
-        const dataGame = this.validateData();
-        if (!dataGame) return false;
 
-        const lines = this.getLinesQuestions(dataGame.cardsGame);
+        const lines = this.getLinesQuestions($exeDevice.cardsGame);
         if (lines.length === 0) {
             eXe.app.alert(_('Sorry, there are no questions for this type of activity.'));
             return false;

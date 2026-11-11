@@ -958,10 +958,11 @@ var $exeDevice = {
         // Store the question on screen first: without it, its unsaved edits
         // were left out, and a question just added still counted as empty.
         if (!this.validateQuestion()) return false;
-        const dataGame = this.validateData();
-        if (!dataGame) return false;
+        // Only the questions are checked: they are all that Export writes.
+        const questionsGame = this.validateQuestions();
+        if (!questionsGame) return false;
 
-        const lines = this.getLinesQuestions(dataGame.questionsGame);
+        const lines = this.getLinesQuestions(questionsGame);
         const fileContent = lines.join('\n');
         const newBlob = new Blob([fileContent], { type: 'text/plain' });
         return $exeIDevicesEdition.iDevice.gamification.share.downloadBlob(
@@ -987,6 +988,30 @@ var $exeDevice = {
         return lineswords;
     },
 
+    /**
+     * The questions of the activity, checked. Saving asks for more than
+     * this; Export, which only writes the questions, for nothing else.
+     *
+     * @returns {Array|false} The questions, or false after telling the
+     * author what one of them is missing.
+     */
+    validateQuestions: function () {
+        const questionsGame = $exeDevice.questionsGame;
+        if (questionsGame.length == 0) {
+            $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgOneQuestion);
+            return false;
+        }
+        for (let i = 0; i < questionsGame.length; i++) {
+            const mQuestion = questionsGame[i];
+
+            if (mQuestion.question.length === 0) {
+                $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgWriteQuestion);
+                return false;
+            }
+        }
+        return questionsGame;
+    },
+
     validateData: function () {
         const questionsRandom = $('#tofEQuestionsRandom').is(':checked'),
             percentageQuestions = parseInt(
@@ -1002,11 +1027,6 @@ var $exeDevice = {
         let evaluation = false;
         let evaluationID = '';
 
-        if (questionsGame.length == 0) {
-            $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgOneQuestion);
-            return false;
-        }
-
         if (isTest) {
             const progressBar =
                 $exeIDevicesEdition.iDevice.gamification.progressBar.getValues();
@@ -1018,14 +1038,7 @@ var $exeDevice = {
         // not only to the one that publishes a progress report.
         const passScore =
             $exeIDevicesEdition.iDevice.gamification.passScore.getValues();
-        for (let i = 0; i < questionsGame.length; i++) {
-            const mQuestion = questionsGame[i];
-
-            if (mQuestion.question.length === 0) {
-                $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgWriteQuestion);
-                return false;
-            }
-        }
+        if (!$exeDevice.validateQuestions()) return false;
 
         const scorm = $exeIDevicesEdition.iDevice.gamification.scorm.getValues();
 

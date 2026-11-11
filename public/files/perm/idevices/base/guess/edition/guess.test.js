@@ -916,6 +916,56 @@ describe('guess edition: shared form tabs and feedback', () => {
       expect(device.validateData()).toBe(false);
       expect(global.eXe.app.alert).toHaveBeenCalledWith('Message to display when passing the game');
     });
+
+    // Export writes the questions only: the settings are for saving to check.
+    describe('Export', () => {
+      const share = () => edition().gamification.share;
+
+      beforeEach(() => {
+        // The question on screen is checked against its media controls, which is not what these are about.
+        vi.spyOn(device, 'validateQuestion').mockReturnValue(true);
+      });
+
+      it('saves the questions while the feedback has no message, and stays in its tab', async () => {
+        // "No score": the feedback is compulsory, and its message is missing.
+        device.updateFieldGame(game({ wordsGame: device.wordsGame, gameMode: 2 }));
+        const download = vi.spyOn(share(), 'downloadBlob').mockReturnValue(true);
+        global.eXe.app.alert.mockClear();
+
+        expect(device.exportQuestions()).toBe(true);
+
+        expect(await download.mock.calls[0][0].text()).toBe('casa#home');
+        expect(global.eXe.app.alert).not.toHaveBeenCalled();
+        expect(panel('contents').classList.contains('active')).toBe(true);
+        // Saving still asks for the message.
+        expect(device.validateData()).toBe(false);
+      });
+
+      it('stores the question on screen first', () => {
+        vi.spyOn(share(), 'downloadBlob').mockReturnValue(true);
+
+        device.exportQuestions();
+
+        expect(device.validateQuestion).toHaveBeenCalled();
+      });
+
+      it('writes nothing when the question on screen is not complete', () => {
+        device.validateQuestion.mockReturnValue(false);
+        const download = vi.spyOn(share(), 'downloadBlob').mockReturnValue(true);
+
+        expect(device.exportQuestions()).toBe(false);
+        expect(download).not.toHaveBeenCalled();
+      });
+
+      it('writes nothing when another question is not complete, and says which', () => {
+        device.wordsGame = [{ ...device.getCuestionDefault(), word: 'casa', definition: '' }];
+        const download = vi.spyOn(share(), 'downloadBlob').mockReturnValue(true);
+
+        expect(device.exportQuestions()).toBe(false);
+        expect(download).not.toHaveBeenCalled();
+        expect(global.eXe.app.alert).toHaveBeenLastCalledWith(`${device.msgs.msgEProvideDefinition} casa`);
+      });
+    });
   });
 
   describe('adding words to the one on screen', () => {
