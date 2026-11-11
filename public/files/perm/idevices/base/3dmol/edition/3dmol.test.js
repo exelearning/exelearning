@@ -10,7 +10,7 @@
 /* eslint-disable no-undef */
 import { describe, it, expect, beforeEach, afterEach, onTestFinished, vi } from 'vitest';
 import { readFileSync } from 'fs';
-import { useGradingHelpHarness } from '../../../../../../app/common/grading-help.test-util.js';
+import { useGradingHelpHarness } from '../../../../../../../test/helpers/grading-help-harness.ts';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 

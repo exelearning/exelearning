@@ -2,7 +2,7 @@ import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
 import { readFileSync, readdirSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { parseSync, Visitor } from 'vite';
-import { useGradingHelpHarness } from './grading-help.test-util.js';
+import { useGradingHelpHarness } from '../../../test/helpers/grading-help-harness.ts';
 
 // Setup globals needed BEFORE the script is loaded
 globalThis._ = vi.fn((key) => key);

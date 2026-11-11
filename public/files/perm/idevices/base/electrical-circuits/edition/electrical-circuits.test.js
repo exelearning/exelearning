@@ -1,6 +1,6 @@
 /* eslint-disable no-undef */
 import { readFileSync } from 'fs';
-import { useGradingHelpHarness } from '../../../../../../app/common/grading-help.test-util.js';
+import { useGradingHelpHarness } from '../../../../../../../test/helpers/grading-help-harness.ts';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 
