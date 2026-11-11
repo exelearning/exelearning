@@ -84,6 +84,8 @@ test('Quick Questions plays its intro video in the form, and keeps it', async ({
     await saveIdevice(page, id!);
     await saveProject(page);
     await reloadPage(page);
+    // Reloaded below 1200px, the left panels come back folded.
+    await openLeftPanels(page);
     await selectFirstPage(page);
     await editIdevice(page, id!);
     await page.locator('#gameQEIdeviceForm-tab-options').click();

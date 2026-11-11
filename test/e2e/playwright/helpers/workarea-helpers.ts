@@ -652,9 +652,6 @@ export async function openLeftPanels(page: Page): Promise<void> {
  * Selects the first available page if no page is currently selected
  */
 export async function selectFirstPage(page: Page): Promise<void> {
-    // Both the page tree and the iDevice list must be reachable, even when a page is already selected.
-    await openLeftPanels(page);
-
     const isPageSelected = await page.evaluate(() => {
         const selected = document.querySelector('.nav-element.selected:not([nav-id="root"])');
         return !!selected;

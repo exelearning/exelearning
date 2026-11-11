@@ -6,6 +6,7 @@ import {
     editIdevice,
     expandIdeviceCategory,
     gotoWorkarea,
+    openLeftPanels,
     reloadPage,
     saveIdevice,
     saveProject,
@@ -978,6 +979,8 @@ for (const c of CASES) {
 
         await saveProject(page);
         await reloadPage(page);
+        // Reloaded below 1200px, the left panels come back folded.
+        await openLeftPanels(page);
         await selectFirstPage(page);
         await editIdevice(page, id);
         await c.reopen?.(page);
