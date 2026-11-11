@@ -45,13 +45,18 @@ var $exeIDevicesEdition = {
                     .replace(/'/g, '&#39;');
             },
             /**
-             * The text of an HTML fragment, without its tags.
+             * The text of an HTML fragment, without its tags. The fragment is
+             * read in a template, which runs nothing: it can come from an
+             * imported file, and parsed in the page its images would load and
+             * their handlers run.
              *
              * @param {string} html
              * @returns {string}
              */
             removeTags: function (html) {
-                return $('<div></div>').html(html).text();
+                const template = document.createElement('template');
+                template.innerHTML = html == null ? '' : String(html);
+                return template.content.textContent;
             },
             /**
              * Tell the author something, in the application's alert.

@@ -89,3 +89,45 @@ test('Quick Questions plays its intro video in the form, and keeps it', async ({
     await page.locator('#gameQEIdeviceForm-tab-options').click();
     await expect(page.locator('#quextEVideoIntro')).toHaveValue(introVideoUrl);
 });
+
+test('Quick Questions imports the text of Moodle questions without running their HTML', async ({
+    authenticatedPage: page,
+    createProject,
+}) => {
+    await page.route('https://www.youtube.com/iframe_api', route => route.abort());
+    // Every request for the probe image fails at once.
+    await page.route('**/moodle-probe.png', route => route.fulfill({ status: 404, body: '' }));
+    const uuid = await createProject(page, 'Quick Questions Moodle import');
+    await gotoWorkarea(page, uuid);
+    await waitForAppReady(page);
+    await selectFirstPage(page);
+    await addIdevice(page, 'quick-questions');
+    await waitForEditor(page, 'quextEText');
+
+    // An image whose handler would run if the question text were parsed in the page.
+    const quiz = `<?xml version="1.0" encoding="UTF-8"?>
+<quiz>
+  <question type="multichoice">
+    <questiontext format="html"><text><![CDATA[<p>Capital of France?<img src="/moodle-probe.png" onerror="window.ranImportedHtml = true"></p>]]></text></questiontext>
+    <answer fraction="100"><text>Paris</text></answer>
+    <answer fraction="0"><text>Rome</text></answer>
+  </question>
+</quiz>`;
+    await page.locator('#gameQEIdeviceForm-tab-contents').click();
+    await page.locator('[data-exe-share="import"]').click();
+    await page.locator('#eXeGameImportGame').setInputFiles({
+        name: 'questions.xml',
+        mimeType: 'text/xml',
+        buffer: Buffer.from(quiz),
+    });
+    await expect(page.locator('#quextEQuestion')).toHaveValue('Capital of France?');
+
+    // The same image, loaded now in the page: once its handler has run, the imported one's would have.
+    await page.evaluate(() => {
+        const image = document.createElement('img');
+        image.onerror = () => ((window as any).ranControl = true);
+        image.src = '/moodle-probe.png';
+    });
+    await page.waitForFunction(() => (window as any).ranControl === true);
+    expect(await page.evaluate(() => (window as any).ranImportedHtml)).toBeUndefined();
+});

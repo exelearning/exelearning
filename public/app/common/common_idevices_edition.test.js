@@ -476,6 +476,20 @@ describe('common_idevices_edition.js', () => {
         expect(removeTags('Plain text')).toBe('Plain text');
         expect(removeTags('')).toBe('');
       });
+
+      it('reads no text from a missing value, and a number as its digits', () => {
+        expect(removeTags(undefined)).toBe('');
+        expect(removeTags(null)).toBe('');
+        expect(removeTags(5)).toBe('5');
+      });
+
+      // That the image is neither loaded nor its handler run is checked in a real browser, in the
+      // Moodle import of quick-questions.spec.ts: happy-dom loads no images.
+      it('keeps the text around an image with a handler', () => {
+        expect(removeTags('<p>Capital<img src="x" onerror="window.ran = true"> of France?</p>')).toBe(
+          'Capital of France?'
+        );
+      });
     });
 
     describe('showMessage', () => {
