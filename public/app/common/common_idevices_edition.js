@@ -1405,7 +1405,6 @@ var $exeIDevicesEdition = {
                 getIAContents: function (type = 0, options = {}) {
                     const promptText = $exeIDevicesEdition.iDevice.gamification.share.buildIAPromptText(type, options);
                     const tab = `
-                            <p style="display:none"><input type="button" class="btn btn-primary ms-2"  name="eXeGameAddQuestions" id="eXeGameAddQuestion" value="${_('Add questions')}" /></p>
                             <div class="bg-white rounded w-100 position-relative" style="max-width: 1400px;" id="eXeEAddArea">
                                 <ul class="nav nav-tabs exe-idevice-tabs" role="tablist">
                                     <li class="nav-item" role="presentation">
@@ -1414,7 +1413,7 @@ var $exeIDevicesEdition = {
                                     <li class="nav-item" role="presentation">
                                         <button type="button" id="eXeETabQuestions" class="nav-link" role="tab" aria-selected="false" aria-controls="eXeEQuestionsPanel" tabindex="-1">${_('Questions')}</button>
                                     </li>
-                                    <!-- Hidden on purpose: generating the questions from here will come later. -->
+                                    <!-- Hidden until PR #1998 (configurable AI providers) adds api.getGenerateQuestions: Generate will then ask the application for the questions (genarateIAQuestons), instead of an AI the author opens. -->
                                     <li class="nav-item" role="presentation" hidden>
                                         <button type="button" id="eXeETabIA" class="nav-link" role="tab" aria-selected="false" aria-controls="eXeEIADiv" tabindex="-1">${_('Generate')}</button>
                                     </li>
@@ -1770,9 +1769,6 @@ var $exeIDevicesEdition = {
                     const $saveButton = $('#eXeESaveButton');
                     const $iaSelect = $('#eXeEIASelect');
 
-                    const $eXeGameAddQuestion = $('#eXeGameAddQuestion');
-                    const $eXeEAddArea = $('#eXeEAddArea');
-
                     // Load user's default AI preference and select it
                     if (window.eXeLearning?.app?.user?.preferences?.preferences?.defaultAI?.value) {
                         const defaultAI = eXeLearning.app.user.preferences.preferences.defaultAI.value;
@@ -1930,14 +1926,6 @@ var $exeIDevicesEdition = {
                             .then(() => console.log('Content copied to clipboard'))
                             .catch(err => console.error('Error copying content:', err));
                     });
-                    $eXeGameAddQuestion.on('click', function () {
-                        const currentDisplay = $eXeEAddArea.css('display');
-                        if (currentDisplay === 'none') {
-                            $eXeEAddArea.css('display', 'block');
-                        } else if (currentDisplay === 'none') {
-                            $eXeEAddArea.css('display', 'none');
-                        }
-                    });
                     $textQuestionsArea.on('paste', function (e) {
                         e.preventDefault();
                         const text = (e.originalEvent || e).clipboardData.getData('text/plain');
@@ -1954,6 +1942,12 @@ var $exeIDevicesEdition = {
                     });
 
                 },
+                /**
+                 * Ask the application for the questions, from the Generate tab of
+                 * the AI window. The tab stays hidden, and this unused, until
+                 * PR #1998 (configurable AI providers) adds the application's
+                 * api.getGenerateQuestions.
+                 */
                 genarateIAQuestons: async function (type, saveQuestions, options = {}) {
                     // The request outlives the form, so the edition that asked
                     // for the questions is captured here: a response arriving

@@ -3501,7 +3501,6 @@ describe('common_idevices_edition.js', () => {
             <option value="https://grok.com/?q=">Grok</option>
             <option value="https://claude.ai/new?q=">Claude</option>
           </select>
-          <button id="eXeGameAddQuestion"></button>
           <a id="eXeETabQuestions" class="active"></a>
           <a id="eXeETabPrompt"></a>
           <a id="eXeETabIA"></a>
@@ -3731,7 +3730,6 @@ describe('common_idevices_edition.js', () => {
         <button id="eXeESaveButton"></button>
         <button id="eXeECopyButton"></button>
         <button id="eXeEOpenChatGPTButton"></button>
-        <button id="eXeGameAddQuestion"></button>
         <a id="eXeETabQuestions" class="active"></a>
         <a id="eXeETabPrompt"></a>
         <a id="eXeETabIA"></a>
