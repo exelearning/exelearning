@@ -10,6 +10,7 @@
 import { jwtVerify } from 'jose';
 import { isIP } from 'node:net';
 import { isBlockedAddress, isTrustedPrivateAddress } from './ssrf-guard';
+import { getAppSecret } from './jwt-secret';
 
 /**
  * Payload structure for platform JWT tokens
@@ -85,8 +86,8 @@ export function getProviderSecret(providerId?: string): string {
         }
     }
 
-    // Fallback to APP_SECRET
-    return process.env.APP_SECRET || '';
+    // Fallback to APP_SECRET (validated in production)
+    return getAppSecret();
 }
 
 /**

@@ -1215,9 +1215,8 @@ describe('Auth Routes', () => {
     });
 
     describe('getJwtSecret', () => {
-        it('should return the default secret when no env vars are set', () => {
+        it('should generate an ephemeral secret when no env vars are set in tests', () => {
             // Note: getJwtSecret() reads env vars at call time
-            // We test the default fallback behavior
             const prevSecret = process.env.JWT_SECRET;
             const prevApiSecret = process.env.API_JWT_SECRET;
 
@@ -1225,7 +1224,8 @@ describe('Auth Routes', () => {
             delete process.env.API_JWT_SECRET;
 
             const secret = getJwtSecret();
-            expect(secret).toBe('dev_secret_change_me');
+            expect(Buffer.byteLength(secret, 'utf8')).toBeGreaterThanOrEqual(32);
+            expect(secret).not.toBe('dev_secret_change_me');
 
             // Restore
             if (prevSecret !== undefined) process.env.JWT_SECRET = prevSecret;

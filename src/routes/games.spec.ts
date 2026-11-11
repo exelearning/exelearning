@@ -14,10 +14,9 @@ import {
     canAccessUnsavedSession,
 } from './games';
 import { createSessionManager, type ProjectSession, type SessionManager } from '../services/session-manager';
+import { getJwtSecret } from '../utils/jwt-secret';
 
-// Must match the fallback in getJwtSecret() (API_JWT_SECRET || JWT_SECRET ||
-// 'dev_secret_change_me') so signed tokens verify inside withJwtAuth().
-const TEST_JWT_SECRET = 'dev_secret_change_me';
+const TEST_JWT_SECRET = getJwtSecret();
 const OWNER_USER_ID = 42;
 
 /**
