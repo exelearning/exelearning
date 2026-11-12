@@ -2806,10 +2806,12 @@ describe('Pages Routes', () => {
             expect(res.headers.get('content-type')).toBe('image/png');
         });
 
-        it('should return 400 for path traversal attempt', async () => {
+        it('should reject path traversal attempt', async () => {
             const res = await app.handle(new Request('http://localhost/customization/assets/..%2Fetc%2Fpasswd'));
 
-            expect(res.status).toBe(400);
+            // Elysia >= 1.4.31 rejects encoded separators in route params with 404
+            // before the handler's own 400 check runs; either way it must not serve.
+            expect([400, 404]).toContain(res.status);
         });
     });
 
