@@ -15,8 +15,6 @@ test('Identify exports its stored question and the imported ones as Import reads
     authenticatedPage: page,
     createProject,
 }) => {
-    // Saving and reloading the project takes most of a minute in Firefox.
-    test.setTimeout(90_000);
     const uuid = await createProject(page, 'Identify sharing');
     await gotoWorkarea(page, uuid);
     await waitForAppReady(page);

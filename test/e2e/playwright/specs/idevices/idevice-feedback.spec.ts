@@ -38,7 +38,6 @@ test('An activity saved with the feedback on and no message opens with the feedb
     authenticatedPage: page,
     createProject,
 }) => {
-    test.setTimeout(120000);
     const id = await addActivity(page, createProject, 'Feedback saved without a message');
     const feedback = page.locator('#eXeGameHasFeedBack');
     await feedback.check();
@@ -80,7 +79,6 @@ test('The feedback the author switches on asks for its message when saving, on i
     authenticatedPage: page,
     createProject,
 }) => {
-    test.setTimeout(120000);
     const id = await addActivity(page, createProject, 'Feedback switched on without a message');
     await page.locator('#eXeGameHasFeedBack').check();
     // Saved from another tab, as an author does.

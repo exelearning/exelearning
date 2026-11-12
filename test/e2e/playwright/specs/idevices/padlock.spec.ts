@@ -15,8 +15,6 @@ test('Padlock keeps its editors in Activities and its settings in Options', asyn
     authenticatedPage: page,
     createProject,
 }) => {
-    // Saving and reloading the project takes most of a minute in Firefox.
-    test.setTimeout(90_000);
     const uuid = await createProject(page, 'Padlock tabs');
     await gotoWorkarea(page, uuid);
     await waitForAppReady(page);
@@ -81,8 +79,6 @@ test('Padlock reveals and focuses invalid fields across tabs before allowing a s
     authenticatedPage: page,
     createProject,
 }) => {
-    // Five refused saves, then the real one: most of a minute in Firefox.
-    test.setTimeout(90_000);
     const uuid = await createProject(page, 'Padlock validation');
     await gotoWorkarea(page, uuid);
     await waitForAppReady(page);

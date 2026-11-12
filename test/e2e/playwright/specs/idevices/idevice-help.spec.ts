@@ -15,9 +15,6 @@ import { waitForEditor } from '../../helpers/editor-helpers';
  * them leaves its options alone.
  */
 
-// Each test opens a project and a Guess form: 20-45 s in Firefox, with the other help specs running.
-test.describe.configure({ timeout: 90_000 });
-
 async function openGuessOptions(page: Page, createProject: (page: Page, title: string) => Promise<string>) {
     const uuid = await createProject(page, 'Shared iDevice help');
     await gotoWorkarea(page, uuid);

@@ -14,8 +14,6 @@ test('Checklist shows where to choose its logo once the logo is on, and keeps it
     authenticatedPage: page,
     createProject,
 }) => {
-    // Saving and reloading the project takes most of a minute in Firefox.
-    test.setTimeout(90_000);
     const uuid = await createProject(page, 'Checklist logo');
     await gotoWorkarea(page, uuid);
     await waitForAppReady(page);

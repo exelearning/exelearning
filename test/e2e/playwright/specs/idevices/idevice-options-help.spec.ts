@@ -6,10 +6,7 @@ import {
     editIdevice,
     expandIdeviceCategory,
     gotoWorkarea,
-    openLeftPanels,
-    reloadPage,
     saveIdevice,
-    saveProject,
     selectFirstPage,
     waitForAppReady,
 } from '../../helpers/workarea-helpers';
@@ -62,6 +59,45 @@ async function write(page: Page, editor: string, html: string) {
     await waitForEditor(page, editor);
     await page.evaluate(([id, content]) => (window as any).tinymce.get(id).setContent(content), [editor, html]);
 }
+
+/**
+ * A map shows rows of its own in each assessment mode, with their help: checking them all, at both widths, is
+ * too much for one test, so its modes are split in two.
+ */
+const MAP: Omit<HelpCase, 'name' | 'areas'> = {
+    type: 'map',
+    form: 'gameQEIdeviceForm',
+    // The form is wired once the editor of the point text is ready.
+    add: async page => {
+        await addIdevice(page, 'map');
+        await waitForEditor(page, 'mapaToolTip');
+    },
+    // A map needs its image and one point marked on it.
+    prepare: async page => {
+        await page.locator('#gameQEIdeviceForm-tab-contents').click();
+        const image = await page.locator('#mapaNoImage').getAttribute('src');
+        await page.locator('#mapaURLImageMap').fill(image!);
+        await page.locator('#mapaShowImageMap').click();
+        await expect(page.locator('#mapaImage')).toBeVisible();
+        await page.locator('#mapaTypePointSelect').selectOption('4');
+        const box = (await page.locator('#mapaImage').boundingBox())!;
+        await page.mouse.click(box.x + box.width / 3, box.y + box.height / 3);
+        await expect(page.locator('#mapaX')).not.toHaveValue('0');
+    },
+    keeps: {
+        '#mapaTitle': 'North',
+        '#mapaEEvaluationPoints': true,
+        '#mapaEHideAreas': true,
+        '#mapaEHideScoreBar': true,
+    },
+    stored: 'mapa-DataGame',
+    reopen: page => waitForEditor(page, 'mapaToolTip'),
+};
+
+/** The options of a map, as it is added and then in each of these assessment modes. */
+const mapOptions = (variants: Record<string, number>): Area[] => [
+    { tab: 'options', scope: '#mapaEOptions', helps: 6, variants },
+];
 
 const CASES: HelpCase[] = [
     {
@@ -385,49 +421,11 @@ const CASES: HelpCase[] = [
         },
         reopen: dismissVersionNotice,
     },
+    { ...MAP, name: 'Map', areas: mapOptions({ '#mapaEEvaluationTest': 9, '#mapaEEvaluationOrder': 5 }) },
     {
-        type: 'map',
-        name: 'Map',
-        form: 'gameQEIdeviceForm',
-        // The form is wired once the editor of the point text is ready.
-        add: async page => {
-            await addIdevice(page, 'map');
-            await waitForEditor(page, 'mapaToolTip');
-        },
-        // Each assessment mode shows its own rows, with their help.
-        areas: [
-            {
-                tab: 'options',
-                scope: '#mapaEOptions',
-                helps: 6,
-                variants: {
-                    '#mapaEEvaluationTest': 9,
-                    '#mapaEEvaluationOrder': 5,
-                    '#mapaEEvaluationTX': 6,
-                    '#mapaEEvaluationSearch': 6,
-                },
-            },
-        ],
-        // A map needs its image and one point marked on it.
-        prepare: async page => {
-            await page.locator('#gameQEIdeviceForm-tab-contents').click();
-            const image = await page.locator('#mapaNoImage').getAttribute('src');
-            await page.locator('#mapaURLImageMap').fill(image!);
-            await page.locator('#mapaShowImageMap').click();
-            await expect(page.locator('#mapaImage')).toBeVisible();
-            await page.locator('#mapaTypePointSelect').selectOption('4');
-            const box = (await page.locator('#mapaImage').boundingBox())!;
-            await page.mouse.click(box.x + box.width / 3, box.y + box.height / 3);
-            await expect(page.locator('#mapaX')).not.toHaveValue('0');
-        },
-        keeps: {
-            '#mapaTitle': 'North',
-            '#mapaEEvaluationPoints': true,
-            '#mapaEHideAreas': true,
-            '#mapaEHideScoreBar': true,
-        },
-        stored: 'mapa-DataGame',
-        reopen: page => waitForEditor(page, 'mapaToolTip'),
+        ...MAP,
+        name: 'Map in its identify modes',
+        areas: mapOptions({ '#mapaEEvaluationTX': 6, '#mapaEEvaluationSearch': 6 }),
     },
     {
         type: 'mathematicaloperations',
@@ -884,10 +882,6 @@ async function setChecked(page: Page, input: Locator, checked: boolean) {
     await expect(input).toBeChecked({ checked });
 }
 
-// Each case creates a project, checks every help at two widths, then saves, reloads and reopens it: up to
-// 40 s in Chromium, and over a minute in Firefox for the forms with most variants (Map).
-test.describe.configure({ timeout: 120_000 });
-
 for (const c of CASES) {
     test(`${c.name} explains each option inline without changing it`, async ({
         authenticatedPage: page,
@@ -977,11 +971,8 @@ for (const c of CASES) {
         if (c.stored) expect(stored.html).toContain(c.stored);
         expect(stored.html).not.toContain('exe-idevice-help');
 
-        await saveProject(page);
-        await reloadPage(page);
-        // Reloaded below 1200px, the left panels come back folded.
-        await openLeftPanels(page);
-        await selectFirstPage(page);
+        // Reopened from what was saved. That the project keeps it over a reload is checked in the spec of each
+        // iDevice: what matters here is the form rebuilt with its helps.
         await editIdevice(page, id);
         await c.reopen?.(page);
         for (const [selector, value] of Object.entries(c.keeps)) {

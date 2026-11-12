@@ -900,8 +900,6 @@ test('A-Z quiz asks no time to show the solutions when it does not show them, al
     authenticatedPage: page,
     createProject,
 }) => {
-    // Saving and reloading the project takes most of a minute in Firefox.
-    test.setTimeout(90_000);
     const uuid = await createProject(page, 'A-Z quiz solutions');
     await gotoWorkarea(page, uuid);
     await waitForAppReady(page);

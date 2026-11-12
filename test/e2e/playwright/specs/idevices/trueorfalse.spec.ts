@@ -13,8 +13,6 @@ import { waitForEditor } from '../../helpers/editor-helpers';
 import { addWithAi, closeAlert, exportText, importText } from '../../helpers/idevice-share-helpers';
 
 test('True or false shares its questions', async ({ authenticatedPage: page, createProject }) => {
-    // Saving and reloading the project takes most of a minute in Firefox.
-    test.setTimeout(90_000);
     const uuid = await createProject(page, 'True or false sharing');
     await gotoWorkarea(page, uuid);
     await waitForAppReady(page);

@@ -16,8 +16,6 @@ test('Multiple Choice plays its intro video in the form, and keeps it', async ({
     authenticatedPage: page,
     createProject,
 }) => {
-    // Saving and reloading the project takes most of a minute in Firefox.
-    test.setTimeout(90_000);
     await page.route('https://www.youtube.com/iframe_api', route => route.abort());
     const uuid = await createProject(page, 'Multiple Choice intro video');
     await gotoWorkarea(page, uuid);

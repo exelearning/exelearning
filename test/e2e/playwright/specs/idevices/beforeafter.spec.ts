@@ -534,8 +534,6 @@ test('BeforeAfter has no Options tab, as there is nothing to set there', async (
     authenticatedPage: page,
     createProject,
 }) => {
-    // Saving and reloading the project takes most of a minute in Firefox.
-    test.setTimeout(90_000);
     const uuid = await createProject(page, 'BeforeAfter tabs');
     await gotoWorkarea(page, uuid);
     await waitForAppReady(page);

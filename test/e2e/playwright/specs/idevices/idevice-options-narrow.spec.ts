@@ -40,7 +40,6 @@ const rows: Array<[string, string]> = [
 
 for (const [type, row] of rows) {
     test(`The Options tab of ${type} fits a phone: ${row}`, async ({ authenticatedPage: page, createProject }) => {
-        test.setTimeout(90000);
         const panel = await openOptions(page, createProject, type, 390);
         expect(await overflow(panel)).toBeLessThanOrEqual(0);
     });
@@ -50,7 +49,6 @@ test('On a phone, the help of a switch with a long label stays beside it', async
     authenticatedPage: page,
     createProject,
 }) => {
-    test.setTimeout(90000);
     await openOptions(page, createProject, 'map', 390);
     const besideIt = await page.locator('#mapaEAutoShowDiv').evaluate(row => {
         const panel = row.closest('.tab-pane')!.getBoundingClientRect();
@@ -65,7 +63,6 @@ test('With the side panel open, a long switch label wraps beside its switch', as
     authenticatedPage: page,
     createProject,
 }) => {
-    test.setTimeout(90000);
     const panel = await openOptions(page, createProject, 'complete', 1280);
     expect(await overflow(panel)).toBeLessThanOrEqual(0);
     const layout = await page.locator('#cmptEWordsLimitDiv').evaluate(row => {

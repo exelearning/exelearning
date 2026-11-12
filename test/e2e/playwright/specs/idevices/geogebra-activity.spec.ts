@@ -216,8 +216,6 @@ test.describe('GeoGebra Activity iDevice — form', () => {
         authenticatedPage: page,
         createProject,
     }) => {
-        // Saving and reloading the project takes most of a minute in Firefox.
-        test.setTimeout(90_000);
         const projectUuid = await createProject(page, 'GeoGebra instructions');
         await gotoWorkarea(page, projectUuid);
         await waitForAppReady(page);

@@ -696,8 +696,6 @@ test('Form imports its questions and adds those the AI gives it', async ({
     authenticatedPage: page,
     createProject,
 }) => {
-    // Saving and reloading the project takes most of a minute in Firefox.
-    test.setTimeout(90_000);
     const uuid = await createProject(page, 'Form sharing');
     await gotoWorkarea(page, uuid);
     await waitForAppReady(page);

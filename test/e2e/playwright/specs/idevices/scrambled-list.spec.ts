@@ -15,8 +15,6 @@ test('Scrambled list imports, adds with AI and exports its elements', async ({
     authenticatedPage: page,
     createProject,
 }) => {
-    // Saving and reloading the project takes most of a minute in Firefox.
-    test.setTimeout(90_000);
     const uuid = await createProject(page, 'Scrambled list sharing');
     await gotoWorkarea(page, uuid);
     await waitForAppReady(page);

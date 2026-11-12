@@ -691,8 +691,6 @@ test('UDL content leads its blocks with the type, and keeps it with its blocks a
     authenticatedPage: page,
     createProject,
 }) => {
-    // Saving and reloading the project takes most of a minute in Firefox.
-    test.setTimeout(90_000);
     const uuid = await createProject(page, 'UDL content type and texts');
     await gotoWorkarea(page, uuid);
     await waitForAppReady(page);

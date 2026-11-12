@@ -945,8 +945,6 @@ test('Interactive video opens on its video and keeps the text before it', async 
     authenticatedPage: page,
     createProject,
 }) => {
-    // Saving and reloading the project takes most of a minute in Firefox.
-    test.setTimeout(90_000);
     const uuid = await createProject(page, 'Interactive video text before');
     await gotoWorkarea(page, uuid);
     await waitForAppReady(page);

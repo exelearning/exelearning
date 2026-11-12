@@ -12,8 +12,6 @@ import {
 import { addWithAi, closeAlert, exportText, importText } from '../../helpers/idevice-share-helpers';
 
 test('Word search shares its words', async ({ authenticatedPage: page, createProject }) => {
-    // Saving and reloading the project takes most of a minute in Firefox.
-    test.setTimeout(90_000);
     const uuid = await createProject(page, 'Word search sharing');
     await gotoWorkarea(page, uuid);
     await waitForAppReady(page);

@@ -14,7 +14,6 @@ test('Rubric lays its form out in the shared tabs and keeps CSV import and expor
     authenticatedPage: page,
     createProject,
 }) => {
-    test.setTimeout(120000);
     const uuid = await createProject(page, 'Rubric tabs');
     await gotoWorkarea(page, uuid);
     await waitForAppReady(page);
