@@ -830,6 +830,39 @@ export async function addIdevice(page: Page, ideviceType: string): Promise<void>
 }
 
 /**
+ * Waits until `selector` has stayed in place for `quiet` ms, or `timeout` ms at most. Once an iDevice is
+ * saved, the content scrolls smoothly to it (`scroll-behavior: smooth`). A click while it moves starts on a
+ * button and ends beside it, and the browser then gives it to their common container, so the button never
+ * gets it. Seen in Firefox, whose scrolling stops and goes when the machine is busy.
+ */
+async function waitForStill(page: Page, selector: string, quiet = 300, timeout = 5000): Promise<void> {
+    await page.evaluate(
+        ([target, quietMs, maxMs]) =>
+            new Promise<void>(resolve => {
+                const begin = performance.now();
+                const where = () => {
+                    const box = document.querySelector(target)?.getBoundingClientRect();
+                    return box ? `${box.left}:${box.top}` : '';
+                };
+                let last = where();
+                let since = begin;
+                const check = () => {
+                    const now = performance.now();
+                    const current = where();
+                    if (current !== last) {
+                        last = current;
+                        since = now;
+                    }
+                    if (now - since >= quietMs || now - begin >= maxMs) resolve();
+                    else setTimeout(check, 20);
+                };
+                setTimeout(check, 20);
+            }),
+        [selector, quiet, timeout] as const,
+    );
+}
+
+/**
  * Enter edit mode on an iDevice
  *
  * @param page - Playwright page
@@ -858,6 +891,7 @@ export async function editIdevice(page: Page, ideviceId: string): Promise<void> 
             ideviceId,
             { timeout: 6000 },
         );
+        await waitForStill(page, `[id="editIdevice${ideviceId}"]`);
         await editBtn.click({ timeout: 5000 });
         enteredEdition = true;
     } catch {
