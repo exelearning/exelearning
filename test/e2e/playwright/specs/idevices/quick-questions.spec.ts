@@ -1,5 +1,6 @@
 import { test, expect } from '../../fixtures/auth.fixture';
 import { waitForEditor } from '../../helpers/editor-helpers';
+import { exportText } from '../../helpers/idevice-share-helpers';
 import {
     addIdevice,
     editIdevice,
@@ -88,6 +89,33 @@ test('Quick Questions plays its intro video in the form, and keeps it', async ({
     await editIdevice(page, id!);
     await page.locator('#gameQEIdeviceForm-tab-options').click();
     await expect(page.locator('#quextEVideoIntro')).toHaveValue(introVideoUrl);
+});
+
+test('Quick Questions exports and saves a video question that starts at second zero', async ({
+    authenticatedPage: page,
+    createProject,
+}) => {
+    await page.route('https://www.youtube.com/iframe_api', route => route.abort());
+    const uuid = await createProject(page, 'Quick Questions video from zero');
+    await gotoWorkarea(page, uuid);
+    await waitForAppReady(page);
+    await selectFirstPage(page);
+    await addIdevice(page, 'quick-questions');
+    await waitForEditor(page, 'quextEText');
+    const id = await page.locator('.idevice_node.quick-questions').first().getAttribute('id');
+    expect(id).toBeTruthy();
+    await page.locator('#quextEQuestion').fill('Which organ pumps blood?');
+    for (const [index, answer] of ['Heart', 'Lungs', 'Kidney', 'Liver'].entries()) {
+        await page.locator(`#quextEOption${index}`).fill(answer);
+    }
+    await page.locator('#quextMediaVideo').check();
+    await page.locator('#quextEURLYoutube').fill('https://www.youtube.com/watch?v=M7lc1UVf-VE');
+    // Second 0 is a start, not a missing one.
+    await page.locator('#quextEInitVideo').fill('00:00:00');
+    await page.locator('#quextEEndVideo').fill('00:00:10');
+
+    expect(await exportText(page)).toContain('Which organ pumps blood?#Heart#Lungs#Kidney#Liver');
+    await saveIdevice(page, id!);
 });
 
 test('Quick Questions imports the text of Moodle questions without running their HTML', async ({

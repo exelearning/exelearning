@@ -1811,7 +1811,10 @@ var $exeDevice = {
             message = msgs.msgEURLValid;
         } else if (p.type === 2 && p.url.length === 0) {
             message = msgs.msgECompleteURLYoutube;
-        } else if (p.type === 2 && (!p.iVideo || !p.fVideo)) {
+        } else if (
+            p.type === 2 &&
+            (!$('#quextEInitVideo').val().trim() || !$('#quextEEndVideo').val().trim())
+        ) {
             message = msgs.msgEStartEndVideo;
         } else if (p.type === 2 && p.iVideo >= p.fVideo) {
             message = msgs.msgEStartEndIncorrect;

@@ -968,6 +968,66 @@ describe('guess edition: shared form tabs and feedback', () => {
     });
   });
 
+  describe('video question times', () => {
+    let previousHelpers;
+    let previousMedia;
+    let tinymceGet;
+    let download;
+
+    beforeEach(() => {
+      const gamification = global.$exeDevices.iDevice.gamification;
+      previousHelpers = gamification.helpers;
+      previousMedia = gamification.media;
+      gamification.helpers = {
+        ...previousHelpers,
+        hourToSeconds: (time) => time.split(':').reduce((seconds, part) => seconds * 60 + Number(part), 0),
+      };
+      gamification.media = { ...previousMedia, getIDYoutube: () => 'M7lc1UVf-VE' };
+      tinymceGet = vi.spyOn(global.tinymce, 'get').mockReturnValue({ getContent: () => '' });
+      download = vi.spyOn(edition().gamification.share, 'downloadBlob').mockReturnValue(true);
+      device.wordsGame = [device.getCuestionDefault()];
+      device.active = 0;
+      $('#adivinaESolutionWord').val('HEART');
+      $('#adivinaEDefinitionWord').val('Organ that pumps blood');
+      $('input[name=qxtmediatype][value=2]').prop('checked', true);
+      $('#adivinaEURLYoutube').val('https://www.youtube.com/watch?v=M7lc1UVf-VE');
+      $('#adivinaEInitVideo').val('00:00:00');
+      $('#adivinaEEndVideo').val('00:00:10');
+      global.eXe.app.alert.mockClear();
+    });
+
+    afterEach(() => {
+      global.$exeDevices.iDevice.gamification.helpers = previousHelpers;
+      global.$exeDevices.iDevice.gamification.media = previousMedia;
+      tinymceGet.mockRestore();
+      download.mockRestore();
+    });
+
+    it('exports a complete question whose video starts at zero', async () => {
+      expect(device.exportQuestions()).toBe(true);
+      expect(await download.mock.calls[0][0].text()).toBe('HEART#Organ that pumps blood');
+      expect(device.wordsGame[0]).toMatchObject({ type: 2, iVideo: 0, fVideo: 10 });
+      expect(global.eXe.app.alert).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      ['', '00:00:10', 'msgEStartEndVideo'],
+      ['00:00:00', '', 'msgEStartEndVideo'],
+      ['   ', '00:00:10', 'msgEStartEndVideo'],
+      ['invalid', '00:00:10', 'msgTimeFormat'],
+      ['00:00:00', '00:00:60', 'msgTimeFormat'],
+      ['00:00:00', '00:00:00', 'msgEStartEndIncorrect'],
+      ['00:00:10', '00:00:05', 'msgEStartEndIncorrect'],
+    ])('rejects the video interval %s to %s', (start, end, message) => {
+      $('#adivinaEInitVideo').val(start);
+      $('#adivinaEEndVideo').val(end);
+
+      expect(device.exportQuestions()).toBe(false);
+      expect(download).not.toHaveBeenCalled();
+      expect(global.eXe.app.alert).toHaveBeenLastCalledWith(device.msgs[message]);
+    });
+  });
+
   describe('adding words to the one on screen', () => {
     const helpers = () => global.$exeDevices.iDevice.gamification.helpers;
     // The author typed it in a new activity: it is on screen, not in the list yet.

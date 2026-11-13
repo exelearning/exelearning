@@ -757,6 +757,61 @@ describe('quick-questions edition: shared form tabs and feedback', () => {
     });
   });
 
+  describe('video question times', () => {
+    let previousHourToSeconds;
+    let previousMedia;
+    let download;
+
+    beforeEach(() => {
+      const gamification = global.$exeDevices.iDevice.gamification;
+      previousHourToSeconds = gamification.helpers.hourToSeconds;
+      previousMedia = gamification.media;
+      gamification.helpers.hourToSeconds = (time) =>
+        time.split(':').reduce((seconds, part) => seconds * 60 + Number(part), 0);
+      gamification.media = { ...previousMedia, getIDYoutube: () => 'M7lc1UVf-VE' };
+      download = vi.spyOn(edition().gamification.share, 'downloadBlob').mockReturnValue(true);
+      $('#quextEQuestion').val('Which organ pumps blood?');
+      $('.QXTE-EAnwersOptions').each(function (index) {
+        $(this).val(['Heart', 'Lungs', 'Kidney', 'Liver'][index]);
+      });
+      $('input[name=qxtype][value=2]').prop('checked', true);
+      $('#quextEURLYoutube').val('https://www.youtube.com/watch?v=M7lc1UVf-VE');
+      $('#quextEInitVideo').val('00:00:00');
+      $('#quextEEndVideo').val('00:00:10');
+      global.eXe.app.alert.mockClear();
+    });
+
+    afterEach(() => {
+      global.$exeDevices.iDevice.gamification.helpers.hourToSeconds = previousHourToSeconds;
+      global.$exeDevices.iDevice.gamification.media = previousMedia;
+      download.mockRestore();
+    });
+
+    it('exports a complete question whose video starts at zero', async () => {
+      expect(device.exportQuestions()).toBe(true);
+      expect(await download.mock.calls[0][0].text()).toContain('Which organ pumps blood?#Heart#Lungs#Kidney#Liver');
+      expect(device.questionsGame[0]).toMatchObject({ type: 2, iVideo: 0, fVideo: 10 });
+      expect(global.eXe.app.alert).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      ['', '00:00:10', 'msgEStartEndVideo'],
+      ['00:00:00', '', 'msgEStartEndVideo'],
+      ['   ', '00:00:10', 'msgEStartEndVideo'],
+      ['invalid', '00:00:10', 'msgTimeFormat'],
+      ['00:00:00', '00:00:60', 'msgTimeFormat'],
+      ['00:00:00', '00:00:00', 'msgEStartEndIncorrect'],
+      ['00:00:10', '00:00:05', 'msgEStartEndIncorrect'],
+    ])('rejects the video interval %s to %s', (start, end, message) => {
+      $('#quextEInitVideo').val(start);
+      $('#quextEEndVideo').val(end);
+
+      expect(device.exportQuestions()).toBe(false);
+      expect(download).not.toHaveBeenCalled();
+      expect(global.eXe.app.alert).toHaveBeenLastCalledWith(device.msgs[message]);
+    });
+  });
+
   describe('adding questions to the one on screen', () => {
     // The author typed it in a new activity: it is on screen, not in the list yet.
     const typeOnScreen = (options) => {
