@@ -101,6 +101,86 @@ button.exe-idevice-help {
     }
 }
 
+// The Import, Export and Create with AI buttons (share.getTools), above the message of the Activities tab: Import
+// and Export as a pair, Create with AI apart in the brand's light green.
+.exe-share-tools {
+    .btn.exe-share-tool {
+        display: inline-flex;
+        align-items: center;
+        gap: .35rem;
+        height: 2rem;
+        padding: 0 .75rem;
+        border: 1px solid var(--gray-border);
+        background-color: var(--white);
+        color: var(--text);
+        line-height: 1;
+        white-space: nowrap;
+
+        // The application gives every span of a button its text colour
+        span {
+            color: inherit;
+        }
+
+        .auto-icon {
+            font-size: 1.125rem;
+        }
+
+        &:hover {
+            // Over its neighbour in the pair, so its whole border shows
+            z-index: 1;
+            border-color: var(--brand-primary);
+            background-color: var(--brand-primary-25);
+            color: var(--brand-primary-dark);
+        }
+    }
+
+    .btn.exe-share-ai {
+        border-color: var(--brand-primary-100);
+        background-color: var(--brand-primary-50);
+        color: var(--brand-primary-dark);
+
+        &:hover {
+            border-color: var(--brand-primary);
+            background-color: var(--brand-primary);
+            color: var(--white);
+        }
+    }
+}
+
+// The zone of the Import window (share.getImportContents), where a file can be dropped around the button that
+// chooses one. The window lives in <body>, out of the iDevice's box.
+.exe-file-drop {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: .5rem;
+    padding: 2rem 1rem;
+    border: 2px dashed var(--gray-border);
+    border-radius: .5rem;
+    text-align: center;
+    transition: border-color .15s, background-color .15s;
+
+    .exe-file-drop-icon {
+        font-size: 2rem;
+        line-height: 1;
+        color: var(--brand-primary);
+    }
+
+    .exe-file-name {
+        color: var(--gray-500);
+    }
+
+    &.is-dragover {
+        border-color: var(--brand-primary);
+        background-color: var(--brand-primary-25);
+
+        // So that only leaving the zone counts as leaving it
+        * {
+            pointer-events: none;
+        }
+    }
+}
+
 article.box {
     &.idevice-element-in-content {
         min-height: 172px;

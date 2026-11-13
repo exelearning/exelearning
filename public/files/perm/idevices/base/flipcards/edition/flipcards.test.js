@@ -746,7 +746,7 @@ describe('flipcards edition: shared form tabs, options tooltips, and saving', ()
     });
 
     it('explains what goes in the Questions tab', () => {
-        const info = panel('contents').firstElementChild;
+        const info = panel('contents').querySelector('.exe-share-tools + p');
 
         expect(info.tagName).toBe('P');
         expect(info.textContent).toContain('Add the cards with the text, image or sound of each side, and edit them one by one.');

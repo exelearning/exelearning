@@ -642,7 +642,7 @@ describe('trueorfalse edition: shared form tabs', () => {
         // Export has no window: it saves the file at once.
         expect(panel('contents').querySelector('.exe-share-tools #eXeGameExportQuestions')).not.toBeNull();
         expect(document.getElementById('eXeEPromptArea').value.length).toBeGreaterThan(0);
-        expect(panel('contents').firstElementChild.textContent).toContain('mark whether it is true or false');
+        expect(panel('contents').querySelector('.exe-share-tools + p').textContent).toContain('mark whether it is true or false');
     });
 
     it('provides one accessible information button at the end of each options row', () => {

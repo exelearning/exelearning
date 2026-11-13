@@ -1242,6 +1242,8 @@ describe('common_idevices_edition.js', () => {
         .map((button) => button.getAttribute('data-exe-tab'));
     const button = (name, id = 'testForm') => document.getElementById(`${id}-tab-${name}`);
     const panel = (name, id = 'testForm') => document.getElementById(`${id}-panel-${name}`);
+    // The message of a panel: its first element, after the share buttons that open Activities.
+    const info = (name) => [...panel(name).children].find((child) => !child.classList.contains('exe-share-tools'));
     const allTabs = {
       instructions: '',
       options: '',
@@ -1329,27 +1331,27 @@ describe('common_idevices_edition.js', () => {
         render(allTabs);
 
         tabNames().forEach((name) => {
-          const info = panel(name).firstElementChild;
+          const message = info(name);
           // A paragraph, without the box and the icon it used to have.
-          expect(info.tagName).toBe('P');
-          expect(info.className).toBe('mt-0 mb-3');
-          expect(info.querySelector('.auto-icon')).toBeNull();
+          expect(message.tagName).toBe('P');
+          expect(message.className).toBe('mt-0 mb-3');
+          expect(message.querySelector('.auto-icon')).toBeNull();
           expect(panel(name).querySelector('.alert-info')).toBeNull();
-          expect(info.textContent.trim().length).toBeGreaterThan(20);
+          expect(message.textContent.trim().length).toBeGreaterThan(20);
         });
       });
 
       it('lets the iDevice word the message of a shared tab, and keeps the rest', () => {
         render({ options: '', contents: '', info: { contents: 'Write a <b>word</b> for each letter.', ai: 'x' } });
 
-        expect(panel('contents').firstElementChild.innerHTML).toBe('Write a <b>word</b> for each letter.');
+        expect(info('contents').innerHTML).toBe('Write a <b>word</b> for each letter.');
         expect(panel('contents').textContent).not.toContain('Add the questions');
         expect(panel('options').firstElementChild.textContent).toBe(
           'Choose how the activity works and how it is shown to the learners.',
         );
 
         render({ contents: '', info: null });
-        expect(panel('contents').firstElementChild.textContent).toContain('Add the questions');
+        expect(info('contents').textContent).toContain('Add the questions');
       });
 
       it('lets the iDevice name a shared tab, and keeps the other titles', () => {
@@ -1692,17 +1694,25 @@ describe('common_idevices_edition.js', () => {
       document.body.innerHTML = '';
     });
 
-    it('puts Import, Export and Create with AI on the right of the Activities tab, above its form', () => {
+    it('puts Import, Export and Create with AI on the right of the Activities tab, above its message', () => {
       render({ contents: '<div id="questionForm"></div>' });
 
       const panel = document.getElementById('testForm-panel-contents');
       const tools = panel.querySelector('.exe-share-tools');
+      // First, so they sit in the same place in every iDevice, whatever the length of its message.
       expect([...panel.children].map((child) => (child === tools ? 'tools' : child.id || child.tagName))).toEqual([
-        'P',
         'tools',
+        'P',
         'questionForm',
       ]);
       expect(tools.classList.contains('justify-content-end')).toBe(true);
+      // Buttons, not links: Import and Export as a pair, Create with AI apart.
+      expect(buttons().some((element) => element.classList.contains('btn-link'))).toBe(false);
+      expect([...tools.children].map((child) => child.className)).toEqual([
+        'btn-group',
+        expect.stringContaining('exe-share-ai'),
+      ]);
+      expect([...tools.querySelector('.btn-group').children].map(label)).toEqual(['Import', 'Export']);
       // A plain row of buttons, each one reached with Tab, not a toolbar moved through with the arrow keys.
       expect(tools.hasAttribute('role')).toBe(false);
       expect(tools.hasAttribute('aria-label')).toBe(false);
@@ -1728,13 +1738,11 @@ describe('common_idevices_edition.js', () => {
       expect(buttons()[1]).toBe(exportButton());
       expect(exportButton().hasAttribute('aria-haspopup')).toBe(false);
       expect(exportButton().hasAttribute('aria-controls')).toBe(false);
-      // Each one says what it does in its tooltip.
-      expect(buttons().every((element) => element.classList.contains('exe-app-tooltip'))).toBe(true);
-      expect(buttons().map((element) => element.getAttribute('title'))).toEqual([
-        'Import questions from a file',
-        'Save the questions in a txt file',
-        'Create questions with an AI',
-      ]);
+      // No tooltip: it would only repeat the labels.
+      buttons().forEach((element) => {
+        expect(element.classList.contains('exe-app-tooltip')).toBe(false);
+        expect(element.hasAttribute('title')).toBe(false);
+      });
     });
 
     it('leaves Import or Export out for an iDevice without them, and all of them with share: false', () => {
@@ -1748,6 +1756,8 @@ describe('common_idevices_edition.js', () => {
 
       render({ contents: '', share: { importQuestions: false, exportQuestions: false } });
       expect(buttons().map(label)).toEqual(['Create with AI']);
+      // No pair left to make.
+      expect(document.querySelector('.exe-share-tools .btn-group')).toBeNull();
 
       render({ contents: '', share: false });
       expect(buttons()).toHaveLength(0);
@@ -1890,41 +1900,6 @@ describe('common_idevices_edition.js', () => {
       window.bootstrap = { Modal };
       expect(() => share().close('import')).not.toThrow();
       expect(() => share().close('missing')).not.toThrow();
-    });
-
-    it('starts the tooltips of the links once, and disposes of them when the edition closes', () => {
-      const disposers = [];
-      const previousLifecycle = window.$exeEditionLifecycle;
-      const previousCommon = eXeLearning.app.common;
-      const instances = new Map();
-      window.bootstrap = { Modal, Tooltip: { getInstance: (el) => instances.get(el) || null } };
-      eXeLearning.app.common = {
-        initTooltips: vi.fn((scope) => {
-          scope.querySelectorAll('.exe-app-tooltip').forEach((el) => instances.set(el, { dispose: vi.fn() }));
-        }),
-      };
-      window.$exeEditionLifecycle = {
-        isActive: () => true,
-        own: (dispose) => {
-          disposers.push(dispose);
-          return dispose;
-        },
-        addEventListener: (target, type, handler) => target.addEventListener(type, handler),
-      };
-      try {
-        render({ contents: '' });
-        share().mount();
-        const tooltips = buttons().map((element) => instances.get(element));
-
-        expect(eXeLearning.app.common.initTooltips).toHaveBeenCalledTimes(1);
-        expect(eXeLearning.app.common.initTooltips).toHaveBeenCalledWith(exportButton().parentElement);
-        expect(tooltips).toHaveLength(3);
-        disposers.forEach((dispose) => dispose());
-        tooltips.forEach((tooltip) => expect(tooltip.dispose).toHaveBeenCalledTimes(1));
-      } finally {
-        window.$exeEditionLifecycle = previousLifecycle;
-        eXeLearning.app.common = previousCommon;
-      }
     });
 
     it('removes the windows, with their Bootstrap instances, when the edition closes', () => {
@@ -3017,6 +2992,20 @@ describe('common_idevices_edition.js', () => {
       expect(document.querySelector('#eXeGameExportImport .exe-field-instructions').textContent).toBe(
         'Supported formats: txt, xml (Moodle)'
       );
+    });
+
+    it('getImportContents puts the button in a zone a file can be dropped on, described by the file and the formats', () => {
+      document.body.innerHTML = globalThis.$exeIDevicesEdition.iDevice.gamification.share.getImportContents(['txt']);
+
+      const zone = document.querySelector('[data-exe-file-drop]');
+      expect(zone.querySelector('#eXeGameImportGame')).not.toBeNull();
+      const button = zone.querySelector('[data-exe-file-trigger]');
+      const described = button
+        .getAttribute('aria-describedby')
+        .split(' ')
+        .map((id) => document.getElementById(id).textContent);
+      expect(described).toEqual(['No file selected', 'Supported formats: txt']);
+      expect(zone.textContent).toContain('Drag a file here or');
     });
 
     it('getImportContents hides the native file input so only the btn-primary trigger is shown', () => {
@@ -4701,6 +4690,79 @@ describe('common_idevices_edition.js', () => {
         $('[data-exe-file-trigger]').trigger('click');
 
         expect(fileInputClicks).toHaveBeenCalledTimes(1);
+      });
+
+      describe('a file dropped on the Import zone', () => {
+        // As a browser fills it: a drag with files lists 'Files' among its types. happy-dom's
+        // DataTransfer lists the files' MIME types instead.
+        const drag = (type, target, files) => {
+          const dataTransfer = files
+            ? { types: ['Files'], files: files, dropEffect: 'none' }
+            : { types: ['text/plain'], files: [], dropEffect: 'none' };
+          const event = new Event(type, { bubbles: true, cancelable: true });
+          Object.defineProperty(event, 'dataTransfer', { value: dataTransfer });
+          target.dispatchEvent(event);
+          return event;
+        };
+        const words = () => new File(['Ecosystem#A community'], 'words.txt', { type: 'text/plain' });
+        let chosen;
+        const mount = () => {
+          document.body.innerHTML = iDevice().gamification.share.getImportContents();
+          openEdition();
+          iDevice().gamification.share.addEvents(0, vi.fn());
+          chosen = vi.fn();
+          // As the iDevices read it.
+          $('#eXeGameImportGame').on('change', (e) => chosen(e.target.files[0]));
+          return document.querySelector('[data-exe-file-drop]');
+        };
+
+        it('goes through the change of the input, as a chosen one, and only the first one', () => {
+          const zone = mount();
+          const first = words();
+
+          const event = drag('drop', zone.querySelector('.exe-file-drop-icon'), [first, words()]);
+
+          expect(event.defaultPrevented).toBe(true);
+          expect(chosen).toHaveBeenCalledTimes(1);
+          expect(chosen).toHaveBeenCalledWith(first);
+          expect(document.getElementById('eXeGameImportGame').files).toHaveLength(1);
+          expect(document.querySelector('[data-exe-file-name]').textContent).toBe('words.txt');
+        });
+
+        it('lights the zone up while a file is over it, until it leaves the zone itself', () => {
+          const zone = mount();
+
+          expect(drag('dragover', zone, [words()]).defaultPrevented).toBe(true);
+          expect(zone.classList.contains('is-dragover')).toBe(true);
+
+          drag('dragleave', zone.querySelector('[data-exe-file-trigger]'), [words()]);
+          expect(zone.classList.contains('is-dragover')).toBe(true);
+
+          drag('dragleave', zone, [words()]);
+          expect(zone.classList.contains('is-dragover')).toBe(false);
+
+          drag('dragenter', zone, [words()]);
+          drag('drop', zone, [words()]);
+          expect(zone.classList.contains('is-dragover')).toBe(false);
+        });
+
+        it('leaves alone a drag that carries no file', () => {
+          const zone = mount();
+
+          expect(drag('dragover', zone).defaultPrevented).toBe(false);
+          expect(drag('drop', zone).defaultPrevented).toBe(false);
+          expect(zone.classList.contains('is-dragover')).toBe(false);
+          expect(chosen).not.toHaveBeenCalled();
+        });
+
+        it('is no longer handled once the edition closes', () => {
+          const zone = mount();
+
+          lifecycle.destroy();
+
+          expect(drag('drop', zone, [words()]).defaultPrevented).toBe(false);
+          expect(chosen).not.toHaveBeenCalled();
+        });
       });
 
       it('drops the file-manager button handler', () => {

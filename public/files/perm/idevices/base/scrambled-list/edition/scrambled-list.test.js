@@ -401,7 +401,7 @@ describe('scrambled-list edition: shared form tabs', () => {
         // Export has no window: it saves the file at once.
         expect(panel('contents').querySelector('.exe-share-tools #eXeGameExportQuestions')).not.toBeNull();
         expect(document.getElementById('eXeEPromptArea').value.length).toBeGreaterThan(0);
-        expect(panel('contents').firstElementChild.textContent).toContain('Write the elements of the list in the right order');
+        expect(panel('contents').querySelector('.exe-share-tools + p').textContent).toContain('Write the elements of the list in the right order');
     });
 
     it('says the Import window reads txt files, without the Moodle xml it does not read', () => {

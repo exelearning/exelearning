@@ -976,7 +976,7 @@ describe('az-quiz-game edition: shared form tabs', () => {
     });
 
     it('explains how its words are written in the message of the Questions tab', () => {
-        const info = panel('contents').firstElementChild;
+        const info = panel('contents').querySelector('.exe-share-tools + p');
 
         expect(info.tagName).toBe('P');
         expect(info.textContent).toContain('Provide a word and its definition');

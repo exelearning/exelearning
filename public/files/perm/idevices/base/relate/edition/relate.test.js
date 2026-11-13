@@ -311,7 +311,7 @@ describe('relate edition: shared form tabs and share windows', () => {
     });
 
     it('edits the pairs in Questions and the game in Options', () => {
-        expect(panel('contents').firstElementChild.textContent).toContain('Add the pairs of cards');
+        expect(panel('contents').querySelector('.exe-share-tools + p').textContent).toContain('Add the pairs of cards');
         expect(panel('contents').querySelector('#rclEPanel #rclEText')).not.toBeNull();
         expect(panel('contents').querySelector('#rclEPanel #rclETextBack')).not.toBeNull();
         expect(panel('options').querySelector('#rclEOptions #rclETypeIdentify')).not.toBeNull();

@@ -4,7 +4,7 @@ import { waitForEditor } from '../../helpers/editor-helpers';
 
 /**
  * The share windows of the iDevice forms (gamification.share). The buttons that open Import, Export and Create with
- * AI are a plain row, each one reached with Tab. In the Create with AI window, Prompt and Questions are tabs with the
+ * AI are a plain row above the message of Activities, each one reached with Tab. In the Create with AI window, Prompt and Questions are tabs with the
  * WAI-ARIA tabs pattern, each showing its own text box and buttons. Its Generate tab is hidden for now.
  */
 test('The Import, Export and Create with AI buttons are each reached with Tab', async ({
@@ -25,17 +25,20 @@ test('The Import, Export and Create with AI buttons are each reached with Tab', 
     const exportButton = tools.getByRole('button', { name: 'Export' });
     const aiButton = tools.getByRole('button', { name: 'Create with AI' });
 
-    // Each one says what it does in its tooltip. The one it leaves fades out
-    // while the next one shows.
-    const tooltip = (text: string) => page.getByRole('tooltip').filter({ hasText: text });
+    // They open the tab, above its message, so they sit in the same place in every iDevice.
+    const panel = page.locator('#gameQEIdeviceForm-panel-contents');
+    await expect(panel.locator(':scope > *').first()).toHaveClass(/\bexe-share-tools\b/);
+    // Import and Export, the input and output of the same file, are a pair; Create with AI stands apart.
+    await expect(tools.locator('.btn-group > button')).toHaveText([/Import/, /Export/]);
+    await expect(tools.locator(':scope > .exe-share-ai')).toHaveText(/Create with AI/);
+
+    // No tooltip: it would only repeat the labels.
     await importButton.focus();
-    await expect(tooltip('Import questions from a file')).toBeVisible();
     await page.keyboard.press('Tab');
     await expect(exportButton).toBeFocused();
-    await expect(tooltip('Save the questions in a txt file')).toBeVisible();
     await page.keyboard.press('Tab');
     await expect(aiButton).toBeFocused();
-    await expect(tooltip('Create questions with an AI')).toBeVisible();
+    await expect(page.getByRole('tooltip')).toHaveCount(0);
     await page.keyboard.press('Shift+Tab');
     await expect(exportButton).toBeFocused();
     // No arrow keys: they belong to a toolbar, and these buttons are not one.

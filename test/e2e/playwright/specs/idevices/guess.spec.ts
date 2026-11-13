@@ -1,6 +1,6 @@
 import { test, expect } from '../../fixtures/auth.fixture';
 import { waitForEditor } from '../../helpers/editor-helpers';
-import { exportText } from '../../helpers/idevice-share-helpers';
+import { dropText, exportText } from '../../helpers/idevice-share-helpers';
 import {
     addIdevice,
     gotoWorkarea,
@@ -32,4 +32,19 @@ test('Guess exports and saves a video question that starts at second zero', asyn
 
     expect(await exportText(page)).toContain('HEART#Organ that pumps blood');
     await saveIdevice(page, id!);
+});
+
+test('Guess imports a txt file dropped on the Import window', async ({ authenticatedPage: page, createProject }) => {
+    const uuid = await createProject(page, 'Guess dropped file');
+    await gotoWorkarea(page, uuid);
+    await waitForAppReady(page);
+    await selectFirstPage(page);
+    await addIdevice(page, 'guess');
+    await waitForEditor(page, 'adivinaEText');
+
+    await dropText(page, 'words.txt', 'ECOSYSTEM#A community of living organisms\nHEART#Organ that pumps blood', () =>
+        expect
+            .poll(() => page.evaluate(() => (window as any).$exeDevice.wordsGame.map((word: any) => word.word)))
+            .toEqual(expect.arrayContaining(['ECOSYSTEM', 'HEART'])),
+    );
 });

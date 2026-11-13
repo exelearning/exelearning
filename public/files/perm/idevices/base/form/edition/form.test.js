@@ -1010,7 +1010,7 @@ describe('form edition: shared form tabs', () => {
             '.txt, .xml'
         );
         expect(document.getElementById('eXeEPromptArea').value.length).toBeGreaterThan(0);
-        expect(panel('contents').firstElementChild.textContent).toContain('Add true-false, fill-in, dropdown and selection');
+        expect(panel('contents').querySelector('.exe-share-tools + p').textContent).toContain('Add true-false, fill-in, dropdown and selection');
     });
 
     it('provides one accessible information button at the end of each options row', () => {

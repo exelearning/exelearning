@@ -1106,8 +1106,10 @@ var $exeIDevicesEdition = {
                 },
 
                 /**
-                 * The question import control. The iDevice reads the chosen
-                 * file: it binds `change` on #eXeGameImportGame.
+                 * The question import control: a zone a file can be dropped
+                 * on, around the button that chooses one. The iDevice reads
+                 * the file: it binds `change` on #eXeGameImportGame, which a
+                 * dropped file goes through too (see addEvents).
                  *
                  * @param {string[]} [formats=['txt', 'xml']] The extensions of
                  * the files the iDevice reads; xml is a Moodle xml file.
@@ -1119,24 +1121,25 @@ var $exeIDevicesEdition = {
                     const names = formats.map((format) => (format === 'xml' ? 'xml (Moodle)' : format)).join(', ');
                     return `<div id="eXeGameExportImport">
                             <form method="POST">
-                                <div class="exe-file-upload" data-exe-upload>
-                                    <label for="eXeGameImportGame" class="form-label mb-1">${_('Import')}: </label>
+                                <div class="exe-file-upload exe-file-drop" data-exe-upload data-exe-file-drop>
+                                    <span class="auto-icon exe-file-drop-icon" aria-hidden="true">upload_file</span>
+                                    <span>${_('Drag a file here or')}</span>
                                     <input type="file" name="eXeGameImportGame" id="eXeGameImportGame" accept="${escape(accept)}" class="exe-file-input d-none" />
-                                    <button type="button" class="btn btn-primary exe-file-btn" data-exe-file-trigger>${_('Choose')}</button>
-                                    <span class="exe-file-name" data-exe-file-name>${_('No file selected')}</span>
-                                    <span class="exe-field-instructions d-block mt-1">${_('Supported formats')}: ${escape(names)}</span>
+                                    <button type="button" class="btn btn-primary exe-file-btn" data-exe-file-trigger aria-describedby="eXeGameImportFileName eXeGameImportFormats">${_('Choose')}</button>
+                                    <span class="exe-file-name" id="eXeGameImportFileName" data-exe-file-name>${_('No file selected')}</span>
+                                    <span class="exe-field-instructions" id="eXeGameImportFormats">${_('Supported formats')}: ${escape(names)}</span>
                                 </div>
                             </form>
                         </div>`;
                 },
 
                 /**
-                 * The Import, Export and Create with AI links of the Questions
+                 * The Import, Export and Create with AI buttons of the Activities
                  * tab. Import and Create with AI open a window: an informative
                  * message and the controls of its process. Export has nothing
                  * to ask, and saves the file at once: the iDevice binds
-                 * `click` on #eXeGameExportQuestions. Each one says what it
-                 * does in its tooltip.
+                 * `click` on #eXeGameExportQuestions. They have no tooltip:
+                 * it would only repeat their labels.
                  *
                  * @param {boolean|Object} [settings] The `share` setting of
                  * tabs.getHtml.
@@ -1154,9 +1157,8 @@ var $exeIDevicesEdition = {
                 getTools: function (settings) {
                     const share = $exeIDevicesEdition.iDevice.gamification.share;
                     const tabs = $exeIDevicesEdition.iDevice.tabs;
-                    const escape = $exeIDevicesEdition.iDevice.common.escapeHtml;
                     const options = settings !== null && typeof settings === 'object' ? settings : {};
-                    // The links, in their order; those with a name open a window.
+                    // The buttons, in their order; those with a name open a window.
                     const tools = [];
                     if (options.importQuestions !== false) {
                         const formats =
@@ -1170,7 +1172,6 @@ var $exeIDevicesEdition = {
                             name: 'import',
                             icon: 'upload',
                             title: _('Import'),
-                            tooltip: _('Import questions from a file'),
                             info: info,
                             content: share.getImportContents(formats),
                         });
@@ -1180,30 +1181,39 @@ var $exeIDevicesEdition = {
                             id: 'eXeGameExportQuestions',
                             icon: 'download',
                             title: _('Export'),
-                            tooltip: _('Save the questions in a txt file'),
                         });
                     }
                     tools.push({
                         name: 'ai',
                         icon: 'auto_awesome',
                         title: share.getAILabel(),
-                        tooltip: _('Create questions with an AI'),
                         info: `${_('You can easily generate multiple questions for the activity using AI.')} ${_('Send the prompt to an AI, paste the questions it returns in Questions and save them.')}`,
                         content: share.getIAContents(options.type || 0, options.options || {}),
                         dialog: 'modal-dialog-scrollable',
                     });
 
-                    const links = tools
-                        .map((tool) => {
-                            const attributes = tool.name
-                                ? `data-exe-share="${tool.name}" aria-haspopup="dialog" aria-controls="${share.getModalId(tool.name)}"`
-                                : `id="${tool.id}"`;
-                            return `
-                            <button type="button" class="btn btn-link btn-sm d-inline-flex align-items-center gap-1 exe-app-tooltip" title="${escape(tool.tooltip)}" ${attributes}>
+                    const button = (tool) => {
+                        const attributes = tool.name
+                            ? `data-exe-share="${tool.name}" aria-haspopup="dialog" aria-controls="${share.getModalId(tool.name)}"`
+                            : `id="${tool.id}"`;
+                        const kind = tool.name === 'ai' ? ' exe-share-ai' : '';
+                        return `
+                            <button type="button" class="btn exe-share-tool${kind}" ${attributes}>
                                 <span class="auto-icon" aria-hidden="true">${tool.icon}</span>${tool.title}
                             </button>`;
-                        })
+                    };
+                    // Import and Export, the input and output of the same
+                    // file, go together; Create with AI stands apart.
+                    const file = tools
+                        .filter((tool) => tool.name !== 'ai')
+                        .map(button)
                         .join('');
+                    const links =
+                        (file ? `<div class="btn-group">${file}</div>` : '') +
+                        tools
+                            .filter((tool) => tool.name === 'ai')
+                            .map(button)
+                            .join('');
                     // No `fade`: the edition closing hides and disposes a
                     // window at once, with no transition still to run. No
                     // size either: the application gives all its centered
@@ -1280,18 +1290,6 @@ var $exeIDevicesEdition = {
                         });
 
                     const lifecycle = $exeIDevicesEdition.iDevice.getLifecycle();
-                    // The tooltips of the links go with the edition. The help
-                    // of the form may have started them already, with the
-                    // other tooltips of the form, but it disposes only its own.
-                    const Tooltip = window.bootstrap && window.bootstrap.Tooltip;
-                    const rows = Tooltip ? document.querySelectorAll('.exe-share-tools') : [];
-                    rows.forEach(function (row) {
-                        eXeLearning.app.common.initTooltips(row);
-                        row.querySelectorAll('.exe-app-tooltip').forEach(function (el) {
-                            const tooltip = Tooltip.getInstance(el);
-                            if (tooltip && lifecycle) lifecycle.own(() => tooltip.dispose());
-                        });
-                    });
                     if (share.onModalShow) document.removeEventListener('show.bs.modal', share.onModalShow);
                     share.onModalShow = function (event) {
                         share.yieldTo(event.target);
@@ -1852,14 +1850,54 @@ var $exeIDevicesEdition = {
                             $name.text(_("No file selected"));
                         }
                     };
+                    // A file dropped on the zone of Import takes the path of a
+                    // chosen one: it goes into the input, whose change event
+                    // reaches the iDevice, the file name and the closing of
+                    // the window. Only the first file counts, as when choosing.
+                    const isFileDrag = function (e) {
+                        const transfer = e.originalEvent && e.originalEvent.dataTransfer;
+                        return !!transfer && Array.from(transfer.types || []).includes('Files');
+                    };
+                    const onFileDragOver = function (e) {
+                        if (!isFileDrag(e)) return;
+                        e.preventDefault();
+                        e.originalEvent.dataTransfer.dropEffect = 'copy';
+                        $(e.currentTarget).addClass('is-dragover');
+                    };
+                    const onFileDragLeave = function (e) {
+                        // While a file is over the zone its children take no
+                        // pointer events, so only leaving the zone lands here.
+                        if (e.target === e.currentTarget) $(e.currentTarget).removeClass('is-dragover');
+                    };
+                    const onFileDrop = function (e) {
+                        if (!isFileDrag(e)) return;
+                        e.preventDefault();
+                        const zone = e.currentTarget;
+                        $(zone).removeClass('is-dragover');
+                        const file = e.originalEvent.dataTransfer.files[0];
+                        const input = zone.querySelector('.exe-file-input');
+                        if (!file || !input) return;
+                        const transfer = new DataTransfer();
+                        transfer.items.add(file);
+                        input.files = transfer.files;
+                        input.dispatchEvent(new Event('change', { bubbles: true }));
+                    };
                     $(document).off('click.exeFileTrigger');
                     $(document).off('change.exeFileInput');
+                    $(document).off('.exeFileDrop');
+                    const zone = '[data-exe-file-drop]';
                     if (lifecycle) {
                         lifecycle.on(document, 'click.exeFileTrigger', '[data-exe-file-trigger]', onFileTrigger);
                         lifecycle.on(document, 'change.exeFileInput', '.exe-file-input', onFileInputChange);
+                        lifecycle.on(document, 'dragenter.exeFileDrop dragover.exeFileDrop', zone, onFileDragOver);
+                        lifecycle.on(document, 'dragleave.exeFileDrop', zone, onFileDragLeave);
+                        lifecycle.on(document, 'drop.exeFileDrop', zone, onFileDrop);
                     } else {
                         $(document).on('click.exeFileTrigger', '[data-exe-file-trigger]', onFileTrigger);
                         $(document).on('change.exeFileInput', '.exe-file-input', onFileInputChange);
+                        $(document).on('dragenter.exeFileDrop dragover.exeFileDrop', zone, onFileDragOver);
+                        $(document).on('dragleave.exeFileDrop', zone, onFileDragLeave);
+                        $(document).on('drop.exeFileDrop', zone, onFileDrop);
                     }
 
                     aiTabs.forEach(function (item) {
@@ -3415,14 +3453,16 @@ var $exeIDevicesEdition = {
                     const isActive = tab.name === active;
                     const tabId = `${id}-tab-${tab.name}`;
                     const panelId = `${id}-panel-${tab.name}`;
-                    // The links sit on the right, above the question form.
+                    // The buttons open the tab, on the right and above its
+                    // message: they are the same in every iDevice and the
+                    // message is not, so they always sit in the same place.
                     const toolbar = tab.name === 'contents' ? tools.toolbar : '';
                     nav += `
                         <li class="nav-item" role="presentation">
                             <button type="button" class="nav-link${isActive ? ' active' : ''}" id="${tabId}" data-exe-tab="${tab.name}" role="tab" aria-controls="${panelId}" aria-selected="${isActive}" tabindex="${isActive ? 0 : -1}">${escape(tab.title)}</button>
                         </li>`;
                     panels += `
-                        <div class="tab-pane${isActive ? ' active show' : ''}" id="${panelId}" role="tabpanel" aria-labelledby="${tabId}" tabindex="0">${tabs.getInfo(tab.info)}${toolbar}${tab.content}</div>`;
+                        <div class="tab-pane${isActive ? ' active show' : ''}" id="${panelId}" role="tabpanel" aria-labelledby="${tabId}" tabindex="0">${toolbar}${tabs.getInfo(tab.info)}${tab.content}</div>`;
                 });
                 // The windows wait here, hidden, until bind moves them to <body>.
                 return `

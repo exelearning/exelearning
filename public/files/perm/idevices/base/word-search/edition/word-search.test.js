@@ -353,7 +353,7 @@ describe('word-search edition: shared form tabs and feedback', () => {
     });
 
     it('explains what goes in the Questions tab', () => {
-        const info = panel('contents').firstElementChild;
+        const info = panel('contents').querySelector('.exe-share-tools + p');
 
         expect(info.tagName).toBe('P');
         expect(info.textContent).toContain('Add the words and their definitions, and edit them one by one.');
