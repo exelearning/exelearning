@@ -307,6 +307,8 @@ test.describe('Mind map editor (Mind Elixir)', () => {
         const image = page.locator('#node-content .exe-mind-map a[rel="lightbox"] img');
         await expect(image).toHaveAttribute('width', String(natural * 2));
         await expect(image).toHaveAttribute('height', String(naturalHeight * 2));
+        // Marked as the author's Dimensions, so reopening never guesses from a re-measured size
+        await expect(image).toHaveAttribute('data-mindmap-size', 'constrain');
         // The link and the image are one stored asset, not a second inline copy
         const stored = await page.evaluate(() => {
             const yDoc = (window as any).eXeLearning.app.project._yjsBridge.getDocumentManager().getDoc();

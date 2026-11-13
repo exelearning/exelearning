@@ -2,7 +2,7 @@
  * Tests for the size a saved map is shown at: its own size, or the author's Dimensions.
  */
 import { describe, expect, it } from 'vitest';
-import { MAX_FIGURE_SIZE, figureSize, isCustomSize, parsePixels } from './figureSize.ts';
+import { MAX_FIGURE_SIZE, figureSize, openingChoice, parsePixels, sizeMode } from './figureSize.ts';
 
 const natural = { width: 800, height: 400 };
 
@@ -45,20 +45,50 @@ describe('figureSize', () => {
     });
 });
 
-describe('isCustomSize', () => {
-    it('is false for the size the map was saved at, give or take rounding', () => {
-        expect(isCustomSize(natural, natural)).toBe(false);
-        expect(isCustomSize({ width: 801, height: 399 }, natural)).toBe(false);
+describe('sizeMode', () => {
+    it('is empty when no dimension is set: the map keeps its own size', () => {
+        expect(sizeMode({ constrain: true })).toBe('');
+        expect(sizeMode({ constrain: false })).toBe('');
     });
 
-    it('is true when the author chose other dimensions', () => {
-        expect(isCustomSize({ width: 1600, height: 800 }, natural)).toBe(true);
-        expect(isCustomSize({ width: 800, height: 300 }, natural)).toBe(true);
+    it('records whether the proportions are constrained when a dimension is set', () => {
+        expect(sizeMode({ width: 1600, constrain: true })).toBe('constrain');
+        expect(sizeMode({ height: 900, constrain: true })).toBe('constrain');
+        expect(sizeMode({ width: 1600, height: 300, constrain: false })).toBe('free');
+    });
+});
+
+describe('openingChoice', () => {
+    it('leaves a map without the marker at its own size, even if it measures differently now', () => {
+        // Other fonts lay the map out a few pixels larger or smaller (issue raised on PR #2557)
+        expect(openingChoice({ width: 805, height: 396 }, '', natural, false)).toBeUndefined();
+        expect(openingChoice({ width: 1600, height: 800 }, null, natural, false)).toBeUndefined();
     });
 
-    it('is false when nothing usable was stored', () => {
-        expect(isCustomSize(undefined, natural)).toBe(false);
-        expect(isCustomSize({ width: Number.NaN, height: 10 }, natural)).toBe(false);
-        expect(isCustomSize({ width: 0, height: 0 }, natural)).toBe(false);
+    it('keeps the width the author set, with the proportions of the map as it is now', () => {
+        expect(openingChoice({ width: 1600, height: 805 }, 'constrain', natural, false)).toEqual({
+            width: 1600,
+            constrain: true,
+        });
+    });
+
+    it('keeps both dimensions when the author set them without constraining the proportions', () => {
+        expect(openingChoice({ width: 800, height: 300 }, 'free', natural, false)).toEqual({
+            width: 800,
+            height: 300,
+            constrain: false,
+        });
+    });
+
+    it('keeps the width of a converted legacy map whose size differs from the new layout', () => {
+        expect(openingChoice({ width: 300, height: 200 }, '', natural, true)).toEqual({ width: 300, constrain: true });
+        expect(openingChoice({ width: 801, height: 399 }, '', natural, true)).toBeUndefined();
+    });
+
+    it('ignores unusable stored sizes and unknown markers', () => {
+        expect(openingChoice(undefined, 'constrain', natural, false)).toBeUndefined();
+        expect(openingChoice({ width: Number.NaN, height: 10 }, 'free', natural, true)).toBeUndefined();
+        expect(openingChoice({ width: 0, height: 0 }, 'constrain', natural, false)).toBeUndefined();
+        expect(openingChoice({ width: 1600, height: 800 }, 'bogus', natural, false)).toBeUndefined();
     });
 });

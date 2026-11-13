@@ -41,9 +41,38 @@ export function figureSize(natural: Size, choice: SizeChoice): Size {
     return { width: atLeastOne(natural.width), height: atLeastOne(natural.height) };
 }
 
-/** Whether a stored size is one the author chose, not the size the map was saved at. */
-export function isCustomSize(stored: Partial<Size> | undefined, natural: Size): boolean {
+/**
+ * How the author set the Dimensions, stored on the image (`data-mindmap-size`): empty for the
+ * map's own size. The map's size depends on the fonts installed, so it cannot tell on opening.
+ */
+export type SizeMode = '' | 'constrain' | 'free';
+
+export function sizeMode(choice: SizeChoice): SizeMode {
+    if (choice.width === undefined && choice.height === undefined) return '';
+    return choice.constrain ? 'constrain' : 'free';
+}
+
+/** Whether a stored size is not the size the map was saved at. */
+function differs(stored: Size, natural: Size): boolean {
+    return Math.abs(stored.width - natural.width) > 1 || Math.abs(stored.height - natural.height) > 1;
+}
+
+/**
+ * The Dimensions to show when a map is opened, or undefined for the map's own size. A
+ * constrained size keeps its width, the height following the map. A converted legacy map has
+ * no marker and another shape: it keeps its width when its size is not the new layout's.
+ */
+export function openingChoice(
+    stored: Partial<Size> | undefined,
+    mode: string | null | undefined,
+    natural: Size,
+    legacy: boolean,
+): SizeChoice | undefined {
     const { width, height } = stored ?? {};
-    if (!width || !height || !Number.isFinite(width) || !Number.isFinite(height)) return false;
-    return Math.abs(width - natural.width) > 1 || Math.abs(height - natural.height) > 1;
+    if (!width || !height || !Number.isFinite(width) || !Number.isFinite(height)) return undefined;
+    if (mode === 'free') return { width, height, constrain: false };
+    if (mode === 'constrain' || (legacy && !mode && differs({ width, height }, natural))) {
+        return { width, constrain: true };
+    }
+    return undefined;
 }

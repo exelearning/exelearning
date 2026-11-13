@@ -173,6 +173,7 @@ describe('exemindmap plugin - the editor dialog', () => {
                 fullSize: false,
                 width: 0,
                 height: 0,
+                sizeMode: '',
                 description: '',
             },
         ]);
@@ -194,6 +195,7 @@ describe('exemindmap plugin - the editor dialog', () => {
                 fullSize: false,
                 width: 300,
                 height: 200,
+                sizeMode: '',
                 description: '',
             },
         ]);
@@ -214,11 +216,11 @@ describe('exemindmap plugin - the editor dialog', () => {
         const plugin = loadPlugin();
         plugin.body.innerHTML =
             '<div class="exe-mind-map"><figure class="exe-figure" style="width: 1600px;">' +
-            '<a href="asset://map.svg" rel="lightbox" title="Grande"><img src="asset://map.svg" width="1600" height="900" alt="Grande"></a>' +
+            '<a href="asset://map.svg" rel="lightbox" title="Grande"><img src="asset://map.svg" width="1600" height="900" data-mindmap-size="free" alt="Grande"></a>' +
             '</figure><p class="exe-mindmap-code">{"nodeData":{"id":"r","topic":"x"}}</p></div>';
         plugin.registry.selected = plugin.body.querySelector('img');
         const { api } = open(plugin);
-        expect(api.calls.sent[0]).toMatchObject({ fullSize: true, width: 1600, height: 900 });
+        expect(api.calls.sent[0]).toMatchObject({ fullSize: true, width: 1600, height: 900, sizeMode: 'free' });
     });
 
     it('sends the text description of a map, line breaks included', () => {
@@ -333,6 +335,16 @@ describe('exemindmap plugin - the editor dialog', () => {
         save(open(plugin), { width: 1600.4, height: 899.6 });
         expect(plugin.inserted[0]).toContain('style="width: 1600px;"');
         expect(plugin.inserted[0]).toContain('width="1600" height="900"');
+    });
+
+    it('marks the image when the author set its Dimensions, and only then', () => {
+        const plugin = loadPlugin();
+        save(open(plugin), { width: 1600, height: 900, sizeMode: 'constrain' });
+        expect(plugin.inserted[0]).toContain('width="1600" height="900" data-mindmap-size="constrain" alt=');
+        for (const sizeMode of [undefined, '', 'bogus', '" onerror="x']) {
+            save(open(plugin), { sizeMode });
+            expect(plugin.inserted.at(-1)).not.toContain('data-mindmap-size');
+        }
     });
 
     it('replaces the map that was opened, where it is, as one undo step', () => {

@@ -49,7 +49,7 @@ import italicIcon from '@material-symbols/svg-400/outlined/format_italic.svg';
 import underlineIcon from '@material-symbols/svg-400/outlined/format_underlined.svg';
 import strikeIcon from '@material-symbols/svg-400/outlined/format_strikethrough.svg';
 import './editor.css';
-import { type Size, figureSize, isCustomSize, parsePixels } from './figureSize';
+import { type Size, type SizeChoice, figureSize, openingChoice, parsePixels, sizeMode } from './figureSize';
 import {
     convertLegacyMindmapToMindElixir,
     decodeHtmlEntities,
@@ -391,17 +391,17 @@ function buildDimensions(): HTMLElement {
     return dimensions;
 }
 
-/** The size the image will be shown at, from the map's size and the Dimensions. */
-function chosenSize(natural: Size): Size {
-    return figureSize(natural, {
+/** What the author typed in Dimensions. */
+function sizeChoice(): SizeChoice {
+    return {
         width: parsePixels(widthInput.value),
         height: parsePixels(heightInput.value),
         constrain: constrainInput.checked,
-    });
+    };
 }
 
 /** Shows the map's own size as the Dimensions' placeholder, kept up to date as the map changes. */
-function trackNaturalSize(stored: Partial<Size>): void {
+function trackNaturalSize(stored: Partial<Size>, mode: unknown): void {
     let timer = 0;
     let first = true;
     const measure = async () => {
@@ -411,15 +411,13 @@ function trackNaturalSize(stored: Partial<Size>): void {
         heightInput.placeholder = String(naturalSize.height);
         if (!first) return;
         first = false;
-        // The size the map was stored at: its own size (left empty, so it follows the map) or
-        // the author's Dimensions. A converted legacy map has another shape: keep its width.
-        if (!isCustomSize(stored, naturalSize)) return;
-        const w = stored.width as number;
-        const h = stored.height as number;
-        const proportional = figureSize(naturalSize, { width: w, constrain: true }).height;
-        constrainInput.checked = openedLegacy || Math.abs(proportional - h) <= 1;
-        widthInput.value = String(w);
-        heightInput.value = String(constrainInput.checked ? proportional : h);
+        // Left empty, the Dimensions follow the map; filled in, the author's choice
+        const choice = openingChoice(stored, typeof mode === 'string' ? mode : '', naturalSize, openedLegacy);
+        if (!choice) return;
+        const size = figureSize(naturalSize, choice);
+        constrainInput.checked = choice.constrain;
+        widthInput.value = String(size.width);
+        heightInput.value = String(size.height);
     };
     mind.bus.addListener('linkDiv', () => {
         clearTimeout(timer);
@@ -694,13 +692,15 @@ async function save(): Promise<void> {
         }
         // The plugin reads the theme the editor shows, so the SVG looks like the editor
         const { svg, width, height } = await mind.exportVectorSvg({ title });
-        const size = chosenSize({ width: Math.round(width), height: Math.round(height) });
+        const choice = sizeChoice();
+        const size = figureSize({ width: Math.round(width), height: Math.round(height) }, choice);
         post({
             mceAction: 'exeMindmapSaved',
             code: serializeStoredCode(data, previousMeta),
             svg: toDataUrl(svg),
             width: size.width,
             height: size.height,
+            sizeMode: sizeMode(choice),
             title,
             caption: captionInput.checked,
             fullSize: fullSizeInput.checked,
@@ -770,7 +770,7 @@ export async function start(load: Record<string, unknown> = {}): Promise<MindEli
     labelMindElixirToolbars();
     buildNavigator();
     buildNodeActions();
-    trackNaturalSize({ width: Number(load.width), height: Number(load.height) });
+    trackNaturalSize({ width: Number(load.width), height: Number(load.height) }, load.sizeMode);
     // The whole map in view, unless that makes its text too small to read, and the central
     // idea selected, ready for Tab and Enter
     mind.scaleFit();
