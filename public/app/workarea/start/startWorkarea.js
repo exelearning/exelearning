@@ -3,7 +3,7 @@
  *
  * There the blank project lives only in memory, so the screen opens as a
  * dialog over it: "New project" simply closes the dialog, and a file goes
- * through the same path as File > Open.
+ * through the same path as File > Open. The desktop app adds its recent files.
  */
 import StartScreen from './startScreen.js';
 
@@ -81,6 +81,34 @@ export function getStartScreenStrings() {
         close: _('Close'),
         invalidFile: _('Only project files can be opened (.elpx, .elp, .zip).'),
         actionError: _('That did not work. Please try again.'),
+        tabRecent: _('Recent projects'),
+        loading: _('Loading…'),
+        loadError: _('The project list could not be loaded.'),
+        empty: _('Projects you open or save will be listed here.'),
+    };
+}
+
+/**
+ * Recent project files, where the host keeps such a list (the desktop app).
+ * The list holds names and opaque ids; the main process opens by id.
+ * @param {Record<string, string>} strings
+ * @param {Object} [api] - window.electronAPI
+ * @returns {Object} Options for StartScreen, empty when there is no list
+ */
+export function getRecentFilesOptions(strings, api = window.electronAPI) {
+    if (typeof api?.getRecentFiles !== 'function' || typeof api?.openRecentFile !== 'function') return {};
+    return {
+        tabs: [{ id: 'recent', label: strings.tabRecent }],
+        loadItems: async () => {
+            const files = (await api.getRecentFiles()) || [];
+            return {
+                recent: files.map((file) => ({ id: file.id, title: file.name, meta: file.folder, when: file.openedAt })),
+            };
+        },
+        // The main process reloads this window and opens the file in the fresh page.
+        onOpenItem: async (item) => {
+            if ((await api.openRecentFile(item.id)) !== true) throw new Error('Recent file is not available');
+        },
     };
 }
 
@@ -96,9 +124,11 @@ export function maybeShowStartScreen(app, env = {}) {
     const session = env.session || window.sessionStorage;
     write(session, SEEN_KEY, '1');
 
+    const strings = getStartScreenStrings();
     const screen = new StartScreen({
-        strings: getStartScreenStrings(),
+        strings,
         modal: true,
+        ...getRecentFilesOptions(strings),
         // The blank project is already there: choosing it only closes the dialog.
         onNew: () => screen.close(),
         onOpenFile: async (file) => {

@@ -2,6 +2,7 @@ import {
     SEEN_KEY,
     SKIP_KEY,
     dismissStartScreen,
+    getRecentFilesOptions,
     getStartScreenStrings,
     maybeShowStartScreen,
     shouldShowStartScreen,
@@ -195,6 +196,64 @@ describe('start screen in the static and desktop app', () => {
             expect(() => dismissStartScreen(null)).not.toThrow();
             expect(window.sessionStorage.getItem(SEEN_KEY)).toBe('1');
             window.sessionStorage.removeItem(SEEN_KEY);
+        });
+    });
+
+    describe('recent files of the desktop app', () => {
+        const strings = { tabRecent: 'Recent projects' };
+        const files = [{ id: 'a1', name: 'water.elpx', folder: '~/Documents', openedAt: 1700000000000 }];
+
+        afterEach(() => {
+            delete window.electronAPI;
+        });
+
+        it('offers no list in the browser, where there is none', () => {
+            expect(getRecentFilesOptions(strings)).toEqual({});
+            expect(getRecentFilesOptions(strings, { getRecentFiles: vi.fn() })).toEqual({});
+        });
+
+        it('lists the files by name and folder', async () => {
+            const api = { getRecentFiles: vi.fn().mockResolvedValue(files), openRecentFile: vi.fn() };
+            const options = getRecentFilesOptions(strings, api);
+
+            expect(options.tabs).toEqual([{ id: 'recent', label: 'Recent projects' }]);
+            expect(await options.loadItems()).toEqual({
+                recent: [{ id: 'a1', title: 'water.elpx', meta: '~/Documents', when: 1700000000000 }],
+            });
+        });
+
+        it('copes with a host that answers nothing', async () => {
+            const api = { getRecentFiles: vi.fn().mockResolvedValue(null), openRecentFile: vi.fn() };
+            expect(await getRecentFilesOptions(strings, api).loadItems()).toEqual({ recent: [] });
+        });
+
+        it('opens by id and fails when the host refuses', async () => {
+            const api = { getRecentFiles: vi.fn(), openRecentFile: vi.fn().mockResolvedValueOnce(true) };
+            const options = getRecentFilesOptions(strings, api);
+
+            await options.onOpenItem({ id: 'a1' });
+            expect(api.openRecentFile).toHaveBeenCalledWith('a1');
+
+            api.openRecentFile.mockResolvedValueOnce(false);
+            await expect(options.onOpenItem({ id: 'gone' })).rejects.toThrow('not available');
+        });
+
+        it('shows the list in the dialog and opens the clicked file', async () => {
+            window.electronAPI = {
+                getRecentFiles: vi.fn().mockResolvedValue(files),
+                openRecentFile: vi.fn().mockResolvedValue(true),
+            };
+            screen = maybeShowStartScreen(makeApp(), env);
+            await flush();
+
+            expect(document.querySelector('.exe-start__list-title').textContent).toBe('Recent projects');
+            const item = document.querySelector('.exe-start__item');
+            expect(item.querySelector('.exe-start__item-title').textContent).toBe('water.elpx');
+            expect(item.querySelector('.exe-start__item-meta').textContent).toBe('~/Documents');
+
+            item.click();
+            await flush();
+            expect(window.electronAPI.openRecentFile).toHaveBeenCalledWith('a1');
         });
     });
 
