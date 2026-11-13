@@ -575,7 +575,7 @@ describe('word-search edition: shared form tabs and feedback', () => {
             $('#eXeGameHasFeedBack').prop('checked', true).trigger('change');
 
             expect(device.validateData()).toBe(false);
-            expect(global.eXe.app.alert).toHaveBeenCalledWith('Message to display when passing the game');
+            expect(global.eXe.app.alert).toHaveBeenCalledWith('Write the message to display when passing the game');
         });
 
         it('keeps the access code and the clue when saving', () => {

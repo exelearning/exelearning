@@ -886,7 +886,7 @@ var $exeIDevicesEdition = {
                     if ((feedBack || required) && !feedback.hasMessage(textFeedBack)) {
                         // Behind the warning, the tab where the message is written.
                         $exeIDevicesEdition.iDevice.tabs.showTabOf('eXeGameFeedBackEditor');
-                        eXe.app.alert(_('Message to display when passing the game'));
+                        eXe.app.alert(_('Write the message to display when passing the game'));
                         return false;
                     }
                     return {

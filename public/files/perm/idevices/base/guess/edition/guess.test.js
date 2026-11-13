@@ -914,7 +914,7 @@ describe('guess edition: shared form tabs and feedback', () => {
       device.updateFieldGame(game({ wordsGame: device.wordsGame, gameMode: 2 }));
 
       expect(device.validateData()).toBe(false);
-      expect(global.eXe.app.alert).toHaveBeenCalledWith('Message to display when passing the game');
+      expect(global.eXe.app.alert).toHaveBeenCalledWith('Write the message to display when passing the game');
     });
 
     // Export writes the questions only: the settings are for saving to check.

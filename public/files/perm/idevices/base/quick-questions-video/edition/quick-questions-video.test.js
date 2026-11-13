@@ -875,7 +875,7 @@ describe('quick-questions-video edition: shared form tabs and feedback', () => {
             device.questionsGame = [question()];
 
             expect(device.validateData()).toBe(false);
-            expect(eXe.app.getLastAlert()).toBe('Message to display when passing the game');
+            expect(eXe.app.getLastAlert()).toBe('Write the message to display when passing the game');
         });
     });
 });

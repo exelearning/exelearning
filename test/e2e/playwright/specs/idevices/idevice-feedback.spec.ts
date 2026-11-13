@@ -89,7 +89,7 @@ test('The feedback the author switches on asks for its message when saving, on i
     await page.locator(`.idevice_node[id="${id}"] .btn-save-idevice`).click();
 
     const alert = page.locator('.modal.show');
-    await expect(alert).toContainText('Message to display when passing the game');
+    await expect(alert).toContainText('Write the message to display when passing the game');
     await alert.getByRole('button', { name: 'Accept' }).click();
     await expect(page.locator(`.idevice_node[id="${id}"] .btn-save-idevice`)).toBeVisible();
     await expect(page.locator('#eXeGameHasFeedBack')).toBeChecked();

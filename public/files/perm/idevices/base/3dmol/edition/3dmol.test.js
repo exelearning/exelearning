@@ -1231,7 +1231,7 @@ describe('3dmol edition: shared form tabs and feedback', () => {
             vi.spyOn(device, 'validateQuestion').mockReturnValue(true);
 
             expect(device.validateData()).toBe(false);
-            expect(global.eXe.app.alert).toHaveBeenCalledWith('Message to display when passing the game');
+            expect(global.eXe.app.alert).toHaveBeenCalledWith('Write the message to display when passing the game');
         });
     });
 });
