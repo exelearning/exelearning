@@ -829,6 +829,10 @@ test.describe('Interactive Video iDevice', () => {
                 .poll(() => body.evaluate(() => typeof (window as any).$interactivevideo?.player?.emitState))
                 .toBe('function');
             await page.clock.install();
+            // Paused, so only runFor moves the clock: left running, it fires the
+            // 500 ms tracking timer on its own whenever a step takes that long.
+            // A second ahead, as pauseAt refuses to go back.
+            await page.clock.pauseAt(Date.now() + 1000);
             await root.locator('#start-link').click();
             await body.evaluate(() => {
                 const player = (window as any).$interactivevideo.player;
