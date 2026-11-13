@@ -3,6 +3,7 @@ import {
     SKIP_KEY,
     dismissStartScreen,
     getRecentFilesOptions,
+    getRecentHandlesOptions,
     getStartScreenStrings,
     maybeShowStartScreen,
     shouldShowStartScreen,
@@ -254,6 +255,70 @@ describe('start screen in the static and desktop app', () => {
             item.click();
             await flush();
             expect(window.electronAPI.openRecentFile).toHaveBeenCalledWith('a1');
+        });
+    });
+
+    describe('recent files in a browser with file handles', () => {
+        const strings = { tabRecent: 'Recent projects', onThisDevice: 'On this device' };
+
+        function fakeHandles(overrides = {}) {
+            return {
+                isRecentHandlesSupported: () => true,
+                listRecentHandles: vi.fn().mockResolvedValue([{ id: 'h1', name: 'water.elpx', openedAt: 5 }]),
+                openRecentHandle: vi.fn().mockResolvedValue(new File(['x'], 'water.elpx')),
+                pickProjectFile: vi.fn().mockResolvedValue(null),
+                rememberDroppedFile: vi.fn().mockResolvedValue(undefined),
+                ...overrides,
+            };
+        }
+
+        it('offers nothing where handles are not supported', () => {
+            expect(getRecentHandlesOptions(strings, vi.fn(), fakeHandles({ isRecentHandlesSupported: () => false }))).toEqual(
+                {},
+            );
+            // happy-dom has no file picker, like Firefox and Safari.
+            expect(getRecentHandlesOptions(strings, vi.fn())).toEqual({});
+        });
+
+        it('lists the remembered files', async () => {
+            const options = getRecentHandlesOptions(strings, vi.fn(), fakeHandles());
+
+            expect(options.tabs).toEqual([{ id: 'recent', label: 'Recent projects' }]);
+            expect(await options.loadItems()).toEqual({
+                recent: [{ id: 'h1', title: 'water.elpx', meta: 'On this device', when: 5 }],
+            });
+        });
+
+        it('reads the chosen file again and opens it', async () => {
+            const openFile = vi.fn();
+            const handles = fakeHandles();
+            const options = getRecentHandlesOptions(strings, openFile, handles);
+
+            await options.onOpenItem({ id: 'h1' });
+
+            expect(handles.openRecentHandle).toHaveBeenCalledWith('h1');
+            expect(openFile.mock.calls[0][0].name).toBe('water.elpx');
+        });
+
+        it('does not open anything when the file cannot be read', async () => {
+            const openFile = vi.fn();
+            const handles = fakeHandles({ openRecentHandle: vi.fn().mockRejectedValue(new Error('Permission')) });
+
+            await expect(getRecentHandlesOptions(strings, openFile, handles).onOpenItem({ id: 'h1' })).rejects.toThrow(
+                'Permission',
+            );
+            expect(openFile).not.toHaveBeenCalled();
+        });
+
+        it('picks with the browser picker and remembers dropped files', async () => {
+            const handles = fakeHandles();
+            const options = getRecentHandlesOptions(strings, vi.fn(), handles);
+            const dataTransfer = { items: [] };
+
+            expect(await options.pickFile()).toBeNull();
+            expect(options.onFileDropped(dataTransfer)).toBeUndefined();
+            expect(handles.pickProjectFile).toHaveBeenCalled();
+            expect(handles.rememberDroppedFile).toHaveBeenCalledWith(dataTransfer);
         });
     });
 

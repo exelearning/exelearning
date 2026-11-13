@@ -182,6 +182,31 @@ describe('FileDropHandler drag events', () => {
     });
 });
 
+describe('FileDropHandler remembers dropped project files', () => {
+    it('hands the drop to the recent-files hook in the static app only', () => {
+        const rememberDropped = vi.fn();
+        const staticApp = { ...makeApp(), runtimeConfig: { isStaticMode: () => true } };
+        const handler = new FileDropHandler({ app: staticApp, rememberDropped });
+
+        const drop = makeDragEvent({ files: [{ name: 'demo.elpx' }] });
+        handler._onDrop(drop);
+        expect(rememberDropped).toHaveBeenCalledWith(drop.dataTransfer);
+
+        handler._onDrop(makeDragEvent({ files: [{ name: 'notes.pdf' }] }));
+        expect(rememberDropped).toHaveBeenCalledTimes(1);
+
+        const online = new FileDropHandler({ app: makeApp(), rememberDropped });
+        online._onDrop(makeDragEvent({ files: [{ name: 'demo.elpx' }] }));
+        expect(rememberDropped).toHaveBeenCalledTimes(1);
+    });
+
+    it('works without a hook', () => {
+        const staticApp = { ...makeApp(), runtimeConfig: { isStaticMode: () => true } };
+        const handler = new FileDropHandler({ app: staticApp });
+        expect(() => handler._onDrop(makeDragEvent({ files: [{ name: 'demo.elpx' }] }))).not.toThrow();
+    });
+});
+
 describe('FileDropHandler defers to the start screen', () => {
     afterEach(() => {
         document.body.innerHTML = '';

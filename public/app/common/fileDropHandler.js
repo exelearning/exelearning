@@ -40,10 +40,13 @@ export default class FileDropHandler {
      * @param {Object} options
      * @param {Object} options.app - The App instance (window.eXeLearning.app)
      * @param {EventTarget} [options.target] - Drop target (defaults to window)
+     * @param {(dataTransfer: DataTransfer) => void} [options.rememberDropped] - Keeps a dropped project
+     *     file for the list of recent files (static app in the browser)
      */
     constructor(options = {}) {
         this.app = options.app;
         this.target = options.target || window;
+        this.rememberDropped = options.rememberDropped;
         this._bound = false;
         this._dragDepth = 0;
         this._overlay = null;
@@ -173,7 +176,20 @@ export default class FileDropHandler {
         this._dragDepth = 0;
         this._hideOverlay();
         if (this._isHandledElsewhere(event.target)) return;
+        this._rememberDropped(event.dataTransfer);
         this.handleFiles(event.dataTransfer?.files);
+    }
+
+    /**
+     * Static app in the browser: remember the dropped project file so the start
+     * screen can list it. Its handle is only available while the drop event is
+     * being dispatched, hence here and not in openFile().
+     * @param {DataTransfer} dataTransfer
+     */
+    _rememberDropped(dataTransfer) {
+        if (!this.app?.runtimeConfig?.isStaticMode?.()) return;
+        if (!isOpenableProjectFile(dataTransfer?.files?.[0]?.name)) return;
+        this.rememberDropped?.(dataTransfer);
     }
 
     /**

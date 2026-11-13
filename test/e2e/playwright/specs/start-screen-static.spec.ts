@@ -1,3 +1,4 @@
+import { readFileSync } from 'fs';
 import path from 'path';
 import { test, expect, type Page } from '@playwright/test';
 
@@ -37,8 +38,9 @@ test.describe('Start screen (static)', () => {
         await expect(dialog).toHaveJSProperty('open', true);
         expect(await dialog.evaluate(element => element.matches(':modal'))).toBe(true);
         await expect(dialog.getByRole('button', { name: 'New project' })).toBeFocused();
-        // No account, no server: there is no project list to show here.
-        await expect(dialog.locator('.exe-start__main')).toHaveCount(0);
+        // No account, no server: the only list is the files this browser remembers.
+        await expect(dialog.locator('.exe-start__tabs')).toHaveCount(0);
+        await expect(dialog.locator('.exe-start__status')).toHaveText('Projects you open or save will be listed here.');
     });
 
     test('New project keeps the blank project and is not asked again after a reload', async ({ page }) => {
@@ -82,6 +84,49 @@ test.describe('Start screen (static)', () => {
         await launch(next);
 
         await expect(next.locator('dialog.exe-start')).toHaveCount(0);
+    });
+
+    test('a file picked with the browser picker is listed as recent in the next launch and reopens', async ({
+        page,
+        context,
+    }) => {
+        // Playwright cannot drive the native file picker, so it is replaced by one that
+        // answers with a real file handle: a copy of the fixture in the origin's private
+        // file system. Storing it, listing it and reading it back are the real thing.
+        const base64 = readFileSync(FIXTURE).toString('base64');
+        await context.addInitScript(base64 => {
+            (window as any).showOpenFilePicker = async () => {
+                const root = await navigator.storage.getDirectory();
+                const handle = await root.getFileHandle('water-cycle.elp', { create: true });
+                const writable = await (handle as any).createWritable();
+                await writable.write(Uint8Array.from(atob(base64), char => char.charCodeAt(0)));
+                await writable.close();
+                return [handle];
+            };
+        }, base64);
+
+        await launch(page);
+        const dialog = page.locator('dialog.exe-start');
+        await expect(dialog.locator('.exe-start__list-title')).toHaveText('Recent projects');
+        await expect(dialog.locator('.exe-start__item')).toHaveCount(0);
+
+        await dialog.getByRole('button', { name: 'Open from this computer…' }).click();
+
+        await expect(dialog).toHaveCount(0);
+        await expect.poll(() => pageCount(page), { timeout: 90000 }).toBeGreaterThanOrEqual(2);
+
+        // A new tab is a new launch; the list is kept by the browser, not by the tab.
+        const next = await context.newPage();
+        await launch(next);
+        const item = next.locator('dialog.exe-start .exe-start__item');
+        await expect(item).toHaveCount(1);
+        await expect(item.locator('.exe-start__item-title')).toHaveText('water-cycle.elp');
+        await expect(item.locator('.exe-start__item-meta')).toHaveText('On this device');
+
+        await item.click();
+
+        await expect(next.locator('dialog.exe-start')).toHaveCount(0);
+        await expect.poll(() => pageCount(next), { timeout: 90000 }).toBeGreaterThanOrEqual(2);
     });
 
     test('stays out of the way when the launch names a project by URL', async ({ page }) => {

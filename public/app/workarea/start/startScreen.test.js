@@ -207,6 +207,52 @@ describe('StartScreen', () => {
             expect(onOpenFile).toHaveBeenCalledWith(file);
         });
 
+        it('uses the picker of the host when it has one', async () => {
+            const onOpenFile = vi.fn();
+            const file = new File(['x'], 'picked.elpx');
+            const pickFile = vi.fn().mockResolvedValueOnce(file).mockResolvedValueOnce(null);
+            screen = make({ onOpenFile, pickFile });
+            const root = screen.mount();
+            const click = vi.spyOn(root.querySelector('input[type=file]'), 'click');
+            const open = root.querySelectorAll('.exe-start__button')[1];
+
+            open.click();
+            await flush();
+            expect(onOpenFile).toHaveBeenCalledWith(file);
+            expect(click).not.toHaveBeenCalled();
+
+            // Cancelled: nothing opens.
+            screen._setBusy(false);
+            open.click();
+            await flush();
+            expect(onOpenFile).toHaveBeenCalledTimes(1);
+        });
+
+        it('says so when the picker of the host fails', async () => {
+            screen = make({ pickFile: vi.fn().mockRejectedValue(new Error('SecurityError')) });
+            const root = screen.mount();
+
+            root.querySelectorAll('.exe-start__button')[1].click();
+            await flush();
+
+            expect(root.querySelector('.exe-start__error').textContent).toBe(strings.actionError);
+        });
+
+        it('tells the host about a dropped project file, during the drop', async () => {
+            const onFileDropped = vi.fn();
+            screen = make({ onFileDropped });
+            const root = screen.mount();
+
+            const wrong = fileDragEvent('drop', [new File(['x'], 'notes.pdf')]);
+            root.dispatchEvent(wrong);
+            expect(onFileDropped).not.toHaveBeenCalled();
+
+            const drop = fileDragEvent('drop', [new File(['x'], 'unit.elpx')]);
+            root.dispatchEvent(drop);
+            expect(onFileDropped).toHaveBeenCalledWith(drop.dataTransfer);
+            await flush();
+        });
+
         it('ignores a picker that was cancelled', async () => {
             const onOpenFile = vi.fn();
             screen = make({ onOpenFile });

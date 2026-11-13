@@ -6,6 +6,13 @@
  * through the same path as File > Open. The desktop app adds its recent files.
  */
 import StartScreen from './startScreen.js';
+import {
+    isRecentHandlesSupported,
+    listRecentHandles,
+    openRecentHandle,
+    pickProjectFile,
+    rememberDroppedFile,
+} from './recentHandles.js';
 
 /** localStorage: the author asked to start with a new project from now on. */
 export const SKIP_KEY = 'exe-start-screen-skip';
@@ -85,6 +92,7 @@ export function getStartScreenStrings() {
         loading: _('Loading…'),
         loadError: _('The project list could not be loaded.'),
         empty: _('Projects you open or save will be listed here.'),
+        onThisDevice: _('On this device'),
     };
 }
 
@@ -113,6 +121,37 @@ export function getRecentFilesOptions(strings, api = window.electronAPI) {
 }
 
 /**
+ * Recent project files in a browser that can keep file handles (Chromium).
+ * Reopening one reads the same file from disk again; the browser asks for
+ * permission when it no longer holds it.
+ * @param {Record<string, string>} strings
+ * @param {(file: File) => Promise<void>} openFile
+ * @param {Object} [handles] - The recentHandles module (injectable for tests)
+ * @returns {Object} Options for StartScreen, empty when not supported
+ */
+export function getRecentHandlesOptions(
+    strings,
+    openFile,
+    handles = { isRecentHandlesSupported, listRecentHandles, openRecentHandle, pickProjectFile, rememberDroppedFile },
+) {
+    if (!handles.isRecentHandlesSupported()) return {};
+    return {
+        tabs: [{ id: 'recent', label: strings.tabRecent }],
+        loadItems: async () => ({
+            recent: (await handles.listRecentHandles()).map((record) => ({
+                id: record.id,
+                title: record.name,
+                meta: strings.onThisDevice,
+                when: record.openedAt,
+            })),
+        }),
+        onOpenItem: async (item) => openFile(await handles.openRecentHandle(item.id)),
+        pickFile: () => handles.pickProjectFile(),
+        onFileDropped: (dataTransfer) => void handles.rememberDroppedFile(dataTransfer),
+    };
+}
+
+/**
  * Offer the start screen once per window, unless this launch should not.
  * @param {Object} app
  * @param {{local?: Storage, session?: Storage, search?: string}} [env]
@@ -125,16 +164,18 @@ export function maybeShowStartScreen(app, env = {}) {
     write(session, SEEN_KEY, '1');
 
     const strings = getStartScreenStrings();
+    const openFile = async (file) => {
+        await app.menus.navbar.file.openLocalFile(file);
+        screen.close();
+    };
     const screen = new StartScreen({
         strings,
         modal: true,
+        ...getRecentHandlesOptions(strings, openFile),
         ...getRecentFilesOptions(strings),
         // The blank project is already there: choosing it only closes the dialog.
         onNew: () => screen.close(),
-        onOpenFile: async (file) => {
-            await app.menus.navbar.file.openLocalFile(file);
-            screen.close();
-        },
+        onOpenFile: openFile,
         skipOption: {
             get: () => read(local, SKIP_KEY) === '1',
             set: (skip) => write(local, SKIP_KEY, skip ? '1' : null),

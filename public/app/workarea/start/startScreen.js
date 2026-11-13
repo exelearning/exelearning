@@ -65,6 +65,8 @@ export default class StartScreen {
      * @param {() => (void|Promise<void>)} options.onNew
      * @param {(file: File) => (void|Promise<void>)} options.onOpenFile
      * @param {(item: Object) => (void|Promise<void>)} [options.onOpenItem]
+     * @param {() => Promise<File|null>} [options.pickFile] - Replaces the file input (null = cancelled)
+     * @param {(dataTransfer: DataTransfer) => void} [options.onFileDropped] - Called during the drop event
      * @param {() => void} [options.onDismiss] - Modal only: closed without choosing
      * @param {{get: () => boolean, set: (value: boolean) => void}} [options.skipOption]
      * @param {string} [options.locale]
@@ -78,6 +80,8 @@ export default class StartScreen {
         this.onNew = options.onNew;
         this.onOpenFile = options.onOpenFile;
         this.onOpenItem = options.onOpenItem;
+        this.pickFile = options.pickFile;
+        this.onFileDropped = options.onFileDropped;
         this.onDismiss = options.onDismiss;
         this.skipOption = options.skipOption;
         this.locale = options.locale;
@@ -171,7 +175,7 @@ export default class StartScreen {
             className: 'exe-start__file',
             attrs: { type: 'file', accept: ACCEPTED_EXTENSIONS, hidden: '', tabindex: '-1', 'aria-hidden': 'true' },
         });
-        this.openButton.addEventListener('click', () => this.fileInput.click());
+        this.openButton.addEventListener('click', () => this._pick());
         this.fileInput.addEventListener('change', () => {
             const file = this.fileInput.files?.[0];
             this.fileInput.value = '';
@@ -310,6 +314,24 @@ export default class StartScreen {
         else this.status.textContent = this.query ? s.noMatches : s.empty;
     }
 
+    /**
+     * Ask for a file: with the host's picker when it has one, else with the
+     * file input (which stays in the page either way).
+     */
+    async _pick() {
+        if (!this.pickFile) {
+            this.fileInput.click();
+            return;
+        }
+        try {
+            const file = await this.pickFile();
+            if (file) this._handleFile(file);
+        } catch (error) {
+            console.error('[StartScreen] File picker failed:', error);
+            this._showError(this.strings.actionError);
+        }
+    }
+
     _handleFile(file) {
         if (!isOpenableProjectFile(file.name)) {
             this._showError(this.strings.invalidFile);
@@ -412,6 +434,8 @@ export default class StartScreen {
         this._dragDepth = 0;
         this.root.classList.remove('exe-start--dragging');
         const file = event.dataTransfer?.files?.[0];
-        if (file && !this.busy) this._handleFile(file);
+        if (!file || this.busy) return;
+        if (isOpenableProjectFile(file.name)) this.onFileDropped?.(event.dataTransfer);
+        this._handleFile(file);
     }
 }

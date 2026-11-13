@@ -34,6 +34,7 @@ import BlobPasteGuard from './common/blobPasteGuard.js';
 // Drag-and-drop to open project files
 import FileDropHandler from './common/fileDropHandler.js';
 import { dismissStartScreen, maybeShowStartScreen } from './workarea/start/startWorkarea.js';
+import { rememberDroppedFile } from './workarea/start/recentHandles.js';
 // Mermaid max-size utilities — exposed on window.eXeLearning for TinyMCE plugins
 import * as mermaidMaxSize from './common/mermaidMaxSize.js';
 
@@ -89,7 +90,7 @@ export default class App {
         this.electronFileOpenHandlerBound = false;
         this.pendingElectronOpenFiles = [];
         this.pendingStaticOpenFiles = [];
-        this.fileDropHandler = new FileDropHandler({ app: this });
+        this.fileDropHandler = new FileDropHandler({ app: this, rememberDropped: (dataTransfer) => void rememberDroppedFile(dataTransfer) });
 
         if (!this.eXeLearning.config.isOfflineInstallation) {
             this.setupSessionMonitor();
