@@ -6,6 +6,7 @@ import { PrintPreviewExporter, type PrintPreviewOptions } from './PrintPreviewEx
 import { PageRenderer } from '../renderers/PageRenderer';
 import { PRERENDERED_LATEX_CSS } from '../constants';
 import { encryptDataGame } from '../utils/dataGameCipher';
+import { LINK_URLS_CSS } from '../utils/linkUrls';
 import type {
     AssetProvider,
     ExportAsset,
@@ -740,7 +741,17 @@ describe('PrintPreviewExporter', () => {
                 expect(marked).toEqual([
                     '<a data-exe-text-is-url href="https://example.com/a?b=1&amp;c=2">https://example.com/a?b=1&amp;c=2</a>',
                 ]);
-                expect(html).toContain('a[href^="http"][data-exe-text-is-url]::after { content: none; }');
+                expect(html).toContain(LINK_URLS_CSS);
+            });
+
+            it('is told from one holding only a picture, and from one with words beside its picture', async () => {
+                const { html } = await preview(
+                    '<p><a href="https://cc.org/"><img src="by.png"></a> ' +
+                        '<a href="https://mapa.es/">Consulta el mapa <img src="icon.png"></a></p>',
+                );
+
+                expect(html).toContain('<a data-exe-image-link href="https://cc.org/">');
+                expect(html).toContain('<a href="https://mapa.es/">Consulta el mapa');
             });
 
             it.each([
@@ -1042,32 +1053,31 @@ describe('PrintPreviewExporter', () => {
     });
 
     describe('pre-rendering', () => {
+        /** A document with one page holding one text component with the given content. */
+        const singleTextPage = (content: string, meta: Partial<ExportMetadata> = {}): ExportDocument =>
+            createMockDocument(
+                [
+                    {
+                        id: 'p1',
+                        title: 'Page',
+                        parentId: null,
+                        order: 0,
+                        blocks: [
+                            {
+                                id: 'b1',
+                                name: 'Block 1',
+                                order: 0,
+                                components: [{ id: 'c1', order: 0, properties: {}, type: 'text', content }],
+                            },
+                        ],
+                        properties: {},
+                    },
+                ],
+                meta,
+            );
+
         it('should call preRenderMermaid hook if provided', async () => {
-            const doc = createMockDocument([
-                {
-                    id: 'p1',
-                    title: 'Page',
-                    parentId: null,
-                    order: 0,
-                    blocks: [
-                        {
-                            id: 'b1',
-                            name: 'Block 1',
-                            order: 0,
-                            components: [
-                                {
-                                    id: 'c1',
-                                    order: 0,
-                                    properties: {},
-                                    type: 'text',
-                                    content: '<div class="mermaid">graph TD; A-->B;</div>',
-                                },
-                            ],
-                        },
-                    ],
-                    properties: {},
-                },
-            ]);
+            const doc = singleTextPage('<div class="mermaid">graph TD; A-->B;</div>');
 
             const preRenderMermaid = async (html: string) => ({
                 html: html.replace('<div class="mermaid">graph TD; A-->B;</div>', '<svg>Mock SVG</svg>'),
@@ -1081,6 +1091,67 @@ describe('PrintPreviewExporter', () => {
 
             expect(result.html).toContain('<svg>Mock SVG</svg>');
             expect(result.html).not.toContain('<div class="mermaid">graph TD; A-->B;</div>');
+        });
+
+        // "Include MathJax" leaves formulas to MathJax in the exports, but the printed page carries
+        // no MathJax script and prints from a copy without scripts: unrendered, they print as source.
+        for (const addMathJax of [false, true]) {
+            it(`pre-renders LaTeX when the project ${addMathJax ? 'includes' : 'does not include'} MathJax`, async () => {
+                const doc = singleTextPage(
+                    '<p>\\( x^2 - 4 \\)</p><div class="quext-DataGame js-hidden">GAME-DATA</div>',
+                    { addMathJax },
+                );
+                const preRenderLatex = async (html: string) => ({
+                    html: html.replace('\\( x^2 - 4 \\)', '<span class="exe-math-rendered"><svg></svg></span>'),
+                    hasLatex: true,
+                    latexRendered: true,
+                    count: 1,
+                });
+                // The game's formulas are rendered inside its encrypted data, which the preview
+                // must keep: a marker stands for the re-encrypted payload.
+                const preRenderDataGameLatex = async (html: string) => ({
+                    html: html.replace('GAME-DATA', 'GAME-DATA-WITH-RENDERED-LATEX'),
+                    count: 1,
+                });
+
+                const exp = new PrintPreviewExporter(doc, mockResourceProvider);
+                const result = await exp.generatePreview({ preRenderLatex, preRenderDataGameLatex });
+
+                expect(result.html).toContain('<span class="exe-math-rendered"><svg></svg></span>');
+                expect(result.html).not.toContain('\\( x^2 - 4 \\)');
+                expect(result.html).toContain('GAME-DATA-WITH-RENDERED-LATEX');
+            });
+        }
+
+        it('warns when the page has LaTeX that could not be pre-rendered', async () => {
+            const doc = singleTextPage('<p>\\( x^2 - 4 \\)</p>', { addMathJax: true });
+            const preRenderLatex = async (html: string) => ({ html, hasLatex: true, latexRendered: false, count: 0 });
+            const warn = spyOn(console, 'warn').mockImplementation(() => {});
+
+            try {
+                const exp = new PrintPreviewExporter(doc, mockResourceProvider);
+                const result = await exp.generatePreview({ preRenderLatex });
+
+                expect(result.html).toContain('\\( x^2 - 4 \\)');
+                expect(warn).toHaveBeenCalledWith(expect.stringContaining('will print as LaTeX source'));
+            } finally {
+                warn.mockRestore();
+            }
+        });
+
+        it('does not warn when the page has no LaTeX', async () => {
+            const doc = singleTextPage('<p>No formulas here</p>');
+            const preRenderLatex = async (html: string) => ({ html, hasLatex: false, latexRendered: false, count: 0 });
+            const warn = spyOn(console, 'warn').mockImplementation(() => {});
+
+            try {
+                const exp = new PrintPreviewExporter(doc, mockResourceProvider);
+                await exp.generatePreview({ preRenderLatex });
+
+                expect(warn).not.toHaveBeenCalledWith(expect.stringContaining('will print as LaTeX source'));
+            } finally {
+                warn.mockRestore();
+            }
         });
     });
 

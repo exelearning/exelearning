@@ -60,6 +60,15 @@ export async function getSettingNumber(db: Kysely<Database>, key: string, fallba
     return parseNumber(value, fallback);
 }
 
+/**
+ * Quota in MB given to a newly created user. `DEFAULT_QUOTA` in the environment
+ * sets the default and the `/admin` setting overrides it. It only seeds
+ * `users.quota_mb` at creation; existing users keep their own value.
+ */
+export async function getDefaultQuotaMb(db: Kysely<Database>): Promise<number> {
+    return getSettingNumber(db, 'DEFAULT_QUOTA', parseNumber(process.env.DEFAULT_QUOTA, 4096));
+}
+
 export function parseAuthMethods(raw: string): string[] {
     return raw
         .split(',')
