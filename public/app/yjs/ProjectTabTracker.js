@@ -141,11 +141,16 @@ class ProjectTabTracker {
 
   /**
    * Send a heartbeat to mark this tab as active
+   * @param {string} [peerTabId] - Another live tab to register in the same write
    * @private
    */
-  _sendHeartbeat() {
+  _sendHeartbeat(peerTabId) {
     const tabs = this._getTabsFromStorage();
-    tabs[this.tabId] = Date.now();
+    const now = Date.now();
+    tabs[this.tabId] = now;
+    if (peerTabId) {
+      tabs[peerTabId] = now;
+    }
     this._saveTabsToStorage(tabs);
   }
 
@@ -307,9 +312,13 @@ class ProjectTabTracker {
       setTimeout(() => this._cleanStaleEntries(), 100);
     }
 
-    if (type === 'TAB_OPENED' && tabId !== this.tabId) {
-      // Another tab opened, send heartbeat to register ourselves
-      this._sendHeartbeat();
+    if (type === 'TAB_OPENED' && tabId && tabId !== this.tabId) {
+      // Another tab opened: register ourselves and the sender in one write.
+      // The registry is a shared read-modify-write key, and the message can
+      // arrive before the sender's own write is visible here (Firefox). A
+      // heartbeat built from that stale read would drop the new tab, and
+      // closing this tab would then look like the last one closing.
+      this._sendHeartbeat(tabId);
     }
   }
 
