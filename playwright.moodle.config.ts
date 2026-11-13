@@ -7,7 +7,7 @@ import { defineConfig, devices } from '@playwright/test';
  * with the audit course and learner accounts already provisioned, so they must never
  * be picked up by `make test-e2e`. Start the stack first, then:
  *
- *   MOODLE_BASE_URL=http://localhost:8097 bun x playwright test -c playwright.moodle.config.ts
+ *   MOODLE_BASE_URL=http://localhost:8097 bun x --bun playwright test -c playwright.moodle.config.ts
  *
  * No `webServer` is declared: the LMS is external by definition, and starting one
  * from a test run would hide which instance the results came from.

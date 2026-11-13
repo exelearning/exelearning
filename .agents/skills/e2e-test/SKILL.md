@@ -82,8 +82,8 @@ expect(projectAfter.status()).toBe(200);
 ## Commands
 
 ```bash
-bun x playwright test --project=chromium test/e2e/playwright/specs/my-test.spec.ts   # Single spec
-make build-static && bun x playwright test --project=static specs/my-test.spec.ts     # Static build
+bun x --bun playwright test --project=chromium test/e2e/playwright/specs/my-test.spec.ts   # Single spec
+make build-static && bun x --bun playwright test --project=static specs/my-test.spec.ts     # Static build
 make test-e2e                                                                          # All E2E
 make fix                                                                               # Lint
 ```
@@ -113,5 +113,5 @@ console.log('Debug:', JSON.stringify(debugInfo, null, 2));
 - [ ] Uses helpers from `workarea-helpers.ts`
 - [ ] No `waitForTimeout()` for async operations
 - [ ] Validates both UI and backend state
-- [ ] Passes: `bun x playwright test --project=chromium <file>`
+- [ ] Passes: `bun x --bun playwright test --project=chromium <file>`
 - [ ] `make fix` passes clean
