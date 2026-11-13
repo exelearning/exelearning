@@ -11,10 +11,10 @@
 import { parseFragment, serialize, type DefaultTreeAdapterMap } from 'parse5';
 import { PRERENDERED_LATEX_CSS } from '../constants';
 import { renderPrintContextScript } from '../printContext';
-import { markLinksShowingTheirUrl } from '../utils/linkUrls';
+import { LINK_URLS_CSS, markLinksShowingTheirUrl } from '../utils/linkUrls';
 import { accentOutline, readColor } from './cardColors';
 import { renderMatchingLayoutScript } from './matchingLayout';
-import { escapeText } from './sanitizeHtml';
+import { escapeText, isEmbedAddress } from './sanitizeHtml';
 import type {
     CharacterBoxGroup,
     PrintableCard,
@@ -119,20 +119,11 @@ body {
 
 /* Paper cannot follow a link, so the sheet writes the address after each one to the web: always,
    as there is no document option here to turn it off. Not after one whose text already is the
-   address, nor after a picture. */
+   address, nor after one holding only a picture. */
 a[href^="http"] {
     color: inherit;
 }
-a[href^="http"]::after {
-    content: " [" attr(href) "]";
-    font-size: 0.85em;
-    word-break: break-all;
-    color: #666;
-}
-a[href^="http"][data-exe-text-is-url]::after,
-a[href^="http"]:has(img:only-child)::after {
-    content: none;
-}
+${LINK_URLS_CSS}
 `;
 
 /**
@@ -1623,21 +1614,37 @@ export function renderInlineGap(characters: number, options?: string[]): string 
     return `<span class="worksheet-gap" style="width: ${width.toFixed(1)}mm"></span>${choices}`;
 }
 
+/** The tags of a link as the sanitiser writes them. */
+const SANITISED_LINK_TAG = /<a href="[^"]*">|<\/a>/g;
+
 /**
  * Take the links off the gaps in a sentence, keeping what was in them.
  *
  * Print writes the address of each link after it, and a link the author put round a hidden word
  * usually leads to that word: a gap followed by ".../wiki/Toledo" answers the question it asks.
- * Links reach here only as the sanitiser writes them, `<a href="…">` and nothing else, never one
- * inside another, and no author markup can carry the gap's class, so both are recognised exactly.
+ * Links reach here only as the sanitiser writes them, `<a href="…">` and nothing else, and no
+ * author markup can carry the gap's class, so both are recognised exactly. The parser can still
+ * leave one link inside another, across a table cell, so each `</a>` closes the link opened last.
+ * Every link round a gap comes off, the outer one too.
  *
  * @param html - Sanitised HTML with its gaps already in it
  * @returns The same HTML, with no link round a gap
  */
 export function unlinkGaps(html: string): string {
-    return html.replace(/<a href="[^"]*">((?:(?!<\/a>)[\s\S])*?)<\/a>/g, (link, content: string) =>
-        content.includes('<span class="worksheet-gap"') ? content : link,
-    );
+    const open: number[] = [];
+    const unlinked = new Set<number>();
+    for (const tag of html.matchAll(SANITISED_LINK_TAG)) {
+        if (tag[0] !== '</a>') {
+            open.push(tag.index);
+            continue;
+        }
+        const start = open.pop();
+        if (start !== undefined && html.slice(start, tag.index).includes('<span class="worksheet-gap"')) {
+            unlinked.add(start).add(tag.index);
+        }
+    }
+    if (unlinked.size === 0) return html;
+    return html.replace(SANITISED_LINK_TAG, (tag, offset: number) => (unlinked.has(offset) ? '' : tag));
 }
 
 /**
@@ -1981,8 +1988,8 @@ const LINE_BREAKING_TAGS = new Set([
  *
  * A picture among words is part of the sentence, as a formula drawn as an image is, and keeps its
  * place on the line. One with no words beside it is an illustration. Telling the two apart means
- * reading the text around the picture, which a stylesheet cannot do. A line ends at a block or a
- * line break, and a gap left to write in counts as a word.
+ * reading the text around the picture, which a stylesheet cannot do. A line ends at a block, a
+ * line break or the address of embedded content, and a gap left to write in counts as a word.
  */
 function renderPrompt(prompt: string): string {
     if (!/<img\b/i.test(prompt)) return prompt;
@@ -2022,7 +2029,8 @@ function renderPrompt(prompt: string): string {
             words = true;
             return;
         }
-        const breaksLine = LINE_BREAKING_TAGS.has(node.tagName);
+        // The address of embedded content stands on a line of its own, as a block does.
+        const breaksLine = LINE_BREAKING_TAGS.has(node.tagName) || isEmbedAddress(node);
         if (breaksLine) endLine();
         node.childNodes.forEach(visit);
         if (breaksLine) endLine();

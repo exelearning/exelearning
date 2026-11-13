@@ -294,7 +294,16 @@ their address, so it is not written twice.
 
 One link never survives: one round a gap. An author who links a word and then hides it would have
 the address of the answer printed beside the space left for it, so Form and Complete take the link
-off every gap.
+off every gap, an outer one too where the parser left one link inside another. A clue to a word the
+student has to find gives the same risk without any gap: a definition that links "invertebrate" to
+`…/wiki/Annelid` answers itself on paper. So the A-Z quiz definitions, the Identify statement and
+clues, and the rich text of a Guess question are sanitised with `{ links: false }`, which keeps only
+what each link held. The address of embedded content is still printed there, as it is all that is
+left of that content.
+
+A link holding only a picture gets no address after it either, as before. CSS cannot tell that
+(`img:only-child` ignores the words beside the picture), so the same pass that marks links whose
+text is their address marks it, and both previews share those rules (`LINK_URLS_CSS`).
 
 ### The one activity whose answers are printed in full
 
