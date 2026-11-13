@@ -67,6 +67,7 @@ jobs:
             public/libs/**
             public/style/workarea/main.css
             public/files/perm/idevices/base/slide/edition/slide-editor.bundle.js
+            public/libs/tinymce_5/js/tinymce/plugins/exemindmap/editor/mindmap-editor.bundle.*
             public/files/perm/idevices/base/progress-report/export/html2canvas.js
             public/files/perm/idevices/base/checklist/export/html2canvas.js
             public/files/perm/idevices/base/rubric/export/html2canvas.js
