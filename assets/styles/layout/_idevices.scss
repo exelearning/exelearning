@@ -52,6 +52,8 @@ button.exe-idevice-help {
 // The tabs of the iDevice forms (tabs.getHtml), in the application's style: no folder borders, and the active
 // tab bold and underlined in the brand colour, as in the project properties.
 .exe-idevice-tabs.nav-tabs {
+    // Less padding than Bootstrap's, so that more tabs fit in one row
+    --bs-nav-link-padding-x: calc(1rem - 2px);
     gap: 0 2px;
 
     .nav-link {
