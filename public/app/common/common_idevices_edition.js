@@ -1427,18 +1427,23 @@ var $exeIDevicesEdition = {
                                         ${$exeIDevicesEdition.iDevice.gamification.share.createIAButtonsHtml()}
                                     </div>
                                 </div>
-                                <div class="d-flex justify-content-end  border-secondary p-2">
-                                   <button type="button" id="eXeESaveButton" class="btn btn-primary ms-2">${_('Save')}</button>
-                                   <button type="button" id="eXeECopyButton" class="btn btn-primary ms-2">${_('Copy')}</button>
-                                   <select id="eXeEIASelect" name="eXeEIASelect" class="form-select form-select-sm w-auto ms-2">
-                                        <option selected value="https://chatgpt.com/?q=">ChatGPT</option>
-                                        <option value="https://claude.ai/new?q=">Claude</option>
-                                        <option value="https://www.perplexity.ai/search?q=">Perplexity</option>
-                                        <option value="https://chat.mistral.ai/chat/?q=">Le Chat (Mistral)</option>
-                                        <option value="https://grok.com/?q=">Grok</option>
-                                        <option value="https://chat.qwen.ai/?text=">Qwen</option>
-                                    </select>
-                                   <button type="button" id="eXeEOpenChatGPTButton" class="btn btn-primary ms-2">${_('Send to AI')}</button>
+                                <!-- As in the Share dialog: Copy is an outline button with an icon, and the AI goes with the button that sends to it. -->
+                                <div class="exe-ai-actions d-flex justify-content-end align-items-center flex-wrap gap-2 p-2">
+                                   <button type="button" id="eXeESaveButton" class="btn btn-primary">${_('Save')}</button>
+                                   <button type="button" id="eXeECopyButton" class="btn btn-outline-secondary exe-ai-copy">
+                                        <span class="auto-icon" aria-hidden="true">content_copy</span><span>${_('Copy')}</span>
+                                   </button>
+                                   <div class="input-group exe-ai-send" id="eXeEAISend">
+                                        <select id="eXeEIASelect" name="eXeEIASelect" class="form-select" aria-label="${_('AI assistant')}">
+                                            <option selected value="https://chatgpt.com/?q=">ChatGPT</option>
+                                            <option value="https://claude.ai/new?q=">Claude</option>
+                                            <option value="https://www.perplexity.ai/search?q=">Perplexity</option>
+                                            <option value="https://chat.mistral.ai/chat/?q=">Le Chat (Mistral)</option>
+                                            <option value="https://grok.com/?q=">Grok</option>
+                                            <option value="https://chat.qwen.ai/?text=">Qwen</option>
+                                        </select>
+                                        <button type="button" id="eXeEOpenChatGPTButton" class="btn btn-primary">${_('Send to AI')}</button>
+                                   </div>
                                 </div>
                             </div>`;
                     return tab.replace(/[ \t]+/g, ' ').trim();
@@ -1785,7 +1790,7 @@ var $exeIDevicesEdition = {
                     // one shows its panel and its buttons. Generate stays hidden
                     // for now, and the keyboard skips it.
                     const aiTabs = [
-                        { tab: $tabPrompt, panel: $('#eXeEPromptPanel'), buttons: [$copyButton, $iaSelect, $openChatGPTButton] },
+                        { tab: $tabPrompt, panel: $('#eXeEPromptPanel'), buttons: [$copyButton, $('#eXeEAISend')] },
                         { tab: $tabQuestions, panel: $('#eXeEQuestionsPanel'), buttons: [$saveButton] },
                         { tab: $tabIA, panel: $divEIA, buttons: [] },
                     ];

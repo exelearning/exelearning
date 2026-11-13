@@ -3040,12 +3040,39 @@ describe('common_idevices_edition.js', () => {
       // The "Add questions" button was hidden in every tab and read another textarea.
       expect(container.querySelector('#eXeEIAButton, #eXeEQuestionsIA')).toBeNull();
       const footer = container.querySelector('#eXeEAddArea > :last-child');
-      const buttons = [...footer.querySelectorAll('button')].map((button) => [button.id, button.type, button.textContent.trim()]);
+      // The label a screen reader gives, without the icon.
+      const label = (button) => {
+        const copy = button.cloneNode(true);
+        copy.querySelectorAll('[aria-hidden="true"]').forEach((icon) => icon.remove());
+        return copy.textContent.trim();
+      };
+      const buttons = [...footer.querySelectorAll('button')].map((button) => [button.id, button.type, label(button)]);
       expect(buttons).toEqual([
         ['eXeESaveButton', 'button', 'Save'],
         ['eXeECopyButton', 'button', 'Copy'],
         ['eXeEOpenChatGPTButton', 'button', 'Send to AI'],
       ]);
+    });
+
+    it('getIAContents styles its buttons as the Share dialog, with the AI joined to Send to AI', () => {
+      const container = document.createElement('div');
+      container.innerHTML = globalThis.$exeIDevicesEdition.iDevice.gamification.share.getIAContents(0);
+      const button = (id) => container.querySelector(`#${id}`);
+
+      // Copy is an outline button with its icon; Save and Send to AI are plain primary buttons.
+      expect(button('eXeECopyButton').classList.contains('btn-outline-secondary')).toBe(true);
+      expect(button('eXeECopyButton').querySelector('.auto-icon[aria-hidden="true"]').textContent).toBe('content_copy');
+      for (const id of ['eXeESaveButton', 'eXeEOpenChatGPTButton']) {
+        expect(button(id).classList.contains('btn-primary')).toBe(true);
+        expect(button(id).querySelector('.auto-icon')).toBeNull();
+      }
+      // The AI picker and its button are one control, the picker at full size.
+      const send = button('eXeEAISend');
+      expect(send.classList.contains('input-group')).toBe(true);
+      expect([...send.children].map((child) => child.id)).toEqual(['eXeEIASelect', 'eXeEOpenChatGPTButton']);
+      expect(button('eXeEIASelect').classList.contains('form-select-sm')).toBe(false);
+      // Its options are names of assistants, so it says what it picks.
+      expect(button('eXeEIASelect').getAttribute('aria-label')).toBe('AI assistant');
     });
 
     it('getIAContents returns the AI controls without a tab around them', () => {
@@ -3064,21 +3091,20 @@ describe('common_idevices_edition.js', () => {
         selected: [prompt, questions, generate].map((item) => item.getAttribute('aria-selected')),
         stops: [prompt, questions, generate].map((item) => item.getAttribute('tabindex')),
         panels: ['eXeEPromptPanel', 'eXeEQuestionsPanel', 'eXeEIADiv'].map((id) => tab(id).hidden),
-        buttons: ['eXeECopyButton', 'eXeEIASelect', 'eXeEOpenChatGPTButton', 'eXeESaveButton'].map(
-          (id) => tab(id).style.display !== 'none'
-        ),
+        // The AI picker and Send to AI show and hide together.
+        buttons: ['eXeECopyButton', 'eXeEAISend', 'eXeESaveButton'].map((id) => tab(id).style.display !== 'none'),
       });
       const onPrompt = {
         selected: ['true', 'false', 'false'],
         stops: ['0', '-1', '-1'],
         panels: [false, true, true],
-        buttons: [true, true, true, false],
+        buttons: [true, true, false],
       };
       const onQuestions = {
         selected: ['false', 'true', 'false'],
         stops: ['-1', '0', '-1'],
         panels: [true, false, true],
-        buttons: [false, false, false, true],
+        buttons: [false, false, true],
       };
       const press = (target, key) => target.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true }));
 

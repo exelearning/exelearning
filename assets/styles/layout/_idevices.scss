@@ -181,6 +181,52 @@ button.exe-idevice-help {
     }
 }
 
+// The buttons at the bottom of the Create with AI window (share.getIAContents), as in the Share dialog: Copy like
+// its Copy button, Save and Send to AI as primary buttons, and the AI picker joined to Send to AI. All one height.
+.exe-ai-actions {
+    .btn,
+    .form-select {
+        height: 36px;
+    }
+
+    .btn.exe-ai-copy {
+        --bs-btn-color: var(--bs-gray-700, #495057);
+        --bs-btn-bg: var(--bs-white, #fff);
+        --bs-btn-border-color: var(--bs-border-color, #dee2e6);
+        --bs-btn-hover-color: var(--bs-btn-color);
+        --bs-btn-hover-bg: var(--bs-gray-100, #f8f9fa);
+        --bs-btn-hover-border-color: var(--bs-btn-border-color);
+        --bs-btn-active-color: var(--bs-btn-color);
+        --bs-btn-active-bg: var(--bs-btn-hover-bg);
+        --bs-btn-active-border-color: var(--bs-btn-border-color);
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 0 16px;
+        // The application gives every button and its spans its text colour
+        color: var(--bs-btn-color);
+        white-space: nowrap;
+
+        span {
+            color: inherit;
+        }
+
+        .auto-icon {
+            font-size: 18px;
+        }
+    }
+
+    .exe-ai-send {
+        flex-wrap: nowrap;
+        width: auto;
+
+        .form-select {
+            flex: 0 1 auto;
+            width: auto;
+        }
+    }
+}
+
 article.box {
     &.idevice-element-in-content {
         min-height: 172px;
