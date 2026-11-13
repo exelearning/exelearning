@@ -208,6 +208,19 @@ export default defineConfig({
             use: {
                 ...devices['Desktop Chrome'],
                 baseURL: 'http://localhost:3002',
+                // The static app opens its start screen over the editor on every fresh
+                // launch. Specs that are not about it start as an author who ticked
+                // "Skip this and start with a new project"; start-screen-static.spec.ts
+                // clears this to exercise the dialog.
+                storageState: {
+                    cookies: [],
+                    origins: [
+                        {
+                            origin: 'http://localhost:3002',
+                            localStorage: [{ name: 'exe-start-screen-skip', value: '1' }],
+                        },
+                    ],
+                },
             },
         },
     ],

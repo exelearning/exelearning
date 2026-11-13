@@ -295,6 +295,37 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
     const { fileExists, readFile } = deps.fileHelper ?? defaultFileHelper;
 
     /**
+     * Strings of the start screen (views/workarea/start.njk), translated on the
+     * server because that page loads before the client translation catalogue.
+     */
+    function buildStartScreenStrings(locale: string): Record<string, string> {
+        const tr = (text: string) => trans(text, {}, locale);
+        return {
+            appName: 'eXeLearning',
+            title: tr('Create a project or open one to get started'),
+            newProject: tr('New project'),
+            openFromComputer: tr('Open from this computer…'),
+            dropHint: tr('Or drop a project anywhere in this window'),
+            dropFormats: tr('.elpx, .elp, .zip'),
+            dropNow: tr('Drop to open this project'),
+            dropNowDetail: tr('It opens in this window.'),
+            invalidFile: tr('Only project files can be opened (.elpx, .elp, .zip).'),
+            actionError: tr('That did not work. Please try again.'),
+            tabRecent: tr('Recent'),
+            tabMine: tr('My projects'),
+            tabShared: tr('Shared with me'),
+            searchProjects: tr('Search projects'),
+            loading: tr('Loading…'),
+            loadError: tr('The project list could not be loaded.'),
+            empty: tr('Projects you create, open or save will be listed here.'),
+            noMatches: tr('No projects match your search'),
+            untitled: tr('Untitled'),
+            ownedByYou: tr('Owned by you'),
+            sharedBy: tr('Shared by %s'),
+        };
+    }
+
+    /**
      * Get user's locale preference from database
      * Returns null if not found
      */
@@ -988,7 +1019,39 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                     }
                 }
 
-                // If no project UUID, create a new project and redirect
+                // No project asked for: show the start screen instead of creating one.
+                // Opening the application must not leave an empty draft behind when the
+                // author only wanted an existing project (#1469). `?new=1` keeps the
+                // direct "give me a blank project" entry point, and a platform launch
+                // (jwt_token) still gets its project created below.
+                if (!projectUuid && !isOfflineMode() && !jwtTokenParam && query.new !== '1') {
+                    const startLocale =
+                        (await getUserLocalePreference(currentUser.id)) ||
+                        process.env.APP_LOCALE ||
+                        detectLocaleFromHeader(request.headers.get('accept-language')) ||
+                        DEFAULT_LOCALE;
+                    setLocale(startLocale);
+                    const html = renderTemplate('workarea/start', {
+                        locale: startLocale,
+                        basePath: getBasePath(),
+                        userEmail: isGuest ? '' : currentUser.email || '',
+                        t: { logout: trans('Logout', {}, startLocale) },
+                        startConfig: {
+                            basePath: getBasePath(),
+                            locale: startLocale,
+                            strings: buildStartScreenStrings(startLocale),
+                        },
+                        impersonation,
+                        customHeadHtml,
+                        appName,
+                        customFaviconUrl,
+                    });
+                    return new Response(html, {
+                        headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' },
+                    });
+                }
+
+                // An explicit request for a blank project: create it and redirect
                 if (!projectUuid) {
                     // Helper function to build redirect URL with preserved jwt_token
                     // Helper function to build redirect URL with preserved jwt_token

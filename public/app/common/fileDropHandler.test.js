@@ -182,6 +182,30 @@ describe('FileDropHandler drag events', () => {
     });
 });
 
+describe('FileDropHandler defers to the start screen', () => {
+    afterEach(() => {
+        document.body.innerHTML = '';
+    });
+
+    it('lets the open start screen take the drop itself', () => {
+        const dialog = document.createElement('dialog');
+        dialog.className = 'exe-start';
+        dialog.setAttribute('open', '');
+        document.body.appendChild(dialog);
+
+        const app = makeApp();
+        const handler = new FileDropHandler({ app });
+
+        handler._onDragEnter(makeDragEvent());
+        expect(document.querySelector('.exe-file-drop-overlay')).toBeFalsy();
+
+        const drop = makeDragEvent({ files: [{ name: 'demo.elpx' }] });
+        handler._onDrop(drop);
+        expect(drop.preventDefault).toHaveBeenCalled();
+        expect(app.modals.openuserodefiles.largeFilesUpload).not.toHaveBeenCalled();
+    });
+});
+
 describe('FileDropHandler defers while a side panel is open', () => {
     /** Inject an element with the given id and the `active` class. */
     function openPanel(id) {

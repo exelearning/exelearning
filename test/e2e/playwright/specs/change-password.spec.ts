@@ -69,7 +69,7 @@ test.describe('Change password', () => {
         });
         expect(userLogin.ok()).toBeTruthy();
 
-        await page.goto('/workarea');
+        await page.goto('/workarea?new=1');
         await page.waitForURL(/\/workarea/);
         await page.waitForFunction(() => (window as any).eXeLearning?.app?.modals !== undefined, undefined, {
             timeout: 30000,
@@ -137,7 +137,7 @@ test.describe('Change password', () => {
         const guestLogin = await page.request.post('/login/guest', { form: { guest_login_nonce: '' } });
         expect(guestLogin.ok()).toBeTruthy();
 
-        await page.goto('/workarea');
+        await page.goto('/workarea?new=1');
         await page.waitForURL(/\/workarea/);
         await page.waitForFunction(() => (window as any).eXeLearning?.app?.modals !== undefined, undefined, {
             timeout: 30000,

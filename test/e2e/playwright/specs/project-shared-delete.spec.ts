@@ -13,7 +13,7 @@ async function loginAsUser(browser: Browser, baseURL: string, email: string, pas
     });
     expect(loginResponse.ok()).toBeTruthy();
 
-    await page.goto('/workarea');
+    await page.goto('/workarea?new=1');
     await page.waitForURL(/\/workarea/, { timeout: 30000 });
     await page.waitForFunction(
         () => {

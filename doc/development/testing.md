@@ -322,6 +322,18 @@ test.describe('Login', () => {
 });
 ```
 
+### Entering the editor
+
+`/workarea` without a project shows the start screen and creates nothing, so a spec that
+needs an editor asks for one explicitly:
+
+- Online: use the `authenticatedPage` fixture, or `page.goto('/workarea?new=1')` for a
+  blank project, or `gotoWorkarea(page, uuid)` for one made with `createProject`.
+- Static: the `static` project starts every spec with the "Skip this and start with a new
+  project" preference in its storage state (`playwright.config.ts`), so the dialog does not
+  cover the editor. A context created by hand with `browser.newContext()` does not inherit
+  it. `start-screen-static.spec.ts` clears it with `test.use({ storageState: ... })`.
+
 ### Test Users
 
 Default test users:

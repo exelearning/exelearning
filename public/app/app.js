@@ -33,6 +33,7 @@ window.UnsavedChangesHelper = UnsavedChangesHelper;
 import BlobPasteGuard from './common/blobPasteGuard.js';
 // Drag-and-drop to open project files
 import FileDropHandler from './common/fileDropHandler.js';
+import { dismissStartScreen, maybeShowStartScreen } from './workarea/start/startWorkarea.js';
 // Mermaid max-size utilities — exposed on window.eXeLearning for TinyMCE plugins
 import * as mermaidMaxSize from './common/mermaidMaxSize.js';
 
@@ -143,6 +144,8 @@ export default class App {
         await this.flushPendingStaticOpenFilesWhenReady();
         // Process any pending Electron file-open events after project init.
         await this.flushPendingElectronOpenFilesWhenReady();
+        // Static/desktop: ask what to do instead of silently starting blank.
+        this.startScreen = maybeShowStartScreen(this);
         // Show deferred URL import error from static mode (set by ?url= handler)
         if (window.__exeStaticUrlError && this.modals?.alert) {
             this.modals.alert.show({
@@ -1562,6 +1565,8 @@ export default class App {
      * @param {string} filePath - Full path to the .elpx file
      */
     async openFileFromPath(filePath) {
+        // A file opened by the OS (association, dock, second instance) answers the start screen.
+        dismissStartScreen(this);
         try {
             if (
                 this.runtimeConfig?.isStaticMode?.() &&
@@ -1624,6 +1629,8 @@ export default class App {
     async openStaticFile(file) {
         if (!(file instanceof File)) return;
         if (!this.runtimeConfig?.isStaticMode?.()) return;
+        // A file arriving from outside (PWA launch) answers the start screen.
+        dismissStartScreen(this);
 
         if (
             !this.isYjsBridgeReadyForElectronOpen() ||
@@ -1690,6 +1697,7 @@ export default class App {
 
         const filesToOpen = [...this.pendingStaticOpenFiles];
         this.pendingStaticOpenFiles = [];
+        dismissStartScreen(this);
         for (const file of filesToOpen) {
             this.modals.openuserodefiles.largeFilesUpload(file);
         }

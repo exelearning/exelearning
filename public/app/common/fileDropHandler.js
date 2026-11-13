@@ -91,6 +91,7 @@ export default class FileDropHandler {
      * a project. This is the case when:
      *   - any modal is open (e.g. the File Manager has its own file dropzone for
      *     uploading assets), or
+     *   - the start screen is open — it takes the drop itself, or
      *   - the Styles or Preview side panel is open — those have their own UI and
      *     the full-window "drop to open" overlay must not cover them.
      * @param {EventTarget} target
@@ -101,6 +102,8 @@ export default class FileDropHandler {
             return true;
         }
         if (document.querySelector('.modal.show')) return true;
+        // The start screen has its own drop zone and inline error message.
+        if (document.querySelector('dialog.exe-start[open]')) return true;
         return this._isPanelOpen();
     }
 
