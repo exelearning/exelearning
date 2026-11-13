@@ -1007,7 +1007,12 @@ var $eXeSeleccionaMedias = {
             mutations.forEach(function (mutation) {
                 if (mutation.target.classList.contains('iDevice_inner')) {
                     const $grid = $(mutation.target).find('.SLCMP-Multimedia');
-                    if ($grid.is(':visible') && $grid.data('masonry')) {
+                    if (
+                        $grid.is(':visible') &&
+                        $grid.data('masonry') &&
+                        $.fn &&
+                        typeof $.fn.masonry === 'function'
+                    ) {
                         $grid.masonry('layout');
                     }
                 }

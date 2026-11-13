@@ -264,15 +264,28 @@ test.describe('IndexedDB Tab-Close Cleanup', () => {
         await gotoWorkarea(page2, projectUuid);
         await waitForAppReady(page2);
 
+        // Both tabs must be registered before the close, otherwise page1
+        // honestly looks like the last tab and schedules cleanup.
+        await expect
+            .poll(async () => {
+                return page2.evaluate(id => {
+                    const raw = localStorage.getItem(`exe-tabs-${id}`);
+                    return raw ? Object.keys(JSON.parse(raw)).length : 0;
+                }, projectUuid);
+            })
+            .toBeGreaterThanOrEqual(2);
+
         // Close page1 — page2 is still open, so cleanup must NOT fire
         await page1.close();
-        await page2.waitForTimeout(600);
 
-        // No needs-cleanup flag should be set while page2 is alive
-        const flagWithPage2Open = await page2.evaluate(id => {
-            return localStorage.getItem(`exe-needs-cleanup-${id}`);
-        }, projectUuid);
-        expect(flagWithPage2Open).toBeNull();
+        // No needs-cleanup flag should be set while page2 is alive.
+        // Poll: Firefox can set the flag from a spurious pagehide and the
+        // surviving tab clears it on the next turn.
+        await expect
+            .poll(async () => {
+                return page2.evaluate(id => localStorage.getItem(`exe-needs-cleanup-${id}`), projectUuid);
+            })
+            .toBeNull();
 
         // IndexedDB should still be intact (page2 is alive)
         const existsWithPage2Open = await checkIndexedDBExists(page2, projectUuid);
