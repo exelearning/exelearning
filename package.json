@@ -72,9 +72,9 @@
     "url": "https://exelearning.net"
   },
   "dependencies": {
-    "@elysiajs/cors": "^1.4.2",
+    "@elysiajs/cors": "^1.4.3",
     "@elysiajs/jwt": "^1.4.2",
-    "@elysiajs/static": "^1.4.10",
+    "@elysiajs/static": "^1.4.12",
     "@elysiajs/swagger": "^1.3.1",
     "@mathjax/mathjax-dsfont-font-extension": "4.1.3",
     "@mathjax/mathjax-mhchem-font-extension": "4.1.3",
@@ -86,7 +86,7 @@
     "css-tree": "3.2.1",
     "dotenv": "^18.0.9",
     "edicuatex": "1.5.5",
-    "elysia": "^1.4.30",
+    "elysia": "^1.4.31",
     "fast-xml-parser": "^5.12.0",
     "fflate": "^0.8.3",
     "fs-extra": "^11.4.1",
