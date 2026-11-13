@@ -36,7 +36,8 @@ test.describe('Project properties tabs', () => {
         await expect(activeTab).toHaveCSS('border-bottom-style', 'solid');
         await expect(activeTab).toHaveCSS('border-bottom-width', '2px');
         await expect(inactiveTab).toHaveCSS('border-bottom-style', 'none');
-        expect((await tabRow.boundingBox())?.height).toBe(normalRowHeight);
+        // Poll: the tab's `transition: all` animates padding and border, so the row is taller mid-transition
+        await expect.poll(async () => (await tabRow.boundingBox())?.height).toBe(normalRowHeight);
 
         // Keyboard focus, so the next tab matches :focus-visible
         await activeTab.focus();

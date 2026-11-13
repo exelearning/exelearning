@@ -690,10 +690,11 @@ test.describe('Print iDevices', () => {
             binding.createComponent(parent.id, binding.createBlock(parent.id), 'challenge', { htmlContent: html });
         }, html);
 
-        // Chromium resolves attr(href); Firefox reports the declared value unresolved.
+        // Chromium resolves attr(href) into one string; Firefox before 159 reports it unresolved, and
+        // Firefox 159 resolves it but keeps the strings apart. Joining adjacent strings covers all three.
         const showsArticle = /\[(https:\/\/es\.wikipedia\.org\/wiki\/Gusto|" attr\(href\) ")\]/;
         const afterContent = (anchor: Locator) =>
-            anchor.evaluate(a => getComputedStyle(a, '::after').content).catch(() => null);
+            anchor.evaluate(a => getComputedStyle(a, '::after').content.replace(/"\s+"/g, '')).catch(() => null);
 
         await openPrintPanel(page);
         const { frame } = await choosePrintOption(page, 'in-place');
