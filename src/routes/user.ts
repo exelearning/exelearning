@@ -3,7 +3,8 @@
  * Handles user preferences and settings
  */
 import { Elysia, t } from 'elysia';
-import { getJwtSecret } from './auth';
+import { getJwtSecret, passwordFingerprint } from './auth';
+import { isProductionEnv } from '../utils/env';
 import { jwt } from '@elysiajs/jwt';
 import { db } from '../db/client';
 import {
@@ -309,7 +310,7 @@ export function createUserRoutes(deps: UserDependencies = defaultDependencies) {
             // boundary.
             .patch(
                 '/api/user/password',
-                async ({ body, set, currentUser }) => {
+                async ({ body, set, currentUser, jwt, cookie }) => {
                     if (!currentUser) {
                         set.status = 401;
                         return { error: 'Unauthorized', message: 'Authentication required' };
@@ -367,6 +368,21 @@ export function createUserRoutes(deps: UserDependencies = defaultDependencies) {
                         if (!updated) {
                             set.status = 500;
                             return { error: 'Internal Error', message: 'Failed to change the password' };
+                        }
+
+                        // The change revokes every session signed with the old
+                        // password fingerprint; keep this one by re-signing it.
+                        const session = (await jwt.verify(cookie.auth.value as string)) as JwtPayload | false;
+                        if (session) {
+                            const { iat: _iat, exp: _exp, ...claims } = session;
+                            cookie.auth.set({
+                                value: await jwt.sign({ ...claims, pwh: passwordFingerprint(hashedPassword) }),
+                                httpOnly: true,
+                                secure: isProductionEnv(),
+                                sameSite: 'lax',
+                                maxAge: 7 * 24 * 60 * 60,
+                                path: '/',
+                            });
                         }
 
                         return { success: true, message: 'Password changed successfully' };

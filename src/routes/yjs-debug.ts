@@ -153,18 +153,23 @@ export function createYjsDebugRoutes(deps: YjsDebugDependencies = defaultDepende
                 }
 
                 // Sign a short-lived token reusing the application JWT secret.
+                // It copies the caller's identity claims and never outlives the
+                // caller's own token, so it cannot be used to renew a session.
+                const nowSeconds = Math.floor(Date.now() / 1000);
+                const exp = Math.min(nowSeconds + DEBUG_TOKEN_TTL_SECONDS, jwtPayload!.exp ?? nowSeconds);
                 const secret = new TextEncoder().encode(getJwtSecret());
                 const shortToken = await new SignJWT({
                     sub: userId,
                     email: jwtPayload!.email,
                     roles: jwtPayload!.roles,
-                    isGuest: false,
-                    authMethod: 'local',
+                    isGuest: jwtPayload!.isGuest ?? false,
+                    authMethod: jwtPayload!.authMethod,
+                    pwh: jwtPayload!.pwh,
                     debug: true,
                 })
                     .setProtectedHeader({ alg: 'HS256' })
                     .setIssuedAt()
-                    .setExpirationTime(`${DEBUG_TOKEN_TTL_SECONDS}s`)
+                    .setExpirationTime(exp)
                     .sign(secret);
 
                 const url = new URL(request.url);
@@ -173,7 +178,7 @@ export function createYjsDebugRoutes(deps: YjsDebugDependencies = defaultDepende
 
                 return {
                     wsUrl,
-                    expiresInSeconds: DEBUG_TOKEN_TTL_SECONDS,
+                    expiresInSeconds: exp - nowSeconds,
                 };
             })
     );
