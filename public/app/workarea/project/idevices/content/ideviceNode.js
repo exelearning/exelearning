@@ -1957,32 +1957,45 @@ export default class IdeviceNode {
      */
     async exportProcessIdeviceJson() {
         let response = {};
-        this.exportObject = window[this.idevice.exportObject];
+        this.exportObject = this.idevice?.exportObject
+            ? window[this.idevice.exportObject]
+            : null;
         // Check that the idevice has save data
         if (
             this.jsonProperties &&
             Object.keys(this.jsonProperties).length > 0
         ) {
-            // Get export html template
-            let htmlTemplate = this.idevice.exportTemplateContent;
-            // Idevice export function 1: renderView
-            this.htmlView = this.exportObject.renderView(
-                this.jsonProperties,
-                this.accesibility,
-                htmlTemplate,
-                this.odeIdeviceId
-            );
+            if (
+                this.exportObject &&
+                typeof this.exportObject.renderView === 'function'
+            ) {
+                // Get export html template
+                let htmlTemplate = this.idevice.exportTemplateContent;
+                // Idevice export function 1: renderView
+                this.htmlView = this.exportObject.renderView(
+                    this.jsonProperties,
+                    this.accesibility,
+                    htmlTemplate,
+                    this.odeIdeviceId
+                );
+            }
             this.ideviceBody.innerHTML = this.exportHtmlView();
             // Ensure ideviceId is in jsonProperties for renderBehaviour selectors
             this.jsonProperties.ideviceId = this.odeIdeviceId;
-            // Idevice export function 2: renderBehaviour
-            this.exportObject.renderBehaviour(
-                this.jsonProperties,
-                this.accesibility,
-                this.odeIdeviceId
-            );
-            // Idevice export function 3: init
-            this.exportObject.init(this.jsonProperties, this.accesibility);
+            if (this.exportObject) {
+                // Idevice export function 2: renderBehaviour
+                if (typeof this.exportObject.renderBehaviour === 'function') {
+                    this.exportObject.renderBehaviour(
+                        this.jsonProperties,
+                        this.accesibility,
+                        this.odeIdeviceId
+                    );
+                }
+                // Idevice export function 3: init
+                if (typeof this.exportObject.init === 'function') {
+                    this.exportObject.init(this.jsonProperties, this.accesibility);
+                }
+            }
             // In case the idevice is in edition we must save the viewHTML
             if (this.mode == 'edition') {
                 let saveIdeviceResponse = await this.apiSaveIdeviceViewHTML();
@@ -1998,9 +2011,15 @@ export default class IdeviceNode {
                 // In case the idevice has no json data, We try to load the viewhtml of it
                 this.ideviceBody.innerHTML = this.exportHtmlView();
                 // Pass ideviceId even when jsonProperties is empty - needed for renderBehaviour selectors
-                const fallbackData = { ideviceId: this.odeIdeviceId };
-                this.exportObject.renderBehaviour(fallbackData, this.accesibility);
-                this.exportObject.init(fallbackData, this.accesibility);
+                if (this.exportObject) {
+                    const fallbackData = { ideviceId: this.odeIdeviceId };
+                    if (typeof this.exportObject.renderBehaviour === 'function') {
+                        this.exportObject.renderBehaviour(fallbackData, this.accesibility);
+                    }
+                    if (typeof this.exportObject.init === 'function') {
+                        this.exportObject.init(fallbackData, this.accesibility);
+                    }
+                }
                 resolve({ init: 'true' });
             });
             return response;

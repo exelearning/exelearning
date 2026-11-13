@@ -5958,6 +5958,23 @@ describe('IdeviceNode', () => {
                     delete window.__testJsonExport;
                 });
 
+                it('JSON iDevice without data and missing exportObject does not throw', async () => {
+                    idevice.idevice = { exportObject: '__nonExistentExportObject' };
+                    idevice.jsonProperties = {};
+                    idevice.htmlView = '<p>saved fallback</p>';
+
+                    await expect(idevice.exportProcessIdeviceJson()).resolves.toBeDefined();
+                    expect(idevice.ideviceBody.textContent).toContain('saved fallback');
+                });
+
+                it('JSON iDevice with data and missing exportObject does not throw', async () => {
+                    idevice.idevice = { exportObject: '__nonExistentExportObject' };
+                    idevice.jsonProperties = { title: 'Some Title' };
+                    idevice.htmlView = '<p>saved fallback</p>';
+
+                    await expect(idevice.exportProcessIdeviceJson()).resolves.toBeDefined();
+                });
+
                 it('apiGetHtmlView sanitizes the HTML returned by the API', async () => {
                     eXeLearning.app.api.getSaveHtmlView = vi
                         .fn()
