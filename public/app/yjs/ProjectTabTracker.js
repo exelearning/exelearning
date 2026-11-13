@@ -277,6 +277,16 @@ class ProjectTabTracker {
     // Remove ourselves first
     this._removeFromStorage();
 
+    // Tell the other tabs too: one still handling our TAB_OPENED would
+    // register us again, and the queued TAB_CLOSING lets it undo that.
+    if (this._channel) {
+      try {
+        this._channel.postMessage({ type: 'TAB_CLOSING', tabId: this.tabId });
+      } catch {
+        // Channel might already be closed
+      }
+    }
+
     // Clean any stale entries
     this._cleanStaleEntries();
 
@@ -307,8 +317,14 @@ class ProjectTabTracker {
   _handleMessage(event) {
     const { type, tabId } = event.data || {};
 
-    if (type === 'TAB_CLOSING' && tabId !== this.tabId) {
-      // Another tab is closing, clean stale entries after a brief delay
+    if (type === 'TAB_CLOSING' && tabId && tabId !== this.tabId) {
+      // Drop the closing tab in case our TAB_OPENED reply re-added it
+      // (messages from one sender arrive in order), then clean stale entries.
+      const tabs = this._getTabsFromStorage();
+      if (tabId in tabs) {
+        delete tabs[tabId];
+        this._saveTabsToStorage(tabs);
+      }
       setTimeout(() => this._cleanStaleEntries(), 100);
     }
 

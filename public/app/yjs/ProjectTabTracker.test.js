@@ -549,6 +549,42 @@ describe('ProjectTabTracker', () => {
       expect(Object.keys(JSON.parse(mockLocalStorage.getItem('exe-tabs-project-123')))).toEqual(['new-tab']);
     });
 
+    it('should not re-register a tab that closed before its TAB_OPENED was handled', () => {
+      vi.useFakeTimers();
+      const receiverCallback = vi.fn();
+      const receiver = new ProjectTabTracker('project-123', receiverCallback);
+      receiver.start();
+
+      // A new tab opens and closes before the receiver handles its TAB_OPENED.
+      const shortLived = new ProjectTabTracker('project-123', () => {});
+      shortLived.start();
+      shortLived._handleBeforeUnload();
+
+      // The receiver now handles the queued messages, in the order they were sent.
+      vi.advanceTimersByTime(200);
+
+      const tabs = JSON.parse(mockLocalStorage.getItem('exe-tabs-project-123'));
+      expect(Object.keys(tabs)).toEqual([receiver.tabId]);
+
+      // Closing the receiver is the last tab closing: cleanup must run now,
+      // not after the closed tab's entry goes stale.
+      receiver._handleBeforeUnload();
+      expect(receiverCallback).toHaveBeenCalledTimes(1);
+    });
+
+    it('should still run cleanup when broadcasting TAB_CLOSING throws', () => {
+      const callback = vi.fn();
+      const tracker = new ProjectTabTracker('project-123', callback);
+      tracker.start();
+      tracker._channel.postMessage = () => {
+        throw new Error('channel closed');
+      };
+
+      tracker._handleBeforeUnload();
+
+      expect(callback).toHaveBeenCalledTimes(1);
+    });
+
     it('should ignore TAB_OPENED messages without a sender id', () => {
       const tracker = new ProjectTabTracker('project-123', () => {});
       tracker.start();
