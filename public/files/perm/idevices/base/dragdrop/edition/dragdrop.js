@@ -467,6 +467,15 @@ var $exeDevice = {
         return s ? encodeURIComponent(s.replace('%', '&percnt;')) : s;
     },
 
+    hasCardMedia: function (card) {
+        return String(card.url || '').trim().length > 3 || String(card.audio || '').trim().length > 3;
+    },
+
+    isCardComplete: function (card, originalCard = card) {
+        return String(card.definition || '').trim().length > 0 &&
+            ($exeDevice.hasCardMedia(card) || $exeDevice.savedWithoutMedia.has(originalCard));
+    },
+
     validateCard: function (options = {}) {
         let message = '',
             msgs = $exeDevice.msgs,
@@ -485,8 +494,8 @@ var $exeDevice = {
         const keepsWithoutMedia = $exeDevice.savedWithoutMedia.has(
             $exeDevice.cardsGame[$exeDevice.active]
         );
-        const hasMedia = p.url.length > 3 || p.audio.length > 3;
-        if (p.definition.length == 0 || (!hasMedia && !keepsWithoutMedia)) {
+        const hasMedia = $exeDevice.hasCardMedia(p);
+        if (!$exeDevice.isCardComplete(p, $exeDevice.cardsGame[$exeDevice.active])) {
             message = msgs.msgCompleteData;
         }
         if (message.length == 0) {
@@ -707,6 +716,15 @@ var $exeDevice = {
     },
 
     validateData: function () {
+        const invalidCard = $exeDevice.cardsGame.findIndex((card) => !$exeDevice.isCardComplete(card));
+        if (invalidCard !== -1) {
+            $exeDevice.active = invalidCard;
+            $exeDevice.showCard(invalidCard);
+            $exeIDevicesEdition.iDevice.tabs.showTabOf('dadEDefinition');
+            $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgCompleteData);
+            return false;
+        }
+
         const clear = $exeIDevicesEdition.iDevice.common.removeTags,
             instructions = $exeIDevicesEdition.iDevice.common.getEditorContent(
                 'eXeGameInstructions'

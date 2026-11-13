@@ -7,6 +7,7 @@
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
+import { unzipSync, strFromU8 } from 'fflate';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -526,6 +527,28 @@ describe('dragdrop edition: shared form tabs, options tooltips, and saving', () 
             expect(device.save()).not.toContain('Old');
         });
 
+        it('round-trips the cards in the existing legacy project fixture', () => {
+            const archive = unzipSync(readFileSync(join(
+                __dirname, '../../../../../../../test/fixtures/todos-los-idevices_dos_informes.elpx'
+            )));
+            const xml = strFromU8(archive['content.xml']);
+            const stored = xml.match(/<div class="dragdrop-DataGame js-hidden">(.*?)<\/div>/s)[1];
+            const legacy = JSON.parse(stored);
+            device.idevicePreviousData = `<div class="dragdrop-DataGame js-hidden">${stored}</div>`;
+            device.loadPreviousValues();
+            device.showCard(0);
+
+            const saved = document.createElement('div');
+            saved.innerHTML = device.save();
+            const data = JSON.parse(saved.querySelector('.dragdrop-DataGame').textContent);
+            expect(data.cardsGame).toEqual(legacy.cardsGame);
+            device.idevicePreviousData = saved.innerHTML;
+            device.loadPreviousValues();
+            device.showCard(0);
+            expect(device.cardsGame).toEqual(legacy.cardsGame);
+            expect(device.save()).toContain('dragdrop-DataGame');
+        });
+
         describe('the card on screen', () => {
             const message = 'Add a text and an image or a sound to the card';
 
@@ -630,6 +653,56 @@ describe('dragdrop edition: shared form tabs, options tooltips, and saving', () 
                 device.nextCard();
 
                 expect(device.active).toBe(1);
+                expect(eXe.app.getLastAlert()).toBe(message);
+            });
+
+            it('checks a copy left behind after pasting twice and deleting the last copy', () => {
+                loadOldCards();
+                device.copyCard();
+                device.pasteCard();
+                device.pasteCard();
+                device.removeCard();
+                expect(device.active).toBe(2);
+                $('#dadEDefinition').val('Edited lungs');
+                document.getElementById('dragdropQIdeviceForm-tab-options').click();
+
+                expect(device.save()).toBe(false);
+
+                expect(eXe.app.getLastAlert()).toBe(message);
+                expect(device.active).toBe(1);
+                expect($('#dadEDefinition').val()).toBe('Heart');
+                expect(panel('contents').classList.contains('active')).toBe(true);
+                expect(device.cardsGame[2].definition).toBe('Edited lungs');
+                expect(device.savedWithoutMedia.has(device.cardsGame[1])).toBe(false);
+
+                $('#dadEURLAudio').val('audio/heart.mp3');
+                const saved = document.createElement('div');
+                saved.innerHTML = device.save();
+                const data = JSON.parse(saved.querySelector('.dragdrop-DataGame').textContent);
+                expect(data.cardsGame.map((item) => [item.definition, item.audio])).toEqual([
+                    ['Heart', ''],
+                    ['Heart', 'audio/heart.mp3'],
+                    ['Edited lungs', ''],
+                ]);
+                device.updateFieldGame(data);
+                device.showCard(0);
+                expect(device.save()).toContain('dragdrop-DataGame');
+            });
+
+            it('rejects a missing text on a card other than the one on screen', () => {
+                loadGame([card('Heart'), card('   ')]);
+
+                expect(device.save()).toBe(false);
+                expect(device.active).toBe(1);
+                expect(eXe.app.getLastAlert()).toBe(message);
+            });
+
+            it('does not treat whitespace media on a new off-screen card as complete', () => {
+                loadOldCards();
+                device.cardsGame.push({ ...card('Kidney'), url: '    ', audio: '    ' });
+
+                expect(device.save()).toBe(false);
+                expect(device.active).toBe(2);
                 expect(eXe.app.getLastAlert()).toBe(message);
             });
         });
