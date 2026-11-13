@@ -145,7 +145,6 @@ var $exeDevice = {
             'Please check all the answers in the right order'
         );
         msgs.msgTimeFormat = _('Please check the time format: hh:mm:ss');
-        msgs.msgProvideFB = _('Message to display when passing the game');
         msgs.msgNoSuportBrowser = _(
             'Your browser is not compatible with this tool.'
         );

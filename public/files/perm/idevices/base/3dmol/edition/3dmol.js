@@ -207,7 +207,6 @@ var $exeDevice = {
         msgs.msgEProvideTimeSolution = _('Please indicate the time to display the solution');
         msgs.msgEProvideWord = _('Please provide the word or phrase');
         msgs.msgEDefintion = _('Please provide the definition of the word or phrase');
-        msgs.msgProvideFB = _('Message to display when passing the game');
         msgs.msgNotHitCuestion = _('The question marked as next in case of success does not exist.');
         msgs.msgNotErrorCuestion = _('The question marked as next in case of error does not exist.');
         msgs.msgNoSuportBrowser = _('Your browser is not compatible with this tool.');

@@ -191,7 +191,6 @@ var $exeDevice = {
         msgs.msgEDefintion = _(
             'Please provide the definition of the word or phrase'
         );
-        msgs.msgProvideFB = _('Message to display when passing the game');
         msgs.msgNotHitCuestion = _(
             'The question marked as next in case of success does not exist.'
         );

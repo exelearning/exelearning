@@ -169,7 +169,6 @@ var $exeDevice = {
             'The selected file does not contain a valid game'
         );
         msgs.msgEOneQuestion = _('Please provide at least one question');
-        msgs.msgProvideFB = _('Message to display when passing the game');
         msgs.msgNoSuportBrowser = _(
             'Your browser is not compatible with this tool.'
         );

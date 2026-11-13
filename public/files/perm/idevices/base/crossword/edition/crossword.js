@@ -145,7 +145,6 @@ var $exeDevice = {
         );
         msgs.msgEProvideWord = _('Provide a word');
         msgs.msgEOneQuestion = _('The crossword must have at least two words');
-        msgs.msgProvideFB = _('Message to display when passing the game');
         msgs.msgNoSuportBrowser = _(
             'Your browser is not compatible with this tool.'
         );

@@ -151,7 +151,6 @@ var $exeDevice = {
                 'Complete the missing information in this element'
             ),
             mgsSelectEQ: c_('Click on one of the marked chemical elements.'),
-            msgProvideFB: c_('Message to display when passing the game'),
             msgNumber: c_('Number'),
             msgGroup: c_('Group'),
             msgNewTry: c_('Try again!'),
