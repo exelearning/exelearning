@@ -9,6 +9,7 @@ import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { runInThisContext } from 'vm';
+import { openingHelps } from '../../../../../../../test/helpers/help-buttons.ts';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -1187,23 +1188,16 @@ describe('rubric edition: shared form tabs', () => {
         </div>`;
     let device;
     let previousApp;
-    let tooltips;
 
     beforeEach(() => {
         global.$exeDevice = undefined;
         previousApp = global.eXeLearning.app;
-        tooltips = new Map();
         global.eXeLearning.app = {
             ...previousApp,
             common: {
-                initTooltips: vi.fn((scope) => {
-                    scope.querySelectorAll('.exe-app-tooltip').forEach((button) => {
-                        if (!tooltips.has(button)) tooltips.set(button, { hide: vi.fn(), dispose: vi.fn() });
-                    });
-                }),
+                initTooltips: vi.fn(),
             },
         };
-        vi.stubGlobal('bootstrap', { Tooltip: { getInstance: (button) => tooltips.get(button) } });
         document.body.innerHTML = '<div class="idevice_node rubric" id="rubric-node"><div id="rubricBody"></div></div>';
         const filename = join(__dirname, 'rubric.js');
         runInThisContext(readFileSync(filename, 'utf8'), { filename });
@@ -1262,14 +1256,14 @@ describe('rubric edition: shared form tabs', () => {
         expect(panel('csv').querySelector('button.btn-primary.exe-file-btn[data-exe-file-trigger]')).not.toBeNull();
     });
 
-    it('disposes the tooltips of its tabs when the edition closes', () => {
+    it('starts every help once and releases them when the edition closes', () => {
         open();
 
-        expect(tooltips.size).toBe(document.querySelectorAll('#ri_IdeviceForm .exe-app-tooltip').length);
+        const helps = document.querySelectorAll('.exe-idevice-help');
+        expect(helps.length).toBeGreaterThan(0);
+        expect(openingHelps()).toHaveLength(helps.length);
         device.$lifecycle.destroy();
-        for (const tooltip of tooltips.values()) {
-            expect(tooltip.dispose).toHaveBeenCalledTimes(1);
-        }
+        expect(openingHelps()).toHaveLength(0);
     });
 
     it('marks the description of the iDevice for translation', () => {

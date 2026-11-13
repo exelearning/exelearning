@@ -11,6 +11,7 @@
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
+import { openingHelps } from '../../../../../../../test/helpers/help-buttons.ts';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -334,26 +335,19 @@ describe('hidden-image edition: shared form tabs', () => {
     let device;
     let previousApp;
     let previousMedia;
-    let tooltips;
 
     beforeEach(() => {
         global.$exeDevice = undefined;
         previousApp = global.eXeLearning?.app;
-        tooltips = new Map();
         global.eXeLearning = {
             ...global.eXeLearning,
             app: {
                 ...previousApp,
                 common: {
-                    initTooltips: vi.fn((scope) => {
-                        scope.querySelectorAll('.exe-app-tooltip').forEach((button) => {
-                            if (!tooltips.has(button)) tooltips.set(button, { hide: vi.fn(), dispose: vi.fn() });
-                        });
-                    }),
+                    initTooltips: vi.fn(),
                 },
             },
         };
-        vi.stubGlobal('bootstrap', { Tooltip: { getInstance: (button) => tooltips.get(button) } });
         Object.assign(global.$exeDevices.iDevice.gamification.helpers, exportHelpers);
         previousMedia = global.$exeDevices.iDevice.gamification.media;
         global.$exeDevices.iDevice.gamification.media = { extractURLGD: (url) => url };
@@ -402,7 +396,7 @@ describe('hidden-image edition: shared form tabs', () => {
 
         expect(helps).toHaveLength(6);
         for (const help of helps) {
-            expect(help.title).toBe('Information');
+            expect(help.title).toBe(help.getAttribute('aria-label'));
             const content = document.getElementById(help.getAttribute('aria-controls'));
             expect(content.textContent.length).toBeGreaterThan(15);
             help.click();
@@ -418,12 +412,12 @@ describe('hidden-image edition: shared form tabs', () => {
         expect(document.querySelectorAll('[role="switch"], [aria-checked]')).toHaveLength(0);
     });
 
-    it('disposes all option tooltips when the edition closes', () => {
-        expect(tooltips.size).toBe(12); // Options plus the six shared Grading helpers.
+    it('starts every help once and releases them when the edition closes', () => {
+        const helps = document.querySelectorAll('.exe-idevice-help');
+        expect(helps.length).toBe(12);
+        expect(openingHelps()).toHaveLength(helps.length);
         device.$lifecycle.destroy();
-        for (const tooltip of tooltips.values()) {
-            expect(tooltip.dispose).toHaveBeenCalledTimes(1);
-        }
+        expect(openingHelps()).toHaveLength(0);
     });
 
     it('restores the options with the game', () => {

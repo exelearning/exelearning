@@ -29,9 +29,7 @@ describe('rubric progress report integration', () => {
 
     beforeEach(() => {
         previousGlobals = Object.fromEntries(globalNames.map(name => [name, globalThis[name]]));
-        // The edition starts the help of its tabs: stand in for the application's tooltips.
-        globalThis.eXeLearning = { app: { project: { odeId: reportId }, common: { initTooltips: () => {} } } };
-        vi.stubGlobal('bootstrap', { Tooltip: { getInstance: () => ({ hide() {}, dispose() {} }) } });
+        globalThis.eXeLearning = { app: { project: { odeId: reportId } } };
         vi.spyOn($.fn, 'ready').mockImplementation(function () { return this; });
         loadScript('public/app/common/common.js');
         loadScript('public/app/common/common_edition.js');

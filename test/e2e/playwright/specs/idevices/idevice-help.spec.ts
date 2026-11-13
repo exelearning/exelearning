@@ -36,13 +36,14 @@ test('A help opens on a click and stays open until a second click, another help 
     const open = page.locator('#adivinaEOptions .help-content:visible');
     const first = help.first();
     const content = page.locator(`#${await first.getAttribute('aria-controls')}`);
-    // Pointing at it only names it.
+    // Pointing at it only names it, with the browser's own label: its title, the same as its name. A tooltip of the
+    // application would only say "Information".
     await first.hover();
-    await expect(page.getByRole('tooltip')).toHaveText('Information');
+    await expect(first).toHaveAttribute('title', (await first.getAttribute('aria-label'))!);
+    await expect(page.getByRole('tooltip')).toHaveCount(0);
     await expect(open).toHaveCount(0);
 
     await first.click();
-    await expect(page.getByRole('tooltip')).toHaveCount(0);
     await expect(content).toBeVisible();
     await expect(first).toHaveAttribute('aria-expanded', 'true');
     // Moving the pointer away to read it leaves it open.
@@ -63,9 +64,9 @@ test('A help opens on a click and stays open until a second click, another help 
     await tab.click();
     await expect(open).toHaveCount(0);
 
-    // Reaching it with the keyboard names it too.
+    // Reaching it with the keyboard names it, and leaves it closed.
     await help.nth(2).focus();
-    await expect(page.getByRole('tooltip')).toHaveText('Information');
+    await expect(help.nth(2)).toHaveAccessibleName(/^Information about \S/);
     await expect(open).toHaveCount(0);
 });
 
@@ -229,9 +230,8 @@ test('Each help is named after the option it explains, and describes it', async 
     const minimize = page.locator('#adivinaEShowMinimize');
     await expect(help.first()).toHaveAccessibleName('Information about Show minimized');
     await expect(minimize).toHaveAccessibleDescription(/^Start with the game collapsed/);
-    // The hover label stays short.
-    await help.first().hover();
-    await expect(page.getByRole('tooltip')).toHaveText('Information');
+    // The browser's hover label says the same.
+    await expect(help.first()).toHaveAttribute('title', 'Information about Show minimized');
 });
 
 test('A help that explains a group of options is named after it and describes each option', async ({

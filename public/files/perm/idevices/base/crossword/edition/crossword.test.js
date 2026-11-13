@@ -11,6 +11,7 @@ import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { runInThisContext } from 'vm';
+import { openingHelps } from '../../../../../../../test/helpers/help-buttons.ts';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -393,23 +394,16 @@ describe('crossword edition: shared form tabs and feedback', () => {
   let device;
   let previousApp;
   let originalMedia;
-  let tooltips;
 
   beforeEach(() => {
     global.$exeDevice = undefined;
     previousApp = global.eXeLearning.app;
-    tooltips = new Map();
     global.eXeLearning.app = {
       ...previousApp,
       common: {
-        initTooltips: vi.fn((scope) => {
-          scope.querySelectorAll('.exe-app-tooltip').forEach((button) => {
-            if (!tooltips.has(button)) tooltips.set(button, { hide: vi.fn(), dispose: vi.fn() });
-          });
-        }),
+        initTooltips: vi.fn(),
       },
     };
-    vi.stubGlobal('bootstrap', { Tooltip: { getInstance: (button) => tooltips.get(button) } });
     Object.assign(global.$exeDevices.iDevice.gamification.helpers, exportHelpers);
     originalMedia = global.$exeDevices.iDevice.gamification.media;
     global.$exeDevices.iDevice.gamification.media = { extractURLGD: (url) => url };
@@ -469,7 +463,7 @@ describe('crossword edition: shared form tabs and feedback', () => {
       expect(help.tagName).toBe('BUTTON');
       expect(help.type).toBe('button');
       expect(help.getAttribute('aria-label')).toMatch(/^Information about \S/);
-      expect(help.title).toBe('Information');
+      expect(help.title).toBe(help.getAttribute('aria-label'));
       expect(document.getElementById(help.getAttribute('aria-controls')).textContent.length).toBeGreaterThan(30);
       expect(help.querySelector('[aria-hidden="true"].info-icon-solid-green')).not.toBeNull();
       const controls = [...row.querySelectorAll('input, select')];
@@ -477,9 +471,8 @@ describe('crossword edition: shared form tabs and feedback', () => {
       help.click();
       expect(controls.map((control) => control.checked)).toEqual(checked);
     }
-    expect(global.eXeLearning.app.common.initTooltips).toHaveBeenCalledWith(
-      document.getElementById('ccgmQEIdeviceForm-panels')
-    );
+    // The browser shows its title on hover: no tooltip of the application.
+    expect(global.eXeLearning.app.common.initTooltips).not.toHaveBeenCalled();
   });
 
   it('escapes translated help text in the explanation', () => {
@@ -492,12 +485,12 @@ describe('crossword edition: shared form tabs and feedback', () => {
     expect(container.querySelector('once')).toBeNull();
   });
 
-  it('disposes all option tooltips when the edition closes', () => {
-    expect(tooltips.size).toBe(17); // Options, the six shared Grading helpers and the three links of Questions.
+  it('starts every help once and releases them when the edition closes', () => {
+    const helps = document.querySelectorAll('.exe-idevice-help');
+    expect(helps.length).toBe(14);
+    expect(openingHelps()).toHaveLength(helps.length);
     device.$lifecycle.destroy();
-    for (const tooltip of tooltips.values()) {
-      expect(tooltip.dispose).toHaveBeenCalledTimes(1);
-    }
+    expect(openingHelps()).toHaveLength(0);
   });
 
   it('offers Import, Export and Create with AI on its Questions tab', () => {

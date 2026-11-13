@@ -16,6 +16,7 @@
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
+import { openingHelps } from '../../../../../../../test/helpers/help-buttons.ts';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -637,28 +638,21 @@ describe('select-media-files edition: shared form tabs and feedback', () => {
         </div>`;
     let device;
     let previousApp;
-    let tooltips;
     let previousHelpers;
     let previousMedia;
 
     beforeEach(() => {
         global.$exeDevice = undefined;
         previousApp = global.eXeLearning?.app;
-        tooltips = new Map();
         global.eXeLearning = {
             ...global.eXeLearning,
             app: {
                 ...previousApp,
                 common: {
-                    initTooltips: vi.fn((scope) => {
-                        scope.querySelectorAll('.exe-app-tooltip').forEach((button) => {
-                            if (!tooltips.has(button)) tooltips.set(button, { hide: vi.fn(), dispose: vi.fn() });
-                        });
-                    }),
+                    initTooltips: vi.fn(),
                 },
             },
         };
-        vi.stubGlobal('bootstrap', { Tooltip: { getInstance: (button) => tooltips.get(button) } });
         previousHelpers = { ...helpers() };
         Object.assign(helpers(), {
             isJsonString: (text) => {
@@ -739,7 +733,7 @@ describe('select-media-files edition: shared form tabs and feedback', () => {
 
         expect(helps).toHaveLength(9);
         for (const help of helps) {
-            expect(help.title).toBe('Information');
+            expect(help.title).toBe(help.getAttribute('aria-label'));
             const content = document.getElementById(help.getAttribute('aria-controls'));
             expect(content.textContent.length).toBeGreaterThan(15);
             help.click();
@@ -755,12 +749,12 @@ describe('select-media-files edition: shared form tabs and feedback', () => {
         expect(document.querySelectorAll('[role="switch"], [aria-checked]')).toHaveLength(0);
     });
 
-    it('disposes all tooltips when the edition closes', () => {
-        expect(tooltips.size).toBe(15); // Options plus the six shared Grading helpers.
+    it('starts every help once and releases them when the edition closes', () => {
+        const helps = document.querySelectorAll('.exe-idevice-help');
+        expect(helps.length).toBe(15);
+        expect(openingHelps()).toHaveLength(helps.length);
         device.$lifecycle.destroy();
-        for (const tooltip of tooltips.values()) {
-            expect(tooltip.dispose).toHaveBeenCalledTimes(1);
-        }
+        expect(openingHelps()).toHaveLength(0);
     });
 
     it('restores the options, the activities and the feedback with the game', () => {

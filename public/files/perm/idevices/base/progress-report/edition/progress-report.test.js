@@ -10,6 +10,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'url';
 import { runInThisContext } from 'vm';
+import { openingHelps } from '../../../../../../../test/helpers/help-buttons.ts';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -676,7 +677,6 @@ describe('progress-report edition: shared form tabs', () => {
             <div class="informe-DataGame js-hidden">${JSON.stringify(data)}</div>
         </div>`;
     let device;
-    let tooltips;
     let previousIsJsonString;
 
     beforeEach(() => {
@@ -695,7 +695,6 @@ describe('progress-report edition: shared form tabs', () => {
                 return false;
             }
         };
-        tooltips = new Map();
         global.eXeLearning = {
             ...realEXeLearning,
             app: {
@@ -703,15 +702,10 @@ describe('progress-report edition: shared form tabs', () => {
                 project: { odeId: 'ode-1', odeSession: 'session-1' },
                 api: { getIdevicesBySessionId: async () => ({ data: [] }) },
                 common: {
-                    initTooltips: vi.fn((scope) => {
-                        scope.querySelectorAll('.exe-app-tooltip').forEach((button) => {
-                            if (!tooltips.has(button)) tooltips.set(button, { hide: vi.fn(), dispose: vi.fn() });
-                        });
-                    }),
+                    initTooltips: vi.fn(),
                 },
             },
         };
-        vi.stubGlobal('bootstrap', { Tooltip: { getInstance: (button) => tooltips.get(button) } });
         global.$exeDevice = undefined;
         document.body.innerHTML = '<div id="progressReportBody"></div>';
         const filename = path.join(__dirname, 'progress-report.js');
@@ -790,15 +784,14 @@ describe('progress-report edition: shared form tabs', () => {
         }
     });
 
-    it('disposes all option tooltips when the edition closes', () => {
+    it('starts every help once and releases them when the edition closes', () => {
         open();
 
-        expect(tooltips.size).toBe(document.querySelectorAll('#reportQEIdeviceForm .exe-app-tooltip').length);
-        expect(tooltips.size).toBeGreaterThanOrEqual(6);
+        const helps = document.querySelectorAll('.exe-idevice-help');
+        expect(helps.length).toBeGreaterThanOrEqual(6);
+        expect(openingHelps()).toHaveLength(helps.length);
         device.$lifecycle.destroy();
-        for (const tooltip of tooltips.values()) {
-            expect(tooltip.dispose).toHaveBeenCalledTimes(1);
-        }
+        expect(openingHelps()).toHaveLength(0);
     });
 
     it('leaves the state of each switch to its native checkbox', () => {

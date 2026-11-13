@@ -16,7 +16,7 @@ import { importText } from '../../helpers/idevice-share-helpers';
 /**
  * The helps of each iDevice form, one test per iDevice: where each help sits, that its explanation opens
  * inside the panel and that reading it leaves the form as it was; then that the form saves without them and
- * opens again with them. How the help itself behaves (tooltip, focus, keyboard, one open at a time) is
+ * opens again with them. How the help itself behaves (hover label, focus, keyboard, one open at a time) is
  * checked once, in idevice-help.spec.ts. What else each form does is in the spec of its iDevice.
  */
 interface Area {
@@ -770,7 +770,8 @@ function helpProblems(page: Page, scope: string): Promise<string[]> {
             const fail = (what: string) => problems.push(`${button.getAttribute('aria-label')}: ${what}`);
             // At once: the page scrolls smoothly otherwise, and would move while it is measured.
             button.scrollIntoView({ block: 'center', behavior: 'instant' });
-            if (!(window as any).bootstrap.Tooltip.getInstance(button)) fail('has no tooltip');
+            // Started, it is named after its option, and its hover label (the browser's own) says the same.
+            if (button.title !== button.getAttribute('aria-label')) fail('has a hover label other than its name');
             const icon = button.getBoundingClientRect();
             const hit = document.elementFromPoint(icon.left + icon.width / 2, icon.top + icon.height / 2);
             if (!hit || !button.contains(hit)) fail(`is covered by ${hit?.outerHTML.slice(0, 80)}`);
@@ -920,8 +921,6 @@ for (const c of CASES) {
         const firstTab = page.locator(`#${c.form}-tab-${first.tab}`);
         await firstTab.click();
         const help = page.locator(`${first.scope} .exe-idevice-help:visible`).first();
-        await help.hover();
-        await expect(page.getByRole('tooltip')).toHaveText('Information');
         await help.click();
         const content = page.locator(`#${await help.getAttribute('aria-controls')}`);
         await expect(content).toBeVisible();
@@ -991,8 +990,6 @@ for (const c of CASES) {
         }
         // The helps work again in the reopened form.
         await firstTab.click();
-        await help.hover();
-        await expect(page.getByRole('tooltip')).toHaveText('Information');
         await help.click();
         await expect(page.locator(`#${await help.getAttribute('aria-controls')}`)).toBeVisible();
     });

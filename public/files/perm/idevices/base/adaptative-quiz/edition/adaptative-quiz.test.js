@@ -1,5 +1,6 @@
 import { readFileSync } from 'fs';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { openingHelps } from '../../../../../../../test/helpers/help-buttons.ts';
 
 const EDITION_SRC = 'public/files/perm/idevices/base/adaptative-quiz/edition/adaptative-quiz.js';
 const EDITION_CSS = 'public/files/perm/idevices/base/adaptative-quiz/edition/adaptative-quiz.css';
@@ -2155,23 +2156,16 @@ describe('adaptative-quiz edition: shared form tabs', () => {
     const panel = (name) => document.getElementById(`adaptativeQuizIdeviceForm-panel-${name}`);
     let device;
     let previousApp;
-    let tooltips;
 
     beforeEach(() => {
         global.$exeDevice = undefined;
         previousApp = global.eXeLearning.app;
-        tooltips = new Map();
         global.eXeLearning.app = {
             ...previousApp,
             common: {
-                initTooltips: vi.fn((scope) => {
-                    scope.querySelectorAll('.exe-app-tooltip').forEach((button) => {
-                        if (!tooltips.has(button)) tooltips.set(button, { hide: vi.fn(), dispose: vi.fn() });
-                    });
-                }),
+                initTooltips: vi.fn(),
             },
         };
-        vi.stubGlobal('bootstrap', { Tooltip: { getInstance: (button) => tooltips.get(button) } });
         document.body.innerHTML =
             '<div class="idevice_node adaptative-quiz" id="adq-1"><div id="adqBody" idevice-id="adq-1"></div></div>';
         device = global.loadIdevice(EDITION_SRC);
@@ -2269,15 +2263,14 @@ describe('adaptative-quiz edition: shared form tabs', () => {
         }
     });
 
-    it('disposes all option tooltips when the edition closes', () => {
+    it('starts every help once and releases them when the edition closes', () => {
         open();
 
-        expect(tooltips.size).toBe(document.querySelectorAll('#adaptativeQuizIdeviceForm .exe-app-tooltip').length);
-        expect(tooltips.size).toBeGreaterThanOrEqual(9);
+        const helps = document.querySelectorAll('.exe-idevice-help');
+        expect(helps.length).toBeGreaterThanOrEqual(9);
+        expect(openingHelps()).toHaveLength(helps.length);
         device.$lifecycle.destroy();
-        for (const tooltip of tooltips.values()) {
-            expect(tooltip.dispose).toHaveBeenCalledTimes(1);
-        }
+        expect(openingHelps()).toHaveLength(0);
     });
 
     it('leaves the state of each switch to its native checkbox', () => {

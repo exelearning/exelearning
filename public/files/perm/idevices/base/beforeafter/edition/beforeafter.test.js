@@ -6,6 +6,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
+import { openingHelps } from '../../../../../../../test/helpers/help-buttons.ts';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -121,26 +122,19 @@ describe('beforeafter edition: shared form tabs', () => {
     };
     let device;
     let previousApp;
-    let tooltips;
 
     beforeEach(() => {
         global.$exeDevice = undefined;
         previousApp = global.eXeLearning?.app;
-        tooltips = new Map();
         global.eXeLearning = {
             ...global.eXeLearning,
             app: {
                 ...previousApp,
                 common: {
-                    initTooltips: vi.fn((scope) => {
-                        scope.querySelectorAll('.exe-app-tooltip').forEach((button) => {
-                            if (!tooltips.has(button)) tooltips.set(button, { hide: vi.fn(), dispose: vi.fn() });
-                        });
-                    }),
+                    initTooltips: vi.fn(),
                 },
             },
         };
-        vi.stubGlobal('bootstrap', { Tooltip: { getInstance: (button) => tooltips.get(button) } });
         Object.assign(global.$exeDevices.iDevice.gamification.helpers, exportHelpers);
         document.body.innerHTML = '<div id="bfafBody"></div>';
         device = loadIdevice(join(__dirname, 'beforeafter.js'));
@@ -206,7 +200,7 @@ describe('beforeafter edition: shared form tabs', () => {
         for (const help of cardHelpButtons) {
             expect(help.tagName).toBe('BUTTON');
             expect(help.type).toBe('button');
-            expect(help.title).toBe('Information');
+            expect(help.title).toBe(help.getAttribute('aria-label'));
             expect(document.getElementById(help.getAttribute('aria-controls')).textContent.length).toBeGreaterThan(10);
             const row = help.closest('.d-flex');
             expect(row).not.toBeNull();
@@ -227,12 +221,12 @@ describe('beforeafter edition: shared form tabs', () => {
         expect(container.querySelector('once')).toBeNull();
     });
 
-    it('disposes all option tooltips when the edition closes', () => {
-        expect(tooltips.size).toBeGreaterThanOrEqual(3);
+    it('starts every help once and releases them when the edition closes', () => {
+        const helps = document.querySelectorAll('.exe-idevice-help');
+        expect(helps.length).toBeGreaterThanOrEqual(3);
+        expect(openingHelps()).toHaveLength(helps.length);
         device.$lifecycle.destroy();
-        for (const tooltip of tooltips.values()) {
-            expect(tooltip.dispose).toHaveBeenCalledTimes(1);
-        }
+        expect(openingHelps()).toHaveLength(0);
     });
 
     it('switches tabs when one is clicked', () => {

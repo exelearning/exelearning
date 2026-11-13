@@ -3,6 +3,7 @@ import { readFileSync, readdirSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { parseSync, Visitor } from 'vite';
 import { useGradingHelpHarness } from '../../../test/helpers/grading-help-harness.ts';
+import { openingHelps } from '../../../test/helpers/help-buttons.ts';
 
 // Setup globals needed BEFORE the script is loaded
 globalThis._ = vi.fn((key) => key);
@@ -53,7 +54,7 @@ const $exeIDevicesEdition = require('./common_idevices_edition.js');
 globalThis.$exeIDevicesEdition = $exeIDevicesEdition;
 
 describe('common_idevices_edition.js', () => {
-  const helpHarness = useGradingHelpHarness();
+  useGradingHelpHarness();
   beforeEach(() => {
     vi.clearAllMocks();
 
@@ -103,28 +104,19 @@ describe('common_idevices_edition.js', () => {
       let previousCommon;
       let previousLifecycle;
       let lifecycle;
-      let instances;
+      const isOpen = (button) => button.getAttribute('aria-expanded') === 'true';
 
       beforeEach(() => {
         previousCommon = eXeLearning.app.common;
         previousLifecycle = window.$exeEditionLifecycle;
         lifecycle = global.attachEditionLifecycle({ name: 'help-tooltip-test' });
-        instances = new Map();
-        vi.stubGlobal('bootstrap', { Tooltip: { getInstance: (button) => instances.get(button) } });
-        eXeLearning.app.common = {
-          initTooltips: vi.fn((scope) => {
-            scope.querySelectorAll('.exe-app-tooltip').forEach((button) => {
-              if (!instances.has(button)) instances.set(button, { hide: vi.fn(), dispose: vi.fn() });
-            });
-          }),
-        };
+        eXeLearning.app.common = { initTooltips: vi.fn() };
       });
 
       afterEach(() => {
         lifecycle.destroy();
         window.$exeEditionLifecycle = previousLifecycle;
         eXeLearning.app.common = previousCommon;
-        vi.unstubAllGlobals();
       });
 
       it('renders a keyboard-accessible information button with escaped plain text', () => {
@@ -132,6 +124,8 @@ describe('common_idevices_edition.js', () => {
         document.body.innerHTML = common().getHelpTooltip(text);
         const button = document.querySelector('button');
         expect(button.type).toBe('button');
+        // The browser shows its title on hover: a tooltip of the application would only say "Information".
+        expect(button.classList.contains('exe-app-tooltip')).toBe(false);
         expect(button.title).toBe('Information');
         // Until initHelpTooltips names the option it explains.
         expect(button.getAttribute('aria-label')).toBe('Information');
@@ -141,16 +135,28 @@ describe('common_idevices_edition.js', () => {
         expect(document.querySelector('once')).toBeNull();
       });
 
-      it('initializes only the requested form and disposes each tooltip once after repeated binding', () => {
+      it('starts only the requested form, once after repeated binding, until the edition closes', () => {
         document.body.innerHTML = `<div id="first">${common().getHelpTooltip('First option')}</div>
           <div id="second">${common().getHelpTooltip('Second option')}</div>`;
         const form = document.getElementById('first');
+        const [inside, outside] = document.querySelectorAll('button');
         common().initHelpTooltips(form);
         common().initHelpTooltips(form);
-        expect(instances.size).toBe(1);
-        expect(instances.has(form.querySelector('button'))).toBe(true);
+        // Started twice, its second handler would close it again at once.
+        inside.click();
+        expect(isOpen(inside)).toBe(true);
+        outside.click();
+        expect(isOpen(outside)).toBe(false);
+        expect(isOpen(inside)).toBe(false);
+        expect(eXeLearning.app.common.initTooltips).not.toHaveBeenCalled();
+
         lifecycle.destroy();
-        expect([...instances.values()][0].dispose).toHaveBeenCalledTimes(1);
+        inside.click();
+        expect(isOpen(inside)).toBe(false);
+        // Released, it can be started again.
+        common().initHelpTooltips(form);
+        inside.click();
+        expect(isOpen(inside)).toBe(true);
       });
 
       it('keeps help clicks from activating the surrounding option and dismisses with Escape', () => {
@@ -163,12 +169,9 @@ describe('common_idevices_edition.js', () => {
         button.click();
         expect(toggle).not.toHaveBeenCalled();
         expect(button.getAttribute('aria-expanded')).toBe('true');
-        const tooltip = instances.get(button);
-        expect(tooltip.hide).toHaveBeenCalledOnce();
         button.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
-        expect(tooltip.hide).toHaveBeenCalledOnce();
+        expect(button.getAttribute('aria-expanded')).toBe('true');
         button.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
-        expect(tooltip.hide).toHaveBeenCalledTimes(2);
         expect(button.getAttribute('aria-expanded')).toBe('false');
         expect(document.querySelector('.help-content').classList.contains('help-hidden')).toBe(true);
       });
@@ -185,7 +188,6 @@ describe('common_idevices_edition.js', () => {
         first.querySelector('span').click();
         expect(firstNote.classList.contains('help-hidden')).toBe(true);
         expect(first.getAttribute('aria-expanded')).toBe('false');
-        expect(instances.get(first).hide).toHaveBeenCalledTimes(2);
         first.click();
         expect(firstNote.classList.contains('help-hidden')).toBe(false);
         expect(first.getAttribute('aria-expanded')).toBe('true');
@@ -244,7 +246,6 @@ describe('common_idevices_edition.js', () => {
         common().initHelpTooltips(document.body);
         const button = document.querySelector('button');
         const note = document.querySelector('.help-content');
-        const tooltip = instances.get(button);
         const escape = (target) => target.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
 
         button.click();
@@ -260,10 +261,10 @@ describe('common_idevices_edition.js', () => {
         expect(note.classList.contains('help-hidden')).toBe(true);
         expect(document.activeElement).toBe(button);
 
-        // Closed, it no longer listens.
-        tooltip.hide.mockClear();
+        // Closed, it no longer listens: Escape leaves the focus where it is.
+        note.focus();
         escape(document.body);
-        expect(tooltip.hide).not.toHaveBeenCalled();
+        expect(document.activeElement).toBe(note);
       });
 
       it('names the option it explains and describes its control, until the edition closes', () => {
@@ -277,6 +278,10 @@ describe('common_idevices_edition.js', () => {
         common().initHelpTooltips(document.body);
         const name = (row) => document.querySelector(`#${row} button`).getAttribute('aria-label');
         const note = (row) => document.querySelector(`#${row} .help-content`).id;
+        // The title the browser shows on hover says the same.
+        for (const button of document.querySelectorAll('button')) {
+          expect(button.title).toBe(button.getAttribute('aria-label'));
+        }
 
         expect(name('switch')).toBe('Information about Show minimized');
         expect(document.getElementById('a').getAttribute('aria-describedby')).toBe(`own ${note('switch')}`);
@@ -367,11 +372,13 @@ describe('common_idevices_edition.js', () => {
         window.$exeEditionLifecycle = null;
         document.body.innerHTML = common().getHelpTooltip('Explain the option');
         const dispose = common().initHelpTooltips(document.body);
-        expect(instances.size).toBe(1);
+        const button = document.querySelector('button');
+        button.click();
+        expect(isOpen(button)).toBe(true);
         dispose();
-        expect([...instances.values()][0].dispose).toHaveBeenCalledOnce();
-        document.querySelector('button').click();
-        expect(document.querySelector('button').getAttribute('aria-expanded')).toBe('false');
+        expect(isOpen(button)).toBe(false);
+        button.click();
+        expect(isOpen(button)).toBe(false);
       });
 
       // happy-dom has no layout: the explanation is as wide as its CSS (300px) says.
@@ -663,7 +670,7 @@ describe('common_idevices_edition.js', () => {
       const note = noteFor(button);
       const before = grading().scorm.getValues();
       expect(button.type).toBe('button');
-      expect(button.title).toBe('Information');
+      expect(button.title).toBe(button.getAttribute('aria-label'));
       expect(button.getAttribute('aria-label')).toMatch(/^Information about \S/);
       expect(button.querySelector('.info-icon-solid-green')).not.toBeNull();
       expect(note.textContent).toContain(explanation);
@@ -721,7 +728,7 @@ describe('common_idevices_edition.js', () => {
       expect(noteFor(button).textContent).toContain('\n\n');
     });
 
-    it('binds each help once and releases all tooltips when the edition closes', () => {
+    it('binds each help once and releases them all when the edition closes', () => {
       const previousLifecycle = window.$exeEditionLifecycle;
       const lifecycle = global.attachEditionLifecycle({ name: 'grading-help-test' });
       try {
@@ -729,12 +736,12 @@ describe('common_idevices_edition.js', () => {
         grading().scorm.addEvents();
         grading().progressBar.addEvents();
         grading().passScore.addEvents();
-        const instances = [...helpHarness.instances().values()];
-        expect(instances).toHaveLength(6);
+        expect(document.querySelectorAll('.exe-idevice-help')).toHaveLength(6);
+        expect(openingHelps()).toHaveLength(6);
         const button = informationFor('#eXeProgressReportID');
         button.click();
         lifecycle.destroy();
-        instances.forEach((tooltip) => expect(tooltip.dispose).toHaveBeenCalledTimes(1));
+        expect(openingHelps()).toHaveLength(0);
         expect(noteFor(button).classList.contains('help-hidden')).toBe(true);
         button.click();
         expect(noteFor(button).classList.contains('help-hidden')).toBe(true);

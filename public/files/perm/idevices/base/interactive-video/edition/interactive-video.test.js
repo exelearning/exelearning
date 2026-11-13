@@ -10,6 +10,7 @@
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
+import { openingHelps } from '../../../../../../../test/helpers/help-buttons.ts';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -17,24 +18,17 @@ const __dirname = dirname(__filename);
 describe('interactive-video iDevice edition', () => {
   let $exeDevice;
   let previousApp;
-  let tooltips;
 
   beforeEach(() => {
     global.$exeDevice = undefined;
     document.body.innerHTML = '';
     previousApp = global.eXeLearning.app;
-    tooltips = new Map();
     global.eXeLearning.app = {
       ...previousApp,
       common: {
-        initTooltips: vi.fn((scope) => {
-          scope.querySelectorAll('.exe-app-tooltip').forEach((button) => {
-            if (!tooltips.has(button)) tooltips.set(button, { hide: vi.fn(), dispose: vi.fn() });
-          });
-        }),
+        initTooltips: vi.fn(),
       },
     };
-    vi.stubGlobal('bootstrap', { Tooltip: { getInstance: (button) => tooltips.get(button) } });
 
     $exeDevice = global.loadIdevice(join(__dirname, 'interactive-video.js'));
   });
@@ -215,15 +209,14 @@ describe('interactive-video iDevice edition', () => {
       }
     });
 
-    it('disposes all option tooltips when the edition closes', () => {
+    it('starts every help once and releases them when the edition closes', () => {
       open();
 
-      expect(tooltips.size).toBe(document.querySelectorAll('#interactiveVideoIdeviceForm .exe-app-tooltip').length);
-      expect(tooltips.size).toBeGreaterThanOrEqual(2);
+      const helps = document.querySelectorAll('.exe-idevice-help');
+      expect(helps.length).toBeGreaterThanOrEqual(2);
+      expect(openingHelps()).toHaveLength(helps.length);
       $exeDevice.$lifecycle.destroy();
-      for (const tooltip of tooltips.values()) {
-        expect(tooltip.dispose).toHaveBeenCalledTimes(1);
-      }
+      expect(openingHelps()).toHaveLength(0);
     });
 
     it('leaves the state of each switch to its native checkbox', () => {
@@ -417,7 +410,6 @@ describe('interactive-video iDevice edition', () => {
       });
       window.__EXE_STATIC_MODE__ = true;
       global.bootstrap = {
-        Tooltip: { getInstance: (button) => tooltips.get(button) },
         Modal: function () {
           return {
             show: vi.fn(() => {

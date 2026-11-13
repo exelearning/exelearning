@@ -8,6 +8,7 @@ import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { unzipSync, strFromU8 } from 'fflate';
+import { openingHelps } from '../../../../../../../test/helpers/help-buttons.ts';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -226,7 +227,6 @@ describe('dragdrop edition: shared form tabs, options tooltips, and saving', () 
     let savedGlobals;
     let device;
     let previousApp;
-    let tooltips;
 
     function panel(tab) {
         return document.getElementById(`dragdropQIdeviceForm-panel-${tab}`);
@@ -272,21 +272,15 @@ describe('dragdrop edition: shared form tabs, options tooltips, and saving', () 
         };
         global.$exeDevice = undefined;
         previousApp = global.eXeLearning?.app;
-        tooltips = new Map();
         global.eXeLearning = {
             ...global.eXeLearning,
             app: {
                 ...previousApp,
                 common: {
-                    initTooltips: vi.fn((scope) => {
-                        scope.querySelectorAll('.exe-app-tooltip').forEach((button) => {
-                            if (!tooltips.has(button)) tooltips.set(button, { hide: vi.fn(), dispose: vi.fn() });
-                        });
-                    }),
+                    initTooltips: vi.fn(),
                 },
             },
         };
-        vi.stubGlobal('bootstrap', { Tooltip: { getInstance: (button) => tooltips.get(button) } });
 
         device = global.loadIdevice(join(__dirname, 'dragdrop.js'));
         document.body.innerHTML = '<div id="dragdropBody"></div>';
@@ -357,7 +351,7 @@ describe('dragdrop edition: shared form tabs, options tooltips, and saving', () 
         for (const help of optionHelps) {
             expect(help.tagName).toBe('BUTTON');
             expect(help.type).toBe('button');
-            expect(help.title).toBe('Information');
+            expect(help.title).toBe(help.getAttribute('aria-label'));
             const targetId = help.getAttribute('aria-controls');
             expect(targetId).toBeTruthy();
             expect(document.getElementById(targetId)?.textContent.length).toBeGreaterThan(10);
@@ -373,12 +367,12 @@ describe('dragdrop edition: shared form tabs, options tooltips, and saving', () 
         expect(minimizeInput.checked).toBe(false);
     });
 
-    it('disposes all option tooltips when the edition closes', () => {
-        expect(tooltips.size).toBeGreaterThanOrEqual(5);
+    it('starts every help once and releases them when the edition closes', () => {
+        const helps = document.querySelectorAll('.exe-idevice-help');
+        expect(helps.length).toBeGreaterThanOrEqual(5);
+        expect(openingHelps()).toHaveLength(helps.length);
         device.$lifecycle.destroy();
-        for (const tooltip of tooltips.values()) {
-            expect(tooltip.dispose).toHaveBeenCalledTimes(1);
-        }
+        expect(openingHelps()).toHaveLength(0);
     });
 
     it('switches tabs when one is clicked', () => {

@@ -11,6 +11,7 @@ import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { runInThisContext } from 'node:vm';
+import { openingHelps } from '../../../../../../../test/helpers/help-buttons.ts';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -406,7 +407,6 @@ describe('trueorfalse iDevice', () => {
             globalThis.eXeLearning = {
                 app: { project: { odeId: 'report-test' }, common: { initTooltips: vi.fn() } },
             };
-            vi.stubGlobal('bootstrap', { Tooltip: { getInstance: () => null } });
             // Load the real script with its filename so coverage includes the initialization path.
             const filename = join(__dirname, 'trueorfalse.js');
             runInThisContext(readFileSync(filename, 'utf8'), { filename });
@@ -568,23 +568,16 @@ describe('trueorfalse edition: shared form tabs', () => {
     const panel = (name) => document.getElementById(`trueorfalseIdeviceForm-panel-${name}`);
     let device;
     let previousApp;
-    let tooltips;
 
     beforeEach(() => {
         global.$exeDevice = undefined;
         previousApp = global.eXeLearning.app;
-        tooltips = new Map();
         global.eXeLearning.app = {
             ...previousApp,
             common: {
-                initTooltips: vi.fn((scope) => {
-                    scope.querySelectorAll('.exe-app-tooltip').forEach((button) => {
-                        if (!tooltips.has(button)) tooltips.set(button, { hide: vi.fn(), dispose: vi.fn() });
-                    });
-                }),
+                initTooltips: vi.fn(),
             },
         };
-        vi.stubGlobal('bootstrap', { Tooltip: { getInstance: (button) => tooltips.get(button) } });
         document.body.innerHTML = '<div id="tofBody" idevice-id="tof-1"></div>';
         device = global.loadIdevice(join(__dirname, 'trueorfalse.js'));
     });
@@ -680,15 +673,14 @@ describe('trueorfalse edition: shared form tabs', () => {
         for (const row of rows()) expect(row.classList.contains('d-none')).toBe(true);
     });
 
-    it('disposes all option tooltips when the edition closes', () => {
+    it('starts every help once and releases them when the edition closes', () => {
         open();
 
-        expect(tooltips.size).toBe(document.querySelectorAll('#trueorfalseIdeviceForm .exe-app-tooltip').length);
-        expect(tooltips.size).toBeGreaterThanOrEqual(6);
+        const helps = document.querySelectorAll('.exe-idevice-help');
+        expect(helps.length).toBeGreaterThanOrEqual(6);
+        expect(openingHelps()).toHaveLength(helps.length);
         device.$lifecycle.destroy();
-        for (const tooltip of tooltips.values()) {
-            expect(tooltip.dispose).toHaveBeenCalledTimes(1);
-        }
+        expect(openingHelps()).toHaveLength(0);
     });
 
     it('leaves the state of each switch to its native checkbox', () => {

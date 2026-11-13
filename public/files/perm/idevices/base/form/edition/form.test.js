@@ -10,6 +10,7 @@
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
+import { openingHelps } from '../../../../../../../test/helpers/help-buttons.ts';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -935,23 +936,16 @@ describe('form edition: shared form tabs', () => {
     let device;
     let previousApp;
     let previousEditors;
-    let tooltips;
 
     beforeEach(() => {
         global.$exeDevice = undefined;
         previousApp = global.eXeLearning.app;
-        tooltips = new Map();
         global.eXeLearning.app = {
             ...previousApp,
             common: {
-                initTooltips: vi.fn((scope) => {
-                    scope.querySelectorAll('.exe-app-tooltip').forEach((button) => {
-                        if (!tooltips.has(button)) tooltips.set(button, { hide: vi.fn(), dispose: vi.fn() });
-                    });
-                }),
+                initTooltips: vi.fn(),
             },
         };
-        vi.stubGlobal('bootstrap', { Tooltip: { getInstance: (button) => tooltips.get(button) } });
         // save() reads the instructions and the text after through tinyMCE.editors.
         previousEditors = global.tinymce.editors;
         global.tinymce.editors = {
@@ -1031,15 +1025,14 @@ describe('form edition: shared form tabs', () => {
         }
     });
 
-    it('disposes all option tooltips when the edition closes', () => {
+    it('starts every help once and releases them when the edition closes', () => {
         open();
 
-        expect(tooltips.size).toBe(document.querySelectorAll('#formIdeviceForm .exe-app-tooltip').length);
-        expect(tooltips.size).toBeGreaterThanOrEqual(5);
+        const helps = document.querySelectorAll('.exe-idevice-help');
+        expect(helps.length).toBeGreaterThanOrEqual(5);
+        expect(openingHelps()).toHaveLength(helps.length);
         device.$lifecycle.destroy();
-        for (const tooltip of tooltips.values()) {
-            expect(tooltip.dispose).toHaveBeenCalledTimes(1);
-        }
+        expect(openingHelps()).toHaveLength(0);
     });
 
     it('leaves the state of each switch to its native checkbox', () => {

@@ -11,6 +11,7 @@
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
+import { openingHelps } from '../../../../../../../test/helpers/help-buttons.ts';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -684,22 +685,16 @@ describe('classify edition: shared form tabs and feedback', () => {
     };
     let device;
     let previousApp;
-    let tooltips;
 
     beforeEach(() => {
         global.$exeDevice = undefined;
         previousApp = global.eXeLearning?.app;
-        tooltips = new Map();
         global.eXeLearning = {
             ...global.eXeLearning,
             app: {
                 ...previousApp,
                 common: {
-                    initTooltips: vi.fn((scope) => {
-                        scope.querySelectorAll('.exe-app-tooltip').forEach((button) => {
-                            if (!tooltips.has(button)) tooltips.set(button, { hide: vi.fn(), dispose: vi.fn() });
-                        });
-                    }),
+                    initTooltips: vi.fn(),
                 },
             },
         };
@@ -713,7 +708,6 @@ describe('classify edition: shared form tabs and feedback', () => {
                 },
             },
         };
-        vi.stubGlobal('bootstrap', { Tooltip: { getInstance: (button) => tooltips.get(button) } });
 
         const filePath = join(__dirname, 'classify.js');
         const code = readFileSync(filePath, 'utf-8');
@@ -808,7 +802,7 @@ describe('classify edition: shared form tabs and feedback', () => {
         for (const help of optionHelps) {
             expect(help.tagName).toBe('BUTTON');
             expect(help.type).toBe('button');
-            expect(help.title).toBe('Information');
+            expect(help.title).toBe(help.getAttribute('aria-label'));
             const targetId = help.getAttribute('aria-controls');
             expect(targetId).toBeTruthy();
             expect(document.getElementById(targetId)?.textContent.length).toBeGreaterThan(10);
@@ -841,12 +835,12 @@ describe('classify edition: shared form tabs and feedback', () => {
         expect(container.querySelector('once')).toBeNull();
     });
 
-    it('disposes all option tooltips when the edition closes', () => {
-        expect(tooltips.size).toBeGreaterThanOrEqual(7);
+    it('starts every help once and releases them when the edition closes', () => {
+        const helps = document.querySelectorAll('.exe-idevice-help');
+        expect(helps.length).toBeGreaterThanOrEqual(7);
+        expect(openingHelps()).toHaveLength(helps.length);
         device.$lifecycle.destroy();
-        for (const tooltip of tooltips.values()) {
-            expect(tooltip.dispose).toHaveBeenCalledTimes(1);
-        }
+        expect(openingHelps()).toHaveLength(0);
     });
 
     it('switches tabs when one is clicked', () => {

@@ -81,10 +81,13 @@ var $exeIDevicesEdition = {
                 $(image).css(css);
             },
             helpTooltipId: 0,
+            // The help buttons already started, so a second call leaves them be.
+            helpButtons: new WeakSet(),
             /**
-             * Inline information button: a short hover label and an explanation
-             * that a click opens and a second click closes, using the editor's
-             * help window styling. Clicks on the button or the explanation do
+             * Inline information button: the browser's own hover label (its
+             * title, the same as its name) and an explanation that a click
+             * opens and a second click closes, using the editor's help window
+             * styling. No styled tooltip: it would only say "Information". Clicks on the button or the explanation do
              * not reach the row around them, so an option is never switched
              * by reading its help. Moving the focus out of the help, or Escape
              * from anywhere, closes it.
@@ -101,7 +104,7 @@ var $exeIDevicesEdition = {
                 const label = common.escapeHtml(_('Information'));
                 const id = `exe-idevice-help-${++common.helpTooltipId}`;
                 return `<span class="exe-form-help exe-idevice-help-container">
-                            <button type="button" class="exe-app-tooltip exe-idevice-help" title="${label}" aria-label="${label}" aria-expanded="false" aria-controls="${id}">
+                            <button type="button" class="exe-idevice-help" title="${label}" aria-label="${label}" aria-expanded="false" aria-controls="${id}">
                                 <span class="info-icon-solid-green" aria-hidden="true"></span>
                             </button>
                             <span id="${id}" class="help-content help-hidden" role="note" tabindex="-1">${description}</span>
@@ -114,11 +117,11 @@ var $exeIDevicesEdition = {
             initHelpTooltips: function (element) {
                 const buttons = Array.from(element?.querySelectorAll('.exe-idevice-help') || []);
                 if (!buttons.length) return;
-                const pending = buttons.filter((button) => !bootstrap.Tooltip.getInstance(button));
-                eXeLearning.app.common.initTooltips(element);
+                const started = $exeIDevicesEdition.iDevice.common.helpButtons;
+                const pending = buttons.filter((button) => !started.has(button));
                 const lifecycle = $exeIDevicesEdition.iDevice.getLifecycle();
                 const disposers = pending.map((button) => {
-                    const tooltip = bootstrap.Tooltip.getInstance(button);
+                    started.add(button);
                     const content = document.getElementById(button.getAttribute('aria-controls'));
                     // The explanation opens below the icon, to its right. When it
                     // does not fit there it moves left, keeping its width, and it
@@ -157,7 +160,11 @@ var $exeIDevicesEdition = {
                         ? Array.from(group.querySelectorAll('input:not([type="hidden"]), select, textarea'))
                         : [option].filter(Boolean);
                     const name = (group && common.getHelpGroupName(group)) || common.getHelpOptionName(container, option);
-                    if (name) button.setAttribute('aria-label', _('Information about %s').replace('%s', () => name));
+                    if (name) {
+                        const label = _('Information about %s').replace('%s', () => name);
+                        button.setAttribute('aria-label', label);
+                        button.setAttribute('title', label);
+                    }
                     options.forEach((control) => {
                         const describedBy = (control.getAttribute('aria-describedby') || '').split(/\s+/).filter(Boolean);
                         if (!describedBy.includes(content.id)) {
@@ -176,7 +183,6 @@ var $exeIDevicesEdition = {
                     const escape = function (event) {
                         if (event.key !== 'Escape') return;
                         const inside = container.contains(document.activeElement);
-                        tooltip.hide();
                         hide();
                         if (inside) button.focus();
                     };
@@ -198,7 +204,6 @@ var $exeIDevicesEdition = {
                     container.addEventListener('focusout', focusOut);
                     $(button).on('click.exeHelpTooltip', function (event) {
                         event.stopPropagation();
-                        tooltip.hide();
                         // A second click on the icon closes it, as in the project properties.
                         if (!content.classList.contains('help-hidden')) {
                             hide();
@@ -211,10 +216,7 @@ var $exeIDevicesEdition = {
                         document.addEventListener('scroll', fitContent, true);
                         document.addEventListener('keydown', escape);
                     }).on('keydown.exeHelpTooltip', function (event) {
-                        if (event.key === 'Escape') {
-                            tooltip.hide();
-                            hide();
-                        }
+                        if (event.key === 'Escape') hide();
                     });
                     const dispose = function () {
                         hide();
@@ -229,7 +231,7 @@ var $exeIDevicesEdition = {
                             if (ids.length) control.setAttribute('aria-describedby', ids.join(' '));
                             else control.removeAttribute('aria-describedby');
                         });
-                        tooltip.dispose();
+                        started.delete(button);
                     };
                     return lifecycle ? lifecycle.own(dispose) : dispose;
                 });

@@ -7,6 +7,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
+import { openingHelps } from '../../../../../../../test/helpers/help-buttons.ts';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -774,7 +775,6 @@ describe('discover edition: shared form tabs, options tooltips, and feedback', (
     let savedGlobals;
     let device;
     let previousApp;
-    let tooltips;
 
     function panel(tab) {
         return document.getElementById(`descubreQEIdeviceForm-panel-${tab}`);
@@ -820,21 +820,15 @@ describe('discover edition: shared form tabs, options tooltips, and feedback', (
         };
         global.$exeDevice = undefined;
         previousApp = global.eXeLearning?.app;
-        tooltips = new Map();
         global.eXeLearning = {
             ...global.eXeLearning,
             app: {
                 ...previousApp,
                 common: {
-                    initTooltips: vi.fn((scope) => {
-                        scope.querySelectorAll('.exe-app-tooltip').forEach((button) => {
-                            if (!tooltips.has(button)) tooltips.set(button, { hide: vi.fn(), dispose: vi.fn() });
-                        });
-                    }),
+                    initTooltips: vi.fn(),
                 },
             },
         };
-        vi.stubGlobal('bootstrap', { Tooltip: { getInstance: (button) => tooltips.get(button) } });
 
         device = global.loadIdevice(join(__dirname, 'discover.js'));
         document.body.innerHTML = '<div id="discoverBody"></div>';
@@ -888,7 +882,7 @@ describe('discover edition: shared form tabs, options tooltips, and feedback', (
         for (const help of optionHelps) {
             expect(help.tagName).toBe('BUTTON');
             expect(help.type).toBe('button');
-            expect(help.title).toBe('Information');
+            expect(help.title).toBe(help.getAttribute('aria-label'));
             const targetId = help.getAttribute('aria-controls');
             expect(targetId).toBeTruthy();
             expect(document.getElementById(targetId)?.textContent.length).toBeGreaterThan(10);
@@ -904,12 +898,12 @@ describe('discover edition: shared form tabs, options tooltips, and feedback', (
         expect(minimizeInput.checked).toBe(false);
     });
 
-    it('disposes all option tooltips when the edition closes', () => {
-        expect(tooltips.size).toBeGreaterThanOrEqual(11);
+    it('starts every help once and releases them when the edition closes', () => {
+        const helps = document.querySelectorAll('.exe-idevice-help');
+        expect(helps.length).toBeGreaterThanOrEqual(11);
+        expect(openingHelps()).toHaveLength(helps.length);
         device.$lifecycle.destroy();
-        for (const tooltip of tooltips.values()) {
-            expect(tooltip.dispose).toHaveBeenCalledTimes(1);
-        }
+        expect(openingHelps()).toHaveLength(0);
     });
 
     it('switches tabs when one is clicked', () => {

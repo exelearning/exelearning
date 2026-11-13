@@ -12,6 +12,7 @@ import '../../../../../../../public/vitest.setup.js';
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
+import { openingHelps } from '../../../../../../../test/helpers/help-buttons.ts';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -335,23 +336,16 @@ describe('scrambled-list edition: shared form tabs', () => {
     const panel = (name) => document.getElementById(`scrambledlistIdeviceForm-panel-${name}`);
     let device;
     let previousApp;
-    let tooltips;
 
     beforeEach(() => {
         global.$exeDevice = undefined;
         previousApp = global.eXeLearning.app;
-        tooltips = new Map();
         global.eXeLearning.app = {
             ...previousApp,
             common: {
-                initTooltips: vi.fn((scope) => {
-                    scope.querySelectorAll('.exe-app-tooltip').forEach((button) => {
-                        if (!tooltips.has(button)) tooltips.set(button, { hide: vi.fn(), dispose: vi.fn() });
-                    });
-                }),
+                initTooltips: vi.fn(),
             },
         };
-        vi.stubGlobal('bootstrap', { Tooltip: { getInstance: (button) => tooltips.get(button) } });
         document.body.innerHTML = '<div id="scrambledBody" idevice-id="sl-1"></div>';
         device = loadIdevice(readFileSync(join(__dirname, 'scrambled-list.js'), 'utf-8'));
     });
@@ -477,15 +471,14 @@ describe('scrambled-list edition: shared form tabs', () => {
         }
     });
 
-    it('disposes all option tooltips when the edition closes', () => {
+    it('starts every help once and releases them when the edition closes', () => {
         open();
 
-        expect(tooltips.size).toBe(document.querySelectorAll('#scrambledlistIdeviceForm .exe-app-tooltip').length);
-        expect(tooltips.size).toBeGreaterThanOrEqual(2);
+        const helps = document.querySelectorAll('.exe-idevice-help');
+        expect(helps.length).toBeGreaterThanOrEqual(2);
+        expect(openingHelps()).toHaveLength(helps.length);
         device.$lifecycle.destroy();
-        for (const tooltip of tooltips.values()) {
-            expect(tooltip.dispose).toHaveBeenCalledTimes(1);
-        }
+        expect(openingHelps()).toHaveLength(0);
     });
 
     it('leaves the state of each switch to its native checkbox', () => {
