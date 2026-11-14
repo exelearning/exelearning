@@ -114,7 +114,6 @@ export class Scorm2004Exporter extends Html5Exporter {
             // 1. Generate HTML pages (with SCORM 2004 support and optional LaTeX/Mermaid pre-rendering)
             const pageHtmlMap = new Map<string, string>();
             let latexWasRendered = false;
-            let mermaidWasRendered = false;
 
             for (let i = 0; i < pages.length; i++) {
                 const page = pages[i];
@@ -177,7 +176,6 @@ export class Scorm2004Exporter extends Html5Exporter {
                         const result = await options.preRenderMermaid(html);
                         if (result.mermaidRendered) {
                             html = result.html;
-                            mermaidWasRendered = true;
                             console.log(
                                 `[Scorm2004Exporter] Pre-rendered ${result.count} Mermaid diagram(s) on page: ${page.title}`,
                             );
@@ -207,15 +205,12 @@ export class Scorm2004Exporter extends Html5Exporter {
             if (!baseCss) {
                 throw new Error('Failed to fetch content/css/base.css');
             }
-            // Append pre-rendered CSS if LaTeX or Mermaid was rendered
-            if (latexWasRendered || mermaidWasRendered) {
+            // Append pre-rendered CSS if LaTeX was rendered (Mermaid styles are in base.css)
+            if (latexWasRendered) {
                 const decoder = new TextDecoder();
                 let baseCssText = decoder.decode(baseCss);
                 if (latexWasRendered) {
                     baseCssText += '\n' + this.getPreRenderedLatexCss();
-                }
-                if (mermaidWasRendered) {
-                    baseCssText += '\n' + this.getPreRenderedMermaidCss();
                 }
                 const encoder = new TextEncoder();
                 baseCss = encoder.encode(baseCssText);

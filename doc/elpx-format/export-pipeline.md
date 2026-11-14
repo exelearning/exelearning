@@ -76,9 +76,10 @@ to all pages. The first page is always `index.html`; subsequent pages are
 `html/<sanitized-title>.html`. Collisions are resolved by incrementing trailing
 numbers.
 
-Mermaid diagrams are optionally pre-rendered to static SVG via the
-`options.preRenderMermaid` hook (`ElpxExporter.ts:175`). When diagrams are
-pre-rendered the Mermaid library is not included in the export (saving ~2.7 MB).
+Mermaid diagrams are pre-rendered to static SVG with Pele via the
+`options.preRenderMermaid` hook (`MermaidPreRenderer.ts`). Exports never include
+a diagram renderer; a diagram that fails to render keeps its source and is
+reported in the hook result's `failures`.
 
 Note: LaTeX pre-rendering is disabled in the ELPX exporter (no
 `preRenderLatex` hook call) — MathJax runtime handling is used instead.
@@ -94,9 +95,10 @@ called and written to `search_index.js` (`ElpxExporter.ts:199`).
 
 ### Phase 1.3 — Base CSS
 
-`resources.fetchContentCss()` returns `content/css/base.css`. If Mermaid was
-pre-rendered, the CSS for static SVG rendering is appended inline
-(`ElpxExporter.ts:206-220`). The file is written to `content/css/base.css`.
+`resources.fetchContentCss()` returns `content/css/base.css`, which already
+holds the styles of pre-rendered Mermaid diagrams. If LaTeX was pre-rendered,
+the CSS for its static SVG is appended inline. The file is written to
+`content/css/base.css`.
 
 ### Phase 1.4 — eXeLearning logo
 

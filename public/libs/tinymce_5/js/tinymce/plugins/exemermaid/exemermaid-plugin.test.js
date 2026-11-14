@@ -158,7 +158,7 @@ describe('exemermaid plugin - Path Handling', () => {
         });
     });
 
-    describe('Mermaid library preload on dialog open', () => {
+    describe('Diagram renderer preload on dialog open', () => {
         // These tests run the real plugin.min.js: the preload cannot be removed
         // from openHTMLDialog without failing here.
         const fs = require('node:fs');
@@ -236,36 +236,54 @@ describe('exemermaid plugin - Path Handling', () => {
             delete globalThis.win;
         });
 
-        it('starts loading Mermaid before the dialog is opened', () => {
+        it('starts loading the diagram renderer before the dialog is opened', () => {
             const calls = [];
-            globalThis.$exe = { mermaid: { loadMermaid: () => calls.push('loadMermaid'), init: () => {} } };
+            globalThis.$exe = {
+                mermaid: {
+                    load: () => {
+                        calls.push('load');
+                        return Promise.resolve();
+                    },
+                    init: () => {},
+                },
+            };
             const plugin = loadPlugin();
             plugin.calls = calls;
             // The toolbar button is the production entry point
             plugin.registry.button.onAction();
-            expect(calls[0]).toBe('loadMermaid');
+            expect(calls[0]).toBe('load');
         });
 
-        it('preloads Mermaid from the menu item too', () => {
-            const loadMermaid = vi.fn();
-            globalThis.$exe = { mermaid: { loadMermaid, init: () => {} } };
+        it('preloads the renderer from the menu item too', () => {
+            const load = vi.fn(() => Promise.resolve());
+            globalThis.$exe = { mermaid: { load, init: () => {} } };
             const plugin = loadPlugin();
             plugin.registry.menuItem.onAction();
-            expect(loadMermaid).toHaveBeenCalledTimes(1);
+            expect(load).toHaveBeenCalledTimes(1);
         });
 
         it('opens the dialog after requesting the preload', () => {
-            const loadMermaid = vi.fn();
-            globalThis.$exe = { mermaid: { loadMermaid, init: () => {} } };
+            const load = vi.fn(() => Promise.resolve());
+            globalThis.$exe = { mermaid: { load, init: () => {} } };
             const plugin = loadPlugin();
             plugin.registry.button.onAction();
             expect(plugin.calls).toContain('open');
-            expect(loadMermaid).toHaveBeenCalledTimes(1);
+            expect(load).toHaveBeenCalledTimes(1);
+        });
+
+        it('ignores a failed preload, which init reports when the diagram is rendered', async () => {
+            const failure = Promise.reject(new Error('offline'));
+            const catchSpy = vi.spyOn(failure, 'catch');
+            globalThis.$exe = { mermaid: { load: () => failure, init: () => {} } };
+            const plugin = loadPlugin();
+            plugin.registry.button.onAction();
+            expect(catchSpy).toHaveBeenCalledTimes(1);
+            await expect(catchSpy.mock.results[0].value).resolves.toBeUndefined();
         });
 
         it('still renders the diagram when the editor is deactivated', () => {
             const init = vi.fn();
-            globalThis.$exe = { mermaid: { loadMermaid: () => {}, init } };
+            globalThis.$exe = { mermaid: { load: () => Promise.resolve(), init } };
             const plugin = loadPlugin();
             plugin.handlers.deactivate({});
             expect(init).toHaveBeenCalledTimes(1);

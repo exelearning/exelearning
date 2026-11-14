@@ -155,7 +155,6 @@ export class Epub3Exporter extends BaseExporter {
 
             // 4. Generate XHTML pages (with optional LaTeX and Mermaid pre-rendering)
             let latexWasRendered = false;
-            let mermaidWasRendered = false;
 
             for (let i = 0; i < pages.length; i++) {
                 const page = pages[i];
@@ -209,13 +208,11 @@ export class Epub3Exporter extends BaseExporter {
                 }
 
                 // Pre-render Mermaid diagrams to static SVG if hook is provided
-                // This eliminates the need for the ~2.7MB Mermaid library in exports
                 if (options?.preRenderMermaid) {
                     try {
                         const result = await options.preRenderMermaid(xhtml);
                         if (result.mermaidRendered) {
                             xhtml = result.html;
-                            mermaidWasRendered = true;
                         }
                     } catch (error) {
                         // Fail silently for optional pre-rendering
@@ -243,12 +240,9 @@ export class Epub3Exporter extends BaseExporter {
             const baseCssContent =
                 typeof fetchedBaseCss === 'string' ? fetchedBaseCss : new TextDecoder().decode(fetchedBaseCss);
             let baseCss = baseCssContent + '\n' + this.getEpubSpecificCss();
-            // Append pre-rendered CSS if LaTeX or Mermaid was rendered
+            // Append pre-rendered CSS if LaTeX was rendered (Mermaid styles are in base.css)
             if (latexWasRendered) {
                 baseCss += '\n' + this.getPreRenderedLatexCss();
-            }
-            if (mermaidWasRendered) {
-                baseCss += '\n' + this.getPreRenderedMermaidCss();
             }
             this.zip.addFile('EPUB/content/css/base.css', baseCss);
             this.addManifestItem('css-base', 'content/css/base.css', 'text/css');
@@ -1031,16 +1025,6 @@ td, th {
      */
     protected getPreRenderedLatexCss(): string {
         return PRERENDERED_LATEX_CSS;
-    }
-
-    /**
-     * Get CSS for pre-rendered Mermaid diagrams (static SVG)
-     * This CSS is needed when Mermaid is pre-rendered instead of using the library at runtime
-     */
-    protected getPreRenderedMermaidCss(): string {
-        return `/* Pre-rendered Mermaid (static SVG) - Mermaid library not included */
-.exe-mermaid-rendered { display: block; text-align: center; margin: 1.5em 0; }
-.exe-mermaid-rendered svg { max-width: 100%; height: auto; }`;
     }
 
     /**

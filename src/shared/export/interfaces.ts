@@ -476,9 +476,8 @@ export interface ExportOptions {
     preRenderDataGameLatex?: (html: string) => Promise<{ html: string; count: number }>;
 
     /**
-     * Optional hook to pre-render Mermaid diagrams to static SVG.
-     * When provided and successful, Mermaid library (~2.7MB) will NOT be included in the output.
-     * This significantly reduces export size and provides instant diagram rendering.
+     * Optional hook to pre-render Mermaid diagrams to static SVG with Pele.
+     * Exports never ship a diagram renderer: a diagram that fails stays as its source.
      */
     preRenderMermaid?: (html: string) => Promise<MermaidPreRenderResult>;
 
@@ -838,10 +837,24 @@ export interface MermaidPreRenderResult {
     html: string;
     /** Whether the original HTML contained Mermaid diagrams */
     hasMermaid: boolean;
-    /** Whether Mermaid was successfully pre-rendered */
+    /** Whether at least one diagram was rendered (the HTML changed) */
     mermaidRendered: boolean;
     /** Number of diagrams rendered */
     count: number;
+    /** Diagrams that could not be rendered and were left as source */
+    failures?: MermaidRenderFailure[];
+}
+
+/**
+ * A Mermaid diagram that could not be rendered
+ */
+export interface MermaidRenderFailure {
+    /** Pele error code ('syntax', 'unsupported-diagram', 'semantic', 'limit') or 'error' */
+    code: string;
+    /** Error message, including the line and column for syntax errors */
+    message: string;
+    /** Diagram source */
+    source: string;
 }
 
 // =============================================================================

@@ -52,8 +52,10 @@ import {
     Epub3Exporter,
     ElpxExporter,
     ServerLatexPreRenderer,
-    ServerMermaidPreRenderer,
+    MermaidPreRenderer,
 } from '../../shared/export';
+import type { MermaidRenderFailure } from '../../shared/export/interfaces';
+import { render as renderMermaid } from 'pele';
 
 export const VALID_FORMATS = ['html5', 'html5-sp', 'scorm12', 'scorm2004', 'ims', 'epub3', 'elpx'] as const;
 export type ExportFormat = (typeof VALID_FORMATS)[number];
@@ -63,9 +65,8 @@ export interface ElpExportResult {
     message: string;
 }
 
-// Lazy-initialized pre-renderers (singleton pattern)
+// Lazy-initialized pre-renderer (singleton pattern)
 let latexRenderer: ServerLatexPreRenderer | null = null;
-let mermaidRenderer: ServerMermaidPreRenderer | null = null;
 
 function getLatexRenderer(): ServerLatexPreRenderer {
     if (!latexRenderer) {
@@ -74,12 +75,15 @@ function getLatexRenderer(): ServerLatexPreRenderer {
     return latexRenderer;
 }
 
-async function getMermaidRenderer(): Promise<ServerMermaidPreRenderer> {
-    if (!mermaidRenderer) {
-        mermaidRenderer = new ServerMermaidPreRenderer();
-        await mermaidRenderer.initialize();
-    }
-    return mermaidRenderer;
+/** Explains which diagrams could not be rendered, so the author can fix them. */
+export function describeMermaidFailures(failures: MermaidRenderFailure[]): string {
+    const details = failures.map(failure => {
+        const firstLine = failure.source.split('\n')[0].slice(0, 60);
+        const lines = failure.message.split('\n').filter(line => line.trim());
+        const message = lines.length > 1 ? `${lines[0]} ${lines[lines.length - 1]}` : lines[0];
+        return `  - "${firstLine}": ${message}`;
+    });
+    return `${failures.length} Mermaid diagram(s) could not be rendered and would be shown as source code:\n${details.join('\n')}`;
 }
 
 export async function execute(
@@ -243,8 +247,8 @@ export async function execute(
         }
 
         // Create pre-render hooks for LaTeX and Mermaid
-        // These convert LaTeX/Mermaid to static SVG, avoiding the need to bundle
-        // MathJax (~1MB) and Mermaid (~2.7MB) libraries in the export
+        // These convert LaTeX/Mermaid to static SVG, so the export does not
+        // need MathJax or a diagram renderer at runtime
         const preRenderLatex = async (html: string) => {
             const renderer = getLatexRenderer();
             return renderer.preRender(html);
@@ -255,9 +259,12 @@ export async function execute(
             return renderer.preRenderDataGameLatex(html);
         };
 
+        const mermaidRenderer = new MermaidPreRenderer(renderMermaid);
+        const mermaidFailures: MermaidRenderFailure[] = [];
         const preRenderMermaid = async (html: string) => {
-            const renderer = await getMermaidRenderer();
-            return renderer.preRender(html);
+            const result = await mermaidRenderer.preRender(html);
+            mermaidFailures.push(...(result.failures ?? []));
+            return result;
         };
 
         if (debug) {
@@ -283,6 +290,9 @@ export async function execute(
             };
         }
 
+        // Do not write or report success for a package whose diagrams would show as source code (#2544)
+        const mermaidError = mermaidFailures.length > 0 ? describeMermaidFailures(mermaidFailures) : null;
+
         // Write output
         const extension = exporter.getFileExtension();
         const outputPath = output.endsWith('.zip') || output.endsWith(extension) ? output : `${output}${extension}`;
@@ -292,7 +302,7 @@ export async function execute(
         await fs.mkdir(outputDir, { recursive: true });
 
         // Write the ZIP buffer
-        if (result.data) {
+        if (result.data && !mermaidError) {
             await fs.writeFile(outputPath, result.data);
         }
 
@@ -309,10 +319,8 @@ export async function execute(
         // Clean up Y.Doc
         wrapper.destroy();
 
-        // Clean up Mermaid renderer (releases jsdom resources)
-        if (mermaidRenderer) {
-            mermaidRenderer.destroy();
-            mermaidRenderer = null;
+        if (mermaidError) {
+            return { success: false, message: `Export failed: ${mermaidError}` };
         }
 
         if (debug) {

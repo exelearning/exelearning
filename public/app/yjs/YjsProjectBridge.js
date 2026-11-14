@@ -3514,11 +3514,8 @@ class YjsProjectBridge {
           exporter: exporter?.constructor?.name || 'unknown',
         }, trace);
         
-        // Get Mermaid pre-renderer hook if available
-        const exportOptions = {};
-        if (window.MermaidPreRenderer) {
-          exportOptions.preRenderMermaid = window.MermaidPreRenderer.preRender.bind(window.MermaidPreRenderer);
-        }
+        // Pre-render Mermaid diagrams in the HTML pages packaged with the project
+        const exportOptions = { ...window.SharedExporters.getMermaidPreRendererHooks?.() };
         this.logElpxExportPhase('bridge:exporter:run:start', {}, trace);
         const result = await exporter.export(exportOptions);
         this.logElpxExportPhase('bridge:exporter:run:end', {

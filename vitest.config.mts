@@ -53,7 +53,7 @@ export default defineConfig({
             'public/app/common/edicuatex/**/*.css',
             'public/app/common/edicuatex/**/*.html',
             'public/app/common/edicuatex/**/*.json',
-            'public/app/common/mermaid/**',
+            'public/app/common/pele/**',
             'public/app/common/mindmaps/**',
             'public/app/common/fix_webm_duration/**',
             'public/app/common/exe_tooltips/imagesloaded.pkg.min.js',
@@ -96,7 +96,7 @@ export default defineConfig({
                 // Vendored third-party code (never edited locally, see
                 // THIRD-PARTY-NOTICES.md)
                 'public/app/common/scorm/scorm12/vendor/**',
-                'public/app/common/mermaid/**',
+                'public/app/common/pele/**',
                 'public/app/common/mindmaps/**',
                 'public/app/common/fix_webm_duration/**',
                 'public/app/common/exe_tooltips/imagesloaded.pkg.min.js',
