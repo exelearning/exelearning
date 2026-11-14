@@ -333,6 +333,88 @@ describe('YjsDocumentManager', () => {
     });
   });
 
+  describe('deferred cleanup keeps unsaved local work (issue #2615)', () => {
+    let deleteDatabase;
+
+    function makeOnlineManager() {
+      const m = new YjsDocumentManager('test-project-123', {
+        wsUrl: 'ws://localhost:3001/yjs',
+        apiUrl: '/api',
+        token: 'test-token',
+        offline: false,
+      });
+      spyOn(m, '_validateIndexedDb').mockResolvedValue(true);
+      spyOn(m, 'loadFromServer').mockResolvedValue(undefined);
+      return m;
+    }
+
+    beforeEach(() => {
+      deleteDatabase = mock(() => {
+        const req = { onsuccess: null, onerror: null, onblocked: null };
+        setTimeout(() => req.onsuccess && req.onsuccess(), 0);
+        return req;
+      });
+      global.indexedDB = { deleteDatabase };
+      global.window.indexedDB = global.indexedDB;
+      // Previous session: last tab closed (cleanup scheduled) in a fresh tab session.
+      global.localStorage.setItem('exe-needs-cleanup-test-project-123', 'true');
+    });
+
+    afterEach(() => {
+      delete global.indexedDB;
+    });
+
+    it('keeps IndexedDB and the dirty flag when the last tab closed with unsaved work, and merges the server snapshot', async () => {
+      global.localStorage.setItem('exelearning_dirty_state_test-project-123', 'true');
+      await manager.destroy();
+      manager = makeOnlineManager();
+
+      await manager.initialize();
+
+      expect(deleteDatabase).not.toHaveBeenCalled();
+      expect(global.localStorage.getItem('exelearning_dirty_state_test-project-123')).toBe('true');
+      expect(global.localStorage.getItem('exe-needs-cleanup-test-project-123')).toBeNull();
+      // The server state is merged on top of the kept copy (as on every online open).
+      expect(manager.loadFromServer).toHaveBeenCalled();
+      // And captureBaselineState() restores the dirty state for autosave.
+      manager.captureBaselineState();
+      expect(manager.isDirty).toBe(true);
+    });
+
+    it('still wipes the local copy when the previous session had nothing unsaved', async () => {
+      await manager.destroy();
+      manager = makeOnlineManager();
+
+      await manager.initialize();
+
+      expect(deleteDatabase).toHaveBeenCalledWith('exelearning-project-test-project-123');
+      expect(global.localStorage.getItem('exe-needs-cleanup-test-project-123')).toBeNull();
+    });
+
+    it('does not preserve anything for an offline manager (no remote storage to autosave to)', async () => {
+      global.localStorage.setItem('exelearning_dirty_state_test-project-123', 'true');
+      // `manager` from the outer beforeEach is offline.
+      spyOn(manager, '_validateIndexedDb').mockResolvedValue(true);
+
+      await manager.initialize();
+
+      expect(deleteDatabase).toHaveBeenCalledTimes(1);
+      expect(global.localStorage.getItem('exelearning_dirty_state_test-project-123')).toBeNull();
+    });
+
+    it('preserves nothing on a same-tab reload (session storage marker present): existing behaviour', async () => {
+      global.localStorage.setItem('exelearning_dirty_state_test-project-123', 'true');
+      global.sessionStorage.setItem('exe-tab-session-test-project-123', 'true');
+      await manager.destroy();
+      manager = makeOnlineManager();
+
+      await manager.initialize();
+
+      expect(deleteDatabase).not.toHaveBeenCalled();
+      expect(global.localStorage.getItem('exelearning_dirty_state_test-project-123')).toBe('true');
+    });
+  });
+
   describe('server snapshot merge on open and reconnect (issue #2615)', () => {
     function makeOnlineManager() {
       const m = new YjsDocumentManager('test-project-123', {
@@ -379,6 +461,7 @@ describe('YjsDocumentManager', () => {
       manager.captureBaselineState();
       expect(manager.isDirty).toBe(false);
 
+      // Build a server snapshot from another document and serve it.
       const Y = global.window.Y;
       const serverDoc = new Y.Doc();
       serverDoc.getMap('metadata').set('author', 'Someone Else');
@@ -415,10 +498,12 @@ describe('YjsDocumentManager', () => {
       const events = [];
       manager.on('connectionChange', (data) => events.push(data.connected));
 
+      // First connect: no merge (initialize already merged).
       manager.wsProvider.connect();
       expect(loadSpy).not.toHaveBeenCalled();
       expect(events).toEqual([true]);
 
+      // Drop and reconnect: merge, then announce.
       manager.wsProvider.disconnect();
       expect(events).toEqual([true, false]);
       manager.wsProvider.connect();
@@ -458,6 +543,7 @@ describe('YjsDocumentManager', () => {
       expect(global.fetch).toHaveBeenCalledTimes(1);
       resolveFetch({ ok: false, status: 404 });
       await Promise.all([first, second]);
+      // A later call starts a fresh request.
       global.fetch = mock(() => Promise.resolve({ ok: false, status: 404 }));
       await manager.loadFromServer();
       expect(global.fetch).toHaveBeenCalledTimes(1);
@@ -684,6 +770,53 @@ describe('YjsDocumentManager', () => {
       manager.markClean();
 
       expect(global.localStorage.getItem(manager._dirtyStateKey)).toBeNull();
+    });
+
+    it('markClean with the current change counter cleans the document (#2615)', () => {
+      manager.markDirty();
+      const seq = manager.getChangeSeq();
+
+      expect(manager.markClean(seq)).toBe(true);
+      expect(manager.isDirty).toBe(false);
+    });
+
+    it('markClean keeps the document dirty when it changed after the saved snapshot (#2615)', () => {
+      manager.markDirty();
+      const seq = manager.getChangeSeq();
+      manager.markDirty(); // edit made while the save was uploading
+      const callback = mock(() => undefined);
+      manager.on('saveStatus', callback);
+
+      expect(manager.markClean(seq)).toBe(false);
+
+      expect(manager.isDirty).toBe(true);
+      expect(global.localStorage.getItem(manager._dirtyStateKey)).toBe('true');
+      expect(callback).toHaveBeenCalledWith({ status: 'dirty', isDirty: true });
+      expect(manager.lastSavedAt).toBeInstanceOf(Date);
+    });
+
+    it('getChangeSeq ignores the save bookkeeping origin (#2615)', () => {
+      manager.markDirty();
+      const seq = manager.getChangeSeq();
+      manager.markDirty('asset-upload');
+      expect(manager.getChangeSeq()).toBe(seq);
+      expect(manager.markClean(seq)).toBe(true);
+    });
+
+    it('counts real document updates but not asset-upload transactions', () => {
+      const before = manager.getChangeSeq();
+      manager.ydoc.transact(() => manager.ydoc.getMap('metadata').set('author', 'x'));
+      expect(manager.getChangeSeq()).toBe(before + 1);
+      manager.ydoc.transact(() => manager.ydoc.getMap('assets').set('a1', { uploaded: true }), 'asset-upload');
+      expect(manager.getChangeSeq()).toBe(before + 1);
+    });
+
+    it('getChangeSeq ignores suppressed edits', () => {
+      const before = manager.getChangeSeq();
+      manager._suppressDirtyTracking = true;
+      manager.markDirty();
+      manager._suppressDirtyTracking = false;
+      expect(manager.getChangeSeq()).toBe(before);
     });
 
     it('hasUnsavedChanges returns isDirty', () => {
@@ -1617,6 +1750,18 @@ describe('YjsDocumentManager', () => {
       const metadata = manager.getMetadata();
       expect(metadata.get('exelearning_version')).toBe('4.0.0-beta');
       expect(global.fetch).not.toHaveBeenCalled();
+      delete global.window.eXeLearning;
+    });
+
+    it('does not write (or dirty the document) when the version is unchanged (#2615)', async () => {
+      global.window.eXeLearning = { version: '4.0.0' };
+      manager.getMetadata().set('exelearning_version', '4.0.0');
+      const updates = [];
+      manager.ydoc.on('update', (u) => updates.push(u));
+
+      await manager._updateVersionMetadata();
+
+      expect(updates).toHaveLength(0);
       delete global.window.eXeLearning;
     });
 

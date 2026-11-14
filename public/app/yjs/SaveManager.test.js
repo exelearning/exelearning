@@ -595,6 +595,19 @@ describe('SaveManager', () => {
       expect(mockBridge.documentManager.markClean).toHaveBeenCalled();
     });
 
+    it('passes the change counter read before encoding to markClean (#2615)', async () => {
+      let seq = 7;
+      mockBridge.documentManager.getChangeSeq = vi.fn(() => seq);
+      const manager = new SaveManager(mockBridge);
+      vi.spyOn(manager, 'saveYjsState').mockImplementation(async () => {
+        seq = 8; // an edit lands while the snapshot is uploading
+      });
+
+      await manager.save();
+
+      expect(mockBridge.documentManager.markClean).toHaveBeenCalledWith(7);
+    });
+
     it('sets isNewProject to false after first save', async () => {
       const manager = new SaveManager(mockBridge);
       mockBridge.isNewProject = true;
@@ -646,6 +659,28 @@ describe('SaveManager', () => {
 
       expect(result.success).toBe(false);
       expect(mockBridge.documentManager.markClean).not.toHaveBeenCalled();
+    });
+
+    it('hands a failed manual save back to the autosave retry loop (#2615)', async () => {
+      const notifyExternalSaveFailed = vi.fn();
+      mockBridge.collaborativeAutosave = { cancel: vi.fn(), notifyExternalSaveFailed };
+      const manager = new SaveManager(mockBridge);
+      vi.spyOn(manager, 'saveYjsState').mockRejectedValue(new Error('Network error'));
+
+      await manager.save();
+
+      expect(notifyExternalSaveFailed).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not notify the autosave manager about its own failed save', async () => {
+      const notifyExternalSaveFailed = vi.fn();
+      mockBridge.collaborativeAutosave = { cancel: vi.fn(), notifyExternalSaveFailed };
+      const manager = new SaveManager(mockBridge);
+      vi.spyOn(manager, 'saveYjsState').mockRejectedValue(new Error('Network error'));
+
+      await manager.save({ reason: 'collaborative-autosave' });
+
+      expect(notifyExternalSaveFailed).not.toHaveBeenCalled();
     });
 
     it('handles save errors gracefully', async () => {

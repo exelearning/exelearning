@@ -2634,11 +2634,10 @@ class YjsProjectBridge {
       this.updateSaveStatus('saved');
     }
 
-    // Collaborative autosave (issue #1592): persist the shared Yjs state after
-    // an idle period so live collaborative changes are not lost when the last
-    // editor closes without saving. The manager gates itself to genuine online
-    // collaborative sessions (remote storage + collaboration + a collaborator
-    // present), so this is a no-op in single-user, static or offline modes.
+    // Autosave (issues #1592, #2615): persist the Yjs state after an idle
+    // period so edits are not lost when a tab closes without saving. The
+    // manager gates itself to online sessions with remote storage and a live
+    // connection, so this is a no-op in static or offline modes.
     if (typeof window !== 'undefined' && window.CollaborativeAutosaveManager && !this.collaborativeAutosave) {
       // Optional runtime override for the idle debounce (ms). Mirrors the
       // existing window.__EXE_STATIC_MODE__ override convention; used by E2E
@@ -2646,14 +2645,55 @@ class YjsProjectBridge {
       // manager's conservative default when unset.
       const idleOverride = window.__EXE_COLLAB_AUTOSAVE_IDLE_MS__;
       const idleDelayMs = typeof idleOverride === 'number' && idleOverride >= 0 ? idleOverride : undefined;
+      const retryOverride = window.__EXE_COLLAB_AUTOSAVE_RETRY_MS__;
+      const retryBaseMs = typeof retryOverride === 'number' && retryOverride >= 0 ? retryOverride : undefined;
       this.collaborativeAutosave = new window.CollaborativeAutosaveManager(this, {
         idleDelayMs,
+        retryBaseMs,
         onStatusChange: (phase) => this._updateCollaborativeSaveStatus(phase),
       });
       this.collaborativeAutosave.start();
     }
 
     Logger.log('[YjsProjectBridge] Auto-sync enabled');
+  }
+
+  /**
+   * Persist unsaved changes before an export or publish action (issue #2615).
+   *
+   * Exports are generated from the in-memory Y.Doc, which may hold edits the
+   * server has not received yet. Saving first keeps the published package and
+   * the stored snapshot in step. Only applies when remote storage exists; it
+   * never blocks the export: a failed save is logged and the export proceeds
+   * with the local content.
+   *
+   * A save already in flight (usually an autosave) is waited for first, since
+   * edits made after its snapshot would otherwise be exported unsaved.
+   *
+   * @param {string} [reason='pre-export'] - Tag passed to SaveManager.save().
+   * @param {Object} [opts]
+   * @param {number} [opts.waitMs=60000] - Longest wait for an in-flight save.
+   * @param {number} [opts.pollMs=100] - Poll interval while waiting.
+   * @returns {Promise<{saved: boolean, success?: boolean, error?: string}>}
+   */
+  async flushPendingSave(reason = 'pre-export', { waitMs = 60000, pollMs = 100 } = {}) {
+    if (!this.app?.capabilities?.storage?.remote) return { saved: false };
+    const dm = this.documentManager;
+    const sm = this.saveManager;
+    if (!dm || !sm || typeof sm.save !== 'function') return { saved: false };
+    const deadline = Date.now() + waitMs;
+    while (sm.isSaving && Date.now() < deadline) {
+      await new Promise((resolve) => setTimeout(resolve, pollMs));
+    }
+    const dirty = typeof dm.hasUnsavedChanges === 'function' ? dm.hasUnsavedChanges() === true : dm.isDirty === true;
+    if (!dirty || sm.isSaving) return { saved: false };
+    try {
+      const result = await sm.save({ showProgress: false, silent: true, reason });
+      return { ...result, saved: result?.success === true };
+    } catch (error) {
+      console.warn('[YjsProjectBridge] Pre-export save failed:', error);
+      return { saved: false, success: false, error: error?.message || String(error) };
+    }
   }
 
   /**
@@ -3370,10 +3410,14 @@ class YjsProjectBridge {
       // Capture screenshot using html2canvas in a hidden iframe
       const dataUrl = await this._captureHtmlAsScreenshot(htmlString);
       if (dataUrl) {
+        // Read before the write: an edit made during the save or the capture
+        // must stay unsaved (#2615), so only an already clean document is
+        // re-marked clean.
+        const wasClean = this.documentManager?.isDirty !== true;
         metadata.set('screenshot', dataUrl);
         // Re-mark as clean: screenshot is auto-generated metadata, not a user edit,
         // so it should not trigger "unsaved changes" guards on navigation
-        if (this.documentManager?.markClean) {
+        if (wasClean && this.documentManager?.markClean) {
           this.documentManager.markClean();
         }
         Logger.log('[YjsProjectBridge] Auto-generated screenshot from first page');
@@ -3498,6 +3542,12 @@ class YjsProjectBridge {
     this.logElpxExportPhase('bridge:ensure-screenshot:start', {}, trace);
     await this.ensureScreenshotForExport();
     this.logElpxExportPhase('bridge:ensure-screenshot:end', {}, trace);
+
+    // Issue #2615: the export is built from the browser Y.Doc, so persist any
+    // unsaved edits first and the downloaded package can never be newer than
+    // what the server stores. It runs after the version and screenshot writes
+    // above so those are part of the saved snapshot too.
+    await this.flushPendingSave('pre-export');
 
     // Use SharedExporters if available (preferred - includes theme, idevices, DTD)
     if (window.SharedExporters?.createExporter) {
