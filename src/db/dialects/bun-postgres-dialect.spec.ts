@@ -162,6 +162,64 @@ describe('BunPostgresDialect', () => {
             expect(result.numAffectedRows).toBe(2n);
         });
 
+        it('should convert int8 columns from strings to numbers', async () => {
+            // Bun's PostgreSQL driver returns bigint (int8, OID 20) columns as strings.
+            // Timestamps are stored as bigint, so they must come back as numbers.
+            const rows = [{ id: 1, updated_at: '1793284626519', title: '2024' }];
+            Object.defineProperty(rows, 'columns', {
+                value: [
+                    { name: 'id', type: 23 },
+                    { name: 'updated_at', type: 20 },
+                    { name: 'title', type: 25 },
+                ],
+            });
+            const reserved: ReservedConnection = {
+                unsafe: async () => rows,
+                release: () => {},
+            };
+            setupSqlHarness(reserved);
+
+            const dialect = new BunPostgresDialect(config);
+            const driver = dialect.createDriver();
+            await driver.init();
+            const connection = await driver.acquireConnection();
+
+            const result = await connection.executeQuery<{ id: number; updated_at: number; title: string }>({
+                sql: 'SELECT id, updated_at, title FROM projects',
+                parameters: [],
+            });
+
+            expect(result.rows).toEqual([{ id: 1, updated_at: 1793284626519, title: '2024' }]);
+            expect(new Date(result.rows[0].updated_at).toISOString()).toBe('2026-10-29T14:37:06.519Z');
+        });
+
+        it('should keep int8 values that exceed safe integers and null values untouched', async () => {
+            const rows = [{ big: '9223372036854775807', nothing: null }];
+            Object.defineProperty(rows, 'columns', {
+                value: [
+                    { name: 'big', type: 20 },
+                    { name: 'nothing', type: 20 },
+                ],
+            });
+            const reserved: ReservedConnection = {
+                unsafe: async () => rows,
+                release: () => {},
+            };
+            setupSqlHarness(reserved);
+
+            const dialect = new BunPostgresDialect(config);
+            const driver = dialect.createDriver();
+            await driver.init();
+            const connection = await driver.acquireConnection();
+
+            const result = await connection.executeQuery<{ big: string; nothing: null }>({
+                sql: 'SELECT big, nothing FROM t',
+                parameters: [],
+            });
+
+            expect(result.rows).toEqual([{ big: '9223372036854775807', nothing: null }]);
+        });
+
         it('should stream query results', async () => {
             const reserved: ReservedConnection = {
                 unsafe: async () => [{ id: 9 }],
