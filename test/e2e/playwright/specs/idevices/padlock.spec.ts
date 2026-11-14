@@ -25,7 +25,7 @@ test('Padlock keeps its editors in Activities and its settings in Options', asyn
     const id = await device.getAttribute('id');
     expect(id).toBeTruthy();
 
-    // Instructions, feedback and access code share the Activities tab; the settings have their own.
+    // Instructions, feedback and access code share the Padlock tab; the settings have their own.
     const tabs = page.locator('#candadoIdeviceForm-tabs [data-exe-tab]');
     await expect(tabs).toHaveCount(4);
     await expect(page.locator('#candadoIdeviceForm-tab-contents')).toHaveAttribute('aria-selected', 'true');

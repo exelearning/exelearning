@@ -744,11 +744,11 @@ describe('classify edition: shared form tabs and feedback', () => {
             'instructions',
             'options',
             'contents',
-            'passwords',
-            'feedback',
-            'after',
             'grading',
+            'passwords',
             'texts',
+            'after',
+            'feedback',
         ]);
         expect(document.getElementById('clasificaQEIdeviceForm-tab-contents').textContent.trim()).toBe('Cards');
 

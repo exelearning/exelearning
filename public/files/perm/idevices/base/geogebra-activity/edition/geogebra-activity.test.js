@@ -513,7 +513,7 @@ describe('geogebra-activity edition: shared form tabs', () => {
             tab.getAttribute('data-exe-tab')
         );
 
-        expect(tabNames).toEqual(['instructions', 'options', 'contents', 'after', 'grading']);
+        expect(tabNames).toEqual(['instructions', 'options', 'contents', 'grading', 'after']);
         expect(document.getElementById('eXeAutoGeogebraForm-tab-contents').textContent.trim()).toBe('Activity');
         expect(panel('contents').classList.contains('active')).toBe(true);
     });

@@ -314,10 +314,10 @@ describe('dragdrop edition: shared form tabs, options tooltips, and saving', () 
             'instructions',
             'options',
             'contents',
-            'passwords',
-            'after',
             'grading',
+            'passwords',
             'texts',
+            'after',
         ]);
         expect(document.getElementById('dragdropQIdeviceForm-tab-contents').textContent.trim()).toBe('Cards');
 

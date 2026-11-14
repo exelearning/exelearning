@@ -201,11 +201,11 @@ describe('periodic-table edition: shared form tabs and feedback', () => {
             'instructions',
             'options',
             'contents',
-            'passwords',
-            'feedback',
-            'after',
             'grading',
+            'passwords',
             'texts',
+            'after',
+            'feedback',
         ]);
         expect(document.getElementById('ptQEIdeviceForm-tab-contents').textContent.trim()).toBe('Periodic table');
         expect(panel('contents').classList.contains('active')).toBe(true);

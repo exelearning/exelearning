@@ -711,11 +711,11 @@ describe('quick-questions-multiple-choice edition: shared form tabs and feedback
             'instructions',
             'options',
             'contents',
-            'passwords',
-            'feedback',
-            'after',
             'grading',
+            'passwords',
             'texts',
+            'after',
+            'feedback',
         ]);
         expect(document.getElementById('quickMultipleQEIdeviceForm-tab-contents').textContent.trim()).toBe('Questions');
         expect(panel('contents').classList.contains('active')).toBe(true);

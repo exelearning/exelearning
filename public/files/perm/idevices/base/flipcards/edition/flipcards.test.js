@@ -761,10 +761,10 @@ describe('flipcards edition: shared form tabs, options tooltips, and saving', ()
             'instructions',
             'options',
             'contents',
-            'passwords',
-            'after',
             'grading',
+            'passwords',
             'texts',
+            'after',
         ]);
         expect(document.getElementById('flipcardsQEIdeviceForm-tab-contents').textContent.trim()).toBe('Cards');
 

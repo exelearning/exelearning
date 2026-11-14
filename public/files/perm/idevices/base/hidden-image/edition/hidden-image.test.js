@@ -369,7 +369,7 @@ describe('hidden-image edition: shared form tabs', () => {
     });
 
     it('lays the form out in the shared tabs, and opens on its questions', () => {
-        expect(tabNames()).toEqual(['instructions', 'options', 'contents', 'passwords', 'after', 'grading', 'texts']);
+        expect(tabNames()).toEqual(['instructions', 'options', 'contents', 'grading', 'passwords', 'texts', 'after']);
         expect(document.getElementById('hiQEIdeviceForm-tab-contents').textContent.trim()).toBe('Questions');
         expect(panel('contents').classList.contains('active')).toBe(true);
     });

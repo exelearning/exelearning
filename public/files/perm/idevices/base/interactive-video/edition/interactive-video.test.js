@@ -162,7 +162,7 @@ describe('interactive-video iDevice edition', () => {
         (tab) => tab.getAttribute('data-exe-tab')
       );
 
-      expect(tabNames).toEqual(['instructions', 'options', 'contents', 'after', 'grading', 'texts']);
+      expect(tabNames).toEqual(['instructions', 'options', 'contents', 'grading', 'texts', 'after']);
       expect(document.getElementById('interactiveVideoIdeviceForm-tab-contents').textContent.trim()).toBe('Video');
       expect(panel('contents').classList.contains('active')).toBe(true);
     });

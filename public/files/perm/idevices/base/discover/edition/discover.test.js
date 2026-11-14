@@ -858,11 +858,11 @@ describe('discover edition: shared form tabs, options tooltips, and feedback', (
             'instructions',
             'options',
             'contents',
-            'passwords',
-            'feedback',
-            'after',
             'grading',
+            'passwords',
             'texts',
+            'after',
+            'feedback',
         ]);
         expect(document.getElementById('descubreQEIdeviceForm-tab-contents').textContent.trim()).toBe('Cards');
 

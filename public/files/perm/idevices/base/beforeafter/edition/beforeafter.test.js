@@ -175,7 +175,7 @@ describe('beforeafter edition: shared form tabs', () => {
     });
 
     it('lays the form out in the shared tabs, without Options, and opens on its questions (contents)', () => {
-        expect(tabNames()).toEqual(['instructions', 'contents', 'passwords', 'after', 'grading', 'texts']);
+        expect(tabNames()).toEqual(['instructions', 'contents', 'grading', 'passwords', 'texts', 'after']);
         expect(document.getElementById('beforeAfterQIdeviceForm-tab-contents').textContent.trim()).toBe('Cards');
         expect(panel('contents').classList.contains('active')).toBe(true);
     });

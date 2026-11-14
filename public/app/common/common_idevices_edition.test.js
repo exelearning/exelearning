@@ -1276,11 +1276,11 @@ describe('common_idevices_edition.js', () => {
           'instructions',
           'options',
           'contents',
-          'passwords',
-          'feedback',
-          'after',
           'grading',
+          'passwords',
           'texts',
+          'after',
+          'feedback',
         ]);
         expect(tabs().order).toEqual(tabNames());
       });
@@ -1308,11 +1308,11 @@ describe('common_idevices_edition.js', () => {
           'Instructions',
           'Options',
           'Activities',
-          'Passwords',
-          'Feedback',
-          'After',
           'Grading',
+          'Passwords',
           'Texts',
+          'After',
+          'Feedback',
         ]);
       });
 

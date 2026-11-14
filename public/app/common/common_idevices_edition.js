@@ -3353,7 +3353,7 @@ var $exeIDevicesEdition = {
             /**
              * The shared form tabs, in the order every iDevice shows them.
              */
-            order: ['instructions', 'options', 'contents', 'passwords', 'feedback', 'after', 'grading', 'texts'],
+            order: ['instructions', 'options', 'contents', 'grading', 'passwords', 'texts', 'after', 'feedback'],
 
             /**
              * The informative message that opens a tab: what is done there,

@@ -548,7 +548,7 @@ describe('trivial edition: shared form tabs', () => {
     });
 
     it('lays the form out in the shared tabs, and opens on its questions', () => {
-        expect(tabNames()).toEqual(['instructions', 'options', 'contents', 'passwords', 'after', 'grading', 'texts']);
+        expect(tabNames()).toEqual(['instructions', 'options', 'contents', 'grading', 'passwords', 'texts', 'after']);
         expect(document.getElementById('gameQEIdeviceForm-tab-contents').textContent.trim()).toBe('Questions');
         expect(panel('contents').classList.contains('active')).toBe(true);
     });

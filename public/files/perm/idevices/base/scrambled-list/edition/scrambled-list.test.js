@@ -367,7 +367,7 @@ describe('scrambled-list edition: shared form tabs', () => {
             tab.getAttribute('data-exe-tab')
         );
 
-        expect(tabNames).toEqual(['instructions', 'options', 'contents', 'after', 'grading', 'texts']);
+        expect(tabNames).toEqual(['instructions', 'options', 'contents', 'grading', 'texts', 'after']);
         expect(document.getElementById('scrambledlistIdeviceForm-tab-contents').textContent.trim()).toBe('List');
         expect(panel('contents').classList.contains('active')).toBe(true);
     });

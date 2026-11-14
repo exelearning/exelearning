@@ -300,11 +300,11 @@ describe('complete edition: shared form tabs and feedback', () => {
             'instructions',
             'options',
             'contents',
-            'passwords',
-            'feedback',
-            'after',
             'grading',
+            'passwords',
             'texts',
+            'after',
+            'feedback',
         ]);
         expect(document.getElementById('completeQEIdeviceForm-tab-contents').textContent.trim()).toBe('Text');
 

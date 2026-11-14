@@ -259,11 +259,11 @@ describe('puzzle edition: shared form tabs and feedback', () => {
             'instructions',
             'options',
             'contents',
-            'passwords',
-            'feedback',
-            'after',
             'grading',
+            'passwords',
             'texts',
+            'after',
+            'feedback',
         ]);
         expect(document.getElementById('puzzleIdeviceForm-tab-contents').textContent.trim()).toBe('Puzzles');
         expect(panel('contents').classList.contains('active')).toBe(true);

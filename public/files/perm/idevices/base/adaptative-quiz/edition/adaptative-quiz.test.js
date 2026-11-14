@@ -2195,7 +2195,7 @@ describe('adaptative-quiz edition: shared form tabs', () => {
             tab.getAttribute('data-exe-tab')
         );
 
-        expect(tabNames).toEqual(['instructions', 'options', 'contents', 'passwords', 'after', 'grading', 'texts']);
+        expect(tabNames).toEqual(['instructions', 'options', 'contents', 'grading', 'passwords', 'texts', 'after']);
         expect(document.getElementById('adaptativeQuizIdeviceForm-tab-contents').textContent.trim()).toBe('Questions');
         expect(panel('contents').classList.contains('active')).toBe(true);
     });

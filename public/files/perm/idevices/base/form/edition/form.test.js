@@ -974,7 +974,7 @@ describe('form edition: shared form tabs', () => {
             tab.getAttribute('data-exe-tab')
         );
 
-        expect(tabNames).toEqual(['instructions', 'options', 'contents', 'after', 'grading', 'texts']);
+        expect(tabNames).toEqual(['instructions', 'options', 'contents', 'grading', 'texts', 'after']);
         expect(document.getElementById('formIdeviceForm-tab-contents').textContent.trim()).toBe('Questions');
         expect(panel('contents').classList.contains('active')).toBe(true);
     });
