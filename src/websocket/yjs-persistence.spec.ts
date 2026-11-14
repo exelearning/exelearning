@@ -2,7 +2,7 @@
  * Tests for Yjs Persistence Service
  * Uses Dependency Injection pattern - no mock.module needed
  */
-import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
+import { describe, it, expect, beforeEach, afterEach, spyOn } from 'bun:test';
 import * as Y from 'yjs';
 import type { Kysely } from 'kysely';
 import type { Database } from '../db/schema';
@@ -156,6 +156,54 @@ describe('Yjs Persistence Service', () => {
     afterEach(() => {
         // Reset to default dependencies
         resetDependencies();
+    });
+
+    it('preserves incremental updates when reading for compaction fails', async () => {
+        const update = { project_id: 1, update_data: Buffer.from([1, 2]), version: '1' };
+        mockUpdates.set(1, [update]);
+        const queries = createMockQueries();
+        queries.loadDocumentWithUpdates = async () => {
+            throw new Error('snapshot storage unavailable');
+        };
+        configure({ db: mockDb, queries });
+        await expect(compactToSnapshot(1)).rejects.toThrow('snapshot storage unavailable');
+        expect(mockUpdates.get(1)).toEqual([update]);
+        expect(mockSnapshots.has(1)).toBe(false);
+        expect(await loadDocumentEfficient(1)).toBeNull();
+    });
+
+    it('keeps saved state and compaction correct with runtime debug logging enabled', async () => {
+        const previous = process.env.APP_DEBUG;
+        process.env.APP_DEBUG = '1';
+        const log = spyOn(console, 'log').mockImplementation(() => {});
+        const document = new Y.Doc();
+        const restored = new Y.Doc();
+        try {
+            expect(await loadDocument(999)).toBeNull();
+            expect(await loadDocumentEfficient(999)).toBeNull();
+            document.getMap('metadata').set('title', 'Snapshot');
+            await saveFullState(1, Y.encodeStateAsUpdate(document));
+            expect(await loadDocument(1)).not.toBeNull();
+            expect(await loadDocumentEfficient(1)).not.toBeNull();
+            document.getMap('metadata').set('title', 'Incremental');
+            const update = Y.encodeStateAsUpdate(document);
+            await saveIncrementalUpdate(1, update);
+            expect(await loadUpdatesSince(1, '0')).toHaveLength(1);
+            Y.applyUpdate(restored, (await loadDocument(1))!);
+            expect(restored.getMap('metadata').get('title')).toBe('Incremental');
+            expect(await loadDocumentEfficient(1)).not.toBeNull();
+            await pruneUpdatesBefore(1, '0');
+            for (let index = 0; index < 9; index++) await saveIncrementalUpdate(1, update);
+            expect(mockUpdates.get(1)).toEqual([]);
+            expect(mockSnapshots.get(1)?.snapshot_data).toBeDefined();
+            expect(log.mock.calls.some(args => String(args[0]).includes('Compacted'))).toBe(true);
+        } finally {
+            document.destroy();
+            restored.destroy();
+            log.mockRestore();
+            if (previous === undefined) delete process.env.APP_DEBUG;
+            else process.env.APP_DEBUG = previous;
+        }
     });
 
     describe('saveFullState', () => {

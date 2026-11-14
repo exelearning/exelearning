@@ -266,6 +266,68 @@ describe('Scorm12Exporter', () => {
         exporter = new Scorm12Exporter(document, resources, assets, zip);
     });
 
+    it('ships pre-rendered pages, supporting CSS and the selected font', async () => {
+        Object.assign(resources, {
+            fetchGlobalFontFiles: async () => new Map([['fonts/coverage.woff2', Buffer.from('font-bytes')]]),
+        });
+        const doc = new MockDocument({ globalFont: 'opendyslexic' }, samplePages);
+        const tested = new Scorm12Exporter(doc, resources, assets, zip);
+        const result = await tested.export({
+            preRenderDataGameLatex: async html => ({
+                html: html.replace('</body>', '<p id="datagame-rendered">Math</p></body>'),
+                count: 1,
+            }),
+            preRenderLatex: async html => ({
+                html: html.replace('</body>', '<p id="latex-rendered">Equation</p></body>'),
+                latexRendered: true,
+                hasLatex: true,
+                count: 1,
+            }),
+            preRenderMermaid: async html => ({
+                html: html.replace('</body>', '<svg id="mermaid-rendered"></svg></body>'),
+                mermaidRendered: true,
+                hasMermaid: true,
+                count: 1,
+            }),
+        });
+        expect(result.success).toBe(true);
+        const html = String(zip.files.get('index.html'));
+        expect(html).toContain('latex-rendered');
+        expect(html).toContain('mermaid-rendered');
+        const cssBytes = zip.files.get('content/css/base.css');
+        const css = typeof cssBytes === 'string' ? cssBytes : new TextDecoder().decode(cssBytes as Uint8Array);
+        expect(css).toContain('exe-math-rendered');
+        expect(css).toContain('exe-mermaid-rendered');
+        expect(zip.files.has('fonts/coverage.woff2')).toBe(true);
+    });
+
+    it('keeps author content when optional rendering and resources fail', async () => {
+        const fail = async () => {
+            throw new Error('optional resource unavailable');
+        };
+        resources.fetchTheme = fail;
+        resources.fetchBaseLibraries = fail;
+        resources.fetchLibraryFiles = fail;
+        resources.fetchIdeviceResources = fail;
+        Object.assign(resources, { fetchGlobalFontFiles: fail });
+        const tested = new Scorm12Exporter(
+            new MockDocument({ globalFont: 'opendyslexic' }, samplePages),
+            resources,
+            assets,
+            zip,
+        );
+        const result = await tested.export({
+            preRenderDataGameLatex: fail,
+            preRenderLatex: fail,
+            preRenderMermaid: fail,
+        });
+        expect(result.success).toBe(true);
+        const html = String(zip.files.get('index.html'));
+        expect(html).toContain(samplePages[0].title);
+        expect(html).not.toContain('latex-rendered');
+        expect(zip.files.has('theme/style.css')).toBe(true);
+    });
+
     describe('MathJax when explicitly requested (addMathJax)', () => {
         beforeAll(() => {
             resetIdeviceConfigCache(); // discard any base path leaked by another spec

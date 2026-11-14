@@ -35,7 +35,7 @@ import {
     findSnapshotByProjectId as findSnapshotByProjectIdDefault,
 } from '../db/queries';
 import { db as defaultDb } from '../db/client';
-import { getConfig, DEBUG } from './config';
+import { getConfig, isDebugEnabled } from './config';
 import type { Kysely } from 'kysely';
 import type { Database } from '../db/schema';
 
@@ -142,7 +142,7 @@ export async function saveFullState(projectId: number, state: Uint8Array, client
         const buffer = Buffer.from(state);
         await deps.queries.saveFullState(deps.db, projectId, buffer, clientId);
 
-        if (DEBUG) {
+        if (isDebugEnabled()) {
             console.log(`[YjsPersistence] Saved full state for project ${projectId} (${buffer.length} bytes)`);
         }
     } catch (error: unknown) {
@@ -178,13 +178,13 @@ export async function loadDocument(projectId: number): Promise<Uint8Array | null
 
         // No data at all
         if (!snapshot && updates.length === 0) {
-            if (DEBUG) console.log(`[YjsPersistence] No document found for project ${projectId}`);
+            if (isDebugEnabled()) console.log(`[YjsPersistence] No document found for project ${projectId}`);
             return null;
         }
 
         // Only snapshot, no updates - return directly
         if (snapshot && updates.length === 0) {
-            if (DEBUG) {
+            if (isDebugEnabled()) {
                 console.log(
                     `[YjsPersistence] Loaded project ${projectId} from snapshot (${snapshot.snapshot_data.length} bytes)`,
                 );
@@ -206,7 +206,7 @@ export async function loadDocument(projectId: number): Promise<Uint8Array | null
         const mergedState = Y.encodeStateAsUpdate(doc);
         doc.destroy();
 
-        if (DEBUG) {
+        if (isDebugEnabled()) {
             console.log(
                 `[YjsPersistence] Loaded project ${projectId} (merged ${updates.length} updates + snapshot): ${mergedState.length} bytes`,
             );
@@ -231,7 +231,7 @@ export async function loadUpdatesSince(projectId: number, sinceVersion: string =
     try {
         const updates = await deps.queries.findUpdatesSince(deps.db, projectId, sinceVersion);
 
-        if (DEBUG) {
+        if (isDebugEnabled()) {
             console.log(
                 `[YjsPersistence] Loaded ${updates.length} updates for project ${projectId} since v${sinceVersion}`,
             );
@@ -272,7 +272,7 @@ export async function reconstructDocument(projectId: number): Promise<Y.Doc> {
 
     if (state) {
         Y.applyUpdate(ydoc, state);
-        if (DEBUG) console.log(`[YjsPersistence] Reconstructed Y.Doc for project ${projectId}`);
+        if (isDebugEnabled()) console.log(`[YjsPersistence] Reconstructed Y.Doc for project ${projectId}`);
     }
 
     return ydoc;
@@ -288,7 +288,7 @@ export async function deleteAllUpdates(projectId: number): Promise<number> {
     try {
         await deps.queries.deleteAllUpdates(deps.db, projectId);
         const deletedCount = 1; // Kysely doesn't return changes count easily
-        if (DEBUG) console.log(`[YjsPersistence] Deleted updates for project ${projectId}`);
+        if (isDebugEnabled()) console.log(`[YjsPersistence] Deleted updates for project ${projectId}`);
         return deletedCount;
     } catch (error: unknown) {
         const errorMessage = error instanceof Error ? error.message : String(error);
@@ -315,7 +315,7 @@ export async function pruneUpdatesBefore(projectId: number, beforeVersion: strin
     try {
         await deps.queries.deleteUpdatesBefore(deps.db, projectId, beforeVersion);
 
-        if (DEBUG) {
+        if (isDebugEnabled()) {
             console.log(`[YjsPersistence] Pruned updates for project ${projectId} before v${beforeVersion}`);
         }
 
@@ -412,7 +412,7 @@ export async function saveIncrementalUpdate(
             config.compactThresholdBytes,
         );
 
-        if (DEBUG) {
+        if (isDebugEnabled()) {
             console.log(
                 `[YjsPersistence] Saved incremental update for project ${projectId} ` +
                     `(${update.length} bytes, ${result.stats.count} total updates)`,
@@ -422,7 +422,7 @@ export async function saveIncrementalUpdate(
         // If compaction is needed, do it now
         if (result.compacted) {
             await compactToSnapshot(projectId);
-            if (DEBUG) {
+            if (isDebugEnabled()) {
                 console.log(`[YjsPersistence] Compacted project ${projectId} to snapshot`);
             }
         }
@@ -477,7 +477,7 @@ export async function compactToSnapshot(projectId: number): Promise<void> {
         const { snapshot, updates } = await deps.queries.loadDocumentWithUpdates(deps.db, projectId);
 
         if (updates.length === 0 && !snapshot) {
-            if (DEBUG) console.log(`[YjsPersistence] Nothing to compact for project ${projectId}`);
+            if (isDebugEnabled()) console.log(`[YjsPersistence] Nothing to compact for project ${projectId}`);
             return;
         }
 
@@ -510,7 +510,7 @@ export async function compactToSnapshot(projectId: number): Promise<void> {
         // Cleanup
         doc.destroy();
 
-        if (DEBUG) {
+        if (isDebugEnabled()) {
             console.log(
                 `[YjsPersistence] Compacted ${updates.length} updates into snapshot ` +
                     `for project ${projectId} (${fullState.length} bytes)`,
@@ -536,13 +536,13 @@ export async function loadDocumentEfficient(projectId: number): Promise<Uint8Arr
 
         // No data at all
         if (!snapshot && updates.length === 0) {
-            if (DEBUG) console.log(`[YjsPersistence] No document found for project ${projectId}`);
+            if (isDebugEnabled()) console.log(`[YjsPersistence] No document found for project ${projectId}`);
             return null;
         }
 
         // Only snapshot, no updates - return directly
         if (snapshot && updates.length === 0) {
-            if (DEBUG) {
+            if (isDebugEnabled()) {
                 console.log(
                     `[YjsPersistence] Loaded project ${projectId} from snapshot ` +
                         `(${snapshot.snapshot_data.length} bytes)`,
@@ -565,7 +565,7 @@ export async function loadDocumentEfficient(projectId: number): Promise<Uint8Arr
         const state = Y.encodeStateAsUpdate(doc);
         doc.destroy();
 
-        if (DEBUG) {
+        if (isDebugEnabled()) {
             console.log(
                 `[YjsPersistence] Loaded project ${projectId}: merged snapshot + ${updates.length} updates ` +
                     `(${state.length} bytes)`,

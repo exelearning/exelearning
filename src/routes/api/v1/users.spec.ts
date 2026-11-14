@@ -177,7 +177,7 @@ describe('Users API v1', () => {
             expect(response.status).toBe(403);
         });
 
-        it('should create the user for admin', async () => {
+        it('creates a local user with a nullable SSO identifier for an admin', async () => {
             const response = await app.handle(
                 new Request('http://localhost/users', {
                     method: 'POST',
@@ -199,7 +199,10 @@ describe('Users API v1', () => {
             expect(data.success).toBe(true);
             expect(data.data.email).toBe('createduser@test.com');
             expect(data.data.roles).toEqual(['ROLE_USER']);
-            expect((await findUserById(db, data.data.id))?.email).toBe('createduser@test.com');
+            const saved = await findUserById(db, data.data.id);
+            expect(saved?.user_id).toBeNull();
+            expect(saved?.roles).toBe('["ROLE_USER"]');
+            expect(await Bun.password.verify('password123', saved!.password)).toBe(true);
         });
 
         it('should give the new user the configured DEFAULT_QUOTA', async () => {
@@ -276,6 +279,33 @@ describe('Users API v1', () => {
     // =========================================================================
 
     describe('PATCH /users/:id', () => {
+        it('updates credentials and rejects an email already owned by another user', async () => {
+            const target = await createUser(db, {
+                email: 'coverage-update@test.com',
+                password: await hashPassword('before'),
+                roles: '["ROLE_USER"]',
+                is_active: 1,
+                is_lopd_accepted: 1,
+            });
+            const id = target.id;
+            const update = (body: object) =>
+                app.handle(
+                    new Request(`http://localhost/users/${id}`, {
+                        method: 'PATCH',
+                        headers: { Authorization: `Bearer ${adminToken}`, 'Content-Type': 'application/json' },
+                        body: JSON.stringify(body),
+                    }),
+                );
+            const conflict = await update({ email: 'superadmin@test.com' });
+            expect(conflict.status).toBe(409);
+            expect((await findUserById(db, id))?.email).toBe('coverage-update@test.com');
+            const response = await update({ email: 'coverage-updated@test.com', password: 'new-password123' });
+            expect(response.status).toBe(200);
+            const saved = await findUserById(db, id);
+            expect(saved?.email).toBe('coverage-updated@test.com');
+            expect(await Bun.password.verify('new-password123', saved!.password)).toBe(true);
+        });
+
         it('should return 401 without auth token', async () => {
             const response = await app.handle(
                 new Request(`http://localhost/users/${userId}`, {

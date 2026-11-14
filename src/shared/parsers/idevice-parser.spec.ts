@@ -509,3 +509,14 @@ describe('idevice-parser', () => {
         });
     });
 });
+
+describe('iDevice parser optional adapters', () => {
+    it('parses a standalone config without filesystem or path adapters', () => {
+        const config = parseIdeviceConfig('<idevice><title>Standalone</title></idevice>', {
+            ideviceId: 'standalone',
+            basePath: '/idevices/standalone',
+        });
+        expect(config?.title).toBe('Standalone');
+        expect(config?.id).toBe('standalone');
+    });
+});

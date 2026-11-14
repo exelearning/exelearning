@@ -313,6 +313,23 @@ describe('PageExporter', () => {
         exporter = new PageExporter(document, resources, assets, zip);
     });
 
+    it.each([false, true])('preserves single-page diagrams when rendering fails: %s', async fails => {
+        const pages = structuredClone(samplePages);
+        const component = pages[0].blocks[0].components[0];
+        delete component.htmlContent;
+        component.content = '<pre class="mermaid">graph TD; A--&gt;B</pre>';
+        const tested = new PageExporter(new MockDocument({}, pages), resources, assets, zip);
+        const result = await tested.export({
+            preRenderMermaid: async html => {
+                if (fails) throw new Error('renderer unavailable');
+                return { html: '<svg id="diagram-result"></svg>', mermaidRendered: true, hasMermaid: true, count: 1 };
+            },
+        });
+        expect(result.success).toBe(true);
+        const html = String(zip.files.get('index.html'));
+        expect(html).toContain(fails ? 'graph TD' : 'diagram-result');
+    });
+
     describe('MathJax when explicitly requested (addMathJax)', () => {
         beforeAll(() => {
             resetIdeviceConfigCache(); // discard any base path leaked by another spec
