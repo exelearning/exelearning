@@ -128,7 +128,7 @@ export const test = authTest.extend<CollaborationFixtures, CollaborationWorkerFi
     secondAuthenticatedPage: async ({ secondContext }, use) => {
         const page = await secondContext.newPage();
 
-        await page.goto('/workarea');
+        await page.goto('/workarea?new=1');
         await waitForWorkareaUiReady(page, 60000);
 
         await use(page);

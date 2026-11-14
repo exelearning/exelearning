@@ -10,6 +10,7 @@ import {
     saveProjectFolderInBrowser,
 } from '../../../../core/ProjectFolderStorage.js';
 import { DEFAULT_ACTIVITY_MODE, PREVIEW_MODE_DOCUMENT } from '../../../modals/modals/pages/modalPrintPreview.js';
+import { isRecentHandlesSupported, pickProjectFile } from '../../../start/recentHandles.js';
 
 /**
  * Below this viewport width the left panels start collapsed, and collapse when the viewport
@@ -2067,7 +2068,13 @@ export default class NavbarFile {
      * Opens file input for static mode (PWA/offline)
      * Uses ElpxImporter directly without server APIs
      */
-    openFileInputStatic() {
+    openFileInputStatic(recent = { isRecentHandlesSupported, pickProjectFile }) {
+        // Where the browser can keep file handles, pick with its own picker:
+        // the file is then remembered for the start screen's recent list.
+        if (recent.isRecentHandlesSupported()) {
+            return this.openWithFilePicker(recent.pickProjectFile);
+        }
+
         // Create or reuse a hidden file input
         let fileInput = document.getElementById('static-open-file-input');
         if (!fileInput) {
@@ -2080,31 +2087,56 @@ export default class NavbarFile {
 
             fileInput.addEventListener('change', async (e) => {
                 const file = e.target.files?.[0];
-                if (file) {
-                    // Persist the picked file to the main-process "current
-                    // file" slot so the next Save dialog pre-fills with it.
-                    // Prefer the absolute path (via Electron's webUtils)
-                    // when available so the folder is remembered too.
-                    try {
-                        if (typeof window.electronAPI?.setSavedPath === 'function') {
-                            const fullPath =
-                                typeof window.electronAPI?.getFilePath === 'function'
-                                    ? window.electronAPI.getFilePath(file)
-                                    : null;
-                            await window.electronAPI.setSavedPath(fullPath || file.name);
-                        }
-                    } catch (_e) {
-                        // Best effort — must not block Open.
-                    }
-                    // Reuse unified open flow (handles unsaved modal + static import)
-                    eXeLearning.app.modals.openuserodefiles.largeFilesUpload(file);
-                }
+                if (file) await this.openLocalFile(file);
                 // Reset for next use
                 e.target.value = '';
             });
         }
 
         fileInput.click();
+    }
+
+    /**
+     * File > Open with the browser's file picker (static mode, Chromium).
+     * @param {() => Promise<File|null>} pick - Resolves to null when cancelled
+     */
+    async openWithFilePicker(pick) {
+        try {
+            const file = await pick();
+            if (file) await this.openLocalFile(file);
+        } catch (error) {
+            console.error('[NavbarFile] File picker failed:', error);
+            eXeLearning.app.modals.alert.show({
+                title: _('Error opening'),
+                body: _('Unknown error.'),
+                contentId: 'error',
+            });
+        }
+    }
+
+    /**
+     * Open a project file the author picked or dropped in static mode
+     * (File > Open and the start screen share this path).
+     * @param {File} file
+     */
+    async openLocalFile(file) {
+        // Persist the picked file to the main-process "current
+        // file" slot so the next Save dialog pre-fills with it.
+        // Prefer the absolute path (via Electron's webUtils)
+        // when available so the folder is remembered too.
+        try {
+            if (typeof window.electronAPI?.setSavedPath === 'function') {
+                const fullPath =
+                    typeof window.electronAPI?.getFilePath === 'function'
+                        ? window.electronAPI.getFilePath(file)
+                        : null;
+                await window.electronAPI.setSavedPath(fullPath || file.name);
+            }
+        } catch (_e) {
+            // Best effort — must not block Open.
+        }
+        // Reuse unified open flow (handles unsaved modal + static import)
+        eXeLearning.app.modals.openuserodefiles.largeFilesUpload(file);
     }
 
     /**

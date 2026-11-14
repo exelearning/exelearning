@@ -182,6 +182,55 @@ describe('FileDropHandler drag events', () => {
     });
 });
 
+describe('FileDropHandler remembers dropped project files', () => {
+    it('hands the drop to the recent-files hook in the static app only', () => {
+        const rememberDropped = vi.fn();
+        const staticApp = { ...makeApp(), runtimeConfig: { isStaticMode: () => true } };
+        const handler = new FileDropHandler({ app: staticApp, rememberDropped });
+
+        const drop = makeDragEvent({ files: [{ name: 'demo.elpx' }] });
+        handler._onDrop(drop);
+        expect(rememberDropped).toHaveBeenCalledWith(drop.dataTransfer);
+
+        handler._onDrop(makeDragEvent({ files: [{ name: 'notes.pdf' }] }));
+        expect(rememberDropped).toHaveBeenCalledTimes(1);
+
+        const online = new FileDropHandler({ app: makeApp(), rememberDropped });
+        online._onDrop(makeDragEvent({ files: [{ name: 'demo.elpx' }] }));
+        expect(rememberDropped).toHaveBeenCalledTimes(1);
+    });
+
+    it('works without a hook', () => {
+        const staticApp = { ...makeApp(), runtimeConfig: { isStaticMode: () => true } };
+        const handler = new FileDropHandler({ app: staticApp });
+        expect(() => handler._onDrop(makeDragEvent({ files: [{ name: 'demo.elpx' }] }))).not.toThrow();
+    });
+});
+
+describe('FileDropHandler defers to the start screen', () => {
+    afterEach(() => {
+        document.body.innerHTML = '';
+    });
+
+    it('lets the open start screen take the drop itself', () => {
+        const dialog = document.createElement('dialog');
+        dialog.className = 'exe-start';
+        dialog.setAttribute('open', '');
+        document.body.appendChild(dialog);
+
+        const app = makeApp();
+        const handler = new FileDropHandler({ app });
+
+        handler._onDragEnter(makeDragEvent());
+        expect(document.querySelector('.exe-file-drop-overlay')).toBeFalsy();
+
+        const drop = makeDragEvent({ files: [{ name: 'demo.elpx' }] });
+        handler._onDrop(drop);
+        expect(drop.preventDefault).toHaveBeenCalled();
+        expect(app.modals.openuserodefiles.largeFilesUpload).not.toHaveBeenCalled();
+    });
+});
+
 describe('FileDropHandler defers while a side panel is open', () => {
     /** Inject an element with the given id and the `active` class. */
     function openPanel(id) {

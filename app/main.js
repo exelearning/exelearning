@@ -16,6 +16,7 @@ const {
 const { checkLink } = require('./link-check');
 const { extractZipEntries } = require('./zip-extract');
 const { createFileReadGrants } = require('./file-read-grants');
+const { addRecentFile, describeRecentFiles, findRecentFile } = require('./recent-files');
 const { savePrintPreviewAsPdf } = require('./print-to-pdf');
 const { printPreview } = require('./print-preview');
 const {
@@ -328,6 +329,23 @@ function getLastUsedDir() {
 }
 
 /**
+ * Add a project file that was just opened or saved to the recent list of the
+ * settings object being written (the start screen shows it) and to the
+ * operating system's own list (dock menu, taskbar jump list). Exports and
+ * bare file names without a folder are not projects one can reopen.
+ */
+function rememberRecentFile(settings, dirPath, fileName) {
+    if (!dirPath || !fileName || !/\.elpx?$/i.test(fileName)) return;
+    const filePath = path.join(dirPath, fileName);
+    settings.recentFiles = addRecentFile(settings.recentFiles, filePath);
+    try {
+        app.addRecentDocument(filePath);
+    } catch (_err) {
+        // Best effort: the list in settings.json is the one the app relies on.
+    }
+}
+
+/**
  * Apply a Save-dialog outcome to settings.json in a single read+write:
  * wipes the stale per-project name cache, then updates the global slot,
  * the per-project entry, and the session-wide lastUsedDir fallback.
@@ -337,6 +355,7 @@ function persistSaveLocation(key, dirPath, fileName) {
     const s = readSettings();
     clearSavedNameCache(s);
     s.currentFileSave = { dir: dirPath || null, name: fileName || null };
+    rememberRecentFile(s, dirPath, fileName);
     if (key) {
         s.lastSaveDir = s.lastSaveDir || {};
         s.lastSaveDir[key] = dirPath;
@@ -356,6 +375,7 @@ function setCurrentFileSaveInfo(dirPath, fileName) {
     const s = readSettings();
     clearSavedNameCache(s);
     s.currentFileSave = { dir: dirPath || null, name: fileName || null };
+    rememberRecentFile(s, dirPath, fileName);
     if (dirPath) s.lastUsedDir = dirPath;
     writeSettings(s);
 }
@@ -1498,6 +1518,20 @@ ipcMain.handle('app:openElp', async e => {
     if (canceled || !filePaths || !filePaths.length) return null;
     setLastUsedDir(path.dirname(filePaths[0]));
     return fileReadGrants.grant(filePaths[0]);
+});
+
+// Recent project files for the start screen: names and folders only, each under an opaque id.
+ipcMain.handle('app:getRecentFiles', async () => describeRecentFiles(readSettings().recentFiles));
+
+// Open one of them. The window is reloaded first and the file is handed to the fresh page through
+// the same handshake as a file opened by the OS, so the read grant goes to a page that runs no
+// author content yet, never to whatever asked (see recent-files.js).
+ipcMain.handle('app:openRecentFile', async (e, { id } = {}) => {
+    const filePath = findRecentFile(readSettings().recentFiles, id);
+    if (!filePath || !fs.existsSync(filePath)) return false;
+    pendingOpenFileByWebContentsId.set(e.sender.id, filePath);
+    e.sender.reload();
+    return true;
 });
 
 // Read file contents as base64 for upload (renderer builds a File), only for granted paths

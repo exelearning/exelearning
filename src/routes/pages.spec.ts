@@ -1084,8 +1084,104 @@ describe('Pages Routes', () => {
         });
     });
 
+    describe('start screen (no project asked for)', () => {
+        async function signToken(payload: Record<string, unknown>): Promise<string> {
+            const jwt = await import('@elysiajs/jwt');
+            const tempApp = new Elysia().use(jwt.jwt({ name: 'jwt', secret: 'test-secret-for-testing-only' }));
+            return tempApp.decorator.jwt.sign(payload);
+        }
+
+        function appCapturingTemplate() {
+            const rendered: { template: string; data: any }[] = [];
+            const locales: string[] = [];
+            const customApp = new Elysia().use(
+                createPagesRoutes({
+                    ...mockDeps,
+                    template: {
+                        renderTemplate: (template: string, data: any) => {
+                            rendered.push({ template, data });
+                            return `<html>${template}</html>`;
+                        },
+                        setRenderLocale: (locale: string) => {
+                            locales.push(locale);
+                        },
+                    },
+                }),
+            );
+            return { customApp, rendered, locales };
+        }
+
+        it('renders the start page and creates no project', async () => {
+            const token = await signToken({ sub: 1, email: 'test@test.com', roles: ['ROLE_USER'], isGuest: false });
+            const { customApp, rendered } = appCapturingTemplate();
+            const projectsBefore = mockProjects.size;
+            const sessionsBefore = mockSessions.size;
+
+            const res = await customApp.handle(
+                new Request('http://localhost/workarea', { headers: { Cookie: `auth=${token}` } }),
+            );
+
+            expect(res.status).toBe(200);
+            expect(res.headers.get('cache-control')).toBe('no-store');
+            expect(res.headers.get('location')).toBeNull();
+            expect(rendered).toHaveLength(1);
+            expect(rendered[0].template).toBe('workarea/start');
+            expect(mockProjects.size).toBe(projectsBefore);
+            expect(mockSessions.size).toBe(sessionsBefore);
+
+            const { data } = rendered[0];
+            expect(data.userEmail).toBe('test@test.com');
+            expect(data.startConfig.basePath).toBe(data.basePath);
+            expect(data.startConfig.strings.newProject).toBeTruthy();
+            expect(data.startConfig.strings.sharedBy).toContain('%s');
+        });
+
+        it('uses the saved locale of the user', async () => {
+            mockPreferences.set('1:locale', { value: JSON.stringify({ value: 'es' }) });
+            const token = await signToken({ sub: 1, email: 'test@test.com', roles: ['ROLE_USER'], isGuest: false });
+            const { customApp, rendered, locales } = appCapturingTemplate();
+
+            await customApp.handle(new Request('http://localhost/workarea', { headers: { Cookie: `auth=${token}` } }));
+
+            expect(rendered[0].data.locale).toBe('es');
+            expect(rendered[0].data.startConfig.locale).toBe('es');
+            expect(locales).toContain('es');
+        });
+
+        it('falls back to the browser language when no locale is saved', async () => {
+            const token = await signToken({ sub: 1, email: 'test@test.com', roles: ['ROLE_USER'], isGuest: false });
+            const { customApp, rendered } = appCapturingTemplate();
+            const previous = process.env.APP_LOCALE;
+            delete process.env.APP_LOCALE;
+
+            try {
+                await customApp.handle(
+                    new Request('http://localhost/workarea', {
+                        headers: { Cookie: `auth=${token}`, 'Accept-Language': 'es-ES,es;q=0.9' },
+                    }),
+                );
+            } finally {
+                if (previous !== undefined) process.env.APP_LOCALE = previous;
+            }
+
+            expect(rendered[0].data.locale).toBe('es');
+        });
+
+        it('does not show an e-mail for a guest', async () => {
+            const token = await signToken({ sub: 'guest-123', email: 'guest@guest.local', isGuest: true });
+            const { customApp, rendered } = appCapturingTemplate();
+
+            const res = await customApp.handle(
+                new Request('http://localhost/workarea', { headers: { Cookie: `auth=${token}` } }),
+            );
+
+            expect(res.status).toBe(200);
+            expect(rendered[0].data.userEmail).toBe('');
+        });
+    });
+
     describe('new project creation', () => {
-        it('should create new project when no projectUuid provided', async () => {
+        it('should create new project when a blank one is asked for with ?new=1', async () => {
             const jwt = await import('@elysiajs/jwt');
             const jwtInstance = jwt.jwt({
                 name: 'jwt',
@@ -1101,7 +1197,7 @@ describe('Pages Routes', () => {
             });
 
             const res = await app.handle(
-                new Request('http://localhost/workarea', {
+                new Request('http://localhost/workarea?new=1', {
                     headers: {
                         Cookie: `auth=${token}`,
                     },
@@ -1145,7 +1241,7 @@ describe('Pages Routes', () => {
             });
 
             await customApp.handle(
-                new Request('http://localhost/workarea', {
+                new Request('http://localhost/workarea?new=1', {
                     headers: {
                         Cookie: `auth=${token}`,
                     },
@@ -1186,7 +1282,7 @@ describe('Pages Routes', () => {
             });
 
             const res = await customApp.handle(
-                new Request('http://localhost/workarea', {
+                new Request('http://localhost/workarea?new=1', {
                     headers: {
                         Cookie: `auth=${token}`,
                     },

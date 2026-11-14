@@ -16,7 +16,7 @@ test.describe('Open Project Modal - Tabs', () => {
      */
     async function openModal(page: any): Promise<void> {
         // Navigate to workarea first
-        await page.goto('/workarea');
+        await page.goto('/workarea?new=1');
         await waitForAppReady(page);
 
         // Click File menu > Open when the menu is present in this build, else

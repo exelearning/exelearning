@@ -44,6 +44,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
     }
   },
   openElp: () => ipcRenderer.invoke('app:openElp'),
+  // Recent project files for the start screen. The list carries names and
+  // opaque ids, not paths; the main process resolves the id when opening.
+  getRecentFiles: () => ipcRenderer.invoke('app:getRecentFiles'),
+  openRecentFile: (id) => ipcRenderer.invoke('app:openRecentFile', { id }),
   // Check an external link from the main process (no CORS) so the link
   // validation report can show real HTTP statuses, like online mode does.
   checkLink: (url) => ipcRenderer.invoke('app:checkLink', { url }),

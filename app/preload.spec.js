@@ -26,3 +26,15 @@ describe('spell checker preload bridge', () => {
         expect(invoke).toHaveBeenLastCalledWith('app:setSpellCheckerLanguages', ['es', 'en-US']);
     });
 });
+
+describe('recent files preload bridge', () => {
+    test('asks the main process for the recent list', async () => {
+        await exposedApi.getRecentFiles();
+        expect(invoke).toHaveBeenLastCalledWith('app:getRecentFiles');
+    });
+
+    test('opens a recent file by its id, never by a path', async () => {
+        await exposedApi.openRecentFile('abc123');
+        expect(invoke).toHaveBeenLastCalledWith('app:openRecentFile', { id: 'abc123' });
+    });
+});
