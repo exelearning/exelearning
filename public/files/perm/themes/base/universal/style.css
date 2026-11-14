@@ -1318,8 +1318,9 @@ body.exe-web-site {
         .box-head {
         border-color: #c8b8d6;
     }
-    /* Made with eXe */
-    html.exe-dark-mode #made-with-eXe a {
+    /* Made with eXe and presentation mode control */
+    html.exe-dark-mode #made-with-eXe a,
+    html.exe-dark-mode #exe-presentation-toggler {
         filter: invert(100%) hue-rotate(180deg);
         opacity: 1;
     }

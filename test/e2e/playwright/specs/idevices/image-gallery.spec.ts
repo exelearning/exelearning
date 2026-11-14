@@ -1,12 +1,21 @@
 import { test, expect } from '../../fixtures/auth.fixture';
 import { WorkareaPage } from '../../pages/workarea.page';
-import type { Page } from '@playwright/test';
+import type { Download, Page } from '@playwright/test';
+import * as fs from 'fs';
+import * as os from 'os';
+import * as path from 'path';
+import { pathToFileURL } from 'url';
+import { unzipSync } from '../../../../../src/shared/export';
 import {
+    exportProjectAs,
     getPreviewFrame,
     waitForPreviewContent,
     waitForAppReady,
     reloadPage,
     gotoWorkarea,
+    serveWebSiteExport,
+    addPage,
+    selectPageByIndex,
 } from '../../helpers/workarea-helpers';
 
 /**
@@ -121,6 +130,61 @@ async function uploadImagesToGallery(page: Page, fixturePaths: string[]): Promis
     // Additional small delay to ensure DOM is fully updated
     await page.waitForTimeout(500);
 }
+
+/**
+ * Fill the attribution dialog (title, author, links, license) of the first
+ * gallery image.
+ */
+async function setFirstImageAttribution(
+    page: Page,
+    values: { title: string; linktitle: string; author: string; linkauthor: string; license: string },
+): Promise<void> {
+    await page.locator('.imgSelectContainer').first().locator('button.attribution').click();
+    const modal = page.locator('#modalConfirm');
+    await expect(modal).toBeVisible({ timeout: 10000 });
+    for (const [field, value] of Object.entries(values)) {
+        await modal.locator(`input[id$="_${field}"]`).fill(value);
+    }
+    await modal.locator('button.confirm').click();
+    await expect(modal).toBeHidden({ timeout: 10000 });
+}
+
+/** Save the gallery iDevice and wait for edition mode to end. */
+async function saveGallery(page: Page): Promise<void> {
+    const block = page.locator('#node-content article .idevice_node.image-gallery').first();
+    await block.locator('.btn-save-idevice').click();
+    await page.waitForFunction(
+        () => {
+            const idevice = document.querySelector('#node-content article .idevice_node.image-gallery');
+            return idevice && idevice.getAttribute('mode') !== 'edition';
+        },
+        undefined,
+        { timeout: 15000 },
+    );
+}
+
+/** Save a download and unzip it into a fresh temp directory. */
+async function unzipDownload(download: Download, prefix: string): Promise<{ dir: string; files: string[] }> {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), prefix));
+    const zipPath = path.join(dir, 'package.zip');
+    await download.saveAs(zipPath);
+    const entries = unzipSync(fs.readFileSync(zipPath));
+    for (const [name, data] of Object.entries(entries)) {
+        if (name.endsWith('/')) continue;
+        const target = path.join(dir, 'out', name);
+        fs.mkdirSync(path.dirname(target), { recursive: true });
+        fs.writeFileSync(target, data);
+    }
+    return { dir: path.join(dir, 'out'), files: Object.keys(entries) };
+}
+
+const ATTRIBUTION = {
+    title: 'Sunset over the sea',
+    linktitle: 'https://example.com/sunset',
+    author: 'Jane Doe',
+    linkauthor: 'https://example.com/jane',
+    license: 'Creative Commons BY',
+};
 
 test.describe('Image Gallery iDevice', () => {
     test.describe('Basic Operations', () => {
@@ -509,6 +573,86 @@ test.describe('Image Gallery iDevice', () => {
             // Verify close button is present (closing mechanism exists)
             const closeBtn = iframe.locator('.sl-close');
             await expect(closeBtn).toBeVisible({ timeout: 5000 });
+        });
+
+        test('presentation mode keys stay inactive while the lightbox is open, and work again once closed', async ({
+            authenticatedPage,
+            createProject,
+        }) => {
+            const page = authenticatedPage;
+
+            const projectUuid = await createProject(page, 'Image Gallery Keyboard Suppression Test');
+            await gotoWorkarea(page, projectUuid);
+            await waitForAppReady(page);
+
+            // Page 1: image gallery iDevice with one photo.
+            await addImageGalleryFromPanel(page);
+            await uploadImagesToGallery(page, ['test/fixtures/sample-3.jpg']);
+            await page.locator('.imgSelectContainer').first().waitFor({ timeout: 10000 });
+
+            const block = page.locator('#node-content article .idevice_node.image-gallery').first();
+            const saveBtn = block.locator('.btn-save-idevice');
+            if ((await saveBtn.count()) > 0) {
+                await saveBtn.click();
+            }
+            await page.waitForFunction(
+                () => {
+                    const idevice = document.querySelector('#node-content article .idevice_node.image-gallery');
+                    return idevice && idevice.getAttribute('mode') !== 'edition';
+                },
+                undefined,
+                { timeout: 15000 },
+            );
+
+            // Page 2: distinct, greppable content so ArrowRight has somewhere real to go
+            // if it isn't correctly suppressed while the lightbox is open.
+            await addPage(page, 'Keyboard Suppression Page Two');
+            await selectPageByIndex(page, 0);
+
+            // Presentation mode only exists in a web site export opened as the
+            // top-level document, so serve the export and open it directly.
+            const origin = 'http://image-gallery-presentation.test';
+            await serveWebSiteExport(page, origin);
+            await page.goto(`${origin}/index.html?exe-presentation=1`);
+            await page.waitForFunction(() => typeof (window as any).SimpleLightbox !== 'undefined');
+
+            // =1 enters the mode at once; wait for the runtime to have bound its keys.
+            await page.waitForFunction(() => (window as any).$exeExport?.presentationMode?.isActive() === true);
+            await expect(page.locator('#exe-presentation-toggler')).toHaveAttribute('aria-pressed', 'true');
+
+            // Check the page's own <h1> rather than the whole body: #siteNav
+            // always lists every page's title in the sidebar, so a body-text
+            // check can't distinguish "which page is actually showing".
+            const pageHeading = page.locator('main h1.page-title');
+            await expect(pageHeading).toHaveText('New page');
+
+            const galleryLink = page.locator('.imageGallery-IDevice a.imageLink').first();
+            await expect(galleryLink).toBeVisible({ timeout: 5000 });
+            await galleryLink.click();
+
+            const lightboxWrapper = page.locator('.sl-wrapper');
+            await expect(lightboxWrapper).toBeVisible({ timeout: 5000 });
+            await page.locator('.sl-image img').waitFor({ state: 'attached', timeout: 5000 });
+
+            // PageDown while the lightbox is open must do nothing: the gallery
+            // fully prevails. Deliberately not ArrowRight here: SimpleLightbox
+            // binds its OWN arrow-key photo navigation on `keyup` and that
+            // transition can leave its close() blocked by an internal
+            // animation-state guard — a vendor quirk unrelated to this check.
+            await page.keyboard.press('PageDown');
+            await page.waitForTimeout(300);
+            await expect(lightboxWrapper).toBeVisible();
+            await expect(pageHeading).toHaveText('New page');
+
+            // Closing the lightbox restores the presentation keys.
+            await page.locator('.sl-close').click();
+            await expect(lightboxWrapper).toBeHidden({ timeout: 5000 });
+
+            await pageHeading.click();
+            await page.keyboard.press('PageDown');
+            await expect(page.locator('main h1.page-title')).toHaveText('Keyboard Suppression Page Two', {
+                timeout: 10000,
+            });
         });
     });
 
@@ -1392,6 +1536,116 @@ test.describe('Image Gallery iDevice', () => {
                 expect(result.loaded).toBe(true);
                 expect(result.naturalWidth).toBeGreaterThan(0);
             }
+        });
+    });
+
+    test.describe('Lightbox captions, keyboard and exports', () => {
+        // Two images, the first with full attribution.
+        async function buildAttributedGallery(page: Page, createProject: any, name: string): Promise<void> {
+            const projectUuid = await createProject(page, name);
+            await gotoWorkarea(page, projectUuid);
+            await addImageGalleryFromPanel(page);
+            await uploadImagesToGallery(page, ['test/fixtures/sample-2.jpg', 'test/fixtures/sample-3.jpg']);
+            await setFirstImageAttribution(page, ATTRIBUTION);
+            await saveGallery(page);
+        }
+
+        test('renders title, author and license links in the caption and closes with Esc', async ({
+            authenticatedPage,
+            createProject,
+        }) => {
+            const page = authenticatedPage;
+            await buildAttributedGallery(page, createProject, 'Image Gallery Caption Test');
+
+            await page.waitForFunction(() => typeof (window as any).SimpleLightbox !== 'undefined');
+            await page.waitForTimeout(500);
+            await page.locator('#node-content .imageGallery-IDevice a.imageLink').first().click();
+
+            const caption = page.locator('.sl-wrapper .sl-caption');
+            await expect(caption).toBeVisible({ timeout: 5000 });
+            await expect(caption.locator('a.caption.author')).toHaveAttribute('href', ATTRIBUTION.linkauthor);
+            await expect(caption.locator('a.caption.author')).toHaveText(ATTRIBUTION.author);
+            await expect(caption.locator('a.caption.title')).toHaveAttribute('href', ATTRIBUTION.linktitle);
+            await expect(caption.locator('.caption.title em')).toHaveText(ATTRIBUTION.title);
+            const license = caption.locator('.caption.license a[rel~="license"]');
+            await expect(license).toHaveAttribute('href', 'http://creativecommons.org/licenses/');
+            await expect(license).toHaveText('CC-BY');
+            // Esc closes the lightbox.
+            await page.keyboard.press('Escape');
+            await expect(page.locator('.sl-overlay')).toBeHidden({ timeout: 5000 });
+            await expect(page.locator('.sl-wrapper')).toBeHidden();
+        });
+
+        test('Web Site export ships stock SimpleLightbox only, and it works offline from file://', async ({
+            authenticatedPage,
+            createProject,
+        }) => {
+            const page = authenticatedPage;
+            await buildAttributedGallery(page, createProject, 'Image Gallery HTML5 Export Test');
+
+            const { dir, files } = await unzipDownload(await exportProjectAs(page, 'html5'), 'gallery-html5-');
+            const libKey = files.find(f => f.endsWith('image-gallery/simple-lightbox.min.js'));
+            expect(libKey, 'the export must ship the image-gallery SimpleLightbox build').toBeTruthy();
+            expect(files.some(f => f.endsWith('image-gallery/simple-lightbox.min.css'))).toBe(true);
+            // Stock npm build (the old fork carried an eXe caption patch).
+            const lib = fs.readFileSync(path.join(dir, libKey as string), 'utf8');
+            expect(lib).not.toContain('myCaptionData');
+            // prettyPhoto is only for rel="lightbox" content, which this project has none of.
+            expect(files.some(f => f.includes('exe_lightbox/'))).toBe(false);
+
+            // Open the exported site from disk and block every non-file request.
+            const exported = await page.context().newPage();
+            const external: string[] = [];
+            await exported.route(/^(?!file:)/, route => {
+                external.push(route.request().url());
+                return route.abort();
+            });
+            await exported.goto(pathToFileURL(path.join(dir, 'index.html')).href);
+            await exported.waitForFunction(() => typeof (window as any).SimpleLightbox !== 'undefined', undefined, {
+                timeout: 15000,
+            });
+            await exported.waitForTimeout(500);
+            await exported.locator('.imageGallery-IDevice a.imageLink').first().click();
+            const caption = exported.locator('.sl-wrapper .sl-caption');
+            await expect(caption).toBeVisible({ timeout: 5000 });
+            await expect(caption.locator('a.caption.author')).toHaveText(ATTRIBUTION.author);
+            await expect(caption.locator('.caption.title em')).toHaveText(ATTRIBUTION.title);
+            await expect(caption.locator('.caption.license a[rel~="license"]')).toHaveText('CC-BY');
+            const img = exported.locator('.sl-image img');
+            await expect
+                .poll(() => img.evaluate(el => (el as HTMLImageElement).naturalWidth), { timeout: 5000 })
+                .toBeGreaterThan(0);
+            const current = exported.locator('.sl-wrapper .sl-counter .sl-current');
+            await expect(current).toHaveText('1');
+
+            // Arrow keys move through the gallery; the second image has no attribution.
+            await exported.keyboard.press('ArrowRight');
+            await expect(current).toHaveText('2', { timeout: 5000 });
+            await expect(caption.locator('a.caption.author')).toHaveCount(0);
+
+            // Esc closes the lightbox.
+            await exported.keyboard.press('Escape');
+            await expect(exported.locator('.sl-wrapper')).toBeHidden({ timeout: 5000 });
+            expect(external).toEqual([]);
+            await exported.close();
+        });
+
+        test('SCORM export ships stock SimpleLightbox and no prettyPhoto', async ({
+            authenticatedPage,
+            createProject,
+        }) => {
+            const page = authenticatedPage;
+            await buildAttributedGallery(page, createProject, 'Image Gallery SCORM Export Test');
+
+            const { dir, files } = await unzipDownload(await exportProjectAs(page, 'scorm12'), 'gallery-scorm-');
+            const libKey = files.find(f => f.endsWith('image-gallery/simple-lightbox.min.js'));
+            expect(libKey).toBeTruthy();
+            expect(fs.readFileSync(path.join(dir, libKey as string), 'utf8')).not.toContain('myCaptionData');
+            expect(files.some(f => f.includes('exe_lightbox/'))).toBe(false);
+
+            const html = fs.readFileSync(path.join(dir, 'index.html'), 'utf8');
+            expect(html).toContain('simple-lightbox.min.js');
+            expect(html).not.toContain('exe_lightbox');
         });
     });
 });

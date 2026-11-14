@@ -106,10 +106,25 @@ describe('computeBundledAppSources', () => {
             expect(rel.startsWith('app/')).toBe(true);
             expect(fs.existsSync(path.join(projectRoot, 'public', rel)), `missing in public/: ${rel}`).toBe(true);
         }
-        // The static index.html loads these two loose as ES modules — they must
+        // The static index.html loads these loose as ES modules — they must
         // survive the prune even though they are also bundle inputs.
         for (const kept of KEEP_LOOSE_APP_FILES) {
             expect(bundled).not.toContain(kept);
+        }
+    });
+
+    it('keeps every module the loose entry points import (#2639)', async () => {
+        const bundled = await computeBundledAppSources(projectRoot);
+
+        for (const entry of KEEP_LOOSE_APP_FILES) {
+            const source = fs.readFileSync(path.join(projectRoot, 'public', entry), 'utf-8');
+            const imports = [...source.matchAll(/^import\s[^'"]*['"](\.{1,2}\/[^'"]+)['"]/gm)].map(m =>
+                path.posix.join(path.posix.dirname(entry), m[1]),
+            );
+            expect(imports).toContain('app/common/app_tooltip.js');
+            for (const rel of imports) {
+                expect(bundled, `${entry} imports ${rel}`).not.toContain(rel);
+            }
         }
     });
 });

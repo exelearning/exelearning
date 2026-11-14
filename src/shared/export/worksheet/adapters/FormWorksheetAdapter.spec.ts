@@ -196,6 +196,42 @@ describe('FormWorksheetAdapter', () => {
             expect(item.prompt).toContain('<strong>gran</strong>');
         });
 
+        it('takes off a link round a blank, whose address would give the answer away', () => {
+            const [item] = itemsOf({
+                questions: [
+                    fill('<p>La capital es <a href="https://es.wikipedia.org/wiki/Toledo"><u>Toledo</u></a>.</p>'),
+                ],
+            });
+
+            expect(item.prompt).toMatch(/^<p>La capital es <span class="worksheet-gap"[^>]*><\/span>\.<\/p>$/);
+            expect(item.prompt).not.toContain('Toledo');
+        });
+
+        it('keeps a link that leads somewhere else in the sentence', () => {
+            const [item] = itemsOf({
+                questions: [fill('<p>Según <a href="https://es.wikipedia.org/">Wikipedia</a>, el <u>Cid</u>.</p>')],
+            });
+
+            expect(item.prompt).toContain('<a href="https://es.wikipedia.org/">Wikipedia</a>');
+        });
+
+        it.each([
+            '<iframe src="https://example.org/map"></iframe>',
+            '<embed src="https://example.org/map">',
+            '<object data="https://example.org/map"></object>',
+        ])('hides the linked answer even when an embed precedes the blank: %s', embed => {
+            const [item] = itemsOf({
+                questions: [
+                    fill(`<p>Capital: <a href="https://es.wikipedia.org/wiki/Toledo">${embed}<u>Toledo</u></a>.</p>`),
+                ],
+            });
+
+            expect(item.prompt).toContain('<span class="worksheet-embed-address">https://example.org/map</span>');
+            expect(item.prompt).toContain('<span class="worksheet-gap"');
+            expect(item.prompt).not.toContain('Toledo');
+            expect(item.prompt).not.toContain('<a');
+        });
+
         it('offers no choices, a fill question having none', () => {
             const [item] = itemsOf({ questions: [fill('<p><u>Cid</u></p>')] });
 

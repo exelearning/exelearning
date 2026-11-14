@@ -3578,6 +3578,28 @@ var $exeDevices = {
                     return false;
                 },
 
+                // Read back a text a game keeps in its data: escaped, as older projects have it, or
+                // as the editor wrote it, as it saves it now. Only a text escape() could have
+                // written is decoded; unescape() on any other would turn the "%C3%B3" of a link
+                // into "Ã³". That leaves out the editor's HTML, which always has a "<", a text with
+                // a space or anything else escape() encodes, and the UTF-8 bytes a link
+                // percent-encodes, since escape() writes "é" as the single "%E9". A word made only
+                // of what escape() writes cannot be told apart and is read the older way. Kept in
+                // step with decodeStoredText in src/shared/export/worksheet/dataGameReader.ts.
+                decodeStoredText: function (text) {
+                    if (typeof text !== 'string') return '';
+                    if (!/^(?:[\w@*+\-./]|%[\dA-F]{2}|%u[\dA-F]{4})*$/i.test(text)) return text;
+                    if (/%[89A-F][\dA-F]/i.test(text)) {
+                        try {
+                            decodeURIComponent(text);
+                            return text;
+                        } catch (e) {
+                            // Not UTF-8: the Latin-1 bytes escape() writes.
+                        }
+                    }
+                    return unescape(text);
+                },
+
                 shuffleAds: function (arr) {
                     if (Array.isArray(arr)) {
                         for (let i = arr.length - 1; i > 0; i--) {

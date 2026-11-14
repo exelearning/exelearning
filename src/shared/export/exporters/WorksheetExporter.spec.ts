@@ -54,6 +54,32 @@ function documentOf(pageSpecs: PageSpec[], metadata: Record<string, unknown> = {
 }
 
 describe('WorksheetExporter', () => {
+    it('warns about omitted checklist criteria without including their points in the score', async () => {
+        const payload = JSON.stringify({
+            useScore: true,
+            levels: [
+                { type: '0', nivel: '0', item: 'Printed criterion', points: '2' },
+                { type: '0', nivel: '0', item: '<math><mi>x</mi></math>', points: '10' },
+            ],
+            msgs: { msgScore: 'Score', msgPoints: 'points' },
+        });
+        const content = `<div class="listacotejo-DataGame">${encryptDataGame(payload)}</div>`;
+        const exporter = new WorksheetExporter(documentOf([{ components: [{ type: 'checklist', content }] }]));
+        const model = await exporter.buildModel();
+
+        expect(model.unsupported).toMatchObject([{ ideviceType: 'checklist', reason: 'invalid-data', count: 1 }]);
+        const result = await exporter.generate();
+        try {
+            expect(result.success).toBe(true);
+            expect(result.html).toContain('Printed criterion');
+            expect(result.html).toContain('<span>/ 2</span>');
+            expect(result.html).toContain('Invalid or empty activity data');
+            expect(result.html).not.toContain('<span>/ 12</span>');
+        } finally {
+            result.dispose?.();
+        }
+    });
+
     it('prints an activity stored under its legacy name, rather than reporting it', async () => {
         const model = await new WorksheetExporter(
             documentOf([{ components: [{ type: 'GuessIdevice', content: guessContent() }] }]),
@@ -178,6 +204,27 @@ describe('WorksheetExporter', () => {
         expect(result.html).toContain('<span class="worksheet-field">Date:');
         expect(result.html).toContain('<span>Rubric name:</span>');
         expect(result.html).not.toContain('Rubric date');
+        result.dispose?.();
+    });
+
+    it('leaves a checklist’s name and date to the worksheet, which asks for them once', async () => {
+        const payload = JSON.stringify({
+            userData: true,
+            useScore: true,
+            levels: [{ type: '0', nivel: '0', item: 'Ticked off', points: '2' }],
+            msgs: { msgName: 'Checklist name', msgDate: 'Checklist date', msgScore: 'Score' },
+        });
+        const content = `<div class="listacotejo-DataGame js-hidden">${encryptDataGame(payload)}</div>`;
+        const result = await new WorksheetExporter(
+            documentOf([{ components: [{ type: 'checklist', content }] }]),
+        ).generate();
+
+        expect(result.success).toBe(true);
+        expect(result.html).toContain('<span class="worksheet-checklist-text">Ticked off</span>');
+        expect(result.html).toContain('<span>Score:</span><span class="worksheet-line"></span><span>/ 2</span>');
+        expect(result.html).toContain('<span class="worksheet-field">Name:');
+        expect(result.html).not.toContain('Checklist name');
+        expect(result.html).not.toContain('Checklist date');
         result.dispose?.();
     });
 
@@ -593,7 +640,7 @@ describe('WorksheetExporter', () => {
                             { type: 'image-gallery', content: '<div class="gallery"></div>' },
                             { type: 'markdown-text', content: '' },
                             { type: 'digcompedu', content: '' },
-                            { type: 'checklist', content: '<input type="checkbox">' },
+                            { type: 'udl-content', content: '<input type="checkbox">' },
                         ],
                     },
                 ]),

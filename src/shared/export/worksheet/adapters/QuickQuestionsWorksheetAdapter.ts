@@ -16,7 +16,7 @@
  *   questions it asks and whether they are drawn at random.
  */
 
-import { extractDataGame, extractDivContent, extractMediaLinks } from '../dataGameReader';
+import { decodeStoredText, extractDataGame, extractDivContent, extractMediaLinks } from '../dataGameReader';
 import { readPrintableOptions, indexedQuestions, type RandomSource, selectQuestions } from '../questionSelection';
 import { sanitizeHtml } from '../sanitizeHtml';
 import type { PrintableActivity, PrintableItem, WorksheetAdapter, WorksheetAdapterOptions } from '../types';
@@ -105,8 +105,8 @@ function buildItem(
     }
 
     if (question.type === QUESTION_TYPE_RICH_TEXT && question.eText) {
-        // Mirrors the runtime, which unescapes before injecting.
-        const extraText = sanitizeHtml(unescape(question.eText));
+        // Read as the runtime reads it.
+        const extraText = sanitizeHtml(decodeStoredText(question.eText));
         if (extraText) item.extraText = extraText;
     }
 

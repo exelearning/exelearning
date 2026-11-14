@@ -568,6 +568,25 @@ describe('PrintOptionsPanel', () => {
             expect(unfoldBlocks().disabled).toBe(false);
         });
 
+        it('show the link URLs ticked while forbidden, as the worksheet prints them, and give back the choice', () => {
+            tick(linkUrls(), false);
+
+            panel.setDocumentOptionsEnabled(false);
+            expect(linkUrls().checked).toBe(true);
+            // The document's choice is still the one reported, and a second call does not lose it.
+            expect(panel.getState().showLinkUrls).toBe(false);
+            panel.setDocumentOptionsEnabled(false);
+            expect(panel.getState().showLinkUrls).toBe(false);
+
+            panel.setDocumentOptionsEnabled(true);
+            expect(linkUrls().checked).toBe(false);
+            expect(panel.getState().showLinkUrls).toBe(false);
+            // Allowed again, the box is the user's: a later tick is not overwritten.
+            panel.setDocumentOptionsEnabled(true);
+            tick(linkUrls(), true);
+            expect(panel.getState().showLinkUrls).toBe(true);
+        });
+
         it('report a change even when the project has no activities', () => {
             tick(linkUrls(), false);
 

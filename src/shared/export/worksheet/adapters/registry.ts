@@ -12,6 +12,7 @@ import { AzQuizGameWorksheetAdapter } from './AzQuizGameWorksheetAdapter';
 import { BeforeAfterWorksheetAdapter } from './BeforeAfterWorksheetAdapter';
 import { AdaptativeQuizWorksheetAdapter } from './AdaptativeQuizWorksheetAdapter';
 import { ChallengeWorksheetAdapter } from './ChallengeWorksheetAdapter';
+import { ChecklistWorksheetAdapter } from './ChecklistWorksheetAdapter';
 import { ClassifyWorksheetAdapter } from './ClassifyWorksheetAdapter';
 import { SortWorksheetAdapter } from './SortWorksheetAdapter';
 import { MathOperationsWorksheetAdapter } from './MathOperationsWorksheetAdapter';
@@ -62,6 +63,7 @@ const ADAPTERS: readonly WorksheetAdapter[] = [
     ChallengeWorksheetAdapter,
     IdentifyWorksheetAdapter,
     RubricWorksheetAdapter,
+    ChecklistWorksheetAdapter,
     SelectMediaFilesWorksheetAdapter,
     PeriodicTableWorksheetAdapter,
     FormWorksheetAdapter,

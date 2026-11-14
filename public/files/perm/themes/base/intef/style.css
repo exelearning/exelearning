@@ -960,8 +960,14 @@ body:has(.package-header #darkModeToggler) #teacher-mode-toggler-wrapper {
 }
 .exe-export .box-head .box-toggle span {
     position: absolute;
-    clip: rect(1px 1px 1px 1px);
-    clip: rect(1px, 1px, 1px, 1px);
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
 }
 .exe-export .box-content {
     padding: 28px;
@@ -1057,8 +1063,14 @@ body:has(.package-header #darkModeToggler) #teacher-mode-toggler-wrapper {
 }
 #packageLicense .license-label {
     position: absolute;
-    clip: rect(1px 1px 1px 1px);
-    clip: rect(1px, 1px, 1px, 1px);
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
 }
 #packageLicense a {
     color: var(--exe-text-soft);
@@ -1167,8 +1179,14 @@ body:has(.package-header #darkModeToggler) #teacher-mode-toggler-wrapper {
 .package-header.width-breadcrumbs .package-title,
 .package-header.width-breadcrumbs .package-subtitle {
     position: absolute;
-    clip: rect(1px 1px 1px 1px);
-    clip: rect(1px, 1px, 1px, 1px);
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
 }
 
 /* Navigation menu */
@@ -1314,8 +1332,14 @@ body:has(.package-header #darkModeToggler) #teacher-mode-toggler-wrapper {
 }
 #siteNav a button span {
     position: absolute;
-    clip: rect(1px 1px 1px 1px);
-    clip: rect(1px, 1px, 1px, 1px);
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
 }
 
 /* Web content layout */
@@ -1373,8 +1397,14 @@ button#searchBarToggler {
 }
 #exe-client-search-reset span {
     position: absolute;
-    clip: rect(1px 1px 1px 1px);
-    clip: rect(1px, 1px, 1px, 1px);
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
 }
 #exe-client-search-text {
     display: inline;
@@ -1434,8 +1464,14 @@ button#searchBarToggler {
 .nav-buttons a span,
 .nav-buttons span span {
     position: absolute;
-    clip: rect(1px 1px 1px 1px);
-    clip: rect(1px, 1px, 1px, 1px);
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
 }
 /* Disabled next / previous buttons */
 .nav-buttons span.nav-button {
@@ -1546,8 +1582,14 @@ body.logos #siteLogos {
     /* Page counter: number only */
     .exe-export .page-counter-label {
         position: absolute;
-        clip: rect(1px 1px 1px 1px);
-        clip: rect(1px, 1px, 1px, 1px);
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border: 0;
     }
 }
 
@@ -1573,8 +1615,14 @@ body.logos #siteLogos {
     }
     #exe-index .exe-web-site .package-header {
         position: absolute;
-        clip: rect(1px 1px 1px 1px);
-        clip: rect(1px, 1px, 1px, 1px);
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border: 0;
     }
     #topBarTitle p {
         margin: 0;
@@ -1648,7 +1696,12 @@ body.exe-web-site {
     .nav-buttons a span,
     .nav-buttons span span {
         position: relative;
+        width: auto;
+        height: auto;
+        margin: 0;
+        overflow: visible;
         clip: auto;
+        white-space: normal;
     }
     .nav-buttons .nav-button-left,
     .nav-buttons .nav-button-right {
@@ -1959,8 +2012,9 @@ body.exe-web-site {
     html.exe-dark-mode .exe-content .fx-accordion-title {
         border-color: #c8c8c8 !important; /* JS writes border-color inline */
     }
-    /* Made with eXe */
-    html.exe-dark-mode #made-with-eXe a {
+    /* Made with eXe and presentation mode control */
+    html.exe-dark-mode #made-with-eXe a,
+    html.exe-dark-mode #exe-presentation-toggler {
         filter: invert(100%) hue-rotate(180deg);
         opacity: 1;
     }

@@ -21,11 +21,12 @@ import {
 } from './export';
 import type { YjsExportStructure } from './types/request-payloads';
 import type { ExportOptions } from '../shared/export/interfaces';
+import { getJwtSecret } from '../utils/jwt-secret';
 
 const testDir = path.join(process.cwd(), 'test', 'temp', 'export-test');
 const testSessionId = '20250116testexport';
 const OWNER_USER_ID = 42;
-const TEST_JWT_SECRET = 'dev_secret_change_me';
+const TEST_JWT_SECRET = getJwtSecret();
 
 async function signTestToken(sub: number, roles: string[] = ['ROLE_USER']): Promise<string> {
     const secret = new TextEncoder().encode(TEST_JWT_SECRET);

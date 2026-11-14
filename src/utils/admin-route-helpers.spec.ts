@@ -233,9 +233,8 @@ describe('Admin Route Helpers', () => {
             process.env = { ...originalEnv };
         });
 
-        // getJwtSecret now delegates to the single canonical resolver in
-        // routes/auth (API_JWT_SECRET || JWT_SECRET || 'dev_secret_change_me'),
-        // so the verify secret always matches the sign secret. APP_SECRET is no
+        // getJwtSecret delegates to the single canonical resolver, so the
+        // verify secret always matches the sign secret. APP_SECRET is no
         // longer used for internal-auth verification (it is only for platform
         // JWTs) — see H3.
         test('should prefer API_JWT_SECRET when set', () => {
@@ -258,16 +257,19 @@ describe('Admin Route Helpers', () => {
             delete process.env.JWT_SECRET;
             process.env.APP_SECRET = 'my-app-secret';
 
-            expect(getJwtSecret()).not.toBe('my-app-secret');
-            expect(getJwtSecret()).toBe('dev_secret_change_me');
+            const secret = getJwtSecret();
+            expect(secret).not.toBe('my-app-secret');
+            expect(Buffer.byteLength(secret, 'utf8')).toBeGreaterThanOrEqual(32);
         });
 
-        test('should return the canonical default if no env vars set', () => {
+        test('should generate a process-local secret if no env vars are set', () => {
             delete process.env.API_JWT_SECRET;
             delete process.env.JWT_SECRET;
             delete process.env.APP_SECRET;
 
-            expect(getJwtSecret()).toBe('dev_secret_change_me');
+            const first = getJwtSecret();
+            expect(first).toBe(getJwtSecret());
+            expect(first).not.toBe('dev_secret_change_me');
         });
     });
 });

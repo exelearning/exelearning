@@ -717,7 +717,9 @@ var $exeDevice = {
             $exeDevice.endSilent = p.silentVideo + p.tSilentVideo;
             $exeDevice.playVideoQuestion();
         } else if (p.type === 3) {
-            tinyMCE.get('quextEText').setContent(unescape(p.eText));
+            // Loading and importing decoded it already; decoding again would take one more
+            // level off a text that still looks escaped.
+            tinyMCE.get('quextEText').setContent(p.eText);
         }
 
         $('.QXTE-EAnwersOptions').each(function (j) {
@@ -1497,7 +1499,7 @@ var $exeDevice = {
             $exeDevice.active = 0;
             dataGame.questionsGame.forEach(function (question) {
                 if (question.type === 3) {
-                    question.eText = unescape(question.eText);
+                    question.eText = $exeDevices.iDevice.gamification.helpers.decodeStoredText(question.eText);
                 }
             });
 
@@ -2078,7 +2080,7 @@ var $exeDevice = {
             game.id = $exeDevice.getIdeviceID();
             for (let i = 0; i < $exeDevice.questionsGame.length; i++) {
                 if (game.questionsGame[i].type === 3) {
-                    game.questionsGame[i].eText = unescape(
+                    game.questionsGame[i].eText = $exeDevices.iDevice.gamification.helpers.decodeStoredText(
                         game.questionsGame[i].eText
                     );
                 }

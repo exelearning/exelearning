@@ -128,6 +128,45 @@ export async function resolveMaterialIconDataUris(
         return empty;
     }
 }
+
+/**
+ * Fetch translated labels for navigation buttons (Previous / Next / Page counter) and the footer.
+ * Labels are resolved from XLF translations so the exported HTML already
+ * contains the correct text for the content language — no runtime JS needed.
+ */
+export async function fetchNavLabels(
+    resources: ResourceProvider,
+    language: string,
+    license?: string,
+): Promise<{
+    previous: string;
+    next: string;
+    page: string;
+    license?: string;
+    licenseLabel: string;
+    madeWith: string;
+    newWindow: string;
+    print: string;
+}> {
+    const translations = await resources.fetchI18nTranslations(language);
+    let translatedLicense = license;
+
+    if (license) {
+        const key = formatLicenseText(license);
+        translatedLicense = translations.get(key) || key;
+    }
+
+    return {
+        previous: translations.get('Previous') || 'Previous',
+        next: translations.get('Next') || 'Next',
+        page: translations.get('Page') || 'Page',
+        license: translatedLicense,
+        licenseLabel: translations.get('License') || 'License',
+        madeWith: translations.get('Made with eXeLearning') || 'Made with eXeLearning',
+        newWindow: translations.get('New window') || 'New window',
+        print: translations.get('Print') || 'Print',
+    };
+}
 import { convertSrtToVtt } from '../../utils/srt-to-vtt';
 
 /**
@@ -404,37 +443,8 @@ export abstract class BaseExporter {
      * Labels are resolved from XLF translations so the exported HTML already
      * contains the correct text for the content language — no runtime JS needed.
      */
-    protected async fetchNavLabels(
-        language: string,
-        license?: string,
-    ): Promise<{
-        previous: string;
-        next: string;
-        page: string;
-        license?: string;
-        licenseLabel: string;
-        madeWith: string;
-        newWindow: string;
-        print: string;
-    }> {
-        const translations = await this.resources.fetchI18nTranslations(language);
-        let translatedLicense = license;
-
-        if (license) {
-            const key = formatLicenseText(license);
-            translatedLicense = translations.get(key) || key;
-        }
-
-        return {
-            previous: translations.get('Previous') || 'Previous',
-            next: translations.get('Next') || 'Next',
-            page: translations.get('Page') || 'Page',
-            license: translatedLicense,
-            licenseLabel: translations.get('License') || 'License',
-            madeWith: translations.get('Made with eXeLearning') || 'Made with eXeLearning',
-            newWindow: translations.get('New window') || 'New window',
-            print: translations.get('Print') || 'Print',
-        };
+    protected async fetchNavLabels(language: string, license?: string): ReturnType<typeof fetchNavLabels> {
+        return fetchNavLabels(this.resources, language, license);
     }
 
     // =========================================================================

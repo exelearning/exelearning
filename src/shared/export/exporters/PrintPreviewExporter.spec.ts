@@ -6,6 +6,7 @@ import { PrintPreviewExporter, type PrintPreviewOptions } from './PrintPreviewEx
 import { PageRenderer } from '../renderers/PageRenderer';
 import { PRERENDERED_LATEX_CSS } from '../constants';
 import { encryptDataGame } from '../utils/dataGameCipher';
+import { LINK_URLS_CSS } from '../utils/linkUrls';
 import type {
     AssetProvider,
     ExportAsset,
@@ -740,7 +741,17 @@ describe('PrintPreviewExporter', () => {
                 expect(marked).toEqual([
                     '<a data-exe-text-is-url href="https://example.com/a?b=1&amp;c=2">https://example.com/a?b=1&amp;c=2</a>',
                 ]);
-                expect(html).toContain('a[href^="http"][data-exe-text-is-url]::after { content: none; }');
+                expect(html).toContain(LINK_URLS_CSS);
+            });
+
+            it('is told from one holding only a picture, and from one with words beside its picture', async () => {
+                const { html } = await preview(
+                    '<p><a href="https://cc.org/"><img src="by.png"></a> ' +
+                        '<a href="https://mapa.es/">Consulta el mapa <img src="icon.png"></a></p>',
+                );
+
+                expect(html).toContain('<a data-exe-image-link href="https://cc.org/">');
+                expect(html).toContain('<a href="https://mapa.es/">Consulta el mapa');
             });
 
             it.each([
@@ -824,6 +835,58 @@ describe('PrintPreviewExporter', () => {
 
                 expect(html).toContain(content);
                 expect(marked).toEqual([]);
+            });
+
+            it('reaches the links of an activity converted to an exercise, and the addresses of its embeds', async () => {
+                // Issue #2634: a Challenge pointing at a Genially printed a blank where it had been.
+                const genially = 'https://view.genial.ly/5bb353835b64ad591a0c0924';
+                const payload = JSON.stringify({
+                    typeGame: 'desafio',
+                    desafioTitle: 'Pandemia',
+                    desafioDescription: '',
+                    challengesGame: [{ title: 'Primer reto', description: '', solution: 'Dulce' }],
+                    msgs: { msgChallenge: 'Reto' },
+                });
+                const description =
+                    `<p>Revisa la siguiente información:</p><div><iframe src="${genially}"></iframe></div>` +
+                    '<p>Lee <a href="https://es.wikipedia.org/wiki/Gusto">este artículo</a></p>';
+                const content =
+                    '<div class="desafio-IDevice">' +
+                    `<div class="desafio-ChallengeDescription">${description}</div>` +
+                    `<div class="desafio-DataGame js-hidden">${encryptDataGame(payload)}</div></div>`;
+                const page: ExportPage = {
+                    id: 'page-challenge',
+                    title: 'Desafío',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'block-challenge',
+                            name: 'Desafío',
+                            order: 0,
+                            components: [
+                                { id: 'comp-challenge', type: 'challenge', order: 0, content, properties: {} },
+                            ],
+                        },
+                    ],
+                };
+
+                const challengeExporter = new PrintPreviewExporter(
+                    createMockDocument([page]),
+                    createMockResourceProvider(),
+                );
+                const activities = { mode: 'in-place', labels: {}, ideviceTitles: {} } as const;
+                const { html } = await challengeExporter.generatePreview({ activities });
+
+                expect(html).toContain(
+                    `<span class="worksheet-embed-address"><a data-exe-text-is-url href="${genially}">${genially}</a></span>`,
+                );
+                expect(html).toContain('<a href="https://es.wikipedia.org/wiki/Gusto">este artículo</a>');
+
+                // The address is all that is left of the Genially, so turning the URLs off leaves it.
+                const off = (await challengeExporter.generatePreview({ activities, showLinkUrls: false })).html!;
+                expect(off).toContain(`<span class="worksheet-embed-address"><a href="${genially}">`);
+                expect(off).not.toMatch(/worksheet-embed-address[^{]*\{[^}]*display:\s*none/);
             });
 
             it('marks multiple start tags without changing their case, attributes or surrounding source', async () => {
@@ -990,32 +1053,31 @@ describe('PrintPreviewExporter', () => {
     });
 
     describe('pre-rendering', () => {
+        /** A document with one page holding one text component with the given content. */
+        const singleTextPage = (content: string, meta: Partial<ExportMetadata> = {}): ExportDocument =>
+            createMockDocument(
+                [
+                    {
+                        id: 'p1',
+                        title: 'Page',
+                        parentId: null,
+                        order: 0,
+                        blocks: [
+                            {
+                                id: 'b1',
+                                name: 'Block 1',
+                                order: 0,
+                                components: [{ id: 'c1', order: 0, properties: {}, type: 'text', content }],
+                            },
+                        ],
+                        properties: {},
+                    },
+                ],
+                meta,
+            );
+
         it('should call preRenderMermaid hook if provided', async () => {
-            const doc = createMockDocument([
-                {
-                    id: 'p1',
-                    title: 'Page',
-                    parentId: null,
-                    order: 0,
-                    blocks: [
-                        {
-                            id: 'b1',
-                            name: 'Block 1',
-                            order: 0,
-                            components: [
-                                {
-                                    id: 'c1',
-                                    order: 0,
-                                    properties: {},
-                                    type: 'text',
-                                    content: '<div class="mermaid">graph TD; A-->B;</div>',
-                                },
-                            ],
-                        },
-                    ],
-                    properties: {},
-                },
-            ]);
+            const doc = singleTextPage('<div class="mermaid">graph TD; A-->B;</div>');
 
             const preRenderMermaid = async (html: string) => ({
                 html: html.replace('<div class="mermaid">graph TD; A-->B;</div>', '<svg>Mock SVG</svg>'),
@@ -1029,6 +1091,67 @@ describe('PrintPreviewExporter', () => {
 
             expect(result.html).toContain('<svg>Mock SVG</svg>');
             expect(result.html).not.toContain('<div class="mermaid">graph TD; A-->B;</div>');
+        });
+
+        // "Include MathJax" leaves formulas to MathJax in the exports, but the printed page carries
+        // no MathJax script and prints from a copy without scripts: unrendered, they print as source.
+        for (const addMathJax of [false, true]) {
+            it(`pre-renders LaTeX when the project ${addMathJax ? 'includes' : 'does not include'} MathJax`, async () => {
+                const doc = singleTextPage(
+                    '<p>\\( x^2 - 4 \\)</p><div class="quext-DataGame js-hidden">GAME-DATA</div>',
+                    { addMathJax },
+                );
+                const preRenderLatex = async (html: string) => ({
+                    html: html.replace('\\( x^2 - 4 \\)', '<span class="exe-math-rendered"><svg></svg></span>'),
+                    hasLatex: true,
+                    latexRendered: true,
+                    count: 1,
+                });
+                // The game's formulas are rendered inside its encrypted data, which the preview
+                // must keep: a marker stands for the re-encrypted payload.
+                const preRenderDataGameLatex = async (html: string) => ({
+                    html: html.replace('GAME-DATA', 'GAME-DATA-WITH-RENDERED-LATEX'),
+                    count: 1,
+                });
+
+                const exp = new PrintPreviewExporter(doc, mockResourceProvider);
+                const result = await exp.generatePreview({ preRenderLatex, preRenderDataGameLatex });
+
+                expect(result.html).toContain('<span class="exe-math-rendered"><svg></svg></span>');
+                expect(result.html).not.toContain('\\( x^2 - 4 \\)');
+                expect(result.html).toContain('GAME-DATA-WITH-RENDERED-LATEX');
+            });
+        }
+
+        it('warns when the page has LaTeX that could not be pre-rendered', async () => {
+            const doc = singleTextPage('<p>\\( x^2 - 4 \\)</p>', { addMathJax: true });
+            const preRenderLatex = async (html: string) => ({ html, hasLatex: true, latexRendered: false, count: 0 });
+            const warn = spyOn(console, 'warn').mockImplementation(() => {});
+
+            try {
+                const exp = new PrintPreviewExporter(doc, mockResourceProvider);
+                const result = await exp.generatePreview({ preRenderLatex });
+
+                expect(result.html).toContain('\\( x^2 - 4 \\)');
+                expect(warn).toHaveBeenCalledWith(expect.stringContaining('will print as LaTeX source'));
+            } finally {
+                warn.mockRestore();
+            }
+        });
+
+        it('does not warn when the page has no LaTeX', async () => {
+            const doc = singleTextPage('<p>No formulas here</p>');
+            const preRenderLatex = async (html: string) => ({ html, hasLatex: false, latexRendered: false, count: 0 });
+            const warn = spyOn(console, 'warn').mockImplementation(() => {});
+
+            try {
+                const exp = new PrintPreviewExporter(doc, mockResourceProvider);
+                await exp.generatePreview({ preRenderLatex });
+
+                expect(warn).not.toHaveBeenCalledWith(expect.stringContaining('will print as LaTeX source'));
+            } finally {
+                warn.mockRestore();
+            }
         });
     });
 
@@ -1056,6 +1179,64 @@ describe('PrintPreviewExporter', () => {
             const result = await exporter.generatePreview();
             expect(result.html).toContain('<footer id="siteFooter">');
             expect(result.html).toContain('CC-BY-SA');
+        });
+
+        describe("the footer's license (#2637)", () => {
+            const license = 'creative commons: attribution - share alike 4.0';
+            const licenseUrl = 'https://creativecommons.org/licenses/by-sa/4.0/';
+            const spanishProject = () =>
+                createMockDocument([{ id: 'p1', title: 'Página', parentId: null, order: 0, blocks: [] }], {
+                    language: 'es',
+                    license,
+                    licenseUrl,
+                });
+            const footerOf = (html = '') => html.slice(html.indexOf('<footer id="siteFooter">'));
+
+            it("prints it in the project's language, linked to the license", async () => {
+                // Strings the renderer's own fallback does not have: in a browser that fallback
+                // cannot translate at all, so the footer has to take them from the provider.
+                const fetchI18nTranslations = async (language: string) =>
+                    new Map(
+                        language === 'es'
+                            ? [
+                                  [license, 'CC BY-SA 4.0 (provider)'],
+                                  ['License', 'Licencia (provider)'],
+                              ]
+                            : [],
+                    );
+                const resources = { ...createMockResourceProvider(), fetchI18nTranslations };
+
+                const result = await new PrintPreviewExporter(spanishProject(), resources).generatePreview();
+                const footer = footerOf(result.html);
+
+                expect(footer).toContain('<span class="license-label">Licencia (provider): </span>');
+                expect(footer).toContain(`<a href="${licenseUrl}" class="license">CC BY-SA 4.0 (provider)</a>`);
+                expect(footer).not.toContain(license);
+            });
+
+            it('still prints it, linked, when the translations cannot be fetched', async () => {
+                const warn = spyOn(console, 'warn').mockImplementation(() => {});
+                const resources = {
+                    ...createMockResourceProvider(),
+                    fetchI18nTranslations: async (): Promise<Map<string, string>> => {
+                        throw new Error('offline');
+                    },
+                };
+
+                try {
+                    const result = await new PrintPreviewExporter(spanishProject(), resources).generatePreview();
+
+                    // The text is then the renderer's own fallback's, which only a server translates
+                    expect(result.success).toBe(true);
+                    expect(footerOf(result.html)).toContain(`<a href="${licenseUrl}" class="license">`);
+                    expect(warn).toHaveBeenCalledWith(
+                        '[PrintPreviewExporter] Could not fetch the translated labels:',
+                        expect.any(Error),
+                    );
+                } finally {
+                    warn.mockRestore();
+                }
+            });
         });
     });
 

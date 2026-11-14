@@ -34,6 +34,7 @@ const ALLOWED_TAGS: Record<string, readonly string[]> = {
     td: ['colspan', 'rowspan'],
     th: ['colspan', 'rowspan', 'scope'],
     img: ['src', 'alt', 'title', 'width', 'height'],
+    a: ['href'],
 };
 const STRIPPED_WITH_CONTENT = new Set([
     'script',
@@ -46,6 +47,12 @@ const STRIPPED_WITH_CONTENT = new Set([
     'svg',
     'math',
 ]);
+/** Content embedded from elsewhere, and the attribute holding where it comes from. */
+const EMBEDDED_CONTENT: Record<string, string> = { iframe: 'src', embed: 'src', object: 'data' };
+/** The class of the line saying where content embedded from the web can be found. */
+export const EMBED_ADDRESS_CLASS = 'worksheet-embed-address';
+/** Elements whose text stands apart from the words round it: each starts a line of its own. */
+const LINE_ELEMENTS = new Set(['p', 'div', 'br', 'li', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'tr']);
 const VOID_TAGS = new Set(['br', 'hr', 'img']);
 type HtmlNode = DefaultTreeAdapterMap['childNode'];
 
@@ -74,6 +81,40 @@ export function isSafeImageUrl(value: string): boolean {
 }
 
 /**
+ * An address on the web, the one kind a reader holding the paper can follow; null for any other.
+ *
+ * Print styles recognise a web address by how it starts (`a[href^="http"]`), so one written
+ * without its protocol is given HTTPS, and the protocol is written in lower case.
+ */
+function webAddress(value: string | undefined): string | null {
+    const address = (value ?? '').trim();
+    const start = /^(?:(https?):)?\/\/(?=[^\s/])/i.exec(address);
+    if (!start) return null;
+    return `${(start[1] ?? 'https').toLowerCase()}://${address.slice(start[0].length)}`;
+}
+
+/** The value of one of an element's attributes. */
+function attributeOf(node: DefaultTreeAdapterMap['element'], name: string): string | undefined {
+    return node.attrs.find(attr => attr.name === name)?.value;
+}
+
+/**
+ * Where content embedded from the web can be found, written where it was embedded.
+ *
+ * It has a class of its own rather than the one `common.js` gives the address beside each frame
+ * of the document. That one sits next to a frame still there to print, and the base styles and
+ * Show link URLs may move or hide it; this one is all that is left of what was embedded, and is
+ * printed whatever the options say (`WORKSHEET_ACTIVITY_STYLES`).
+ */
+function embeddedAddress(address: string, insideLink: boolean): string {
+    const url = escapeText(address);
+    // An embed can sit inside an author link. Nesting a second anchor would make the browser
+    // close the first early, separating it from any answer gap whose link must be removed.
+    const content = insideLink ? url : `<a href="${url}">${url}</a>`;
+    return `<span class="${EMBED_ADDRESS_CLASS}">${content}</span>`;
+}
+
+/**
  * Cells and rows, which are kept even when empty.
  *
  * A table's shape is the columns lining up. Dropping a cell because a video used to be the only
@@ -93,16 +134,41 @@ function showsSomething(html: string): boolean {
     return /<(?:img|hr)\b/i.test(html) || html.replace(/<[^>]*>/g, '').trim() !== '';
 }
 
-function renderNode(node: HtmlNode): Rendered {
+/** How a fragment is sanitised. */
+export interface SanitizeOptions {
+    /**
+     * Keep the author's links to the web, whose addresses print after them (the default). A clue to
+     * a word the reader has to find leaves them out, keeping only what each held: a link there
+     * usually leads to that word, and ".../wiki/An%C3%A9lido" printed after it answers the clue.
+     */
+    links?: boolean;
+}
+
+function renderNode(node: HtmlNode, options: SanitizeOptions, insideLink = false): Rendered {
     if ('value' in node) return { html: escapeText(node.value), stripped: false };
     if (!('tagName' in node)) return { html: '', stripped: false };
-    if (STRIPPED_WITH_CONTENT.has(node.tagName)) return { html: '', stripped: true };
+    if (STRIPPED_WITH_CONTENT.has(node.tagName)) {
+        // Paper cannot play what was embedded from the web, but it can say where to find it, in
+        // the place it was. Content from anywhere else leaves nothing a reader could follow, and
+        // goes without a trace.
+        const source = Object.hasOwn(EMBEDDED_CONTENT, node.tagName)
+            ? webAddress(attributeOf(node, EMBEDDED_CONTENT[node.tagName]))
+            : null;
+        return source ? { html: embeddedAddress(source, insideLink), stripped: false } : { html: '', stripped: true };
+    }
 
-    const parts = node.childNodes.map(renderNode);
+    const href = node.tagName === 'a' && options.links !== false ? webAddress(attributeOf(node, 'href')) : null;
+    const parts = node.childNodes.map(child => renderNode(child, options, insideLink || href !== null));
     const children = parts.map(part => part.html).join('');
     const stripped = parts.some(part => part.stripped);
 
     if (!Object.hasOwn(ALLOWED_TAGS, node.tagName)) return { html: children, stripped };
+
+    // A link is kept for an address on the web, which print writes after it, and only round
+    // something to read: round nothing, the address would be printed on its own. Any other link
+    // leads nowhere a reader holding the paper can go, and only what it held is kept, as it is of
+    // every link when links are left out.
+    if (node.tagName === 'a' && (!href || !showsSomething(children))) return { html: children, stripped };
 
     // An element left with nothing to show, because what was in it could not be printed, goes with
     // it. A video in a paragraph of its own would otherwise print as a hole the size of the words
@@ -114,7 +180,7 @@ function renderNode(node: HtmlNode): Rendered {
     const allowed = ALLOWED_TAGS[node.tagName];
     const attrs = node.attrs
         .filter(attr => allowed.includes(attr.name) && (attr.name !== 'src' || isSafeImageUrl(attr.value)))
-        .map(attr => ` ${attr.name}="${escapeText(attr.value)}"`)
+        .map(attr => ` ${attr.name}="${escapeText(attr.name === 'href' ? href : attr.value)}"`)
         .join('');
     const html = VOID_TAGS.has(node.tagName)
         ? `<${node.tagName}${attrs} />`
@@ -124,12 +190,12 @@ function renderNode(node: HtmlNode): Rendered {
 }
 
 /** Keep safe formatting, discarding executable elements and rebuilding allowed attributes. */
-export function sanitizeHtml(html: string | null | undefined): string {
+export function sanitizeHtml(html: string | null | undefined, options: SanitizeOptions = {}): string {
     if (typeof html !== 'string' || !html) return '';
     // NUL is dropped before parsing: browsers treat it inconsistently inside markup.
     // biome-ignore lint/suspicious/noControlCharactersInRegex: removing NUL is deliberate
     return parseFragment(html.replace(/\u0000/g, ''))
-        .childNodes.map(node => renderNode(node).html)
+        .childNodes.map(node => renderNode(node, options).html)
         .join('')
         .trim();
 }
@@ -140,11 +206,24 @@ export function nodeText(node: DefaultTreeAdapterMap['node']): string {
     return 'childNodes' in node ? node.childNodes.map(nodeText).join('') : '';
 }
 
+/** Whether an element is the line saying where embedded content can be found. */
+export function isEmbedAddress(node: DefaultTreeAdapterMap['node']): boolean {
+    return 'tagName' in node && node.tagName === 'span' && attributeOf(node, 'class') === EMBED_ADDRESS_CLASS;
+}
+
+/** Visible text of a parsed fragment, with a space round the text of each line of its own. */
+function spacedText(node: DefaultTreeAdapterMap['node']): string {
+    if ('value' in node) return node.value;
+    if (!('childNodes' in node)) return '';
+    const text = node.childNodes.map(spacedText).join('');
+    return 'tagName' in node && (LINE_ELEMENTS.has(node.tagName) || isEmbedAddress(node)) ? ` ${text} ` : text;
+}
+
 /** Convert safe HTML to decoded text, preserving spacing between block-level fragments. */
 export function htmlToText(html: string | null | undefined): string {
-    const safe = sanitizeHtml(html);
-    const spaced = safe.replace(/<\/?(?:p|div|br|li|h[1-6]|tr)\b[^>]*>/gi, ' ');
-    return nodeText(parseFragment(spaced)).replace(/\s+/g, ' ').trim();
+    return spacedText(parseFragment(sanitizeHtml(html)))
+        .replace(/\s+/g, ' ')
+        .trim();
 }
 
 /** Images are printable content even when a fragment contains no text. */
