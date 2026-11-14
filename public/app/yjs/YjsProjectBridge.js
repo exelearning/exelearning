@@ -468,31 +468,10 @@ class YjsProjectBridge {
     }
 
     // Preload the single Material icon sprite into the shared block-icon runtime
-    // so applied block icons render as self-contained data: URIs. The loose
-    // per-icon SVG files were removed in favour of this one sprite.
-    try {
-      if (
-        blockIconRuntime
-        && typeof blockIconRuntime.loadMaterialSprite === 'function'
-        && !blockIconRuntime.isMaterialSpriteLoaded?.()
-      ) {
-        let spriteText = null;
-        if (this.resourceFetcher?.fetchLibraryFile) {
-          const spriteBlob = await this.resourceFetcher.fetchLibraryFile('material-icons/material-icons.svg');
-          if (spriteBlob) spriteText = await spriteBlob.text();
-        }
-        if (!spriteText) {
-          const spriteResp = await fetch(resolveAppAssetUrl('/libs/material-icons/material-icons.svg'));
-          if (spriteResp.ok) spriteText = await spriteResp.text();
-        }
-        if (spriteText) {
-          const iconCount = blockIconRuntime.loadMaterialSprite(spriteText, { root: document });
-          Logger.log(`[YjsProjectBridge] Material icon sprite loaded (${iconCount} icons)`);
-        }
-      }
-    } catch (e) {
-      console.warn('[YjsProjectBridge] Failed to preload Material icon sprite:', e?.message || e);
-    }
+    // so applied block icons render as self-contained data: URIs. Not awaited:
+    // the sprite is 1.6 MB and nothing below needs it. Icons rendered before it
+    // arrives are placeholders that loadMaterialSprite() hydrates.
+    this._materialSpritePromise = this._preloadMaterialIconSprite();
 
     // Create AssetWebSocketHandler for peer-to-peer asset synchronization
     if (window.AssetWebSocketHandler && this.assetManager && this.documentManager?.wsProvider) {
@@ -1404,6 +1383,39 @@ class YjsProjectBridge {
     }
 
     return false;
+  }
+
+  /**
+   * Load the Material icon sprite into the shared block-icon runtime.
+   * The loose per-icon SVG files were removed in favour of this one sprite.
+   * Never rejects: a missing sprite only leaves icon placeholders unhydrated.
+   * @returns {Promise<void>}
+   */
+  async _preloadMaterialIconSprite() {
+    try {
+      if (
+        !blockIconRuntime
+        || typeof blockIconRuntime.loadMaterialSprite !== 'function'
+        || blockIconRuntime.isMaterialSpriteLoaded?.()
+      ) {
+        return;
+      }
+      let spriteText = null;
+      if (this.resourceFetcher?.fetchLibraryFile) {
+        const spriteBlob = await this.resourceFetcher.fetchLibraryFile('material-icons/material-icons.svg');
+        if (spriteBlob) spriteText = await spriteBlob.text();
+      }
+      if (!spriteText) {
+        const spriteResp = await fetch(resolveAppAssetUrl('/libs/material-icons/material-icons.svg'));
+        if (spriteResp.ok) spriteText = await spriteResp.text();
+      }
+      if (spriteText) {
+        const iconCount = blockIconRuntime.loadMaterialSprite(spriteText, { root: document });
+        Logger.log(`[YjsProjectBridge] Material icon sprite loaded (${iconCount} icons)`);
+      }
+    } catch (e) {
+      console.warn('[YjsProjectBridge] Failed to preload Material icon sprite:', e?.message || e);
+    }
   }
 
   /**
