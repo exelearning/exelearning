@@ -11,6 +11,7 @@
 
 import type { buildConfigParams } from './config-params';
 import type { RouteMap } from './api-routes';
+import type { PublicAiConfig } from '../services/ai/types';
 
 /**
  * Server-only application settings.
@@ -33,6 +34,11 @@ export interface ParameterResponseOptions {
     appSettings?: AppSettings;
     /** When true, returns empty themeEditionFieldsConfig (static/offline mode). */
     disableThemeEdition?: boolean;
+    /**
+     * Safe, client-facing AI capability flags. Contains no secrets. Omitted when
+     * absent so callers that do not compute it (e.g. legacy paths) stay valid.
+     */
+    ai?: PublicAiConfig;
 }
 
 /**
@@ -40,7 +46,7 @@ export interface ParameterResponseOptions {
  * Both server and static call this with their respective inputs.
  */
 export function buildParameterResponse(opts: ParameterResponseOptions) {
-    const { configParams, routes, appSettings = {}, disableThemeEdition = false } = opts;
+    const { configParams, routes, appSettings = {}, disableThemeEdition = false, ai } = opts;
 
     return {
         userPreferencesConfig: configParams.USER_PREFERENCES_CONFIG,
@@ -54,5 +60,6 @@ export function buildParameterResponse(opts: ParameterResponseOptions) {
         odeProjectSyncCataloguingConfig: configParams.ODE_PROJECT_SYNC_CATALOGUING_CONFIG,
         routes,
         ...appSettings,
+        ...(ai ? { ai } : {}),
     };
 }
