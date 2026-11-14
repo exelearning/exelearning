@@ -413,6 +413,56 @@ describe('YjsProjectBridge', () => {
   });
 
   describe('initialize', () => {
+    describe('Material icon sprite preload', () => {
+      const iconRuntime = require('../common/blockIconRuntime.js');
+      const SPRITE = '<svg><symbol id="alarm" viewBox="0 -960 960 960"><path d="M40-200Z"/></symbol></svg>';
+
+      afterEach(() => {
+        // The runtime is module-global: leave it unloaded for the other tests.
+        iconRuntime.loadMaterialSprite('');
+      });
+
+      it('does not wait for the sprite download', async () => {
+        iconRuntime.loadMaterialSprite('');
+        let deliverSprite;
+        const pending = new Promise((resolve) => {
+          deliverSprite = resolve;
+        });
+        global.window.ResourceFetcher = class extends MockResourceFetcher {
+          fetchLibraryFile() {
+            return pending;
+          }
+        };
+
+        await bridge.initialize(123, 'test-token');
+
+        expect(bridge.initialized).toBe(true);
+        expect(iconRuntime.isMaterialSpriteLoaded()).toBe(false);
+
+        deliverSprite({ text: async () => SPRITE });
+        await bridge._materialSpritePromise;
+
+        expect(iconRuntime.isMaterialSpriteLoaded()).toBe(true);
+        expect(iconRuntime.getMaterialIconSymbol('alarm')).not.toBeNull();
+      });
+
+      it('survives a failed sprite download', async () => {
+        iconRuntime.loadMaterialSprite('');
+        const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+        global.window.ResourceFetcher = class extends MockResourceFetcher {
+          async fetchLibraryFile() {
+            throw new Error('offline');
+          }
+        };
+
+        await bridge.initialize(123, 'test-token');
+        await expect(bridge._materialSpritePromise).resolves.toBeUndefined();
+
+        expect(iconRuntime.isMaterialSpriteLoaded()).toBe(false);
+        warn.mockRestore();
+      });
+    });
+
     it('sets projectId', async () => {
       await bridge.initialize(123, 'test-token');
       expect(bridge.projectId).toBe(123);
