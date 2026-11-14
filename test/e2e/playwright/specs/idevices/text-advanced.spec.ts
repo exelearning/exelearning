@@ -272,7 +272,10 @@ test.describe('Text iDevice Advanced Features', () => {
     });
 
     test.describe('Text iDevice Click Interactions', () => {
-        test('should handle click on text iDevice content in preview', async ({ authenticatedPage, createProject }) => {
+        test('should disable inline click handlers in preview by default', async ({
+            authenticatedPage,
+            createProject,
+        }) => {
             const page = authenticatedPage;
 
             const projectUuid = await createProject(page, 'Text Click Test');
@@ -313,12 +316,10 @@ test.describe('Text iDevice Advanced Features', () => {
             if (await button.isVisible({ timeout: 5000 }).catch(() => false)) {
                 const initialText = await button.textContent();
                 await button.click();
-                await page.waitForTimeout(500);
                 const afterClickText = await button.textContent();
 
-                // Button text should have changed after click
-                expect(afterClickText).toBe('Clicked!');
-                expect(afterClickText).not.toBe(initialText);
+                expect(afterClickText).toBe(initialText);
+                await expect(page.locator('#preview-active-content-button')).toBeVisible();
             }
         });
     });

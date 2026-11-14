@@ -20,6 +20,7 @@ import { YjsDocumentAdapter } from '../adapters/YjsDocumentAdapter';
 import { BrowserResourceProvider } from '../adapters/BrowserResourceProvider';
 import { BrowserAssetProvider } from '../adapters/BrowserAssetProvider';
 import { ExportAssetResolver } from '../adapters/ExportAssetResolver';
+import { PreviewDocumentAdapter } from '../adapters/PreviewDocumentAdapter';
 
 // Import providers
 import { FflateZipProvider } from '../providers/FflateZipProvider';
@@ -60,8 +61,23 @@ import type { MoleculeRenderer, MoleculeView } from '../worksheet/moleculeCaptur
 import '../../../../public/app/common/LatexPreRenderer.js';
 
 // Import types
-import type { ExportOptions } from '../interfaces';
+import type { ExportOptions, PreviewContentPolicy, PreviewContentReport } from '../interfaces';
 
+/**
+ * Wrap a document in the preview policy, when there is one to apply.
+ *
+ * Every preview entry point below needs the same pair of decisions — wrap or not, then read
+ * the report back off whatever came out — and each had its own copy. That is three places to
+ * keep in step whenever the adapter's construction changes, with nothing to flag one missed.
+ */
+function withPreviewPolicy(sourceDocument: IDocumentSource, policy: PreviewContentPolicy | undefined): IDocumentSource {
+    return policy ? new PreviewDocumentAdapter(sourceDocument, policy) : sourceDocument;
+}
+
+/** The active-content report, if this document was the kind that produces one. */
+function activeContentReportOf(document: IDocumentSource): PreviewContentReport | undefined {
+    return document instanceof PreviewDocumentAdapter ? document.getReport() : undefined;
+}
 /**
  * Yjs Document Manager interface (browser class)
  */
@@ -679,6 +695,8 @@ export async function generatePrintPreview(
     assetManager?: AssetManagerLike | AssetCacheManagerLike | null,
 ): Promise<PrintPreviewResult> {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    // The exporter applies options.previewContentPolicy itself: only it knows which activities
+    // the chosen print mode converts, and those must reach the worksheet unfiltered.
     // biome-ignore lint/suspicious/noExplicitAny: legacy Yjs document manager compatibility
     const document = new YjsDocumentAdapter(documentManager as any);
 
@@ -777,10 +795,12 @@ export function createPrintPreviewExporter(
     documentManager: YjsDocumentManagerLike,
     resourceFetcher: ResourceFetcherLike | null,
     assetManager?: AssetManagerLike | AssetCacheManagerLike | null,
+    previewContentPolicy?: PreviewContentPolicy,
 ): PrintPreviewExporter {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     // biome-ignore lint/suspicious/noExplicitAny: legacy Yjs document manager compatibility
-    const document = new YjsDocumentAdapter(documentManager as any);
+    const sourceDocument = new YjsDocumentAdapter(documentManager as any);
+    const document = withPreviewPolicy(sourceDocument, previewContentPolicy);
 
     let resources;
     if (resourceFetcher) {
@@ -817,6 +837,7 @@ export interface PreviewFilesResult {
     success: boolean;
     files?: Record<string, ArrayBuffer>;
     error?: string;
+    activeContentReport?: PreviewContentReport;
 }
 
 /**
@@ -847,7 +868,8 @@ export async function generatePreviewForSW(
 
         // Create adapters with null-safe wrappers
         // biome-ignore lint/suspicious/noExplicitAny: legacy Yjs document manager compatibility
-        const document = new YjsDocumentAdapter(documentManager as any);
+        const sourceDocument = new YjsDocumentAdapter(documentManager as any);
+        const document = withPreviewPolicy(sourceDocument, options?.previewContentPolicy);
 
         // Create resource provider with null-safe fallback
         // Create resource provider with null-safe fallback
@@ -896,6 +918,7 @@ export async function generatePreviewForSW(
         return {
             success: true,
             files,
+            activeContentReport: activeContentReportOf(document),
         };
     } catch (error) {
         console.error('[SharedExporters] generatePreviewForSW failed:', error);
