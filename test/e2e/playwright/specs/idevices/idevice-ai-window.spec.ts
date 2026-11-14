@@ -83,8 +83,14 @@ test('The tabs of the Create with AI window are accessible and work with the key
             ai.locator('.input-group').getByRole('button', { name: 'Send to AI' }),
         ].map(box),
     );
-    expect(Math.abs(picker.x + picker.width - send.x)).toBeLessThanOrEqual(1);
-    expect(new Set([copy.height, picker.height, send.height]).size).toBe(1);
+    // Joined: no gap between them, and at most the 1px border they share (Bootstrap overlaps it). Half a pixel
+    // either way, as Firefox measures in fractions of a pixel.
+    const gap = send.x - (picker.x + picker.width);
+    expect(gap).toBeGreaterThanOrEqual(-1.5);
+    expect(gap).toBeLessThanOrEqual(0.5);
+    const sameHeight = (height: number) => expect(Math.abs(height - send.height)).toBeLessThanOrEqual(0.5);
+    sameHeight(copy.height);
+    sameHeight(picker.height);
 
     await prompt.focus();
     await page.keyboard.press('ArrowRight');
@@ -96,7 +102,7 @@ test('The tabs of the Create with AI window are accessible and work with the key
     ).toBeVisible();
     await expect(ai.getByRole('textbox', { name: 'Prompt' })).toBeHidden();
     await expect(ai.getByRole('button', { name: 'Save' })).toBeVisible();
-    expect((await box(ai.getByRole('button', { name: 'Save' }))).height).toBe(send.height);
+    sameHeight((await box(ai.getByRole('button', { name: 'Save' }))).height);
     await expect(ai.getByRole('button', { name: 'Send to AI' })).toBeHidden();
     await expect(ai.getByRole('combobox')).toBeHidden();
 
