@@ -3431,24 +3431,76 @@ describe('Project Routes', () => {
     });
 
     describe('Project Metadata', () => {
-        it('should update project metadata', async () => {
-            mockSessions.set('metadata-session', {
-                sessionId: 'metadata-session',
-                fileName: 'Old.elp',
-            });
+        const URL = 'http://localhost/api/projects/uuid/metadata-project/metadata';
 
-            const res = await app.handle(
-                new Request('http://localhost/api/projects/uuid/metadata-session/metadata', {
+        beforeEach(() => {
+            const project = {
+                id: 1640,
+                uuid: 'metadata-project',
+                owner_id: 1,
+                title: 'Old',
+                visibility: 'private',
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+            };
+            mockProjects.set(1640, project);
+            mockProjectsByUuid.set('metadata-project', project);
+            mockSessions.set('metadata-project', { sessionId: 'metadata-project', fileName: 'Old.elp' });
+        });
+
+        async function patchTitle(url: string, token?: string) {
+            return app.handle(
+                new Request(url, {
                     method: 'PATCH',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+                    },
                     body: JSON.stringify({ title: 'New Title' }),
                 }),
             );
+        }
+
+        it('should let the owner update the session title', async () => {
+            const res = await patchTitle(URL, await createAuthToken(1));
 
             expect(res.status).toBe(200);
             const body = await res.json();
             expect(body.success).toBe(true);
             expect(body.title).toBe('New Title');
+            expect(mockSessions.get('metadata-project').fileName).toBe('New Title.elp');
+        });
+
+        it('should let a collaborator update the session title', async () => {
+            mockCollaborators.set(1640, new Set([2]));
+
+            const res = await patchTitle(URL, await createAuthToken(2));
+
+            expect(res.status).toBe(200);
+            expect(mockSessions.get('metadata-project').fileName).toBe('New Title.elp');
+        });
+
+        it('should reject an unauthenticated request and leave the session alone', async () => {
+            const res = await patchTitle(URL);
+
+            expect(res.status).toBe(401);
+            expect(mockSessions.get('metadata-project').fileName).toBe('Old.elp');
+        });
+
+        it('should reject a user without access to the project and leave the session alone', async () => {
+            const res = await patchTitle(URL, await createAuthToken(3));
+
+            expect(res.status).toBe(403);
+            expect(mockSessions.get('metadata-project').fileName).toBe('Old.elp');
+        });
+
+        it('should return 404 for an unknown project', async () => {
+            const res = await patchTitle(
+                'http://localhost/api/projects/uuid/no-such-project/metadata',
+                await createAuthToken(1),
+            );
+
+            expect(res.status).toBe(404);
         });
     });
 
@@ -3992,10 +4044,11 @@ describe('Project Routes', () => {
                 metadata: { title: 'Original Title' },
             });
 
+            const token = await createAuthToken(1);
             const res = await app.handle(
                 new Request('http://localhost/api/projects/uuid/meta-update-project/metadata', {
                     method: 'PATCH',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
                     body: JSON.stringify({
                         title: 'Updated Title',
                     }),
