@@ -220,7 +220,7 @@ var $exeDevice = {
                                             <span class="DAD-DETitleImage" id="dadETitleImage">${_('Image URL')}</span>
                                             <div class="DAD-DEInputImage mb-3 gap-2" id="dadEInputImage">
                                                 <label class="sr-av" for="dadEURLImage">${_('Image URL')}</label>
-                                                <input type="text" class="exe-file-picker form-control me-0" id="dadEURLImage"/>
+                                                <input type="text" class="exe-file-picker form-control me-0" id="dadEURLImage" data-author-target="#dadEAuthor"/>
                                                 <a href="#" id="dadEPlayImage" class="DAD-ENavigationButton DAD-EPlayVideo" title="${_('Show')}">
                                                     <img src="${path}quextIEPlay.png" alt="${_('Show')}" class="DAD-DEButtonImage " />
                                                 </a>

@@ -251,7 +251,7 @@ var $exeDevice = {
                             <div class="mb-3">
                                 <div class="d-flex flex-nowrap align-items-center gap-2 mb-3 SLCME-EDefinitioMedia">
                                     <label class="mb-0">${_('Image')}:</label>
-                                    <input type="text" id="slcmEURLImageDefinition" class="exe-file-picker form-control me-0 w-100" />
+                                    <input type="text" id="slcmEURLImageDefinition" data-author-target="#slcmEAuthorDefinition" class="exe-file-picker form-control me-0 w-100" />
                                     <a href="#" id="slcmEPlayImageDefinition" class="SLCME-ENavigationButton" title="${_('Image')}"><img src="${path}quextIEPlay.png" alt="Play audio" class="SLCME-EButtonImage" /></a>
                                     <a href="#" id="slcmEShowMoreDefinition" class="SLCME-ENavigationButton SLCME-EShowMore" title="${_('More')}"><img src="${path}quextEIMore.png" alt="${_('More')}" class="SLCME-EButtonImage" /></a>
                                 </div>
@@ -523,7 +523,7 @@ var $exeDevice = {
                 <span class="SLCME-ETitleImage" id="slcmETitleImage-${$exeDevice.activeID}">${_('Image')}</span>
                 <div class="SLCME-EInputImage d-flex flex-nowrap align-items-center gap-2 mb-3" id="slcmEInputImage-${$exeDevice.activeID}">
                     <label class="sr-av">URL</label>
-                    <input type="text" id="slcmEURLImage-${$exeDevice.activeID}" class="exe-file-picker SLCME-EURLImage form-control me-0 w-100" />
+                    <input type="text" id="slcmEURLImage-${$exeDevice.activeID}" data-author-target="#slcmEAuthorAlt-${$exeDevice.activeID} .SLCME-EAuthor" class="exe-file-picker SLCME-EURLImage form-control me-0 w-100" />
                     <a href="#" id="slcmEPlayImage-${$exeDevice.activeID}" class="SLCME-ENavigationButton" title="${_('Show')}">
                         <img src="${path}quextIEPlay.png" alt="${_('Show')}" class="SLCME-EButtonImage" />
                     </a>
