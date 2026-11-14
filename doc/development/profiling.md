@@ -1,10 +1,46 @@
 # Profiling and Timing Investigation
 
-This guide documents the internal profiling helpers currently available for export and save flows in the Electron desktop app.
+This guide covers Bun's native CPU/heap profiler for the backend and CLI, and the internal profiling
+helpers for export and save flows in the Electron desktop app.
 
-These flags are intended for development and debugging. They are not part of the end-user UI.
+These tools are intended for development and debugging. They are not part of the end-user UI.
 
-## Prerequisites
+## Bun CPU and Heap Profiling (Backend and CLI)
+
+Bun ships a sampling profiler; no extra dependency is needed. Both targets write to `profiles/`
+(git-ignored, override with `PROFILE_DIR=...`) when the process exits.
+
+| Goal | Command |
+| --- | --- |
+| Profile the server | `make profile-server`, reproduce the slow action in the browser, then `Ctrl+C` |
+| Profile an export | `make profile-cli ARGS='elp:export in.elpx out --format=html5'` |
+| Profile a conversion | `make profile-cli ARGS='elp:convert in.elp out.elpx'` |
+| Also record memory | append `HEAP=1` (DevTools `.heapprofile`) or `HEAP=md` (markdown) |
+
+Each run writes:
+
+- `CPU.*.cpuprofile`: open in Chrome DevTools → Performance → *Load profile* for a flame chart.
+- `CPU.*.md`: hot functions by self/total time, call tree and file breakdown. It is plain text, so
+  `grep` it or hand it to an agent: _"read profiles/CPU.\*.md and list the top project-code hotspots"_.
+- `Heap.*.heapprofile` / `Heap.*.md` with `HEAP=1` / `HEAP=md`. Bun cannot write both in one run.
+
+`profile-server` runs `src/index.ts` without `--watch`, so the profile covers one process lifetime.
+
+### Comparing branches
+
+Profile the same input on `main` and on your branch and compare the duration line at the top of each
+`CPU.*.md`. Use a project large enough to dominate startup cost (many pages, iDevices or assets); for
+small fixtures, module loading and XLF parsing outweigh the export itself.
+
+### What the CPU profile does not show
+
+A sampling profiler measures CPU, not time spent waiting on the database, the filesystem or the
+network. If a request is slow but the CPU profile is quiet, the time is in I/O: measure it with
+`performance.now()` around the suspect call, or Elysia's `trace` lifecycle hooks.
+
+## Electron Export and Save Profiling
+
+### Prerequisites
 
 Run the desktop app:
 
@@ -14,7 +50,7 @@ make run-app
 
 Open the project in Electron and open DevTools in the renderer process.
 
-## ELPX Export Timing Profiler
+### ELPX Export Timing Profiler
 
 Use this profiler when investigating delays during:
 
@@ -22,18 +58,18 @@ Use this profiler when investigating delays during:
 - "Download project" in offline/Electron mode
 - Delays before the native save dialog appears
 
-### Enable
+#### Enable
 
 ```js
 window.eXeLearning.config.debugElpxExport = true;
 window.eXeLearning.config.debugElpxExportIncludeCaller = true;
 ```
 
-### Run
+#### Run
 
 Trigger the normal `.elpx` export from the UI.
 
-### Results
+#### Results
 
 After the export finishes or is cancelled:
 
@@ -42,7 +78,7 @@ window.__lastElpxExportSummary
 window.__lastElpxExportTimeline
 ```
 
-### Important summary fields
+#### Important summary fields
 
 - `totalElapsedMs`: end-to-end export time
 - `zipGenerateMs`: ZIP creation time
@@ -53,7 +89,7 @@ window.__lastElpxExportTimeline
 - `deflatedFiles` / `storedFiles`: how many files were compressed vs stored as-is
 - `deflatedBytes` / `storedBytes`: byte totals for each group
 
-### Useful timeline phases
+#### Useful timeline phases
 
 - `bridge:exporter:run:start/end`
 - `exporter:preprocess-pages:start/end`
@@ -64,7 +100,7 @@ window.__lastElpxExportTimeline
 - `bridge:electron:buffer-normalize:start/end`
 - `bridge:electron:write:start/end`
 
-### Quick inspection snippets
+#### Quick inspection snippets
 
 Largest phases:
 
@@ -83,18 +119,18 @@ window.__lastElpxExportTimeline.filter(entry =>
 );
 ```
 
-### How to read the data
+#### How to read the data
 
 - If `zipGenerateMs` is dominant, the bottleneck is archive generation/compression.
 - If `electronPromptMs` is dominant, the native dialog is the slow phase.
 - If `electronNormalizeMs` is dominant, the main-process payload conversion is expensive.
 - If `electronWriteMs` is dominant, the bottleneck is disk I/O.
 
-## Save Memory Profiler
+### Save Memory Profiler
 
 Use this profiler when investigating high RAM usage or long save times in the Yjs/Electron save flow.
 
-### Enable
+#### Enable
 
 ```js
 window.eXeLearning.config.debugSaveMemory = true;
@@ -122,18 +158,18 @@ window.eXeLearning.config.saveMemorySessionBatchBytes = 5 * 1024 * 1024;
 window.eXeLearning.config.saveMemoryBatchBytes = 5 * 1024 * 1024;
 ```
 
-### Run
+#### Run
 
 Trigger a normal save from the UI.
 
-### Results
+#### Results
 
 ```js
 window.__lastSaveMemorySummary
 window.__lastSaveMemoryTimeline
 ```
 
-### Important memory fields
+#### Important memory fields
 
 - `rss`
 - `heapUsed`
@@ -144,7 +180,7 @@ window.__lastSaveMemoryTimeline
 - `rendererPeakWorkingSetSize`
 - `rendererPrivateBytes`
 
-### Important save phases
+#### Important save phases
 
 - `save:start`
 - `yjs:serialize:start/end`
@@ -157,16 +193,16 @@ window.__lastSaveMemoryTimeline
 - `save:end`
 - `save:delayed+3000ms`
 
-### How to read the data
+#### How to read the data
 
 - Peak before upload starts usually points to Yjs serialization.
 - Peak during blob-load points to asset loading pressure.
 - Peak during `formdata` or `request` usually points to multipart/request buffering.
 - High delayed samples suggest retained references after save completion.
 
-## Other Useful Helpers
+### Other Useful Helpers
 
-### Keep the logs clean
+#### Keep the logs clean
 
 Reset debug flags after a run:
 
@@ -179,7 +215,7 @@ delete window.eXeLearning.config.saveMemorySessionBatchBytes;
 delete window.eXeLearning.config.saveMemoryBatchBytes;
 ```
 
-### Compare two runs manually
+#### Compare two runs manually
 
 Capture a copy before changing flags:
 
@@ -188,13 +224,13 @@ const run1 = structuredClone(window.__lastElpxExportSummary);
 const run2 = structuredClone(window.__lastSaveMemorySummary);
 ```
 
-### Inspect the last 20 export phases
+#### Inspect the last 20 export phases
 
 ```js
 window.__lastElpxExportTimeline.slice(-20);
 ```
 
-### Inspect the highest memory samples
+#### Inspect the highest memory samples
 
 ```js
 window.__lastSaveMemoryTimeline
