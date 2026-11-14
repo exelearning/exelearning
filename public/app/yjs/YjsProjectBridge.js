@@ -3615,7 +3615,10 @@ class YjsProjectBridge {
             Logger.log('[YjsProjectBridge] ELPX exported via SharedExporters:', exportFilename);
           }
           this.assetManager?.markAssetsSavedLocally?.();
-          return { saved: true };
+          // Hand the references the export could not resolve up to the editor,
+          // and only when there are any, so a clean save reports as it always did (#2681).
+          const { unresolvedAssets } = result;
+          return unresolvedAssets?.length ? { saved: true, unresolvedAssets } : { saved: true };
         } else {
           this.finalizeElpxExportTrace('error', {
             error: result.error || 'Export failed',

@@ -1,6 +1,6 @@
 /* eslint-disable no-undef */
 import * as Y from 'yjs';
-import { buildMissingAssetsNotice } from './missingAssetsNotice.js';
+import { buildMissingAssetsNotice, buildUnresolvedExportNotice } from './missingAssetsNotice.js';
 
 function navigation(pages) {
     const convert = (value) => {
@@ -148,5 +148,42 @@ describe('buildMissingAssetsNotice', () => {
 
     it('ignores entries that carry no paths', () => {
         expect(buildMissingAssetsNotice([{ componentId: 'c1', ideviceType: 'classify', paths: [] }])).toBeNull();
+    });
+});
+
+describe('buildUnresolvedExportNotice', () => {
+    it('returns null when the export resolved everything', () => {
+        expect(buildUnresolvedExportNotice([])).toBeNull();
+        expect(buildUnresolvedExportNotice(undefined)).toBeNull();
+        expect(buildUnresolvedExportNotice(null)).toBeNull();
+    });
+
+    it('names the references the saved package left dangling', () => {
+        const notice = buildUnresolvedExportNotice(['12345678-1234-1234-1234-123456789abc']);
+
+        expect(notice.title).toBe('Missing files');
+        expect(notice.body).toContain('12345678-1234-1234-1234-123456789abc');
+        expect(notice.body).toContain('no longer contains');
+    });
+
+    it('escapes a reference before it reaches innerHTML', () => {
+        const notice = buildUnresolvedExportNotice(['<img onerror=alert(1)>']);
+
+        expect(notice.body).not.toContain('<img onerror');
+        expect(notice.body).toContain('&lt;img onerror');
+    });
+
+    it('cuts a long list short and says how many are left', () => {
+        const refs = Array.from({ length: 13 }, (_unused, index) => `asset-${index}`);
+
+        const notice = buildUnresolvedExportNotice(refs);
+
+        expect(notice.body).toContain('asset-9');
+        expect(notice.body).not.toContain('asset-10');
+        expect(notice.body).toContain('3');
+    });
+
+    it('ignores entries that are not usable references', () => {
+        expect(buildUnresolvedExportNotice([null, '', 42])).toBeNull();
     });
 });
