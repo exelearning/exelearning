@@ -12,6 +12,7 @@ import '../../../../../../../public/vitest.setup.js';
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
+import { openingHelps } from '../../../../../../../test/helpers/help-buttons.ts';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -129,8 +130,8 @@ describe('scrambled-list iDevice', () => {
     };
 
     it('loads legacy option objects into the list inputs', () => {
-      const previousEdition = global.$exeDevicesEdition;
-      global.$exeDevicesEdition = {
+      const previousEdition = global.$exeIDevicesEdition;
+      global.$exeIDevicesEdition = {
         iDevice: {
           gamification: {
             progressBar: { setValues: vi.fn() },
@@ -159,7 +160,7 @@ describe('scrambled-list iDevice', () => {
         expect(document.getElementById('sortableListFormList1').value).toBe('<strong>Two</strong>');
         expect(document.getElementById('sortableListFormList2').value).toBe('Three');
       } finally {
-        global.$exeDevicesEdition = previousEdition;
+        global.$exeIDevicesEdition = previousEdition;
       }
     });
   });
@@ -185,7 +186,7 @@ describe('scrambled-list iDevice', () => {
             // so rendering them again would show each control twice.
             expect(source).not.toContain('passScore.getContents(');
             expect(source).not.toContain('progressBar.getContents(');
-            expect(source).toContain('gamification.scorm.getTab(');
+            expect(source).toMatch(/tabs\.getHtml\([\s\S]*grading: true/);
         });
 
         it('restores the control when the iDevice is reopened', () => {
@@ -328,4 +329,206 @@ describe('scrambled-list minimum score text', () => {
 
     expect(device.ci18n.msgPassScore).toBe('Minimum score needed to pass this activity: %s');
   });
+});
+
+describe('scrambled-list edition: shared form tabs', () => {
+    const PATH = '/files/perm/idevices/base/scrambled-list/edition/';
+    const panel = (name) => document.getElementById(`scrambledlistIdeviceForm-panel-${name}`);
+    let device;
+    let previousApp;
+
+    beforeEach(() => {
+        global.$exeDevice = undefined;
+        previousApp = global.eXeLearning.app;
+        global.eXeLearning.app = {
+            ...previousApp,
+            common: {
+                initTooltips: vi.fn(),
+            },
+        };
+        document.body.innerHTML = '<div id="scrambledBody" idevice-id="sl-1"></div>';
+        device = loadIdevice(readFileSync(join(__dirname, 'scrambled-list.js'), 'utf-8'));
+    });
+
+    afterEach(() => {
+        device.$lifecycle?.destroy();
+        global.eXeLearning.app = previousApp;
+        vi.unstubAllGlobals();
+        vi.restoreAllMocks();
+        global.$exeDevice = undefined;
+        document.body.innerHTML = '';
+    });
+
+    const open = (previousData = {}) => device.init(document.getElementById('scrambledBody'), previousData, PATH);
+
+    it('lays the form out in the shared tabs, and opens on the list', () => {
+        open();
+        const tabNames = [...document.querySelectorAll('#scrambledlistIdeviceForm-tabs [data-exe-tab]')].map((tab) =>
+            tab.getAttribute('data-exe-tab')
+        );
+
+        expect(tabNames).toEqual(['instructions', 'options', 'contents', 'grading', 'texts', 'after']);
+        expect(document.getElementById('scrambledlistIdeviceForm-tab-contents').textContent.trim()).toBe('List');
+        expect(panel('contents').classList.contains('active')).toBe(true);
+    });
+
+    it('puts each part of the form in its tab', () => {
+        open();
+
+        expect(panel('instructions').querySelector('#eXeGameInstructions').value).toBe(
+            'Arrange the following texts in the correct order to complete the activity.'
+        );
+        expect(panel('options').querySelector('#sortableShowSolutions')).not.toBeNull();
+        expect(panel('options').querySelector('#sortableAttemptsNumber')).not.toBeNull();
+        expect(panel('contents').querySelector('#sortableListFormList0')).not.toBeNull();
+        expect(panel('contents').querySelector('#sortableListWrongText')).not.toBeNull();
+        expect(panel('after').querySelector('#eXeIdeviceTextAfter')).not.toBeNull();
+        expect(panel('grading').querySelector('.exe-progress-report-wrapper')).not.toBeNull();
+        expect(panel('texts').querySelector('#ci18n_msgCheck').value).toBe('Check');
+    });
+
+    it('offers Import, Export and Create with AI on the Activities tab', () => {
+        open();
+        const links = [...panel('contents').querySelectorAll('[data-exe-share]')];
+
+        expect(links.map((link) => link.getAttribute('data-exe-share'))).toEqual(['import', 'ai']);
+        expect(document.querySelector('body > #eXeShareModal-import #eXeGameImportGame')).not.toBeNull();
+        // Export has no window: it saves the file at once.
+        expect(panel('contents').querySelector('.exe-share-tools #eXeGameExportQuestions')).not.toBeNull();
+        expect(document.getElementById('eXeEPromptArea').value.length).toBeGreaterThan(0);
+        expect(panel('contents').querySelector('.exe-share-tools + p').textContent).toContain('Write the elements of the list in the right order');
+    });
+
+    it('says the Import window reads txt files, without the Moodle xml it does not read', () => {
+        open();
+        const info = document.querySelector('#eXeShareModal-import .modal-body').firstElementChild.textContent;
+
+        expect(info).toBe('You can import questions compatible with this activity from txt files.');
+        expect(info).not.toContain('xml');
+    });
+
+    it('exports the list in the format Import reads back', async () => {
+        open({ options: ['Wake up', 'Have #2 breakfast', 'Go to school'] });
+        const download = vi
+            .spyOn($exeIDevicesEdition.iDevice.gamification.share, 'downloadBlob')
+            .mockReturnValue(true);
+
+        document.getElementById('eXeGameExportQuestions').click();
+
+        expect(download).toHaveBeenCalledTimes(1);
+        // One line, the elements in order; a # inside one would split it.
+        const line = await download.mock.calls[0][0].text();
+        expect(line).toBe('Wake up#Have  2 breakfast#Go to school');
+        device.insertWords([line]);
+        expect(document.getElementById('sortableListFormList1').value).toBe('Have  2 breakfast');
+    });
+
+    it('imports quotation marks and other markup characters as text', async () => {
+        open({ options: ['He said "yes"', 'Fish & <chips>', 'Three'] });
+        const download = vi
+            .spyOn($exeIDevicesEdition.iDevice.gamification.share, 'downloadBlob')
+            .mockReturnValue(true);
+        document.getElementById('eXeGameExportQuestions').click();
+        const value = (i) => document.getElementById(`sortableListFormList${i}`).value;
+
+        device.insertWords([await download.mock.calls[0][0].text()]);
+
+        expect([value(0), value(1), value(2)]).toEqual(['He said "yes"', 'Fish & <chips>', 'Three']);
+
+        // A crafted line, from a file or the AI, stays the text of its field.
+        device.insertWords(['Alpha" data-injected="yes" onfocus="alert(1)#Beta#Gamma']);
+
+        const field = document.getElementById('sortableListFormList0');
+        expect(field.value).toBe('Alpha" data-injected="yes" onfocus="alert(1)');
+        expect(field.hasAttribute('data-injected')).toBe(false);
+        expect(field.hasAttribute('onfocus')).toBe(false);
+    });
+
+    it('asks for three elements before exporting, as saving does', () => {
+        open({ options: ['Wake up', 'Have breakfast'] });
+        const download = vi.spyOn($exeIDevicesEdition.iDevice.gamification.share, 'downloadBlob');
+        eXe.app.alert.mockClear();
+
+        expect(device.exportQuestions()).toBe(false);
+        expect(download).not.toHaveBeenCalled();
+        expect(eXe.app.alert).toHaveBeenCalledWith('Add at least 3 elements.');
+    });
+
+    it('provides one accessible information button at the end of each options row', () => {
+        open();
+        const helpButtons = [...panel('options').querySelectorAll('.exe-idevice-help')];
+
+        expect(helpButtons).toHaveLength(2);
+        for (const help of helpButtons) {
+            const row = help.closest('.d-flex');
+            expect(row.lastElementChild.contains(help)).toBe(true);
+            expect(help.getAttribute('aria-label')).toMatch(/^Information about \S/);
+            expect(document.getElementById(help.getAttribute('aria-controls')).textContent.length).toBeGreaterThan(30);
+            const input = row.querySelector('input');
+            const value = `${input.checked}${input.value}`;
+            help.click();
+            document.getElementById(help.getAttribute('aria-controls')).click();
+            expect(`${input.checked}${input.value}`).toBe(value);
+        }
+    });
+
+    it('starts every help once and releases them when the edition closes', () => {
+        open();
+
+        const helps = document.querySelectorAll('.exe-idevice-help');
+        expect(helps.length).toBeGreaterThanOrEqual(2);
+        expect(openingHelps()).toHaveLength(helps.length);
+        device.$lifecycle.destroy();
+        expect(openingHelps()).toHaveLength(0);
+    });
+
+    it('leaves the state of each switch to its native checkbox', () => {
+        open();
+
+        document.querySelectorAll('.toggle-input:not(:disabled)').forEach((input) => input.click());
+
+        expect(document.querySelectorAll('[role="switch"], [aria-checked]')).toHaveLength(0);
+    });
+
+    it('names each element of the list for screen readers, also when it is rebuilt', () => {
+        open();
+        const names = () =>
+            [...document.querySelectorAll('#sortableListFormList input')].map(
+                (input) => document.querySelector(`label[for="${input.id}"]`).textContent
+            );
+
+        expect(names()[0]).toBe('Element 1');
+        expect(names()[14]).toBe('Element 15');
+
+        device.addQuestions(['One', 'Two', 'Three']);
+
+        expect(names()[0]).toBe('Element 1');
+        expect(names()[2]).toBe('Element 3');
+    });
+
+    it('reopens and saves the list with its options', () => {
+        open({
+            options: ['One', 'Two', 'Three'],
+            buttonText: 'Check',
+            rightText: 'Right',
+            wrongText: 'Wrong',
+            instructions: '<p>Order them</p>',
+            showSolutions: false,
+            attemptsNumber: 3,
+            msgs: { msgCheck: 'Go' },
+        });
+        expect(document.getElementById('sortableShowSolutions').checked).toBe(false);
+        expect(document.getElementById('sortableAttemptsNumber').value).toBe('3');
+        expect(document.getElementById('ci18n_msgCheck').value).toBe('Go');
+        const editors = { eXeGameInstructions: '<p>Order them</p>', eXeIdeviceTextAfter: '' };
+        vi.spyOn(global.tinymce, 'get').mockImplementation((id) =>
+            id in editors ? { getContent: () => editors[id], getContainer: () => document.createElement('div') } : null
+        );
+
+        expect(device.save()).toMatchObject({
+            options: ['One', 'Two', 'Three'],
+            showSolutions: false,
+            attemptsNumber: 3,
+        });
+    });
 });

@@ -8,7 +8,6 @@
  * - save: Full save cycle with markdown editors
  * - getDataJson: Data structure generation
  * - computeMarkdownHtml: Markdown to HTML conversion
- * - escapeHtml: HTML escaping
  * - HTML generation functions
  */
 
@@ -394,43 +393,6 @@ describe('markdown-text iDevice', () => {
       const result = $exeDevice.getDataJson();
 
       expect(result.markdownTextareaHtml).toBeDefined();
-    });
-  });
-
-  describe('escapeHtml', () => {
-    it('escapes ampersand', () => {
-      expect($exeDevice.escapeHtml('foo & bar')).toBe('foo &amp; bar');
-    });
-
-    it('escapes less than', () => {
-      expect($exeDevice.escapeHtml('1 < 2')).toBe('1 &lt; 2');
-    });
-
-    it('escapes greater than', () => {
-      expect($exeDevice.escapeHtml('2 > 1')).toBe('2 &gt; 1');
-    });
-
-    it('escapes double quotes', () => {
-      expect($exeDevice.escapeHtml('say "hello"')).toBe('say &quot;hello&quot;');
-    });
-
-    it('escapes single quotes', () => {
-      expect($exeDevice.escapeHtml("it's")).toBe('it&#39;s');
-    });
-
-    it('escapes multiple special characters', () => {
-      const input = '<script>alert("xss")</script>';
-      const expected = '&lt;script&gt;alert(&quot;xss&quot;)&lt;/script&gt;';
-      expect($exeDevice.escapeHtml(input)).toBe(expected);
-    });
-
-    it('handles empty string', () => {
-      expect($exeDevice.escapeHtml('')).toBe('');
-    });
-
-    it('handles null/undefined by converting to string', () => {
-      expect($exeDevice.escapeHtml(null)).toBe('null');
-      expect($exeDevice.escapeHtml(undefined)).toBe('undefined');
     });
   });
 

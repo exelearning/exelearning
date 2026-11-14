@@ -1,6 +1,13 @@
 import { test, expect, skipInStaticMode } from '../fixtures/collaboration.fixture';
 import { waitForYjsSync } from '../helpers/sync-helpers';
-import { waitForAppReady, gotoWorkarea, selectFirstPage, addIdevice, saveIdevice } from '../helpers/workarea-helpers';
+import {
+    waitForAppReady,
+    gotoWorkarea,
+    selectFirstPage,
+    addIdevice,
+    saveIdevice,
+    unfoldGroup,
+} from '../helpers/workarea-helpers';
 
 /**
  * E2E Tests for the project-wide pass score (pp_passScore)
@@ -198,10 +205,8 @@ test.describe('Project pass score', () => {
             await page.locator('#ri_CreateNewRubric').click();
             const rubric = page.locator('#node-content .idevice_node.rubric');
             const rubricId = (await rubric.getAttribute('id'))!;
-            await page
-                .locator('.exe-form-tabs a')
-                .filter({ hasText: /^Grading$/ })
-                .click();
+            await page.locator('#ri_IdeviceForm-tab-grading').click();
+            await unfoldGroup(page, 'eXeProgressReportGroup');
             await page.locator('#eXeProgressReport').check();
             await saveIdevice(page, rubricId);
 

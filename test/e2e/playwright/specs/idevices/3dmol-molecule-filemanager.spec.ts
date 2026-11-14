@@ -1,5 +1,5 @@
 import { test, expect } from '../../fixtures/auth.fixture';
-import { waitForAppReady, gotoWorkarea, selectFirstPage, expandIdeviceCategory } from '../../helpers/workarea-helpers';
+import { waitForAppReady, gotoWorkarea, selectFirstPage, addIdevice } from '../../helpers/workarea-helpers';
 import type { Page } from '@playwright/test';
 
 /**
@@ -27,17 +27,9 @@ const EMPTY_TITLE_MOLECULE_FIXTURE = 'test/fixtures/sample-molecule-empty-title.
 
 /**
  * Add a 3Dmol iDevice and wait for its edition form.
- *
- * The content node receives the class `3dmol`, an invalid CSS class selector
- * (it starts with a digit), so the menu item is targeted by its `id` attribute
- * instead of the generic `addIdevice()` helper.
  */
 async function add3DmolIdevice(page: Page): Promise<void> {
-    await expandIdeviceCategory(page, /Science|Ciencia/i);
-
-    const menuItem = page.locator(`.idevice_item[id="${THREE_DMOL_ID}"]`).first();
-    await menuItem.waitFor({ state: 'visible', timeout: 10000 });
-    await menuItem.click();
+    await addIdevice(page, THREE_DMOL_ID);
 
     const editForm = page.locator('#dMoleIdeviceForm');
     await editForm.waitFor({ state: 'visible', timeout: 15000 });

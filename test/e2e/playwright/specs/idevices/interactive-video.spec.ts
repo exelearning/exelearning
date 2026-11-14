@@ -6,7 +6,14 @@ import {
     gotoWorkarea,
     expandIdeviceCategory,
     getPreviewFrame,
+    addIdevice,
+    dismissVersionNotice,
+    editIdevice,
+    saveIdevice,
+    saveProject,
+    selectFirstPage,
 } from '../../helpers/workarea-helpers';
+import { waitForEditor } from '../../helpers/editor-helpers';
 import { WorkareaPage } from '../../pages/workarea.page';
 import type { Page, FrameLocator } from '@playwright/test';
 
@@ -822,6 +829,10 @@ test.describe('Interactive Video iDevice', () => {
                 .poll(() => body.evaluate(() => typeof (window as any).$interactivevideo?.player?.emitState))
                 .toBe('function');
             await page.clock.install();
+            // Paused, so only runFor moves the clock: left running, it fires the
+            // 500 ms tracking timer on its own whenever a step takes that long.
+            // A second ahead, as pauseAt refuses to go back.
+            await page.clock.pauseAt(Date.now() + 1000);
             await root.locator('#start-link').click();
             await body.evaluate(() => {
                 const player = (window as any).$interactivevideo.player;
@@ -932,4 +943,47 @@ test.describe('Interactive Video iDevice', () => {
             expect(hasResolveAssetUrl).toBe(true);
         });
     });
+});
+
+test('Interactive video opens on its video and keeps the text before it', async ({
+    authenticatedPage: page,
+    createProject,
+}) => {
+    const uuid = await createProject(page, 'Interactive video text before');
+    await gotoWorkarea(page, uuid);
+    await waitForAppReady(page);
+    await selectFirstPage(page);
+    await addIdevice(page, 'interactive-video');
+    const id = await page.locator('.idevice_node.interactive-video').first().getAttribute('id');
+    expect(id).toBeTruthy();
+    await expect(page.locator('#interactiveVideoIdeviceForm-tab-contents')).toHaveAttribute('aria-selected', 'true');
+    // The form has no description above its tabs, so the notice of a development
+    // version would sit over them.
+    await dismissVersionNotice(page);
+    // The text before the video is written in the Instructions tab.
+    await page.locator('#interactiveVideoIdeviceForm-tab-instructions').click();
+    await waitForEditor(page, 'eXeGameInstructions');
+    await page.evaluate(() => (window as any).tinymce.get('eXeGameInstructions').setContent('<p>Watch carefully</p>'));
+    await page.locator('#interactiveVideoIdeviceForm-tab-contents').click();
+    await page.locator('label[for="interactiveVideoType-youtube"]').click();
+    await page.locator('#interactiveVideoYoutubeURL').fill('https://www.youtube.com/watch?v=g9gPKSGGkEk');
+    await saveIdevice(page, id!);
+    const html = await page.evaluate(
+        componentId =>
+            (window as any).eXeLearning.app.project._yjsBridge.structureBinding.getComponent(componentId)
+                .htmlContent as string,
+        id!,
+    );
+    expect(html).toContain('<div class="exe-interactive-video-content-before"><p>Watch carefully</p></div>');
+
+    await saveProject(page);
+    await reloadPage(page);
+    await selectFirstPage(page);
+    await editIdevice(page, id!);
+    await dismissVersionNotice(page);
+    await page.locator('#interactiveVideoIdeviceForm-tab-instructions').click();
+    await waitForEditor(page, 'eXeGameInstructions');
+    expect(await page.evaluate(() => (window as any).tinymce.get('eXeGameInstructions').getContent())).toBe(
+        '<p>Watch carefully</p>',
+    );
 });

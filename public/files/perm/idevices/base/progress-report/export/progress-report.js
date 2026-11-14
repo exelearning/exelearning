@@ -1604,6 +1604,10 @@ var $eXeInforme = {
 
     updatePages: function (data, instanceIndex) {
         const idx = instanceIndex || 0;
+        // A report saved before the option existed always showed the date.
+        const showDate =
+            ($eXeInforme.instances[idx] || $eXeInforme.options).showDate !==
+            false;
         let completed = 0;
         let score = 0;
         let date = '';
@@ -1617,7 +1621,9 @@ var $eXeInforme = {
                     let sp = parseFloat(idevice.score) || 0;
                     score += sp;
                     date = idevice.date;
-                    $idevice.find('.IFPP-ComponentDate').text(date);
+                    $idevice
+                        .find('.IFPP-ComponentDate')
+                        .text(showDate ? date : '');
                     $idevice
                         .find('.IFPP-ComponentScore')
                         .text($eXeInforme.formatNumber(sp));

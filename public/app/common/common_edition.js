@@ -3,6 +3,12 @@
     This is where $exeDevicesEdition or a similar object should be
     Include here the code that should not be exported
     This code is required to edit the iDevices
+
+    Transitional: the iDevices use $exeIDevicesEdition
+    (common_idevices_edition.js), and new code and fixes go there. This
+    copy, duplicated in that file, is kept only for the iDevices still in
+    development that use it, such as the new interactive video. It will be
+    removed once they are adapted to common_idevices_edition.js.
 */
 var $exeDevicesEdition = {
     iDevice: {

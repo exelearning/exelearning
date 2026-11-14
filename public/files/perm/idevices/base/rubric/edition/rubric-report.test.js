@@ -36,14 +36,15 @@ describe('rubric progress report integration', () => {
         loadScript('public/files/perm/idevices/base/rubric/edition/rubric.js');
         loadScript('public/files/perm/idevices/base/rubric/export/rubric.js');
         loadScript('public/files/perm/idevices/base/progress-report/export/progress-report.js');
-        vi.spyOn($exeDevicesEdition.iDevice.tabs, 'init').mockImplementation(() => {});
-        vi.spyOn($exeDevicesEdition.iDevice.gamification.scorm, 'init').mockImplementation(() => {});
+        vi.spyOn($exeIDevicesEdition.iDevice.tabs, 'bind').mockImplementation(() => {});
+        vi.spyOn($exeIDevicesEdition.iDevice.gamification.scorm, 'init').mockImplementation(() => {});
         document.body.innerHTML = '<div class="idevice_node rubric" id="rubric-node"><div id="editor"></div></div>';
         localStorage.clear();
     });
 
     afterEach(() => {
         vi.restoreAllMocks();
+        vi.unstubAllGlobals();
         Object.assign(globalThis, previousGlobals);
         localStorage.clear();
     });
@@ -81,10 +82,10 @@ describe('rubric progress report integration', () => {
         expect(payload.attr('data-evaluationid')).toBe(reportId);
         expect(payload.attr('data-evaluationb')).toBe('true');
         $exeDevice.init(document.getElementById('editor'), saved, 'assets/');
-        expect($exeDevicesEdition.iDevice.gamification.progressBar.getValues()).toEqual({
+        expect($exeIDevicesEdition.iDevice.gamification.progressBar.getValues()).toEqual({
             evaluation: true, evaluationID: reportId,
         });
-        expect($exeDevicesEdition.iDevice.gamification.passScore.getValues()).toEqual({
+        expect($exeIDevicesEdition.iDevice.gamification.passScore.getValues()).toEqual({
             passScoreMode: 'custom', passScoreCustom: 8,
         });
         const pages = $eXeInforme.buildNestedPages([{
@@ -98,7 +99,7 @@ describe('rubric progress report integration', () => {
 
     it('includes the rubric as evaluable when the report reads exported content.xml', () => {
         // Happy DOM does not expose CDATA text; XML-escaped text has the same browser textContent.
-        const html = $exeDevice.escapeHtml(serialize());
+        const html = $exeIDevicesEdition.iDevice.common.escapeHtml(serialize());
         const xml = `<ode><odeNavStructures><odeNavStructure>
             <odePageId>page1</odePageId><pageName>Page</pageName><odePagStructures><odePagStructure>
             <odeComponents><odeComponent><odeIdeviceId>rubric-node</odeIdeviceId>

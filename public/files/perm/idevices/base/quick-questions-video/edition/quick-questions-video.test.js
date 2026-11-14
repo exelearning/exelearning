@@ -11,6 +11,7 @@
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
+import { openingHelps } from '../../../../../../../test/helpers/help-buttons.ts';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -45,6 +46,16 @@ const guardedHandlers = [
     ['#vquextGlobalTimeButton', 'click'],
 ];
 
+// The edition reads the shared itinerary of $exeIDevicesEdition: the tests
+// stub it, and the real one comes back after each of them.
+let sharedItinerary;
+beforeEach(() => {
+    sharedItinerary = global.$exeIDevicesEdition.iDevice.gamification.itinerary;
+});
+afterEach(() => {
+    global.$exeIDevicesEdition.iDevice.gamification.itinerary = sharedItinerary;
+});
+
 function buildForm() {
     document.body.innerHTML = `
         <div id="vquextQEIdeviceForm">
@@ -62,7 +73,6 @@ function buildForm() {
             <a href="#" id="vquextEPlayVideo"></a>
             <input id="vquextEPercentajeQuestions" type="text" value="50" />
             <input id="vquextECustomMessages" type="checkbox" />
-            <input id="vquextEHasFeedBack" type="checkbox" />
             <input id="vquextEUseLives" type="checkbox" />
             <input id="vquextPoint" type="text" value="00:00:00" />
             <input id="vquextEVIStart" type="text" value="00:00:00" />
@@ -87,7 +97,7 @@ describe('quick-questions-video edition: $exeDevice guards (#2271)', () => {
             getURLVideoMediaTeca: vi.fn(() => false),
             extractURLGD: vi.fn(url => url),
         };
-        global.$exeDevicesEdition.iDevice.gamification.itinerary = {
+        global.$exeIDevicesEdition.iDevice.gamification.itinerary = {
             getTab: vi.fn(() => ''),
             addEvents: vi.fn(),
             getValues: vi.fn(() => ({})),
@@ -211,14 +221,14 @@ describe('quick-questions-video edition: the SCORM weight survives a round trip'
         global.$exeDevices.iDevice.gamification.helpers.secondsToHour = vi.fn(
             () => '00:00:00'
         );
-        global.$exeDevicesEdition.iDevice.gamification.itinerary = {
+        global.$exeIDevicesEdition.iDevice.gamification.itinerary = {
             getTab: vi.fn(() => ''),
             addEvents: vi.fn(),
             getValues: vi.fn(() => ({})),
             setValues: vi.fn(),
         };
-        scormMock = global.$exeDevicesEdition.iDevice.gamification.scorm;
-        scormMock.setValues.mockClear();
+        scormMock = global.$exeIDevicesEdition.iDevice.gamification.scorm;
+        vi.spyOn(scormMock, 'setValues').mockImplementation(() => {});
         $exeDevice = global.loadIdevice(
             join(__dirname, 'quick-questions-video.js')
         );
@@ -262,7 +272,7 @@ describe('quick-questions-video edition: the SCORM weight survives a round trip'
     });
 
     /**
-     * The pass-score control is a shared block in common_edition.js, exercised
+     * The pass-score control is a shared block in common_idevices_edition.js, exercised
      * by its own tests. What is specific to this iDevice -- and what silently
      * breaks if someone edits the form -- is the wiring: all four call sites
      * have to be present, and the two saved fields have to reach the stored
@@ -282,7 +292,7 @@ describe('quick-questions-video edition: the SCORM weight survives a round trip'
             // so rendering them again would show each control twice.
             expect(source).not.toContain('passScore.getContents(');
             expect(source).not.toContain('progressBar.getContents(');
-            expect(source).toContain('gamification.scorm.getTab(');
+            expect(source).toMatch(/tabs\.getHtml\([\s\S]*grading: true/);
         });
 
         it('restores the control when the iDevice is reopened', () => {
@@ -356,7 +366,7 @@ describe('quick-questions-video edition: lifecycle teardown (#2293)', () => {
             getURLVideoMediaTeca: vi.fn(() => false),
             extractURLGD: vi.fn((url) => url),
         };
-        global.$exeDevicesEdition.iDevice.gamification.itinerary = {
+        global.$exeIDevicesEdition.iDevice.gamification.itinerary = {
             getTab: vi.fn(() => ''),
             addEvents: vi.fn(),
             getValues: vi.fn(() => ({})),
@@ -569,5 +579,298 @@ describe('quick-questions-video minimum score text', () => {
         device.refreshTranslations();
 
         expect(device.ci18n.msgPassScore).toBe('Minimum score needed to pass this activity: %s');
+    });
+});
+
+describe('quick-questions-video edition: shared form tabs and feedback', () => {
+    const PATH = '/files/perm/idevices/base/quick-questions-video/edition/';
+    const edition = () => global.$exeIDevicesEdition.iDevice;
+    const feedback = () => edition().gamification.feedback;
+    const tabNames = () =>
+        [...document.querySelectorAll('#vquextQEIdeviceForm-tabs [data-exe-tab]')].map((tab) =>
+            tab.getAttribute('data-exe-tab')
+        );
+    const panel = (name) => document.getElementById(`vquextQEIdeviceForm-panel-${name}`);
+    const question = (overrides = {}) => ({
+        id: 'q1',
+        typeQuestion: 0,
+        type: 3,
+        time: 0,
+        numberOptions: 2,
+        pointVideo: 10,
+        quextion: 'Which colour?',
+        options: ['Red', 'Blue', '', ''],
+        solution: 0,
+        solutionQuestion: '',
+        msgHit: '',
+        msgError: '',
+        soundVideo: 1,
+        imageVideo: 1,
+        ...overrides,
+    });
+    const game = (overrides = {}) => ({
+        typeGame: 'VideoQuExt',
+        idVideoQuExt: 'https://www.youtube.com/watch?v=abc',
+        startVideoQuExt: 0,
+        endVideoQuExt: 60,
+        showMinimize: false,
+        answersRamdon: false,
+        showSolution: true,
+        timeShowSolution: 3,
+        useLives: true,
+        numberLives: 3,
+        itinerary: {
+            showClue: false,
+            clueGame: '',
+            percentageClue: 40,
+            showCodeAccess: false,
+            codeAccess: '',
+            messageCodeAccess: '',
+        },
+        questionsGame: [question()],
+        isScorm: 0,
+        textButtonScorm: 'Save score',
+        repeatActivity: true,
+        weighted: 100,
+        gameMode: 1,
+        feedBack: false,
+        percentajeFB: 100,
+        videoType: 0,
+        customMessages: false,
+        isNavigable: false,
+        percentajeQuestions: 100,
+        evaluation: false,
+        evaluationID: '',
+        globalTime: 0,
+        ...overrides,
+    });
+    let device;
+    let previousApp;
+    let previousMedia;
+    let previousHelpers;
+
+    beforeEach(() => {
+        global.$exeDevice = undefined;
+        previousApp = global.eXeLearning?.app;
+        global.eXeLearning = {
+            ...global.eXeLearning,
+            app: {
+                ...previousApp,
+                common: {
+                    initTooltips: vi.fn(),
+                },
+            },
+        };
+        previousMedia = global.$exeDevices.iDevice.gamification.media;
+        global.$exeDevices.iDevice.gamification.media = {
+            getIDYoutube: vi.fn((url) => (url.includes('youtube') ? 'abc' : false)),
+            getURLVideoMediaTeca: vi.fn(() => false),
+            extractURLGD: vi.fn((url) => url),
+        };
+        previousHelpers = global.$exeDevices.iDevice.gamification.helpers;
+        global.$exeDevices.iDevice.gamification.helpers = {
+            ...previousHelpers,
+            hourToSeconds: (time) => time.split(':').reduce((total, part) => total * 60 + Number(part), 0),
+            secondsToHour: (seconds) => (seconds === 60 ? '00:01:00' : '00:00:00'),
+            isJsonString: (text) => {
+                try {
+                    return JSON.parse(text);
+                } catch {
+                    return false;
+                }
+            },
+            decrypt: (text) => text,
+        };
+        device = global.loadIdevice(join(__dirname, 'quick-questions-video.js'));
+        vi.spyOn(device, 'loadYoutubeApi').mockImplementation(() => {});
+        document.body.innerHTML = '<div id="videoTestBody"></div>';
+        device.init(document.getElementById('videoTestBody'), {}, PATH);
+    });
+
+    afterEach(() => {
+        device.$lifecycle?.destroy();
+        if (global.eXeLearning) {
+            global.eXeLearning.app = previousApp;
+        }
+        vi.unstubAllGlobals();
+        vi.restoreAllMocks();
+        global.$exeDevices.iDevice.gamification.media = previousMedia;
+        global.$exeDevices.iDevice.gamification.helpers = previousHelpers;
+        global.$exeDevice = undefined;
+        document.body.innerHTML = '';
+    });
+
+    it('lays the form out in the shared tabs, and opens on its questions', () => {
+        expect(tabNames()).toEqual([
+            'instructions',
+            'options',
+            'contents',
+            'grading',
+            'passwords',
+            'texts',
+            'after',
+            'feedback',
+        ]);
+        expect(document.getElementById('vquextQEIdeviceForm-tab-contents').textContent.trim()).toBe('Questions');
+        expect(panel('contents').classList.contains('active')).toBe(true);
+    });
+
+    it('sets the video and its questions in Questions, and the game in Options', () => {
+        expect(panel('contents').querySelector('#vquextEPanel #vquextEVIURL')).not.toBeNull();
+        expect(panel('contents').querySelector('#vquextEPanel #vquextPoint')).not.toBeNull();
+        expect(panel('options').querySelector('#vquextEOptions #vquextETypeReto')).not.toBeNull();
+        expect(panel('options').querySelector('#vquextEOptions #vquextENavigable')).not.toBeNull();
+        expect(panel('passwords').querySelector('#eXeGameShowCodeAccess')).not.toBeNull();
+        expect(panel('feedback').querySelector('#eXeGameHasFeedBack')).not.toBeNull();
+        expect(panel('grading').querySelector('.exe-progress-report-wrapper')).not.toBeNull();
+        expect(panel('texts').querySelector('#ci18n_msgReply')).not.toBeNull();
+    });
+
+    it('offers no import, export or AI windows', () => {
+        expect(document.querySelectorAll('[data-exe-share]')).toHaveLength(0);
+    });
+
+    it('leaves the feedback to the shared block, without controls of its own', () => {
+        for (const id of [
+            'vquextEHasFeedBack',
+            'vquextEPercentajeFB',
+            'vquextEFeedbackP',
+            'vquextEFeedBackEditor',
+            'vquextEGameModeHelpLnk',
+        ]) {
+            expect(document.getElementById(id)).toBeNull();
+        }
+    });
+
+    it('explains each option without changing any of them', () => {
+        const helps = [...document.querySelectorAll('#vquextEOptions .exe-idevice-help')];
+        const states = () => [...document.querySelectorAll('#vquextQEIdeviceForm input')].map((input) => input.checked);
+        const before = states();
+
+        expect(helps).toHaveLength(13);
+        for (const help of helps) {
+            expect(help.title).toBe(help.getAttribute('aria-label'));
+            const content = document.getElementById(help.getAttribute('aria-controls'));
+            expect(content.textContent.length).toBeGreaterThan(15);
+            help.click();
+            help.querySelector('span').click();
+            content.click();
+        }
+        expect(states()).toEqual(before);
+    });
+
+    it('leaves the state of each switch to its native checkbox', () => {
+        document.querySelectorAll('.toggle-input:not(:disabled)').forEach((input) => input.click());
+
+        expect(document.querySelectorAll('[role="switch"], [aria-checked]')).toHaveLength(0);
+    });
+
+    it('starts every help once and releases them when the edition closes', () => {
+        const helps = document.querySelectorAll('.exe-idevice-help');
+        expect(helps.length).toBe(19);
+        expect(openingHelps()).toHaveLength(helps.length);
+        device.$lifecycle.destroy();
+        expect(openingHelps()).toHaveLength(0);
+    });
+
+    it('makes the feedback compulsory while No score is chosen', () => {
+        const feedbackSwitch = document.getElementById('eXeGameHasFeedBack');
+
+        document.getElementById('vquextETypeReto').click();
+
+        expect(feedbackSwitch.checked).toBe(true);
+        expect(feedbackSwitch.disabled).toBe(true);
+
+        document.getElementById('vquextETypeActivity').click();
+
+        expect(feedbackSwitch.checked).toBe(false);
+        expect(feedbackSwitch.disabled).toBe(false);
+    });
+
+    it('restores the game mode and the feedback with the game', () => {
+        // Saved with its message: without one, the feedback loads off.
+        $exeIDevicesEdition.iDevice.gamification.feedback.setText('<p>Well done</p>');
+        device.updateFieldGame(game({ gameMode: 0, useLives: false, feedBack: true, percentajeFB: 80 }));
+
+        expect(document.getElementById('vquextEGameMode').checked).toBe(true);
+        expect(document.getElementById('vquextEUseLives').disabled).toBe(false);
+        expect(document.getElementById('vquextENumberLives').disabled).toBe(true);
+        expect(document.getElementById('eXeGameHasFeedBack').checked).toBe(true);
+        expect(document.getElementById('eXeGamePercentajeFB').value).toBe('80');
+    });
+
+    it('loads the saved feedback message into the shared editor', () => {
+        device.idevicePreviousData = `
+            <div class="vquext-IDevice">
+                <div class="vquext-DataGame js-hidden">${JSON.stringify(game({ feedBack: true }))}</div>
+                <div class="vquext-feedback-game"><p>Well done</p></div>
+            </div>`;
+
+        device.loadPreviousValues();
+
+        expect(feedback().getText()).toBe('<p>Well done</p>');
+    });
+
+    it('keeps the id of each question, so saving it again changes nothing', () => {
+        const questions = [
+            { ...question(), id: 'first' },
+            { ...question(), id: 'second' },
+            { ...question(), id: 'second' },
+            { ...question(), id: '' },
+        ];
+        device.idevicePreviousData = `
+            <div class="vquext-IDevice">
+                <div class="vquext-DataGame js-hidden">${JSON.stringify(game({ questionsGame: questions }))}</div>
+            </div>`;
+
+        device.loadPreviousValues();
+        const ids = device.questionsGame.map((item) => item.id);
+
+        expect(ids.slice(0, 2)).toEqual(['first', 'second']);
+        // A repeated or missing id gets a new one of its own.
+        expect(new Set(ids).size).toBe(4);
+        expect(ids.every(Boolean)).toBe(true);
+    });
+
+    describe('saving', () => {
+        let editors;
+
+        beforeEach(() => {
+            editors = {
+                eXeGameInstructions: '<p>Instructions</p>',
+                eXeIdeviceTextAfter: '',
+                eXeGameFeedBackEditor: '',
+            };
+            vi.spyOn(global.tinymce, 'get').mockImplementation((id) =>
+                id in editors
+                    ? {
+                          initialized: true,
+                          getContent: () => editors[id],
+                          setContent: (html) => (editors[id] = html),
+                      }
+                    : null
+            );
+        });
+
+        it('saves the feedback values the export reads', () => {
+            // Saved with its message: without one, the feedback loads off.
+            editors.eXeGameFeedBackEditor = '<p>Bravo</p>';
+            device.updateFieldGame(game({ feedBack: true, percentajeFB: 70 }));
+            device.questionsGame = [question()];
+
+            const data = device.validateData();
+
+            expect(data.feedBack).toBe(true);
+            expect(data.percentajeFB).toBe(70);
+            expect(unescape(data.textFeedBack)).toBe('<p>Bravo</p>');
+        });
+
+        it('does not save a No score game without its message', () => {
+            device.updateFieldGame(game({ gameMode: 2 }));
+            device.questionsGame = [question()];
+
+            expect(device.validateData()).toBe(false);
+            expect(eXe.app.getLastAlert()).toBe('Write the message to display when passing the game');
+        });
     });
 });

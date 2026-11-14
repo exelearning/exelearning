@@ -13,15 +13,11 @@ var $exeDevice = {
     msgs: {},
     classIdevice: 'relate',
     active: 0,
-    activeCard: 0,
-    activeID: '',
     cardsGame: [],
     typeEdit: -1,
-    idPaste: '',
     numberCutCuestion: -1,
     clipBoard: '',
     idevicePath: '',
-    playerAudio: '',
     version: 2.0,
     id: false,
     checkAltImage: true,
@@ -48,6 +44,7 @@ var $exeDevice = {
 
         $('#rclETextDiv, #rclETextDivBack').hide();
         this.active = 0;
+        $('#rclENumCards').text($exeDevice.cardsGame.length);
     },
 
     refreshTranslations: function () {
@@ -132,71 +129,70 @@ var $exeDevice = {
 
     createForm: function () {
         const path = $exeDevice.idevicePath,
-            html = `
-        <div id="relateQIdeviceForm">
-            ${$exeDevicesEdition.iDevice.common.getIdeviceDescription(
-                _('Create matching games with images, sounds and enriched texts.'),
-                'https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe40/html/relaciona.html',
-            )}
-            <div class="exe-form-tab" title="${_('General settings')}">
-                ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset(c_('Match each card with its pair.'))}
-                <fieldset class="exe-fieldset exe-fieldset-closed">
-                    <legend><a href="#">${_('Options')}</a></legend>
-                    <div>
-                        <div class="d-flex align-items-center flex-nowrap gap-2 mb-3">
-                            <span>${_('Level')}:</span>
-                            <span class="d-flex align-items-center gap-2 flex-nowrap">
-                                <div class="form-check form-check-inline m-0">
-                                    <input class="RLC-Type form-check-input" checked id="rclETypeShow" type="radio" name="flctype" value="0"/>
-                                    <label for="rclETypeShow">${_('Essential')}</label>
-                                </div>
-                                <div class="form-check form-check-inline m-0">
-                                    <input class="RLC-Type form-check-input" id="rclETypeNavigation" type="radio" name="flctype" value="1"/>
-                                    <label for="rclETypeNavigation">${_('Medium')}</label>
-                                </div>
-                                <div class="form-check form-check-inline m-0">
-                                    <input class="RLC-Type form-check-input" id="rclETypeIdentify" type="radio" name="flctype" value="2"/>
-                                    <label for="rclETypeIdentify">${_('Advanced')}</label>
-                                </div>
+            edition = $exeIDevicesEdition.iDevice,
+            help = edition.common.getHelpTooltip,
+            options = `
+                <div id="rclEOptions">
+                    <div class="d-flex align-items-center flex-nowrap gap-2 mb-3" role="radiogroup" aria-labelledby="rclETypeLabel">
+                        <span id="rclETypeLabel">${_('Level')}:</span>
+                        <div class="form-check form-check-inline m-0">
+                            <input class="RLC-Type form-check-input" checked id="rclETypeShow" type="radio" name="flctype" value="0"/>
+                            <label for="rclETypeShow">${_('Essential')}</label>
+                        </div>
+                        <div class="form-check form-check-inline m-0">
+                            <input class="RLC-Type form-check-input" id="rclETypeNavigation" type="radio" name="flctype" value="1"/>
+                            <label for="rclETypeNavigation">${_('Medium')}</label>
+                        </div>
+                        <div class="form-check form-check-inline m-0">
+                            <input class="RLC-Type form-check-input" id="rclETypeIdentify" type="radio" name="flctype" value="2"/>
+                            <label for="rclETypeIdentify">${_('Advanced')}</label>
+                        </div>
+                        ${help(
+                            [
+                                `${_('Essential')}: ${_('Only the right pairs can be joined.')}`,
+                                `${_('Medium')}: ${_('Any two cards can be joined; learners check their answers at the end.')}`,
+                                `${_('Advanced')}: ${_('As in Medium, with a time limit.')}`,
+                            ].join('\n\n'),
+                        )}
+                    </div>
+                    <div class="d-none align-items-center flex-nowrap gap-2 mb-3">
+                        <div class="toggle-item">
+                            <span class="toggle-control">
+                                <input type="checkbox" checked id="rclEShowSolution" class="toggle-input" />
+                                <span class="toggle-visual"></span>
                             </span>
+                            <label class="toggle-label" for="rclEShowSolution">${_('Show solutions')}</label>
                         </div>
-                        <div class="d-none align-items-center flex-nowrap gap-2 mb-3">
-                            <div class="toggle-item">
-                                <span class="toggle-control">
-                                    <input type="checkbox" checked id="rclEShowSolution" class="toggle-input" />
-                                    <span class="toggle-visual"></span>
-                                </span>
-                                <label class="toggle-label" for="rclEShowSolution">${_('Show solutions')}</label>
-                            </div>
-                            <label for="rclETimeShowSolution">${_('Show solution time (seconds)')}:</label>
-                            <input type="number" class="form-control" name="rclETimeShowSolution" id="rclETimeShowSolution" value="3" min="1" max="9" />
-                        </div>
-                        <div id="rclETimeDiv" class="d-none align-items-center flex-nowrap gap-2 mb-3">
-                            <label for="rclETime" class="mb-0">${_('Time (minutes)')}:</label>
-                            <input type="number" class="form-control" name="rclETime" id="rclETime" value="3" min="0" max="59" />
-                        </div>
-                        <div class="toggle-item mb-3">
+                        <label for="rclETimeShowSolution">${_('Show solution time (seconds)')}:</label>
+                        <input type="number" class="form-control" name="rclETimeShowSolution" id="rclETimeShowSolution" value="3" min="1" max="9" />
+                    </div>
+                    <div id="rclETimeDiv" class="d-none align-items-center flex-nowrap gap-2 mb-3">
+                        <label for="rclETime" class="mb-0">${_('Time (minutes)')}:</label>
+                        <input type="number" class="form-control" name="rclETime" id="rclETime" value="3" min="0" max="59" />
+                        ${help(_('Time to join all the pairs in the Advanced level, in minutes. Set 0 for no time limit.'))}
+                    </div>
+                    <div class="d-flex align-items-center flex-nowrap gap-2 mb-3">
+                        <div class="toggle-item">
                             <span class="toggle-control">
                                 <input type="checkbox" id="rclEShowMinimize" class="toggle-input" />
                                 <span class="toggle-visual"></span>
                             </span>
                             <label class="toggle-label" for="rclEShowMinimize">${_('Show minimized.')}</label>
                         </div>
-                        <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
-                            <label for="rclEPercentajeCards" class="mb-0">%${_('Cards')}:</label>
-                            <input type="number" class="form-control" name="rclEPercentajeCards" id="rclEPercentajeCards" value="100" min="1" max="100" />
-                            <span id="rclENumeroPercentaje">1/1</span>
-                        </div>
-                        <div class="d-none flex-nowrap align-items-center gap-2 mb-3">
-                            <label for="rclEAuthory" class="mb-0">${_('Authorship')}:</label>
-                            <input id="rclEAuthory" type="text" class="form-control" />
-                        </div>
-                        <div class="d-flex flex-nowrap align-items-center gap-2 mb-3">
-                        </div>
+                        ${help(_('Start with the game collapsed. Learners can expand it when they are ready to play.'))}
                     </div>
-                </fieldset>
-                <fieldset class="exe-fieldset">
-                    <legend><a href="#">${_('Pairs')}</a></legend>
+                    <div class="d-flex flex-nowrap align-items-center gap-2 mb-3">
+                        <label for="rclEPercentajeCards" class="mb-0">%${_('Cards')}:</label>
+                        <input type="number" class="form-control" name="rclEPercentajeCards" id="rclEPercentajeCards" value="100" min="1" max="100" />
+                        <span id="rclENumeroPercentaje">1/1</span>
+                        ${help(_('Choose the percentage of pairs included in each game. The counter shows how many pairs will be used.'))}
+                    </div>
+                    <div class="d-none flex-nowrap align-items-center gap-2 mb-3">
+                        <label for="rclEAuthory" class="mb-0">${_('Authorship')}:</label>
+                        <input id="rclEAuthory" type="text" class="form-control" />
+                    </div>
+                </div>`,
+            cards = `
                     <div class="RLC-EPanel" id="rclEPanel">
                         <div id="rclEArrowsDiv">
                             <div class="RLC-EPhrase" id="rclEPhrase">
@@ -211,11 +207,11 @@ var $exeDevice = {
                                     </div>
                                     <span id="rclETitleText">${_('Text')}</span>
                                     <div class="d-flex flex-nowrap align-items-center gap-2 mb-3" id="rclEInputText">
-                                        <label class="sr-av">${_('Text')}</label>
+                                        <label class="sr-av" for="rclEText">${_('Text')}</label>
                                         <input type="text" id="rclEText" class="form-control w-100  me-0" />
-                                        <label id="rclELblColor">${_('Color')}: </label>
+                                        <label id="rclELblColor" for="rclEColor">${_('Color')}: </label>
                                         <input id="rclEColor" type="color" class="form-control form-control-color" value="#000000">
-                                        <label id="rclELblBgColor">${_('Background')}:</label>
+                                        <label id="rclELblBgColor" for="rclEBgColor">${_('Background')}:</label>
                                         <input id="rclEBgColor" type="color" class="form-control form-control-color" value="#ffffff">
                                     </div>
                                     <span id="rclETitleImage">${_('Image')}</span>
@@ -237,11 +233,11 @@ var $exeDevice = {
                                     </div>
                                     <div class="d-flex align-items-center gap-2 mb-3 flex-nowrap" id="rclEAuthorAlt">
                                         <div class="d-flex w-50 flex-wrap align-items-center gap-2">
-                                            <label class="mb-0">${_('Authorship')}</label>
+                                            <label class="mb-0" for="rclEAuthor">${_('Authorship')}</label>
                                             <input id="rclEAuthor" type="text" class="w-100 form-control" />
                                         </div>
                                         <div class="d-flex flex-wrap w-50 align-items-center gap-2">
-                                            <label class="mb-0">${_('Alternative text')}</label>
+                                            <label class="mb-0" for="rclEAlt">${_('Alternative text')}</label>
                                             <input id="rclEAlt" type="text" class="w-100 form-control" />
                                         </div>
                                     </div>
@@ -265,11 +261,11 @@ var $exeDevice = {
                                     </div>
                                     <span id="rclETitleTextBack">${_('Text')}</span>
                                     <div class="d-flex flex-nowrap align-items-center gap-2 mb-3" id="rclEInputTextBack">
-                                        <label class="sr-av">${_('Text')}</label>
+                                        <label class="sr-av" for="rclETextBack">${_('Text')}</label>
                                         <input type="text" id="rclETextBack" class="w-100 form-control me-0" />
-                                        <label id="rclELblColorBack">${_('Color')}: </label>
+                                        <label id="rclELblColorBack" for="rclEColorBack">${_('Color')}: </label>
                                         <input id="rclEColorBack" type="color" class="form-control form-control-color" value="#000000">
-                                        <label id="rclELblBgColorBack">${_('Background')}:</label>
+                                        <label id="rclELblBgColorBack" for="rclEBgColorBack">${_('Background')}:</label>
                                         <input id="rclEBgColorBack" type="color" class="form-control form-control-color" value="#ffffff">
                                     </div>
                                     <span id="rclETitleImageBack">${_('Image')}</span>
@@ -291,11 +287,11 @@ var $exeDevice = {
                                     </div>
                                     <div class="d-none align-items-center gap-2 mb-3 flex-nowrap" id="rclEAuthorAltBack">
                                         <div class="d-flex w-50 flex-wrap align-items-center gap-2">
-                                            <label class="mb-0">${_('Authorship')}</label>
+                                            <label class="mb-0" for="rclEAuthorBack">${_('Authorship')}</label>
                                             <input id="rclEAuthorBack" type="text" class="w-100 form-control" />
                                         </div>
                                         <div class="RLC-EInputAlt d-flex flex-wrap w-50 align-items-center gap-2">
-                                            <label class="mb-0">${_('Alternative text')}</label>
+                                            <label class="mb-0" for="rclEAltBack">${_('Alternative text')}</label>
                                             <input id="rclEAltBack" type="text" class="w-100 form-control" />
                                         </div>
                                     </div>
@@ -349,57 +345,38 @@ var $exeDevice = {
                             <div class="RLC-ENumCardsIcon"><span class="sr-av">${_('Cards')}:</span></div>
                             <span class="RLC-ENumCards" id="rclENumCards">0</span>
                         </div>
-                    </div>
-                </fieldset>
-                ${$exeDevice.getTextFieldset('after')}
-            </div>
-
-            ${$exeDevicesEdition.iDevice.gamification.itinerary.getTab()}
-            ${$exeDevicesEdition.iDevice.gamification.scorm.getTab(path)}
-            ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
-            ${$exeDevicesEdition.iDevice.gamification.share.getTab(true, 0, true)}
-            ${$exeDevicesEdition.iDevice.gamification.share.getTabIA(0)}
+                    </div>`,
+            html = `
+        <div id="relateQIdeviceForm">
+            ${edition.common.getIdeviceDescription(
+                _('Create matching games with images, sounds and enriched texts.'),
+                'https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe40/html/relaciona.html',
+            )}
+            ${edition.tabs.getHtml('relateQIdeviceForm', {
+                titles: { contents: _('Pairs') },
+                path: path,
+                instructions: c_('Match each card with its pair.'),
+                options: options,
+                contents: cards,
+                passwords: true,
+                after: true,
+                grading: true,
+                texts: this.ci18n,
+                share: {
+                    importQuestions: true,
+                    exportQuestions: true,
+                    type: 0,
+                },
+                info: {
+                    contents: _('Add the pairs of cards with the text, image or sound of each side, and edit them one by one.'),
+                },
+            })}
         </div>
     `;
         this.ideviceBody.innerHTML = html;
-        $exeDevicesEdition.iDevice.tabs.init('relateQIdeviceForm');
-        $exeDevicesEdition.iDevice.gamification.scorm.init();
+        edition.tabs.bind('relateQIdeviceForm');
+        edition.gamification.scorm.init();
         this.enableForm();
-    },
-
-    getTextFieldset: function (position) {
-        if (
-            typeof position != 'string' ||
-            (position != 'after' && position != 'before')
-        )
-            return '';
-        let tit = _('Content after'),
-            id = 'After';
-        if (position == 'before') {
-            tit = _('Content before');
-            id = 'Before';
-        }
-        return (
-            "<fieldset class='exe-fieldset exe-feedback-fieldset exe-fieldset-closed'>\
-                    <legend><a href='#'>" +
-            tit +
-            ' (' +
-            _('Optional').toLowerCase() +
-            ")</a></legend>\
-                    <div>\
-                        <p>\
-                            <label for='eXeIdeviceText" +
-            id +
-            "' class='sr-av'>" +
-            tit +
-            ":</label>\
-                            <textarea id='eXeIdeviceText" +
-            id +
-            "' class='exe-html-editor'\></textarea>\
-                        </p>\
-                    <div>\
-				</fieldset>"
-        );
     },
 
     clearCard: function () {
@@ -464,7 +441,7 @@ var $exeDevice = {
         let cards = $exeDevice.cardsGame,
             active = $exeDevice.active;
         if (cards.length < 2) {
-            $exeDevice.showMessage($exeDevice.msgs.msgEOneCard);
+            $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgEOneCard);
             return;
         }
 
@@ -473,9 +450,8 @@ var $exeDevice = {
             active = cards.length - 1;
         }
 
-        $('#rclENumberCard').val(active);
-        $exeDevice.showCard(active);
         $exeDevice.active = active;
+        $exeDevice.showCard(active);
 
         $exeDevice.typeEdit = -1;
         $('#rclEPasteC').hide();
@@ -504,12 +480,16 @@ var $exeDevice = {
     },
 
     pasteCard: function () {
+        $exeIDevicesEdition.iDevice.gamification.share.keepQuestionOnScreen(
+            (options) => $exeDevice.validateCard(options)
+        );
         let cards = $exeDevice.cardsGame,
             active = $exeDevice.active;
 
         if ($exeDevice.typeEdit == 0) {
             active++;
             cards.splice(active, 0, $exeDevice.clipBoard);
+            $exeDevice.updateCardsNumber();
         } else if ($exeDevice.typeEdit == 1) {
             $('#rclEPasteC').hide();
             $exeDevice.typeEdit = -1;
@@ -563,7 +543,7 @@ var $exeDevice = {
     showCard: function (i) {
         let num = Math.max(0, Math.min(i, $exeDevice.cardsGame.length - 1)),
             p = $exeDevice.cardsGame[num];
-        $exeDevicesEdition.iDevice.gamification.helpers.stopSound();
+        $exeIDevicesEdition.iDevice.gamification.helpers.stopSound();
 
         $('#rclEURLImage').val(p.url);
         $('#rclEURLImageBack').val(p.urlBk);
@@ -625,7 +605,7 @@ var $exeDevice = {
         return s ? encodeURIComponent(s.replace('%', '&percnt;')) : s;
     },
 
-    validateCard: function () {
+    validateCard: function (options = {}) {
         const msgs = $exeDevice.msgs;
         let p = {
             url: $('#rclEURLImage').val().trim(),
@@ -650,13 +630,13 @@ var $exeDevice = {
             ),
         };
 
-        $exeDevicesEdition.iDevice.gamification.helpers.stopSound();
+        $exeIDevicesEdition.iDevice.gamification.helpers.stopSound();
 
+        // The front comes first on screen, so a blank card asks for it first.
         let message = '';
         if (!p.eText && !p.url && !p.audio) {
             message = msgs.msgCompleteData;
-        }
-        if (!p.eTextBk && !p.urlBk && !p.audioBk) {
+        } else if (!p.eTextBk && !p.urlBk && !p.audioBk) {
             message = msgs.msgCompleteDataBack;
         }
 
@@ -664,7 +644,7 @@ var $exeDevice = {
             $exeDevice.cardsGame[$exeDevice.active] = p;
             return true;
         } else {
-            $exeDevice.showMessage(message);
+            if (!options.silent) $exeIDevicesEdition.iDevice.common.showMessage(message);
             return false;
         }
     },
@@ -672,8 +652,8 @@ var $exeDevice = {
     enableForm: function () {
         $exeDevice.initCards();
 
-        const root = document.getElementById('relacionaIdeviceForm') || document;
-        $exeDevicesEdition.iDevice.voiceRecorder.initVoiceRecorders(root);
+        const root = document.getElementById('relateQIdeviceForm') || document;
+        $exeIDevicesEdition.iDevice.voiceRecorder.initVoiceRecorders(root);
 
         $exeDevice.loadPreviousValues();
         $exeDevice.addEvents();
@@ -682,7 +662,7 @@ var $exeDevice = {
 
     updateCardsNumber: function () {
         let percentaje = parseInt(
-            $exeDevice.removeTags($('#rclEPercentajeCards').val())
+            $exeIDevicesEdition.iDevice.common.removeTags($('#rclEPercentajeCards').val())
         );
         if (isNaN(percentaje)) return;
         percentaje = Math.min(Math.max(percentaje, 1), 100);
@@ -900,7 +880,7 @@ var $exeDevice = {
                 $('#eXeIdeviceTextAfter').val(textAfter);
             }
 
-            $exeDevicesEdition.iDevice.gamification.common.setLanguageTabValues(
+            $exeIDevicesEdition.iDevice.gamification.common.setLanguageTabValues(
                 dataGame.msgs
             );
             $exeDevice.showCard(0);
@@ -980,10 +960,6 @@ var $exeDevice = {
             .join('');
     },
 
-    showMessage: function (msg) {
-        eXe.app.alert(msg);
-    },
-
     getIdeviceID: function () {
         const ideviceid =
             $('#relateQIdeviceForm')
@@ -993,7 +969,7 @@ var $exeDevice = {
     },
 
     validateData: function () {
-        const clear = $exeDevice.removeTags,
+        const clear = $exeIDevicesEdition.iDevice.common.removeTags,
             instructions = tinyMCE.get('eXeGameInstructions').getContent(),
             textAfter = tinyMCE.get('eXeIdeviceTextAfter').getContent(),
             showMinimize = $('#rclEShowMinimize').is(':checked'),
@@ -1002,33 +978,21 @@ var $exeDevice = {
                 clear($('#rclETimeShowSolution').val())
             ),
             itinerary =
-                $exeDevicesEdition.iDevice.gamification.itinerary.getValues(),
+                $exeIDevicesEdition.iDevice.gamification.itinerary.getValues(),
             percentajeCards = parseInt(clear($('#rclEPercentajeCards').val())),
             author = $('#rclEAuthory').val(),
             cardsGame = $exeDevice.cardsGame,
-            scorm = $exeDevicesEdition.iDevice.gamification.scorm.getValues(),
+            scorm = $exeIDevicesEdition.iDevice.gamification.scorm.getValues(),
             type = parseInt($('input[name=flctype]:checked').val()),
             time = parseInt($('#rclETime').val()),
             progressBar =
-                $exeDevicesEdition.iDevice.gamification.progressBar.getValues(),
+                $exeIDevicesEdition.iDevice.gamification.progressBar.getValues(),
             passScore =
-                $exeDevicesEdition.iDevice.gamification.passScore.getValues(),
+                $exeIDevicesEdition.iDevice.gamification.passScore.getValues(),
             id = $exeDevice.getIdeviceID();
 
         if (!itinerary) return false;
         if (!progressBar) return false;
-
-        if (itinerary.showClue && itinerary.clueGame.length == '') {
-            return false;
-        }
-
-        if (
-            itinerary.showCodeAccess &&
-            (itinerary.codeAccess.length == '' ||
-                itinerary.messageCodeAccess.length == '')
-        ) {
-            return false;
-        }
 
         return {
             typeGame: 'Relaciona',
@@ -1085,7 +1049,7 @@ var $exeDevice = {
                         this.naturalWidth,
                         this.naturalHeight
                     );
-                    $exeDevice.drawImage(this, mData);
+                    $exeIDevicesEdition.iDevice.common.drawImage(this, mData, true);
                     $image.show();
                     $nimage.hide();
                     $exeDevice.paintMouse(this, $cursor, x, y);
@@ -1096,26 +1060,6 @@ var $exeDevice = {
             .on('error', function () {
                 return false;
             });
-    },
-
-    playSound: function (selectedFile) {
-        const selectFile = $exeDevices.iDevice.gamification.media.extractURLGD(selectedFile);
-        const player = new Audio(selectFile);
-        $exeDevice.playerAudio = player;
-        // Playback and its network activity stop when the editor closes.
-        this.$lifecycle.ownMedia(player);
-        this.$lifecycle.addEventListener(player, 'canplaythrough', () => {
-            player.play();
-        });
-    },
-
-    stopSound: function () {
-        if (
-            $exeDevice.playerAudio &&
-            typeof $exeDevice.playerAudio.pause === 'function'
-        ) {
-            $exeDevice.playerAudio.pause();
-        }
     },
 
     paintMouse: function (image, cursor, x, y) {
@@ -1136,16 +1080,6 @@ var $exeDevice = {
         }
     },
 
-    drawImage: function (image, mData) {
-        $(image).css({
-            position: 'absolute',
-            left: `${mData.x}px`,
-            top: `${mData.y}px`,
-            width: `${mData.w}px`,
-            height: `${mData.h}px`,
-        });
-    },
-
     addEvents: function () {
         $('#rclEPasteC').hide();
 
@@ -1154,8 +1088,8 @@ var $exeDevice = {
         const checkMaxCards = (e) => {
             e.preventDefault();
             const numcards = $exeDevice.cardsGame.length;
-            if (numcards.length > maxCards) {
-                $exeDevice.showMessage(
+            if (numcards >= maxCards) {
+                $exeIDevicesEdition.iDevice.common.showMessage(
                     $exeDevice.msgs.msgMaxCards.replace('%s', maxCards)
                 );
                 return true;
@@ -1220,11 +1154,7 @@ var $exeDevice = {
             window.FileList &&
             window.Blob
         ) {
-            $('#eXeGameExportImport .exe-field-instructions')
-                .eq(0)
-                .text(`${_('Supported formats')}: txt, xml(Moodle)`);
             $('#eXeGameExportImport').show();
-            $('#eXeGameImportGame').attr('accept', '.txt, .xml');
             $('#eXeGameImportGame').on('change', (e) => {
                 const file = e.target.files[0];
                 if (!file) {
@@ -1285,16 +1215,13 @@ var $exeDevice = {
                 $exeDevice.updateCardsNumber();
             });
 
-        $('#rclEURLAudioDefinition').on('change', function () {
-            $exeDevice.loadAudio($(this).val());
-        });
-
         $('#rclENumberCard').keyup(function (e) {
             if (e.keyCode === 13) {
                 const num = parseInt($(this).val(), 10);
                 if (!isNaN(num) && num > 0) {
                     if ($exeDevice.validateCard() === false) {
                         $(this).val($exeDevice.active + 1);
+                        return;
                     }
                     $exeDevice.active =
                         num < $exeDevice.cardsGame.length
@@ -1337,44 +1264,55 @@ var $exeDevice = {
                 .toggleClass('d-flex', type === 2);
         });
 
-        $exeDevicesEdition.iDevice.gamification.progressBar.addEvents();
+        $exeIDevicesEdition.iDevice.gamification.progressBar.addEvents();
 
-        $exeDevicesEdition.iDevice.gamification.passScore.addEvents();
+        $exeIDevicesEdition.iDevice.gamification.passScore.addEvents();
 
-        $exeDevicesEdition.iDevice.gamification.itinerary.addEvents();
-        $exeDevicesEdition.iDevice.gamification.share.addEvents(
+        $exeIDevicesEdition.iDevice.gamification.itinerary.addEvents();
+        $exeIDevicesEdition.iDevice.gamification.share.addEvents(
             0,
             $exeDevice.insertCards
         );
-
-        //eXe 3.0 Dismissible messages
-        $('.exe-block-dismissible .exe-block-close').click(function () {
-            $(this).parent().fadeOut();
-            return false;
-        });
     },
 
     exportQuestions: function () {
-        const dataGame = this.validateData();
-        if (!dataGame) return false;
+        // Store the card on screen first, as saving does. Only the cards are
+        // written, and each one is checked as it is left.
+        if (!$exeDevice.validateCard()) return false;
 
-        const lines = this.getLinesQuestions(dataGame.cardsGame);
+        const lines = this.getLinesQuestions($exeDevice.cardsGame);
+        if (lines.length === 0) {
+            eXe.app.alert(_('Sorry, there are no questions for this type of activity.'));
+            return false;
+        }
         const fileContent = lines.join('\n');
         const newBlob = new Blob([fileContent], { type: 'text/plain' });
-        return $exeDevicesEdition.iDevice.gamification.share.downloadBlob(
+        return $exeIDevicesEdition.iDevice.gamification.share.downloadBlob(
             newBlob,
             `${_('Relate')}.txt`,
             'relateQIdeviceForm'
         );
     },
 
+    /**
+     * "front#back" lines, the format Import and the AI read back. Texts are
+     * stored encoded, so they are decoded; pairs without text on both sides
+     * have no line.
+     */
     getLinesQuestions: function (cards) {
-        let lineswords = [];
-        for (let i = 0; i < cards.length; i++) {
-            let card = `${$exeDevice.decodeURIComponentSafe(cards[i].eText)}#${$exeDevice.decodeURIComponentSafe(cards[i].eTextBk)}`;
-            lineswords.push(card);
-        }
-        return lineswords;
+        const plain = (value) => {
+            let text = value || '';
+            try {
+                text = $exeDevice.decodeURIComponentSafe(text) || '';
+            } catch {
+                // A text imported before it was encoded is already plain.
+            }
+            return text.replace(/[#\s]+/g, ' ').trim();
+        };
+        return cards
+            .map((card) => [plain(card.eText), plain(card.eTextBk)])
+            .filter(([front, back]) => front && back)
+            .map(([front, back]) => `${front}#${back}`);
     },
 
     reverseFaces: function () {
@@ -1436,7 +1374,7 @@ var $exeDevice = {
             return false;
         }
         if (url.startsWith('files') && !validExt.includes(ext)) {
-            $exeDevice.showMessage(
+            $exeIDevicesEdition.iDevice.common.showMessage(
                 `${_('Supported formats')}: jpg, jpeg, gif, png, svg, webp`
             );
             return false;
@@ -1449,18 +1387,18 @@ var $exeDevice = {
             ext = url.split('.').pop().toLowerCase();
 
         if (url.startsWith('files') && !validExt.includes(ext)) {
-            $exeDevice.showMessage(`${_('Supported formats')}: mp3, ogg, waw`);
+            $exeIDevicesEdition.iDevice.common.showMessage(`${_('Supported formats')}: mp3, ogg, waw`);
             return false;
         }
 
         if (url.length > 4) {
-            $exeDevicesEdition.iDevice.gamification.helpers.playSound(url);
+            $exeIDevicesEdition.iDevice.gamification.helpers.playSound(url);
         }
     },
 
     updateFieldGame: function (game) {
         $exeDevice.active = 0;
-        $exeDevicesEdition.iDevice.gamification.itinerary.setValues(
+        $exeIDevicesEdition.iDevice.gamification.itinerary.setValues(
             game.itinerary
         );
         game.evaluation =
@@ -1483,11 +1421,11 @@ var $exeDevice = {
             true
         );
         $('#rclETimeDiv').removeClass('d-flex').addClass('d-none');
-        $exeDevicesEdition.iDevice.gamification.progressBar.setValues({
+        $exeIDevicesEdition.iDevice.gamification.progressBar.setValues({
             evaluation: game.evaluation,
             evaluationID: game.evaluationID,
         });
-        $exeDevicesEdition.iDevice.gamification.passScore.setValues({
+        $exeIDevicesEdition.iDevice.gamification.passScore.setValues({
             passScoreMode: game.passScoreMode,
             passScoreCustom: game.passScoreCustom,
         });
@@ -1502,26 +1440,13 @@ var $exeDevice = {
         $('#rclEArrowsDiv').show();
 
         $('#rclENumCards').text($exeDevice.cardsGame.length);
-        $exeDevicesEdition.iDevice.gamification.scorm.setValues(
+        $exeIDevicesEdition.iDevice.gamification.scorm.setValues(
             game.isScorm,
             game.textButtonScorm,
             game.repeatActivity,
             game.weighted
         );
         $exeDevice.updateCardsNumber();
-    },
-
-    exportGame: function () {
-        const dataGame = this.validateData();
-
-        if (!dataGame) return false;
-
-        const newBlob = new Blob([JSON.stringify(dataGame)], { type: 'text/plain' });
-        return $exeDevicesEdition.iDevice.gamification.share.downloadBlob(
-            newBlob,
-            `${_('Activity')}-Relaciona.json`,
-            'relateQIdeviceForm'
-        );
     },
 
     importMoodle: function (xmlString) {
@@ -1536,108 +1461,11 @@ var $exeDevice = {
         }
     },
 
-    importCuestionaryXML: function (xmlText) {
-        const parser = new DOMParser(),
-            xmlDoc = parser.parseFromString(xmlText, 'text/xml'),
-            $xml = $(xmlDoc);
-
-        if ($xml.find('parsererror').length > 0) return false;
-
-        const $quiz = $xml.find('quiz').first();
-        if ($quiz.length === 0) {
-            return false;
-        }
-
-        const cardsJson = [];
-        $quiz.find('question').each(function () {
-            const $question = $(this),
-                type = $question.attr('type');
-            if (type !== 'shortanswer') {
-                return true;
-            }
-            const questionText = $question
-                    .find('questiontext')
-                    .first()
-                    .text()
-                    .trim(),
-                $answers = $question.find('answer');
-            let eText = '',
-                maxFraction = -1;
-            $answers.each(function () {
-                const $answer = $(this),
-                    answerText = $answer.find('text').eq(0).text(),
-                    currentFraction = parseInt($answer.attr('fraction'), 10);
-                if (currentFraction > maxFraction) {
-                    maxFraction = currentFraction;
-                    eText = answerText;
-                }
-            });
-            if (eText && questionText) {
-                cardsJson.push({
-                    eTextBk: $exeDevice.removeTags(questionText),
-                    eText: $exeDevice.removeTags(eText),
-                });
-            }
-        });
-
-        const validQuestions = [];
-        cardsJson.forEach((card) => {
-            const p = $exeDevice.getDefaultCard();
-            p.eTextBk = card.eTextBk;
-            p.eText = card.eText;
-            if (p.eText && p.eTextBk) {
-                $exeDevice.cardsGame.push(p);
-                validQuestions.push(p);
-            }
-        });
-        return validQuestions.length > 0 ? $exeDevice.cardsGame : false;
-    },
-
-    importGlosary: function (xmlText) {
-        const parser = new DOMParser(),
-            xmlDoc = parser.parseFromString(xmlText, 'text/xml'),
-            $xml = $(xmlDoc);
-
-        if ($xml.find('parsererror').length > 0) return false;
-
-        const $entries = $xml.find('ENTRIES').first();
-
-        if ($entries.length === 0) return false;
-
-        const cardsJson = [];
-        $entries.find('ENTRY').each(function () {
-            const $this = $(this),
-                concept = $this.find('CONCEPT').text(),
-                definition = $this
-                    .find('DEFINITION')
-                    .text()
-                    .replace(/<[^>]*>/g, ''); // Elimina HTML
-            if (concept && definition) {
-                cardsJson.push({
-                    eText: concept,
-                    eTextBk: definition,
-                });
-            }
-        });
-
-        let valids = 0;
-        cardsJson.forEach((card) => {
-            const p = $exeDevice.getDefaultCard();
-            p.eTextBk = card.eTextBk;
-            p.eText = card.eText;
-            if (p.eText && p.eTextBk) {
-                $exeDevice.cardsGame.push(p);
-                valids++;
-            }
-        });
-        return valids > 0 ? $exeDevice.cardsGame : false;
-    },
-
     importGame(content, filetype) {
         const game =
             $exeDevices.iDevice.gamification.helpers.isJsonString(content);
         if (content && content.includes('\u0000')) {
-            $exeDevice.showMessage(_('Sorry, wrong file format'));
+            $exeIDevicesEdition.iDevice.common.showMessage(_('Sorry, wrong file format'));
             return;
         } else if (!game && content) {
             if (filetype.match('text/plain')) {
@@ -1651,10 +1479,8 @@ var $exeDevice = {
                 eXe.app.alert(_('Sorry, wrong file format'));
             }
             return;
-        } else if (game && game.typeGame && game.typeGame == 'Relaciona') {
-            return this.handleGame(game);
         } else {
-            return $exeDevice.showMessage($exeDevice.msgs.msgESelectFile);
+            return $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgESelectFile);
         }
     },
 
@@ -1685,9 +1511,16 @@ var $exeDevice = {
             );
             return;
         }
+        $exeIDevicesEdition.iDevice.gamification.share.keepQuestionOnScreen(
+            (options) => $exeDevice.validateCard(options)
+        );
         for (let i = 0; i < cards.length; i++) {
             let card = cards[i];
             if (card.eTextBk && card.eText) {
+                // Stored encoded, as the form stores them: in plain text a %
+                // breaks the card.
+                card.eText = $exeDevice.encodeURIComponentSafe(card.eText);
+                card.eTextBk = $exeDevice.encodeURIComponentSafe(card.eTextBk);
                 $exeDevice.cardsGame.push(card);
             }
         }
@@ -1722,10 +1555,10 @@ var $exeDevice = {
                     }
                 });
                 const et = {
-                    eTextBk: $exeDevice.removeTags(
+                    eTextBk: $exeIDevicesEdition.iDevice.common.removeTags(
                         $question.find('questiontext').first().text().trim()
                     ),
-                    eText: $exeDevice.removeTags(eText),
+                    eText: $exeIDevicesEdition.iDevice.common.removeTags(eText),
                 };
                 return eText ? et : null;
             })
@@ -1786,7 +1619,6 @@ var $exeDevice = {
         $exeDevice.showCard($exeDevice.active);
         $exeDevice.deleteEmptyQuestion();
         $exeDevice.updateCardsNumber();
-        //$('.exe-form-tabs li:first-child a').click();
     },
 
     deleteEmptyQuestion: function () {
@@ -1872,9 +1704,5 @@ var $exeDevice = {
                 'z-index': 50,
             })
             .show();
-    },
-
-    removeTags: function (str) {
-        return $('<div>').html(str).text();
     },
 };

@@ -12,6 +12,7 @@
 /* eslint-disable no-undef */
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
+import { openingHelps } from '../../../../../../../test/helpers/help-buttons.ts';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -123,6 +124,180 @@ describe('udl-content iDevice edition lifecycle', () => {
 
         expect(onButton).toHaveBeenCalledTimes(1);
         expect(onIcon).toHaveBeenCalledTimes(1);
+    });
+});
+
+describe('udl-content edition: shared form tabs', () => {
+    const PATH = '/files/perm/idevices/base/udl-content/edition/';
+    const panel = (name) => document.getElementById(`udlContentEditorWrapper-panel-${name}`);
+    const saved =
+        '<div class="exe-udlContent exe-udlContent-representation"><section class="exe-udlContent-block">' +
+        '<div class="exe-udlContent-content"><div class="exe-udlContent-content-main">Main</div>' +
+        '<article class="exe-udlContent-content-simplified js-hidden"><header class="exe-udlContent-alt-content-title">' +
+        '<h2>Simple</h2></header>Easy<button class="exe-udlContent-alt-content-hide">Shut</button></article>' +
+        '</div></section></div>';
+    let device;
+    let previousApp;
+
+    beforeEach(() => {
+        global.$exeDevice = undefined;
+        previousApp = global.eXeLearning.app;
+        global.eXeLearning.app = {
+            ...previousApp,
+            common: {
+                initTooltips: vi.fn(),
+            },
+        };
+        // The block editors read and write their textareas, as TinyMCE does.
+        vi.spyOn(global.tinymce, 'get').mockImplementation((id) => ({
+            getContent: () => document.getElementById(id)?.value ?? '',
+            setContent: (content) => {
+                document.getElementById(id).value = content;
+            },
+        }));
+        document.body.innerHTML = '<div id="activeIdevice"><input type="text" /></div><div id="udlBody"></div>';
+        device = global.loadIdevice(join(__dirname, 'udl-content.js'));
+    });
+
+    afterEach(() => {
+        device.$lifecycle?.destroy();
+        global.eXeLearning.app = previousApp;
+        vi.unstubAllGlobals();
+        vi.restoreAllMocks();
+        global.$exeDevice = undefined;
+        document.body.innerHTML = '';
+    });
+
+    const open = (previousData = '') => device.init(document.getElementById('udlBody'), previousData, PATH);
+
+    it('lays the form out in Content and Texts, with no Options tab', () => {
+        open();
+        const tabNames = [...document.querySelectorAll('#udlContentEditorWrapper-tabs [data-exe-tab]')].map((tab) =>
+            tab.getAttribute('data-exe-tab')
+        );
+
+        expect(tabNames).toEqual(['contents', 'texts']);
+        expect(document.getElementById('udlContentEditorWrapper-tab-contents').textContent.trim()).toBe('Content');
+        expect(panel('contents').classList.contains('active')).toBe(true);
+    });
+
+    it('puts each part of the form in its tab, with no share windows', () => {
+        open();
+
+        // The type leads the blocks, as in main.
+        const form = panel('contents').querySelector('#udlContentForm');
+        expect(form.firstElementChild.id).toBe('udlContentTypeOptions');
+        expect(form.querySelectorAll('input[name="udlContentType"]')).toHaveLength(3);
+        expect(panel('contents').querySelector('#udlContentFormAddBlock')).not.toBeNull();
+        expect(panel('contents').querySelectorAll('.udlContentFormBlock')).toHaveLength(1);
+        expect(panel('contents').firstElementChild.textContent).toContain('Write the content in blocks');
+        expect(panel('texts').querySelector('#ci18n_simplified').value).toBe('Easier to read');
+        expect(panel('texts').querySelector('#ci18n_hide').value).toBe('Close');
+        expect(document.querySelectorAll('[data-exe-share]')).toHaveLength(0);
+    });
+
+    it('names the type group and explains it with an information button at the end of its row', () => {
+        open();
+        const group = document.getElementById('udlContentTypeOptions');
+        const help = group.querySelector('.exe-idevice-help');
+
+        expect(group.getAttribute('role')).toBe('radiogroup');
+        expect(document.getElementById(group.getAttribute('aria-labelledby')).textContent).toBe('Type:');
+        expect(panel('contents').querySelectorAll('.exe-idevice-help')).toHaveLength(1);
+        expect(group.lastElementChild.contains(help)).toBe(true);
+        expect(help.getAttribute('aria-label')).toMatch(/^Information about \S/);
+        help.click();
+        document.getElementById(help.getAttribute('aria-controls')).click();
+        expect(document.getElementById('udlContentType-engagement').checked).toBe(true);
+    });
+
+    it('colours the chosen type', () => {
+        open();
+
+        $('#udlContentType-expression').prop('checked', true).trigger('change');
+
+        expect(document.querySelector('label[for="udlContentType-expression"]').classList.contains('active')).toBe(true);
+        expect(document.querySelector('label[for="udlContentType-engagement"]').classList.contains('active')).toBe(false);
+    });
+
+    it('starts every help once and releases them when the edition closes', () => {
+        open();
+
+        const helps = document.querySelectorAll('.exe-idevice-help');
+        expect(helps.length).toBeGreaterThanOrEqual(1);
+        expect(openingHelps()).toHaveLength(helps.length);
+        device.$lifecycle.destroy();
+        expect(openingHelps()).toHaveLength(0);
+    });
+
+    it('reopens and saves the type, the blocks and the custom texts', () => {
+        open(saved);
+
+        expect(document.getElementById('udlContentType-representation').checked).toBe(true);
+        expect(document.getElementById('ci18n_simplified').value).toBe('Simple');
+        expect(document.getElementById('ci18n_hide').value).toBe('Shut');
+        expect(document.getElementById('udlContentFormTxt-0-0').value).toBe('Main');
+        expect(document.getElementById('udlContentFormTxt-0-1').value).toBe('Easy');
+
+        const html = device.save();
+
+        expect(html).toContain('class="exe-udlContent exe-udlContent-representation"');
+        expect(html).toContain('<div class="exe-udlContent-content-main">Main</div>');
+        expect(html).toContain('<h2>Simple</h2></header>Easy');
+        expect(html).toContain('<button class="exe-udlContent-alt-content-hide">Shut</button>');
+    });
+
+    it('keeps a changed title of an alternative content that no block has', () => {
+        open();
+        // The main content, in the editor of the block.
+        document.getElementById('udlContentFormTxt-0').value = 'Main';
+        document.getElementById('ci18n_audio').value = 'Listen "now" & here';
+
+        const html = device.save();
+
+        expect(html).not.toContain('exe-udlContent-content-audio');
+        // Only what was changed: the other texts keep their defaults.
+        expect(html).toContain('data-udl-audio="Listen &quot;now&quot; &amp; here"');
+        expect(html).not.toContain('data-udl-simplified');
+
+        device.$lifecycle.destroy();
+        document.body.innerHTML = '<div id="activeIdevice"><input type="text" /></div><div id="udlBody"></div>';
+        device = global.loadIdevice(join(__dirname, 'udl-content.js'));
+        open(html);
+
+        expect(document.getElementById('ci18n_audio').value).toBe('Listen "now" & here');
+        expect(document.getElementById('ci18n_simplified').value).toBe('Easier to read');
+    });
+
+    it('keeps markup, literal angle brackets and quotes through a reopening', () => {
+        open(
+            '<div class="exe-udlContent exe-udlContent-engagement"><section class="exe-udlContent-block js-hidden">' +
+                '<header class="exe-udlContent-header"><h2 style="display:none;">Say "hi"</h2></header>' +
+                '<div class="exe-udlContent-content"><div class="exe-udlContent-content-main">' +
+                '<p>Use the &lt;br&gt; tag</p></div></div></section></div>'
+        );
+
+        // The textarea used to decode the text into a real tag, and the quote
+        // to end the value of the button text.
+        expect(document.getElementById('udlContentFormTxt-0-0').value).toBe('<p>Use the &lt;br&gt; tag</p>');
+        expect(document.getElementById('udlContentFormBlockButtonTxt-0').value).toBe('Say "hi"');
+
+        const html = device.save();
+
+        expect(html).toContain('<div class="exe-udlContent-content-main"><p>Use the &lt;br&gt; tag</p></div>');
+        expect(html).toContain('<h2 style="display:none;">Say "hi"</h2>');
+    });
+
+    it('shows the presentation options as soon as a button text is pasted', () => {
+        open();
+        const input = document.getElementById('udlContentFormBlockButtonTxt-0');
+        const options = document.getElementById('udlContentFormBlockButtonTxtOptions-0');
+        expect(options.style.display).toBe('none');
+
+        input.value = 'Read more';
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+
+        expect(options.style.display).not.toBe('none');
     });
 });
 

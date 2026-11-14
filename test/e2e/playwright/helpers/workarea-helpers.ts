@@ -636,6 +636,30 @@ export async function selectNavNode(page: Page, nodeId: string): Promise<void> {
 }
 
 /**
+ * Open the left panels (page tree and iDevices) if they are collapsed: below
+ * COLLAPSE_PANELS_BELOW (1200px) the editor loads with them collapsed, and
+ * collapses them when the window becomes that narrow.
+ */
+export async function openLeftPanels(page: Page): Promise<void> {
+    if (await page.evaluate(() => document.body.classList.contains('left-column-hidden'))) {
+        await page.locator('#exe-panels-toggler').click();
+        await page.waitForFunction(() => !document.body.classList.contains('left-column-hidden'));
+    }
+}
+
+/**
+ * Unfold a group of an iDevice form (common.getGroup) if it is folded, e.g. eXePassScoreGroup in Grading, which
+ * opens folded until the activity has a mark of its own. Its tab has to be shown.
+ *
+ * @param id The id of the group: eXeGameSCORMGroup, eXeProgressReportGroup or eXePassScoreGroup in Grading.
+ */
+export async function unfoldGroup(page: Page, id: string): Promise<void> {
+    const toggle = page.locator(`#${id} > legend > button`);
+    if ((await toggle.getAttribute('aria-expanded')) !== 'true') await toggle.click();
+    await page.waitForFunction(groupId => !document.getElementById(`${groupId}-body`)?.hidden, id);
+}
+
+/**
  * Select a non-root page (required before adding iDevices)
  * Selects the first available page if no page is currently selected
  */
@@ -809,8 +833,45 @@ export async function addIdevice(page: Page, ideviceType: string): Promise<void>
     await idevice.scrollIntoViewIfNeeded();
     await idevice.click();
 
-    // Wait for iDevice to appear in content area
-    await page.locator(`#node-content article .idevice_node.${ideviceType}`).first().waitFor({ timeout: 15000 });
+    // Wait for iDevice to appear in content area. The type is matched as a word of
+    // the class attribute: as a class selector, one starting with a digit (3dmol) is invalid.
+    await page
+        .locator(`#node-content article .idevice_node[class~="${ideviceType}"]`)
+        .first()
+        .waitFor({ timeout: 15000 });
+}
+
+/**
+ * Waits until `selector` has stayed in place for `quiet` ms, or `timeout` ms at most. Once an iDevice is
+ * saved, the content scrolls smoothly to it (`scroll-behavior: smooth`). A click while it moves starts on a
+ * button and ends beside it, and the browser then gives it to their common container, so the button never
+ * gets it. Seen in Firefox, whose scrolling stops and goes when the machine is busy.
+ */
+async function waitForStill(page: Page, selector: string, quiet = 300, timeout = 5000): Promise<void> {
+    await page.evaluate(
+        ([target, quietMs, maxMs]) =>
+            new Promise<void>(resolve => {
+                const begin = performance.now();
+                const where = () => {
+                    const box = document.querySelector(target)?.getBoundingClientRect();
+                    return box ? `${box.left}:${box.top}` : '';
+                };
+                let last = where();
+                let since = begin;
+                const check = () => {
+                    const now = performance.now();
+                    const current = where();
+                    if (current !== last) {
+                        last = current;
+                        since = now;
+                    }
+                    if (now - since >= quietMs || now - begin >= maxMs) resolve();
+                    else setTimeout(check, 20);
+                };
+                setTimeout(check, 20);
+            }),
+        [selector, quiet, timeout] as const,
+    );
 }
 
 /**
@@ -842,6 +903,7 @@ export async function editIdevice(page: Page, ideviceId: string): Promise<void> 
             ideviceId,
             { timeout: 6000 },
         );
+        await waitForStill(page, `[id="editIdevice${ideviceId}"]`);
         await editBtn.click({ timeout: 5000 });
         enteredEdition = true;
     } catch {
@@ -944,7 +1006,7 @@ export async function verifyIdeviceInEditor(
             if (!nodeContent) return { found: false, details: { error: 'No #node-content' } };
 
             // Find iDevice node
-            const ideviceNode = nodeContent.querySelector(`.idevice_node.${type}`);
+            const ideviceNode = nodeContent.querySelector(`.idevice_node[class~="${type}"]`);
             if (!ideviceNode) return { found: false, details: { error: `No .idevice_node.${type}` } };
 
             const details: Record<string, unknown> = { ideviceFound: true, elements: {} };
@@ -2220,6 +2282,19 @@ export async function dismissBlockingAlertModal(page: Page, attempts = 3): Promi
         await alertModal.waitFor({ state: 'hidden', timeout: 5000 }).catch(() => {});
         await page.waitForTimeout(100);
     }
+}
+
+/**
+ * Close the notice of a development or demo version (#eXeBetaWarning) if it is shown. It sits over the top of
+ * the content area and can cover the tabs of an edition form. Its text differs between the server ("... is a
+ * development version") and the static build ("This is just a demo version"), so it is found by id.
+ */
+export async function dismissVersionNotice(page: Page): Promise<void> {
+    const close = page.locator('#eXeBetaWarningCloseBtn');
+    if (!(await close.isVisible())) return;
+    await close.click();
+    // Bootstrap fades the alert out before removing it, and until then it still takes the clicks.
+    await page.locator('#eXeBetaWarning').waitFor({ state: 'detached' });
 }
 
 /**

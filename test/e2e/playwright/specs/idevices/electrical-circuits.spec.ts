@@ -27,12 +27,9 @@ const GENERATED_QUESTIONS = [
 ].join('\n');
 
 async function openQuestionsTab(page: Page): Promise<void> {
-    // Reveal the outer "AI" form tab, then its inner "Questions" sub-tab.
-    const aiTab = page
-        .locator(`${NODE} .exe-form-tabs a`)
-        .filter({ hasText: /^\s*(AI|IA)\s*$/ })
-        .first();
-    await aiTab.click();
+    // Open the AI share modal from the Questions toolbar, then its inner "Questions" sub-tab.
+    const aiButton = page.locator(`${NODE} button[data-exe-share="ai"]`);
+    await aiButton.click();
 
     await page.locator('#eXeETabQuestions').click();
     await page.locator('#eXeEQuestionsArea').waitFor({ state: 'visible', timeout: 10000 });
@@ -86,7 +83,15 @@ test.describe('Electrical Circuits iDevice — AI generation flow', () => {
             })
             .toBeGreaterThanOrEqual(2);
 
-        await closeAlertModals(page);
+        // Every question went in: the Create with AI window, which stepped aside for the alert that says so,
+        // stays closed once the alert is, as in the other iDevices. Coming back, it would be opening already
+        // when the alert is closed: Bootstrap marks the body as soon as a modal starts to show.
+        const alert = page.locator('#modalAlert');
+        await expect(alert).toContainText('The questions have been added successfully');
+        await alert.getByRole('button', { name: 'Accept' }).click();
+        await expect(alert).toHaveAttribute('data-open', 'false');
+        await expect(page.locator('body')).not.toHaveClass(/modal-open/);
+        await expect(page.locator('#eXeShareModal-ai')).toBeHidden();
 
         // Assert against the editor model so the check is independent of which
         // question is currently active: both the generated question text and the

@@ -21,7 +21,6 @@
     width: 3.5rem !important;
 }
 
-#gameQEIdeviceForm #ordenaEPercentajeFB,
 #gameQEIdeviceForm #ordenaEPercentajeQuestions {
     width: 9.5ch !important;
     max-width: 9.5ch !important;
@@ -38,13 +37,6 @@
     position: relative;
     width: 100%;
     max-width: 1200px;
-}
-
-.ODNE-ENumActivity {
-    text-align: center;
-    font-size: 1.2em;
-    margin-top: 0.7em;
-    color: rgb(5, 123, 170);
 }
 
 .ODNE-EActive {
@@ -97,19 +89,6 @@
     width: 100%;
 }
 
-/* Medias */
-.ODNE-EImageFit {
-    width: 240px;
-    min-height: 240px;
-    height: 240px;
-    min-width: 240px;
-    object-fit: contain;
-    object-position: center;
-    margin: auto;
-    background-color: white;
-    position: absolute;
-}
-
 .ODNE-EImage,
 .ODNE-NoImage {
     position: absolute;
@@ -122,30 +101,9 @@
     display: none;
 }
 
-/* Opciones imagen */
-.ODNE-EAuthorAlt {
-    align-items: center;
-    display: flex;
-    flex-wrap: nowrap;
-    justify-content: space-between;
-}
-
-.ODNE-EAuthorAlt div {
-    width: 49%;
-}
-
-.ODNE-EAuthorAlt label {
-    display: block;
-}
-
-.ODNE-EAuthorAlt input[type=text] {
-    width: 97%;
-}
-
 .ODNE-EInputAudio,
 .ODNE-EInputImage,
-.ODNE-EInputImageBack,
-.ODNE-EInputText {
+.ODNE-EInputImageBack {
     align-items: center;
     display: flex;
     justify-content: flex-start;
@@ -161,7 +119,6 @@
 .ODNE-EImageBack {
     max-width: 250px;
 }
-
 
 .ODNE-EInputAudio input[type=text],
 .ODNE-EInputImage input[type=text] {
@@ -200,21 +157,6 @@
     border-radius: 0.6em;
 }
 
-/* Itinerario */
-.ODNE-EOrders {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.ODNE-EHit {
-    background-image: url(quextIEHit.png);
-    background-size: 100% 100%;
-    display: inline-block;
-    height: 1.5em;
-    width: 1.5em;
-}
-
 .ODNE-ECustomMessageDiv {
     margin-top: 0.6em;
     display: flex;
@@ -223,23 +165,12 @@
     flex-wrap: nowrap;
 }
 
-.ODNE-EPhraseDivI {
-    margin-top: 2em;
-    display: flex;
-    align-items: center;
-    justify-content: flex-start;
-    flex-wrap: nowrap;
-    gap: 0.1em;
-}
-
-.ODNE-ECustomMessageDiv label,
-.ODNE-EPhraseDivI label {
+.ODNE-ECustomMessageDiv label {
     white-space: nowrap;
     margin-right: 0.1em;
 }
 
-.ODNE-ECustomMessageDiv input[type=text],
-.ODNE-EPhraseDivI input[type=text] {
+.ODNE-ECustomMessageDiv input[type=text] {
     width: 100%;
     max-width: 1200px;
     margin-right: 0.2em;
@@ -295,195 +226,16 @@
     text-align: center;
 }
 
-
 .ODNE-ENavigationButton {
     height: 1.7em;
     min-width: 1.7em;
     width: 1.7em;
 }
 
-.ODNE-EButtonImage {
-    height: 100%;
-    transition: all .3s ease-in-out;
-    width: 100%;
-}
-
-.ODNE-EButtonImage:hover {
-    -webkit-transform: scale(1.05);
-    transform: scale(1.05);
-}
-
-.ODNE-ENumberPhrase {
-    font-weight: bold;
-    height: 1.5em;
-    line-height: 1.5em;
-    text-align: center;
-    vertical-align: middle;
-    width: 2em;
-}
-
-/* Video introdución */
-.ODNE-EVIDiv {
-    background-color: #f9f9f9;
-    display: none;
-    height: 100%;
-    left: 0;
-    position: absolute;
-    top: 0;
-    width: 100%;
-    z-index: 200;
-}
-
-/* Ocutar elementos */
-.ODNE-ECoord,
-.ODNE-EFeedbackP {
-    display: none;
-}
-
-.ODNE-ECoord {
-    display: none;
-}
-
 .ODNE-Hide {
     display: none;
 }
 
-/* To review */
-#gameQEIdeviceForm .exe-block-info img {
-    margin-left: .2em;
-    vertical-align: middle;
-}
-
-#gameQEIdeviceFormTab3 p:first-child {
-    margin-top: 0;
-}
-
-#gameQEIdeviceFormTab3 {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 2%;
-}
-
-#gameQEIdeviceFormTab3>* {
-    flex: 0 0 48%;
-}
-
-#gameQEIdeviceFormTab3> :first-child {
-    flex: 0 0 100%;
-}
-
-
-@media screen and (max-width:720px) {
-    #gameQEIdeviceFormTab3>* {
-        flex: 0 0 100%;
-    }
-}
-
-#gameQEIdeviceForm #gameQEIdeviceFormTab3 label {
-    display: block;
-    margin-bottom: .2em;
-    color: #0BA1A1;
-    font-weight: 500;
-}
-
-#gameQEIdeviceForm #gameQEIdeviceFormTab3 input {
-    width: 100%;
-}
-
-/* Tabs (this should be common) */
-.exe-form-tabs {
-    list-style: none;
-    margin: 0 0 1.5em 0;
-    padding: 0;
-}
-
-#main .exe-form-tabs li {
-    display: inline;
-    list-style: none;
-    list-style-image: none;
-    margin: 0;
-    padding: 0;
-}
-
-.exe-form-tabs li:first-child a {
-    border-bottom-left-radius: 4px;
-    border-top-left-radius: 4px;
-}
-
-.exe-form-tabs li:last-child a {
-    border-bottom-right-radius: 4px;
-    border-top-right-radius: 4px;
-}
-
-.exe-form-tabs a {
-    background: #F9F9F9;
-    border: 1px solid #CCC;
-    color: #666;
-    display: inline-block;
-    padding: .5em 1em;
-}
-
-.exe-form-tabs li:not(:last-child) a {
-    border-right: none;
-}
-
-.exe-form-tabs .exe-form-active-tab {
-    background: #FFF;
-    color: #000;
-    font-weight: 500;
-}
-
-#gameQESCORMoptions {
-    margin-left: 1.5em;
-    visibility: hidden;
-}
-
-label[for=gameQEActivitySCORM] {
-    font-weight: bold;
-}
-
-#gameQESCORMinstructionsButton {
-    color: #777;
-    display: none;
-    margin: 10px 0 0 25px;
-}
-
-#gameQESCORMinstructionsButton ul {
-    list-style: none;
-    margin: 1.5em 0 .7em 0;
-    padding: 0;
-}
-
-#gameQESCORMinstructionsButton ul li {
-    list-style-image: none;
-    margin: 0 0 .5em 0;
-    padding: 0;
-}
-
-#gameQESCORMinstructionsAuto {
-    color: #777;
-    display: none;
-    margin: 10px 0 0 25px;
-}
-
-#gameQESCORMinstructionsAuto ul {
-    list-style: none;
-    margin: 1.5em 0 .7em 0;
-    padding: 0;
-}
-
-.GameModeHelpLink {
-    margin: 0 2px;
-    vertical-align: middle;
-}
-
-.GameModeLabel {
-    font-weight: normal
-}
-
-.Games-Reportdiv {
-    display: flex;
-    justify-content: flex-start;
-    align-items: center;
-    gap: 2px;
+#ordenaEOptions .toggle-item {
+    flex-wrap: nowrap;
 }

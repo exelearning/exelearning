@@ -2,14 +2,13 @@
  * Unit tests for padlock iDevice
  *
  * Tests pure functions that don't depend on DOM manipulation:
- * - escapeHtml: HTML character escaping
- * - removeTags: HTML tag removal (with mocked jQuery)
  */
 
 /* eslint-disable no-undef */
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
+import { openingHelps } from '../../../../../../../test/helpers/help-buttons.ts';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -42,83 +41,6 @@ describe('padlock iDevice', () => {
     $exeDevice = loadIdevice(code);
   });
 
-  describe('escapeHtml', () => {
-    it('escapes ampersand', () => {
-      expect($exeDevice.escapeHtml('foo & bar')).toBe('foo &amp; bar');
-    });
-
-    it('escapes less than', () => {
-      expect($exeDevice.escapeHtml('a < b')).toBe('a &lt; b');
-    });
-
-    it('escapes greater than', () => {
-      expect($exeDevice.escapeHtml('a > b')).toBe('a &gt; b');
-    });
-
-    it('escapes double quotes', () => {
-      expect($exeDevice.escapeHtml('say "hello"')).toBe('say &quot;hello&quot;');
-    });
-
-    it('escapes single quotes', () => {
-      expect($exeDevice.escapeHtml("it's")).toBe('it&#39;s');
-    });
-
-    it('escapes multiple special characters', () => {
-      const input = '<script>alert("xss")</script>';
-      const expected = '&lt;script&gt;alert(&quot;xss&quot;)&lt;/script&gt;';
-      expect($exeDevice.escapeHtml(input)).toBe(expected);
-    });
-
-    it('returns empty string for empty input', () => {
-      expect($exeDevice.escapeHtml('')).toBe('');
-    });
-
-    it('handles string with no special characters', () => {
-      expect($exeDevice.escapeHtml('hello world')).toBe('hello world');
-    });
-
-    it('converts numbers to strings', () => {
-      expect($exeDevice.escapeHtml(123)).toBe('123');
-    });
-  });
-
-  describe('removeTags', () => {
-    it('removes simple HTML tags', () => {
-      const result = $exeDevice.removeTags('<p>Hello</p>');
-      expect(result).toBe('Hello');
-    });
-
-    it('removes nested HTML tags', () => {
-      const result = $exeDevice.removeTags('<div><p><strong>Text</strong></p></div>');
-      expect(result).toBe('Text');
-    });
-
-    it('handles text without tags', () => {
-      const result = $exeDevice.removeTags('Plain text');
-      expect(result).toBe('Plain text');
-    });
-
-    it('handles empty string', () => {
-      const result = $exeDevice.removeTags('');
-      expect(result).toBe('');
-    });
-
-    it('removes multiple tags and preserves text', () => {
-      const result = $exeDevice.removeTags('<h1>Title</h1><p>Paragraph</p>');
-      expect(result).toBe('TitleParagraph');
-    });
-
-    it('handles self-closing tags', () => {
-      const result = $exeDevice.removeTags('Line 1<br/>Line 2');
-      expect(result).toBe('Line 1Line 2');
-    });
-
-    it('removes tags with attributes', () => {
-      const result = $exeDevice.removeTags('<a href="http://example.com">Link</a>');
-      expect(result).toBe('Link');
-    });
-  });
-
   describe('i18n', () => {
     it('is defined', () => {
       expect($exeDevice.i18n).toBeDefined();
@@ -141,12 +63,6 @@ describe('padlock iDevice', () => {
     });
   });
 
-  describe('showMessage', () => {
-    it('exists as a function', () => {
-      expect(typeof $exeDevice.showMessage).toBe('function');
-    });
-  });
-
   describe('getIdeviceID', () => {
     it('exists as a function', () => {
       expect(typeof $exeDevice.getIdeviceID).toBe('function');
@@ -154,7 +70,7 @@ describe('padlock iDevice', () => {
   });
 
     /**
-     * The pass-score control is a shared block in common_edition.js, exercised
+     * The pass-score control is a shared block in common_idevices_edition.js, exercised
      * by its own tests. What is specific to this iDevice -- and what silently
      * breaks if someone edits the form -- is the wiring: all four call sites
      * have to be present, and the two saved fields have to reach the stored
@@ -174,7 +90,7 @@ describe('padlock iDevice', () => {
             // so rendering them again would show each control twice.
             expect(source).not.toContain('passScore.getContents(');
             expect(source).not.toContain('progressBar.getContents(');
-            expect(source).toContain('gamification.scorm.getTab(');
+            expect(source).toMatch(/tabs\.getHtml\([\s\S]*grading: true/);
         });
 
         it('restores the control when the iDevice is reopened', () => {
@@ -197,6 +113,371 @@ describe('padlock iDevice', () => {
 
         it('wires the radio and input handlers', () => {
             expect(source).toContain('gamification.passScore.addEvents()');
+        });
+    });
+});
+
+describe('padlock edition: shared form tabs', () => {
+    const PATH = '/files/perm/idevices/base/padlock/edition/';
+    const helpers = () => global.$exeDevices.iDevice.gamification.helpers;
+    const tabNames = () =>
+        [...document.querySelectorAll('#candadoIdeviceForm-tabs [data-exe-tab]')].map((tab) =>
+            tab.getAttribute('data-exe-tab')
+        );
+    const panel = (name) => document.getElementById(`candadoIdeviceForm-panel-${name}`);
+    const game = (overrides = {}) => ({
+        candadoTime: 10,
+        candadoSolution: '1234',
+        candadoInstructions: '',
+        candadoRetro: '',
+        candadoShowMinimize: false,
+        candadoReboot: true,
+        candadoAttemps: 0,
+        candadoErrorMessage: '',
+        isScorm: 0,
+        textButtonScorm: 'Save score',
+        repeatActivity: true,
+        weighted: 100,
+        evaluation: false,
+        evaluationID: '',
+        ...overrides,
+    });
+    const stored = (data, instructions = '<p>Find the code</p>', retro = '<p>Well done</p>') => `
+        <div class="candado-IDevice">
+            <div class="candado-version js-hidden">1</div>
+            <div class="candado-instructions js-hidden">${instructions}</div>
+            <div class="candado-retro js-hidden">${retro}</div>
+            <div class="candado-DataGame js-hidden">${JSON.stringify(data)}</div>
+        </div>`;
+    let device;
+    let previousApp;
+    let previousHelpers;
+
+    const open = (previousData = {}) => {
+        document.body.innerHTML = '<div id="padlockBody"></div>';
+        device.init(document.getElementById('padlockBody'), previousData, PATH);
+    };
+
+    beforeEach(() => {
+        global.$exeDevice = undefined;
+        previousApp = global.eXeLearning?.app;
+        global.eXeLearning = {
+            ...global.eXeLearning,
+            app: {
+                ...previousApp,
+                common: {
+                    initTooltips: vi.fn(),
+                },
+            },
+        };
+        previousHelpers = { ...helpers() };
+        Object.assign(helpers(), {
+            isJsonString: (text) => {
+                try {
+                    return JSON.parse(text);
+                } catch {
+                    return false;
+                }
+            },
+            decrypt: (text) => text,
+            encrypt: (text) => text,
+        });
+        device = global.loadIdevice(join(__dirname, 'padlock.js'));
+        open();
+    });
+
+    afterEach(() => {
+        device.$lifecycle?.destroy();
+        if (global.eXeLearning) {
+            global.eXeLearning.app = previousApp;
+        }
+        vi.unstubAllGlobals();
+        for (const key of ['isJsonString', 'decrypt', 'encrypt']) {
+            if (key in previousHelpers) helpers()[key] = previousHelpers[key];
+            else delete helpers()[key];
+        }
+        global.$exeDevice = undefined;
+        document.body.innerHTML = '';
+    });
+
+    it('lays the form out in Options, Activities, Grading and Texts, with no Instructions tab', () => {
+        expect(tabNames()).toEqual(['options', 'contents', 'grading', 'texts']);
+        expect(document.getElementById('candadoIdeviceForm-tab-contents').textContent.trim()).toBe('Padlock');
+        expect(panel('contents').classList.contains('active')).toBe(true);
+    });
+
+    it('keeps the instructions, the feedback and the access code together in Activities', () => {
+        expect(panel('contents').firstElementChild.textContent).toBe(
+            'Write the instructions, the feedback learners unlock and the access code that opens it.'
+        );
+        for (const id of ['candadoEDescription', 'candadoEFeedBack', 'candadoEDSolution']) {
+            expect(panel('contents').querySelector(`#candadoEPanel #${id}`)).not.toBeNull();
+        }
+        expect(panel('contents').querySelector('#candadoEOptions')).toBeNull();
+        expect(document.getElementById('eXeGameInstructions')).toBeNull();
+        expect(panel('grading').querySelector('.exe-progress-report-wrapper')).not.toBeNull();
+        expect(panel('texts').querySelector('#ci18n_msgSubmit')).not.toBeNull();
+    });
+
+    it('gathers every setting in Options, starting with the minimized view', () => {
+        const rows = [...panel('options').querySelectorAll('#candadoEOptions > div')];
+
+        expect(panel('options').firstElementChild.textContent).toBe(
+            'Choose how the activity works and how it is shown to the learners.'
+        );
+        expect(rows.map((row) => row.querySelector('input, select').id)).toEqual([
+            'candadoEShowMinimize',
+            'candadoEDTime',
+            'candadoEReboot',
+            'candadoEAttemps',
+            'candadoEErrorMessage',
+        ]);
+    });
+
+    it('shows one editor at a time, switching between the instructions and the feedback', () => {
+        const shown = (id) => document.getElementById(id).style.display !== 'none';
+
+        expect(document.getElementById('candadoECandado').checked).toBe(true);
+        expect(shown('divCandadoInstructions')).toBe(true);
+        expect(shown('divCandadoFeebBack')).toBe(false);
+
+        document.getElementById('candadoERetro').click();
+        expect(shown('divCandadoInstructions')).toBe(false);
+        expect(shown('divCandadoFeebBack')).toBe(true);
+
+        document.getElementById('candadoECandado').click();
+        expect(shown('divCandadoInstructions')).toBe(true);
+        expect(shown('divCandadoFeebBack')).toBe(false);
+    });
+
+    it('leaves out the share links and the report placeholder', () => {
+        expect(document.querySelectorAll('[data-exe-share]')).toHaveLength(0);
+        expect(document.querySelector('.Games-Reportdiv')).toBeNull();
+    });
+
+    it('explains each setting without changing any of them', () => {
+        const helps = [
+            ...document.querySelectorAll('#candadoEOptions .exe-idevice-help, #candadoEPanel .exe-idevice-help'),
+        ];
+        const states = () => [...document.querySelectorAll('#candadoIdeviceForm input')].map((input) => input.checked);
+        const before = states();
+
+        expect(helps).toHaveLength(6);
+        for (const help of helps) {
+            expect(help.title).toBe(help.getAttribute('aria-label'));
+            const content = document.getElementById(help.getAttribute('aria-controls'));
+            expect(content.textContent.length).toBeGreaterThan(15);
+            help.click();
+            help.querySelector('span').click();
+            content.click();
+        }
+        expect(states()).toEqual(before);
+    });
+
+    it('leaves the state of each switch to its native checkbox', () => {
+        document.querySelectorAll('.toggle-input:not(:disabled)').forEach((input) => input.click());
+
+        expect(document.querySelectorAll('[role="switch"], [aria-checked]')).toHaveLength(0);
+    });
+
+    it('starts every help once and releases them when the edition closes', () => {
+        const helps = document.querySelectorAll('.exe-idevice-help');
+        expect(helps.length).toBe(12);
+        expect(openingHelps()).toHaveLength(helps.length);
+        device.$lifecycle.destroy();
+        expect(openingHelps()).toHaveLength(0);
+    });
+
+    it('restores the instructions, the feedback, the options and the texts', () => {
+        open(
+            stored(
+                game({
+                    candadoShowMinimize: true,
+                    candadoReboot: false,
+                    candadoAttemps: 3,
+                    candadoErrorMessage: 'Try the date',
+                    msgs: { msgSubmit: 'Open' },
+                })
+            )
+        );
+
+        expect(document.getElementById('candadoEDescription').value).toBe('<p>Find the code</p>');
+        expect(document.getElementById('candadoEFeedBack').value).toBe('<p>Well done</p>');
+        expect(document.getElementById('candadoEDSolution').value).toBe('1234');
+        expect(document.getElementById('candadoEShowMinimize').checked).toBe(true);
+        expect(document.getElementById('candadoEReboot').checked).toBe(false);
+        expect(document.getElementById('candadoEAttemps').value).toBe('3');
+        expect(document.getElementById('candadoEErrorMessage').disabled).toBe(false);
+        expect(document.getElementById('ci18n_msgSubmit').value).toBe('Open');
+    });
+
+    it('keeps the error message off when it reopens with no attempts, as the form saves them', () => {
+        // The form saves the number of attempts as the text of its field.
+        open(stored(game({ candadoAttemps: '0' })));
+
+        expect(document.getElementById('candadoEErrorMessage').disabled).toBe(true);
+    });
+
+    it('offers no more attempts than it keeps', () => {
+        const attempts = document.getElementById('candadoEAttemps');
+        attempts.value = attempts.max;
+
+        $(attempts).trigger('focusout');
+
+        expect(attempts.value).toBe(attempts.max);
+    });
+
+    describe('saving', () => {
+        let editors;
+        let tinymceGet;
+        let focusEditor;
+
+        beforeEach(() => {
+            editors = {
+                candadoEDescription: '<p>Find the code</p>',
+                candadoEFeedBack: '<p>Well done</p>',
+            };
+            focusEditor = vi.fn();
+            tinymceGet = vi.spyOn(global.tinymce, 'get').mockImplementation((id) =>
+                id in editors
+                    ? {
+                          initialized: true,
+                          getContent: () => editors[id],
+                          setContent: (html) => (editors[id] = html),
+                          focus: () => focusEditor(id),
+                      }
+                    : null
+            );
+            document.getElementById('candadoEDSolution').value = '1234';
+        });
+
+        afterEach(() => {
+            tinymceGet.mockRestore();
+        });
+
+        it('keeps the instructions and the feedback where the export reads them', () => {
+            const html = device.save();
+
+            expect(html).toContain('<div class="candado-instructions js-hidden"><p>Find the code</p></div>');
+            expect(html).toContain('<div class="candado-retro js-hidden"><p>Well done</p></div>');
+            expect(html).toContain('"candadoSolution":"1234"');
+            expect(html).not.toContain('exe-idevice-help');
+        });
+
+        it('asks for the instructions before saving', () => {
+            editors.candadoEDescription = '';
+            $('#candadoERetro').trigger('click');
+            $('#candadoIdeviceForm-tab-options').trigger('click');
+
+            expect(device.save()).toBe(false);
+            expect(eXe.app.getLastAlert()).toBe('Please write the instructions.');
+            expect(panel('contents').classList.contains('active')).toBe(true);
+            expect(document.getElementById('candadoECandado').checked).toBe(true);
+            expect(document.getElementById('divCandadoInstructions').style.display).not.toBe('none');
+            expect(focusEditor).toHaveBeenCalledWith('candadoEDescription');
+        });
+
+        it('asks for the feedback before saving', () => {
+            editors.candadoEFeedBack = '';
+            $('#candadoIdeviceForm-tab-options').trigger('click');
+
+            expect(device.save()).toBe(false);
+            expect(eXe.app.getLastAlert()).toBe('Please write the feedback.');
+            expect(panel('contents').classList.contains('active')).toBe(true);
+            expect(document.getElementById('candadoERetro').checked).toBe(true);
+            expect(document.getElementById('divCandadoFeebBack').style.display).not.toBe('none');
+            expect(focusEditor).toHaveBeenCalledWith('candadoEFeedBack');
+        });
+
+        it('reveals and focuses an empty access code from another tab', () => {
+            document.getElementById('candadoEDSolution').value = '';
+            $('#candadoIdeviceForm-tab-texts').trigger('click');
+
+            expect(device.save()).toBe(false);
+            expect(eXe.app.getLastAlert()).toBe(device.msgs.msgEnterCodeAccess);
+            expect(panel('contents').classList.contains('active')).toBe(true);
+            expect(document.activeElement.id).toBe('candadoEDSolution');
+        });
+
+        it('opens Options for a missing error message and saves once it is corrected', () => {
+            $('#candadoEAttemps').val('3').trigger('focusout');
+
+            expect(device.save()).toBe(false);
+            expect(eXe.app.getLastAlert()).toBe('Please write the error message.');
+            expect(panel('options').classList.contains('active')).toBe(true);
+            expect(document.activeElement.id).toBe('candadoEErrorMessage');
+
+            $('#candadoEErrorMessage').val('Try again');
+            expect(device.save()).toContain('"candadoErrorMessage":"Try again"');
+        });
+
+        it('opens Grading for an invalid report identifier', () => {
+            $('#eXeProgressReport').prop('checked', true).trigger('change');
+            $('#eXeProgressReportID').val('abc');
+
+            expect(device.save()).toBe(false);
+            expect(eXe.app.getLastAlert()).toBe('The report identifier must have at least 5 characters');
+            expect(panel('grading').classList.contains('active')).toBe(true);
+            expect(document.activeElement.id).toBe('eXeProgressReportID');
+        });
+
+        it('restores focus once after dismissing the alert', () => {
+            const modal = document.createElement('div');
+            modal.id = 'modalAlert';
+            modal.tabIndex = -1;
+            document.body.appendChild(modal);
+            editors.candadoEFeedBack = '';
+
+            expect(device.save()).toBe(false);
+            focusEditor.mockClear();
+            modal.focus();
+            modal.dispatchEvent(new Event('hidden.bs.modal'));
+            expect(focusEditor).toHaveBeenCalledExactlyOnceWith('candadoEFeedBack');
+            modal.dispatchEvent(new Event('hidden.bs.modal'));
+            expect(focusEditor).toHaveBeenCalledTimes(1);
+        });
+
+        it('does not focus an editor after its form was removed', () => {
+            const modal = document.createElement('div');
+            modal.id = 'modalAlert';
+            document.body.appendChild(modal);
+            editors.candadoEFeedBack = '';
+            expect(device.save()).toBe(false);
+            focusEditor.mockClear();
+            document.getElementById('padlockBody').remove();
+
+            modal.dispatchEvent(new Event('hidden.bs.modal'));
+            expect(focusEditor).not.toHaveBeenCalled();
+        });
+
+        it('keeps only the latest validation focus listener after repeated saves', () => {
+            const modal = document.createElement('div');
+            modal.id = 'modalAlert';
+            document.body.appendChild(modal);
+            const initialDisposers = device.$lifecycle.disposers.length;
+            editors.candadoEDescription = '';
+            expect(device.save()).toBe(false);
+            editors.candadoEDescription = '<p>Find the code</p>';
+            editors.candadoEFeedBack = '';
+            expect(device.save()).toBe(false);
+            expect(device.$lifecycle.disposers).toHaveLength(initialDisposers + 1);
+            focusEditor.mockClear();
+
+            modal.dispatchEvent(new Event('hidden.bs.modal'));
+            expect(focusEditor).toHaveBeenCalledExactlyOnceWith('candadoEFeedBack');
+        });
+
+        it('releases the alert listener when the edition closes', () => {
+            const modal = document.createElement('div');
+            modal.id = 'modalAlert';
+            document.body.appendChild(modal);
+            editors.candadoEFeedBack = '';
+            expect(device.save()).toBe(false);
+            focusEditor.mockClear();
+            device.$lifecycle.destroy();
+
+            modal.dispatchEvent(new Event('hidden.bs.modal'));
+            expect(focusEditor).not.toHaveBeenCalled();
         });
     });
 });

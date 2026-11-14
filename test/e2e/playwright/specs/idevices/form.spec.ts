@@ -1,5 +1,16 @@
 import { test, expect } from '../../fixtures/auth.fixture';
-import { waitForAppReady, reloadPage, gotoWorkarea, editIdevice } from '../../helpers/workarea-helpers';
+import {
+    waitForAppReady,
+    reloadPage,
+    gotoWorkarea,
+    editIdevice,
+    addIdevice,
+    saveIdevice,
+    saveProject,
+    selectFirstPage,
+} from '../../helpers/workarea-helpers';
+import { waitForEditor } from '../../helpers/editor-helpers';
+import { addWithAi, closeAlert, importText } from '../../helpers/idevice-share-helpers';
 import { WorkareaPage } from '../../pages/workarea.page';
 import type { Page, FrameLocator } from '@playwright/test';
 
@@ -679,4 +690,43 @@ test.describe('Form iDevice', () => {
             await expect(renderedQuestions.nth(1)).toBeVisible();
         });
     });
+});
+
+test('Form imports its questions and adds those the AI gives it', async ({
+    authenticatedPage: page,
+    createProject,
+}) => {
+    const uuid = await createProject(page, 'Form sharing');
+    await gotoWorkarea(page, uuid);
+    await waitForAppReady(page);
+    await selectFirstPage(page);
+    await addIdevice(page, 'form');
+    const id = await page.locator('.idevice_node.form').first().getAttribute('id');
+    expect(id).toBeTruthy();
+    await waitForEditor(page, 'eXeGameInstructions');
+    // Half of the questions, at random: the count below shows how many of them.
+    await page.locator('#formIdeviceForm-tab-options').click();
+    await page.locator('#frmEQuestionsRandom').check();
+    await page.locator('#frmEPercentageQuestions').fill('50');
+
+    // Import a real text file: each line becomes a question.
+    await page.locator('#formIdeviceForm-tab-contents').click();
+    const questions = page.locator('#formPreview > li');
+    await importText(page, 'questions.txt', '1#The Sun is a star\n0#The Moon is a planet\n', () =>
+        expect(questions).toHaveCount(2),
+    );
+    await expect(questions.first()).toContainText('The Sun is a star');
+    // The AI window adds the questions it is given.
+    await addWithAi(page, '0#Water boils at 50 degrees');
+    await closeAlert(page, 'The questions have been added successfully');
+    await expect(questions).toHaveCount(3);
+    await expect(page.locator('#frmENumeroPercentaje')).toHaveText('2/3');
+
+    await saveIdevice(page, id!);
+    await saveProject(page);
+    await reloadPage(page);
+    await selectFirstPage(page);
+    await editIdevice(page, id!);
+    await waitForEditor(page, 'eXeGameInstructions');
+    await expect(questions).toHaveCount(3);
 });

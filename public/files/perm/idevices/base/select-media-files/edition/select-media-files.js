@@ -14,20 +14,16 @@ var $exeDevice = {
     msgs: {},
     classIdevice: 'select-media-files',
     active: 0,
-    activeCard: 0,
     activeID: '',
     phrasesGame: [],
-    phrase: {},
     typeEdit: -1,
     typeEditC: -1,
     idPaste: '',
     numberCutCuestion: -1,
     clipBoard: '',
     idevicePath: '',
-    playerAudio: '',
     version: 1.5,
     id: false,
-    accesibilityIsOk: true,
     ci18n: {},
 
     init: function (element, previousData, path) {
@@ -116,9 +112,6 @@ var $exeDevice = {
 
     setMessagesInfo: function () {
         const msgs = this.msgs;
-        msgs.msgESelectFile = _(
-            'The selected file does not contain a valid game'
-        );
         msgs.msgEURLValid = _(
             'You must upload or indicate the valid URL of an image'
         );
@@ -127,7 +120,6 @@ var $exeDevice = {
             'Please check all the answers in the right order'
         );
         msgs.msgTimeFormat = _('Please check the time format: hh:mm:ss');
-        msgs.msgProvideFB = _('Message to display when passing the game');
         msgs.msgNoSuportBrowser = _(
             'Your browser is not compatible with this tool.'
         );
@@ -139,92 +131,66 @@ var $exeDevice = {
 
     createForm: function () {
         const path = $exeDevice.idevicePath,
-            html = `
-            <div id="gameQEIdeviceForm">
-                ${$exeDevicesEdition.iDevice.common.getIdeviceDescription(
-                    _('Create interactive activities in which players will have to select the correct multimedia cards.'),
-                    'https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe40/html/selecciona-multimedia.html',
-                )}
-                <div class="exe-form-tab" title="${_('General settings')}">
-                    ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset(c_('Select the right cards'))}
-                    <fieldset class="exe-fieldset exe-fieldset-closed">
-                        <legend><a href="#">${_('Options')}</a></legend>
-                        <div>
-                            <div class="toggle-item mb-3">
+            edition = $exeIDevicesEdition.iDevice,
+            help = edition.common.getHelpTooltip,
+            toggle = (id, label, checked = false) => `
+                            <div class="toggle-item">
                                 <span class="toggle-control">
-                                    <input type="checkbox" id="slcmEShowMinimize" class="toggle-input" />
+                                    <input type="checkbox" id="${id}" class="toggle-input"${checked ? ' checked' : ''} />
                                     <span class="toggle-visual"></span>
                                 </span>
-                                <label class="toggle-label mb-0" for="slcmEShowMinimize">${_('Show minimized.')}</label>
-                            </div>
-                            <div class="d-flex flex-nowrap align-items-center gap-2 mb-3">
-                                <label for="slcmETime" class="mb-0">${_('Time to complete the game')}(m):</label>
-                                <input type="number" name="slcmETime" id="slcmETime" value="0" min="0" max="120" step="1" class="form-control" />
-                            </div>
-                            <div class="d-flex flex-nowrap align-items-center gap-2 mb-3">
-                                <label for="slcmEAttemptsNumber" class="mb-0">${_('Number of attempts')}:</label>
-                                <input type="number" name="slcmEAttemptsNumber" id="slcmEAttemptsNumber" value="1" min="1" max="9" class="form-control" />
-                            </div>
-                            <div class="toggle-item mb-3">
-                                <span class="toggle-control">
-                                    <input type="checkbox" id="slcmEShowSolution" class="toggle-input" checked />
-                                    <span class="toggle-visual"></span>
-                                </span>
-                                <label class="toggle-label mb-0" for="slcmEShowSolution">${_('Show solutions')}.</label>
-                            </div>
-                            <div id="slcmTimeShowDiv" class="d-flex flex-wrap align-items-center gap-2 mb-3">
-                                <label for="slcmETimeShowSolution" class="mb-0">${_('Time while the cards will be shown (seconds)')}:</label>
-                                <input type="number" name="slcmETimeShowSolution" id="slcmETimeShowSolution" value="4" min="1" max="999" class="form-control" />
-                            </div>
-                            <div class="d-flex flex-nowrap align-items-center gap-2 mb-3">
-                                <label for="slcmEPercentajeQuestions" class="mb-0">${_('% Activities')}:</label>
-                                <input type="number" name="slcmEPercentajeQuestions" id="slcmEPercentajeQuestions" value="100" min="1" max="100" class="form-control" />
-                                <span id="slcmENumeroPercentaje">1/1</span>
-                            </div>
-                            <div id="slcmEANumberMaxDiv" class="d-flex flex-nowrap align-items-center gap-2 mb-3">
-                                <label for="slcmEANumberMaxCard" class="mb-0">${_('Maximum number of cards')}:</label>
-                                <input type="number" name="slcmEANumberMaxCard" id="slcmEANumberMaxCard" value="30" min="1" max="30" class="form-control" />
-                            </div>
-                            <div id="slcmECustomMessagesDiv" class="toggle-item mb-3">
-                                <span class="toggle-control">
-                                    <input type="checkbox" id="slcmECustomMessages" class="toggle-input" />
-                                    <span class="toggle-visual"></span>
-                                </span>
-                                <label class="toggle-label mb-0" for="slcmECustomMessages">${_('Custom messages')}.</label>
-                            </div>
-                            <div class="toggle-item mb-3">
-                                <span class="toggle-control">
-                                    <input type="checkbox" id="slcmEModeTable" class="toggle-input" />
-                                    <span class="toggle-visual"></span>
-                                </span>
-                                <label class="toggle-label mb-0" for="slcmEModeTable">${_('Table mode')}.</label>
-                            </div>
-                            <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
-                                <div class="toggle-item mb-0">
-                                    <span class="toggle-control">
-                                        <input type="checkbox" id="slcmEHasFeedBack" class="toggle-input" />
-                                        <span class="toggle-visual"></span>
-                                    </span>
-                                    <label class="toggle-label mb-0" for="slcmEHasFeedBack">${_('Feedback')}.</label>
-                                </div>
-                                <div class="d-flex flex-nowrap align-items-center gap-2">
-                                    <label for="slcmEPercentajeFB" class="mb-0"></label>
-                                    <input type="number" name="slcmEPercentajeFB" id="slcmEPercentajeFB" value="100" min="5" max="100" step="5" class="form-control" disabled />
-                                </div>
-                            </div>
-                            <div id="slcmEFeedbackP" class="SLCME-EFeedbackP mb-3">
-                                <textarea id="slcmEFeedBackEditor" class="exe-html-editor"></textarea>
-                            </div>
-                            <div class="d-none flex-nowrap align-items-center gap-2 mb-3">
-                                <label for="slcmEAuthor" class="mb-0">${_('Authorship')}:</label>
-                                <input id="slcmEAuthor" type="text" class="form-control" />
-                            </div>
-                            <div class="d-flex flex-wrap align-items-center gap-2 mb-3 Games-Reportdiv">
-                            </div>
-                        </div>
-                    </fieldset>
-                    <fieldset class="exe-fieldset">
-                        <legend><a href="#">${_('Activities')}</a></legend>
+                                <label class="toggle-label mb-0" for="${id}">${label}</label>
+                            </div>`,
+            options = `
+                <div id="slcmEOptions">
+                    <div class="d-flex flex-nowrap align-items-center gap-2 mb-3">
+                        ${toggle('slcmEShowMinimize', _('Show minimized.'))}
+                        ${help(_('Start with the game collapsed. Learners can expand it when they are ready to play.'))}
+                    </div>
+                    <div class="d-flex flex-nowrap align-items-center gap-2 mb-3">
+                        <label for="slcmETime" class="mb-0">${_('Time to complete the game')}(m):</label>
+                        <input type="number" name="slcmETime" id="slcmETime" value="0" min="0" max="120" step="1" class="form-control" />
+                        ${help(_('Time to complete the whole game, in minutes. Set 0 for no time limit.'))}
+                    </div>
+                    <div class="d-flex flex-nowrap align-items-center gap-2 mb-3">
+                        <label for="slcmEAttemptsNumber" class="mb-0">${_('Number of attempts')}:</label>
+                        <input type="number" name="slcmEAttemptsNumber" id="slcmEAttemptsNumber" value="1" min="1" max="9" class="form-control" />
+                        ${help(_('Attempts learners have for each activity.'))}
+                    </div>
+                    <div class="d-flex flex-nowrap align-items-center gap-2 mb-3">
+                        ${toggle('slcmEShowSolution', `${_('Show solutions')}.`, true)}
+                        ${help(_('Mark the right cards once the learner answers.'))}
+                    </div>
+                    <div id="slcmTimeShowDiv" class="d-flex flex-nowrap align-items-center gap-2 mb-3">
+                        <label for="slcmETimeShowSolution" class="mb-0">${_('Time while the cards will be shown (seconds)')}:</label>
+                        <input type="number" name="slcmETimeShowSolution" id="slcmETimeShowSolution" value="4" min="1" max="999" class="form-control" />
+                        ${help(_('Seconds the cards stay on screen after answering, before the next activity.'))}
+                    </div>
+                    <div class="d-flex flex-nowrap align-items-center gap-2 mb-3">
+                        <label for="slcmEPercentajeQuestions" class="mb-0">${_('% Activities')}:</label>
+                        <input type="number" name="slcmEPercentajeQuestions" id="slcmEPercentajeQuestions" value="100" min="1" max="100" class="form-control" />
+                        <span id="slcmENumeroPercentaje">1/1</span>
+                        ${help(_('Choose the percentage of activities included in each game. The counter shows how many activities will be used.'))}
+                    </div>
+                    <div id="slcmEANumberMaxDiv" class="d-flex flex-nowrap align-items-center gap-2 mb-3">
+                        <label for="slcmEANumberMaxCard" class="mb-0">${_('Maximum number of cards')}:</label>
+                        <input type="number" name="slcmEANumberMaxCard" id="slcmEANumberMaxCard" value="30" min="1" max="30" class="form-control" />
+                        ${help(_('The most cards shown in each activity. When an activity has more, a selection of them is shown.'))}
+                    </div>
+                    <div id="slcmECustomMessagesDiv" class="d-flex flex-nowrap align-items-center gap-2 mb-3">
+                        ${toggle('slcmECustomMessages', `${_('Custom messages')}.`)}
+                        ${help(_('Add a message, and its audio, for the right and the wrong answer of each activity in the Activities tab.'))}
+                    </div>
+                    <div class="d-flex flex-nowrap align-items-center gap-2 mb-3">
+                        ${toggle('slcmEModeTable', `${_('Table mode')}.`)}
+                        ${help(_('Show the cards in table mode from the start. Learners can change the view, and small screens always use it.'))}
+                    </div>
+                    <div class="d-none flex-nowrap align-items-center gap-2 mb-3">
+                        <label for="slcmEAuthor" class="mb-0">${_('Authorship')}:</label>
+                        <input id="slcmEAuthor" type="text" class="form-control" />
+                    </div>
+                </div>`,
+            activities = `
                         <div class="SLCME-EPanel" id="slcmEPanel">
                             <div class="SLCME-ENavigationButtons d-flex flex-wrap align-items-center justify-content-center gap-2 mb-3" id="slcmButtonsPrhaseDiv">
                                 <a href="#" id="slcmEAdd" class="SLCME-ENavigationButton" title="${_('Add an activity')}"><img src="${path}quextIEAdd.png" alt="${_('Add an activity')}" class="SLCME-EButtonImage b-add" /></a>
@@ -250,7 +216,7 @@ var $exeDevice = {
                             </div>
                             <div class="mb-3">
                                 <div class="d-flex flex-nowrap align-items-center gap-2 mb-3 SLCME-EDefinitioMedia">
-                                    <label class="mb-0">${_('Image')}:</label>
+                                    <label for="slcmEURLImageDefinition" class="mb-0">${_('Image')}:</label>
                                     <input type="text" id="slcmEURLImageDefinition" class="exe-file-picker form-control me-0 w-100" />
                                     <a href="#" id="slcmEPlayImageDefinition" class="SLCME-ENavigationButton" title="${_('Image')}"><img src="${path}quextIEPlay.png" alt="Play audio" class="SLCME-EButtonImage" /></a>
                                     <a href="#" id="slcmEShowMoreDefinition" class="SLCME-ENavigationButton SLCME-EShowMore" title="${_('More')}"><img src="${path}quextEIMore.png" alt="${_('More')}" class="SLCME-EButtonImage" /></a>
@@ -267,21 +233,21 @@ var $exeDevice = {
                                 </div>
                             </div>
                             <div class="SLCME-ECustomMessageAudio d-flex flex-nowrap align-items-center gap-2 mb-3" data-voice-recorder data-voice-input="#slcmEURLAudioDefinition">
-                                <label class="mb-0">${_('Audio')}:</label>
+                                <label for="slcmEURLAudioDefinition" class="mb-0">${_('Audio')}:</label>
                                 <input type="text" id="slcmEURLAudioDefinition" class="exe-file-picker SLCME-EURLAudio form-control me-0 w-100" />
                                 <a href="#" id="slcmEPlayAudioDefinition" class="SLCME-ENavigationButton" title="${_('Audio')}"><img src="${path}quextIEPlay.png" alt="Play audio" class="SLCME-EButtonImage" /></a>
                             </div>
                             <div class="SLCME-ECustomMessageDiv d-none flex-nowrap align-items-center gap-2 mb-3" data-voice-recorder data-voice-input="#slcmEURLAudioOK">
                                 <label for="slcmEMessageOK" class="mb-0">${_('Success')}:</label>
                                 <input type="text" id="slcmEMessageOK" class="form-control" />
-                                <label class="mb-0">${_('Audio')}:</label>
+                                <label for="slcmEURLAudioOK" class="mb-0">${_('Audio')}:</label>
                                 <input type="text" id="slcmEURLAudioOK" class="exe-file-picker SLCME-EURLAudio form-control me-0 w-100" />
                                 <a href="#" id="slcmEPlayAudioOK" class="SLCME-ENavigationButton" title="${_('Audio')}"><img src="${path}quextIEPlay.png" alt="Play audio" class="SLCME-EButtonImage" /></a>
                             </div>
                             <div class="SLCME-ECustomMessageDiv d-none flex-nowrap align-items-center gap-2 mb-3" data-voice-recorder data-voice-input="#slcmEURLAudioKO" >
                                 <label for="slcmEMessageKO" class="mb-0">${_('Error')}:</label>
                                 <input type="text" id="slcmEMessageKO" class="form-control" />
-                                <label class="mb-0">${_('Audio')}:</label>
+                                <label for="slcmEURLAudioKO" class="mb-0">${_('Audio')}:</label>
                                 <input type="text" id="slcmEURLAudioKO" class="exe-file-picker SLCME-EURLAudio form-control me-0 w-100" />
                                 <a href="#" id="slcmEPlayAudioKO" class="SLCME-ENavigationButton" title="${_('Audio')}"><img src="${path}quextIEPlay.png" alt="Play audio" class="SLCME-EButtonImage" /></a>
                             </div>
@@ -298,26 +264,41 @@ var $exeDevice = {
                             <div class="SLCME-ENumPhrasesDiv d-flex flex-nowrap align-items-center gap-2" id="slcmENumPhrasesDiv">
                                 <div class="SLCME-ENumPhraseS"><span class="sr-av">${_('Phrases:')}</span></div><span class="SLCME-ENumPhrases" id="slcmENumPhrases">1</span>
                             </div>
-                        </div>
-                    </fieldset>
-                     ${$exeDevicesEdition.iDevice.common.getTextFieldset('after')}
-                </div>
-                ${$exeDevicesEdition.iDevice.gamification.itinerary.getTab()}
-                ${$exeDevicesEdition.iDevice.gamification.scorm.getTab(path)}
-                ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
+                        </div>`,
+            html = `
+            <div id="gameQEIdeviceForm">
+                ${edition.common.getIdeviceDescription(
+                    _('Create interactive activities in which players will have to select the correct multimedia cards.'),
+                    'https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe40/html/selecciona-multimedia.html',
+                )}
+                ${edition.tabs.getHtml('gameQEIdeviceForm', {
+                    path: path,
+                    instructions: c_('Select the right cards'),
+                    options: options,
+                    contents: activities,
+                    passwords: true,
+                    feedback: true,
+                    after: true,
+                    grading: true,
+                    texts: this.ci18n,
+                    share: false,
+                    info: {
+                        contents: _('Add the activities and their cards, mark the right ones, and edit them one by one.'),
+                    },
+                })}
             </div>
             `;
 
         this.ideviceBody.innerHTML = html;
-        $exeDevicesEdition.iDevice.tabs.init('gameQEIdeviceForm');
-        $exeDevicesEdition.iDevice.gamification.scorm.init();
+        edition.tabs.bind('gameQEIdeviceForm');
+        edition.gamification.scorm.init();
         this.enableForm();
     },
 
     removeCard: function () {
         const numcards = $('#slcmEPhrase').find('div.SLCME-EDatosCarta').length;
         if (numcards < 2) {
-            $exeDevice.showMessage($exeDevice.msgs.msgEOneQuestion);
+            $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgEOneQuestion);
         } else {
             const next = $('#slcmEDatosCarta-' + $exeDevice.activeID)
                     .next('div.SLCME-EDatosCarta')
@@ -373,7 +354,14 @@ var $exeDevice = {
     },
 
     jsonToCard: function (p, inload) {
-        const $card = $exeDevice.addCard(!inload);
+        // A card keeps its id, so saving without changes stores the same
+        // content. One missing, not a number or already on screen gets a new one.
+        const id =
+            /^\d+$/.test(String(p?.id ?? '')) &&
+            !document.getElementById(`slcmEDatosCarta-${p.id}`)
+                ? p.id
+                : undefined;
+        const $card = $exeDevice.addCard(!inload, id);
         // Valores seguros (retrocompatibilidad con versiones antiguas sin color/fondo)
         const safe = {
             author: p?.author || '',
@@ -418,7 +406,7 @@ var $exeDevice = {
     },
 
     initVoiceRecorders: function (target) {
-        const recorder = $exeDevicesEdition?.iDevice?.voiceRecorder;
+        const recorder = $exeIDevicesEdition?.iDevice?.voiceRecorder;
         if (typeof recorder?.initVoiceRecorders === 'function') {
             recorder.initVoiceRecorders(target);
         }
@@ -436,7 +424,7 @@ var $exeDevice = {
 
     updateQuestionsNumber: function () {
         const percentInput = parseInt(
-            $exeDevice.removeTags($('#slcmEPercentajeQuestions').val())
+            $exeIDevicesEdition.iDevice.common.removeTags($('#slcmEPercentajeQuestions').val())
         );
         if (isNaN(percentInput)) return;
         const percentaje = Math.min(Math.max(percentInput, 1), 100),
@@ -485,7 +473,7 @@ var $exeDevice = {
         $('#slcmEURLAudioOK').val(phrase.audioHit);
         $('#slcmEURLAudioKO').val(phrase.audioError);
 
-        $exeDevicesEdition.iDevice.gamification.helpers.stopSound();
+        $exeIDevicesEdition.iDevice.gamification.helpers.stopSound();
     },
 
     initPhrases: function () {
@@ -495,8 +483,8 @@ var $exeDevice = {
         $('.SLCME-ECustomMessageDiv').removeClass('d-flex').addClass('d-none');
     },
 
-    addCard: function (clone) {
-        $exeDevice.activeID = $exeDevice.getID();
+    addCard: function (clone, id) {
+        $exeDevice.activeID = id || $exeDevice.getID();
         $('#slcmEPhrase')
             .find('div.SLCME-EDatosCarta')
             .removeClass('SLCME-EActive');
@@ -513,16 +501,16 @@ var $exeDevice = {
                 </div>
                 <span class="SLCME-ETitleText" id="slcmETitleText-${$exeDevice.activeID}">${_('Text')}</span>
                 <div class="d-flex flex-nowrap align-items-center gap-2 mb-3" id="slcmEInputText-${$exeDevice.activeID}">
-                    <label class="sr-av">${_('Text')}</label>
+                    <label class="sr-av" for="slcmEText-${$exeDevice.activeID}">${_('Text')}</label>
                     <input type="text" id="slcmEText-${$exeDevice.activeID}" class="SLCME-EText form-control w-100 me-0" />
-                    <label id="slcmELblColor-${$exeDevice.activeID}">${_('Color')}:</label>
+                    <label id="slcmELblColor-${$exeDevice.activeID}" for="slcmEColor-${$exeDevice.activeID}">${_('Color')}:</label>
                     <input id="slcmEColor-${$exeDevice.activeID}" type="color" class="SLCME-EColor form-control" value="#000000">
-                    <label id="slcmELblBgColor-${$exeDevice.activeID}">${_('Background')}:</label>
+                    <label id="slcmELblBgColor-${$exeDevice.activeID}" for="slcmEBgColor-${$exeDevice.activeID}">${_('Background')}:</label>
                     <input id="slcmEBgColor-${$exeDevice.activeID}" type="color" class="SLCME-EBackColor form-control" value="#ffffff">
                 </div>
                 <span class="SLCME-ETitleImage" id="slcmETitleImage-${$exeDevice.activeID}">${_('Image')}</span>
                 <div class="SLCME-EInputImage d-flex flex-nowrap align-items-center gap-2 mb-3" id="slcmEInputImage-${$exeDevice.activeID}">
-                    <label class="sr-av">URL</label>
+                    <label class="sr-av" for="slcmEURLImage-${$exeDevice.activeID}">URL</label>
                     <input type="text" id="slcmEURLImage-${$exeDevice.activeID}" class="exe-file-picker SLCME-EURLImage form-control me-0 w-100" />
                     <a href="#" id="slcmEPlayImage-${$exeDevice.activeID}" class="SLCME-ENavigationButton" title="${_('Show')}">
                         <img src="${path}quextIEPlay.png" alt="${_('Show')}" class="SLCME-EButtonImage" />
@@ -533,17 +521,17 @@ var $exeDevice = {
                 </div>
         <div class="d-none flex-nowrap align-items-center gap-2 mb-3" id="slcmEAuthorAlt-${$exeDevice.activeID}">
                     <div class="d-flex w-50 flex-nowrap align-items-center gap-2">
-                        <label>${_('Authorship')}</label>
-            <input type="text" class="form-control me-0 w-100 SLCME-EAuthor" />
+                        <label for="slcmEAuthor-${$exeDevice.activeID}">${_('Authorship')}</label>
+            <input type="text" id="slcmEAuthor-${$exeDevice.activeID}" class="form-control me-0 w-100 SLCME-EAuthor" />
                     </div>
                     <div class="d-flex w-50 flex-nowrap align-items-center gap-2">
-                        <label>${_('Alt')}</label>
-            <input type="text" class="form-control me-0 w-100 SLCME-EAlt" />
+                        <label for="slcmEAlt-${$exeDevice.activeID}">${_('Alt')}</label>
+            <input type="text" id="slcmEAlt-${$exeDevice.activeID}" class="form-control me-0 w-100 SLCME-EAlt" />
                     </div>
                 </div>
                 <span>${_('Audio')}</span>
                 <div class="SLCME-EInputAudio d-flex flex-nowrap align-items-center gap-2 mb-3" data-voice-recorder data-voice-input="#slcmEURLAudio-${$exeDevice.activeID}">
-                    <label class="sr-av">URL</label>
+                    <label class="sr-av" for="slcmEURLAudio-${$exeDevice.activeID}">URL</label>
                     <input type="text" id="slcmEURLAudio-${$exeDevice.activeID}" class="exe-file-picker SLCME-EURLAudio form-control me-0 w-100" />
                     <a href="#" id="slcmEPlayAudio-${$exeDevice.activeID}" class="SLCME-ENavigationButton" title="${_('Audio')}">
                         <img src="${path}quextIEPlay.png" alt="Play" class="SLCME-EButtonImage" />
@@ -683,16 +671,11 @@ var $exeDevice = {
         });
 
         $('#slcmEText-' + id).on('keyup', function () {
-            $('#slcmETextDiv-' + id).text($(this).val());
-            if ($(this).val().trim().length > 0) {
-                $('#slcmETextDiv-' + $exeDevice.activeID)
-                    .removeClass('d-flex')
-                    .addClass('d-none');
-            } else {
-                $('#slcmETextDiv-' + $exeDevice.activeID)
-                    .removeClass('d-none')
-                    .addClass('d-flex');
-            }
+            const hasText = $(this).val().trim().length > 0;
+            $('#slcmETextDiv-' + id)
+                .text($(this).val())
+                .toggleClass('d-none', !hasText)
+                .toggleClass('d-flex', hasText);
         });
 
         $('#slcmEColor-' + id).on('change', function () {
@@ -706,9 +689,6 @@ var $exeDevice = {
             });
         });
 
-        $('#slcmEImage-' + id).on('click', function (e) {
-            $exeDevice.clickImage(id, e.pageX, e.pageY);
-        });
     },
     cardToJson: function ($card) {
         return {
@@ -725,14 +705,14 @@ var $exeDevice = {
         };
     },
 
-    validatePhrase: function () {
+    validatePhrase: function (options = {}) {
         let correct = true,
             phrase = $exeDevice.getPhraseDefault(),
             $cards = $('#slcmEPhrase').find('div.SLCME-EDatosCarta');
 
         $cards.each(function () {
             const card = $exeDevice.cardToJson($(this));
-            if ($exeDevice.validateCard(card)) {
+            if ($exeDevice.validateCard(card, options)) {
                 correct = false;
             } else {
                 phrase.cards.push(card);
@@ -755,10 +735,10 @@ var $exeDevice = {
         return true;
     },
 
-    validateCard: function (p) {
+    validateCard: function (p, options = {}) {
         if (p.eText.length == 0 && p.url.length < 5 && p.audio.length == 0) {
             const message = $exeDevice.msgs.msgCompleteData;
-            $exeDevice.showMessage(message);
+            if (!options.silent) $exeIDevicesEdition.iDevice.common.showMessage(message);
             return true;
         }
         return false;
@@ -850,7 +830,7 @@ var $exeDevice = {
                     const iq = parseInt($(this).text());
                     if (!isNaN(iq) && iq < cards.length) {
                         cards[iq].url = $(this).attr('href');
-                        if (cards[iq].url < 4) {
+                        if (cards[iq].url.length < 4) {
                             cards[iq].url = '';
                         }
                     }
@@ -937,22 +917,15 @@ var $exeDevice = {
 
             const textFeedBack = $('.seleccionamedias-feedback-game', wrapper);
             if (textFeedBack.length == 1)
-                $('#slcmEFeedBackEditor').val(textFeedBack.html());
+                $exeIDevicesEdition.iDevice.gamification.feedback.setText(
+                    textFeedBack.html() || ''
+                );
 
-            $exeDevicesEdition.iDevice.gamification.common.setLanguageTabValues(
+            $exeIDevicesEdition.iDevice.gamification.common.setLanguageTabValues(
                 dataGame.msgs
             );
             $exeDevice.showPhrase(0, true);
         }
-    },
-
-    escapeHtml: function (string) {
-        return String(string)
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;')
-            .replace(/'/g, '&#39;');
     },
 
     save: function () {
@@ -976,7 +949,8 @@ var $exeDevice = {
 
         json = $exeDevices.iDevice.gamification.helpers.encrypt(json);
 
-        const textFeedBack = tinyMCE.get('slcmEFeedBackEditor').getContent();
+        const textFeedBack =
+            $exeIDevicesEdition.iDevice.gamification.feedback.getText();
 
         if (dataGame.instructions != '')
             divContent =
@@ -1064,7 +1038,7 @@ var $exeDevice = {
                 q.url.indexOf('http') != 0 &&
                 q.url.length > 4
             ) {
-                linkImage =
+                const linkImage =
                     '<a href="' +
                     q.url +
                     '" class="js-hidden seleccionamedias-LinkImagesDef">' +
@@ -1142,10 +1116,6 @@ var $exeDevice = {
         return html;
     },
 
-    showMessage: function (msg) {
-        eXe.app.alert(msg);
-    },
-
     getIdeviceID: function () {
         const ideviceid =
             $('#gameQEIdeviceForm')
@@ -1156,15 +1126,12 @@ var $exeDevice = {
     },
 
     validateData: function () {
-        const clear = $exeDevice.removeTags,
+        const clear = $exeIDevicesEdition.iDevice.common.removeTags,
             instructions = tinyMCE.get('eXeGameInstructions').getContent(),
-            textFeedBack = tinyMCE.get('slcmEFeedBackEditor').getContent(),
             textAfter = tinyMCE.get('eXeIdeviceTextAfter').getContent(),
             showMinimize = $('#slcmEShowMinimize').is(':checked'),
             itinerary =
-                $exeDevicesEdition.iDevice.gamification.itinerary.getValues(),
-            feedBack = $('#slcmEHasFeedBack').is(':checked'),
-            percentajeFB = parseInt(clear($('#slcmEPercentajeFB').val())),
+                $exeIDevicesEdition.iDevice.gamification.itinerary.getValues(),
             customMessages = $('#slcmECustomMessages').is(':checked'),
             percentajeQuestions = parseInt(
                 clear($('#slcmEPercentajeQuestions').val())
@@ -1177,9 +1144,9 @@ var $exeDevice = {
             author = $('#slcmEAuthor').val(),
             phrasesGame = $exeDevice.phrasesGame,
             progressBar =
-                $exeDevicesEdition.iDevice.gamification.progressBar.getValues(),
+                $exeIDevicesEdition.iDevice.gamification.progressBar.getValues(),
             passScore =
-                $exeDevicesEdition.iDevice.gamification.passScore.getValues(),
+                $exeIDevicesEdition.iDevice.gamification.passScore.getValues(),
             id = $exeDevice.getIdeviceID(),
             modeTable = $('#slcmEModeTable').is(':checked'),
             numberMaxCards = $('#slcmEANumberMaxCard').val(),
@@ -1188,15 +1155,15 @@ var $exeDevice = {
         if (!itinerary) return false;
         if (!progressBar) return false;
 
-        if (showSolution && timeShowSolution.length == 0) {
-            eXe.app.alert($exeDevice.msgs.msgEProvideTimeSolution);
-            return false;
-        }
+        const feedback =
+            $exeIDevicesEdition.iDevice.gamification.feedback.getValues();
+        if (!feedback) return false;
+
         if (phrasesGame.length == 0) {
-            $exeDevice.showMessage($exeDevice.msgs.msgEOneQuestion);
+            $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgEOneQuestion);
             return false;
         }
-        const scorm = $exeDevicesEdition.iDevice.gamification.scorm.getValues();
+        const scorm = $exeIDevicesEdition.iDevice.gamification.scorm.getValues();
         return {
             typeGame: 'SeleccionaMedias',
             author: author,
@@ -1209,10 +1176,10 @@ var $exeDevice = {
             textButtonScorm: scorm.textButtonScorm,
             repeatActivity: scorm.repeatActivity,
             weighted: scorm.weighted || 100,
-            textFeedBack: escape(textFeedBack),
+            textFeedBack: escape(feedback.textFeedBack),
             textAfter: escape(textAfter),
-            feedBack: feedBack,
-            percentajeFB: percentajeFB,
+            feedBack: feedback.feedBack,
+            percentajeFB: feedback.percentajeFB,
             customMessages: customMessages,
             percentajeQuestions: percentajeQuestions,
             timeShowSolution: timeShowSolution,
@@ -1253,7 +1220,7 @@ var $exeDevice = {
                         this.naturalWidth,
                         this.naturalHeight
                     );
-                    $exeDevice.drawImage(this, mData);
+                    $exeIDevicesEdition.iDevice.common.drawImage(this, mData, true);
                     $exeDevice.showFlex($image);
                     $exeDevice.hideFlex($nimage);
                     return true;
@@ -1264,40 +1231,7 @@ var $exeDevice = {
             });
     },
 
-    playSound: function (selectedFile) {
-        const selectFile =
-            $exeDevices.iDevice.gamification.media.extractURLGD(selectedFile);
-        $exeDevice.playerAudio = new Audio(selectFile);
-        // Closing the editor must silence the preview and drop its stream.
-        this.$lifecycle.ownMedia($exeDevice.playerAudio, 'previewAudio');
-        $exeDevice.playerAudio
-            .play()
-            .catch((error) => console.error('Error playing audio:', error));
-    },
-
-    stopSound() {
-        if (
-            $exeDevice.playerAudio &&
-            typeof $exeDevice.playerAudio.pause == 'function'
-        ) {
-            $exeDevice.playerAudio.pause();
-        }
-    },
-
-    drawImage: function (image, mData) {
-        $(image).css({
-            position: 'absolute',
-            left: mData.x + 'px',
-            top: mData.y + 'px',
-            width: mData.w + 'px',
-            height: mData.h + 'px',
-        });
-    },
-
     addEvents: function () {
-        // Captured lexically so the deferred file-reader callback below stays
-        // bound to this edition instead of resolving the mutable global.
-        const self = this;
         $exeDevice.hideFlex($('#slcmEPasteC'));
 
         $('#slcmEAddC').on('click', function (e) {
@@ -1367,50 +1301,14 @@ var $exeDevice = {
             $exeDevice.copyPhrase();
         });
 
+        $('#slcmECut').on('click', function (e) {
+            e.preventDefault();
+            $exeDevice.cutPhrase();
+        });
+
         $('#slcmEPaste').on('click', function (e) {
             e.preventDefault();
             $exeDevice.pastePhrase();
-        });
-
-        if (
-            window.File &&
-            window.FileReader &&
-            window.FileList &&
-            window.Blob
-        ) {
-            $exeDevice.showFlex($('#eXeGameExportImport'));
-            $('#eXeGameImportGame').on('change', function (e) {
-                const file = e.target.files[0];
-                if (!file) {
-                    return;
-                }
-                const reader = new FileReader();
-                self.$lifecycle.ownFileReader(reader);
-                reader.onload = self.$lifecycle.bind(function (e) {
-                    this.importGame(e.target.result);
-                });
-                reader.readAsText(file);
-            });
-            $('#eXeGameExportQuestions').on('click', function () {
-                const dataGame = $exeDevice.validateData();
-                $exeDevicesEdition.iDevice.gamification.share.exportGame(
-                    dataGame,
-                    'gameQEIdeviceForm',
-                    _('Select media files')
-                );
-            });
-        } else {
-            $exeDevice.hideFlex($('#eXeGameExportImport'));
-        }
-
-        $('#slcmEHasFeedBack').on('change', function () {
-            const marcado = $(this).is(':checked');
-            if (marcado) {
-                $('#slcmEFeedbackP').slideDown();
-            } else {
-                $('#slcmEFeedbackP').slideUp();
-            }
-            $('#slcmEPercentajeFB').prop('disabled', !marcado);
         });
 
         $('#slcmECustomMessages').on('change', function () {
@@ -1522,9 +1420,9 @@ var $exeDevice = {
             $exeDevice.loadAudio(audio);
         });
 
-        $exeDevicesEdition.iDevice.gamification.progressBar.addEvents();
+        $exeIDevicesEdition.iDevice.gamification.progressBar.addEvents();
 
-        $exeDevicesEdition.iDevice.gamification.passScore.addEvents();
+        $exeIDevicesEdition.iDevice.gamification.passScore.addEvents();
 
         $('#slcmEShowMoreDefinition').on('click', function (e) {
             e.preventDefault();
@@ -1548,14 +1446,15 @@ var $exeDevice = {
             $exeDevice.loadImageDefinition();
         });
 
-        $exeDevicesEdition.iDevice.gamification.itinerary.addEvents();
+        $exeIDevicesEdition.iDevice.gamification.itinerary.addEvents();
+        $exeIDevicesEdition.iDevice.gamification.feedback.addEvents();
     },
     loadImage: function (id) {
         const validExt = ['jpg', 'png', 'gif', 'jpeg', 'svg', 'webp'],
             url = $('#slcmEURLImage-' + id).val(),
             ext = url.split('.').pop().toLowerCase();
         if (url.indexOf('files') == 0 && validExt.indexOf(ext) == -1) {
-            $exeDevice.showMessage(
+            $exeIDevicesEdition.iDevice.common.showMessage(
                 _('Supported formats') + ': jpg, jpeg, gif, png, svg, webp'
             );
             return false;
@@ -1572,7 +1471,7 @@ var $exeDevice = {
             return false;
         }
         if (url.indexOf('files') == 0 && validExt.indexOf(ext) == -1) {
-            $exeDevice.showMessage(
+            $exeIDevicesEdition.iDevice.common.showMessage(
                 _('Supported formats') + ': jpg, jpeg, gif, png, svg, webp'
             );
             return false;
@@ -1585,22 +1484,12 @@ var $exeDevice = {
         const validExt = ['mp3', 'ogg', 'wav'],
             ext = url.split('.').pop().toLowerCase();
         if (url.indexOf('files') == 0 && validExt.indexOf(ext) == -1) {
-            $exeDevice.showMessage(_('Supported formats') + ': mp3, ogg, waq');
+            $exeIDevicesEdition.iDevice.common.showMessage(_('Supported formats') + ': mp3, ogg, wav');
             return false;
         } else {
             if (url.length > 4) {
-                $exeDevicesEdition.iDevice.gamification.helpers.playSound(url);
+                $exeIDevicesEdition.iDevice.gamification.helpers.playSound(url);
             }
-        }
-    },
-
-    updateGameMode: function (feedback) {
-        $('#slcmEHasFeedBack').prop('checked', feedback);
-        if (feedback) {
-            $('#slcmEFeedbackP').slideDown();
-        }
-        if (!feedback) {
-            $('#slcmEFeedbackP').slideUp();
         }
     },
 
@@ -1611,13 +1500,15 @@ var $exeDevice = {
         $('#slcmEAltDefinition').val('');
         $('#slcmEAuthorDefinition').val('');
         $('#slcmEImageDefinition').attr('src', '');
-        $('#slcmEURLAudioDefinition').attr('src', '');
+        $(
+            '#slcmEURLAudioDefinition, #slcmEMessageOK, #slcmEMessageKO, #slcmEURLAudioOK, #slcmEURLAudioKO'
+        ).val('');
         $exeDevice.hideFlex($('#slcmEImageDefinitionDiv'));
     },
 
     addPhrase: function () {
         if ($exeDevice.phrasesGame.length >= 30) {
-            $exeDevice.showMessage($exeDevice.msgs.msgPairsMax);
+            $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgPairsMax);
             return;
         }
         const valida = $exeDevice.validatePhrase();
@@ -1637,7 +1528,7 @@ var $exeDevice = {
 
     removePhrase: function () {
         if ($exeDevice.phrasesGame.length < 2) {
-            $exeDevice.showMessage($exeDevice.msgs.msgEOneQuestion);
+            $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgEOneQuestion);
         } else {
             $exeDevice.phrasesGame.splice($exeDevice.active, 1);
             if ($exeDevice.active >= $exeDevice.phrasesGame.length - 1) {
@@ -1671,8 +1562,11 @@ var $exeDevice = {
     },
 
     pastePhrase: function () {
+        $exeIDevicesEdition.iDevice.gamification.share.keepQuestionOnScreen(
+            (options) => $exeDevice.validatePhrase(options)
+        );
         if ($exeDevice.phrasesGame.length >= 30) {
-            $exeDevice.showMessage($exeDevice.msgs.msgPairsMax);
+            $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgPairsMax);
             return;
         }
         if ($exeDevice.typeEdit == 0) {
@@ -1681,6 +1575,7 @@ var $exeDevice = {
             $exeDevice.phrasesGame.splice($exeDevice.active, 0, p);
             $exeDevice.showPhrase($exeDevice.active);
             $('#slcmENumPhrases').text($exeDevice.phrasesGame.length);
+            $exeDevice.updateQuestionsNumber();
         } else if ($exeDevice.typeEdit == 1) {
             $exeDevice.hideFlex($('#slcmEPaste'));
             $exeDevice.typeEdit = -1;
@@ -1732,7 +1627,7 @@ var $exeDevice = {
 
     updateFieldGame: function (game) {
         $exeDevice.active = 0;
-        $exeDevicesEdition.iDevice.gamification.itinerary.setValues(
+        $exeIDevicesEdition.iDevice.gamification.itinerary.setValues(
             game.itinerary
         );
         game.evaluation =
@@ -1745,65 +1640,42 @@ var $exeDevice = {
             typeof game.weighted !== 'undefined' ? game.weighted : 100;
 
         $('#slcmEShowMinimize').prop('checked', game.showMinimize);
-        $('#slcmEHasFeedBack').prop('checked', game.feedBack);
-        $('#slcmEPercentajeFB').val(game.percentajeFB);
         $('#slcmEPercentajeQuestions').val(game.percentajeQuestions);
         $('#slcmETime').val(game.time);
         $('#slcmETimeShowSolution').val(game.timeShowSolution);
         $('#slcmEAuthor').val(game.author);
         $('#slcmEShowSolution').prop('checked', game.showSolution);
 
-        $exeDevicesEdition.iDevice.gamification.scorm.setValues(
+        $exeIDevicesEdition.iDevice.gamification.scorm.setValues(
             game.isScorm,
             game.textButtonScorm,
             game.repeatActivity,
             game.weighted
         );
         $exeDevice.phrasesGame = game.phrasesGame;
-        $exeDevice.updateGameMode(game.feedBack);
+        $exeIDevicesEdition.iDevice.gamification.feedback.setValues({
+            feedBack: game.feedBack,
+            percentajeFB: game.percentajeFB,
+        });
         $('#slcmENumPhrases').text($exeDevice.phrasesGame.length);
 
-        $('#slcmEPercentajeFB').prop('disabled', !game.feedBack);
         $('#slcmECustomMessages').prop('checked', game.customMessages);
+        $('.SLCME-ECustomMessageDiv')
+            .toggleClass('d-none', !game.customMessages)
+            .toggleClass('d-flex', !!game.customMessages);
 
         $exeDevice.updateQuestionsNumber();
-        $exeDevicesEdition.iDevice.gamification.progressBar.setValues({
+        $exeIDevicesEdition.iDevice.gamification.progressBar.setValues({
             evaluation: game.evaluation,
             evaluationID: game.evaluationID,
         });
-        $exeDevicesEdition.iDevice.gamification.passScore.setValues({
+        $exeIDevicesEdition.iDevice.gamification.passScore.setValues({
             passScoreMode: game.passScoreMode,
             passScoreCustom: game.passScoreCustom,
         });
         $('#slcmEAttemptsNumber').val(game.attempsNumber);
         $('#slcmEModeTable').prop('checked', game.modeTable);
         $('#slcmEANumberMaxCard').val(game.numberMaxCards);
-    },
-
-    importGame: function (content) {
-        const game = $exeDevice.isJsonString(content);
-
-        if (!game || typeof game.typeGame == 'undefined') {
-            eXe.app.alert($exeDevice.msgs.msgESelectFile);
-            return;
-        } else if (game.typeGame !== 'SeleccionaMedias') {
-            eXe.app.alert($exeDevice.msgs.msgESelectFile);
-            return;
-        }
-
-        game.id = $exeDevice.getIdeviceID();
-
-        $exeDevice.updateFieldGame(game);
-
-        const instructions = game.instructionsExe || game.instructions,
-            tAfter = game.textAfter || '',
-            textFeedBack = game.textFeedBack || '';
-        tinyMCE.get('eXeGameInstructions').setContent(unescape(instructions));
-        tinyMCE.get('eXeIdeviceTextAfter').setContent(unescape(tAfter));
-        tinyMCE.get('slcmEFeedBackEditor').setContent(unescape(textFeedBack));
-
-        //$('.exe-form-tabs li:first-child a').click();
-        $exeDevice.showPhrase(0, false);
     },
 
     placeImageWindows: function (image, naturalWidth, naturalHeight) {
@@ -1835,24 +1707,6 @@ var $exeDevice = {
             y: yImagen,
         };
     },
-
-    clickImage: function (id, epx, epy) {
-        const $image = $('#slcmEImage-' + id),
-            $x = $('#slcmEX-' + id),
-            $y = $('#slcmEY-' + id),
-            posX = epx - $image.offset().left,
-            posY = epy - $image.offset().top,
-            wI = $image.width() > 0 ? $image.width() : 1,
-            hI = $image.height() > 0 ? $image.height() : 1;
-        $x.val(posX / wI);
-        $y.val(posY / hI);
-    },
-
-    removeTags: function (str) {
-        let wrapper = $('<div></div>');
-        wrapper.html(str);
-        return wrapper.text();
-    },
     showFlex: function ($el) {
         if ($el && $el.length) {
             if ($el.hasClass('d-none')) {
@@ -1868,21 +1722,6 @@ var $exeDevice = {
                 $el.removeClass('d-flex').addClass('d-none');
             } else if (!$el.hasClass('d-flex') && !$el.hasClass('d-none')) {
                 $el.hide();
-            }
-        }
-    },
-    toggleFlex: function ($el) {
-        if ($el && $el.length) {
-            if ($el.hasClass('d-none')) {
-                $el.removeClass('d-none').addClass('d-flex');
-            } else if ($el.hasClass('d-flex')) {
-                $el.removeClass('d-flex').addClass('d-none');
-            } else {
-                if ($el.is(':visible')) {
-                    $el.hide();
-                } else {
-                    $el.show();
-                }
             }
         }
     },

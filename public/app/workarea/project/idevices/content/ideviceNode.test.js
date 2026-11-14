@@ -3177,6 +3177,32 @@ describe('IdeviceNode', () => {
             vi.useRealTimers();
         });
 
+        it('adds no error to a refusal the iDevice explained, even once its reason is closed', async () => {
+            vi.useFakeTimers();
+            const { alert, confirm } = eXeLearning.app.modals;
+            const previous = { alert: alert.showRequests, confirm: confirm.showRequests };
+            // The iDevice says why in the alert window, and the author closes it at once.
+            idevice.saveIdeviceProcess.mockImplementation(async () => {
+                alert.showRequests = (alert.showRequests || 0) + 1;
+                return false;
+            });
+            idevice.toogleIdeviceButtonsState = vi.fn();
+            alert.modal = { _isShown: false };
+            confirm.modal = { _isShown: false };
+            alert.show.mockClear();
+
+            try {
+                await idevice.save(false);
+                vi.advanceTimersByTime(500);
+
+                expect(alert.show).not.toHaveBeenCalled();
+            } finally {
+                alert.showRequests = previous.alert;
+                confirm.showRequests = previous.confirm;
+                vi.useRealTimers();
+            }
+        });
+
         it('releases lock in Yjs when enabled', async () => {
             eXeLearning.app.project._yjsEnabled = true;
             idevice.yjsComponentId = 'yjs-comp';
@@ -3218,10 +3244,65 @@ describe('IdeviceNode', () => {
             delete global.$exeDevicesEdition;
         });
 
+        it('stops the audio of the refactored iDevices ($exeIDevicesEdition)', async () => {
+            const previousEdition = global.$exeIDevicesEdition;
+            const mockStopSound = vi.fn();
+            global.$exeIDevicesEdition = {
+                iDevice: {
+                    gamification: {
+                        helpers: {
+                            stopSound: mockStopSound,
+                        },
+                    },
+                },
+            };
+
+            try {
+                await idevice.save(false);
+
+                expect(mockStopSound).toHaveBeenCalledTimes(1);
+            } finally {
+                global.$exeIDevicesEdition = previousEdition;
+            }
+        });
+
+        it('stops the audio of both edition objects when both are loaded', async () => {
+            const previousLegacy = global.$exeDevicesEdition;
+            const previousEdition = global.$exeIDevicesEdition;
+            const legacyStopSound = vi.fn();
+            const editionStopSound = vi.fn();
+            global.$exeDevicesEdition = { iDevice: { gamification: { helpers: { stopSound: legacyStopSound } } } };
+            global.$exeIDevicesEdition = { iDevice: { gamification: { helpers: { stopSound: editionStopSound } } } };
+
+            try {
+                await idevice.save(false);
+
+                expect(legacyStopSound).toHaveBeenCalledTimes(1);
+                expect(editionStopSound).toHaveBeenCalledTimes(1);
+            } finally {
+                global.$exeDevicesEdition = previousLegacy;
+                global.$exeIDevicesEdition = previousEdition;
+            }
+        });
+
         it('does not throw when $exeDevicesEdition is undefined', async () => {
             delete global.$exeDevicesEdition;
 
             await expect(idevice.save(false)).resolves.not.toThrow();
+        });
+
+        it('does not throw when neither edition object is defined', async () => {
+            const previousLegacy = global.$exeDevicesEdition;
+            const previousEdition = global.$exeIDevicesEdition;
+            delete global.$exeDevicesEdition;
+            delete global.$exeIDevicesEdition;
+
+            try {
+                await expect(idevice.save(false)).resolves.not.toThrow();
+            } finally {
+                global.$exeDevicesEdition = previousLegacy;
+                global.$exeIDevicesEdition = previousEdition;
+            }
         });
 
         it('does not throw when stopSound is not available in edition helpers', async () => {

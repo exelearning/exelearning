@@ -145,7 +145,6 @@ var $exeDevice = {
             'Please check all the answers in the right order'
         );
         msgs.msgTimeFormat = _('Please check the time format: hh:mm:ss');
-        msgs.msgProvideFB = _('Message to display when passing the game');
         msgs.msgNoSuportBrowser = _(
             'Your browser is not compatible with this tool.'
         );
@@ -163,197 +162,234 @@ var $exeDevice = {
     },
 
     createForm: function () {
-        const path = this.idevicePath,
-            html = `
+        const edition = $exeIDevicesEdition.iDevice;
+        const path = this.idevicePath;
+
+        const optionsHtml = `
+            <div id="descubreEOptions">
+                <div class="mb-3 d-flex align-items-center gap-2">
+                    <span class="toggle-item">
+                        <span class="toggle-control">
+                            <input type="checkbox" id="descubreEShowMinimize" class="toggle-input" />
+                            <span class="toggle-visual" aria-hidden="true"></span>
+                        </span>
+                        <label class="toggle-label" for="descubreEShowMinimize">${_('Show minimized.')}</label>
+                    </span>
+                    ${edition.common.getHelpTooltip(
+                        _('Start with the game collapsed. Learners can expand it when they are ready to play.')
+                    )}
+                </div>
+                <div class="d-flex align-items-center gap-2 flex-nowrap mb-3" role="radiogroup" aria-labelledby="descubreGameModeLabel">
+                    <span id="descubreGameModeLabel" class="me-2">${_('Type')}:</span>
+                    <div class="form-check form-check-inline m-0">                               
+                        <input class="Descubre-GameMode form-check-input" checked id="descubreGame2" type="radio" name="qtxgamemode" value="0" />
+                        <label for="descubreGame2" class="form-check-label me-2">${_('Pairs')}</label>
+                    </div>
+                    <div class="form-check form-check-inline m-0"> 
+                        <input class="Descubre-GameMode form-check-input" id="descubreGame3" type="radio" name="qtxgamemode" value="1" />
+                        <label for="descubreGame3" class="form-check-label me-2">${_('Trios')}</label>
+                    </div>
+                    <div class="form-check form-check-inline m-0"> 
+                        <input class="Descubre-GameMode form-check-input" id="descubreGame4" type="radio" name="qtxgamemode" value="2" />
+                        <label for="descubreGame4" class="form-check-label">${_('Quartets')}</label>
+                    </div>
+                    ${edition.common.getHelpTooltip(
+                        _('Select how many matching cards players need to find for each item: pairs (2), trios (3), or quartets (4).')
+                    )}
+                </div>
+                <div class="d-flex align-items-center gap-2 flex-nowrap mb-3" role="radiogroup" aria-labelledby="descubreLevelsLabel">
+                    <span id="descubreLevelsLabel" class="me-2">${_('Difficulty levels')}:</span>
+                    <div class="form-check form-check-inline m-0"> 
+                        <input class="Descubre-GameLevel form-check-input" checked id="descubreL1" type="radio" name="qtxgamelevels" value="1" />
+                        <label for="descubreL1" class="form-check-label me-2">1</label>
+                    </div>
+                    <div class="form-check form-check-inline m-0"> 
+                        <input class="Descubre-GameLevel form-check-input" id="descubreL2" type="radio" name="qtxgamelevels" value="2" />
+                        <label for="descubreL2" class="form-check-label me-2">2</label>
+                    </div>
+                    <div class="form-check form-check-inline m-0"> 
+                        <input class="Descubre-GameLevel form-check-input" id="descubreL3" type="radio" name="qtxgamelevels" value="3" />
+                        <label for="descubreL3" class="form-check-label">3</label>
+                    </div>
+                    ${edition.common.getHelpTooltip(
+                        _('Choose the difficulty level. Higher levels require more questions to be configured.')
+                    )}
+                </div>
+                <div class="mb-2 d-flex align-items-center gap-2">
+                    <span class="toggle-item">
+                        <span class="toggle-control">
+                            <input type="checkbox" id="descubreEShowCards" class="toggle-input" />
+                            <span class="toggle-visual" aria-hidden="true"></span>
+                        </span>
+                        <label class="toggle-label" for="descubreEShowCards">${_('Visible cards')}.</label>
+                    </span>
+                    ${edition.common.getHelpTooltip(
+                        _('Show the cards face up for a few seconds when the game starts.')
+                    )}
+                </div>
+                <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
+                    <label for="descubreETimeShowSolution" class="mb-0">${_('Time while the cards will be shown (seconds)')}:</label>
+                    <input type="number" name="descubreETimeShowSolution" id="descubreETimeShowSolution" value="3" min="1" max="999" class="form-control" style="width:6ch" />
+                    ${edition.common.getHelpTooltip(
+                        _('Number of seconds the cards remain face up before flipping face down.')
+                    )}
+                </div>
+                <div class="mb-2 d-flex align-items-center gap-2">
+                    <span class="toggle-item">
+                        <span class="toggle-control">
+                            <input type="checkbox" id="descubreECustomMessages" class="toggle-input" />
+                            <span class="toggle-visual" aria-hidden="true"></span>
+                        </span>
+                        <label class="toggle-label" for="descubreECustomMessages">${_('Custom messages')}.</label>
+                    </span>
+                    ${edition.common.getHelpTooltip(
+                        _('Display personalized congratulations messages when discovering cards.')
+                    )}
+                </div>
+                <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
+                    <label for="descubreETime" class="mb-0">${_('Time (minutes)')}:</label>
+                    <input type="number" name="descubreETime" id="descubreETime" value="0" min="0" max="120" step="1" class="form-control" style="width:6ch" />
+                    ${edition.common.getHelpTooltip(
+                        _('Maximum time allowed to complete the game. 0 for unlimited time.')
+                    )}
+                </div>
+                <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
+                    <label for="descubreEAttempts" class="mb-0">${_('Number of attempts')}:</label>
+                    <input type="number" name="descubreEAttempts" id="descubreEAttempts" value="0" min="0" max="100" step="1" class="form-control" style="width:6ch" />
+                    ${edition.common.getHelpTooltip(
+                        _('Maximum number of attempts allowed. 0 for unlimited attempts.')
+                    )}
+                </div>
+                <div class="mb-3 d-flex align-items-center gap-2">
+                    <span class="toggle-item">
+                        <span class="toggle-control">
+                            <input type="checkbox" checked id="descubreEShowSolution" class="toggle-input" />
+                            <span class="toggle-visual" aria-hidden="true"></span>
+                        </span>
+                        <label class="toggle-label" for="descubreEShowSolution">${_('Show solutions')}.</label>
+                    </span>
+                    ${edition.common.getHelpTooltip(
+                        _('Allow learners to see the solution cards when they run out of attempts.')
+                    )}
+                </div>
+                <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
+                    <label for="descubreEPercentajeQuestions" class="mb-0">% ${_('Questions')}:</label>
+                    <input type="number" name="descubreEPercentajeQuestions" id="descubreEPercentajeQuestions" value="100" min="1" max="100" class="form-control" style="width:6ch" />
+                    <span id="descubreENumeroPercentaje">1/1</span>
+                    ${edition.common.getHelpTooltip(
+                        _('Percentage of available questions included in each game session.')
+                    )}
+                </div>
+                <div class="d-none align-items-center gap-2 flex-nowrap mb-3">
+                    <label for="descubreEAuthor" class="mb-0">${_('Authorship')}:</label>
+                    <input id="descubreEAuthor" type="text" class="form-control" />
+                </div>
+                <div id="descubreEBackDiv">
+                    <p class="Descubre-EInputImageBack gap-2">
+                        <label for="descubreEURLImgCard" class="mb-0">${_('Image back')}: </label>
+                        <input type="text" class="exe-file-picker Descubre-EURLImage form-control me-0" id="descubreEURLImgCard"/>
+                        <a href="#" id="descubreEPlayCard" class="Descubre-ENavigationButton" title="${_('Show')}">
+                             <img src="${path}quextIEPlay.png" alt="${_('Show')}" class="Descubre-EButtonImage " />
+                        </a>
+                        ${edition.common.getHelpTooltip(
+                            _('Choose a custom image for the card backs.')
+                        )}
+                    </p>
+                    <p id="descubreEbackground" class="Descubre-Back">
+                        <img class="Descubre-EImageBack" src="" id="descubreECard" alt="${_('Image')}" style="display:none" />
+                        <img class="Descubre-EImageBack" src="${path}dcbHome.png" id="descubreENoCard" alt="${_('No image')}" />
+                    </p>
+                </div>   
+            </div>
+        `;
+
+        const questionsHtml = `
+            <div class="Descubre-EPanel" id="descubreEPanel-0">
+                <div class="Descubre-Pareja">
+                    ${$exeDevice.createCards(this.NUMMAXCARD)}
+                </div>
+                <div class="Descubre-EContents">
+                    <div class="Descubre-EOrders Descubre-Hide" id="descubreEOrder">
+                        <div class="Descubre-ECustomMessage">
+                            <span class="sr-av">${_('Success')}</span>
+                            <span class="Descubre-EHit"></span>
+                            <label for="descubreEMessageOK">${_('Message')}:</label>
+                            <input type="text" id="descubreEMessageOK" />
+                        </div>
+                    </div>
+                    <div class="Descubre-ENavigationButtons gap-2">
+                        <a href="#" id="descubreEAdd" class="Descubre-ENavigationButton" title="${_('Add question')}">
+                            <img src="${path}quextIEAdd.png" alt="${_('Add question')}" class="Descubre-EButtonImage b-add" />
+                        </a>
+                        <a href="#" id="descubreEFirst" class="Descubre-ENavigationButton" title="${_('First question')}">
+                            <img src="${path}quextIEFirst.png" alt="${_('First question')}" class="Descubre-EButtonImage b-first" />
+                        </a>
+                        <a href="#" id="descubreEPrevious" class="Descubre-ENavigationButton" title="${_('Previous question')}">
+                            <img src="${path}quextIEPrev.png" alt="${_('Previous question')}" class="Descubre-EButtonImage b-prev" />
+                        </a>
+                        <span class="sr-av">${_('Question number:')}</span>
+                        <span class="Descubre-NumberQuestion" id="descubreENumberQuestion">1</span>
+                        <a href="#" id="descubreENext" class="Descubre-ENavigationButton" title="${_('Next question')}">
+                            <img src="${path}quextIENext.png" alt="${_('Next question')}" class="Descubre-EButtonImage b-next" />
+                        </a>
+                        <a href="#" id="descubreELast" class="Descubre-ENavigationButton" title="${_('Last question')}">
+                            <img src="${path}quextIELast.png" alt="${_('Last question')}" class="Descubre-EButtonImage b-last" />
+                        </a>
+                        <a href="#" id="descubreEDelete" class="Descubre-ENavigationButton" title="${_('Delete question')}">
+                            <img src="${path}quextIEDelete.png" alt="${_('Delete question')}" class="Descubre-EButtonImage b-delete" />
+                        </a>
+                        <a href="#" id="descubreECopy" class="Descubre-ENavigationButton" title="${_('Copy question')}">
+                            <img src="${path}quextIECopy.png" alt="${_('Copy question')}" class="Descubre-EButtonImage b-copy" />
+                        </a>
+                        <a href="#" id="descubreECut" class="Descubre-ENavigationButton" title="${_('Cut question')}">
+                            <img src="${path}quextIECut.png" alt="${_('Cut question')}" class="Descubre-EButtonImage b-cut" />
+                        </a>
+                        <a href="#" id="descubreEPaste" class="Descubre-ENavigationButton" title="${_('Paste question')}">
+                            <img src="${path}quextIEPaste.png" alt="${_('Paste question')}" class="Descubre-EButtonImage b-paste" />
+                        </a>
+                    </div>
+                </div>
+                <div class="Descubre-ENumQuestionDiv" id="descubreENumQuestionDiv">
+                    <div class="Descubre-ENumQ"><span class="sr-av">${_('Question')}</span></div>
+                    <span class="Descubre-ENumQuestions" id="descubreENumQuestions">0</span>
+                </div>
+            </div>
+        `;
+
+        const tabsHtml = edition.tabs.getHtml('descubreQEIdeviceForm', {
+            titles: { contents: _('Cards') },
+            path,
+            instructions: c_('Birds of a feather flock together.'),
+            options: optionsHtml,
+            contents: questionsHtml,
+            passwords: true,
+            feedback: true,
+            after: true,
+            grading: true,
+            texts: this.ci18n,
+            share: {
+                importQuestions: true,
+                formats: ['txt'],
+                exportQuestions: true,
+                type: 0,
+            },
+            info: {
+                contents: _('Add pairs, trios or quartets of cards with images, texts and/or sounds.'),
+            },
+        });
+
+        const html = `
             <div id="descubreQEIdeviceForm">
-                ${$exeDevicesEdition.iDevice.common.getIdeviceDescription(
+                ${edition.common.getIdeviceDescription(
                     _('Create interactive activities in which players will have to discover pairs, trios or card quartets with images, texts and/or sounds.'),
                     'https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe40/html/descubre.html',
                 )}
-                <div class="exe-form-tab" title="${_('General settings')}">
-                    ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset(c_('Birds of a feather flock together.'))}
-                    <fieldset class="exe-fieldset exe-fieldset-closed">
-                        <legend><a href="#">${_('Options')}</a></legend>
-                        <div>
-                            <div class="mb-3">
-                                <span class="toggle-item" role="switch" aria-checked="false">
-                                    <span class="toggle-control">
-                                        <input type="checkbox" id="descubreEShowMinimize" class="toggle-input" />
-                                        <span class="toggle-visual" aria-hidden="true"></span>
-                                    </span>
-                                    <label class="toggle-label" for="descubreEShowMinimize">${_('Show minimized.')}</label>
-                                </span>
-                            </div>
-                            <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
-                                <span class="me-2">${_('Type')}:</span>
-                                <div class="form-check form-check-inline m-0">                               
-                                    <input class="Descubre-GameMode form-check-input" checked id="descubreGame2" type="radio" name="qtxgamemode" value="0" />
-                                    <label for="descubreGame2" class="form-check-label me-2">${_('Pairs')}</label>
-                                </div>
-                                <div class="form-check form-check-inline m-0"> 
-                                    <input class="Descubre-GameMode form-check-input" id="descubreGame3" type="radio" name="qtxgamemode" value="1" />
-                                    <label for="descubreGame3" class="form-check-label me-2">${_('Trios')}</label>
-                                 </div>
-                                <div class="form-check form-check-inline m-0"> 
-                                    <input class="Descubre-GameMode form-check-input" id="descubreGame4" type="radio" name="qtxgamemode" value="2" />
-                                    <label for="descubreGame4" class="form-check-label">${_('Quartets')}</label>
-                                </div>
-                            </div>
-                            <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
-                                <span class="me-2">${_('Difficulty levels')}:</span>
-                                <div class="form-check form-check-inline m-0"> 
-                                    <input class="Descubre-GameLevel form-check-input" checked id="descubreL1" type="radio" name="qtxgamelevels" value="1" />1
-                                    <label for="descubreL1" class="form-check-label me-2"></label>
-                                </div>
-                                <div class="form-check form-check-inline m-0"> 
-                                    <input class="Descubre-GameLevel form-check-input" id="descubreL2" type="radio" name="qtxgamelevels" value="2" />
-                                    <label for="descubreL2" class="form-check-label me-2">2</label>
-                                </div>
-                                <div class="form-check form-check-inline m-0"> 
-                                    <input class="Descubre-GameLevel form-check-input" id="descubreL3" type="radio" name="qtxgamelevels" value="3" />
-                                    <label for="descubreL3" class="form-check-label">3</label>
-                                </div>
-                            </div>
-                            <div class="mb-2">
-                                <span class="toggle-item" role="switch" aria-checked="false">
-                                    <span class="toggle-control">
-                                        <input type="checkbox" id="descubreEShowCards" class="toggle-input" />
-                                        <span class="toggle-visual" aria-hidden="true"></span>
-                                    </span>
-                                    <label class="toggle-label" for="descubreEShowCards">${_('Visible cards')}.</label>
-                                </span>
-                            </div>
-                            <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
-                                <label for="descubreETimeShowSolution" class="mb-0">${_('Time while the cards will be shown (seconds)')}:</label>
-                                <input type="number" name="descubreETimeShowSolution" id="descubreETimeShowSolution" value="3" min="1" max="999" class="form-control" style="width:6ch" />
-                            </div>
-                            <div class="mb-2">
-                                <span class="toggle-item" role="switch" aria-checked="false">
-                                    <span class="toggle-control">
-                                        <input type="checkbox" id="descubreECustomMessages" class="toggle-input" />
-                                        <span class="toggle-visual" aria-hidden="true"></span>
-                                    </span>
-                                    <label class="toggle-label" for="descubreECustomMessages">${_('Custom messages')}.</label>
-                                </span>
-                            </div>
-                            <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
-                                <label for="descubreETime" class="mb-0">${_('Time (minutes)')}:</label>
-                                <input type="number" name="descubreETime" id="descubreETime" value="0" min="0" max="120" step="1" class="form-control" style="width:6ch" />
-                            </div>
-                            <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
-                                <label for="descubreEAttempts" class="mb-0">${_('Number of attempts')}:</label>
-                                <input type="number" name="descubreEAttempts" id="descubreEAttempts" value="0" min="0" max="100" step="1" class="form-control" style="width:6ch" />
-                            </div>
-                            <div class="mb-3">
-                                <span class="toggle-item" role="switch" aria-checked="true">
-                                    <span class="toggle-control">
-                                        <input type="checkbox" checked id="descubreEShowSolution" class="toggle-input" />
-                                        <span class="toggle-visual" aria-hidden="true"></span>
-                                    </span>
-                                    <label class="toggle-label" for="descubreEShowSolution">${_('Show solutions')}.</label>
-                                </span>
-                            </div>
-                            <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
-                                <span class="toggle-item" role="switch" aria-checked="false">
-                                    <span class="toggle-control">
-                                        <input type="checkbox" id="descubreEHasFeedBack" class="toggle-input" />
-                                        <span class="toggle-visual" aria-hidden="true"></span>
-                                    </span>
-                                    <label class="toggle-label" for="descubreEHasFeedBack">${_('Feedback')}.</label>
-                                </span>
-                                <label for="descubreEPercentajeFB" class="ms-2 mb-0"><input type="number" name="descubreEPercentajeFB" id="descubreEPercentajeFB" value="100" min="5" max="100" step="5" disabled class="form-control" style="width:6ch" /></label>
-                            </div>
-                            <div id="descubreEFeedbackP" class="Descubre-EFeedbackP">
-                                <textarea id="descubreEFeedBackEditor" class="exe-html-editor form-control" rows="4"></textarea>
-                            </div>
-                            <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
-                                <label for="descubreEPercentajeQuestions" class="mb-0">% ${_('Questions')}:</label>
-                                <input type="number" name="descubreEPercentajeQuestions" id="descubreEPercentajeQuestions" value="100" min="1" max="100" class="form-control" style="width:6ch" />
-                                <span id="descubreENumeroPercentaje">1/1</span>
-                            </div>
-                            <div class="d-none align-items-center gap-2 flex-nowrap mb-3">
-                                <label for="descubreEAuthor" class="mb-0">${_('Authorship')}:</label>
-                                <input id="descubreEAuthor" type="text" class="form-control" />
-                            </div>
-                            <div id="descubreEBackDiv">
-                                <p class="Descubre-EInputImageBack gap-2">
-                                    <label for="descubreEURLImgCard">${_('Image back')}: </label>
-                                    <input type="text" class="exe-file-picker Descubre-EURLImage form-control me-0" id="descubreEURLImgCard"/>
-                                    <a href="#" id="descubreEPlayCard" class="Descubre-ENavigationButton" title="${_('Show')}">
-                                         <img src="${path}quextIEPlay.png" alt="${_('Show')}" class="Descubre-EButtonImage " />
-                                    </a>
-                                </p>
-                                <p id="descubreEbackground" class="Descubre-Back">
-                                    <img class="Descubre-EImageBack" src="" id="descubreECard" alt="${_('Image')}" style="display:none" />
-                                    <img class="Descubre-EImageBack" src="${path}dcbHome.png" id="descubreENoCard" alt="${_('No image')}" />
-                                </p>
-                            </div>   
-                           <div class="Games-Reportdiv d-flex align-items-center gap-2 flex-nowrap mt-3">
-                            </div>
-                        </div>
-                    </fieldset>
-                    <fieldset class="exe-fieldset">
-                        <legend><a href="#">${_('Pairs')}</a></legend>
-                        <div class="Descubre-EPanel" id="descubreEPanel-0">
-                            <div class="Descubre-Pareja">
-                                ${$exeDevice.createCards(this.NUMMAXCARD)}
-                            </div>
-                            <div class="Descubre-EContents">
-                                <div class="Descubre-EOrders Descubre-Hide" id="descubreEOrder">
-                                    <div class="Descubre-ECustomMessage">
-                                        <span class="sr-av">${_('Success')}</span>
-                                        <span class="Descubre-EHit"></span>
-                                        <label for="descubreEMessageOK">${_('Message')}:</label>
-                                        <input type="text" id="descubreEMessageOK" />
-                                    </div>
-                                </div>
-                                <div class="Descubre-ENavigationButtons gap-2">
-                                    <a href="#" id="descubreEAdd" class="Descubre-ENavigationButton" title="${_('Add question')}">
-                                        <img src="${path}quextIEAdd.png" alt="${_('Add question')}" class="Descubre-EButtonImage b-add" />
-                                    </a>
-                                    <a href="#" id="descubreEFirst" class="Descubre-ENavigationButton" title="${_('First question')}">
-                                        <img src="${path}quextIEFirst.png" alt="${_('First question')}" class="Descubre-EButtonImage b-first" />
-                                    </a>
-                                    <a href="#" id="descubreEPrevious" class="Descubre-ENavigationButton" title="${_('Previous question')}">
-                                        <img src="${path}quextIEPrev.png" alt="${_('Previous question')}" class="Descubre-EButtonImage b-prev" />
-                                    </a>
-                                    <span class="sr-av">${_('Question number:')}</span>
-                                    <span class="Descubre-NumberQuestion" id="descubreENumberQuestion">1</span>
-                                    <a href="#" id="descubreENext" class="Descubre-ENavigationButton" title="${_('Next question')}">
-                                        <img src="${path}quextIENext.png" alt="${_('Next question')}" class="Descubre-EButtonImage b-next" />
-                                    </a>
-                                    <a href="#" id="descubreELast" class="Descubre-ENavigationButton" title="${_('Last question')}">
-                                        <img src="${path}quextIELast.png" alt="${_('Last question')}" class="Descubre-EButtonImage b-last" />
-                                    </a>
-                                    <a href="#" id="descubreEDelete" class="Descubre-ENavigationButton" title="${_('Delete question')}">
-                                        <img src="${path}quextIEDelete.png" alt="${_('Delete question')}" class="Descubre-EButtonImage b-delete" />
-                                    </a>
-                                    <a href="#" id="descubreECopy" class="Descubre-ENavigationButton" title="${_('Copy question')}">
-                                        <img src="${path}quextIECopy.png" alt="${_('Copy question')}" class="Descubre-EButtonImage b-copy" />
-                                    </a>
-                                    <a href="#" id="descubreEPaste" class="Descubre-ENavigationButton" title="${_('Paste question')}">
-                                        <img src="${path}quextIEPaste.png" alt="${_('Paste question')}" class="Descubre-EButtonImage b-paste" />
-                                    </a>
-                                </div>
-                            </div>
-                            <div class="Descubre-ENumQuestionDiv" id="descubreENumQuestionDiv">
-                                <div class="Descubre-ENumQ"><span class="sr-av">${_('Question')}</span></div>
-                                <span class="Descubre-ENumQuestions" id="descubreENumQuestions">0</span>
-                            </div>
-                        </div>
-                    </fieldset>
-                    ${$exeDevicesEdition.iDevice.common.getTextFieldset('after')}
-                </div>
-                ${$exeDevicesEdition.iDevice.gamification.itinerary.getTab()}
-                ${$exeDevicesEdition.iDevice.gamification.scorm.getTab(path)}
-                ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
-                ${$exeDevicesEdition.iDevice.gamification.share.getTab(true, 0, true)}
-                ${$exeDevicesEdition.iDevice.gamification.share.getTabIA(0)}
+                ${tabsHtml}
             </div>
         `;
         this.ideviceBody.innerHTML = html;
-        $exeDevicesEdition.iDevice.tabs.init('descubreQEIdeviceForm');
-        $exeDevicesEdition.iDevice.gamification.scorm.init();
+        edition.tabs.bind('descubreQEIdeviceForm');
+        edition.gamification.scorm.init();
         this.enableForm();
     },
 
@@ -434,7 +470,7 @@ var $exeDevice = {
         $exeDevice.initQuestions();
 
         const root = document.getElementById('descubreQEIdeviceForm') || document;
-        $exeDevicesEdition.iDevice.voiceRecorder.initVoiceRecorders(root);
+        $exeIDevicesEdition.iDevice.voiceRecorder.initVoiceRecorders(root);
 
         $exeDevice.loadPreviousValues();
         $exeDevice.addEvents();
@@ -442,7 +478,7 @@ var $exeDevice = {
 
     updateQuestionsNumber: function () {
         const percentInput = parseInt(
-            $exeDevice.removeTags($('#descubreEPercentajeQuestions').val())
+            $exeIDevicesEdition.iDevice.common.removeTags($('#descubreEPercentajeQuestions').val())
         );
 
         if (isNaN(percentInput)) return;
@@ -474,7 +510,6 @@ var $exeDevice = {
             $exeDevice.updateTextOverlay(k);
         }
         $('#descubreEMessageOK').val(q.msgHit);
-        $('#descubreEMessageKO').val(q.msgError);
         $('#descubreENumberQuestion').text(i + 1);
     },
 
@@ -785,8 +820,8 @@ var $exeDevice = {
 
             const textFeedBack = $('.descubre-feedback-game', wrapper);
             if (textFeedBack.length == 1)
-                $('#descubreEFeedBackEditor').val(textFeedBack.html());
-            $exeDevicesEdition.iDevice.gamification.common.setLanguageTabValues(
+                $exeIDevicesEdition.iDevice.gamification.feedback.setText(textFeedBack.html());
+            $exeIDevicesEdition.iDevice.gamification.common.setLanguageTabValues(
                 dataGame.msgs
             );
             $exeDevice.showQuestion(0);
@@ -794,15 +829,6 @@ var $exeDevice = {
             // Ensure initial cards apply the same overlay styles as loaded questions.
             $exeDevice.showQuestion(0);
         }
-    },
-
-    escapeHtml: function (string) {
-        return String(string)
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;')
-            .replace(/'/g, '&#39;');
     },
 
     save: function () {
@@ -826,9 +852,7 @@ var $exeDevice = {
 
         json = $exeDevices.iDevice.gamification.helpers.encrypt(json);
 
-        const textFeedBack = tinyMCE
-            .get('descubreEFeedBackEditor')
-            .getContent();
+        const textFeedBack = $exeIDevicesEdition.iDevice.gamification.feedback.getText();
         if (dataGame.instructions != '')
             divContent =
                 '<div class="descubre-instructions">' +
@@ -855,7 +879,7 @@ var $exeDevice = {
         html += linksAudios;
         html += imgCard;
 
-        const textAfter = tinyMCE.get('eXeIdeviceTextAfter').getContent();
+        const textAfter = $exeIDevicesEdition.iDevice.common.getEditorContent('eXeIdeviceTextAfter');
         if (textAfter != '') {
             html +=
                 '<div class="descubre-extra-content">' + textAfter + '</div>';
@@ -941,7 +965,7 @@ var $exeDevice = {
         return html;
     },
 
-    validateQuestion: function () {
+    validateQuestion: function (options = {}) {
         let message = '',
             msgs = $exeDevice.msgs,
             gameMode = parseInt($('input[name=qtxgamemode]:checked').val()),
@@ -966,9 +990,8 @@ var $exeDevice = {
         }
 
         q.msgHit = $('#descubreEMessageOK').val();
-        q.msgError = $('#descubreEMessageKO').val();
 
-        $exeDevicesEdition.iDevice.gamification.helpers.stopSound();
+        $exeIDevicesEdition.iDevice.gamification.helpers.stopSound();
 
         let num_cards = 2;
         if (gameMode == 1) {
@@ -991,14 +1014,10 @@ var $exeDevice = {
             $exeDevice.wordsGame[$exeDevice.active] = q;
             message = true;
         } else {
-            $exeDevice.showMessage(message);
+            if (!options.silent) $exeIDevicesEdition.iDevice.common.showMessage(message);
             message = false;
         }
         return message;
-    },
-
-    showMessage: function (msg) {
-        eXe.app.alert(msg);
     },
 
     getIdeviceID: function () {
@@ -1010,17 +1029,55 @@ var $exeDevice = {
         return ideviceid;
     },
 
+    /**
+     * @returns {number} The type of game chosen in Options: 0 pairs, 1 trios,
+     * 2 quartets. It sets how many cards of each set are used.
+     */
+    getGameMode: function () {
+        return parseInt($('input[name=qtxgamemode]:checked').val());
+    },
+
+    /**
+     * The sets of cards of the activity, checked. Saving asks for more than
+     * this; Export, which only writes the sets of cards, for nothing else.
+     *
+     * @returns {Array|false} The sets of cards, or false after telling the
+     * author what one of them is missing.
+     */
+    validateQuestions: function () {
+        const wordsGame = $exeDevice.wordsGame,
+            gameMode = $exeDevice.getGameMode();
+        if (wordsGame.length == 0) {
+            $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgEOneQuestion);
+            return false;
+        }
+
+        let num_cards = 2;
+        if (gameMode == 1) {
+            num_cards = 3;
+        } else if (gameMode == 2) {
+            num_cards = 4;
+        }
+
+        for (let i = 0; i < wordsGame.length; i++) {
+            for (let j = 0; j < num_cards; j++) {
+                const p = wordsGame[i].data[j];
+                if (p.eText == 0 && p.url.length < 5 && p.audio.length < 5) {
+                    $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgCompleteData);
+                    return false;
+                }
+            }
+        }
+        return wordsGame;
+    },
+
     validateData: function () {
-        const clear = $exeDevice.removeTags,
-            instructions = tinyMCE.get('eXeGameInstructions').getContent(),
-            textFeedBack = tinyMCE.get('descubreEFeedBackEditor').getContent(),
-            textAfter = tinyMCE.get('eXeIdeviceTextAfter').getContent(),
+        const clear = $exeIDevicesEdition.iDevice.common.removeTags,
+            instructions = $exeIDevicesEdition.iDevice.common.getEditorContent('eXeGameInstructions'),
+            textAfter = $exeIDevicesEdition.iDevice.common.getEditorContent('eXeIdeviceTextAfter'),
             showMinimize = $('#descubreEShowMinimize').is(':checked'),
             itinerary =
-                $exeDevicesEdition.iDevice.gamification.itinerary.getValues(),
-            caseSensitive = $('#descubreECaseSensitive').is(':checked'),
-            feedBack = $('#descubreEHasFeedBack').is(':checked'),
-            percentajeFB = parseInt(clear($('#descubreEPercentajeFB').val())),
+                $exeIDevicesEdition.iDevice.gamification.itinerary.getValues(),
             customMessages = $('#descubreECustomMessages').is(':checked'),
             showCards = $('#descubreEShowCards').is(':checked'),
             percentajeQuestions = parseInt(
@@ -1037,57 +1094,40 @@ var $exeDevice = {
             gameLevels = parseInt($('input[name=qtxgamelevels]:checked').val()),
             wordsGame = $exeDevice.wordsGame,
             progressBar =
-                $exeDevicesEdition.iDevice.gamification.progressBar.getValues(),
+                $exeIDevicesEdition.iDevice.gamification.progressBar.getValues(),
             passScore =
-                $exeDevicesEdition.iDevice.gamification.passScore.getValues(),
+                $exeIDevicesEdition.iDevice.gamification.passScore.getValues(),
             id = $exeDevice.getIdeviceID();
 
         if (!itinerary) return;
         if (!progressBar) return false;
 
-        if (wordsGame.length == 0) {
-            $exeDevice.showMessage($exeDevice.msgs.msgEOneQuestion);
-            return false;
-        }
+        const feedback = $exeIDevicesEdition.iDevice.gamification.feedback.getValues();
+        if (!feedback) return false;
 
         if (gameLevels == 3 && wordsGame.length < 3) {
-            $exeDevice.showMessage(
+            $exeIDevicesEdition.iDevice.common.showMessage(
                 'Para un juego con tres niveles de dificultad necesita al menos tres cuestiones'
             );
             return false;
         } else if (gameLevels == 2 && wordsGame.length < 2) {
-            $exeDevice.showMessage(
+            $exeIDevicesEdition.iDevice.common.showMessage(
                 'Para un juego con dos niveles de dificultad necesita al menos dos cuestiones'
             );
             return false;
         }
 
-        let num_cards = 2;
-        if (gameMode == 1) {
-            num_cards = 3;
-        } else if (gameMode == 2) {
-            num_cards = 4;
-        }
-
-        for (let i = 0; i < wordsGame.length; i++) {
-            for (let j = 0; j < num_cards; j++) {
-                const p = wordsGame[i].data[j];
-                if (p.eText == 0 && p.url.length < 5 && p.audio.length < 5) {
-                    $exeDevice.showMessage($exeDevice.msgs.msgCompleteData);
-                    return false;
-                }
-            }
-        }
+        if (!$exeDevice.validateQuestions()) return false;
 
         if (
             attempts > 0 &&
             attempts < (wordsGame.length * percentajeQuestions) / 100
         ) {
-            $exeDevice.showMessage($exeDevice.msgs.msgFewAttempts);
+            $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgFewAttempts);
             return false;
         }
 
-        const scorm = $exeDevicesEdition.iDevice.gamification.scorm.getValues();
+        const scorm = $exeIDevicesEdition.iDevice.gamification.scorm.getValues();
 
         return {
             typeGame: 'Descubre',
@@ -1101,11 +1141,10 @@ var $exeDevice = {
             textButtonScorm: scorm.textButtonScorm,
             repeatActivity: scorm.repeatActivity,
             weighted: scorm.weighted,
-            textFeedBack: escape(textFeedBack),
+            textFeedBack: escape(feedback.textFeedBack),
             textAfter: escape(textAfter),
-            caseSensitive: caseSensitive,
-            feedBack: feedBack,
-            percentajeFB: percentajeFB,
+            feedBack: feedback.feedBack,
+            percentajeFB: feedback.percentajeFB,
             customMessages: customMessages,
             percentajeQuestions: percentajeQuestions,
             timeShowSolution: timeShowSolution,
@@ -1159,7 +1198,7 @@ var $exeDevice = {
                         this.naturalWidth,
                         this.naturalHeight
                     );
-                    $exeDevice.drawImage(this, mData);
+                    $exeIDevicesEdition.iDevice.common.drawImage(this, mData);
                     $image.show();
                     $nimage.hide();
                     $exeDevice.paintMouse(this, $cursor, x, y);
@@ -1207,22 +1246,10 @@ var $exeDevice = {
         }
     },
 
-    drawImage: function (image, mData) {
-        $(image).css({
-            left: mData.x + 'px',
-            top: mData.y + 'px',
-            width: mData.w + 'px',
-            height: mData.h + 'px',
-        });
-    },
-
     addEvents: function () {
-        // Inicializar toggles (ARIA + data-target)
+        // Show or hide the block each switch controls (data-target).
         const initToggle = function ($input) {
             const checked = $input.is(':checked');
-            $input
-                .closest('.toggle-item[role="switch"]')
-                .attr('aria-checked', checked);
             const targetSel = $input.data('target');
             if (targetSel) {
                 const $target = $(targetSel);
@@ -1306,28 +1333,12 @@ var $exeDevice = {
             window.FileList &&
             window.Blob
         ) {
-            $('#eXeGameExportImport .exe-field-instructions')
-                .eq(0)
-                .text(_('Supported formats') + ': json, txt');
             $('#eXeGameExportImport').show();
-            $('#eXeGameImportGame').attr('accept', '.txt, .json, .xml');
 
             $('#eXeGameImportGame').on('change', e => {
                 const file = e.target.files[0];
-                if (!file) {
-                    eXe.app.alert(_('Select a file') + ' (txt, json)');
-                    return;
-                }
-                if (
-                    !file.type ||
-                    !(
-                        file.type.match('text/plain') ||
-                        file.type.match('application/json') ||
-                        file.type.match('application/xml') ||
-                        file.type.match('text/xml')
-                    )
-                ) {
-                    eXe.app.alert(_('Select a file') + ' (txt, json)');
+                if (!file || !file.type || !file.type.match('text/plain')) {
+                    eXe.app.alert(_('Please select a text file (.txt)'));
                     return;
                 }
                 const reader = new FileReader();
@@ -1345,16 +1356,6 @@ var $exeDevice = {
         } else {
             $('#eXeGameExportImport').hide();
         }
-
-        $('#descubreEHasFeedBack').on('change', function () {
-            const marcado = $(this).is(':checked');
-            if (marcado) {
-                $('#descubreEFeedbackP').slideDown();
-            } else {
-                $('#descubreEFeedbackP').slideUp();
-            }
-            $('#descubreEPercentajeFB').prop('disabled', !marcado);
-        });
 
         $('#descubreECustomMessages').on('change', function () {
             const messages = $(this).is(':checked');
@@ -1600,8 +1601,9 @@ var $exeDevice = {
             $('#descubreEAuthorAlt-3').slideToggle();
         });
 
-        $exeDevicesEdition.iDevice.gamification.progressBar.addEvents();
-        $exeDevicesEdition.iDevice.gamification.passScore.addEvents();
+        $exeIDevicesEdition.iDevice.gamification.progressBar.addEvents();
+        $exeIDevicesEdition.iDevice.gamification.passScore.addEvents();
+        $exeIDevicesEdition.iDevice.gamification.feedback.addEvents();
 
         $('#descubreEURLImgCard').on('change', () =>
             $exeDevice.loadImageCard()
@@ -1612,12 +1614,12 @@ var $exeDevice = {
             $exeDevice.loadImageCard();
         });
 
-        $exeDevicesEdition.iDevice.gamification.share.addEvents(
+        $exeIDevicesEdition.iDevice.gamification.share.addEvents(
             0,
             $exeDevice.insertCards
         );
 
-        $exeDevicesEdition.iDevice.gamification.itinerary.addEvents();
+        $exeIDevicesEdition.iDevice.gamification.itinerary.addEvents();
         //eX3 3.0 Dismissible messages
         $('.exe-block-dismissible .exe-block-close').click(function () {
             $(this).parent().fadeOut();
@@ -1673,82 +1675,6 @@ var $exeDevice = {
         }
     },
 
-    importMoodle(xmlString) {
-        const xmlDoc = $.parseXML(xmlString),
-            $xml = $(xmlDoc);
-        if ($xml.find('GLOSSARY').length > 0) {
-            $exeDevice.importGlosary(xmlString);
-        } else if ($xml.find('quiz').length > 0) {
-            $exeDevice.importCuestionaryXML(xmlString);
-        } else {
-            eXe.app.alert(_('Sorry, wrong file format'));
-        }
-    },
-
-    importCuestionaryXML(xmlText) {
-        const parser = new DOMParser(),
-            xmlDoc = parser.parseFromString(xmlText, 'text/xml'),
-            $xml = $(xmlDoc),
-            $quiz = $xml.find('quiz').first();
-
-        if ($xml.find('parsererror').length > 0 || $quiz.length === 0)
-            return false;
-
-        const cardsJson = $quiz
-            .find('question')
-            .map((_, question) => {
-                const $question = $(question);
-                if ($question.attr('type') !== 'shortanswer') return null;
-
-                let eText = '',
-                    maxFraction = -1;
-                $question.find('answer').each((_, answer) => {
-                    const $answer = $(answer),
-                        answerText = $answer.find('text').eq(0).text(),
-                        currentFraction = parseInt($answer.attr('fraction'));
-
-                    if (currentFraction > maxFraction) {
-                        maxFraction = currentFraction;
-                        eText = answerText;
-                    }
-                });
-                const bktext = {
-                    eTextBk: $exeDevice.removeTags(
-                        $question.find('questiontext').first().text().trim()
-                    ),
-                    eText: $exeDevice.removeTags(eText),
-                };
-                return eText ? bktext : null;
-            })
-            .get();
-        $exeDevice.insertCards(cardsJson);
-    },
-
-    importGlosary(xmlText) {
-        const parser = new DOMParser(),
-            xmlDoc = parser.parseFromString(xmlText, 'text/xml'),
-            $xml = $(xmlDoc),
-            $entries = $xml.find('ENTRIES').first();
-
-        if ($xml.find('parsererror').length > 0 || $entries.length === 0)
-            return false;
-
-        const cardsJson = $entries
-            .find('ENTRY')
-            .map((_, entry) => {
-                const concept = $(entry).find('CONCEPT').text(),
-                    definition = $(entry)
-                        .find('DEFINITION')
-                        .text()
-                        .replace(/<[^>]*>/g, '');
-                return concept && definition
-                    ? { eText: concept, eTextBk: definition }
-                    : null;
-            })
-            .get();
-        $exeDevice.insertCards(cardsJson);
-    },
-
     addCards: function (cards) {
         if (!cards || cards.length == 0) {
             eXe.app.alert(
@@ -1770,7 +1696,7 @@ var $exeDevice = {
             ext = url.split('.').pop().toLowerCase();
 
         if (url.indexOf('files') == 0 && validExt.indexOf(ext) == -1) {
-            $exeDevice.showMessage(
+            $exeIDevicesEdition.iDevice.common.showMessage(
                 _('Supported formats') + ': jpg, jpeg, gif, png, svg, webp'
             );
             return false;
@@ -1813,7 +1739,7 @@ var $exeDevice = {
             y = parseFloat($('#descubreEYImage-' + number).val());
 
         if (selectedFile.indexOf('files') == 0 && validExt.indexOf(ext) == -1) {
-            $exeDevice.showMessage(
+            $exeIDevicesEdition.iDevice.common.showMessage(
                 _('Supported formats') + ': jpg, jpeg, gif, png, svg webp'
             );
             return false;
@@ -1834,11 +1760,11 @@ var $exeDevice = {
             ext = url.split('.').pop().toLowerCase();
 
         if (url.indexOf('files') == 0 && validExt.indexOf(ext) == -1) {
-            $exeDevice.showMessage(_('Supported formats') + ': mp3, ogg, wav');
+            $exeIDevicesEdition.iDevice.common.showMessage(_('Supported formats') + ': mp3, ogg, wav');
             return false;
         } else {
             if (url.length > 4) {
-                $exeDevicesEdition.iDevice.gamification.helpers.playSound(url);
+                $exeIDevicesEdition.iDevice.gamification.helpers.playSound(url);
             }
         }
     },
@@ -1848,16 +1774,6 @@ var $exeDevice = {
             $('.Descubre-EOrders').slideDown();
         } else {
             $('.Descubre-EOrders').slideUp();
-        }
-    },
-
-    updateGameMode: function (feedback) {
-        $('#descubreEHasFeedBack').prop('checked', feedback);
-        if (feedback) {
-            $('#descubreEFeedbackP').slideDown();
-        }
-        if (!feedback) {
-            $('#descubreEFeedbackP').slideUp();
         }
     },
 
@@ -1878,12 +1794,12 @@ var $exeDevice = {
             $exeDevice.showImage('', 0, 0, _('No image'), i);
             $exeDevice.updateTextOverlay(i);
         }
-        $exeDevicesEdition.iDevice.gamification.helpers.stopSound();
+        $exeIDevicesEdition.iDevice.gamification.helpers.stopSound();
     },
 
     addQuestion: function () {
         if ($exeDevice.wordsGame.length >= 20) {
-            $exeDevice.showMessage($exeDevice.msgs.msgPairsMax);
+            $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgPairsMax);
             return;
         }
 
@@ -1902,7 +1818,7 @@ var $exeDevice = {
 
     removeQuestion: function () {
         if ($exeDevice.wordsGame.length < 2) {
-            $exeDevice.showMessage($exeDevice.msgs.msgEOneQuestion);
+            $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgEOneQuestion);
         } else {
             $exeDevice.wordsGame.splice($exeDevice.active, 1);
             if ($exeDevice.active >= $exeDevice.wordsGame.length - 1) {
@@ -1935,8 +1851,11 @@ var $exeDevice = {
     },
 
     pasteQuestion: function () {
+        $exeIDevicesEdition.iDevice.gamification.share.keepQuestionOnScreen(
+            (options) => $exeDevice.validateQuestion(options)
+        );
         if ($exeDevice.wordsGame.length >= 20) {
-            $exeDevice.showMessage($exeDevice.msgs.msgPairsMax);
+            $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgPairsMax);
             return;
         }
 
@@ -1996,7 +1915,7 @@ var $exeDevice = {
 
     updateFieldGame: function (game) {
         $exeDevice.active = 0;
-        $exeDevicesEdition.iDevice.gamification.itinerary.setValues(
+        $exeIDevicesEdition.iDevice.gamification.itinerary.setValues(
             game.itinerary
         );
         game.percentajeFB =
@@ -2031,9 +1950,6 @@ var $exeDevice = {
         $exeDevice.id = $exeDevice.getIdeviceID();
 
         $('#descubreEShowMinimize').prop('checked', game.showMinimize);
-        $('#descubreECaseSensitive').prop('checked', game.caseSensitive);
-        $('#descubreEHasFeedBack').prop('checked', game.feedBack);
-        $('#descubreEPercentajeFB').val(game.percentajeFB);
         $('#descubreECustomMessages').prop('checked', game.customMessages);
         $('#descubreEShowCards').prop('checked', game.showCards);
         $('#descubreEPercentajeQuestions').val(game.percentajeQuestions);
@@ -2058,20 +1974,24 @@ var $exeDevice = {
             $('#descubreEDatosCarta-2').show();
             $('#descubreEDatosCarta-3').show();
         }
-        $exeDevicesEdition.iDevice.gamification.progressBar.setValues({
+        $exeIDevicesEdition.iDevice.gamification.progressBar.setValues({
             evaluation: game.evaluation,
             evaluationID: game.evaluationID,
         });
-        $exeDevicesEdition.iDevice.gamification.passScore.setValues({
+        $exeIDevicesEdition.iDevice.gamification.passScore.setValues({
             passScoreMode: game.passScoreMode,
             passScoreCustom: game.passScoreCustom,
         });
-        $exeDevicesEdition.iDevice.gamification.scorm.setValues(
+        $exeIDevicesEdition.iDevice.gamification.scorm.setValues(
             game.isScorm,
             game.textButtonScorm,
             game.repeatActivity,
             game.weighted
         );
+        $exeIDevicesEdition.iDevice.gamification.feedback.setValues({
+            feedBack: game.feedBack,
+            percentajeFB: game.percentajeFB,
+        });
         $('#descubreEURLImgCard').val(game.imgCard);
 
         $exeDevice.showImageCard(game.imgCard);
@@ -2080,10 +2000,7 @@ var $exeDevice = {
 
         $exeDevice.wordsGame = game.wordsGame;
 
-        $exeDevice.updateGameMode(game.feedBack);
-
         $('#descubreENumQuestions').text($exeDevice.wordsGame.length);
-        $('#descubreEPercentajeFB').prop('disabled', !game.feedBack);
 
         $exeDevice.updateQuestionsNumber();
     },
@@ -2096,7 +2013,7 @@ var $exeDevice = {
         const newBlob = new Blob([JSON.stringify(dataGame)], {
             type: 'text/plain',
         });
-        return $exeDevicesEdition.iDevice.gamification.share.downloadBlob(
+        return $exeIDevicesEdition.iDevice.gamification.share.downloadBlob(
             newBlob,
             _('Activity') + '-Descubre.json',
             'descubreQEIdeviceForm'
@@ -2104,71 +2021,42 @@ var $exeDevice = {
     },
 
     exportQuestions: function () {
-        const dataGame = this.validateData();
-        if (!dataGame) return false;
+        // Store the set on screen first, as saving does.
+        if (!$exeDevice.validateQuestion()) return false;
+        // Only the sets are checked: they are all that Export writes.
+        const wordsGame = this.validateQuestions();
+        if (!wordsGame) return false;
 
-        const lines = this.getLinesQuestions(dataGame.wordsGame);
+        const lines = this.getLinesQuestions(wordsGame, this.getGameMode());
+        if (lines.length === 0) {
+            eXe.app.alert(
+                _('Sorry, there are no questions for this type of activity.')
+            );
+            return false;
+        }
         const fileContent = lines.join('\n');
         const newBlob = new Blob([fileContent], { type: 'text/plain' });
-        return $exeDevicesEdition.iDevice.gamification.share.downloadBlob(
+        return $exeIDevicesEdition.iDevice.gamification.share.downloadBlob(
             newBlob,
             `${_('words')}-descubre.txt`,
             'descubreQEIdeviceForm'
         );
     },
 
-    getLinesQuestions: function (words) {
-        let lineswords = [];
-        for (let i = 0; i < words.length; i++) {
-            let word = `${words[i].word}#${words[i].definition}`;
-            lineswords.push(word);
-        }
-        return lineswords;
-    },
-
-    importText: function (content) {
-        const lines = content.split('\n'),
-            lineFormat = /^([^#]+)#([^#]+)(#([^#]+))?(#([^#]+))?$/,
-            questions = [];
-        types = [0, 0, 0];
-        lines.forEach(function (line) {
-            if (lineFormat.test(line)) {
-                const q = $exeDevice.getQuestionDefault();
-                let linarray = line.trim().split('#'),
-                    typeGame = linarray.length - 2;
-                types[typeGame]++;
-                for (let i = 0; i < q.data.length; i++) {
-                    if (i < linarray.length) {
-                        q.data[i].eText = linarray[i];
-                    }
-                }
-                questions.push(q);
-            }
-        });
-        let gameMode = 2;
-        if (types[0] > 0) {
-            gameMode = 0;
-        } else if (types[1] > 0) {
-            gameMode = 1;
-        }
-
-        if (types[gameMode] > 0) {
-            $("input[name='qtxgamemode'][value='" + gameMode + "']").prop(
-                'checked',
-                true
-            );
-            $('#descubreEDatosCarta-2').hide();
-            $('#descubreEDatosCarta-3').hide();
-            if (gameMode == 1) {
-                $('#descubreEDatosCarta-2').show();
-            } else if (gameMode == 2) {
-                $('#descubreEDatosCarta-2').show();
-                $('#descubreEDatosCarta-3').show();
-            }
-            return questions;
-        } else {
-            return false;
-        }
+    /**
+     * "text#text[#text[#text]]" lines, one text for each card of a set (two,
+     * three or four, by game mode), the format Import and the AI read back.
+     * A set with a card that is only an image or a sound has no line.
+     */
+    getLinesQuestions: function (words, gameMode) {
+        const cards = gameMode + 2,
+            plain = (text) => (text || '').replace(/[#\s]+/g, ' ').trim();
+        return words
+            .map((word) =>
+                word.data.slice(0, cards).map((card) => plain(card.eText))
+            )
+            .filter((texts) => texts.every((text) => text))
+            .map((texts) => texts.join('#'));
     },
 
     importGame(content, filetype) {
@@ -2176,18 +2064,15 @@ var $exeDevice = {
             $exeDevices.iDevice.gamification.helpers.isJsonString(content);
 
         if (content && content.includes('\u0000')) {
-            $exeDevice.showMessage(_('Sorry, wrong file format'));
+            $exeIDevicesEdition.iDevice.common.showMessage(_('Sorry, wrong file format'));
         } else if (!game && content) {
             if (filetype.match('text/plain')) {
                 $exeDevice.importText(content);
-            } else if (
-                filetype.match('application/xml') ||
-                filetype.match('text/xml')
-            ) {
-                $exeDevice.importMoodle(content);
+            } else {
+                $exeIDevicesEdition.iDevice.common.showMessage(_('Sorry, wrong file format'));
             }
         } else {
-            $exeDevice.showMessage($exeDevice.msgs.msgESelectFile);
+            $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgESelectFile);
         }
     },
     deleteEmptyQuestion: function () {
@@ -2269,11 +2154,5 @@ var $exeDevice = {
             'z-index': 3,
         });
         $cursor.show();
-    },
-
-    removeTags: function (str) {
-        const wrapper = $('<div></div>');
-        wrapper.html(str);
-        return wrapper.text();
     },
 };
