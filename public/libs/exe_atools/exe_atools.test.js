@@ -3,7 +3,7 @@
  *
  * Unit tests for the eXeLearning Accessibility Toolbar.
  * Tests the toolbar functionality including font size, font family,
- * text-to-speech, Google Translate integration, and draggable behavior.
+ * text-to-speech and draggable behavior.
  *
  * Run with: make test-frontend
  */
@@ -54,7 +54,6 @@ describe('exe_atools', () => {
     // Mock $exe_i18n
     global.$exe_i18n = {
       read: 'Read',
-      translate: 'Translate',
       drag_and_drop: 'Drag and drop',
       mode_toggler: 'Mode toggler',
       accessibility_tools: 'Accessibility tools',
@@ -71,7 +70,6 @@ describe('exe_atools', () => {
       options: {
         atools: {
           modeToggler: false,
-          translator: false,
           i18n: {},
         },
       },
@@ -100,20 +98,17 @@ describe('exe_atools', () => {
       expect(scriptContent).toContain('options : {');
       expect(scriptContent).toContain('draggable : true');
       expect(scriptContent).toContain('modeToggler');
-      expect(scriptContent).toContain('translator');
     });
 
     it('has i18n strings', () => {
       expect(scriptContent).toContain('i18n : {');
       expect(scriptContent).toContain('read :');
-      expect(scriptContent).toContain('translate :');
       expect(scriptContent).toContain('accessibility_tools :');
     });
 
     it('has storage methods', () => {
       expect(scriptContent).toContain('storage : {');
       expect(scriptContent).toContain('setOriginalFontSize');
-      expect(scriptContent).toContain('getTranslatorStatus');
       expect(scriptContent).toContain('getToolbarStatus');
       expect(scriptContent).toContain('getFontSize');
       expect(scriptContent).toContain('getFontFamily');
@@ -134,10 +129,6 @@ describe('exe_atools', () => {
 
     it('has setFontSize method', () => {
       expect(scriptContent).toContain('setFontSize : function(size)');
-    });
-
-    it('has toggleGoogleTranslateWidget method', () => {
-      expect(scriptContent).toContain('toggleGoogleTranslateWidget : function()');
     });
 
     it('has draggable functionality', () => {
@@ -161,10 +152,6 @@ describe('exe_atools', () => {
   });
 
   describe('localStorage keys', () => {
-    it('uses exeAtoolsTranslator key', () => {
-      expect(scriptContent).toContain("'exeAtoolsTranslator'");
-    });
-
     it('uses exeAtoolsStatus key', () => {
       expect(scriptContent).toContain("'exeAtoolsStatus'");
     });
@@ -226,11 +213,6 @@ describe('exe_atools', () => {
     it('creates read button conditionally', () => {
       expect(scriptContent).toContain('id="eXeAtoolsReadBtn"');
       expect(scriptContent).toContain("typeof(SpeechSynthesisUtterance)==\"function\"");
-    });
-
-    it('creates translate button conditionally', () => {
-      expect(scriptContent).toContain('id="eXeAtoolsTranslateBtn"');
-      expect(scriptContent).toContain('opts.translator==true');
     });
 
     it('creates drag button conditionally', () => {
@@ -299,11 +281,6 @@ describe('exe_atools', () => {
       expect(scriptContent).toContain('$exe.atools.setFontSize(-1)');
     });
 
-    it('handles translate button click', () => {
-      expect(scriptContent).toContain('$("#eXeAtoolsTranslateBtn").click');
-      expect(scriptContent).toContain('$exe.atools.toggleGoogleTranslateWidget()');
-    });
-
     it('handles read button click', () => {
       expect(scriptContent).toContain('$("#eXeAtoolsReadBtn").click');
       expect(scriptContent).toContain('$exe.atools.reader.read()');
@@ -320,24 +297,6 @@ describe('exe_atools', () => {
     it('handles window resize for draggable', () => {
       expect(scriptContent).toContain('$(window).on("resize"');
       expect(scriptContent).toContain('$exe.atools.draggable.checkPosition()');
-    });
-  });
-
-  describe('storage.getTranslatorStatus', () => {
-    it('returns off when translator option is disabled', () => {
-      expect(scriptContent).toContain('if (opts.translator!==true) return "off"');
-    });
-
-    it('reads from localStorage', () => {
-      expect(scriptContent).toContain("localStorage.getItem('exeAtoolsTranslator')");
-    });
-
-    it('returns on when localStorage value is on', () => {
-      expect(scriptContent).toContain('if (e==="on") return "on"');
-    });
-
-    it('returns off as default', () => {
-      expect(scriptContent).toContain('return "off"');
     });
   });
 
@@ -412,22 +371,11 @@ describe('exe_atools', () => {
     });
   });
 
-  describe('Google Translate integration', () => {
-    it('loads Google Translate script', () => {
-      expect(scriptContent).toContain('translate.google.com/translate_a/element.js');
-    });
-
-    it('creates translate element div', () => {
-      expect(scriptContent).toContain("googleTranslateElement.id = 'google_translate_element'");
-    });
-
-    it('defines googleTranslateElementInit', () => {
-      expect(scriptContent).toContain('window.googleTranslateElementInit');
-      expect(scriptContent).toContain('google.translate.TranslateElement');
-    });
-
-    it('removes translate elements when toggling off', () => {
-      expect(scriptContent).toContain('$("#google-translate-script,#google_translate_element,.skiptranslate").remove()');
+  describe('remote code', () => {
+    it('does not load Google Translate or any other remote script', () => {
+      expect(scriptContent).not.toContain('translate.google.com');
+      expect(scriptContent).not.toContain('toggleGoogleTranslateWidget');
+      expect(scriptContent).not.toContain('eXeAtoolsTranslateBtn');
     });
   });
 
@@ -484,11 +432,6 @@ describe('exe_atools', () => {
     it('calculates max boundaries', () => {
       expect(scriptContent).toContain('$(window).height()');
       expect(scriptContent).toContain('$(window).width()');
-    });
-
-    it('handles body top offset for translate bar', () => {
-      expect(scriptContent).toContain('if (bodyT=="40px")');
-      expect(scriptContent).toContain('maxTop = maxTop-40');
     });
 
     it('constrains x position', () => {
@@ -562,10 +505,6 @@ describe('exe_atools', () => {
       expect(scriptContent).toContain('$("#eXeAtoolsFont").val(');
     });
 
-    it('restores translator status', () => {
-      expect(scriptContent).toContain('$exe.atools.storage.getTranslatorStatus()');
-    });
-
     it('makes toolbar draggable', () => {
       expect(scriptContent).toContain('$exe.atools.Drog.on(handler)');
       expect(scriptContent).toContain('$exe.atools.draggable.fixPosition(handler)');
@@ -573,10 +512,6 @@ describe('exe_atools', () => {
   });
 
   describe('checkResetBtnStatus', () => {
-    it('checks translator status', () => {
-      expect(scriptContent).toContain('$exe.atools.storage.getTranslatorStatus()=="on"');
-    });
-
     it('checks font size', () => {
       expect(scriptContent).toContain('$exe.atools.storage.getFontSize()!=""');
     });
@@ -604,12 +539,6 @@ describe('exe_atools', () => {
     it('clears font family', () => {
       expect(scriptContent).toContain('$("#eXeAtoolsFont").val("").trigger("change")');
       expect(scriptContent).toContain("localStorage.setItem('exeAtoolsFontFamily', '')");
-    });
-
-    it('turns off translator if on', () => {
-      expect(scriptContent).toContain(
-        'if($exe.atools.storage.getTranslatorStatus()=="on") $exe.atools.toggleGoogleTranslateWidget()'
-      );
     });
   });
 
@@ -653,7 +582,6 @@ describe('exe_atools', () => {
         options: {
           atools: {
             modeToggler: false,
-            translator: false,
             i18n: {},
           },
         },

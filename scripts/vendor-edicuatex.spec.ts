@@ -2,7 +2,15 @@ import { afterEach, describe, expect, it } from 'bun:test';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { buildVendorPlan, type CliIo, detectDrift, resolvePaths, run, writeVendoredTree } from './vendor-edicuatex';
+import {
+    buildVendorPlan,
+    type CliIo,
+    detectDrift,
+    resolvePaths,
+    run,
+    vendoredContents,
+    writeVendoredTree,
+} from './vendor-edicuatex';
 
 const repoRoot = path.resolve(import.meta.dir, '..');
 const { packageRoot } = resolvePaths(repoRoot);
@@ -61,6 +69,31 @@ describe('vendor-edicuatex', () => {
         });
     });
 
+    describe('vendoredContents', () => {
+        it('strips the CDN fallback from the real package, leaving no remote MathJax URL', () => {
+            const entry = buildVendorPlan(packageRoot).find((e) => e.relativePath === 'js/edicuatex-tools.js');
+            const text = vendoredContents(entry!).toString('utf8');
+
+            expect(text).toContain('var MATHJAX_CDN_URL = null;');
+            expect(text).not.toContain('cdnjs.cloudflare.com');
+            expect(text).not.toContain('cdn.jsdelivr.net');
+        });
+
+        it('fails loudly when a patch no longer matches upstream', () => {
+            const root = temporaryRoot();
+            const sourcePath = path.join(root, 'tools.js');
+            fs.writeFileSync(sourcePath, 'nothing to patch here\n');
+
+            expect(() =>
+                vendoredContents({
+                    relativePath: 'js/tools.js',
+                    sourcePath,
+                    patches: [{ find: /absent/g, replace: '' }],
+                }),
+            ).toThrow('matched 0 times');
+        });
+    });
+
     describe('writeVendoredTree', () => {
         it('writes exactly the planned files and nothing else', () => {
             const target = path.join(temporaryRoot(), 'edicuatex');
@@ -109,6 +142,11 @@ describe('vendor-edicuatex', () => {
                 fs.mkdirSync(path.join(installed, directory), { recursive: true });
                 fs.writeFileSync(path.join(installed, directory, file), `${directory}/${file} contents\n`);
             }
+            // The stand-in must carry what VENDOR_PATCHES rewrites, or vendoring refuses it.
+            fs.writeFileSync(
+                path.join(installed, 'js', 'edicuatex-tools.js'),
+                "var MATHJAX_CDN_URL = 'https://cdn.example/tex.js';\n// from https://cdn.jsdelivr.net/npm/@mathjax\n",
+            );
             return root;
         }
 

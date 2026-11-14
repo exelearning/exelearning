@@ -34,7 +34,6 @@ $exe_i18n = {
     "uppercase_text": c_("Uppercase"),
     "read": c_("Read"),
     "stop_reading": c_("Stop reading"),
-    "translate": c_("Translate"),
     "drag_and_drop": c_("Drag and drop"),
     "reset": c_("Reset"),
     "mode_toggler": c_("Light/Dark mode"),
