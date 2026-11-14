@@ -1786,6 +1786,8 @@ export default class projectManager {
     async showScreen() {
         setTimeout(() => {
             this.app.interface.loadingScreen.hide();
+            // MathJax is not needed to start: fetch it once the workarea is up.
+            this.app.ensureMathJax?.();
         }, 250);
     }
 

@@ -444,6 +444,17 @@ describe('ProjectManager', () => {
         expect(mockApp.interface.loadingScreen.hide).toHaveBeenCalled();
     });
 
+    it('starts loading MathJax once the loading screen is hidden', () => {
+        vi.useFakeTimers();
+        mockApp.ensureMathJax = vi.fn();
+
+        projectManager.showScreen();
+
+        expect(mockApp.ensureMathJax).not.toHaveBeenCalled();
+        vi.advanceTimersByTime(250);
+        expect(mockApp.ensureMathJax).toHaveBeenCalledTimes(1);
+    });
+
     it('schedules an autosave interval and clears previous ones', () => {
         const setIntervalSpy = vi
             .spyOn(global, 'setInterval')

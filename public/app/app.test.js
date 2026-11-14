@@ -80,6 +80,17 @@ describe('App utility methods', () => {
     });
   });
 
+  describe('ensureMathJax', () => {
+    it('can be called detached from the app and resolves', async () => {
+      const { ensureMathJax } = appInstance;
+      window.MathJax = { typesetPromise: () => Promise.resolve() };
+
+      await expect(ensureMathJax()).resolves.toBeUndefined();
+
+      delete window.MathJax;
+    });
+  });
+
   describe('composeUrl', () => {
     it('prepends basePath to path', () => {
       appInstance.eXeLearning.config.basePath = '/app';
