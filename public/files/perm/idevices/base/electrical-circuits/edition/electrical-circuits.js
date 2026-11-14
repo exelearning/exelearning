@@ -1665,6 +1665,7 @@ var $exeDevice = {
                         _('Create quiz activities based on electrical circuit diagrams drawn with TikZ.')
                     )}
                     ${edition.tabs.getHtml('electricalCircuitsIdeviceForm', {
+                        titles: { contents: _('Questions') },
                         path: path,
                         instructions: c_('Observe the electrical circuit and answer the questions.'),
                         options: options,

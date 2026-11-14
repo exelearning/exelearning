@@ -309,6 +309,7 @@ var $exeDevice = {
                     'https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe40/html/operaciones-matematicas.html',
                 )}
                 ${edition.tabs.getHtml('gameQEIdeviceForm', {
+                    titles: { contents: _('Operations') },
                     path: $exeDevice.idevicePath,
                     instructions: c_('Solve the following operations.'),
                     options: options,

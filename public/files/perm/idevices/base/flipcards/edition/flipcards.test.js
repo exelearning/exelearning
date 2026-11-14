@@ -766,6 +766,7 @@ describe('flipcards edition: shared form tabs, options tooltips, and saving', ()
             'grading',
             'texts',
         ]);
+        expect(document.getElementById('flipcardsQEIdeviceForm-tab-contents').textContent.trim()).toBe('Cards');
 
         expect(panel('instructions').querySelector('#eXeGameInstructions')).not.toBeNull();
         expect(panel('options').querySelector('#flipcardsEOptions')).not.toBeNull();

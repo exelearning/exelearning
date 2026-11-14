@@ -163,6 +163,7 @@ describe('interactive-video iDevice edition', () => {
       );
 
       expect(tabNames).toEqual(['instructions', 'options', 'contents', 'after', 'grading', 'texts']);
+      expect(document.getElementById('interactiveVideoIdeviceForm-tab-contents').textContent.trim()).toBe('Video');
       expect(panel('contents').classList.contains('active')).toBe(true);
     });
 

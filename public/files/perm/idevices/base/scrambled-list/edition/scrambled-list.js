@@ -352,6 +352,7 @@ var $exeDevice = {
                     'https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe40/html/lista-desordenada.html',
                 )}
                 ${edition.tabs.getHtml('scrambledlistIdeviceForm', {
+                    titles: { contents: _('List') },
                     path: this.idevicePath,
                     instructions: c_('Arrange the following texts in the correct order to complete the activity.'),
                     options: options,

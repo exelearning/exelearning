@@ -207,6 +207,7 @@ describe('periodic-table edition: shared form tabs and feedback', () => {
             'grading',
             'texts',
         ]);
+        expect(document.getElementById('ptQEIdeviceForm-tab-contents').textContent.trim()).toBe('Periodic table');
         expect(panel('contents').classList.contains('active')).toBe(true);
     });
 

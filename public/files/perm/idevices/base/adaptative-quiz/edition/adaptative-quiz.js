@@ -277,7 +277,7 @@ var $exeDevice = {
                         <span class="toggle-control"><input type="checkbox" id="adaptativeQuizECustomMessages" class="toggle-input"/><span class="toggle-visual" aria-hidden="true"></span></span>
                         <label for="adaptativeQuizECustomMessages" class="toggle-label mb-0">${_('Custom messages')}.</label>
                     </div>
-                    ${edition.common.getHelpTooltip(_('Write, in the Activities tab, your own messages for a right and a wrong answer to each question. Available when the solutions are shown.'))}
+                    ${edition.common.getHelpTooltip(_('Write, in the Questions tab, your own messages for a right and a wrong answer to each question. Available when the solutions are shown.'))}
                 </div>
                 <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
                     <div class="toggle-item">
@@ -473,6 +473,7 @@ var $exeDevice = {
                     null,
                 )}
                 ${edition.tabs.getHtml('adaptativeQuizIdeviceForm', {
+                    titles: { contents: _('Questions') },
                     path: path,
                     instructions: c_('Choose the correct answer for each question. To move up to the next level, you must answer two questions correctly in a row. If you get two questions wrong in a row, you will move down to the previous level.'),
                     options: options,

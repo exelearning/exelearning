@@ -454,6 +454,7 @@ var $exeDevice = {
                     'https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe40/html/desafio.html',
                 )}
                 ${edition.tabs.getHtml('desafioIdeviceForm', {
+                    titles: { contents: _('Trials') },
                     path: path,
                     instructions: c_('Solve all the trials and complete the final challenge.'),
                     options: options,

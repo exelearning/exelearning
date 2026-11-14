@@ -466,6 +466,7 @@ var $exeDevice = {
                     'https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe40/html/buscar-palabras.html',
                 )}
                 ${edition.tabs.getHtml('sopaQEIdeviceForm', {
+                    titles: { contents: _('Words') },
                     path: path,
                     instructions: c_('Find the hidden words.'),
                     options: options,

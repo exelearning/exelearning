@@ -180,6 +180,7 @@ var $exeDevice = {
                     'https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe40/html/candado.html',
                 )}
                 ${edition.tabs.getHtml('candadoIdeviceForm', {
+                    titles: { contents: _('Padlock') },
                     path: $exeDevice.idevicePath,
                     options: options,
                     contents: contents,

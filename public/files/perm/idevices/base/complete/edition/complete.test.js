@@ -306,6 +306,7 @@ describe('complete edition: shared form tabs and feedback', () => {
             'grading',
             'texts',
         ]);
+        expect(document.getElementById('completeQEIdeviceForm-tab-contents').textContent.trim()).toBe('Text');
 
         expect(panel('instructions').querySelector('#eXeGameInstructions')).not.toBeNull();
         expect(panel('options').querySelector('#cmptEOptions')).not.toBeNull();

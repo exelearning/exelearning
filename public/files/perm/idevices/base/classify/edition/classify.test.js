@@ -750,6 +750,7 @@ describe('classify edition: shared form tabs and feedback', () => {
             'grading',
             'texts',
         ]);
+        expect(document.getElementById('clasificaQEIdeviceForm-tab-contents').textContent.trim()).toBe('Cards');
 
         expect(panel('instructions').querySelector('#eXeGameInstructions')).not.toBeNull();
         expect(panel('options').querySelector('#clasificaEOptions')).not.toBeNull();

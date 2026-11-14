@@ -269,6 +269,7 @@ describe('mathproblems edition: shared form tabs and feedback', () => {
             'grading',
             'texts',
         ]);
+        expect(document.getElementById('gameQEIdeviceForm-tab-contents').textContent.trim()).toBe('Problems');
         expect(panel('contents').classList.contains('active')).toBe(true);
     });
 

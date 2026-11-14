@@ -192,6 +192,7 @@ var $exeDevice = {
         html = `
         <div id="interactiveVideoIdeviceForm">
             ${edition.tabs.getHtml('interactiveVideoIdeviceForm', {
+                titles: { contents: _('Video') },
                 path: $exeDevice.idevicePath,
                 instructions: '',
                 options: options,

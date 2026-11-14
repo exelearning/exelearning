@@ -1621,6 +1621,7 @@ var $exeDevice = {
             html = `
                 <div id="dMoleIdeviceForm">
                     ${edition.tabs.getHtml('dMoleIdeviceForm', {
+                        titles: { contents: _('Questions') },
                         path: path,
                         instructions: c_('Observe the 3D model and answer the questions.') + ' ' + c_('You can rotate the 3D model by clicking on it and dragging.'),
                         options: options,

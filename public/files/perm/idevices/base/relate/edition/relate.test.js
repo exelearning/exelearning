@@ -301,6 +301,7 @@ describe('relate edition: shared form tabs and share windows', () => {
 
     it('lays the form out in the shared tabs, and opens on its cards', () => {
         expect(tabNames()).toEqual(['instructions', 'options', 'contents', 'passwords', 'after', 'grading', 'texts']);
+        expect(document.getElementById('relateQIdeviceForm-tab-contents').textContent.trim()).toBe('Pairs');
         expect(panel('contents').classList.contains('active')).toBe(true);
     });
 

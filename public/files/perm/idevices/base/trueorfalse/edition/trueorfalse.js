@@ -420,6 +420,7 @@ var $exeDevice = {
                     'https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe40/html/verdadero-falso.html',
                 )}
                 ${edition.tabs.getHtml('trueorfalseIdeviceForm', {
+                    titles: { contents: _('Questions') },
                     path: path,
                     instructions: c_('Answer all the questions in this quiz.'),
                     options: options,

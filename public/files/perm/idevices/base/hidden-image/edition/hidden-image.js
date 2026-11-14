@@ -403,7 +403,7 @@ var $exeDevice = {
                             <span class="toggle-control"><input type="checkbox" class="toggle-input" id="hiECustomMessages" /><span class="toggle-visual"></span></span>
                             <label class="toggle-label" for="hiECustomMessages">${_('Custom messages')}.</label>
                         </span>
-                        ${edition.common.getHelpTooltip(_('Add a custom message for correct and incorrect answers to each question in the Activities tab.'))}
+                        ${edition.common.getHelpTooltip(_('Add a custom message for correct and incorrect answers to each question in the Questions tab.'))}
                     </div>
                     <div class="d-flex align-items-center gap-2 flex-nowrap mb-3" role="group" aria-label="${_('Show solutions')}">
                         <span class="toggle-item toggle-related">
@@ -566,6 +566,7 @@ var $exeDevice = {
                     'https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe40/html/imagen-oculta.html',
                 )}
                 ${edition.tabs.getHtml('hiQEIdeviceForm', {
+                    titles: { contents: _('Questions') },
                     path: path,
                     instructions: c_('Reveal the hidden image and choose the right answer.'),
                     options: options,

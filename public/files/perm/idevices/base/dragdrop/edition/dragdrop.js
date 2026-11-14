@@ -297,6 +297,7 @@ var $exeDevice = {
         `;
 
         const tabsHtml = edition.tabs.getHtml('dragdropQIdeviceForm', {
+            titles: { contents: _('Cards') },
             path,
             instructions: c_('Drag each item onto the one it matches with'),
             options: optionsHtml,

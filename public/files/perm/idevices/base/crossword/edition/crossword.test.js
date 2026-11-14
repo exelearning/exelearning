@@ -436,7 +436,7 @@ describe('crossword edition: shared form tabs and feedback', () => {
       'grading',
       'texts',
     ]);
-    expect(document.getElementById('ccgmQEIdeviceForm-tab-contents').textContent.trim()).toBe('Activities');
+    expect(document.getElementById('ccgmQEIdeviceForm-tab-contents').textContent.trim()).toBe('Words');
     expect(panel('contents').classList.contains('active')).toBe(true);
   });
 

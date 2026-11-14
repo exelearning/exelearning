@@ -342,6 +342,7 @@ var $exeDevice = {
                     'https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe40/html/crucigrama.html',
                 )}
                 ${edition.tabs.getHtml('ccgmQEIdeviceForm', {
+                    titles: { contents: _('Words') },
                     path: path,
                     instructions: c_('Complete the following crossword puzzle.'),
                     options: options,

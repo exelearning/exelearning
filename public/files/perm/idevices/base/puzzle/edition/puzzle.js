@@ -297,6 +297,7 @@ var $exeDevice = {
                     'https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe40/html/puzzle.html',
                 )}
                 ${edition.tabs.getHtml('puzzleIdeviceForm', {
+                    titles: { contents: _('Puzzles') },
                     path: path,
                     instructions: c_('Solve the following puzzles.'),
                     options: options,

@@ -514,6 +514,7 @@ describe('geogebra-activity edition: shared form tabs', () => {
         );
 
         expect(tabNames).toEqual(['instructions', 'options', 'contents', 'after', 'grading']);
+        expect(document.getElementById('eXeAutoGeogebraForm-tab-contents').textContent.trim()).toBe('Activity');
         expect(panel('contents').classList.contains('active')).toBe(true);
     });
 

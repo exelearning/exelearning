@@ -266,6 +266,7 @@ var $exeDevice = {
                     'https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe40/html/antesdespues.html'
                 )}
                 ${edition.tabs.getHtml('beforeAfterQIdeviceForm', {
+                    titles: { contents: _('Cards') },
                     path: path,
                     instructions: c_('Slide to reveal the differences between the images.'),
                     contents: cardsHtml,

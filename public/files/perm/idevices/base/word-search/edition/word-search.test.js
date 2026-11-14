@@ -332,7 +332,7 @@ describe('word-search edition: shared form tabs and feedback', () => {
             'grading',
             'texts',
         ]);
-        expect(document.getElementById('sopaQEIdeviceForm-tab-contents').textContent.trim()).toBe('Activities');
+        expect(document.getElementById('sopaQEIdeviceForm-tab-contents').textContent.trim()).toBe('Words');
         expect(panel('contents').classList.contains('active')).toBe(true);
     });
 

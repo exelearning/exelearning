@@ -120,6 +120,7 @@ var $exeDevice = {
                 'https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe40/html/geogebra.html',
             )}
             ${edition.tabs.getHtml('eXeAutoGeogebraForm', {
+                titles: { contents: _('Activity') },
                 path: $exeDevice.idevicePath,
                 instructions: '',
                 options: options,

@@ -391,6 +391,7 @@ var $exeDevice = {
                 'https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe40/html/tabla-periodica.html',
             )}
             ${edition.tabs.getHtml('ptQEIdeviceForm', {
+                titles: { contents: _('Periodic table') },
                 path: $exeDevice.idevicePath,
                 instructions: c_('Complete the following questions about the periodic table.'),
                 options: options,

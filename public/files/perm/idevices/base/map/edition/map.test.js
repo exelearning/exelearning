@@ -610,7 +610,7 @@ describe('map edition: shared form tabs', () => {
 
     it('lays the form out in the shared tabs, and opens on its points', () => {
         expect(tabNames()).toEqual(['instructions', 'options', 'contents', 'passwords', 'after', 'grading', 'texts']);
-        expect(document.getElementById('gameQEIdeviceForm-tab-contents').textContent.trim()).toBe('Activities');
+        expect(document.getElementById('gameQEIdeviceForm-tab-contents').textContent.trim()).toBe('Map');
         expect(panel('contents').classList.contains('active')).toBe(true);
     });
 

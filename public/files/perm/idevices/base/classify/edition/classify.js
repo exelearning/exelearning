@@ -369,6 +369,7 @@ var $exeDevice = {
                     'https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe40/html/clasifica.html'
                 )}
                 ${edition.tabs.getHtml('clasificaQEIdeviceForm', {
+                    titles: { contents: _('Cards') },
                     path: path,
                     instructions: c_('Drag each card to its container.'),
                     options: optionsHtml,

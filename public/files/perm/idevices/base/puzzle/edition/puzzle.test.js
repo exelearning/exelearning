@@ -265,6 +265,7 @@ describe('puzzle edition: shared form tabs and feedback', () => {
             'grading',
             'texts',
         ]);
+        expect(document.getElementById('puzzleIdeviceForm-tab-contents').textContent.trim()).toBe('Puzzles');
         expect(panel('contents').classList.contains('active')).toBe(true);
     });
 

@@ -605,7 +605,7 @@ describe('challenge edition: shared form tabs', () => {
         open();
 
         expect(tabNames()).toEqual(['instructions', 'options', 'contents', 'grading', 'texts']);
-        expect(document.getElementById('desafioIdeviceForm-tab-contents').textContent.trim()).toBe('Activities');
+        expect(document.getElementById('desafioIdeviceForm-tab-contents').textContent.trim()).toBe('Trials');
         expect(panel('contents').classList.contains('active')).toBe(true);
     });
 

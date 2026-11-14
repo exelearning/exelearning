@@ -202,6 +202,7 @@ describe('padlock edition: shared form tabs', () => {
 
     it('lays the form out in Options, Activities, Grading and Texts, with no Instructions tab', () => {
         expect(tabNames()).toEqual(['options', 'contents', 'grading', 'texts']);
+        expect(document.getElementById('candadoIdeviceForm-tab-contents').textContent.trim()).toBe('Padlock');
         expect(panel('contents').classList.contains('active')).toBe(true);
     });
 

@@ -387,6 +387,7 @@ describe('mathematicaloperations edition: shared form tabs and feedback', () => 
             'grading',
             'texts',
         ]);
+        expect(document.getElementById('gameQEIdeviceForm-tab-contents').textContent.trim()).toBe('Operations');
         expect(panel('contents').classList.contains('active')).toBe(true);
     });
 

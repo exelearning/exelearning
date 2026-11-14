@@ -357,6 +357,7 @@ var $exeDevice = {
         `;
 
         const tabsHtml = edition.tabs.getHtml('descubreQEIdeviceForm', {
+            titles: { contents: _('Cards') },
             path,
             instructions: c_('Birds of a feather flock together.'),
             options: optionsHtml,

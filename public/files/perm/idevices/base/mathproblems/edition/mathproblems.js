@@ -265,6 +265,7 @@ var $exeDevice = {
                     'https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe40/html/problemas-matematicos.html',
                 )}
                 ${edition.tabs.getHtml('gameQEIdeviceForm', {
+                    titles: { contents: _('Problems') },
                     path: $exeDevice.idevicePath,
                     instructions: c_('Solve the following math problems.'),
                     options: options,

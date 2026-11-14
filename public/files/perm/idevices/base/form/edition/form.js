@@ -953,6 +953,7 @@ var $exeDevice = {
                     'https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe40/html/formulario.html',
                 )}
                 ${edition.tabs.getHtml('formIdeviceForm', {
+                    titles: { contents: _('Questions') },
                     path: $exeDevice.idevicePath,
                     instructions: c_('Complete the questions in the following quiz'),
                     options: options,

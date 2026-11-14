@@ -604,6 +604,7 @@ describe('trueorfalse edition: shared form tabs', () => {
         );
 
         expect(tabNames).toEqual(['instructions', 'options', 'contents', 'after', 'grading', 'texts']);
+        expect(document.getElementById('trueorfalseIdeviceForm-tab-contents').textContent.trim()).toBe('Questions');
         expect(panel('contents').classList.contains('active')).toBe(true);
     });
 

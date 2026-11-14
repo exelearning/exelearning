@@ -353,6 +353,7 @@ var $exeDevice = {
                 'https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe40/html/relaciona.html',
             )}
             ${edition.tabs.getHtml('relateQIdeviceForm', {
+                titles: { contents: _('Pairs') },
                 path: path,
                 instructions: c_('Match each card with its pair.'),
                 options: options,

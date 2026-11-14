@@ -169,7 +169,7 @@ var $exeDevice = {
     createForm: function () {
         const path = this.idevicePath,
             edition = $exeIDevicesEdition.iDevice,
-            // The message of the Activities tab: how the words are written.
+            // The message of the Words tab: how the words are written.
             wordInstructions = _(
                 "Provide a word and its definition. May toggle between: 'Word starts' or 'Word contains', by clicking on %s"
             ).replace(
@@ -239,6 +239,7 @@ var $exeDevice = {
                     'https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe40/html/rosco.html',
                 )}
                 ${edition.tabs.getHtml('roscoIdeviceForm', {
+                    titles: { contents: _('Words') },
                     path: path,
                     info: { contents: wordInstructions },
                     instructions: c_('Observe the letters, identify and fill in the missing words.'),

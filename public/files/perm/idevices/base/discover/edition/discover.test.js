@@ -864,6 +864,7 @@ describe('discover edition: shared form tabs, options tooltips, and feedback', (
             'grading',
             'texts',
         ]);
+        expect(document.getElementById('descubreQEIdeviceForm-tab-contents').textContent.trim()).toBe('Cards');
 
         expect(panel('instructions').querySelector('#eXeGameInstructions')).not.toBeNull();
         expect(panel('options').querySelector('#descubreEOptions')).not.toBeNull();

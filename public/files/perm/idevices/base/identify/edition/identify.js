@@ -449,7 +449,7 @@ var $exeDevice = {
                             </span>
                             <label class="toggle-label" for="idfECustomMessages">${_('Custom messages')}.</label>
                         </span>
-                        ${edition.common.getHelpTooltip(_('Add a custom message for correct and incorrect answers to each question in the Activities tab.'))}
+                        ${edition.common.getHelpTooltip(_('Add a custom message for correct and incorrect answers to each question in the Questions tab.'))}
                     </div>
                     <div class="d-flex align-items-center gap-2 flex-nowrap mb-3" role="group" aria-label="${_('Show solutions')}">
                         <span class="toggle-item">
@@ -610,6 +610,7 @@ var $exeDevice = {
                     'https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe40/html/identifica.html',
                 )}
                 ${edition.tabs.getHtml('identifyQEIdeviceForm', {
+                    titles: { contents: _('Questions') },
                     path: path,
                     instructions: c_('Use the clues to guess the hidden answer for each question.'),
                     options: options,

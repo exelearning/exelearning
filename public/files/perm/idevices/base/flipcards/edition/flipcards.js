@@ -394,6 +394,7 @@ var $exeDevice = {
                     'https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe40/html/tarjetas-de-memoria.html',
                 )}
                 ${edition.tabs.getHtml('flipcardsQEIdeviceForm', {
+                    titles: { contents: _('Cards') },
                     path: path,
                     instructions: c_('Click on the cards to see what they hide.'),
                     options: optionsHtml,

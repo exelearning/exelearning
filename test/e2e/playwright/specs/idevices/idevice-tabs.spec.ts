@@ -24,7 +24,7 @@ test('The active tab of an iDevice form is bold and underlined, also in forced c
     const row = page.locator('#gameQEIdeviceForm-tabs');
     const active = row.locator('.nav-link.active');
     const inactive = row.locator('.nav-link:not(.active)').first();
-    await expect(active).toHaveText('Activities');
+    await expect(active).toHaveText('Words');
     const look = (tab: typeof active) =>
         tab.evaluate(element => {
             const style = getComputedStyle(element);

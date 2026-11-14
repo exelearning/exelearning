@@ -839,7 +839,7 @@ var $exeDevice = {
                     </div>
                     <div class="mb-3 d-flex align-items-center gap-2 flex-nowrap">
                         ${toggle('vquextECustomMessages', `${_('Custom messages')}.`)}
-                        ${help(_('Add a custom message for correct and incorrect answers to each question in the Activities tab.'))}
+                        ${help(_('Add a custom message for correct and incorrect answers to each question in the Questions tab.'))}
                     </div>
                     <div class="mb-3 d-flex align-items-center gap-2 flex-nowrap" role="group" aria-label="${_('Show solutions')}">
                         ${toggle('vquextEShowSolution', `${_('Show solutions')}.`, true)}
@@ -928,7 +928,7 @@ var $exeDevice = {
                             <option value="5">10m</option>
                         </select>
                         <button id="vquextGlobalTimeButton" class="btn btn-primary" type="button">${_('Accept')}</button>
-                        ${help(_('Select a time limit and click Accept to apply it to all existing questions. You can also set the time for each question in the Activities tab.'))}
+                        ${help(_('Select a time limit and click Accept to apply it to all existing questions. You can also set the time for each question in the Questions tab.'))}
                     </div>
                 </div>`,
             questions = `
@@ -1112,6 +1112,7 @@ var $exeDevice = {
                         'https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe40/html/videotest.html',
                     )}
                     ${edition.tabs.getHtml('vquextQEIdeviceForm', {
+                        titles: { contents: _('Questions') },
                         path: path,
                         instructions: c_('Choose the right answer'),
                         options: options,

@@ -288,6 +288,7 @@ var $exeDevice = {
             </div>
         `;
         const tabsHtml = edition.tabs.getHtml('completeQEIdeviceForm', {
+            titles: { contents: _('Text') },
             path: $exeDevice.idevicePath,
             instructions: c_('Read the text and complete the missing words.'),
             options: optionsHtml,

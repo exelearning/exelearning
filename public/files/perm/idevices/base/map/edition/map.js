@@ -496,6 +496,7 @@ var $exeDevice = {
                     'https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe40/html/mapa.html',
                 )}
                 ${edition.tabs.getHtml('gameQEIdeviceForm', {
+                    titles: { contents: _('Map') },
                     path: path,
                     instructions: c_('Click on the active areas or image icons.'),
                     options: options,
