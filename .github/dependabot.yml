@@ -85,6 +85,8 @@ updates:
           - "fabric"
           - "pdfjs-dist"
           - "mermaid"
+          - "three"
+          - "@google/model-viewer"
           - "simplelightbox"
 
   # Electron main-process dependencies. app/ has its own manifest and lockfile,
