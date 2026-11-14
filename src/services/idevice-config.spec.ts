@@ -472,6 +472,79 @@ describe('IdeviceConfig Service', () => {
         });
     });
 
+    describe('export file order from config.xml', () => {
+        const realIdevicesPath = path.join(process.cwd(), 'public/files/perm/idevices/base');
+
+        it('orders three-sixty-viewer scripts as declared (Three.js and OrbitControls before the runtime)', () => {
+            if (!fs.existsSync(path.join(realIdevicesPath, 'three-sixty-viewer', 'export'))) {
+                console.log('Skipping real three-sixty-viewer test - path not found');
+                return;
+            }
+
+            setIdevicesBasePath(realIdevicesPath);
+            loadIdeviceConfigs(realIdevicesPath);
+
+            expect(getIdeviceExportFiles('three-sixty-viewer', '.js')).toEqual([
+                'three.min.js',
+                'OrbitControls.js',
+                'three-sixty-viewer.js',
+            ]);
+        });
+
+        it('orders select-media-files scripts as declared in config.xml', () => {
+            if (!fs.existsSync(path.join(realIdevicesPath, 'select-media-files', 'export'))) {
+                console.log('Skipping real select-media-files test - path not found');
+                return;
+            }
+
+            setIdevicesBasePath(realIdevicesPath);
+            loadIdeviceConfigs(realIdevicesPath);
+
+            expect(getIdeviceExportFiles('select-media-files', '.js')).toEqual([
+                'mansory-jq.js',
+                'select-media-files.js',
+            ]);
+        });
+
+        it('keeps the existing main-first order when config.xml declares no export-js list', async () => {
+            const plainDir = path.join(idevicesDir, 'plain', 'export');
+            await fs.ensureDir(plainDir);
+            await fs.writeFile(path.join(plainDir, 'plain.js'), '// main');
+            await fs.writeFile(path.join(plainDir, 'zlib.js'), '// dependency');
+            await fs.writeFile(path.join(plainDir, 'alib.js'), '// dependency');
+
+            setIdevicesBasePath(idevicesDir);
+            loadIdeviceConfigs(idevicesDir);
+
+            expect(getIdeviceExportFiles('plain', '.js')).toEqual(['plain.js', 'alib.js', 'zlib.js']);
+        });
+
+        it('ignores declared files that are not shipped in the export folder', async () => {
+            const partialDir = path.join(idevicesDir, 'partial');
+            const partialExportDir = path.join(partialDir, 'export');
+            await fs.ensureDir(partialExportDir);
+            await fs.writeFile(path.join(partialExportDir, 'partial.js'), '// main');
+            await fs.writeFile(path.join(partialExportDir, 'lib.js'), '// dependency');
+            await fs.writeFile(
+                path.join(partialDir, 'config.xml'),
+                `<?xml version="1.0" encoding="UTF-8"?>
+                <idevice>
+                    <name>partial</name>
+                    <export-js>
+                        <filename>missing.js</filename>
+                        <filename>lib.js</filename>
+                        <filename>partial.js</filename>
+                    </export-js>
+                </idevice>`,
+            );
+
+            setIdevicesBasePath(idevicesDir);
+            loadIdeviceConfigs(idevicesDir);
+
+            expect(getIdeviceExportFiles('partial', '.js')).toEqual(['lib.js', 'partial.js']);
+        });
+    });
+
     describe('isIdeviceJsModule', () => {
         beforeEach(async () => {
             const moduleDir = path.join(idevicesDir, 'three-d-viewer', 'export');
