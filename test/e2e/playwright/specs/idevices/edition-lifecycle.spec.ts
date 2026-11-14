@@ -25,6 +25,15 @@ import {
 const IGNORED_ERROR = /favicon\.ico|net::ERR|ResizeObserver loop|404 \(Not Found\)/i;
 
 /**
+ * Chromium blocks `unload` listeners by default and logs this as a console error.
+ * Vendored libraries (TinyMCE 5, jQuery's Sizzle, interact.js) still add them inside
+ * iframes, which we do not patch. Only those are ignored: an `unload` listener in our
+ * own code (public/app) must still fail the test.
+ */
+const UNLOAD_VIOLATION = /Permissions policy violation: unload is not allowed/;
+const VENDORED_SCRIPT = /\/libs\//;
+
+/**
  * Collect page errors and console errors for the whole test.
  *
  * A stale edition callback surfaces as an uncaught `TypeError` mentioning
@@ -38,7 +47,9 @@ function collectErrors(page: Page): string[] {
     };
     page.on('pageerror', error => add(error.message));
     page.on('console', message => {
-        if (message.type() === 'error') add(message.text());
+        if (message.type() !== 'error') return;
+        if (UNLOAD_VIOLATION.test(message.text()) && VENDORED_SCRIPT.test(message.location().url)) return;
+        add(message.text());
     });
     return errors;
 }

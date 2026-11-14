@@ -56,8 +56,10 @@ test.describe('Print preview', () => {
         const link = page.frameLocator('.print-preview-iframe').locator('a[href="https://cedec.intef.es/"]');
         // A changed option draws the preview again, which can replace the document mid-read: that
         // read counts as not there yet, and the poll tries again.
-        const afterContent = () => link.evaluate(a => getComputedStyle(a, '::after').content).catch(() => null);
-        // Chromium resolves attr(href); Firefox reports the declared value unresolved.
+        const afterContent = () =>
+            link.evaluate(a => getComputedStyle(a, '::after').content.replace(/"\s+"/g, '')).catch(() => null);
+        // Chromium resolves attr(href) into one string; Firefox before 159 reports it unresolved, and
+        // Firefox 159 resolves it but keeps the strings apart. Joining adjacent strings covers all three.
         const showsUrl = /\[(https:\/\/cedec\.intef\.es\/|" attr\(href\) ")\]/;
 
         await expect(link).toBeVisible({ timeout: 30000 });
@@ -151,8 +153,10 @@ test.describe('Print preview', () => {
         await expect(reconstructed).toHaveCount(1);
         await expect(copies).toHaveCount(2);
 
-        const textAfter = (link: typeof named) => link.evaluate(a => getComputedStyle(a, '::after').content);
-        // Chromium resolves attr(href); Firefox reports the declared value unresolved.
+        const textAfter = (link: typeof named) =>
+            link.evaluate(a => getComputedStyle(a, '::after').content.replace(/"\s+"/g, ''));
+        // Chromium resolves attr(href) into one string; Firefox before 159 reports it unresolved, and
+        // Firefox 159 resolves it but keeps the strings apart. Joining adjacent strings covers all three.
         const showsUrl = /\[(https:\/\/cedec\.intef\.es\/|" attr\(href\) ")\]/;
         for (const media of ['screen', 'print'] as const) {
             await page.emulateMedia({ media });
@@ -164,7 +168,9 @@ test.describe('Print preview', () => {
                 /\[(https:\/\/example\.org\/split|" attr\(href\) ")\]/,
             );
             expect(
-                await copies.evaluateAll(links => links.map(a => getComputedStyle(a, '::after').content)),
+                await copies.evaluateAll(links =>
+                    links.map(a => getComputedStyle(a, '::after').content.replace(/"\s+"/g, '')),
+                ),
                 media,
             ).toEqual(['none', 'none']);
         }
@@ -199,11 +205,12 @@ test.describe('Print preview', () => {
         await expect(pictureWords).toBeVisible({ timeout: 30000 });
 
         const textAfter = (selector: string) =>
-            frame.locator(selector).evaluate(a => getComputedStyle(a, '::after').content);
+            frame.locator(selector).evaluate(a => getComputedStyle(a, '::after').content.replace(/"\s+"/g, ''));
         for (const media of ['screen', 'print'] as const) {
             await page.emulateMedia({ media });
             expect(await textAfter('a.picture-only'), media).toBe('none');
-            // Chromium resolves attr(href); Firefox reports the declared value unresolved.
+            // Chromium resolves attr(href) into one string; Firefox before 159 reports it unresolved, and
+            // Firefox 159 resolves it but keeps the strings apart. Joining adjacent strings covers all three.
             expect(await textAfter('a.picture-words'), media).toMatch(/\[(https:\/\/mapa\.es\/|" attr\(href\) ")\]/);
         }
         await page.emulateMedia({ media: null });
@@ -331,11 +338,12 @@ test.describe('Print preview', () => {
         const measure = async (media: 'screen' | 'print') => {
             await page.emulateMedia({ media });
             return {
-                after: await link.evaluate(a => getComputedStyle(a, '::after').content),
+                after: await link.evaluate(a => getComputedStyle(a, '::after').content.replace(/"\s+"/g, '')),
                 iframeSource: await iframeSource.evaluate(span => getComputedStyle(span).display),
             };
         };
-        // Chromium resolves attr(href); Firefox reports the declared value unresolved.
+        // Chromium resolves attr(href) into one string; Firefox before 159 reports it unresolved, and
+        // Firefox 159 resolves it but keeps the strings apart. Joining adjacent strings covers all three.
         const showsUrl = /\[(https:\/\/cedec\.intef\.es\/|" attr\(href\) ")\]/;
 
         // On: the URL and the iframe address on both media, in the preview's own wording.
@@ -351,9 +359,13 @@ test.describe('Print preview', () => {
         // The preview is drawn again, which can replace the document mid-read: that read counts as
         // not there yet, and the poll tries again.
         await expect
-            .poll(() => link.evaluate(a => getComputedStyle(a, '::after').content).catch(() => null), {
-                timeout: 30000,
-            })
+            .poll(
+                () =>
+                    link.evaluate(a => getComputedStyle(a, '::after').content.replace(/"\s+"/g, '')).catch(() => null),
+                {
+                    timeout: 30000,
+                },
+            )
             .toBe('none');
         await expect(overlay).toHaveAttribute('data-busy', 'false', { timeout: 30000 });
         await expect(iframeSource).toHaveCount(1);
@@ -389,8 +401,9 @@ test.describe('Print preview', () => {
         await expect(link).toHaveAttribute('href', 'https://creativecommons.org/licenses/by-sa/4.0/');
         await expect(link).toHaveText('Creative Commons: Reconocimiento - compartir igual 4.0');
         // Its address prints after it as any other link's does, with "Show link URLs" on.
-        // Chromium resolves attr(href); Firefox reports the declared value unresolved.
-        expect(await link.evaluate(a => getComputedStyle(a, '::after').content)).toMatch(
+        // Chromium resolves attr(href) into one string; Firefox before 159 reports it unresolved, and
+        // Firefox 159 resolves it but keeps the strings apart. Joining adjacent strings covers all three.
+        expect(await link.evaluate(a => getComputedStyle(a, '::after').content.replace(/"\s+"/g, ''))).toMatch(
             /\[(https:\/\/creativecommons\.org\/licenses\/by-sa\/4\.0\/|" attr\(href\) ")\]/,
         );
     });

@@ -40,7 +40,7 @@ To grade with `mod_exescorm` as well, clone `exelearning/mod_exescorm` into
 # from the repository root
 AUDIT_ROOT=$PWD/test-results/moodle-harness \
 MOODLE_BASE_URL=http://localhost:8097 \
-  bun x playwright test -c playwright.moodle.config.ts --project=chromium specs-moodle/probe.spec.ts
+  bun x --bun playwright test -c playwright.moodle.config.ts --project=chromium specs-moodle/probe.spec.ts
 ```
 
 `probe.spec.ts` first: it proves login, the player URL, the iframe and the API
@@ -122,7 +122,7 @@ the course:
 ```bash
 docker exec <container> php /var/www/html/exeaudit/setup_exe.php
 EXE_BASE_URL=http://localhost:8096 EXE_MOODLE_CONTAINER=exeaudit-moodle-1 \
-  bun x playwright test -c playwright.moodle.config.ts --project=chromium \
+  bun x --bun playwright test -c playwright.moodle.config.ts --project=chromium \
     specs-moodle/exelearning-live.spec.ts
 ```
 
