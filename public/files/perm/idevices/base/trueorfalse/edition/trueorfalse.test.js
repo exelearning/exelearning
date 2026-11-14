@@ -427,12 +427,15 @@ describe('trueorfalse iDevice', () => {
             expect($('#tofEIsTest').is(':checked')).toBe(false);
             expect($('.exe-progress-report-wrapper')).toHaveLength(1);
             expect($('.exe-progress-report-wrapper').hasClass('d-none')).toBe(true);
+            // Its group too, so that its title is not left over nothing.
+            expect($('#eXeProgressReportGroup').hasClass('d-none')).toBe(true);
         });
 
         it('shows the report in test mode and preserves it through save and reopen', () => {
             $exeDevice.init(document.getElementById('editor'), {}, 'assets/');
             $('#tofEIsTest').trigger('click');
             expect($('.exe-progress-report-wrapper').hasClass('d-none')).toBe(false);
+            expect($('#eXeProgressReportGroup').hasClass('d-none')).toBe(false);
             $('#eXeProgressReport').prop('checked', true);
             $('#eXeProgressReportID').val('report-test');
             $exeDevice.questionsGame = [{ question: 'Question', solution: true, feedback: '', suggestion: '' }];
@@ -444,6 +447,7 @@ describe('trueorfalse iDevice', () => {
             expect($('#eXeProgressReportID').val()).toBe('report-test');
             $('#tofEIsTest').trigger('click');
             expect($('.exe-progress-report-wrapper').hasClass('d-none')).toBe(true);
+            expect($('#eXeProgressReportGroup').hasClass('d-none')).toBe(true);
             expect($exeDevice.validateData()).toMatchObject({ isTest: false, evaluation: false, evaluationID: '' });
         });
     });

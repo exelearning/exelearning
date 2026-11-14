@@ -181,6 +181,66 @@ button.exe-idevice-help {
     }
 }
 
+// A group of fields that folds (common.getGroup): a fieldset whose legend is a button, with a thin line above it and
+// no card or shadow. The fields are indented under the title.
+.exe-idevice-group {
+    min-width: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-top: 1px solid var(--gray-border);
+
+    // Floated, so the legend sits inside the fieldset, under its line, instead of on it
+    > legend {
+        float: left;
+        width: 100%;
+        margin: 0;
+        padding: 0;
+        font-size: inherit;
+        line-height: inherit;
+    }
+
+    .exe-idevice-group-toggle {
+        display: flex;
+        align-items: center;
+        gap: .5rem;
+        width: 100%;
+        padding: .65rem .25rem;
+        border: 0;
+        border-radius: .25rem;
+        background: none;
+        color: var(--text);
+        font-weight: 600;
+        text-align: start;
+
+        .auto-icon {
+            font-size: 1.25rem;
+            color: var(--brand-primary);
+            transition: transform .15s;
+        }
+
+        &[aria-expanded="false"] .auto-icon {
+            transform: rotate(-90deg);
+        }
+
+        // The focus ring is the application's
+        &:hover {
+            color: var(--brand-primary-dark);
+        }
+    }
+
+    > .exe-idevice-group-body {
+        clear: both;
+        padding: .25rem .25rem .75rem 2rem;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .exe-idevice-group-toggle .auto-icon {
+        transition: none;
+    }
+}
+
 // The buttons at the bottom of the Create with AI window (share.getIAContents), as in the Share dialog: Copy like
 // its Copy button, Save and Send to AI as primary buttons, and the AI picker joined to Send to AI. All one height.
 .exe-ai-actions {
@@ -368,7 +428,8 @@ article.box {
                     }
                 }
                 .idevice_body {
-                    legend {
+                    // Not the groups that fold (.exe-idevice-group), which have their own
+                    :not(.exe-idevice-group) > legend {
                         font-size: var(--h4-fs);
                         text-align: left;
                         position: relative;
@@ -540,7 +601,7 @@ article.box {
                             margin-top: 15px;
                         }
 
-                        > legend {
+                        &:not(.exe-idevice-group) > legend {
                             width: max-content;
                         }
 

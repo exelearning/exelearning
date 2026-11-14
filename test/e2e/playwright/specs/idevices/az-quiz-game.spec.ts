@@ -10,6 +10,7 @@ import {
     saveIdevice,
     saveProject,
     selectFirstPage,
+    unfoldGroup,
 } from '../../helpers/workarea-helpers';
 import { WorkareaPage } from '../../pages/workarea.page';
 import type { Page, FrameLocator } from '@playwright/test';
@@ -844,6 +845,7 @@ test.describe('A-Z Quiz Game iDevice', () => {
         async function setGrading(page: Page, mark: string): Promise<void> {
             await page.locator('#roscoIdeviceForm-tab-grading').click();
             await page.locator('#eXeGameSCORMAutoSave').check();
+            await unfoldGroup(page, 'eXePassScoreGroup');
             await page.locator('#eXePassScoreCustom').check();
             await page.locator('#eXePassScoreValue').fill(mark);
         }

@@ -53,6 +53,7 @@ import {
     gotoWorkarea,
     saveIdevice,
     selectFirstPage,
+    unfoldGroup,
     waitForAppReady,
 } from '../helpers/workarea-helpers';
 
@@ -908,6 +909,7 @@ test.describe('SCORM 1.2 exported SCO runtime', () => {
         }
         await page.locator('#ri_IdeviceForm-tab-grading').click();
         await page.locator('#eXeGameSCORMAutoSave').check();
+        await unfoldGroup(page, 'eXePassScoreGroup');
         await page.locator('#eXePassScoreCustom').check();
         await page.locator('#eXePassScoreValue').fill('8');
         const ideviceId = await page.locator('#node-content .idevice_node.rubric').getAttribute('id');
@@ -1020,6 +1022,7 @@ test.describe('SCORM 1.2 exported SCO runtime', () => {
         await page.locator('#rclETypeNavigation').check();
         await page.locator('#relateQIdeviceForm-tab-grading').click();
         await page.locator('#eXeGameSCORMAutoSave').check();
+        await unfoldGroup(page, 'eXePassScoreGroup');
         await page.locator('#eXePassScoreCustom').check();
         await page.locator('#eXePassScoreValue').fill('0');
         const ideviceId = await page.locator('#node-content .idevice_node.relate').getAttribute('id');

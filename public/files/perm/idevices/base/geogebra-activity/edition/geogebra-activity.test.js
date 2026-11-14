@@ -527,7 +527,7 @@ describe('geogebra-activity edition: shared form tabs', () => {
         expect(panel('contents').querySelector('#geogebraActivitySize')).not.toBeNull();
         expect(panel('after').querySelector('#eXeIdeviceTextAfter')).not.toBeNull();
         expect(panel('grading').querySelector('.exe-progress-report-wrapper')).not.toBeNull();
-        expect(document.querySelectorAll('[data-exe-share], #eXeAutoGeogebraForm fieldset')).toHaveLength(0);
+        expect(document.querySelectorAll('[data-exe-share], #eXeAutoGeogebraForm fieldset:not(.exe-idevice-group)')).toHaveLength(0);
     });
 
     it('keeps the size controls visible', () => {

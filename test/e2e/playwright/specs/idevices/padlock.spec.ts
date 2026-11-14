@@ -8,6 +8,7 @@ import {
     saveIdevice,
     saveProject,
     selectFirstPage,
+    unfoldGroup,
     waitForAppReady,
 } from '../../helpers/workarea-helpers';
 
@@ -141,6 +142,7 @@ test('Padlock reveals and focuses invalid fields across tabs before allowing a s
     await page.locator('#candadoEErrorMessage').fill('Look at the date');
 
     await tab('grading').click();
+    await unfoldGroup(page, 'eXeProgressReportGroup');
     await page.locator('label[for="eXeProgressReport"]').click();
     await page.locator('#eXeProgressReportID').fill('abc');
     await tab('contents').click();

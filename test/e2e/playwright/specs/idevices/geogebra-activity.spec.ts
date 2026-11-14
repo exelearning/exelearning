@@ -10,6 +10,7 @@ import {
     getPreviewFrame,
     reloadPage,
     saveProject,
+    unfoldGroup,
 } from '../../helpers/workarea-helpers';
 import { waitForEditor } from '../../helpers/editor-helpers';
 import type { Page } from '@playwright/test';
@@ -156,6 +157,7 @@ test.describe('GeoGebra Activity iDevice — minimum score notice', () => {
         await page.locator('#eXeAutoGeogebraForm-tab-grading').click();
         // The save button is the only way this activity reports.
         await page.locator('#eXeGameSCORMButtonSave').check();
+        await unfoldGroup(page, 'eXePassScoreGroup');
         await page.locator('#eXePassScoreCustom').check();
         await page.locator('#eXePassScoreValue').fill('7');
         await saveIdevice(page, ideviceId);
@@ -189,6 +191,7 @@ test.describe('GeoGebra Activity iDevice — progress report', () => {
         await openActivityTab(page);
         await page.locator(`#${ideviceId} #geogebraActivityURL`).fill('VgHhQXCC');
         await page.locator('#eXeAutoGeogebraForm-tab-grading').click();
+        await unfoldGroup(page, 'eXeProgressReportGroup');
         await page.locator('#eXeProgressReport').check();
         await saveIdevice(page, ideviceId);
 

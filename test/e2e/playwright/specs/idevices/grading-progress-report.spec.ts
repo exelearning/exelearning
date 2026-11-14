@@ -7,6 +7,7 @@ import {
     gotoWorkarea,
     saveIdevice,
     selectFirstPage,
+    unfoldGroup,
     waitForAppReady,
     waitForPreviewContent,
 } from '../../helpers/workarea-helpers';
@@ -33,6 +34,7 @@ for (const device of [
         }
         const form = page.locator(device.form);
         await form.locator('[data-exe-tab="grading"]').click();
+        await unfoldGroup(page, 'eXeProgressReportGroup');
         const report = form.locator('#eXeProgressReport');
         const identifier = form.locator('#eXeProgressReportID');
         const help = form.locator('.exe-progress-report-wrapper .help-content');
@@ -56,7 +58,8 @@ for (const device of [
             await expect(information).toHaveAttribute('aria-expanded', 'false');
             await information.click();
             await expect(help).toBeVisible();
-            await form.locator('.exe-scorm-wrapper h3').click();
+            // A click elsewhere: on the message of the tab.
+            await form.locator('[id$="-panel-grading"] > p').first().click();
             await expect(help).toBeHidden();
             await expect(report).toBeChecked({ checked: enabled });
             await expect(identifier).toBeEnabled({ enabled });
@@ -85,8 +88,10 @@ test('rubric reports its custom pass mark in the workarea and preview, with or w
         await rows.nth(index).locator('input.ri_Weight').nth(1).fill('3');
     }
     await page.locator('#ri_IdeviceForm-tab-grading').click();
+    await unfoldGroup(page, 'eXeProgressReportGroup');
     await page.locator('#eXeProgressReport').check();
     const reportId = await page.locator('#eXeProgressReportID').inputValue();
+    await unfoldGroup(page, 'eXePassScoreGroup');
     await page.locator('#eXePassScoreCustom').check();
     await page.locator('#eXePassScoreValue').fill('8');
     await saveIdevice(page, rubricId);
@@ -239,6 +244,8 @@ test('new true-or-false activities offer a report only in test mode', async ({
     await expect(page.locator('#tofEIsTest')).not.toBeChecked();
     await page.locator('#trueorfalseIdeviceForm-tab-grading').click();
     await expect(page.locator('.exe-progress-report-wrapper')).toBeHidden();
+    // Its group too, title included.
+    await expect(page.locator('#eXeProgressReportGroup')).toBeHidden();
 
     await page.locator('#trueorfalseIdeviceForm-tab-options').click();
     await page.locator('#tofEIsTest').check();
@@ -247,6 +254,7 @@ test('new true-or-false activities offer a report only in test mode', async ({
         (window as any).tinymce.get('tofEQuestionEditor').setContent('<p>The Earth is a planet.</p>'),
     );
     await page.locator('#trueorfalseIdeviceForm-tab-grading').click();
+    await unfoldGroup(page, 'eXeProgressReportGroup');
     await expect(page.locator('.exe-progress-report-wrapper')).toBeVisible();
     await page.locator('#eXeProgressReport').check();
     const reportId = await page.locator('#eXeProgressReportID').inputValue();
@@ -262,6 +270,8 @@ test('new true-or-false activities offer a report only in test mode', async ({
     await page.locator('#tofEIsTest').uncheck();
     await page.locator('#trueorfalseIdeviceForm-tab-grading').click();
     await expect(page.locator('.exe-progress-report-wrapper')).toBeHidden();
+    // Its group too, title included.
+    await expect(page.locator('#eXeProgressReportGroup')).toBeHidden();
     await saveIdevice(page, nodeId);
     expect(await waitForPreviewContent(page, 30000)).toBe(true);
     const activity = getPreviewFrame(page).locator('.idevice_node.trueorfalse');
@@ -292,7 +302,9 @@ test('true-or-false tells the learner its minimum score, in quiz mode only', asy
         (window as any).tinymce.get('tofEQuestionEditor').setContent('<p>The Earth is a planet.</p>'),
     );
     await form.locator('#trueorfalseIdeviceForm-tab-grading').click();
+    await unfoldGroup(page, 'eXeProgressReportGroup');
     await page.locator('#eXeProgressReport').check();
+    await unfoldGroup(page, 'eXePassScoreGroup');
     await page.locator('#eXePassScoreCustom').check();
     await page.locator('#eXePassScoreValue').fill('7');
     await saveIdevice(page, nodeId);
@@ -321,6 +333,7 @@ test('true-or-false tells the learner its minimum score, in quiz mode only', asy
     await optionsTab();
     await page.locator('#tofEIsTest').check();
     await form.locator('#trueorfalseIdeviceForm-tab-grading').click();
+    await unfoldGroup(page, 'eXeProgressReportGroup');
     await page.locator('#eXeProgressReport').check();
     await page.locator('#eXeProgressReportID').fill('tof-report');
     await saveIdevice(page, nodeId);

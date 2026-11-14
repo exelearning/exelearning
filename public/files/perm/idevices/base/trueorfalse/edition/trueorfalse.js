@@ -464,10 +464,16 @@ var $exeDevice = {
      * in quiz mode: a box ticked before the mode was turned off is stale, and
      * saving it would promise a report that can never be written.
      *
+     * Its group of the Grading tab goes with it, so that no title is left
+     * over nothing.
+     *
      * @param {boolean} show Whether quiz mode is on.
      */
     toggleProgressReport(show) {
-        $('.exe-progress-report-wrapper').toggleClass('d-none', !show);
+        $('.exe-progress-report-wrapper')
+            .toggleClass('d-none', !show)
+            .closest('.exe-idevice-group')
+            .toggleClass('d-none', !show);
     },
 
     showEditor($activeEditor, $link) {

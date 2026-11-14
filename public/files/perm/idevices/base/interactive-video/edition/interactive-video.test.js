@@ -188,7 +188,7 @@ describe('interactive-video iDevice edition', () => {
       expect(panel('contents').firstElementChild.textContent).toContain(
         'Choose the video, then open the editor to add its slides'
       );
-      expect(document.querySelectorAll('[data-exe-share], .exe-block-success, #interactiveVideoIdeviceForm fieldset')).toHaveLength(0);
+      expect(document.querySelectorAll('[data-exe-share], .exe-block-success, #interactiveVideoIdeviceForm fieldset:not(.exe-idevice-group)')).toHaveLength(0);
     });
 
     it('provides one accessible information button at the end of each options row', () => {

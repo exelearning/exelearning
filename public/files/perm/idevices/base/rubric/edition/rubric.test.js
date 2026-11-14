@@ -1246,7 +1246,7 @@ describe('rubric edition: shared form tabs', () => {
         }
         expect(panel('csv').textContent).toContain('You can import rubric data from CSV files.');
         expect(document.querySelectorAll('[data-exe-share]')).toHaveLength(0);
-        expect(document.querySelectorAll('#ri_IdeviceForm .exe-block-info, #ri_IdeviceForm fieldset')).toHaveLength(0);
+        expect(document.querySelectorAll('#ri_IdeviceForm .exe-block-info, #ri_IdeviceForm fieldset:not(.exe-idevice-group)')).toHaveLength(0);
     });
 
     it('keeps the CSV file input behind its button', () => {

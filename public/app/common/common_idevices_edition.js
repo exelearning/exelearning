@@ -314,6 +314,51 @@ var $exeIDevicesEdition = {
                     .trim()
                     .replace(/[\s:.]+$/, '');
             },
+            /**
+             * A group of fields that folds: a fieldset whose legend is a
+             * button that shows and hides the fields, separated from the next
+             * group by a thin line. The fieldset takes its name from the
+             * legend, so a screen reader says which group a field is in.
+             * tabs.bind makes the buttons work.
+             *
+             * @param {Object} config
+             * @param {string} config.id Id of the fieldset; its fields go in
+             * `<id>-body`.
+             * @param {string} config.title Localized title, as plain text.
+             * @param {string} config.content The fields (HTML).
+             * @param {boolean} [config.open=true] Shown unfolded.
+             * @param {string} [config.titleId] Id for the title, for a control
+             * inside the group that it names (aria-labelledby).
+             * @returns {string}
+             */
+            getGroup: function (config) {
+                const escape = $exeIDevicesEdition.iDevice.common.escapeHtml;
+                const open = config.open !== false;
+                const body = `${config.id}-body`;
+                const titleId = config.titleId ? ` id="${escape(config.titleId)}"` : '';
+                return `<fieldset class="exe-idevice-group" id="${escape(config.id)}">
+                            <legend>
+                                <button type="button" class="exe-idevice-group-toggle" aria-expanded="${open}" aria-controls="${escape(body)}">
+                                    <span class="auto-icon" aria-hidden="true">expand_more</span><span${titleId}>${escape(config.title)}</span>
+                                </button>
+                            </legend>
+                            <div class="exe-idevice-group-body" id="${escape(body)}"${open ? '' : ' hidden'}>${config.content}</div>
+                        </fieldset>`;
+            },
+            /**
+             * Fold or unfold a group of getGroup.
+             *
+             * @param {Element} group The fieldset, or an element inside it.
+             * @param {boolean} open
+             */
+            setGroupOpen: function (group, open) {
+                const fieldset = group?.closest?.('.exe-idevice-group');
+                const toggle = fieldset?.querySelector(':scope > legend > .exe-idevice-group-toggle');
+                const body = toggle && document.getElementById(toggle.getAttribute('aria-controls'));
+                if (!body) return;
+                toggle.setAttribute('aria-expanded', String(!!open));
+                body.hidden = !open;
+            },
             getIdeviceDescription: function (text, url) {
                 if (typeof text != "string") return "";
 
@@ -435,6 +480,10 @@ var $exeIDevicesEdition = {
                     $('#eXeProgressReport').prop('checked', evaluation);
                     $('#eXeProgressReportID').val(evaluationID);
                     $('#eXeProgressReportID').prop('disabled', !evaluation);
+                    // Folded at first, its group shows a report the author switched on.
+                    if (evaluation) {
+                        $exeIDevicesEdition.iDevice.common.setGroupOpen(document.getElementById('eXeProgressReportGroup'), true);
+                    }
                 },
                 getValues: function () {
                     var evaluation = $('#eXeProgressReport').is(':checked');
@@ -498,8 +547,8 @@ var $exeIDevicesEdition = {
 
                 getContents: function () {
                     var global = $exeIDevicesEdition.iDevice.gamification.passScore.getGlobalValue();
+                    // Its title, eXePassScoreLabel, is that of its group in the Grading tab (scorm.getContents).
                     return `<div class="exe-pass-score-wrapper" style="flex-basis:100%;width:100%">
-                                <h3 class="exe-evaluation-section-title" id="eXePassScoreLabel">${_('Minimum score to pass the activity')}</h3>
                                 <div class="d-flex align-items-center flex-wrap gap-3" role="radiogroup" aria-labelledby="eXePassScoreLabel">
                                     <div class="d-flex align-items-center gap-1">
                                         <input class="form-check-input" type="radio" name="eXePassScoreMode" id="eXePassScoreGlobal" value="global" checked />
@@ -549,6 +598,10 @@ var $exeIDevicesEdition = {
                     $('#eXePassScoreCustom').prop('checked', custom);
                     $('#eXePassScoreGlobal').prop('checked', !custom);
                     $('#eXePassScoreCustomOptions').toggleClass('d-none', !custom);
+                    // Folded at first, its group shows a mark of the activity's own.
+                    if (custom) {
+                        $exeIDevicesEdition.iDevice.common.setGroupOpen(document.getElementById('eXePassScoreGroup'), true);
+                    }
                 },
 
                 getValues: function () {
@@ -951,9 +1004,11 @@ var $exeIDevicesEdition = {
                     const progressReport = path
                         ? $exeIDevicesEdition.iDevice.gamification.progressBar.getContents(path)
                         : '';
-                    return `
+                    // Each block is a group that folds, as the groups of Options will be. SCORM is unfolded;
+                    // the other two unfold when their values are set to something of their own (setValues).
+                    const group = $exeIDevicesEdition.iDevice.common.getGroup;
+                    const scorm = `
                         <div class="exe-scorm-wrapper">
-                            <h3 class="exe-evaluation-section-title">${_('SCORM')}</h3>
                             <div class="d-flex align-items-center gap-1 mb-3 ml-1">
                                 <input class="form-check-input" type="radio" name="eXeGameSCORM" id="eXeGameSCORMNoSave" value="0" checked />
                                 <label class="form-check-label" for="eXeGameSCORMNoSave">${_("Do not save the score")}</label>
@@ -1004,9 +1059,25 @@ var $exeIDevicesEdition = {
                                     _('For example, three activities weighing 100, 100 and 50 count 40%, 40% and 20% of the page score. Activities that do not save their score are left out of the calculation.'),
                                 ].join('\n\n'))}
                             </div>
-                        </div>
-                            ${progressReport ? `<h3 class="exe-evaluation-section-title">${_('Progress report')}</h3>${progressReport}` : ''}
-                            ${passScoreContents}`;
+                        </div>`;
+                    return [
+                        group({ id: 'eXeGameSCORMGroup', title: _('SCORM'), content: scorm }),
+                        progressReport
+                            ? group({
+                                  id: 'eXeProgressReportGroup',
+                                  title: _('Progress report'),
+                                  content: progressReport,
+                                  open: false,
+                              })
+                            : '',
+                        group({
+                            id: 'eXePassScoreGroup',
+                            title: _('Minimum score to pass the activity'),
+                            titleId: 'eXePassScoreLabel',
+                            content: passScoreContents,
+                            open: false,
+                        }),
+                    ].join('');
                 },
 
                 setValues: function (isScorm, textButtonScorm, repeatActivity = true, weighted = 100) {
@@ -3497,6 +3568,15 @@ var $exeIDevicesEdition = {
                 if (!tabs.isValidId(id)) return;
                 $exeIDevicesEdition.iDevice.common.initHelpTooltips(document.getElementById(`${id}-panels`));
                 $exeIDevicesEdition.iDevice.gamification.share.mount();
+                // The groups that fold (common.getGroup).
+                $(`#${id}-panels .exe-idevice-group-toggle`)
+                    .off('.exeGroups')
+                    .on('click.exeGroups', function () {
+                        $exeIDevicesEdition.iDevice.common.setGroupOpen(
+                            this,
+                            this.getAttribute('aria-expanded') !== 'true'
+                        );
+                    });
                 const $buttons = $(`#${id}-tabs [data-exe-tab]`);
                 $buttons
                     .off('.exeTabs')
@@ -3553,8 +3633,9 @@ var $exeIDevicesEdition = {
             },
 
             /**
-             * Show the tab whose panel holds an element, so that the author
-             * sees the field a warning is about.
+             * Show the tab whose panel holds an element, with the groups
+             * around it unfolded, so that the author sees the field a warning
+             * is about.
              *
              * @param {Element|string} element The element, or its id.
              * @returns {boolean} false when it is in no tab of these forms.
@@ -3563,6 +3644,9 @@ var $exeIDevicesEdition = {
                 const node = typeof element === 'string' ? document.getElementById(element) : element;
                 const panel = node && node.closest('[role="tabpanel"][id*="-panel-"]');
                 if (!panel) return false;
+                for (let group = node.closest('.exe-idevice-group'); group; group = group.parentElement.closest('.exe-idevice-group')) {
+                    $exeIDevicesEdition.iDevice.common.setGroupOpen(group, true);
+                }
                 const at = panel.id.lastIndexOf('-panel-');
                 return $exeIDevicesEdition.iDevice.tabs.show(panel.id.slice(0, at), panel.id.slice(at + '-panel-'.length));
             }

@@ -636,7 +636,7 @@ describe('map edition: shared form tabs', () => {
         expect(document.querySelector('#gameQEIdeviceForm > .alert-warning').textContent).toContain(
             'This game may present accessibility problems'
         );
-        expect(document.querySelectorAll('.exe-block-dismissible, #gameQEIdeviceForm fieldset')).toHaveLength(0);
+        expect(document.querySelectorAll('.exe-block-dismissible, #gameQEIdeviceForm fieldset:not(.exe-idevice-group)')).toHaveLength(0);
         expect(document.querySelectorAll('[data-exe-share]')).toHaveLength(0);
     });
 

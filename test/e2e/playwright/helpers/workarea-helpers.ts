@@ -648,6 +648,18 @@ export async function openLeftPanels(page: Page): Promise<void> {
 }
 
 /**
+ * Unfold a group of an iDevice form (common.getGroup) if it is folded, e.g. eXePassScoreGroup in Grading, which
+ * opens folded until the activity has a mark of its own. Its tab has to be shown.
+ *
+ * @param id The id of the group: eXeGameSCORMGroup, eXeProgressReportGroup or eXePassScoreGroup in Grading.
+ */
+export async function unfoldGroup(page: Page, id: string): Promise<void> {
+    const toggle = page.locator(`#${id} > legend > button`);
+    if ((await toggle.getAttribute('aria-expanded')) !== 'true') await toggle.click();
+    await page.waitForFunction(groupId => !document.getElementById(`${groupId}-body`)?.hidden, id);
+}
+
+/**
  * Select a non-root page (required before adding iDevices)
  * Selects the first available page if no page is currently selected
  */

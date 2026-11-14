@@ -1578,6 +1578,85 @@ describe('common_idevices_edition.js', () => {
         expect(tabs().showTabOf(null)).toBe(false);
         expect(activeNames()).toEqual(['contents']);
       });
+
+      it('unfolds the groups around the element', () => {
+        const group = globalThis.$exeIDevicesEdition.iDevice.common.getGroup;
+        const inner = group({ id: 'inner', title: 'Inner', content: '<input id="deepField">', open: false });
+        render({
+          options: group({ id: 'outer', title: 'Outer', content: inner, open: false }),
+          contents: group({ id: 'other', title: 'Other', content: '<input>', open: false }),
+        });
+
+        expect(tabs().showTabOf('deepField')).toBe(true);
+        expect(activeNames()).toEqual(['options']);
+        expect(document.getElementById('inner-body').hidden).toBe(false);
+        expect(document.getElementById('outer-body').hidden).toBe(false);
+        expect(document.getElementById('other-body').hidden).toBe(true);
+      });
+    });
+
+    describe('groups that fold', () => {
+      const common = () => globalThis.$exeIDevicesEdition.iDevice.common;
+      const toggle = (id) => document.querySelector(`#${id} > legend > button`);
+      const body = (id) => document.getElementById(`${id}-body`);
+
+      it('are fieldsets named by a legend whose button shows and hides the fields', () => {
+        document.body.innerHTML = common().getGroup({
+          id: 'scoreGroup',
+          title: 'Score & <time>',
+          content: '<input id="scoreField">',
+          titleId: 'scoreTitle',
+        });
+        const fieldset = document.getElementById('scoreGroup');
+
+        expect(fieldset.tagName).toBe('FIELDSET');
+        expect(toggle('scoreGroup').type).toBe('button');
+        expect(toggle('scoreGroup').getAttribute('aria-controls')).toBe('scoreGroup-body');
+        expect(toggle('scoreGroup').getAttribute('aria-expanded')).toBe('true');
+        expect(toggle('scoreGroup').querySelector('.auto-icon').getAttribute('aria-hidden')).toBe('true');
+        // Plain text, which a control in the group can take as its name.
+        expect(document.getElementById('scoreTitle').textContent).toBe('Score & <time>');
+        expect(document.querySelector('time')).toBeNull();
+        expect(body('scoreGroup').hidden).toBe(false);
+        expect(body('scoreGroup').contains(document.getElementById('scoreField'))).toBe(true);
+      });
+
+      it('can start folded, and setGroupOpen folds and unfolds them from any element inside', () => {
+        document.body.innerHTML = common().getGroup({ id: 'folded', title: 'Folded', content: '<input id="inside">', open: false });
+
+        expect(toggle('folded').getAttribute('aria-expanded')).toBe('false');
+        expect(body('folded').hidden).toBe(true);
+        common().setGroupOpen(document.getElementById('inside'), true);
+        expect(toggle('folded').getAttribute('aria-expanded')).toBe('true');
+        expect(body('folded').hidden).toBe(false);
+        common().setGroupOpen(document.getElementById('folded'), false);
+        expect(body('folded').hidden).toBe(true);
+        // Outside any group, nothing to do.
+        expect(() => common().setGroupOpen(document.body, true)).not.toThrow();
+        expect(() => common().setGroupOpen(null, true)).not.toThrow();
+      });
+
+      it('fold and unfold with their button once the tabs are bound, only their own group', () => {
+        const group = common().getGroup;
+        render({
+          grading: false,
+          options: group({ id: 'first', title: 'First', content: group({ id: 'nested', title: 'Nested', content: '' }) }),
+        });
+
+        toggle('first').click();
+        expect(toggle('first').getAttribute('aria-expanded')).toBe('false');
+        expect(body('first').hidden).toBe(true);
+        expect(body('nested').hidden).toBe(false);
+        toggle('first').click();
+        expect(body('first').hidden).toBe(false);
+        toggle('nested').click();
+        expect(body('nested').hidden).toBe(true);
+        expect(body('first').hidden).toBe(false);
+        // Bound again, a click still toggles once.
+        tabs().bind('testForm');
+        toggle('nested').click();
+        expect(body('nested').hidden).toBe(false);
+      });
     });
 
     describe('bind', () => {
@@ -2768,10 +2847,10 @@ describe('common_idevices_edition.js', () => {
         expect(document.getElementById('gradingForm-tab-grading').textContent.trim()).toBe('Grading');
       });
 
-      it('keeps SCORM as a section inside it', () => {
-        const result = getContents();
-        expect(result).toContain('exe-evaluation-section-title');
-        expect(result).toContain('>SCORM<');
+      it('keeps SCORM as a group inside it', () => {
+        document.body.innerHTML = getContents();
+        expect(document.querySelector('#eXeGameSCORMGroup > legend .auto-icon + span').textContent).toBe('SCORM');
+        expect(document.querySelector('#eXeGameSCORMGroup #eXeGameSCORMNoSave')).not.toBeNull();
       });
 
       it('renders the three blocks in order: SCORM, progress report, pass score', () => {
@@ -2786,16 +2865,59 @@ describe('common_idevices_edition.js', () => {
         expect(passScoreAt).toBeGreaterThan(reportAt);
       });
 
-      it('heads all three sections the same way', () => {
-        const result = getContents('/idevice/path/');
-        const headings = result.match(/class="exe-evaluation-section-title"/g) ?? [];
+      it('puts each of the three sections in a group that folds, with only SCORM unfolded', () => {
+        document.body.innerHTML = getContents('/idevice/path/');
+        const groups = [...document.querySelectorAll('fieldset.exe-idevice-group')];
 
-        // The pass score used to be introduced by a plain paragraph, which read
-        // as a stray label next to two headed sections.
-        expect(headings).toHaveLength(3);
-        expect(result).toContain('>SCORM<');
-        expect(result).toContain('>Progress report<');
-        expect(result).toContain('>Minimum score to pass the activity<');
+        expect(groups.map((group) => group.querySelector('legend .auto-icon + span').textContent)).toEqual([
+          'SCORM',
+          'Progress report',
+          'Minimum score to pass the activity',
+        ]);
+        for (const [group, field, open] of [
+          [groups[0], '#eXeGameSCORMNoSave', 'true'],
+          [groups[1], '#eXeProgressReport', 'false'],
+          [groups[2], '#eXePassScoreGlobal', 'false'],
+        ]) {
+          expect(group.querySelector(`.exe-idevice-group-body ${field}`)).not.toBeNull();
+          expect(group.querySelector('legend button').getAttribute('aria-expanded')).toBe(open);
+        }
+        // The pass score choice is named by the title of its group.
+        const choice = document.querySelector('[role="radiogroup"][aria-labelledby="eXePassScoreLabel"]');
+        expect(document.getElementById('eXePassScoreLabel').textContent).toBe('Minimum score to pass the activity');
+        expect(groups[2].contains(choice)).toBe(true);
+        // No headings of their own: the legends name them.
+        expect(document.querySelector('h3')).toBeNull();
+      });
+
+      it('unfolds the progress report and the pass score when the activity sets them', () => {
+        document.body.innerHTML = getContents('/idevice/path/');
+        const gamification = globalThis.$exeIDevicesEdition.iDevice.gamification;
+        const isOpen = (id) => !document.getElementById(`${id}-body`).hidden;
+
+        // Left as they come, they stay folded.
+        gamification.progressBar.setValues({ evaluation: false, evaluationID: '' });
+        gamification.passScore.setValues({ passScoreMode: 'global' });
+        expect(isOpen('eXeProgressReportGroup')).toBe(false);
+        expect(isOpen('eXePassScoreGroup')).toBe(false);
+
+        gamification.progressBar.setValues({ evaluation: true, evaluationID: 'report-1' });
+        expect(isOpen('eXeProgressReportGroup')).toBe(true);
+        expect(isOpen('eXePassScoreGroup')).toBe(false);
+        gamification.passScore.setValues({ passScoreMode: 'custom', passScoreCustom: 7 });
+        expect(isOpen('eXePassScoreGroup')).toBe(true);
+        // Setting them back does not fold what the author may have opened.
+        gamification.progressBar.setValues({ evaluation: false });
+        gamification.passScore.setValues({ passScoreMode: 'global' });
+        expect(isOpen('eXeProgressReportGroup')).toBe(true);
+        expect(isOpen('eXePassScoreGroup')).toBe(true);
+        expect(isOpen('eXeGameSCORMGroup')).toBe(true);
+      });
+
+      it('leaves the progress report group out without a path', () => {
+        document.body.innerHTML = getContents();
+        expect(document.getElementById('eXeProgressReportGroup')).toBeNull();
+        expect(document.querySelectorAll('fieldset.exe-idevice-group')).toHaveLength(2);
       });
 
       it('leaves the progress report out when the iDevice passes no path', () => {
