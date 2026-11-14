@@ -13,13 +13,16 @@ import {
     updateProjectTitle,
     updateProjectTitleAndSave,
     checkProjectAccess,
+    listVersionHistory,
 } from '../db/queries';
 import { fromBinaryData } from '../db/helpers';
 import { db } from '../db/client';
 import { getJwtSecret, type JwtPayload } from './auth';
-import { hasRole, ROLES } from '../utils/guards';
+import { hasRole, requireAdmin, ROLES } from '../utils/guards';
 import type { Kysely } from 'kysely';
 import type { Database } from '../db/types';
+import { getYjsVersionHistoryLimit } from '../config/yjs-version-history';
+import { restoreVersionSnapshot, saveSnapshotWithHistory } from '../db/queries/yjs-history';
 
 /**
  * Query dependencies for Yjs routes
@@ -36,11 +39,23 @@ export interface YjsQueries {
 }
 
 /**
+ * Optional version-history dependencies. Production always provides these;
+ * tests may omit them when exercising only the core document routes.
+ */
+export interface YjsHistoryDependencies {
+    saveSnapshotWithHistory: typeof saveSnapshotWithHistory;
+    listVersionHistory: typeof listVersionHistory;
+    restoreVersionSnapshot: typeof restoreVersionSnapshot;
+    getHistoryLimit: typeof getYjsVersionHistoryLimit;
+}
+
+/**
  * Dependencies for Yjs routes
  */
 export interface YjsDependencies {
     db: Kysely<Database>;
     queries: YjsQueries;
+    history?: YjsHistoryDependencies;
 }
 
 /**
@@ -57,6 +72,12 @@ const defaultDependencies: YjsDependencies = {
         updateProjectTitle,
         updateProjectTitleAndSave,
         checkProjectAccess,
+    },
+    history: {
+        saveSnapshotWithHistory,
+        listVersionHistory,
+        restoreVersionSnapshot,
+        getHistoryLimit: getYjsVersionHistoryLimit,
     },
 };
 
@@ -113,7 +134,7 @@ async function mergeIncoming(stored: Uint8Array, incoming: Uint8Array): Promise<
  * Factory function to create Yjs routes with injected dependencies
  */
 export function createYjsRoutes(deps: YjsDependencies = defaultDependencies) {
-    const { db: database, queries } = deps;
+    const { db: database, queries, history } = deps;
 
     return (
         new Elysia({ prefix: '/api/projects' })
@@ -221,6 +242,77 @@ export function createYjsRoutes(deps: YjsDependencies = defaultDependencies) {
                 });
             })
 
+            // GET - List Yjs version history (administrators only)
+            .get('/uuid/:uuid/yjs-history', async ({ params, jwtPayload, set }) => {
+                const authorizationError = requireAdmin(jwtPayload);
+                if (authorizationError) {
+                    set.status = authorizationError.status;
+                    return authorizationError;
+                }
+                if (!history) {
+                    set.status = 503;
+                    return { error: 'SERVICE_UNAVAILABLE', message: 'Yjs version history is unavailable' };
+                }
+
+                const project = await queries.findProjectByUuid(database, params.uuid);
+                if (!project) {
+                    set.status = 404;
+                    return { error: 'NOT_FOUND', message: 'Project not found' };
+                }
+
+                const versions = await history.listVersionHistory(database, project.id);
+                return {
+                    success: true,
+                    historyLimit: history.getHistoryLimit(),
+                    versions: versions.map(version => {
+                        const { snapshot_data: snapshotData, ...metadata } = version;
+                        return { ...metadata, size: snapshotData.byteLength };
+                    }),
+                };
+            })
+
+            // POST - Restore a Yjs version (administrators only)
+            .post('/uuid/:uuid/yjs-history/:versionId/restore', async ({ params, jwtPayload, set }) => {
+                const authorizationError = requireAdmin(jwtPayload);
+                if (authorizationError) {
+                    set.status = authorizationError.status;
+                    return authorizationError;
+                }
+                if (!history) {
+                    set.status = 503;
+                    return { error: 'SERVICE_UNAVAILABLE', message: 'Yjs version history is unavailable' };
+                }
+
+                const project = await queries.findProjectByUuid(database, params.uuid);
+                if (!project) {
+                    set.status = 404;
+                    return { error: 'NOT_FOUND', message: 'Project not found' };
+                }
+
+                const versionId = Number(params.versionId);
+                if (!Number.isSafeInteger(versionId) || versionId <= 0) {
+                    set.status = 400;
+                    return { error: 'BAD_REQUEST', message: 'Invalid version ID' };
+                }
+
+                const restored = await history.restoreVersionSnapshot(database, {
+                    projectId: project.id,
+                    versionId,
+                    historyLimit: history.getHistoryLimit(),
+                    createdBy: Number(jwtPayload!.sub),
+                });
+                if (!restored) {
+                    set.status = 404;
+                    return { error: 'NOT_FOUND', message: 'Version not found' };
+                }
+
+                return {
+                    success: true,
+                    message: 'Version restored',
+                    version: restored.snapshot_version,
+                };
+            })
+
             // POST - Save Yjs document state
             // Use ?markSaved=true to also mark the project as saved (for explicit user save)
             // Without this parameter, only persists data (for auto-save on page unload)
@@ -265,6 +357,28 @@ export function createYjsRoutes(deps: YjsDependencies = defaultDependencies) {
                 let version = Date.now().toString();
                 let merged = false;
                 let stored = false;
+                const markSaved = query.markSaved === 'true';
+
+                // Explicit saves keep the replaced snapshot in the version history.
+                const persist = async (data: Uint8Array, expectedVersion?: string): Promise<boolean> => {
+                    if (markSaved && history) {
+                        const saved = await history.saveSnapshotWithHistory(database, {
+                            projectId: project.id,
+                            snapshotData: data,
+                            snapshotVersion: version,
+                            historyLimit: history.getHistoryLimit(),
+                            createdBy: userId,
+                            description: 'Previous snapshot before explicit save',
+                            expectedVersion,
+                        });
+                        return saved !== undefined;
+                    }
+                    if (expectedVersion === undefined) {
+                        await queries.upsertSnapshot(database, project.id, data, version);
+                        return true;
+                    }
+                    return queries.replaceSnapshotIfVersion(database, project.id, data, version, expectedVersion);
+                };
 
                 for (let attempt = 0; attempt < MAX_SAVE_ATTEMPTS && !stored; attempt++) {
                     const current = await queries.loadDocumentWithUpdates(database, project.id);
@@ -274,8 +388,7 @@ export function createYjsRoutes(deps: YjsDependencies = defaultDependencies) {
 
                     if (!currentState || currentVersion === null) {
                         // Nothing stored yet: first save of the project.
-                        await queries.upsertSnapshot(database, project.id, incoming, version);
-                        stored = true;
+                        stored = await persist(incoming);
                         break;
                     }
 
@@ -285,18 +398,11 @@ export function createYjsRoutes(deps: YjsDependencies = defaultDependencies) {
 
                     if (!current.snapshot) {
                         // Updates-only document (REST API v1): no row to compare against.
-                        await queries.upsertSnapshot(database, project.id, data, version);
-                        stored = true;
+                        stored = await persist(data);
                         break;
                     }
 
-                    stored = await queries.replaceSnapshotIfVersion(
-                        database,
-                        project.id,
-                        data,
-                        version,
-                        current.snapshot.snapshot_version,
-                    );
+                    stored = await persist(data, current.snapshot.snapshot_version);
                 }
 
                 if (!stored) {
@@ -307,7 +413,7 @@ export function createYjsRoutes(deps: YjsDependencies = defaultDependencies) {
                     version = Date.now().toString();
                     const data = currentState ? await mergeIncoming(currentState, incoming) : incoming;
                     merged = merged || currentState !== null;
-                    await queries.upsertSnapshot(database, project.id, data, version);
+                    await persist(data);
                 }
 
                 // Get title from X-Project-Title header (sent by client to avoid server decoding Yjs)
@@ -328,7 +434,6 @@ export function createYjsRoutes(deps: YjsDependencies = defaultDependencies) {
 
                 // Only mark as saved if explicitly requested (user clicked Save)
                 // Auto-persistence (beforeunload) should NOT mark as saved
-                const markSaved = query.markSaved === 'true';
                 if (markSaved) {
                     await queries.updateProjectTitleAndSave(database, project.id, title);
                 } else {
