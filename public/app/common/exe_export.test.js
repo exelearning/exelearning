@@ -3825,6 +3825,13 @@ describe('exe_export.js', () => {
         }
       );
 
+      it('the print preview counts only while it is open', () => {
+        document.body.innerHTML = '<div id="printPreviewOverlay" data-visible="false"></div>';
+        expect(pm().isOverlayActive()).toBe(false);
+        document.getElementById('printPreviewOverlay').setAttribute('data-visible', 'true');
+        expect(pm().isOverlayActive()).toBe(true);
+      });
+
       it('an iDevice that went fullscreen on its own counts as an overlay', () => {
         Object.defineProperty(document, 'fullscreenElement', { value: document.body, configurable: true });
         try {

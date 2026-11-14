@@ -1017,6 +1017,11 @@ window.$exeExport = {
                 isActive: function () { return !!document.querySelector('.mejs-container-fullscreen'); }
             },
             {
+                name: 'Print preview (the print button of the export)',
+                // Created on first use and then kept; data-visible says whether it is open.
+                isActive: function () { return !!document.querySelector('#printPreviewOverlay[data-visible="true"]'); }
+            },
+            {
                 name: 'Fullscreen API (an iDevice that went fullscreen on its own)',
                 isActive: function () { return !!document.fullscreenElement; }
             }

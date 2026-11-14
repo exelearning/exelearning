@@ -395,6 +395,56 @@ test.describe('Export print button project property (addPrintButton)', () => {
         }
     });
 
+    test('leaves the keys of Presentation mode to the print preview while it is open', async ({
+        authenticatedPage: page,
+        createProject,
+        browser,
+    }) => {
+        const uuid = await createProject(page, 'Print while presenting');
+        await gotoWorkarea(page, uuid);
+        await waitForAppReady(page);
+        await page.evaluate(() => {
+            const bridge = (window as any).eXeLearning.app.project._yjsBridge;
+            bridge.documentManager.getMetadata().set('language', 'en');
+            const binding = bridge.structureBinding;
+            for (const title of ['First slide', 'Second slide']) {
+                const node = binding.createPage(title);
+                binding.createComponent(node.id, binding.createBlock(node.id, title), 'text', {
+                    htmlContent: `<p>${title} text</p>`,
+                });
+            }
+        });
+        const files = await exportPackage(page, 'html5', true);
+        const context = await browser.newContext();
+        try {
+            await servePackage(context, 'https://print-presenting.test', files);
+            const exported = await context.newPage();
+            await exported.goto('https://print-presenting.test/course/index.html?exe-presentation=1');
+            await expect(exported.locator('#exe-presentation-toggler')).toHaveAttribute('aria-pressed', 'true');
+            const firstPage = exported.url();
+
+            await exported.locator('#exe-print-btn').click();
+            await expect(exported.locator('.print-preview-print-btn')).toBeEnabled({ timeout: 30_000 });
+            // Opening the preview puts the focus on its Close button, outside any text field.
+            await expect(exported.locator('#printPreviewOverlay .print-preview-close-btn')).toBeFocused();
+            await exported.keyboard.press('ArrowRight');
+            await exported.keyboard.press('PageDown');
+            // The next page would have replaced the preview by now.
+            await exported.waitForTimeout(1000);
+            expect(exported.url()).toBe(firstPage);
+            await expect(exported.locator('#printPreviewOverlay')).toHaveAttribute('data-visible', 'true');
+
+            // Once it is closed, the keys change the page again.
+            await exported.keyboard.press('Escape');
+            await expect(exported.locator('#printPreviewOverlay')).toHaveAttribute('data-visible', 'false');
+            await exported.keyboard.press('ArrowRight');
+            await expect(exported).not.toHaveURL(firstPage);
+            await expect(exported.locator('body')).toContainText('First slide text');
+        } finally {
+            await context.close();
+        }
+    });
+
     test('packages MathJax when only a game holds a formula and prints that exercise rendered', async ({
         authenticatedPage: page,
         createProject,
