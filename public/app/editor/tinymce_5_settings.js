@@ -390,8 +390,12 @@ var $exeTinyMCE = {
 
                             // For HTML files, bypass TinyMCE's media dialog and insert iframe directly
                             // TinyMCE's media dialog creates <video> elements for all sources, not <iframe>
+                            // Only for the media dialog: from the link dialog (filetype
+                            // 'file') an HTML file must become a link on the selected text,
+                            // not an embedded iframe replacing it (issue #2686).
                             const filename = result.asset.filename || '';
-                            if (result.asset.mime === 'text/html' || /\.html?$/i.test(filename)) {
+                            const isHtml = result.asset.mime === 'text/html' || /\.html?$/i.test(filename);
+                            if (isHtml && meta?.filetype !== 'file') {
                                 // Get the active TinyMCE editor
                                 const editor = tinymce.activeEditor;
                                 if (editor) {
@@ -409,12 +413,15 @@ var $exeTinyMCE = {
                             }
 
                             // Keep asset:// in the editor model; rendering resolves it later.
-                            cb(result.assetUrl || result.blobUrl || '', {
+                            // Keep the text already in the dialog (the selected word in the
+                            // link dialog); only prefill it when there is none (issue #2686).
+                            const linkMeta = {
                                 title: result.asset.filename || '',
-                                text: result.asset.filename || '',
                                 alt: '',
                                 'data-asset-id': result.asset.id
-                            });
+                            };
+                            if (!meta?.text) linkMeta.text = result.asset.filename || '';
+                            cb(result.assetUrl || result.blobUrl || '', linkMeta);
                         }
                     });
                 } else {
