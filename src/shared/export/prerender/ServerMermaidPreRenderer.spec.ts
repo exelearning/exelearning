@@ -6,9 +6,13 @@
  */
 
 import { describe, it, expect, beforeAll, afterAll } from 'bun:test';
+import * as os from 'os';
 import * as path from 'path';
 import { JSDOM } from 'jsdom';
 import { ServerMermaidPreRenderer, estimateBBox } from './ServerMermaidPreRenderer';
+
+// Read before any renderer installs the jsdom one
+const runtimeNavigator = globalThis.navigator;
 
 describe('ServerMermaidPreRenderer', () => {
     let renderer: ServerMermaidPreRenderer;
@@ -207,6 +211,20 @@ describe('ServerMermaidPreRenderer', () => {
                 localRenderer.destroy();
                 localRenderer.destroy();
             }).not.toThrow();
+        });
+
+        // Bun has a navigator of its own, and its node:os reads it (availableParallelism; cpus too
+        // before Bun 1.4). Deleting it broke every later os call in the process.
+        it('restores the runtime globals it replaced instead of deleting them', async () => {
+            const localRenderer = new ServerMermaidPreRenderer();
+            await localRenderer.initialize();
+            expect(globalThis.navigator).not.toBe(runtimeNavigator);
+
+            localRenderer.destroy();
+
+            expect(globalThis.navigator).toBe(runtimeNavigator);
+            expect(os.availableParallelism()).toBeGreaterThan(0);
+            expect('window' in globalThis).toBe(false);
         });
     });
 

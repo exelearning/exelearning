@@ -72,10 +72,15 @@ describe('elp:convert command', () => {
 
     describe('output directory validation', () => {
         it('should fail if output directory cannot be created', async () => {
-            // Try to write to a system directory that definitely won't be writable
-            const result = await execute([TEST_ELP, '/root/test/output.elpx'], {});
+            // A file in the path fails mkdir for every user, root included, on every platform
+            const blocker = path.join(TEMP_DIR, 'not-a-directory');
+            await fs.writeFile(blocker, '');
+            const outputDir = path.join(blocker, 'nested');
+
+            const result = await execute([TEST_ELP, path.join(outputDir, 'output.elpx')], {});
+
             expect(result.success).toBe(false);
-            expect(result.message).toMatch(/Cannot create output directory|not writable/);
+            expect(result.message).toContain(`Cannot create output directory: ${outputDir}`);
         });
 
         it('should create output directory if it does not exist', async () => {
@@ -197,15 +202,29 @@ describe('elp:convert command', () => {
     });
 
     describe('directory writability', () => {
-        it('should fail if output directory is not writable', async () => {
-            // Use /proc on Linux or /System on macOS - directories that exist but aren't writable
-            const readOnlyDir = process.platform === 'darwin' ? '/System' : '/proc';
-            const outputPath = path.join(readOnlyDir, 'test-output.elpx');
+        afterEach(() => {
+            resetDependencies();
+        });
 
-            const result = await execute([TEST_ELP, outputPath], {});
+        it('should fail if output directory is not writable', async () => {
+            // Injected: no directory refuses writes from root on every platform
+            const probes: string[] = [];
+            configureDependencies({
+                fs: {
+                    ...fs,
+                    writeFile: async (file: Parameters<typeof fs.writeFile>[0]) => {
+                        probes.push(String(file));
+                        throw Object.assign(new Error('EACCES: permission denied'), { code: 'EACCES' });
+                    },
+                },
+            });
+
+            const result = await execute([TEST_ELP, path.join(TEMP_DIR, 'test-output.elpx')], {});
 
             expect(result.success).toBe(false);
-            expect(result.message).toMatch(/Cannot create output directory|not writable/);
+            expect(result.message).toContain(`Output directory is not writable: ${TEMP_DIR}`);
+            expect(probes).toHaveLength(1);
+            expect(path.dirname(probes[0])).toBe(TEMP_DIR);
         });
     });
 

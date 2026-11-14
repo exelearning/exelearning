@@ -34,6 +34,15 @@ test.describe('Project properties tabs', () => {
         await page.emulateMedia({ forcedColors: 'active' });
 
         await expect(activeTab).toHaveCSS('border-bottom-style', 'solid');
+        // The border and the padding must swap at once: animated, the border width snaps to whole
+        // pixels while the padding does not, and the row is a fraction of a pixel taller meanwhile
+        const layoutTransitions = await activeTab.evaluate(tab =>
+            tab
+                .getAnimations()
+                .map(animation => (animation as CSSTransition).transitionProperty)
+                .filter(property => /padding|width/.test(property)),
+        );
+        expect(layoutTransitions).toEqual([]);
         await expect(activeTab).toHaveCSS('border-bottom-width', '2px');
         await expect(inactiveTab).toHaveCSS('border-bottom-style', 'none');
         expect((await tabRow.boundingBox())?.height).toBe(normalRowHeight);

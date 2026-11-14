@@ -31,7 +31,11 @@
         background: transparent;
         border: none;
         cursor: pointer;
-        transition: all 0.2s ease;
+        // Paint only: forced colors swap padding for a border, and animating both shifts the row height
+        transition:
+            color 0.2s ease,
+            background-color 0.2s ease,
+            box-shadow 0.2s ease;
         display: flex;
         align-items: center;
         gap: 6px;

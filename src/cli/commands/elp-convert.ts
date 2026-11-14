@@ -57,10 +57,13 @@ export async function readFromStdin(): Promise<Buffer> {
  */
 export interface ElpConvertDependencies {
     readStdin: () => Promise<Buffer>;
+    /** File operations that prepare and probe the output directory */
+    fs: Pick<typeof fs, 'mkdir' | 'writeFile' | 'unlink'>;
 }
 
 const defaultDependencies: ElpConvertDependencies = {
     readStdin: readFromStdin,
+    fs,
 };
 
 let deps = defaultDependencies;
@@ -85,8 +88,8 @@ export function resetDependencies(): void {
 async function isDirectoryWritable(dirPath: string): Promise<boolean> {
     const testFile = path.join(dirPath, `.write-test-${Date.now()}`);
     try {
-        await fs.writeFile(testFile, '');
-        await fs.unlink(testFile);
+        await deps.fs.writeFile(testFile, '');
+        await deps.fs.unlink(testFile);
         return true;
     } catch {
         return false;
@@ -102,7 +105,7 @@ async function ensureOutputDirectory(outputPath: string): Promise<{ success: boo
     // Check if output directory exists
     if (!existsSync(outputDir)) {
         try {
-            await fs.mkdir(outputDir, { recursive: true });
+            await deps.fs.mkdir(outputDir, { recursive: true });
         } catch (error) {
             return {
                 success: false,
