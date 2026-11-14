@@ -14,6 +14,7 @@ $exe_i18n = {
     "solution": c_("Solution"),
     "download": c_("Download"),
     "print": c_("Print"),
+    "printPreviewUnavailable": c_("Print preview not available"),
     "search": c_("Search"),
     "dataError": c_("Data error"),
     "epubJSerror": c_("This might not work in this ePub reader"),

@@ -7,6 +7,7 @@ import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'bun:test'
 import { Elysia } from 'elysia';
 import * as bcrypt from 'bcryptjs';
 import * as Y from 'yjs';
+import { unzipSync, strFromU8 } from 'fflate';
 import { db, resetClientCacheForTesting } from '../../../db/client';
 import { up } from '../../../db/migrations/001_initial';
 import { up as up008 } from '../../../db/migrations/008_project_public_view_id';
@@ -415,5 +416,51 @@ describe('Export API v1', () => {
             const body = await response.arrayBuffer();
             expect(body.byteLength).toBeGreaterThan(0);
         });
+
+        it('pre-renders diagrams in the print package of an authenticated HTML5 export', async () => {
+            const uuid = 'print-diagram-export';
+            const project = await db
+                .insertInto('projects')
+                .values({
+                    uuid,
+                    title: 'Print diagrams',
+                    owner_id: userId,
+                    created_at: now(),
+                })
+                .executeTakeFirst();
+            const ydoc = createMinimalYjsDocument(uuid);
+            try {
+                const page = ydoc.getArray<Y.Map<unknown>>('navigation').get(0);
+                const block = new Y.Map();
+                const components = new Y.Array();
+                const component = new Y.Map();
+                component.set('type', 'text');
+                component.set('content', '<pre class="mermaid">graph LR; Start-->Finish</pre>');
+                components.push([component]);
+                block.set('components', components);
+                const blocks = new Y.Array();
+                blocks.push([block]);
+                page.set('blocks', blocks);
+                ydoc.getMap('metadata').set('addPrintButton', true);
+                await saveFullState(db, Number(project.insertId), Y.encodeStateAsUpdate(ydoc));
+            } finally {
+                ydoc.destroy();
+            }
+            const response = await app.handle(
+                new Request(`http://localhost/export/projects/${uuid}/export/html5`, {
+                    headers: { Authorization: `Bearer ${userToken}` },
+                }),
+            );
+            expect(response.status).toBe(200);
+            const files = unzipSync(new Uint8Array(await response.arrayBuffer()));
+            const script = strFromU8(files['libs/exe_print/data.js']);
+            const data = JSON.parse(script.slice('window.__exePrintPackage='.length, -1));
+            const component = data.pages
+                .flatMap((page: any) => page.blocks)
+                .flatMap((block: any) => block.components)[0];
+            expect(component.content).toContain('<svg');
+            expect(component.content).not.toContain('<pre class="mermaid"');
+            expect(Object.keys(files).some(name => name.endsWith('mermaid.min.js'))).toBe(false);
+        }, 60_000);
     });
 });

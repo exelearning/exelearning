@@ -1,0 +1,63 @@
+/* Shared by all exported formats, including local files and editor previews. */
+.exe-print-action {
+    position: fixed;
+    top: var(--exe-print-top, 15px);
+    right: var(--exe-print-right, 20px);
+    z-index: 1000;
+    margin: 0;
+}
+
+/* Single-page export displays in normal flow in header */
+body.exe-single-page .exe-print-action {
+    position: static;
+    float: right;
+    margin: 0 0 0.5em 1em;
+}
+
+#exe-print-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    width: var(--exe-print-size, 40px);
+    height: var(--exe-print-size, 40px);
+    padding: 0;
+    border: var(--exe-print-border, 1px solid #888);
+    border-radius: var(--exe-print-radius, 4px);
+    background: var(--exe-print-background, #fff);
+    color: var(--exe-print-color, #333);
+    cursor: pointer;
+    box-shadow: var(--exe-print-shadow, 0 1px 3px rgb(0 0 0 / 12%));
+}
+
+#exe-print-btn svg {
+    display: block;
+    width: var(--exe-print-icon-size, 20px);
+    height: var(--exe-print-icon-size, 20px);
+    flex: none;
+}
+
+/* Older cached base styles used a mask instead of the SVG. */
+#exe-print-btn::before {
+    content: none;
+}
+
+#exe-print-btn:hover {
+    background: var(--exe-print-hover-background, #f0f0f0);
+}
+
+#exe-print-btn:focus-visible {
+    outline: 2px solid currentColor;
+    outline-offset: 2px;
+}
+
+#exe-print-btn:disabled {
+    cursor: progress;
+    opacity: .65;
+}
+
+@media print {
+    .exe-print-action {
+        display: none !important;
+    }
+}

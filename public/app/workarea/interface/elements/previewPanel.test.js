@@ -1562,6 +1562,47 @@ describe('PreviewPanelManager', () => {
     });
   });
 
+  describe('print preview in blob mode', () => {
+    it('boots the shared runtime, supplies resources and releases them on navigation and destruction', () => {
+      const template = '<script>window.template="</head></body>";</script>';
+      const html = '<html><head>' + template + '</head><body>Content</body></html>';
+      const files = {
+        'index.html': html,
+        'content.xml': '<source>Private source</source>',
+        'libs/exe_print/data.js': 'window.__exePrintPackage={};',
+        'libs/exe_print/runtime.js': 'window.runtime="</script>";window.pattern="$\' $& $`";',
+        'libs/exe_print/frame.js': 'window.bridge=true;',
+        'libs/exe_print/preview.css': 'body { background: url(../../theme/icon.png); }',
+        'theme/icon.png': new Uint8Array([1, 2]),
+        'idevices/guess/data.json': '{}',
+        'content/resources/document.pdf': new Uint8Array([3]),
+      };
+      const blobs = [];
+      URL.createObjectURL.mockImplementation(blob => { blobs.push(blob); return 'blob:resource-' + blobs.length; });
+      const result = manager._inlinePrintPreview(html, files);
+      expect(result).toContain('data-print-root="http://localhost:3000/viewer/"');
+      expect(result).toContain('window.__exePrintResourceUrls=');
+      expect(result).toContain('window.runtime="<\\/script>";');
+      expect(result).toContain('window.pattern="$\' $& $`";');
+      expect(result).toContain(template);
+      expect(result).not.toContain('Private source');
+      expect(blobs.map(blob => blob.type)).toEqual(['text/javascript', 'text/css', 'image/png', 'application/json', 'application/octet-stream']);
+      expect(manager._printResourceBlobUrls).toHaveLength(5);
+      manager._blobUrlFiles = files;
+      vi.spyOn(manager, '_loadBlobUrlInIframe').mockImplementation(() => {});
+      manager._loadBlobPage('index.html');
+      expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:resource-1');
+      manager.destroy();
+      expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:resource-10');
+      expect(manager._printResourceBlobUrls).toBeNull();
+    });
+
+    it('leaves packages without printing alone', () => {
+      expect(manager._inlinePrintPreview('<body>Unchanged</body>', {})).toBe('<body>Unchanged</body>');
+      expect(URL.createObjectURL).not.toHaveBeenCalled();
+    });
+  });
+
   describe('_inlineResources', () => {
     it('should inline CSS link tags', () => {
       const html = '<html><head><link rel="stylesheet" href="style.css"></head></html>';

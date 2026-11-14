@@ -33,6 +33,8 @@ import type {
 } from '../worksheet/types';
 
 export interface WorksheetOptions {
+    /** Resolve the finished worksheet against an exported package, without fetching local files. */
+    resolveResourceUrls?: (html: string) => string;
     /** Trusted formula renderer, run after author HTML has been sanitized. */
     preRenderLatex?: (html: string) => Promise<LatexPreRenderResult>;
     /** Translated user-visible strings for the worksheet chrome. */
@@ -195,7 +197,11 @@ export class WorksheetExporter {
                     throw new Error('Could not render worksheet formulas');
                 html = rendered.html;
             }
-            return { success: true, html, dispose: () => resolver.dispose() };
+            return {
+                success: true,
+                html: options.resolveResourceUrls ? options.resolveResourceUrls(html) : html,
+                dispose: () => resolver.dispose(),
+            };
         } catch (error) {
             resolver.dispose();
             console.error('[WorksheetExporter] Failed to generate worksheet:', error);

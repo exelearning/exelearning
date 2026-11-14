@@ -680,6 +680,36 @@ describe('PageRenderer', () => {
             expect(html).not.toContain('class="page-counter"');
         });
 
+        it('should NOT render print button when addPrintButton is false (default)', () => {
+            const page = createTestPage();
+            const html = renderer.renderPageHeader(page, {
+                projectTitle: 'Test',
+                currentPageIndex: 0,
+                totalPages: 1,
+            });
+            expect(html).not.toContain('id="exe-print-btn"');
+            expect(html).not.toContain('exe-print-action');
+        });
+
+        it('should render print button when addPrintButton is true', () => {
+            const page = createTestPage();
+            const html = renderer.renderPageHeader(page, {
+                projectTitle: 'Test',
+                currentPageIndex: 0,
+                totalPages: 1,
+                addPrintButton: true,
+                printLabel: 'Imprimir',
+            });
+            expect(html).toContain('class="exe-print-action"');
+            expect(html).toContain('id="exe-print-btn"');
+            expect(html).toContain('title="Imprimir"');
+            expect(html).toContain('aria-label="Imprimir"');
+            expect(html).toContain('<span class="sr-av">Imprimir</span>');
+            expect(html).toContain('href="libs/exe_print/button.css"');
+            expect(html).toContain('<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"');
+            expect(html).toContain('aria-hidden="true" focusable="false"');
+        });
+
         it('should use "Page" as default label when no pageLabel is provided', () => {
             const page = createTestPage();
 
@@ -1050,6 +1080,24 @@ describe('PageRenderer', () => {
             const pages = [createTestPage()];
             const html = renderer.renderSinglePage(pages);
             expect(html).toContain('<link rel="icon" type="image/x-icon" href="libs/favicon.ico">');
+        });
+
+        it('should NOT render print button in renderSinglePage when addPrintButton is false (default)', () => {
+            const pages = [createTestPage()];
+            const html = renderer.renderSinglePage(pages);
+            expect(html).not.toContain('id="exe-print-btn"');
+            expect(html).not.toContain('exe-print-action');
+        });
+
+        it('should render print button in renderSinglePage when addPrintButton is true', () => {
+            const pages = [createTestPage()];
+            const html = renderer.renderSinglePage(pages, {
+                addPrintButton: true,
+                navLabels: { print: 'Imprimir' },
+            });
+            expect(html).toContain('class="exe-print-action"');
+            expect(html).toContain('id="exe-print-btn"');
+            expect(html).toContain('title="Imprimir"');
         });
 
         it('should use provided detectedLibraries without rescanning all page content', () => {

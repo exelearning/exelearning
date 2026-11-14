@@ -25,6 +25,7 @@ import { getDocumentVersion } from '../db/queries';
 import { reconstructDocument } from '../websocket/yjs-persistence';
 import { getFilesDir } from './file-helper';
 import { getMimeType } from '../utils/mime-types';
+import { preRenderServerMermaid } from '../shared/export/prerender/preRenderServerMermaid';
 import {
     Html5Exporter,
     ServerYjsDocumentWrapper,
@@ -86,11 +87,12 @@ export async function buildHtml5PreviewExport(project: Project): Promise<ExportR
         singlePage: false,
     });
 
-    // Run the export with server-side LaTeX pre-render hooks.
+    // Share the same server pre-rendering with downloadable exports.
     const latexRenderer = new ServerLatexPreRenderer();
     return exporter.export({
         preRenderLatex: async (html: string) => latexRenderer.preRender(html),
         preRenderDataGameLatex: async (html: string) => latexRenderer.preRenderDataGameLatex(html),
+        preRenderMermaid: preRenderServerMermaid,
     });
 }
 

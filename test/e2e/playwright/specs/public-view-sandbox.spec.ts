@@ -30,6 +30,11 @@ test.describe('Public view isolation (opaque-origin sandbox)', () => {
         const uuid = await createProject(page, 'Public Isolation Project');
         await page.goto(`/workarea?project=${uuid}`);
         await waitForAppReady(page);
+        await page.evaluate(() => {
+            (window as any).eXeLearning.app.project._yjsBridge.documentManager
+                .getMetadata()
+                .set('addPrintButton', true);
+        });
         await saveProject(page);
 
         // Enable the public read-only link and read its URL.
@@ -103,5 +108,26 @@ test.describe('Public view isolation (opaque-origin sandbox)', () => {
         expect(probe.origin).toBe('null');
         expect(probe.parentBlocked).toBe(true);
         expect(probe.cookieBlocked).toBe(true);
+
+        // The nested preview can print while both frames retain an opaque origin.
+        await frame!.locator('#exe-print-btn').click();
+        await expect(frame!.locator('.print-preview-print-btn')).toBeEnabled({ timeout: 60_000 });
+        const previewHandle = await frame!.locator('.print-preview-iframe').elementHandle();
+        const preview = await previewHandle!.contentFrame();
+        expect(await preview!.evaluate(() => window.origin)).toBe('null');
+        await preview!.evaluate(() => {
+            (window as any).printStarted = false;
+            window.addEventListener(
+                'beforeprint',
+                () => {
+                    (window as any).printStarted = true;
+                },
+                { once: true },
+            );
+        });
+        await frame!.locator('.print-preview-print-btn').click();
+        await expect.poll(() => preview!.evaluate(() => (window as any).printStarted)).toBe(true);
+        expect(sandboxAttr).toContain('allow-modals');
+        expect(csp).toContain('allow-modals');
     });
 });

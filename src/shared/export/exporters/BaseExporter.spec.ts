@@ -2,11 +2,15 @@
  * BaseExporter tests
  */
 
-import { describe, it, expect, beforeEach } from 'bun:test';
+import { describe, it, expect, beforeEach, spyOn } from 'bun:test';
 import { BaseExporter, fetchNavLabels, resolveMaterialIconDataUris } from './BaseExporter';
+import { PRINT_RUNTIME_FILES } from '../printPackage';
+import { encryptDataGame } from '../utils/dataGameCipher';
 import type {
     ExportDocument,
+    ExportComponent,
     ExportMetadata,
+    ExportOptions,
     ExportPage,
     ResourceProvider,
     AssetProvider,
@@ -188,6 +192,16 @@ class MockZipProvider implements ZipProvider {
 
 // Concrete test implementation of BaseExporter
 class TestExporter extends BaseExporter {
+    testPrintPackage(meta: Partial<ExportMetadata>, pages: ExportPage[] = [], options?: ExportOptions) {
+        const files = new Map<string, string | Uint8Array>();
+        return this.addPrintPreviewFiles(
+            pages,
+            { ...this.getMetadata(), ...meta },
+            null,
+            (name, content) => files.set(name, content),
+            options,
+        ).then(() => files);
+    }
     getFileExtension(): string {
         return '.zip';
     }
@@ -246,6 +260,224 @@ describe('BaseExporter', () => {
         assets = new MockAssetProvider();
         zip = new MockZipProvider();
         exporter = new TestExporter(document, resources, assets, zip);
+    });
+
+    describe('shared print package', () => {
+        const runtime = () =>
+            new Map([
+                ...PRINT_RUNTIME_FILES.map(name => [name, Buffer.from('resource')] as const),
+                ['exe_print/strings.json', Buffer.from('["Print", "Close"]')],
+            ]);
+
+        it('adds nothing when printing is disabled', async () => {
+            expect((await exporter.testPrintPackage({ title: 'Disabled' })).size).toBe(0);
+        });
+
+        it('fails with a useful build error for missing runtime or string keys', async () => {
+            await expect(exporter.testPrintPackage({ title: 'Missing', addPrintButton: true })).rejects.toThrow(
+                'bundle:exporters',
+            );
+            const files = runtime();
+            files.delete('exe_print/strings.json');
+            resources.setLibraryFiles(files);
+            await expect(exporter.testPrintPackage({ title: 'Missing', addPrintButton: true })).rejects.toThrow(
+                'translations missing',
+            );
+        });
+
+        it('publishes translated UI data and read-only metadata, with all local dependencies', async () => {
+            resources.setLibraryFiles(runtime());
+            resources.fetchI18nTranslations = async () => new Map([['Print', 'Imprimir']]);
+            const files = await exporter.testPrintPackage(
+                { title: 'Course', language: 'es', addPrintButton: true, addSearchBox: true, globalFont: 'andika' },
+                [
+                    {
+                        id: 'p',
+                        title: 'Mermaid',
+                        parentId: null,
+                        order: 0,
+                        blocks: [
+                            {
+                                id: 'b',
+                                name: 'Diagram',
+                                order: 0,
+                                components: [
+                                    { id: 'c', type: 'text', order: 0, content: '<div class="mermaid">graph LR</div>' },
+                                ],
+                            },
+                        ],
+                    },
+                ],
+            );
+            expect(files.has('print.html')).toBe(true);
+            for (const name of PRINT_RUNTIME_FILES) expect(files.has(`libs/${name}`)).toBe(true);
+            const script = files.get('libs/exe_print/data.js') as string;
+            const data = JSON.parse(script.slice('window.__exePrintPackage='.length, -1));
+            expect(data.translations).toEqual({ Print: 'Imprimir', Close: 'Close' });
+            expect(data.metadata).toMatchObject({ title: 'Course', language: 'es', globalFont: 'andika' });
+            expect(data.metadata.addPrintButton).toBeUndefined();
+            expect(data.metadata.addSearchBox).toBeUndefined();
+            expect(data.pages[0].id).toBe('p');
+            expect(data.themeFiles).toEqual(['style.css', 'style.js']);
+        });
+
+        describe('libraries', () => {
+            const MATH = 'exe_math/tex-mml-svg.js';
+            let requested: string[];
+            const page = (components: ExportComponent[], title = 'Page'): ExportPage => ({
+                id: 'p',
+                title,
+                parentId: null,
+                order: 0,
+                blocks: [{ id: 'b', name: 'Block', order: 0, components }],
+            });
+            const text = (id: string, content: string, properties: Record<string, unknown> = {}) => ({
+                id,
+                type: 'text',
+                order: 0,
+                content,
+                properties,
+            });
+            const packageData = (files: Map<string, string | Uint8Array>) => {
+                const script = files.get('libs/exe_print/data.js') as string;
+                return JSON.parse(script.slice('window.__exePrintPackage='.length, -1));
+            };
+
+            beforeEach(() => {
+                requested = [];
+                const available = new Map([...runtime(), [MATH, Buffer.from('mathjax')]]);
+                resources.fetchLibraryFiles = async (files: string[]) => {
+                    requested.push(...files);
+                    return new Map(files.filter(file => available.has(file)).map(file => [file, available.get(file)!]));
+                };
+            });
+
+            it('packages neither library when the printed content has no formulas, and pre-renders its diagrams', async () => {
+                const pages = [
+                    page([
+                        text('diagram', '<pre class="mermaid">graph LR; A-->B</pre>'),
+                        text('prose', '<p>Prices from $5 to $9</p>', { note: 'Plain words' }),
+                        text('styled', '<pre class="wide mermaid">graph TD</pre>'),
+                    ]),
+                ];
+                const rendered: string[] = [];
+                const files = await exporter.testPrintPackage({ addPrintButton: true }, pages, {
+                    preRenderMermaid: async html => {
+                        rendered.push(html);
+                        return {
+                            html: '<div class="exe-mermaid-rendered" data-mermaid="graph LR; A-->B"><svg></svg></div>',
+                            mermaidRendered: true,
+                            count: 1,
+                        };
+                    },
+                });
+                expect(requested.some(file => file.startsWith('exe_math') || file.includes('mermaid'))).toBe(false);
+                expect([...files.keys()].some(name => name.includes('exe_math') || name.includes('mermaid.'))).toBe(
+                    false,
+                );
+                const data = packageData(files);
+                expect(data.mathJax).toBe(false);
+                expect(rendered).toEqual([
+                    '<pre class="mermaid">graph LR; A-->B</pre>',
+                    '<pre class="wide mermaid">graph TD</pre>',
+                ]);
+                const [diagram, prose, styled] = data.pages[0].blocks[0].components;
+                expect(diagram.content).toContain('exe-mermaid-rendered');
+                expect(styled.content).toContain('exe-mermaid-rendered');
+                expect(prose.content).toBe('<p>Prices from $5 to $9</p>');
+                // The pages the export goes on writing keep their source.
+                expect(pages[0].blocks[0].components[0].content).toBe('<pre class="mermaid">graph LR; A-->B</pre>');
+            });
+
+            it('keeps a diagram as written when the export has no hook for it or the hook fails', async () => {
+                const pages = [page([text('diagram', "<div class='mermaid'>graph TD</div>")])];
+                const warn = spyOn(console, 'warn').mockImplementation(() => {});
+                try {
+                    for (const options of [
+                        undefined,
+                        {
+                            preRenderMermaid: async () => {
+                                throw new Error('No layout');
+                            },
+                        },
+                        { preRenderMermaid: async (html: string) => ({ html, mermaidRendered: false, count: 0 }) },
+                    ]) {
+                        const files = await exporter.testPrintPackage({ addPrintButton: true }, pages, options);
+                        expect(packageData(files).pages[0].blocks[0].components[0].content).toBe(
+                            "<div class='mermaid'>graph TD</div>",
+                        );
+                    }
+                    expect(warn).toHaveBeenCalledTimes(1);
+                    expect(requested.some(file => file.includes('mermaid'))).toBe(false);
+                } finally {
+                    warn.mockRestore();
+                }
+            });
+
+            it('pre-renders nested JSON properties without changing the editing document', async () => {
+                const diagram = '<pre class="mermaid">graph LR; Start-->Finish</pre>';
+                const properties = {
+                    history: diagram,
+                    activities: [{ text: diagram, feedback: ['Plain text', diagram, null, 7, false] }],
+                };
+                const pages = [page([{ ...text('case', '', properties), type: 'casestudy' }])];
+                const snapshot = JSON.stringify(pages);
+                const svg = '<div class="exe-mermaid-rendered"><svg><text>Start</text></svg></div>';
+                const files = await exporter.testPrintPackage({ addPrintButton: true }, pages, {
+                    preRenderMermaid: async () => ({ html: svg, mermaidRendered: true, count: 1 }),
+                });
+                expect(packageData(files).pages[0].blocks[0].components[0].properties).toEqual({
+                    history: svg,
+                    activities: [{ text: svg, feedback: ['Plain text', svg, null, 7, false] }],
+                });
+                expect(JSON.stringify(pages)).toBe(snapshot);
+                expect(requested.some(file => file.includes('mermaid'))).toBe(false);
+            });
+
+            it.each([
+                ['an HTML fragment', [page([text('c', '<p>\\(x^2\\)</p>')])], {}],
+                ['a property of a JSON activity', [page([text('c', '', { question: { stem: '$$x$$' } })])], {}],
+                [
+                    "a game's encrypted data",
+                    [
+                        page([
+                            text(
+                                'c',
+                                `<div class="quext-DataGame js-hidden">${encryptDataGame('{"q":"no maths"}')}</div>` +
+                                    `<div class="quext-DataGame js-hidden">${encryptDataGame(JSON.stringify({ q: '\\begin{align}a\\end{align}' }))}</div>`,
+                            ),
+                        ]),
+                    ],
+                    {},
+                ],
+                ['a title', [page([text('c', '<p>Text</p>')], 'See \\ref{eq}')], {}],
+                ['the project title', [], { title: 'Course \\(x\\)' }],
+                ['the project subtitle', [], { subtitle: 'Course \\(x\\)' }],
+                ['the footer', [], { footer: '<p>Footer \\(x^2\\)</p>' }],
+                [
+                    'generated fraction exercises',
+                    [
+                        page([
+                            {
+                                ...text('c', '<div class="mathoperations-DataGame">{"mode":1,"number":2}</div>'),
+                                type: 'mathematicaloperations',
+                            },
+                        ]),
+                    ],
+                    {},
+                ],
+                [
+                    'nothing, when the author asked for MathJax',
+                    [page([text('c', '<p>Text</p>')])],
+                    { addMathJax: true },
+                ],
+            ])('packages MathJax when the formulas are in %s', async (_where, pages, meta) => {
+                const files = await exporter.testPrintPackage({ addPrintButton: true, ...meta }, pages);
+                expect(requested).toContain(MATH);
+                expect(files.has(`libs/${MATH}`)).toBe(true);
+                expect(packageData(files).mathJax).toBe(true);
+            });
+        });
     });
 
     it('fetches navigation and license labels through its injected resource provider', async () => {

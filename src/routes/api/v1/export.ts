@@ -30,6 +30,7 @@ import {
 } from '../../../shared/export';
 import { reconstructDocument } from '../../../websocket/yjs-persistence';
 import { getAppVersion } from '../../../utils/version';
+import { preRenderServerMermaid } from '../../../shared/export/prerender/preRenderServerMermaid';
 import {
     authenticateRequest,
     errorResponse,
@@ -265,7 +266,7 @@ export const exportRoutes = new Elysia({ prefix: '/export' })
                             return errorResponse('INVALID_FORMAT', `Unsupported format: ${format}`);
                     }
 
-                    // Run the export with server-side LaTeX pre-render hooks.
+                    // Render formulas and diagrams on the server, including the print package.
                     // This keeps behavior consistent with the main export routes.
                     const latexRenderer = new ServerLatexPreRenderer();
                     const result = await exporter.export({
@@ -273,6 +274,7 @@ export const exportRoutes = new Elysia({ prefix: '/export' })
                         runtimeVersion: getAppVersion(),
                         preRenderLatex: async (html: string) => latexRenderer.preRender(html),
                         preRenderDataGameLatex: async (html: string) => latexRenderer.preRenderDataGameLatex(html),
+                        preRenderMermaid: preRenderServerMermaid,
                     });
 
                     if (!result.success || !result.data) {

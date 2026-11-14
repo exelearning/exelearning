@@ -303,6 +303,7 @@ export interface OdeMetadata {
     addSearchBox: boolean;
     addExeLink: boolean;
     addAccessibilityToolbar: boolean;
+    addPrintButton: boolean;
     exportSource: boolean;
     extraHeadContent: string;
     footer: string;

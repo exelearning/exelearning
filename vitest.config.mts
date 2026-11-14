@@ -93,6 +93,8 @@ export default defineConfig({
                 '**/libs/**',
                 '**/*.min.js',
                 '**/*.bundle.js',
+                // Generated from public/app/print; measure the source modules instead.
+                'public/app/common/exe_print/**',
                 // Vendored third-party code (never edited locally, see
                 // THIRD-PARTY-NOTICES.md)
                 'public/app/common/scorm/scorm12/vendor/**',
