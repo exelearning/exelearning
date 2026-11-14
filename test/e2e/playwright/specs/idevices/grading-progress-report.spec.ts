@@ -1,6 +1,7 @@
 import { test, expect } from '../../fixtures/auth.fixture';
 import {
     addIdevice,
+    dismissVersionNotice,
     editIdevice,
     expandIdeviceCategory,
     getPreviewFrame,
@@ -33,6 +34,8 @@ for (const device of [
             await addIdevice(page, device.name);
         }
         const form = page.locator(device.form);
+        // 3dmol has no description above its tabs, so the notice of a development version covers them.
+        await dismissVersionNotice(page);
         await form.locator('[data-exe-tab="grading"]').click();
         await unfoldGroup(page, 'eXeProgressReportGroup');
         const report = form.locator('#eXeProgressReport');
