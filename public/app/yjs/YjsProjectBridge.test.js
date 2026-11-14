@@ -418,6 +418,75 @@ describe('YjsProjectBridge', () => {
       expect(bridge.projectId).toBe(123);
     });
 
+    describe('activity reporter (issue #2689)', () => {
+      let instances;
+      let originalReporter;
+
+      beforeEach(() => {
+        instances = [];
+        originalReporter = window.ProjectActivityReporter;
+        window.ProjectActivityReporter = class {
+          constructor(documentManager, options) {
+            this.documentManager = documentManager;
+            this.options = options;
+            this.started = false;
+            this.destroyed = false;
+            instances.push(this);
+          }
+          start() {
+            this.started = true;
+            return this;
+          }
+          async destroy() {
+            this.destroyed = true;
+          }
+        };
+      });
+
+      afterEach(() => {
+        window.ProjectActivityReporter = originalReporter;
+      });
+
+      it('creates and starts a reporter bound to the document session in online mode', async () => {
+        await bridge.initialize('uuid-1', 'test-token');
+        expect(instances).toHaveLength(1);
+        expect(bridge.activityReporter).toBe(instances[0]);
+        expect(instances[0].started).toBe(true);
+        expect(instances[0].documentManager).toBe(bridge.documentManager);
+        expect(instances[0].options).toMatchObject({ projectId: 'uuid-1', token: 'test-token' });
+      });
+
+      it('does not report activity in offline sessions or without remote storage', async () => {
+        await bridge.initialize('uuid-1', 'test-token', { offline: true });
+        expect(bridge.activityReporter).toBeNull();
+        expect(instances).toHaveLength(0);
+
+        const offlineApp = { ...mockApp, capabilities: { storage: { remote: false }, collaboration: { enabled: false } } };
+        const local = new YjsProjectBridge(offlineApp);
+        await local.initialize('uuid-2', 'test-token');
+        expect(local.activityReporter).toBeNull();
+      });
+
+      it('destroys the reporter on disconnect', async () => {
+        await bridge.initialize('uuid-1', 'test-token');
+        const reporter = bridge.activityReporter;
+        await bridge.disconnect();
+        expect(reporter.destroyed).toBe(true);
+        expect(bridge.activityReporter).toBeNull();
+      });
+
+      it('survives a reporter that fails to start', async () => {
+        window.ProjectActivityReporter = class {
+          constructor() {
+            throw new Error('no reporter');
+          }
+        };
+        await bridge.initialize('uuid-1', 'test-token');
+        expect(bridge.activityReporter).toBeNull();
+        expect(bridge.initialized).toBe(true);
+      });
+    });
+
     it('sets authToken', async () => {
       await bridge.initialize(123, 'test-token');
       expect(bridge.authToken).toBe('test-token');

@@ -67,6 +67,15 @@ class YjsDocumentManager {
     // User info (set from session)
     this.userInfo = null;
 
+    // Issue #2689: one editor session = one document manager instance in one tab.
+    // The id correlates the WebSocket connection (so reconnections of this tab
+    // do not add `session.opened` rows) with the content events this tab
+    // reports. It is a correlation id, never a credential.
+    this.sessionId = config.sessionId || this._generateSessionId();
+    // Set by ProjectActivityReporter.start(); the structure binding forwards
+    // its semantic hints through noteActivity().
+    this.activityReporter = null;
+
     this.initialized = false;
     this.synced = false;
 
@@ -101,6 +110,30 @@ class YjsDocumentManager {
     this._tabTracker = null;
     // External callback for additional cleanup (e.g., Cache API via YjsProjectBridge)
     this._onLastTabClosedCallback = null;
+  }
+
+  /**
+   * Random client editor-session id (issue #2689).
+   * @returns {string}
+   * @private
+   */
+  _generateSessionId() {
+    const cryptoObj = typeof window !== 'undefined' ? window.crypto : null;
+    if (cryptoObj && typeof cryptoObj.randomUUID === 'function') {
+      return cryptoObj.randomUUID().replace(/-/g, '');
+    }
+    return `s${Date.now().toString(36)}${Math.random().toString(36).slice(2, 14).padEnd(12, '0')}`;
+  }
+
+  /**
+   * Forward a semantic activity hint from the structure binding to the
+   * activity reporter, when one is attached (issue #2689). No-op otherwise.
+   * @param {Object} hint
+   */
+  noteActivity(hint) {
+    if (this.activityReporter && typeof this.activityReporter.noteActivity === 'function') {
+      this.activityReporter.noteActivity(hint);
+    }
   }
 
   /**
@@ -829,8 +862,10 @@ class YjsDocumentManager {
       {
         // Don't auto-connect - we'll call connect() after message handlers are installed
         connect: false,
-        // Pass JWT token as URL param for authentication
-        params: { token: this.config.token || '' },
+        // Pass JWT token as URL param for authentication. The session id lets
+        // the server record one `session.opened` per tab instead of one per
+        // reconnection (issue #2689); it carries no authority.
+        params: { token: this.config.token || '', session: this.sessionId },
       }
     );
 

@@ -3172,4 +3172,106 @@ describe('Admin Routes', () => {
             expect(body.users[0].email).toBeNull();
         });
     });
+
+    describe('Project activity (issue #2689)', () => {
+        const project = mockProject({ id: 5, uuid: 'uuid-5', title: 'Audited' });
+        let listCalls: Array<{ projectId: number; params: Record<string, unknown> }>;
+
+        const activityStub = () =>
+            ({
+                listActivity: async (_db: unknown, projectId: number, params: Record<string, unknown>) => {
+                    listCalls.push({ projectId, params });
+                    if (params.limit === '0') {
+                        const { ProjectActivityValidationError } = await import('../services/project-activity');
+                        throw new ProjectActivityValidationError('INVALID_LIMIT', 'limit must be between 1 and 100');
+                    }
+                    return {
+                        events: [{ id: 1, type: 'save.manual' }],
+                        nextCursor: null,
+                        recordingEnabled: true,
+                        retentionDays: 90,
+                    };
+                },
+                listActors: async () => [{ id: 1, email: 'admin@example.com' }],
+            }) as any;
+
+        const buildApp = () =>
+            new Elysia().use(
+                createAdminRoutes({
+                    ...createMockDeps({ findProjectById: async (_db, id) => (id === 5 ? project : undefined) }),
+                    activity: activityStub(),
+                }),
+            );
+
+        beforeEach(() => {
+            listCalls = [];
+        });
+
+        it('serves the per-project log with project context to administrators', async () => {
+            const app = buildApp();
+            const token = await generateAdminToken();
+            const res = await app.handle(
+                new Request('http://localhost/api/admin/projects/5/activity?limit=10&userId=3', {
+                    headers: { Authorization: `Bearer ${token}` },
+                }),
+            );
+            expect(res.status).toBe(200);
+            const body = await res.json();
+            expect(body.events).toHaveLength(1);
+            expect(body.project).toEqual({ id: 5, uuid: 'uuid-5', title: 'Audited' });
+            expect(listCalls[0]).toEqual({
+                projectId: 5,
+                params: { userId: '3', since: undefined, until: undefined, limit: '10', cursor: undefined },
+            });
+        });
+
+        it('lists actors', async () => {
+            const app = buildApp();
+            const token = await generateAdminToken();
+            const res = await app.handle(
+                new Request('http://localhost/api/admin/projects/5/activity/actors', {
+                    headers: { Authorization: `Bearer ${token}` },
+                }),
+            );
+            expect(res.status).toBe(200);
+            expect((await res.json()).actors).toEqual([{ id: 1, email: 'admin@example.com' }]);
+        });
+
+        it('rejects non-admins and unauthenticated callers', async () => {
+            const app = buildApp();
+            const userToken = await generateUserToken();
+            expect((await app.handle(new Request('http://localhost/api/admin/projects/5/activity'))).status).toBe(401);
+            expect(
+                (
+                    await app.handle(
+                        new Request('http://localhost/api/admin/projects/5/activity', {
+                            headers: { Authorization: `Bearer ${userToken}` },
+                        }),
+                    )
+                ).status,
+            ).toBe(403);
+            expect(listCalls).toHaveLength(0);
+        });
+
+        it('returns 404 for unknown projects, 400 for bad ids and validation errors', async () => {
+            const app = buildApp();
+            const token = await generateAdminToken();
+            const headers = { Authorization: `Bearer ${token}` };
+            expect(
+                (await app.handle(new Request('http://localhost/api/admin/projects/6/activity', { headers }))).status,
+            ).toBe(404);
+            expect(
+                (await app.handle(new Request('http://localhost/api/admin/projects/abc/activity', { headers }))).status,
+            ).toBe(400);
+            expect(
+                (await app.handle(new Request('http://localhost/api/admin/projects/6/activity/actors', { headers })))
+                    .status,
+            ).toBe(404);
+            const invalid = await app.handle(
+                new Request('http://localhost/api/admin/projects/5/activity?limit=0', { headers }),
+            );
+            expect(invalid.status).toBe(400);
+            expect((await invalid.json()).error).toBe('INVALID_LIMIT');
+        });
+    });
 });

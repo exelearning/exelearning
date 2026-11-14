@@ -108,6 +108,11 @@ import {
     notifyVisibilityChanged as notifyVisibilityChangedDefault,
     notifyCollaboratorRemoved as notifyCollaboratorRemovedDefault,
 } from '../websocket/access-notifier';
+import {
+    projectActivityService as projectActivityServiceDefault,
+    type ProjectActivityService,
+} from '../services/project-activity';
+import { parseRoles } from '../db/types';
 import { createBlankYjsDocument } from '../services/yjs-initializer';
 import { logActivity } from '../services/activity-logger';
 import type { Kysely } from 'kysely';
@@ -268,6 +273,8 @@ export interface ProjectDependencies {
     accessNotifier?: AccessNotifierDeps;
     linkValidation?: LinkValidationDeps;
     settings?: ProjectSettingsDeps;
+    /** Project activity recorder (issue #2689). Defaults to the real service. */
+    activity?: ProjectActivityService;
 }
 
 // Default dependencies
@@ -377,6 +384,7 @@ function serializeProjectSharing(
         initials?: string | null,
         displayName?: string | null,
     ) => string = createGravatarUrlDefault,
+    activity: { recordingEnabled: boolean; canView: boolean } = { recordingEnabled: false, canView: false },
 ) {
     const collabsList: Array<{ user: { id: number; email: string; gravatarUrl: string }; role: string }> = [];
 
@@ -417,6 +425,8 @@ function serializeProjectSharing(
         isOwner: currentUserId ? project.owner_id === currentUserId : false,
         createdAt: project.created_at,
         updatedAt: project.updated_at,
+        // Activity log capability (issue #2689): the server re-checks on every read.
+        activity,
     };
 }
 
@@ -882,6 +892,49 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
     // Access notifier functions (WebSocket notifications for access revocation)
     const { notifyVisibilityChanged, notifyCollaboratorRemoved } = deps.accessNotifier ?? defaultAccessNotifier;
 
+    // Project activity (issue #2689): sharing and access changes are recorded
+    // after their state change succeeded, only for real transitions. Best-effort.
+    const activity = deps.activity ?? projectActivityServiceDefault;
+    const recordAccess = (
+        project: Project,
+        actor: User,
+        type:
+            | 'access.collaborator_added'
+            | 'access.collaborator_removed'
+            | 'access.ownership_transferred'
+            | 'access.visibility_changed'
+            | 'access.public_link_enabled'
+            | 'access.public_link_disabled'
+            | 'access.public_link_regenerated',
+        extra: { targetUserId?: number; details?: Record<string, unknown> } = {},
+    ) =>
+        activity.record(db, {
+            projectId: project.id,
+            userId: actor.id,
+            type,
+            targetType: extra.targetUserId !== undefined ? 'user' : 'project',
+            targetId: extra.targetUserId !== undefined ? extra.targetUserId : null,
+            details: extra.details ?? null,
+        });
+    const activityInfoFor = async (
+        project: Project,
+        user: User | null,
+    ): Promise<{ recordingEnabled: boolean; canView: boolean }> => {
+        const recordingEnabled = activity.isEnabled();
+        if (!user) return { recordingEnabled, canView: false };
+        try {
+            const canView = await activity.canViewActivity(db, {
+                project,
+                userId: user.id,
+                isAdmin: parseRoles(user.roles).includes('ROLE_ADMIN'),
+            });
+            return { recordingEnabled, canView };
+        } catch (error) {
+            console.warn('[Project] Could not resolve activity capability:', error);
+            return { recordingEnabled, canView: false };
+        }
+    };
+
     return (
         new Elysia()
             .use(
@@ -1042,6 +1095,8 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
                         collabs,
                         currentUser?.id,
                         await isPublicViewFeatureEnabled(db),
+                        undefined,
+                        await activityInfoFor(project, currentUser),
                     ),
                 };
             })
@@ -1079,7 +1134,13 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
                     return { responseMessage: 'FORBIDDEN', detail: 'Only the project owner can change visibility' };
                 }
 
+                const previousVisibility = project.visibility || 'private';
                 await updateProjectVisibility(db, projectId, visibility);
+                if (previousVisibility !== visibility) {
+                    await recordAccess(project, currentUser, 'access.visibility_changed', {
+                        details: { from: previousVisibility, to: visibility },
+                    });
+                }
 
                 // If made private, kick non-authorized users via WebSocket
                 if (visibility === 'private') {
@@ -1128,7 +1189,15 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
                     return { responseMessage: 'FEATURE_DISABLED', detail: PUBLIC_VIEW_DISABLED_DETAIL };
                 }
 
+                const wasEnabled = Boolean(project.public_view_enabled);
                 const updated = await setPublicViewEnabled(db, projectId, enabled);
+                if (wasEnabled !== enabled) {
+                    await recordAccess(
+                        project,
+                        currentUser,
+                        enabled ? 'access.public_link_enabled' : 'access.public_link_disabled',
+                    );
+                }
 
                 return {
                     responseMessage: 'OK',
@@ -1168,6 +1237,8 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
                 }
 
                 const updated = await regeneratePublicViewId(db, projectId);
+                // The new link id is deliberately not stored in the activity details.
+                await recordAccess(project, currentUser, 'access.public_link_regenerated');
 
                 return {
                     responseMessage: 'OK',
@@ -1225,6 +1296,7 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
                 }
 
                 await addCollaborator(db, projectId, user.id);
+                await recordAccess(project, currentUser, 'access.collaborator_added', { targetUserId: user.id });
 
                 return { responseMessage: 'OK', collaborator: { userId: user.id, email: user.email } };
             })
@@ -1257,7 +1329,11 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
                     return { responseMessage: 'FORBIDDEN', detail: 'Only the project owner can remove collaborators' };
                 }
 
+                const wasCollaborator = await isCollaborator(db, projectId, userId);
                 await removeCollaborator(db, projectId, userId);
+                if (wasCollaborator) {
+                    await recordAccess(project, currentUser, 'access.collaborator_removed', { targetUserId: userId });
+                }
 
                 // Notify removed user via WebSocket
                 notifyCollaboratorRemoved(project.uuid, userId);
@@ -1315,6 +1391,10 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
                 }
 
                 await transferOwnership(db, projectId, newOwnerId);
+                await recordAccess(project, currentUser, 'access.ownership_transferred', {
+                    targetUserId: newOwnerId,
+                    details: { previousOwnerId: currentUser.id, newOwnerId },
+                });
 
                 return { responseMessage: 'OK' };
             })
@@ -1440,6 +1520,8 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
                         collabs,
                         currentUser?.id,
                         await isPublicViewFeatureEnabled(db),
+                        undefined,
+                        await activityInfoFor(project, currentUser),
                     ),
                 };
             })
@@ -1472,7 +1554,13 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
                     return { responseMessage: 'FORBIDDEN', detail: 'Only the project owner can change visibility' };
                 }
 
+                const previousVisibility = project.visibility || 'private';
                 await updateProjectVisibilityByUuid(db, uuid, visibility);
+                if (previousVisibility !== visibility) {
+                    await recordAccess(project, currentUser, 'access.visibility_changed', {
+                        details: { from: previousVisibility, to: visibility },
+                    });
+                }
 
                 // If made private, kick non-authorized users via WebSocket
                 if (visibility === 'private') {
@@ -1516,7 +1604,15 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
                     return { responseMessage: 'FEATURE_DISABLED', detail: PUBLIC_VIEW_DISABLED_DETAIL };
                 }
 
+                const wasEnabled = Boolean(project.public_view_enabled);
                 const updated = await setPublicViewEnabledByUuid(db, uuid, enabled);
+                if (wasEnabled !== enabled) {
+                    await recordAccess(
+                        project,
+                        currentUser,
+                        enabled ? 'access.public_link_enabled' : 'access.public_link_disabled',
+                    );
+                }
 
                 return {
                     responseMessage: 'OK',
@@ -1551,6 +1647,8 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
                 }
 
                 const updated = await regeneratePublicViewIdByUuid(db, uuid);
+                // The new link id is deliberately not stored in the activity details.
+                await recordAccess(project, currentUser, 'access.public_link_regenerated');
 
                 return {
                     responseMessage: 'OK',
@@ -1602,6 +1700,7 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
                 }
 
                 await addCollaborator(db, project.id, user.id);
+                await recordAccess(project, currentUser, 'access.collaborator_added', { targetUserId: user.id });
 
                 return { responseMessage: 'OK', collaborator: { userId: user.id, email: user.email } };
             })
@@ -1634,7 +1733,11 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
                     return { responseMessage: 'FORBIDDEN', detail: 'Only the project owner can remove collaborators' };
                 }
 
+                const wasCollaborator = await isCollaborator(db, project.id, userId);
                 await removeCollaborator(db, project.id, userId);
+                if (wasCollaborator) {
+                    await recordAccess(project, currentUser, 'access.collaborator_removed', { targetUserId: userId });
+                }
 
                 // Notify removed user via WebSocket
                 notifyCollaboratorRemoved(uuid, userId);
@@ -1687,6 +1790,10 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
                 }
 
                 await transferOwnershipByUuid(db, uuid, newOwnerId);
+                await recordAccess(project, currentUser, 'access.ownership_transferred', {
+                    targetUserId: newOwnerId,
+                    details: { previousOwnerId: currentUser.id, newOwnerId },
+                });
 
                 return { responseMessage: 'OK' };
             })

@@ -1329,11 +1329,20 @@ export default class modalOpenUserOdeFiles extends Modal {
                     this.close();
                 }
 
-                // Import the component file
-                const result = await importer.importComponent(odeFile, currentPageId);
+                // Import the component file. Activity (issue #2689): one logical
+                // import, suppress per-item classification and report a summary.
+                const activityReporter = eXeLearning.app.project._yjsBridge?.activityReporter;
+                activityReporter?.beginScope?.();
+                let result;
+                try {
+                    result = await importer.importComponent(odeFile, currentPageId);
+                } finally {
+                    activityReporter?.endScope?.();
+                }
 
                 if (result.success) {
                     Logger.log(`[ComponentImport] Import successful, block ID: ${result.blockId}`);
+                    activityReporter?.reportImport?.({ format: 'idevice', mode: 'merge', pageId: currentPageId, blocks: 1 });
                     // Preload assets into cache so they're available for sync resolution
                     // This ensures images display immediately without needing page refresh
                     await assetManager.preloadAllAssets();

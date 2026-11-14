@@ -647,6 +647,25 @@ class YjsProjectBridge {
       Logger.log('[YjsProjectBridge] SaveManager initialized');
     }
 
+    // Per-project activity capture (issue #2689): only where a server can
+    // store it. Static, offline and Electron sessions never report anything.
+    this.activityReporter = null;
+    const remoteStorage = this.app?.capabilities?.storage?.remote !== false;
+    if (!config.offline && remoteStorage && window.ProjectActivityReporter && this.documentManager) {
+      try {
+        this.activityReporter = new window.ProjectActivityReporter(this.documentManager, {
+          projectId,
+          apiUrl: config.apiUrl,
+          token: authToken,
+          sessionId: this.documentManager.sessionId,
+        }).start();
+        Logger.log('[YjsProjectBridge] ProjectActivityReporter initialized');
+      } catch (e) {
+        console.warn('[YjsProjectBridge] ProjectActivityReporter initialization failed:', e);
+        this.activityReporter = null;
+      }
+    }
+
     // Set up observers
     this.setupStructureObserver();
     this.setupMetadataObserver();
@@ -3924,6 +3943,10 @@ class YjsProjectBridge {
     }
 
     let stats;
+    // Activity (issue #2689): an import is one logical operation. Suppress the
+    // per-item classification of its transactions and report one summary.
+    const activityReporter = this.activityReporter;
+    activityReporter?.beginScope?.();
     try {
       if (clearExisting && typeof this.documentManager?.withSuppressedDirtyTracking === 'function') {
         stats = await this.documentManager.withSuppressedDirtyTracking(() =>
@@ -3933,6 +3956,7 @@ class YjsProjectBridge {
         stats = await importer.importFromFile(file, importOptions);
       }
     } catch (err) {
+      activityReporter?.endScope?.();
       // User declined a controlled large import: leave the project untouched.
       if (err && err.name === 'ImportCancelledError') {
         Logger.log('[YjsProjectBridge] Large import cancelled by user; project left unchanged');
@@ -3945,6 +3969,18 @@ class YjsProjectBridge {
         return { cancelled: true, error: 'zip-limit' };
       }
       throw err;
+    }
+    activityReporter?.endScope?.();
+    if (stats && activityReporter?.reportImport) {
+      const fileName = typeof file?.name === 'string' ? file.name.toLowerCase() : '';
+      activityReporter.reportImport({
+        format: fileName.endsWith('.elp') ? 'elp' : 'elpx',
+        mode: clearExisting ? 'replace' : 'merge',
+        pages: stats.pages,
+        blocks: stats.blocks,
+        components: stats.components,
+        assets: stats.assets,
+      });
     }
 
     // Announce imported assets to server for peer-to-peer collaboration
@@ -4786,6 +4822,17 @@ class YjsProjectBridge {
     if (this.collaborativeAutosave) {
       this.collaborativeAutosave.destroy();
       this.collaborativeAutosave = null;
+    }
+
+    // Flush and detach the activity reporter (issue #2689) while the document
+    // and the token are still available.
+    if (this.activityReporter) {
+      try {
+        await this.activityReporter.destroy();
+      } catch (_) {
+        // best effort
+      }
+      this.activityReporter = null;
     }
 
     // Clear the collaborative save-status UI (badge, live region and any

@@ -20,6 +20,11 @@ import { getJwtSecret, type JwtPayload } from './auth';
 import { hasRole, ROLES } from '../utils/guards';
 import type { Kysely } from 'kysely';
 import type { Database } from '../db/types';
+import {
+    projectActivityService as projectActivityServiceDefault,
+    type ProjectActivityService,
+} from '../services/project-activity';
+import { SAVE_KIND_HEADER, resolveSaveKind } from '../shared/project-activity/events';
 
 /**
  * Query dependencies for Yjs routes
@@ -41,6 +46,8 @@ export interface YjsQueries {
 export interface YjsDependencies {
     db: Kysely<Database>;
     queries: YjsQueries;
+    /** Project activity recorder (issue #2689). Defaults to the real service. */
+    activity?: ProjectActivityService;
 }
 
 /**
@@ -58,6 +65,7 @@ const defaultDependencies: YjsDependencies = {
         updateProjectTitleAndSave,
         checkProjectAccess,
     },
+    activity: projectActivityServiceDefault,
 };
 
 /** Response/request header carrying the stored document version (#2615). */
@@ -114,6 +122,7 @@ async function mergeIncoming(stored: Uint8Array, incoming: Uint8Array): Promise<
  */
 export function createYjsRoutes(deps: YjsDependencies = defaultDependencies) {
     const { db: database, queries } = deps;
+    const activity = deps.activity ?? projectActivityServiceDefault;
 
     return (
         new Elysia({ prefix: '/api/projects' })
@@ -262,6 +271,14 @@ export function createYjsRoutes(deps: YjsDependencies = defaultDependencies) {
                 // body is ArrayBuffer from binary request
                 const incoming = new Uint8Array(body as ArrayBuffer);
                 const baseVersion = headers['x-base-version'] ?? null;
+                // Only mark as saved if explicitly requested (user clicked Save)
+                // Auto-persistence (beforeunload) should NOT mark as saved
+                const markSaved = query.markSaved === 'true';
+                // Save intent (issue #2689): validated client-declared kind. It is
+                // intent, not proof; absent/invalid values keep the legacy mapping
+                // (markSaved → manual, otherwise unload) so beacons and older
+                // bundles classify as before. `markSaved` keeps its own meaning.
+                const saveKind = resolveSaveKind(headers[SAVE_KIND_HEADER.toLowerCase()], markSaved);
                 let version = Date.now().toString();
                 let merged = false;
                 let stored = false;
@@ -326,16 +343,36 @@ export function createYjsRoutes(deps: YjsDependencies = defaultDependencies) {
                     }
                 }
 
-                // Only mark as saved if explicitly requested (user clicked Save)
-                // Auto-persistence (beforeunload) should NOT mark as saved
-                const markSaved = query.markSaved === 'true';
                 if (markSaved) {
                     await queries.updateProjectTitleAndSave(database, project.id, title);
                 } else {
                     await queries.updateProjectTitle(database, project.id, title);
                 }
 
-                return { success: true, message: 'Document saved', version, markedAsSaved: markSaved, merged };
+                // Activity (issue #2689): recorded only now, after the canonical
+                // write of ADR-2615-01 succeeded. Best-effort: never throws, never
+                // changes the save result. The saver is recorded as the saver; the
+                // snapshot may carry other users' edits (merged or relayed).
+                try {
+                    await activity.recordSave(database, {
+                        projectId: project.id,
+                        userId,
+                        kind: saveKind,
+                        documentVersion: version,
+                        merged,
+                    });
+                } catch (error) {
+                    console.warn('[Yjs] Activity recorder failed after a successful save:', error);
+                }
+
+                return {
+                    success: true,
+                    message: 'Document saved',
+                    version,
+                    markedAsSaved: markSaved,
+                    merged,
+                    saveKind,
+                };
             })
     );
 }

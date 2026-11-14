@@ -27,6 +27,7 @@ import { adminRoutes } from './routes/admin';
 import { adminThemesRoutes } from './routes/admin-themes';
 import { adminTemplatesRoutes } from './routes/admin-templates';
 import { yjsRoutes } from './routes/yjs';
+import { projectActivityRoutes } from './routes/project-activity';
 import { platformIntegrationRoutes } from './routes/platform-integration';
 import { apiV1Routes } from './routes/api/v1';
 import { uploadSessionRoutes } from './routes/upload-session';
@@ -58,6 +59,7 @@ import {
     stopScheduler as stopCleanupScheduler,
     getConfigFromEnv as getCleanupConfigFromEnv,
 } from './services/cleanup-scheduler';
+import { startProjectActivityRetention, stopProjectActivityRetention } from './services/project-activity-retention';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -547,6 +549,7 @@ if (registerRootRoutes) {
         .use(adminThemesRoutes)
         .use(adminTemplatesRoutes)
         .use(yjsRoutes)
+        .use(projectActivityRoutes)
         .use(apiV1Routes)
         .use(uploadSessionRoutes)
         .use(createWebSocketRoutes())
@@ -583,6 +586,7 @@ if (routePrefix) {
             .use(adminThemesRoutes)
             .use(adminTemplatesRoutes)
             .use(yjsRoutes)
+            .use(projectActivityRoutes)
             .use(apiV1Routes)
             .use(uploadSessionRoutes)
             .use(createWebSocketRoutes())
@@ -784,6 +788,9 @@ async function bootstrap() {
     // 7. Start cleanup scheduler (for unsaved and guest projects)
     startCleanupScheduler(getCleanupConfigFromEnv());
 
+    // 7a. Prune project activity older than PROJECT_ACTIVITY_RETENTION_DAYS (issue #2689)
+    startProjectActivityRetention();
+
     // 7b. Start resource-bound sweepers: reap abandoned chunked uploads and
     // expired upload sessions so neither disk nor memory grows unbounded.
     startChunkUploadSweeper();
@@ -813,6 +820,7 @@ async function gracefulShutdown(signal: string) {
     console.log(`${signal} received, shutting down...`);
     stopWebSocket();
     stopCleanupScheduler();
+    stopProjectActivityRetention();
     stopChunkUploadSweeper();
     stopUploadSessionCleanup();
     await disconnectRedis();

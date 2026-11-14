@@ -47,6 +47,17 @@ async function createAuthToken(userId: number = 1): Promise<string> {
     });
 }
 
+// Activity recorder stub (issue #2689): captures what the sharing routes record.
+let recordedActivity: Array<Record<string, unknown>>;
+let activityCanView = true;
+const activityStub = {
+    isEnabled: () => true,
+    record: async (_db: unknown, input: Record<string, unknown>) => {
+        recordedActivity.push(input);
+    },
+    canViewActivity: async () => activityCanView,
+};
+
 // Mock data - shared state for tests
 let mockUsers: Map<number, any>;
 let mockProjects: Map<number, any>;
@@ -373,6 +384,7 @@ function createMockUtils(): UtilsDeps {
 function createMockDependencies(): ProjectDependencies {
     return {
         db: {} as any, // Mock db - not used directly, queries handle it
+        activity: activityStub as any,
         fs: fs,
         path: path,
         sessionManager: createMockSessionManager(),
@@ -405,6 +417,8 @@ describe('Project Routes', () => {
         projectIdCounter = 1;
         assetIdCounter = 1;
         publicViewFeatureEnabled = true;
+        recordedActivity = [];
+        activityCanView = true;
 
         // Create test users
         mockUsers.set(1, {
@@ -4285,6 +4299,169 @@ describe('Project Routes', () => {
             );
 
             expect(res.status).toBe(400);
+        });
+    });
+
+    describe('Sharing activity events (issue #2689)', () => {
+        const json = (token: string) => ({ 'Content-Type': 'application/json', Cookie: `auth=${token}` });
+
+        function seedProject(id: number, uuid: string, overrides: Record<string, unknown> = {}) {
+            const project = {
+                id,
+                uuid,
+                title: 'Shared',
+                owner_id: 1,
+                visibility: 'private',
+                status: 'active',
+                public_view_enabled: 0,
+                public_view_id: null,
+                created_at: Date.now(),
+                updated_at: Date.now(),
+                ...overrides,
+            };
+            mockProjects.set(id, project);
+            mockProjectsByUuid.set(uuid, project);
+            return project;
+        }
+
+        const types = () => recordedActivity.map(e => e.type);
+
+        it('records a collaborator addition once per family and never for a repeated invitation', async () => {
+            seedProject(900, 'uuid-900');
+            const token = await createAuthToken(1);
+            const invite = (url: string) =>
+                app.handle(
+                    new Request(url, {
+                        method: 'POST',
+                        headers: json(token),
+                        body: JSON.stringify({ email: 'collaborator@test.com' }),
+                    }),
+                );
+
+            await invite('http://localhost/api/projects/900/collaborators');
+            await invite('http://localhost/api/projects/900/collaborators');
+            expect(types()).toEqual(['access.collaborator_added']);
+            expect(recordedActivity[0]).toMatchObject({ projectId: 900, userId: 1, targetType: 'user', targetId: 2 });
+
+            mockCollaborators.set(900, new Set());
+            await invite('http://localhost/api/projects/uuid/uuid-900/collaborators');
+            expect(types()).toEqual(['access.collaborator_added', 'access.collaborator_added']);
+        });
+
+        it('records removals only when the user was a collaborator', async () => {
+            seedProject(901, 'uuid-901');
+            mockCollaborators.set(901, new Set([2]));
+            const token = await createAuthToken(1);
+            await app.handle(
+                new Request('http://localhost/api/projects/901/collaborators/3', {
+                    method: 'DELETE',
+                    headers: json(token),
+                }),
+            );
+            expect(types()).toEqual([]);
+            await app.handle(
+                new Request('http://localhost/api/projects/uuid/uuid-901/collaborators/2', {
+                    method: 'DELETE',
+                    headers: json(token),
+                }),
+            );
+            expect(types()).toEqual(['access.collaborator_removed']);
+            expect(recordedActivity[0]).toMatchObject({ targetType: 'user', targetId: 2 });
+        });
+
+        it('records visibility changes only on a real transition, with from/to details', async () => {
+            seedProject(902, 'uuid-902');
+            const token = await createAuthToken(1);
+            const patch = (url: string, visibility: string) =>
+                app.handle(
+                    new Request(url, { method: 'PATCH', headers: json(token), body: JSON.stringify({ visibility }) }),
+                );
+            await patch('http://localhost/api/projects/902/visibility', 'private');
+            expect(types()).toEqual([]);
+            await patch('http://localhost/api/projects/uuid/uuid-902/visibility', 'public');
+            expect(types()).toEqual(['access.visibility_changed']);
+            expect(recordedActivity[0].details).toEqual({ from: 'private', to: 'public' });
+        });
+
+        it('records public link enablement, disablement and regeneration without the link id', async () => {
+            seedProject(903, 'uuid-903');
+            const token = await createAuthToken(1);
+            const patch = (url: string, enabled: boolean) =>
+                app.handle(
+                    new Request(url, { method: 'PATCH', headers: json(token), body: JSON.stringify({ enabled }) }),
+                );
+            await patch('http://localhost/api/projects/903/public-view', false); // unchanged
+            await patch('http://localhost/api/projects/uuid/uuid-903/public-view', true);
+            await app.handle(
+                new Request('http://localhost/api/projects/903/public-view/regenerate', {
+                    method: 'POST',
+                    headers: json(token),
+                }),
+            );
+            await app.handle(
+                new Request('http://localhost/api/projects/uuid/uuid-903/public-view/regenerate', {
+                    method: 'POST',
+                    headers: json(token),
+                }),
+            );
+            expect(types()).toEqual([
+                'access.public_link_enabled',
+                'access.public_link_regenerated',
+                'access.public_link_regenerated',
+            ]);
+            for (const event of recordedActivity) {
+                expect(JSON.stringify(event)).not.toContain('pv-');
+            }
+        });
+
+        it('records ownership transfers with both parties', async () => {
+            seedProject(904, 'uuid-904');
+            mockCollaborators.set(904, new Set([2]));
+            const token = await createAuthToken(1);
+            const res = await app.handle(
+                new Request('http://localhost/api/projects/uuid/uuid-904/owner', {
+                    method: 'PATCH',
+                    headers: json(token),
+                    body: JSON.stringify({ newOwnerId: 2 }),
+                }),
+            );
+            expect(res.status).toBe(200);
+            expect(recordedActivity).toEqual([
+                expect.objectContaining({
+                    type: 'access.ownership_transferred',
+                    targetType: 'user',
+                    targetId: 2,
+                    details: { previousOwnerId: 1, newOwnerId: 2 },
+                }),
+            ]);
+        });
+
+        it('records nothing when the mutation is denied', async () => {
+            seedProject(905, 'uuid-905');
+            const token = await createAuthToken(3);
+            const res = await app.handle(
+                new Request('http://localhost/api/projects/905/visibility', {
+                    method: 'PATCH',
+                    headers: json(token),
+                    body: JSON.stringify({ visibility: 'public' }),
+                }),
+            );
+            expect(res.status).toBe(403);
+            expect(recordedActivity).toEqual([]);
+        });
+
+        it('exposes the activity capability in the sharing payload', async () => {
+            seedProject(906, 'uuid-906');
+            const token = await createAuthToken(1);
+            const res = await app.handle(
+                new Request('http://localhost/api/projects/uuid/uuid-906/sharing', { headers: json(token) }),
+            );
+            expect((await res.json()).project.activity).toEqual({ recordingEnabled: true, canView: true });
+            activityCanView = false;
+            const res2 = await app.handle(
+                new Request('http://localhost/api/projects/906/sharing', { headers: json(token) }),
+            );
+            expect((await res2.json()).project.activity).toEqual({ recordingEnabled: true, canView: false });
         });
     });
 

@@ -4219,4 +4219,131 @@ describe('YjsStructureBinding', () => {
       expect(binding.findBlockLocation('does-not-exist')).toBeNull();
     });
   });
+
+  describe('activity hints (issue #2689)', () => {
+    let hints;
+
+    beforeEach(() => {
+      hints = [];
+      mockDocManager.noteActivity = mock((hint) => hints.push(hint));
+      binding = new YjsStructureBinding(mockDocManager);
+    });
+
+    const types = () => hints.map((h) => h.type);
+
+    it('does not emit hints for plain creations and edits (the reporter classifies those)', () => {
+      const page = binding.createPage('Intro');
+      binding.updatePage(page.id, { pageName: 'Intro 2' });
+      const block = binding.createBlock(page.id, 'Box');
+      const comp = binding.createComponent(page.id, block, 'text', { htmlContent: '<p>x</p>' });
+      binding.updateComponent(comp, { htmlContent: '<p>y</p>' });
+      expect(hints).toEqual([]);
+    });
+
+    it('names clones with their source', () => {
+      const page = binding.createPage('Source');
+      const block = binding.createBlock(page.id, 'Box');
+      const comp = binding.createComponent(page.id, block, 'text', { htmlContent: '<p>x</p>' });
+      const clonedPage = binding.clonePage(page.id);
+      const clonedBlock = binding.cloneBlock(page.id, block);
+      const clonedComp = binding.cloneComponent(page.id, block, comp);
+      expect(hints).toEqual([
+        { type: 'page.cloned', targetId: clonedPage.id, label: 'Source (copy)', details: { sourceId: page.id } },
+        { type: 'block.cloned', targetId: clonedBlock.id, label: 'Box', details: { sourceId: block, pageId: page.id } },
+        {
+          type: 'idevice.cloned',
+          targetId: clonedComp.id,
+          label: 'Box',
+          details: { sourceId: comp, ideviceType: 'text', pageId: page.id, blockId: block },
+        },
+      ]);
+    });
+
+    it('captures the label and descendants of a deleted page before the transaction removes them', () => {
+      const parent = binding.createPage('Parent');
+      const child = binding.createPage('Child', parent.id);
+      binding.createPage('Grandchild', child.id);
+      expect(binding.deletePage(parent.id)).toBe(true);
+      expect(hints).toHaveLength(1);
+      expect(hints[0]).toMatchObject({ type: 'page.deleted', targetId: parent.id, label: 'Parent', details: { descendants: 2 } });
+      expect(hints[0].descendantIds).toHaveLength(2);
+      expect(binding.deletePage('missing')).toBe(false);
+      expect(hints).toHaveLength(1);
+    });
+
+    it('describes page moves of every flavour as a single move of the moved page', () => {
+      const a = binding.createPage('A');
+      const b = binding.createPage('B');
+      const c = binding.createPage('C');
+      expect(binding.movePage(c.id, a.id, 0)).toBe(true);
+      expect(hints.at(-1)).toMatchObject({ type: 'page.moved', targetId: c.id, label: 'C', details: { toParentId: a.id } });
+      expect(binding.movePageNext(a.id)).toBe(true);
+      expect(hints.at(-1)).toMatchObject({ type: 'page.moved', targetId: a.id, label: 'A' });
+      expect(binding.movePagePrev(a.id)).toBe(true);
+      expect(hints.at(-1)).toMatchObject({ type: 'page.moved', targetId: a.id });
+      expect(binding.movePageRight(b.id)).toBe(true);
+      expect(hints.at(-1)).toMatchObject({ type: 'page.moved', targetId: b.id });
+      expect(binding.movePageLeft(b.id)).toBe(true);
+      expect(hints.at(-1)).toMatchObject({ type: 'page.moved', targetId: b.id });
+      expect(binding.movePageToTarget(b.id, a.id)).toBe(true);
+      expect(hints.at(-1)).toMatchObject({ type: 'page.moved', targetId: b.id, details: { toParentId: a.id } });
+      const before = hints.length;
+      const grouped = binding.movePageGroupPrev([c.id, b.id]);
+      expect(hints.length - before).toBe(grouped ? 2 : 0);
+      expect(hints.every((h) => h.type === 'page.moved')).toBe(true);
+      // Failed moves emit nothing.
+      expect(binding.movePagePrev('missing')).toBe(false);
+      expect(hints.length).toBe(before + (grouped ? 2 : 0));
+    });
+
+    it('describes block and iDevice moves and deletions with their context', () => {
+      const page = binding.createPage('Lesson');
+      const other = binding.createPage('Other');
+      const block1 = binding.createBlock(page.id, 'First');
+      const block2 = binding.createBlock(page.id, 'Second');
+      const comp = binding.createComponent(page.id, block1, 'text', { htmlContent: '<p>x</p>' });
+      binding.createComponent(page.id, block1, 'text', { htmlContent: '<p>y</p>' });
+      hints.length = 0;
+
+      binding.reorderComponent(comp, 1);
+      binding.moveComponentToBlock(comp, block2);
+      binding.updateBlockOrder(block2, 0);
+      binding.moveBlockToPage(block2, other.id);
+      const moved = binding.moveComponentToPage(comp, page.id, 'Landing');
+      binding.deleteComponent(comp);
+      binding.deleteBlock(page.id, moved.blockId);
+
+      expect(types()).toEqual([
+        'idevice.moved',
+        'idevice.moved',
+        'block.moved',
+        'block.moved',
+        'idevice.moved',
+        'idevice.deleted',
+        'block.deleted',
+      ]);
+      expect(hints[1].details).toMatchObject({ fromBlockId: block1, toBlockId: block2, ideviceType: 'text' });
+      expect(hints[3].details).toEqual({ fromPageId: page.id, toPageId: other.id });
+      expect(hints[4]).toMatchObject({ label: 'Landing', details: { pageId: page.id, toBlockId: moved.blockId } });
+      expect(hints[5]).toMatchObject({ targetId: comp, label: 'Landing', details: { ideviceType: 'text', pageId: page.id, pageLabel: 'Lesson' } });
+      expect(hints[6]).toMatchObject({ targetId: moved.blockId, label: 'Landing', details: { pageId: page.id, pageLabel: 'Lesson' } });
+    });
+
+    it('never lets a failing reporter break the edit', () => {
+      mockDocManager.noteActivity = mock(() => {
+        throw new Error('boom');
+      });
+      binding = new YjsStructureBinding(mockDocManager);
+      const page = binding.createPage('P');
+      expect(() => binding.clonePage(page.id)).not.toThrow();
+      expect(binding.getPages()).toHaveLength(2);
+    });
+
+    it('is a no-op without a reporter-aware manager', () => {
+      delete mockDocManager.noteActivity;
+      binding = new YjsStructureBinding(mockDocManager);
+      const page = binding.createPage('P');
+      expect(() => binding.clonePage(page.id)).not.toThrow();
+    });
+  });
 });

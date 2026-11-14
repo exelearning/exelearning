@@ -410,6 +410,30 @@ const YjsProjectManagerMixin = {
      * @returns {Promise<Object>} Import statistics
      */
     projectManager.importConvertedStructure = async function (structure, assets, options = {}) {
+      // Activity (issue #2689): a legacy .elp import is one logical operation.
+      // Suppress per-item classification while it runs and report one summary.
+      const activityReporter = this._yjsBridge?.activityReporter;
+      activityReporter?.beginScope?.();
+      let stats;
+      try {
+        stats = await this._importConvertedStructureUnscoped(structure, assets, options);
+      } finally {
+        activityReporter?.endScope?.();
+      }
+      if (stats && activityReporter?.reportImport) {
+        activityReporter.reportImport({
+          format: 'elp',
+          mode: options.clearExisting ? 'replace' : 'merge',
+          pages: stats.pages,
+          blocks: stats.blocks,
+          components: stats.components,
+          assets: stats.assets,
+        });
+      }
+      return stats;
+    };
+
+    projectManager._importConvertedStructureUnscoped = async function (structure, assets, options = {}) {
       if (!this._yjsEnabled || !this._yjsBridge) {
         console.warn('[ProjectManager] Cannot import: Yjs not enabled');
         return null;
