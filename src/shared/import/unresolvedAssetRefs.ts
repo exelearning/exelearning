@@ -22,11 +22,16 @@ export interface UnresolvedAssetRef {
 }
 
 /**
- * Matches a placeholder followed by a path. The path stops at the delimiters
- * that can close it in the payloads we scan: quotes, angle brackets, whitespace
- * and the backslash that escapes a quote inside serialized JSON properties.
+ * Matches a placeholder followed by a path, capturing the quote that opened the
+ * attribute when the reference sits in one. The path stops at the delimiters
+ * that can close it in the payloads we scan: quotes, angle brackets and the
+ * backslash that escapes a quote inside serialized JSON properties.
+ *
+ * Whitespace is not one of them, because an author's filename may contain
+ * spaces and the notice has to name the file they must add back. Loose in text
+ * there is no closing quote to trust, so whitespace still ends the path.
  */
-const UNRESOLVED_REF = /\{\{context_path\}\}\/([^"'<>\s\\]+)/g;
+const UNRESOLVED_REF = /(\\?["'])?\{\{context_path\}\}\/([^"'<>\\]+)/g;
 
 /**
  * List the distinct asset paths still unresolved in a converted string.
@@ -39,7 +44,9 @@ export function collectUnresolvedAssetRefs(text: string): string[] {
 
     const paths: string[] = [];
     for (const match of text.matchAll(UNRESOLVED_REF)) {
-        const path = match[1];
+        const quoted = Boolean(match[1]);
+        const captured = match[2] ?? '';
+        const path = (quoted ? captured : captured.split(/\s/, 1)[0]).trim();
         if (path && !paths.includes(path)) paths.push(path);
     }
     return paths;
