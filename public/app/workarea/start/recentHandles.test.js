@@ -93,6 +93,7 @@ describe('recent file handles (browser)', () => {
             expect(isRecentHandlesSupported({ indexedDB: {} })).toBe(false);
             expect(isRecentHandlesSupported({ showOpenFilePicker: () => {} })).toBe(false);
             expect(isRecentHandlesSupported({ ...win, electronAPI: {} })).toBe(false);
+            expect(isRecentHandlesSupported({ ...win, self: {}, top: {} })).toBe(false);
         });
 
         it('reads the real window by default', () => {

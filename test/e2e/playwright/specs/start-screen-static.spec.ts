@@ -38,9 +38,8 @@ test.describe('Start screen (static)', () => {
         await expect(dialog).toHaveJSProperty('open', true);
         expect(await dialog.evaluate(element => element.matches(':modal'))).toBe(true);
         await expect(dialog.getByRole('button', { name: 'New project' })).toBeFocused();
-        // No account, no server: the only list is the files this browser remembers.
-        await expect(dialog.locator('.exe-start__tabs')).toHaveCount(0);
-        await expect(dialog.locator('.exe-start__status')).toHaveText('Projects you open or save will be listed here.');
+        // No account, no server, and (in this project) no browser file picker: no list.
+        await expect(dialog.locator('.exe-start__main')).toHaveCount(0);
     });
 
     test('New project keeps the blank project and is not asked again after a reload', async ({ page }) => {
@@ -127,6 +126,31 @@ test.describe('Start screen (static)', () => {
 
         await expect(next.locator('dialog.exe-start')).toHaveCount(0);
         await expect.poll(() => pageCount(next), { timeout: 90000 }).toBeGreaterThanOrEqual(2);
+    });
+
+    test('a file opened with File > Open is remembered too', async ({ page, context }) => {
+        const base64 = readFileSync(FIXTURE).toString('base64');
+        await context.addInitScript(base64 => {
+            (window as any).showOpenFilePicker = async () => {
+                const root = await navigator.storage.getDirectory();
+                const handle = await root.getFileHandle('from-file-menu.elp', { create: true });
+                const writable = await (handle as any).createWritable();
+                await writable.write(Uint8Array.from(atob(base64), char => char.charCodeAt(0)));
+                await writable.close();
+                return [handle];
+            };
+        }, base64);
+        await launch(page);
+        await page.keyboard.press('Escape');
+
+        await page.locator('#dropdownFile').click();
+        await page.locator('#navbar-button-open-offline').click();
+
+        await expect.poll(() => pageCount(page), { timeout: 90000 }).toBeGreaterThanOrEqual(2);
+
+        const next = await context.newPage();
+        await launch(next);
+        await expect(next.locator('dialog.exe-start .exe-start__item-title')).toHaveText('from-file-menu.elp');
     });
 
     test('stays out of the way when the launch names a project by URL', async ({ page }) => {

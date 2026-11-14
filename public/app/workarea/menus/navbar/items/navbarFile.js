@@ -10,6 +10,7 @@ import {
     saveProjectFolderInBrowser,
 } from '../../../../core/ProjectFolderStorage.js';
 import { DEFAULT_ACTIVITY_MODE, PREVIEW_MODE_DOCUMENT } from '../../../modals/modals/pages/modalPrintPreview.js';
+import { isRecentHandlesSupported, pickProjectFile } from '../../../start/recentHandles.js';
 
 /**
  * Below this viewport width the left panels start collapsed, and collapse when the viewport
@@ -2067,7 +2068,13 @@ export default class NavbarFile {
      * Opens file input for static mode (PWA/offline)
      * Uses ElpxImporter directly without server APIs
      */
-    openFileInputStatic() {
+    openFileInputStatic(recent = { isRecentHandlesSupported, pickProjectFile }) {
+        // Where the browser can keep file handles, pick with its own picker:
+        // the file is then remembered for the start screen's recent list.
+        if (recent.isRecentHandlesSupported()) {
+            return this.openWithFilePicker(recent.pickProjectFile);
+        }
+
         // Create or reuse a hidden file input
         let fileInput = document.getElementById('static-open-file-input');
         if (!fileInput) {
@@ -2087,6 +2094,24 @@ export default class NavbarFile {
         }
 
         fileInput.click();
+    }
+
+    /**
+     * File > Open with the browser's file picker (static mode, Chromium).
+     * @param {() => Promise<File|null>} pick - Resolves to null when cancelled
+     */
+    async openWithFilePicker(pick) {
+        try {
+            const file = await pick();
+            if (file) await this.openLocalFile(file);
+        } catch (error) {
+            console.error('[NavbarFile] File picker failed:', error);
+            eXeLearning.app.modals.alert.show({
+                title: _('Error opening'),
+                body: _('Unknown error.'),
+                contentId: 'error',
+            });
+        }
     }
 
     /**

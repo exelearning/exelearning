@@ -333,6 +333,11 @@ needs an editor asks for one explicitly:
   project" preference in its storage state (`playwright.config.ts`), so the dialog does not
   cover the editor. A context created by hand with `browser.newContext()` does not inherit
   it. `start-screen-static.spec.ts` clears it with `test.use({ storageState: ... })`.
+- Opening a file in static: where the browser has `showOpenFilePicker` (Chromium), File > Open
+  and the start screen use it so the file can be listed as recent. Playwright cannot drive that
+  picker, so the `static` project launches Chromium without it
+  (`--disable-blink-features=FileSystemAccessLocal`) and the app falls back to the file input
+  that `openElpFile` drives. A spec about the picker installs a stand-in with `addInitScript`.
 
 ### Test Users
 

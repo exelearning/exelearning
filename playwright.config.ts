@@ -208,6 +208,12 @@ export default defineConfig({
             use: {
                 ...devices['Desktop Chrome'],
                 baseURL: 'http://localhost:3002',
+                // Playwright cannot drive the browser's own file picker (showOpenFilePicker
+                // raises no `filechooser` event), which the static app uses for File > Open
+                // where it exists. Without it the app falls back to the file input every
+                // helper here drives, the same path Firefox and Safari take. Specs about the
+                // picker (start-screen-static.spec.ts) put a stand-in back.
+                launchOptions: { args: ['--disable-blink-features=FileSystemAccessLocal'] },
                 // The static app opens its start screen over the editor on every fresh
                 // launch. Specs that are not about it start as an author who ticked
                 // "Skip this and start with a new project"; start-screen-static.spec.ts

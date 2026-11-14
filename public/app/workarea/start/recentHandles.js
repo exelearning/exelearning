@@ -52,12 +52,15 @@ export function createHandleStore(factory = window.indexedDB) {
 
 /**
  * True in a browser that can keep file handles. The desktop app has its own
- * list, kept by the main process.
+ * list, kept by the main process, and a page embedded in another site may not
+ * open the file picker at all.
  * @param {Window} [win]
  * @returns {boolean}
  */
 export function isRecentHandlesSupported(win = window) {
-    return typeof win.showOpenFilePicker === 'function' && !!win.indexedDB && !win.electronAPI;
+    return (
+        typeof win.showOpenFilePicker === 'function' && !!win.indexedDB && !win.electronAPI && win.self === win.top
+    );
 }
 
 /**
