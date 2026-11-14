@@ -1,84 +1,415 @@
-var prettyPhotoExpandTxt = "Expand";
-/* ------------------------------------------------------------------------
-	Class: prettyPhoto
-	Use: Lightbox clone for jQuery
-	Author: Stephane Caron (http://www.no-margin-for-errors.com)
-	Version: 3.1.6
-------------------------------------------------------------------------- */
-!function(e){function t(){var e=location.href;return hashtag=-1!==e.indexOf("#prettyPhoto")?decodeURI(e.substring(e.indexOf("#prettyPhoto")+1,e.length)):!1,hashtag&&(hashtag=hashtag.replace(/<|>/g,"")),hashtag}function i(){"undefined"!=typeof theRel&&(location.hash=theRel+"/"+rel_index+"/")}function p(){-1!==location.href.indexOf("#prettyPhoto")&&(location.hash="prettyPhoto")}function o(e,t){e=e.replace(/[\[]/,"\\[").replace(/[\]]/,"\\]");var i="[\\?&]"+e+"=([^&#]*)",p=new RegExp(i),o=p.exec(t);return null==o?"":o[1]}e.prettyPhoto={version:"3.1.6"},e.fn.prettyPhoto=function(a){function s(){e(".pp_loaderIcon").hide(),projectedTop=scroll_pos.scrollTop+(I/2-f.containerHeight/2),projectedTop<0&&(projectedTop=0),$ppt.fadeTo(settings.animation_speed,1),$pp_pic_holder.find(".pp_content").animate({height:f.contentHeight,width:f.contentWidth},settings.animation_speed),$pp_pic_holder.animate({top:projectedTop,left:j/2-f.containerWidth/2<0?0:j/2-f.containerWidth/2,width:f.containerWidth},settings.animation_speed,function(){$pp_pic_holder.find(".pp_hoverContainer,#fullResImage").height(f.height).width(f.width),$pp_pic_holder.find(".pp_fade").fadeIn(settings.animation_speed),isSet&&"image"==h(pp_images[set_position])?$pp_pic_holder.find(".pp_hoverContainer").show():$pp_pic_holder.find(".pp_hoverContainer").hide(),settings.allow_expand&&(f.resized?e("a.pp_expand,a.pp_contract").show():e("a.pp_expand").hide()),!settings.autoplay_slideshow||P||v||e.prettyPhoto.startSlideshow(),settings.changepicturecallback(),v=!0}),m(),a.ajaxcallback()}function n(t){$pp_pic_holder.find("#pp_full_res object,#pp_full_res embed").css("visibility","hidden"),$pp_pic_holder.find(".pp_fade").fadeOut(settings.animation_speed,function(){e(".pp_loaderIcon").show(),t()})}function r(t){t>1?e(".pp_nav").show():e(".pp_nav").hide()}function l(e,t){if(resized=!1,d(e,t),imageWidth=e,imageHeight=t,(k>j||b>I)&&doresize&&settings.allow_resize&&!$){for(resized=!0,fitting=!1;!fitting;)k>j?(imageWidth=j-200,imageHeight=t/e*imageWidth):b>I?(imageHeight=I-200,imageWidth=e/t*imageHeight):fitting=!0,b=imageHeight,k=imageWidth;(k>j||b>I)&&l(k,b),d(imageWidth,imageHeight)}return{width:Math.floor(imageWidth),height:Math.floor(imageHeight),containerHeight:Math.floor(b),containerWidth:Math.floor(k)+2*settings.horizontal_padding,contentHeight:Math.floor(y),contentWidth:Math.floor(w),resized:resized}}function d(t,i){t=parseFloat(t),i=parseFloat(i),$pp_details=$pp_pic_holder.find(".pp_details"),$pp_details.width(t),detailsHeight=parseFloat($pp_details.css("marginTop"))+parseFloat($pp_details.css("marginBottom")),$pp_details=$pp_details.clone().addClass(settings.theme).width(t).appendTo(e("body")).css({position:"absolute",top:-1e4}),detailsHeight+=$pp_details.height(),detailsHeight=detailsHeight<=34?36:detailsHeight,$pp_details.remove(),$pp_title=$pp_pic_holder.find(".ppt"),$pp_title.width(t),titleHeight=parseFloat($pp_title.css("marginTop"))+parseFloat($pp_title.css("marginBottom")),$pp_title=$pp_title.clone().appendTo(e("body")).css({position:"absolute",top:-1e4}),titleHeight+=$pp_title.height(),$pp_title.remove(),y=i+detailsHeight,w=t,b=y+titleHeight+$pp_pic_holder.find(".pp_top").height()+$pp_pic_holder.find(".pp_bottom").height(),k=t}function h(e){return e.indexOf("https://mediateca.educa.madrid.org/")==0?"mediateca":e.match(/youtube\.com\/watch/i)||e.match(/youtu\.be/i)||e.match(/youtube\.com\/embed/i)?"youtube":e.match(/vimeo\.com/i)?"vimeo":e.match(/\b.mov\b/i)?"quicktime":e.match(/\b.swf\b/i)?"flash":e.match(/\biframe=true\b/i)?"iframe":e.match(/\bajax=true\b/i)?"ajax":e.match(/\bcustom=true\b/i)?"custom":"#"==e.substr(0,1)?"inline":"image"}function c(){if(doresize&&"undefined"!=typeof $pp_pic_holder){if(scroll_pos=_(),contentHeight=$pp_pic_holder.height(),contentwidth=$pp_pic_holder.width(),projectedTop=I/2+scroll_pos.scrollTop-contentHeight/2,projectedTop<0&&(projectedTop=0),contentHeight>I)return;$pp_pic_holder.css({top:projectedTop,left:j/2+scroll_pos.scrollLeft-contentwidth/2})}}function _(){return self.pageYOffset?{scrollTop:self.pageYOffset,scrollLeft:self.pageXOffset}:document.documentElement&&document.documentElement.scrollTop?{scrollTop:document.documentElement.scrollTop,scrollLeft:document.documentElement.scrollLeft}:document.body?{scrollTop:document.body.scrollTop,scrollLeft:document.body.scrollLeft}:void 0}function g(){I=e(window).height(),j=e(window).width(),"undefined"!=typeof $pp_overlay&&$pp_overlay.height(e(document).height()).width(j)}function m(){isSet&&settings.overlay_gallery
-// The New eXeLearning &&"image"==h(pp_images[set_position])
-?(itemWidth=57,navWidth="facebook"==settings.theme||"pp_default"==settings.theme?50:30,itemsPerPage=Math.floor((f.containerWidth-100-navWidth)/itemWidth),itemsPerPage=itemsPerPage<pp_images.length?itemsPerPage:pp_images.length,totalPage=Math.ceil(pp_images.length/itemsPerPage)-1,0==totalPage?(navWidth=0,$pp_gallery.find(".pp_arrow_next,.pp_arrow_previous").hide()):$pp_gallery.find(".pp_arrow_next,.pp_arrow_previous").show(),galleryWidth=itemsPerPage*itemWidth,fullGalleryWidth=pp_images.length*itemWidth,$pp_gallery.css("margin-left",-(galleryWidth/2+navWidth/2)).find("div:first").width(galleryWidth+5).find("ul").width(fullGalleryWidth).find("li.selected").removeClass("selected"),goToPage=Math.floor(set_position/itemsPerPage)<totalPage?Math.floor(set_position/itemsPerPage):totalPage,e.prettyPhoto.changeGalleryPage(goToPage),$pp_gallery_li.filter(":eq("+set_position+")").addClass("selected")):$pp_pic_holder.find(".pp_content").unbind("mouseenter mouseleave")}function u(){if(settings.social_tools&&(facebook_like_link=settings.social_tools.replace("{location_href}",encodeURIComponent(location.href))),settings.markup=settings.markup.replace("{pp_social}",""),e("body").append(settings.markup),$pp_pic_holder=e(".pp_pic_holder"),$ppt=e(".ppt"),$pp_overlay=e("div.pp_overlay"),isSet&&settings.overlay_gallery){currentGalleryPage=0,toInject="";for(var t=0;t<pp_images.length;t++)pp_images[t].match(/\b(jpg|jpeg|png|gif)\b/gi)?(classname="",img_src=pp_images[t]):(classname="default",img_src=""),toInject+="<li class='"+classname+"'><a href='#'><img src='"+img_src+"' width='50' alt='' /></a></li>";toInject=settings.gallery_markup.replace(/{gallery}/g,toInject),$pp_pic_holder.find("#pp_full_res").after(toInject),$pp_gallery=e(".pp_pic_holder .pp_gallery"),$pp_gallery_li=$pp_gallery.find("li"),$pp_gallery.find(".pp_arrow_next").click(function(){return e.prettyPhoto.changeGalleryPage("next"),e.prettyPhoto.stopSlideshow(),!1}),$pp_gallery.find(".pp_arrow_previous").click(function(){return e.prettyPhoto.changeGalleryPage("previous"),e.prettyPhoto.stopSlideshow(),!1}),$pp_pic_holder.find(".pp_content").hover(function(){$pp_pic_holder.find(".pp_gallery:not(.disabled)").fadeIn()},function(){$pp_pic_holder.find(".pp_gallery:not(.disabled)").fadeOut()}),itemWidth=57,$pp_gallery_li.each(function(t){e(this).find("a").click(function(){return e.prettyPhoto.changePage(t),e.prettyPhoto.stopSlideshow(),!1})})}settings.slideshow&&($pp_pic_holder.find(".pp_nav").prepend('<a href="#" class="pp_play">Play</a>'),$pp_pic_holder.find(".pp_nav .pp_play").click(function(){return e.prettyPhoto.startSlideshow(),!1})),$pp_pic_holder.attr("class","pp_pic_holder "+settings.theme),$pp_overlay.css({opacity:0,height:e(document).height(),width:e(window).width()}).bind("click",function(){settings.modal||e.prettyPhoto.close()}),e("a.pp_close").bind("click",function(){return e.prettyPhoto.close(),!1}),settings.allow_expand&&e("a.pp_expand").bind("click",function(){
-// The New eXeLearning (fr #653)
-if(isPrettyPhotoSco){window.open(jQuery("#fullResImage").attr("src"));return false}
-// / The New eXeLearning
-return e(this).hasClass("pp_expand")?(e(this).removeClass("pp_expand").addClass("pp_contract"),doresize=!1):(e(this).removeClass("pp_contract").addClass("pp_expand"),doresize=!0),n(function(){e.prettyPhoto.open()}),!1
-}),$pp_pic_holder.find(".pp_previous, .pp_nav .pp_arrow_previous").bind("click",function(){return e.prettyPhoto.changePage("previous"),e.prettyPhoto.stopSlideshow(),!1}),$pp_pic_holder.find(".pp_next, .pp_nav .pp_arrow_next").bind("click",function(){return e.prettyPhoto.changePage("next"),e.prettyPhoto.stopSlideshow(),!1}),c()}a=jQuery.extend({hook:"rel",animation_speed:"fast",ajaxcallback:function(){},slideshow:5e3,autoplay_slideshow:!1,opacity:.8,show_title:!0,allow_resize:!0,allow_expand:!0,default_width:500,default_height:344,counter_separator_label:"/",theme:"pp_default",horizontal_padding:20,hideflash:!1,wmode:"opaque",autoplay:!0,modal:!1,deeplinking:!0,overlay_gallery:!0,overlay_gallery_max:30,keyboard_shortcuts:!0,changepicturecallback:function(){},callback:function(){},ie6_fallback:!0,markup:'<div class="pp_pic_holder"> 						<div class="ppt">&nbsp;</div> 						<div class="pp_top"> 							<div class="pp_left"></div> 							<div class="pp_middle"></div> 							<div class="pp_right"></div> 						</div> 						<div class="pp_content_container"> 							<div class="pp_left"> 							<div class="pp_right"> 								<div class="pp_content"> 									<div class="pp_loaderIcon"></div> 									<div class="pp_fade"> 										<a href="#" class="pp_expand" title="'+prettyPhotoExpandTxt+'">'+prettyPhotoExpandTxt+'</a> 										<div class="pp_hoverContainer"> 											<a class="pp_next" href="#">next</a> 											<a class="pp_previous" href="#">previous</a> 										</div> 										<div id="pp_full_res"></div> 										<div class="pp_details"> 											<div class="pp_nav"> 												<a href="#" class="pp_arrow_previous">Previous</a> 												<p class="currentTextHolder">0/0</p> 												<a href="#" class="pp_arrow_next">Next</a> 											</div> 											<p class="pp_description"></p> 											<div class="pp_social">{pp_social}</div> 											<a class="pp_close" href="#">Close</a> 										</div> 									</div> 								</div> 							</div> 							</div> 						</div> 						<div class="pp_bottom"> 							<div class="pp_left"></div> 							<div class="pp_middle"></div> 							<div class="pp_right"></div> 						</div> 					</div> 					<div class="pp_overlay"></div>',gallery_markup:'<div class="pp_gallery"> 								<a href="#" class="pp_arrow_previous">Previous</a> 								<div> 									<ul> 										{gallery} 									</ul> 								</div> 								<a href="#" class="pp_arrow_next">Next</a> 							</div>',image_markup:'<img id="fullResImage" src="{path}" />',flash_markup:'<object classid="clsid:D27CDB6E-AE6D-11cf-96B8-444553540000" width="{width}" height="{height}"><param name="wmode" value="{wmode}" /><param name="allowfullscreen" value="true" /><param name="allowscriptaccess" value="always" /><param name="movie" value="{path}" /><embed src="{path}" type="application/x-shockwave-flash" allowfullscreen="true" allowscriptaccess="always" width="{width}" height="{height}" wmode="{wmode}"></embed></object>',quicktime_markup:'<object classid="clsid:02BF25D5-8C17-4B23-BC80-D3488ABDDC6B" codebase="http://www.apple.com/qtactivex/qtplugin.cab" height="{height}" width="{width}"><param name="src" value="{path}"><param name="autoplay" value="{autoplay}"><param name="type" value="video/quicktime"><embed src="{path}" height="{height}" width="{width}" autoplay="{autoplay}" type="video/quicktime" pluginspage="http://www.apple.com/quicktime/download/"></embed></object>',iframe_markup:'<iframe src ="{path}" width="{width}" height="{height}" frameborder="no" allowfullscreen></iframe>',inline_markup:'<div class="pp_inline">{content}</div>',custom_markup:"",social_tools:'<div class="twitter"><a href="http://twitter.com/share" class="twitter-share-button" data-count="none">Tweet</a><script type="text/javascript" src="http://platform.twitter.com/widgets.js"></script></div><div class="facebook"><iframe src="//www.facebook.com/plugins/like.php?locale=en_US&href={location_href}&layout=button_count&show_faces=true&width=500&action=like&font&colorscheme=light&height=23" scrolling="no" frameborder="0" style="border:none; overflow:hidden; width:500px; height:23px;" allowTransparency="true"></iframe></div>'},a);var f,v,y,w,b,k,P,x=this,$=!1,I=e(window).height(),j=e(window).width();return doresize=!0,scroll_pos=_(),e(window).unbind("resize.prettyphoto").bind("resize.prettyphoto",function(){c(),g()}),a.keyboard_shortcuts&&e(document).unbind("keydown.prettyphoto").bind("keydown.prettyphoto",function(t){if("undefined"!=typeof $pp_pic_holder&&$pp_pic_holder.is(":visible"))switch(t.keyCode){case 37:e.prettyPhoto.changePage("previous"),t.preventDefault();break;case 39:e.prettyPhoto.changePage("next"),t.preventDefault();break;case 27:settings.modal||e.prettyPhoto.close(),t.preventDefault()}}),e.prettyPhoto.initialize=function(){return settings=a,"pp_default"==settings.theme&&(settings.horizontal_padding=16),theRel=e(this).attr(settings.hook),galleryRegExp=/\[(?:.*)\]/,isSet=galleryRegExp.exec(theRel)?!0:!1,pp_images=isSet?jQuery.map(x,function(t){return-1!=e(t).attr(settings.hook).indexOf(theRel)?e(t).attr("href"):void 0}):e.makeArray(e(this).attr("href")),pp_titles=isSet?jQuery.map(x,function(t){return-1!=e(t).attr(settings.hook).indexOf(theRel)?e(t).find("img").attr("alt")?e(t).find("img").attr("alt"):"":void 0}):e.makeArray(e(this).find("img").attr("alt")),pp_descriptions=isSet?jQuery.map(x,function(t){return-1!=e(t).attr(settings.hook).indexOf(theRel)?e(t).attr("title")?e(t).attr("title"):"":void 0}):e.makeArray(e(this).attr("title")),pp_images.length>settings.overlay_gallery_max&&(settings.overlay_gallery=!1),set_position=jQuery.inArray(e(this).attr("href"),pp_images),rel_index=isSet?set_position:e("a["+settings.hook+"^='"+theRel+"']").index(e(this)),u(this),settings.allow_resize&&e(window).bind("scroll.prettyphoto",function(){c()}),e.prettyPhoto.open(),!1},e.prettyPhoto.open=function(t){return"undefined"==typeof settings&&(settings=a,pp_images=e.makeArray(arguments[0]),pp_titles=e.makeArray(arguments[1]?arguments[1]:""),pp_descriptions=e.makeArray(arguments[2]?arguments[2]:""),isSet=pp_images.length>1?!0:!1,set_position=arguments[3]?arguments[3]:0,u(t.target)),settings.hideflash&&e("object,embed,iframe[src*=youtube],iframe[src*=vimeo]").css("visibility","hidden"),r(e(pp_images).size()),e(".pp_loaderIcon").show(),settings.deeplinking&&i(),settings.social_tools&&(facebook_like_link=settings.social_tools.replace("{location_href}",encodeURIComponent(location.href)),$pp_pic_holder.find(".pp_social").html(facebook_like_link)),$ppt.is(":hidden")&&$ppt.css("opacity",0).show(),$pp_overlay.show().fadeTo(settings.animation_speed,settings.opacity),$pp_pic_holder.find(".currentTextHolder").text(set_position+1+settings.counter_separator_label+e(pp_images).size()),"undefined"!=typeof pp_descriptions[set_position]&&""!=pp_descriptions[set_position]?$pp_pic_holder.find(".pp_description").show().html(unescape(pp_descriptions[set_position])):$pp_pic_holder.find(".pp_description").hide(),movie_width=parseFloat(o("width",pp_images[set_position]))?o("width",pp_images[set_position]):settings.default_width.toString(),movie_height=parseFloat(o("height",pp_images[set_position]))?o("height",pp_images[set_position]):settings.default_height.toString(),$=!1,-1!=movie_height.indexOf("%")&&(movie_height=parseFloat(e(window).height()*parseFloat(movie_height)/100-150),$=!0),-1!=movie_width.indexOf("%")&&(movie_width=parseFloat(e(window).width()*parseFloat(movie_width)/100-150),$=!0),$pp_pic_holder.fadeIn(function(){switch($ppt.html(settings.show_title&&""!=pp_titles[set_position]&&"undefined"!=typeof pp_titles[set_position]?unescape(pp_titles[set_position]):"&nbsp;"),imgPreloader="",skipInjection=!1,h(pp_images[set_position])){case"image":imgPreloader=new Image,nextImage=new Image,isSet&&set_position<e(pp_images).size()-1&&(nextImage.src=pp_images[set_position+1]),prevImage=new Image,isSet&&pp_images[set_position-1]&&(prevImage.src=pp_images[set_position-1]),$pp_pic_holder.find("#pp_full_res")[0].innerHTML=settings.image_markup.replace(/{path}/g,pp_images[set_position]),imgPreloader.onload=function(){
-// The New eXeLearning
-if(imgPreloader.width==0||imgPreloader.height==0){imgPreloader.width=450;imgPreloader.height=450}
-// / The New eXeLearning
-f=l(imgPreloader.width,imgPreloader.height),s()},imgPreloader.onerror=function(){
-// eXeLearning
-// alert("Image cannot be loaded. Make sure the path is correct and image exist."),
-window.open(pp_images[set_position]);
-// / eXeLearning
-e.prettyPhoto.close()},imgPreloader.src=pp_images[set_position];break;case"youtube":
-// The New eXeLearning (issues #439 and #781)
-var startTime = "";
-var _url = pp_images[set_position];
-	_url = _url.split("?");
-if (_url.length==2) {
-	_url = _url[1];
-	_url = _url.split("&");
-	for (var _i=0;_i<_url.length;_i++) {
-		if (_url[_i].indexOf("t=")==0) {
-			startTime = "&"+_url[_i].replace("t","start");
-			if (startTime.slice(-1)=="s") startTime = startTime.substring(0, startTime.length-1);
-		}
-		if (_url[_i].indexOf("start=")==0) {
-			startTime = "&"+_url[_i];
-		}
-	}
-}
-// / The New eXeLearning
-f=l(movie_width,movie_height),movie_id=o("v",pp_images[set_position]),""==movie_id&&(movie_id=pp_images[set_position].split("youtu.be/"),movie_id=movie_id[1],void 0!=movie_id&&movie_id.indexOf("?")>0&&(movie_id=movie_id.substr(0,movie_id.indexOf("?"))),void 0!=movie_id&&movie_id.indexOf("&")>0&&(movie_id=movie_id.substr(0,movie_id.indexOf("&")))),""==movie_id||void 0==movie_id?(movie_id=pp_images[set_position].split("youtube.com/embed/"),movie_id=movie_id[1],void 0!=movie_id&&movie_id.indexOf("?")>0&&(movie_id=movie_id.substr(0,movie_id.indexOf("?"))),void 0!=movie_id&&movie_id.indexOf("&")>0&&(movie_id=movie_id.substr(0,movie_id.indexOf("&")))):movie_id=movie_id,movie="https://www.youtube.com/embed/"+movie_id,movie+=o("rel",pp_images[set_position])?"?rel="+o("rel",pp_images[set_position]):"?rel=1",settings.autoplay&&(movie+="&autoplay=1"+startTime),toInject=settings.iframe_markup.replace(/{width}/g,f.width).replace(/{height}/g,f.height).replace(/{wmode}/g,settings.wmode).replace(/{path}/g,movie);break;case"vimeo":f=l(movie_width,movie_height),movie_id=pp_images[set_position];var t=/http(s?):\/\/(www\.)?vimeo.com\/(\d+)/,i=movie_id.match(t);movie="https://player.vimeo.com/video/"+i[3]+"?title=0&byline=0&portrait=0",settings.autoplay&&(movie+="&autoplay=1;"),vimeo_width=f.width+"/embed/?moog_width="+f.width,toInject=settings.iframe_markup.replace(/{width}/g,vimeo_width).replace(/{height}/g,f.height).replace(/{path}/g,movie);break;
-// The New eXeLearning (see function h too)
-case"mediateca":f=l(movie_width,movie_height),movie_id=pp_images[set_position];movie_id=movie_id.split("?");movie_id=movie_id[0];movie_id=movie_id.split("#");movie_id=movie_id[0];if(movie_id.charAt(movie_id.length-1)=='/')movie_id=movie_id.substr(0,movie_id.length-1);if(movie_id.substr(movie_id.length-3)!="/fs")movie_id+="/fs";toInject=settings.iframe_markup.replace(/{width}/g,f.width).replace(/{height}/g,f.height).replace(/{path}/g,movie_id);break;
-// / The New eXeLearning
-case"quicktime":f=l(movie_width,movie_height),f.height+=15,f.contentHeight+=15,f.containerHeight+=15,toInject=settings.quicktime_markup.replace(/{width}/g,f.width).replace(/{height}/g,f.height).replace(/{wmode}/g,settings.wmode).replace(/{path}/g,pp_images[set_position]).replace(/{autoplay}/g,settings.autoplay);break;case"flash":f=l(movie_width,movie_height),flash_vars=pp_images[set_position],flash_vars=flash_vars.substring(pp_images[set_position].indexOf("flashvars")+10,pp_images[set_position].length),filename=pp_images[set_position],filename=filename.substring(0,filename.indexOf("?")),toInject=settings.flash_markup.replace(/{width}/g,f.width).replace(/{height}/g,f.height).replace(/{wmode}/g,settings.wmode).replace(/{path}/g,filename+"?"+flash_vars);break;case"iframe":f=l(movie_width,movie_height),frame_url=pp_images[set_position],frame_url=frame_url.substr(0,frame_url.indexOf("iframe")-1),toInject=settings.iframe_markup.replace(/{width}/g,f.width).replace(/{height}/g,f.height).replace(/{path}/g,frame_url);break;case"ajax":doresize=!1,f=l(movie_width,movie_height),doresize=!0,skipInjection=!0,e.get(pp_images[set_position],function(e){toInject=settings.inline_markup.replace(/{content}/g,e),$pp_pic_holder.find("#pp_full_res")[0].innerHTML=toInject,s()});break;case"custom":f=l(movie_width,movie_height),toInject=settings.custom_markup;break;case"inline":myClone=e(pp_images[set_position]).clone().append('<br clear="all" />').css({width:settings.default_width}).wrapInner('<div id="pp_full_res"><div class="pp_inline"></div></div>').appendTo(e("body")).show(),doresize=!1,f=l(e(myClone).width(),e(myClone).height()),doresize=!0,e(myClone).remove(),toInject=settings.inline_markup.replace(/{content}/g,e(pp_images[set_position]).html())}imgPreloader||skipInjection||($pp_pic_holder.find("#pp_full_res")[0].innerHTML=toInject,s())}),!1},e.prettyPhoto.changePage=function(t){currentGalleryPage=0,"previous"==t?(set_position--,set_position<0&&(set_position=e(pp_images).size()-1)):"next"==t?(set_position++,set_position>e(pp_images).size()-1&&(set_position=0)):set_position=t,rel_index=set_position,doresize||(doresize=!0),settings.allow_expand&&e(".pp_contract").removeClass("pp_contract").addClass("pp_expand"),n(function(){e.prettyPhoto.open()})},e.prettyPhoto.changeGalleryPage=function(e){"next"==e?(currentGalleryPage++,currentGalleryPage>totalPage&&(currentGalleryPage=0)):"previous"==e?(currentGalleryPage--,currentGalleryPage<0&&(currentGalleryPage=totalPage)):currentGalleryPage=e,slide_speed="next"==e||"previous"==e?settings.animation_speed:0,slide_to=currentGalleryPage*itemsPerPage*itemWidth,$pp_gallery.find("ul").animate({left:-slide_to},slide_speed)},e.prettyPhoto.startSlideshow=function(){"undefined"==typeof P?($pp_pic_holder.find(".pp_play").unbind("click").removeClass("pp_play").addClass("pp_pause").click(function(){return e.prettyPhoto.stopSlideshow(),!1}),P=setInterval(e.prettyPhoto.startSlideshow,settings.slideshow)):e.prettyPhoto.changePage("next")},e.prettyPhoto.stopSlideshow=function(){$pp_pic_holder.find(".pp_pause").unbind("click").removeClass("pp_pause").addClass("pp_play").click(function(){return e.prettyPhoto.startSlideshow(),!1}),clearInterval(P),P=void 0},e.prettyPhoto.close=function(){$pp_overlay.is(":animated")||(e.prettyPhoto.stopSlideshow(),$pp_pic_holder.stop().find("object,embed").css("visibility","hidden"),e("div.pp_pic_holder,div.ppt,.pp_fade").fadeOut(settings.animation_speed,function(){e(this).remove()}),$pp_overlay.fadeOut(settings.animation_speed,function(){settings.hideflash&&e("object,embed,iframe[src*=youtube],iframe[src*=vimeo]").css("visibility","visible"),e(this).remove(),e(window).unbind("scroll.prettyphoto"),p(),settings.callback(),doresize=!0,v=!1,delete settings}))},!pp_alreadyInitialized&&t()&&(pp_alreadyInitialized=!0,hashIndex=t(),hashRel=hashIndex,hashIndex=hashIndex.substring(hashIndex.indexOf("/")+1,hashIndex.length-1),hashRel=hashRel.substring(0,hashRel.indexOf("/")),setTimeout(function(){e("a["+a.hook+"^='"+hashRel+"']:eq("+hashIndex+")").trigger("click")},50)),this.unbind("click.prettyphoto").bind("click.prettyphoto",e.prettyPhoto.initialize)}}(jQuery);var pp_alreadyInitialized=!1;
+/**
+ * eXeLearning content lightbox.
+ *
+ * Opens the `rel^="lightbox"` links of saved content with Tobii
+ * (https://github.com/midzer/tobii, MIT), installed from npm and copied next
+ * to this file by scripts/copy-vendor-libs.js. Tobii does the lightbox itself:
+ * the accessible dialog, focus trap, keyboard and touch navigation, galleries,
+ * zoom, captions and the image/iframe/HTML slide types.
+ *
+ * This file only keeps the link conventions that years of saved content use
+ * (they come from prettyPhoto, which this replaces):
+ *
+ * - `rel="lightbox"` opens one item; `rel="lightbox[name]"` makes a gallery.
+ * - `href="#id"` opens a copy of that element (modalwindow dialogs, and the
+ *   audio/video boxes that $exe.setMultimediaGalleries creates).
+ * - YouTube (`t=`/`start=`), Vimeo and Mediateca links open their player.
+ * - `?iframe=true&width=W&height=H` opens the page in an iframe.
+ * - The link `title` is the caption; it is shown as text, never as HTML.
+ * - Large images get a "Full size" button ("New window" in SCORM/IMS frames).
+ *
+ * The author's links are not modified: Tobii is given detached proxy
+ * elements, and this file opens them from the real links' click handlers.
+ */
+(function (root) {
+    'use strict';
 
-// The New eXeLearning (fr #653)
-jQuery(function(){
-    function isPrettyPhotoScoFn(){try{return window.self!==window.top}catch(e){return true}}	
-    isPrettyPhotoSco = isPrettyPhotoScoFn()&&(jQuery("body").hasClass("exe-scorm")||jQuery("body").hasClass("exe-ims"));
-    if (typeof($exe_i18n)=="object"&&typeof($exe_i18n.fullSize)=='string') {
-        prettyPhotoExpandTxt = $exe_i18n.fullSize;
-        if (isPrettyPhotoSco) prettyPhotoExpandTxt = $exe_i18n.newWindow;
+    var DEFAULT_WIDTH = 500;
+    var DEFAULT_HEIGHT = 344;
+    var MEDIATECA = 'https://mediateca.educa.madrid.org/';
+
+    var tobii = null;
+    var lightboxEl = null;
+    var holder = null;
+    var fullSizeButton = null;
+    var bound = []; // { link, handler }
+    var groups = {}; // Tobii group name → [item]
+    var pendingBind = false;
+    var counter = 0;
+
+    function i18n(key, fallback) {
+        var strings = root.$exe_i18n;
+        return strings && typeof strings[key] === 'string' ? strings[key] : fallback;
     }
-});
-// Restore deprecated .size() method removed after jQuery 1.x
-if (!jQuery.fn.size) {
-    jQuery.fn.size = function () {
-        return this.length;
-    };
-}
-/*
-jQuery(function(){
-    // Convert YouTube embed URLs to youtu.be format for prettyPhoto compatibility
-    jQuery('a[rel^="lightbox"]').each(function(){
-        var href = jQuery(this).attr('href');
-        if (!href) return;
-        var embedMatch = href.match(/youtube\.com\/embed\/([^?&]+)(?:\?(.*))?/i);
-        if (!embedMatch) return;
-        var videoId = embedMatch[1];
-        var params = embedMatch[2] ? embedMatch[2].split('&') : [];
-        var tParam = '';
-        for (var i = 0; i < params.length; i++) {
-            if (params[i].indexOf('start=') === 0) {
-                tParam = '?t=' + params[i].substring(6);
-                break;
-            }
+
+    /** Value of a query parameter, as prettyPhoto read it (raw, not decoded). */
+    function param(url, name) {
+        var match = new RegExp('[?&]' + name + '=([^&#]*)').exec(url);
+        return match ? match[1] : '';
+    }
+
+    function size(url, name, fallback) {
+        var value = parseFloat(param(url, name));
+        return value > 0 ? value : fallback;
+    }
+
+    /** True for relative URLs and http(s) URLs: the only ones allowed in an iframe. */
+    function isWebUrl(url) {
+        var scheme = /^\s*([a-z][a-z0-9+.-]*):/i.exec(url);
+        return !scheme || /^https?$/i.test(scheme[1]);
+    }
+
+    function isScriptUrl(url) {
+        return /^\s*(javascript|vbscript):/i.test(url);
+    }
+
+    function decodeTitle(title) {
+        if (!title) return '';
+        try {
+            return decodeURIComponent(title);
+        } catch (e) {
+            return title;
         }
-        jQuery(this).attr('href', 'https://youtu.be/' + videoId + tParam);
-    });
-});
-*/
+    }
+
+    /** Seconds from a YouTube `t`/`start` value: 90, 90s, 1m30s, 1h2m3s. */
+    function youtubeSeconds(value) {
+        var match = /^(?:(\d+)h)?(?:(\d+)m)?(?:(\d+)s?)?$/.exec(value || '');
+        if (!match || !match[0]) return 0;
+        return (parseInt(match[1] || 0, 10) * 60 + parseInt(match[2] || 0, 10)) * 60 + parseInt(match[3] || 0, 10);
+    }
+
+    function youtubeEmbed(href) {
+        var id = param(href, 'v');
+        if (!id) {
+            var match = /(?:youtu\.be\/|youtube\.com\/embed\/)([^?&#/]+)/i.exec(href);
+            id = match ? match[1] : '';
+        }
+        if (!/^[\w-]+$/.test(id)) return null;
+        var src = 'https://www.youtube.com/embed/' + id + '?rel=' + (param(href, 'rel') || '1') + '&autoplay=1';
+        var start = youtubeSeconds(param(href, 'start')) || youtubeSeconds(param(href, 't'));
+        if (start) src += '&start=' + start;
+        return src;
+    }
+
+    function vimeoEmbed(href) {
+        var match = /vimeo\.com\/(?:video\/)?(\d+)/i.exec(href);
+        return match ? 'https://player.vimeo.com/video/' + match[1] + '?title=0&byline=0&portrait=0&autoplay=1' : null;
+    }
+
+    function mediatecaEmbed(href) {
+        var src = href.split('?')[0].split('#')[0].replace(/\/$/, '');
+        return /\/fs$/.test(src) ? src : src + '/fs';
+    }
+
+    /** The page URL of an `?iframe=true` link, without the prettyPhoto parameters. */
+    function iframePage(href) {
+        var hashIndex = href.indexOf('#');
+        var hash = hashIndex > -1 ? href.substring(hashIndex) : '';
+        var base = hashIndex > -1 ? href.substring(0, hashIndex) : href;
+        var queryIndex = base.indexOf('?');
+        if (queryIndex === -1) return href;
+        var kept = base
+            .substring(queryIndex + 1)
+            .split('&')
+            .filter(function (pair) {
+                return pair && !/^(iframe|width|height)=/i.test(pair);
+            });
+        return base.substring(0, queryIndex) + (kept.length ? '?' + kept.join('&') : '') + hash;
+    }
+
+    function galleryName(link) {
+        var rel = link.getAttribute('rel') || '';
+        return /\[.*\]/.test(rel) ? rel : null;
+    }
+
+    /**
+     * What a lightbox link opens, or null when it is left as a normal link
+     * (unsupported or unsafe types, a missing #target).
+     */
+    function getItem(link) {
+        var href = link.getAttribute('href') || '';
+        var item = {
+            type: 'image',
+            src: href,
+            caption: decodeTitle(link.getAttribute('title')),
+            group: galleryName(link),
+        };
+        var video = function (src) {
+            if (!src) return null;
+            item.type = 'iframe';
+            item.src = src;
+            item.width = size(href, 'width', DEFAULT_WIDTH);
+            item.height = size(href, 'height', DEFAULT_HEIGHT);
+            return item;
+        };
+
+        if (href.indexOf(MEDIATECA) === 0) return video(mediatecaEmbed(href));
+        if (/youtube\.com\/watch|youtu\.be|youtube\.com\/embed/i.test(href)) return video(youtubeEmbed(href));
+        if (/vimeo\.com/i.test(href)) return video(vimeoEmbed(href));
+        // Browser plug-in formats prettyPhoto embedded with <object>; no browser plays them now.
+        if (/\.(mov|swf)(?:[?#]|$)/i.test(href)) return null;
+        if (/\biframe=true\b/i.test(href)) return isWebUrl(href) ? video(iframePage(href)) : null;
+        // `ajax=true` injected a fetched page as HTML; `custom=true` had no content.
+        if (/\b(ajax|custom)=true\b/i.test(href)) return null;
+        if (href.charAt(0) === '#') {
+            var target = href.length > 1 ? document.getElementById(decodeTitle(href.substring(1))) : null;
+            if (!target) return null;
+            item.type = 'html';
+            item.target = target;
+            return item;
+        }
+        if (!href || isScriptUrl(href)) return null;
+        return item;
+    }
+
+    /** A copy of an inline target, ready to be moved into the lightbox by Tobii. */
+    function inlineContent(item) {
+        var wrapper = document.createElement('div');
+        wrapper.id = 'exe-lightbox-inline-' + counter++;
+        wrapper.className = 'exe-lightbox-inline';
+
+        var copy = item.target.cloneNode(true);
+        copy.removeAttribute('id');
+        copy.classList.remove('js-hidden');
+        // A copy is prepared for every link on each bind: only load media when shown
+        // (Tobii plays it when the slide opens).
+        Array.prototype.forEach.call(copy.querySelectorAll('audio, video'), function (media) {
+            media.setAttribute('preload', 'none');
+        });
+        wrapper.appendChild(copy);
+
+        var media = copy.querySelector('.exe-media-box-element');
+        if (media) {
+            var sourceEl = media.hasAttribute('src') ? media : media.querySelector('source[src]');
+            var src = sourceEl ? sourceEl.getAttribute('src') : '';
+            if (media.classList.contains('exe-media-box-audio')) wrapper.classList.add('with-audio');
+            if (item.caption) {
+                var caption = document.createElement('p');
+                caption.className = 'exe-lightbox-caption';
+                caption.textContent = item.caption;
+                wrapper.appendChild(caption);
+            }
+            if (src) wrapper.appendChild(downloadLink(src));
+        }
+        holder.appendChild(wrapper);
+        return '#' + wrapper.id;
+    }
+
+    function downloadLink(src) {
+        // Extension = last dot-segment of the file name, without query string or fragment
+        var fileName = src.split('/').pop().split('?')[0].split('#')[0];
+        var dot = fileName.lastIndexOf('.');
+        var ext = dot > -1 ? fileName.substring(dot + 1) : '';
+        var label = i18n('download', 'Download');
+
+        var p = document.createElement('p');
+        p.className = 'exe-media-download';
+        var a = document.createElement('a');
+        a.href = src;
+        a.setAttribute('download', '');
+        a.title = label;
+        a.textContent = ext || label;
+        p.appendChild(a);
+        return p;
+    }
+
+    /** The detached element Tobii reads the slide from. */
+    function proxyFor(item, link) {
+        var proxy = document.createElement('a');
+        proxy.exeItem = item;
+        if (item.caption) proxy.setAttribute('data-label', item.caption);
+        if (item.type === 'image') {
+            proxy.href = item.src;
+            var thumb = link.querySelector('img');
+            if (thumb) {
+                var img = document.createElement('img');
+                img.alt = thumb.getAttribute('alt') || '';
+                proxy.appendChild(img);
+            }
+        } else if (item.type === 'iframe') {
+            proxy.setAttribute('data-type', 'iframe');
+            proxy.setAttribute('data-target', item.src);
+            proxy.setAttribute('data-width', item.width + 'px');
+            proxy.setAttribute('data-height', item.height + 'px');
+        } else {
+            proxy.setAttribute('data-type', 'html');
+            proxy.setAttribute('data-target', inlineContent(item));
+        }
+        return proxy;
+    }
+
+    function isInPackageFrame() {
+        var framed;
+        try {
+            framed = root.self !== root.top;
+        } catch (e) {
+            framed = true;
+        }
+        var body = document.body;
+        return framed && (body.classList.contains('exe-scorm') || body.classList.contains('exe-ims'));
+    }
+
+    function currentItem() {
+        if (!tobii || !tobii.isOpen()) return null;
+        var list = groups[tobii.currentGroup()];
+        return list ? list[tobii.slidesIndex()] : null;
+    }
+
+    /** The current slide (Tobii unhides it only once its content has loaded). */
+    function currentSlide() {
+        var slider = lightboxEl.querySelector('.tobii__slider:not([aria-hidden="true"])');
+        return slider ? slider.children[tobii.slidesIndex()] || null : null;
+    }
+
+    function currentImage() {
+        var slide = currentSlide();
+        return slide ? slide.querySelector('figure img') : null;
+    }
+
+    /** Show the full-size button when the current image is shown smaller than it is. */
+    function updateToolbar() {
+        if (!fullSizeButton) return;
+        var item = currentItem();
+        var img = item && item.type === 'image' ? currentImage() : null;
+        fullSizeButton.hidden = true;
+        if (!img) return;
+        if (!img.complete) {
+            img.addEventListener('load', updateToolbar, { once: true });
+            return;
+        }
+        fullSizeButton.textContent = exeLightbox.isInPackageFrame()
+            ? i18n('newWindow', 'New window')
+            : i18n('fullSize', 'Full size');
+        fullSizeButton.hidden = !(img.naturalWidth > img.clientWidth + 1 || img.naturalHeight > img.clientHeight + 1);
+    }
+
+    function stop(event) {
+        event.stopPropagation();
+    }
+
+    function createLightbox() {
+        tobii = new root.Tobii({
+            selector: false,
+            captionText: function (el) {
+                return el.exeItem ? el.exeItem.caption : '';
+            },
+            captionToggle: false,
+            navLabel: [i18n('previous', 'Previous'), i18n('next', 'Next')],
+            closeLabel: i18n('close_toolbar', 'Close'),
+        });
+        // Tobii appends its dialog to the body when it is created.
+        lightboxEl = document.body.lastElementChild;
+
+        fullSizeButton = document.createElement('button');
+        fullSizeButton.type = 'button';
+        fullSizeButton.className = 'exe-lightbox-full-size';
+        fullSizeButton.hidden = true;
+        // Keep Tobii's drag/swipe handling out of this button.
+        fullSizeButton.addEventListener('pointerdown', stop);
+        fullSizeButton.addEventListener('pointerup', stop);
+        fullSizeButton.addEventListener('click', function (event) {
+            event.stopPropagation();
+            var img = currentImage();
+            if (img) root.open(img.currentSrc || img.src || img.getAttribute('data-src'), '_blank');
+        });
+        lightboxEl.appendChild(fullSizeButton);
+
+        tobii.on('open', updateToolbar);
+        tobii.on('next', updateToolbar);
+        tobii.on('previous', updateToolbar);
+        tobii.on('close', function () {
+            if (pendingBind) {
+                pendingBind = false;
+                bind();
+            }
+        });
+
+        holder = document.createElement('div');
+        holder.className = 'exe-lightbox-holder';
+        holder.hidden = true;
+        document.body.appendChild(holder);
+    }
+
+    function unbindLinks() {
+        bound.forEach(function (entry) {
+            entry.link.removeEventListener('click', entry.handler);
+        });
+        bound = [];
+        groups = {};
+    }
+
+    /**
+     * (Re)bind every `rel^="lightbox"` link of the page. Safe to call again
+     * after content changes; while the lightbox is open it waits until it closes.
+     */
+    function bind() {
+        if (typeof root.Tobii !== 'function') return;
+        if (tobii && tobii.isOpen()) {
+            pendingBind = true;
+            return;
+        }
+        unbindLinks();
+        if (tobii) tobii.reset();
+
+        var links = document.querySelectorAll('a[rel^="lightbox"]');
+        var galleryIds = {};
+        var galleries = 0;
+        var singles = 0;
+
+        Array.prototype.forEach.call(links, function (link) {
+            var item = getItem(link);
+            if (!item) return;
+            if (!tobii) createLightbox();
+
+            var name;
+            if (item.group) {
+                if (!galleryIds[item.group]) galleryIds[item.group] = 'exe-lightbox-gallery-' + galleries++;
+                name = galleryIds[item.group];
+            } else {
+                name = 'exe-lightbox-single-' + singles++;
+            }
+            if (!groups[name]) groups[name] = [];
+            var index = groups[name].length;
+            groups[name].push(item);
+
+            var proxy = proxyFor(item, link);
+            proxy.setAttribute('data-group', name);
+            tobii.add(proxy);
+
+            var handler = function (event) {
+                event.preventDefault();
+                if (tobii.isOpen()) return;
+                tobii.selectGroup(name);
+                tobii.open(index);
+            };
+            link.addEventListener('click', handler);
+            bound.push({ link: link, handler: handler });
+        });
+    }
+
+    /** Remove the lightbox and every binding (tests, teardown). */
+    function destroy() {
+        unbindLinks();
+        pendingBind = false;
+        if (tobii) {
+            if (tobii.isOpen()) tobii.close();
+            tobii.destroy();
+        }
+        if (holder && holder.parentNode) holder.parentNode.removeChild(holder);
+        tobii = lightboxEl = holder = fullSizeButton = null;
+    }
+
+    var exeLightbox = {
+        bind: bind,
+        destroy: destroy,
+        getItem: getItem,
+        isInPackageFrame: isInPackageFrame,
+        updateToolbar: updateToolbar,
+        instance: function () {
+            return tobii;
+        },
+    };
+
+    root.exeLightbox = exeLightbox;
+})(typeof window !== 'undefined' ? window : this);

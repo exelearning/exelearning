@@ -47,6 +47,9 @@
 *   Package: @mathjax/src
     *   Copyright: MathJax Consortium
     *   License: Apache-2.0
+*   Package: @midzer/tobii
+    *   Copyright: midzer
+    *   License: MIT
 *   Package: @playwright/test
     *   Copyright: Microsoft Corporation
     *   License: Apache-2.0
@@ -250,9 +253,6 @@
 *   Files: /public/app/common/exe\_highlighter/\*
     *   Copyright: Lea Verou (okaidia theme for JavaScript, CSS and HTML by ocodia)
     *   License: MIT
-*   Files: /public/app/common/exe\_lightbox/ (prettyPhoto)
-    *   Copyright: Stephane Caron
-    *   License: GPLv2 or CC-BY 2.5
 *   File: /public/app/common/exe\_magnify/mojomagnify.js
     *   Copyright: 2008-2010 Jacob Seidelin, modified 2013 by Fran Macías
     *   License: MIT

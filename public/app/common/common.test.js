@@ -988,38 +988,45 @@ describe('common.js $exe helpers', () => {
   });
 
   describe('$exe.setMultimediaGalleries', () => {
-    let prettyPhotoOptions;
-
     beforeEach(() => {
       vi.useFakeTimers();
-      prettyPhotoOptions = null;
-      // The guard in setMultimediaGalleries checks $.prettyPhoto (static), not $.fn.prettyPhoto
-      global.$.prettyPhoto = vi.fn();
-      global.$.fn.prettyPhoto = vi.fn(function (opts) {
-        prettyPhotoOptions = opts;
-        return this;
-      });
+      // exe_lightbox.js (Tobii adapter); its behaviour is covered by exe_lightbox.test.js
+      window.exeLightbox = { bind: vi.fn() };
       global.$exe.hasMultimediaGalleries = false;
     });
 
     afterEach(() => {
       vi.useRealTimers();
-      delete global.$.prettyPhoto;
-      delete global.$.fn.prettyPhoto;
+      delete window.exeLightbox;
       delete global.eXeLearningAssetResolver;
     });
 
-    it('does not throw when prettyPhoto is not defined', () => {
-      delete global.$.prettyPhoto;
-      delete global.$.fn.prettyPhoto;
+    it('does nothing when exe_lightbox is not loaded', () => {
+      delete window.exeLightbox;
+      document.body.innerHTML = '<a rel="lightbox" href="audio/test.mp3">Link</a>';
       expect(() => global.$exe.setMultimediaGalleries()).not.toThrow();
+      vi.runAllTimers();
+      expect(document.querySelector('a').getAttribute('href')).toBe('audio/test.mp3');
     });
 
-    it('calls prettyPhoto when it is defined', () => {
+    // The editor's sanitizer drops unsafe hrefs (e.g. data: links), leaving <a rel="lightbox"> without one.
+    it('skips a lightbox link without href and still handles the others', () => {
+      document.body.innerHTML = `
+        <a id="nohref" rel="lightbox" title="Stripped"><img alt="x"></a>
+        <a id="audio" rel="lightbox" href="audio/test.mp3">Audio</a>`;
+
+      expect(() => global.$exe.setMultimediaGalleries()).not.toThrow();
+      vi.runAllTimers();
+
+      expect(document.getElementById('audio').getAttribute('href')).toBe('#media-box-0');
+      expect(window.exeLightbox.bind).toHaveBeenCalledTimes(1);
+    });
+
+    it('binds the lightbox when exe_lightbox is loaded', () => {
       document.body.innerHTML = '';
       global.$exe.setMultimediaGalleries();
       vi.runAllTimers();
-      expect(global.$.fn.prettyPhoto).toHaveBeenCalled();
+      expect(window.exeLightbox.bind).toHaveBeenCalledTimes(1);
     });
 
     it('replaces blob URL with asset URL (audio) when resolver is available', () => {
@@ -1130,177 +1137,6 @@ describe('common.js $exe helpers', () => {
       expect(global.$exe.hasMultimediaGalleries).toBe(false);
     });
 
-    describe('changepicturecallback', () => {
-      function setupPrettyPhotoDOM(srcValue, extraClass) {
-        const cls = 'exe-media-box-element' + (extraClass ? ' ' + extraClass : '');
-        document.body.innerHTML = `
-          <div id="pp_full_res">
-            <audio class="${cls}" src="${srcValue}"></audio>
-          </div>
-          <div class="pp_content_container">
-            <div class="pp_details"><div class="pp_description"></div></div>
-          </div>
-        `;
-      }
-
-      it('adds download link with extension from src filename', () => {
-        document.body.innerHTML = '<a rel="lightbox" href="audio/test.mp3">Link</a>';
-        global.$exe.setMultimediaGalleries();
-        vi.runAllTimers();
-        setupPrettyPhotoDOM('audio/test.mp3');
-        prettyPhotoOptions.changepicturecallback();
-
-        const downloadLink = document.querySelector('.exe-media-download a');
-        expect(downloadLink).not.toBeNull();
-        expect(downloadLink.textContent).toBe('mp3');
-      });
-
-      it('falls back to i18n.download when ext is undefined (blob URL without extension)', () => {
-        document.body.innerHTML = '<a rel="lightbox" href="audio/test.mp3">Link</a>';
-        global.$exe.setMultimediaGalleries();
-        vi.runAllTimers();
-        // src with no dot → split(".")[1] is undefined
-        setupPrettyPhotoDOM('blob:http://localhost:8080/some-uuid');
-        prettyPhotoOptions.changepicturecallback();
-
-        const downloadLink = document.querySelector('.exe-media-download a');
-        expect(downloadLink).not.toBeNull();
-        expect(downloadLink.textContent).toBe('Download');
-      });
-
-      it('adds with-audio class to container for audio elements', () => {
-        document.body.innerHTML = '<a rel="lightbox" href="audio/test.mp3">Link</a>';
-        global.$exe.setMultimediaGalleries();
-        vi.runAllTimers();
-        setupPrettyPhotoDOM('audio/test.mp3', 'exe-media-box-audio');
-        prettyPhotoOptions.changepicturecallback();
-
-        const cont = document.querySelector('.pp_content_container');
-        expect(cont.className).toContain('with-audio');
-      });
-
-      it('hides description for inline (non-media) content', () => {
-        document.body.innerHTML = '<a rel="lightbox" href="image/photo.jpg">Link</a>';
-        global.$exe.setMultimediaGalleries();
-        vi.runAllTimers();
-        document.body.innerHTML = `
-          <div id="pp_full_res">
-            <div class="pp_inline"><p>Inline content</p></div>
-          </div>
-          <div class="pp_content_container">
-            <div class="pp_details"><div class="pp_description" style="">Desc</div></div>
-          </div>
-        `;
-        prettyPhotoOptions.changepicturecallback();
-
-        // pp_description should be hidden (jQuery .hide() sets display:none)
-        const desc = document.querySelector('.pp_description');
-        expect(desc.style.display).toBe('none');
-      });
-
-      it('sets isCalledInBox when loadMediaPlayer is ready', () => {
-        document.body.innerHTML = '<a rel="lightbox" href="audio/test.mp3">Link</a>';
-        global.$exe.setMultimediaGalleries();
-        vi.runAllTimers();
-        global.$exe.loadMediaPlayer.isReady = true;
-        global.$exe.loadMediaPlayer.isCalledInBox = false;
-
-        setupPrettyPhotoDOM('audio/test.mp3');
-        prettyPhotoOptions.changepicturecallback();
-
-        expect(global.$exe.loadMediaPlayer.isCalledInBox).toBe(true);
-
-        global.$exe.loadMediaPlayer.isReady = false;
-        global.$exe.loadMediaPlayer.isCalledInBox = false;
-      });
-
-      it('extracts download src from a <source> child when the media element has no src attribute', () => {
-        document.body.innerHTML = '<a rel="lightbox" href="video/test.mp4">Link</a>';
-        global.$exe.setMultimediaGalleries();
-        vi.runAllTimers();
-        // Video is rendered as <video><source src="..."/></video> (no src on the element itself)
-        document.body.innerHTML = `
-          <div id="pp_full_res">
-            <video class="exe-media-box-element"><source src="video/test.mp4" /></video>
-          </div>
-          <div class="pp_content_container">
-            <div class="pp_details"><div class="pp_description"></div></div>
-          </div>
-        `;
-        prettyPhotoOptions.changepicturecallback();
-
-        const downloadLink = document.querySelector('.exe-media-download a');
-        expect(downloadLink).not.toBeNull();
-        expect(downloadLink.getAttribute('href')).toBe('video/test.mp4');
-        expect(downloadLink.textContent).toBe('mp4');
-      });
-
-      it('labels the download link with the real extension for multi-dot filenames and query strings', () => {
-        document.body.innerHTML = '<a rel="lightbox" href="video/lesson.part1.mp4">Link</a>';
-        global.$exe.setMultimediaGalleries();
-        vi.runAllTimers();
-        document.body.innerHTML = `
-          <div id="pp_full_res">
-            <video class="exe-media-box-element"><source src="video/lesson.part1.mp4?token=abc#t=10" /></video>
-          </div>
-          <div class="pp_content_container">
-            <div class="pp_details"><div class="pp_description"></div></div>
-          </div>
-        `;
-        prettyPhotoOptions.changepicturecallback();
-
-        const downloadLink = document.querySelector('.exe-media-download a');
-        expect(downloadLink).not.toBeNull();
-        // last dot-segment, query string and fragment stripped → "mp4" (not "part1" or "mp4?token=abc#t=10")
-        expect(downloadLink.textContent).toBe('mp4');
-      });
-
-      it('recalculates pp_content height from the video bounding rect', () => {
-        document.body.innerHTML = '<a rel="lightbox" href="video/test.mp4">Link</a>';
-        global.$exe.setMultimediaGalleries();
-        vi.runAllTimers();
-        document.body.innerHTML = `
-          <div id="pp_full_res">
-            <video class="exe-media-box-element"><source src="video/test.mp4" /></video>
-          </div>
-          <div class="pp_content"></div>
-          <div class="pp_content_container">
-            <div class="pp_details"><div class="pp_description"></div></div>
-          </div>
-        `;
-        const video = document.querySelector('#pp_full_res video');
-        video.getBoundingClientRect = () => ({ height: 300, width: 480, top: 0, left: 0, right: 480, bottom: 300 });
-
-        prettyPhotoOptions.changepicturecallback();
-
-        // 300 (video height) + 50 (controls) = 350px
-        const content = document.querySelector('.pp_content');
-        expect(content.style.height).toBe('350px');
-      });
-
-      it('leaves pp_content height untouched when the video has zero height', () => {
-        document.body.innerHTML = '<a rel="lightbox" href="video/test.mp4">Link</a>';
-        global.$exe.setMultimediaGalleries();
-        vi.runAllTimers();
-        document.body.innerHTML = `
-          <div id="pp_full_res">
-            <video class="exe-media-box-element"><source src="video/test.mp4" /></video>
-          </div>
-          <div class="pp_content"></div>
-          <div class="pp_content_container">
-            <div class="pp_details"><div class="pp_description"></div></div>
-          </div>
-        `;
-        const video = document.querySelector('#pp_full_res video');
-        video.getBoundingClientRect = () => ({ height: 0, width: 0, top: 0, left: 0, right: 0, bottom: 0 });
-
-        prettyPhotoOptions.changepicturecallback();
-
-        const content = document.querySelector('.pp_content');
-        expect(content.style.height).toBe('');
-      });
-    });
-
     it('applies GalleryIdevice fallback when no lightbox links but gallery exists', () => {
       delete global.exe_editor_mode;
       document.body.innerHTML = `
@@ -1353,21 +1189,17 @@ describe('common.js $exe helpers', () => {
         expect(new Set(ids).size).toBe(ids.length);
       });
 
-      it('binds prettyPhoto to every lightbox link of the page', () => {
+      it('still binds the lightbox for the whole page (galleries span iDevices)', () => {
         document.body.innerHTML = `
           <a rel="lightbox" href="#a">A</a>
           <div id="idevice"><a rel="lightbox" href="#b">B</a></div>
         `;
-        let boundLinks = null;
-        global.$.fn.prettyPhoto = vi.fn(function () {
-          boundLinks = this.length;
-          return this;
-        });
 
         global.$exe.setMultimediaGalleries(document.getElementById('idevice'));
         vi.runAllTimers();
 
-        expect(boundLinks).toBe(2);
+        expect(window.exeLightbox.bind).toHaveBeenCalledTimes(1);
+        expect(window.exeLightbox.bind).toHaveBeenCalledWith();
       });
 
       it('leaves the GalleryIdevice fallback to the page-wide call', () => {
