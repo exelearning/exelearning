@@ -344,6 +344,44 @@ describe('Scorm12Exporter', () => {
         });
     });
 
+    describe('jsPDF for PDF-capable iDevices', () => {
+        it('bundles jsPDF and lists it in imsmanifest.xml without a script tag', async () => {
+            const pages: ExportPage[] = [
+                {
+                    id: 'page-rubric',
+                    title: 'Rubric',
+                    parentId: null,
+                    order: 0,
+                    blocks: [
+                        {
+                            id: 'block-rubric',
+                            name: 'Content',
+                            order: 0,
+                            components: [
+                                {
+                                    id: 'comp-rubric',
+                                    type: 'rubric',
+                                    order: 0,
+                                    content:
+                                        '<div class="rubric"><div class="exe-rubrics-DataGame js-hidden">x</div></div>',
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ];
+            document = new MockDocument({}, pages);
+            exporter = new Scorm12Exporter(document, resources, assets, zip);
+            resources.fetchLibraryFiles = async files => new Map(files.map(file => [file, Buffer.from('// mock lib')]));
+
+            await exporter.export();
+
+            expect(zip.files.has('libs/jspdf/jspdf.umd.min.js')).toBe(true);
+            expect(zip.files.get('imsmanifest.xml') as string).toContain('libs/jspdf/jspdf.umd.min.js');
+            expect(zip.files.get('index.html') as string).not.toContain('jspdf');
+        });
+    });
+
     describe('Basic Properties', () => {
         it('should return correct file suffix', () => {
             expect(exporter.getFileSuffix()).toBe('_scorm');

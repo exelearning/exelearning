@@ -665,6 +665,51 @@ describe('Html5Exporter', () => {
             // Should still succeed
             expect(result.success).toBe(true);
         });
+
+        const pdfIdevicePages = (content: string): ExportPage[] => [
+            {
+                id: 'page-pdf',
+                title: 'PDF',
+                parentId: null,
+                order: 0,
+                blocks: [
+                    {
+                        id: 'block-pdf',
+                        name: 'Content',
+                        order: 0,
+                        components: [{ id: 'comp-pdf', type: 'checklist', order: 0, content }],
+                    },
+                ],
+            },
+        ];
+
+        it('should package jsPDF without a script tag when a PDF-capable iDevice is present', async () => {
+            document = new MockDocument({}, pdfIdevicePages('<div class="listacotejo-IDevice">List</div>'));
+            exporter = new Html5Exporter(document, resources, assets, zip);
+            resources.fetchLibraryFiles = async (files: string[]) =>
+                new Map(files.map(file => [file, Buffer.from('// mock lib')]));
+
+            await exporter.export();
+
+            expect(zip.files.has('libs/jspdf/jspdf.umd.min.js')).toBe(true);
+            const indexHtml = decodePreviewFile(zip.files.get('index.html') as Buffer | string | undefined);
+            expect(indexHtml).not.toContain('jspdf');
+        });
+
+        it('should not package jsPDF when no PDF-capable iDevice is present', async () => {
+            document = new MockDocument({}, pdfIdevicePages('<p>Plain text</p>'));
+            exporter = new Html5Exporter(document, resources, assets, zip);
+            let requestedLibs: string[] = [];
+            resources.fetchLibraryFiles = async (files: string[]) => {
+                requestedLibs = files;
+                return new Map(files.map(file => [file, Buffer.from('// mock lib')]));
+            };
+
+            await exporter.export();
+
+            expect(requestedLibs).not.toContain('jspdf/jspdf.umd.min.js');
+            expect(zip.files.has('libs/jspdf/jspdf.umd.min.js')).toBe(false);
+        });
     });
 
     describe('LaTeX Pre-Rendering', () => {
