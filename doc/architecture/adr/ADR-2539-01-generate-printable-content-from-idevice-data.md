@@ -1,7 +1,7 @@
 ---
 id: ADR-2539-01
 title: "Generate printable content from iDevice data"
-status: Proposed
+status: Accepted
 date: 2026-09-20
 tracking_issue: 2539
 deciders:

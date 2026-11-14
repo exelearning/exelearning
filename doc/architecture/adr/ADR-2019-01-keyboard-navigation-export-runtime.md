@@ -1,7 +1,7 @@
 ---
 id: ADR-2019-01
 title: "Presentation-mode runtime lives in the shared export runtime and drives existing theme elements"
-status: Proposed
+status: Accepted
 date: 2026-07-09
 tracking_issue: 2019
 legacy_id: ADR-0039

@@ -1,7 +1,7 @@
 ---
 id: ADR-1858-02
 title: "Store attachments as stable asset:// references with render-at-view-time export rewrite"
-status: Proposed
+status: Accepted
 date: 2026-07-09
 tracking_issue: 1858
 legacy_id: ADR-0036

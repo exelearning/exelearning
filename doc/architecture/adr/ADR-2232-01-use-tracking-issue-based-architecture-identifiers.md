@@ -1,7 +1,7 @@
 ---
 id: ADR-2232-01
 title: "Identify architecture records by tracking issue instead of a global counter"
-status: Proposed
+status: Accepted
 date: 2026-08-05
 tracking_issue: 2232
 deciders:

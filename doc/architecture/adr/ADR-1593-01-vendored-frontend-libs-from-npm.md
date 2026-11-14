@@ -1,7 +1,7 @@
 ---
 id: ADR-1593-01
 title: "Source vendored frontend libraries from npm and generate them at build time"
-status: Proposed
+status: Accepted
 date: 2026-07-09
 tracking_issue: 1593
 legacy_id: ADR-0029

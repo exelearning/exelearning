@@ -1,7 +1,7 @@
 ---
 id: ADR-2261-01
 title: "Scope password changes to eXeLearning-managed accounts"
-status: Proposed
+status: Accepted
 date: 2026-08-14
 tracking_issue: 2261
 deciders:
