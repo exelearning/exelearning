@@ -50,7 +50,7 @@ export class Html5Exporter extends BaseExporter {
 
     private getReferencedAssetIds(pages: ExportPage[]): Set<string> {
         const assetIds = new Set<string>();
-        const assetPattern = /asset:\/\/([^"')\s>]+)/gi;
+        const assetPattern = /asset:\/\/([^"')\s>\\]+)/gi;
 
         for (const page of pages) {
             for (const block of page.blocks || []) {
