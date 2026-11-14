@@ -169,16 +169,18 @@ describe('ModalOdeUsedFiles', () => {
 
   describe('openAssetInNewWindow', () => {
     let mockAssetManager;
+    let viewer;
 
     beforeEach(() => {
       mockAssetManager = {
         getAsset: vi.fn(),
-        createBlobURL: vi.fn().mockResolvedValue('blob:test-url'),
+        resolveViewerURL: vi.fn().mockResolvedValue('blob:test-url'),
       };
       window.eXeLearning.app.project._yjsBridge = {
         assetManager: mockAssetManager,
       };
-      window.open = vi.fn();
+      viewer = { location: { href: 'about:blank' }, close: vi.fn() };
+      window.open = vi.fn(() => viewer);
       window.alert = vi.fn();
     });
 
@@ -189,8 +191,30 @@ describe('ModalOdeUsedFiles', () => {
       await modal.openAssetInNewWindow('test-asset-id');
 
       expect(mockAssetManager.getAsset).toHaveBeenCalledWith('test-asset-id');
-      expect(mockAssetManager.createBlobURL).toHaveBeenCalledWith(mockBlob);
-      expect(window.open).toHaveBeenCalledWith('blob:test-url', '_blank');
+      expect(mockAssetManager.resolveViewerURL).toHaveBeenCalledWith('test-asset-id');
+      // Opened before resolving (popup still allowed), then pointed at the viewer URL
+      expect(window.open).toHaveBeenCalledWith('', '_blank');
+      expect(viewer.location.href).toBe('blob:test-url');
+    });
+
+    it('closes the tab and alerts when no viewer URL is available', async () => {
+      mockAssetManager.getAsset.mockResolvedValue({ blob: new Blob(['test']) });
+      mockAssetManager.resolveViewerURL.mockResolvedValue(null);
+
+      await modal.openAssetInNewWindow('test-asset-id');
+
+      expect(viewer.close).toHaveBeenCalled();
+      expect(window.alert).toHaveBeenCalledWith('Cannot open resource: Asset not found');
+    });
+
+    it('closes the tab when resolving fails', async () => {
+      mockAssetManager.getAsset.mockResolvedValue({ blob: new Blob(['test']) });
+      mockAssetManager.resolveViewerURL.mockRejectedValue(new Error('boom'));
+
+      await modal.openAssetInNewWindow('test-asset-id');
+
+      expect(viewer.close).toHaveBeenCalled();
+      expect(window.alert).toHaveBeenCalledWith('Error opening resource');
     });
 
     it('should show alert when AssetManager is not available', async () => {
