@@ -507,8 +507,8 @@ var $exeDevice = {
         const num = Math.min(Math.max(i, 0), $exeDevice.wordsGame.length - 1),
             p = $exeDevice.wordsGame[num];
 
-        $('#clasificaEColor').val(p.color);
-        $('#clasificaEBackColor').val(p.backcolor);
+        $('#clasificaEColor').val($exeDevice.toColorInput(p.color, '#000000'));
+        $('#clasificaEBackColor').val($exeDevice.toColorInput(p.backcolor, '#ffffff'));
 
         $exeDevice.changeTypeQuestion(p.type);
 
@@ -541,6 +541,48 @@ var $exeDevice = {
         $('#clasificaENumberQuestion').val(i + 1);
 
         $exeIDevicesEdition.iDevice.gamification.helpers.stopSound();
+    },
+
+    /**
+     * What an <input type="color"> can show for a stored colour. The input
+     * only takes #rrggbb and turns anything else black, and older versions
+     * stored the background of some cards as rgba().
+     *
+     * @param {string} color - The stored colour.
+     * @param {string} fallback - The #rrggbb to show when it cannot be read.
+     * @returns {string} A #rrggbb colour.
+     */
+    toColorInput: function (color, fallback) {
+        const raw = typeof color === 'string' ? color.trim() : '';
+        if (/^#[0-9a-f]{6}$/i.test(raw)) return raw.toLowerCase();
+        const short = raw.match(/^#([0-9a-f])([0-9a-f])([0-9a-f])$/i);
+        if (short) {
+            return `#${short[1]}${short[1]}${short[2]}${short[2]}${short[3]}${short[3]}`.toLowerCase();
+        }
+        const rgb = raw.match(/^rgba?\(\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(\d{1,3})\s*[,)]/i);
+        if (rgb) {
+            return `#${rgb
+                .slice(1, 4)
+                .map((n) => Math.min(255, parseInt(n, 10)).toString(16).padStart(2, '0'))
+                .join('')}`;
+        }
+        return fallback;
+    },
+
+    /**
+     * The colour a card saves: the stored one while its input still shows
+     * what toColorInput made of it, so a save without changes keeps it as it
+     * was, and the input's once the author picks another.
+     *
+     * @param {string} stored - The colour the card was loaded with.
+     * @param {string} shown - The value of the input.
+     * @param {string} fallback - The fallback the input was given.
+     * @returns {string}
+     */
+    keepColor: function (stored, shown, fallback) {
+        return typeof stored === 'string' && $exeDevice.toColorInput(stored, fallback) === shown
+            ? stored
+            : shown;
     },
 
     hexToRgba: function (hex, alpha = 1) {
@@ -643,8 +685,8 @@ var $exeDevice = {
                 $('#clasificaEAuthorAlt')
                     .removeClass('d-flex')
                     .addClass('d-none');
-                $('#clasificaEColor').val(currentColor).trigger('input');
-                $('#clasificaEBackColor').val(currentBg).trigger('input');
+                $('#clasificaEColor').val($exeDevice.toColorInput(currentColor, '#000000')).trigger('input');
+                $('#clasificaEBackColor').val($exeDevice.toColorInput(currentBg, '#ffffff')).trigger('input');
                 $('#clasificaETextDiv').css({
                     color: currentColor,
                     'background-color': currentBg,
@@ -660,8 +702,8 @@ var $exeDevice = {
                 $(elementsToHide).show();
                 $colorInputs.show();
                 $labelsColor.show();
-                $('#clasificaEColor').val(currentColor).trigger('input');
-                $('#clasificaEBackColor').val(currentBg).trigger('input');
+                $('#clasificaEColor').val($exeDevice.toColorInput(currentColor, '#000000')).trigger('input');
+                $('#clasificaEBackColor').val($exeDevice.toColorInput(currentBg, '#ffffff')).trigger('input');
                 $('#clasificaETextDiv').css({
                     color: currentColor,
                     'background-color': $exeDevice.hexToRgba(currentBg, 0.7),
@@ -861,8 +903,10 @@ var $exeDevice = {
         p.url = $('#clasificaEURLImage').val().trim();
         p.audio = $('#clasificaEURLAudio').val().trim();
         p.eText = $('#clasificaEText').val();
-        p.color = $('#clasificaEColor').val();
-        p.backcolor = $('#clasificaEBackColor').val();
+        // The inputs may show the stored colours converted (toColorInput).
+        const loaded = $exeDevice.wordsGame[$exeDevice.active] || {};
+        p.color = $exeDevice.keepColor(loaded.color, $('#clasificaEColor').val(), '#000000');
+        p.backcolor = $exeDevice.keepColor(loaded.backcolor, $('#clasificaEBackColor').val(), '#ffffff');
         p.group = parseInt($('#clasificaEGroupSelect option:selected').val());
         p.msgHit = $('#clasificaEMessageOK').val();
         p.msgError = $('#clasificaEMessageKO').val();

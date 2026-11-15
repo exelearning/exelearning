@@ -114,6 +114,37 @@ describe('classify iDevice', () => {
     });
   });
 
+  // An <input type="color"> only takes #rrggbb and turns anything else black.
+  describe('toColorInput', () => {
+    it.each([
+      ['#ffffff', '#ffffff'],
+      ['#ABCDEF', '#abcdef'],
+      ['#fa0', '#ffaa00'],
+      ['rgba(255, 255, 255, 0.7)', '#ffffff'],
+      ['rgb(0,128,255)', '#0080ff'],
+    ])('shows %s as %s', (stored, shown) => {
+      expect($exeDevice.toColorInput(stored, '#123456')).toBe(shown);
+    });
+
+    it.each(['', 'transparent', 'rgba(255, 255)', undefined])('shows the fallback for %s', (stored) => {
+      expect($exeDevice.toColorInput(stored, '#123456')).toBe('#123456');
+    });
+  });
+
+  describe('keepColor', () => {
+    it('keeps the stored colour while the input shows it', () => {
+      expect($exeDevice.keepColor('rgba(255, 255, 255, 0.7)', '#ffffff', '#ffffff')).toBe(
+        'rgba(255, 255, 255, 0.7)'
+      );
+      expect($exeDevice.keepColor('transparent', '#ffffff', '#ffffff')).toBe('transparent');
+    });
+
+    it('takes the colour of the input once the author picks another', () => {
+      expect($exeDevice.keepColor('rgba(255, 255, 255, 0.7)', '#ff0000', '#ffffff')).toBe('#ff0000');
+      expect($exeDevice.keepColor(undefined, '#ff0000', '#ffffff')).toBe('#ff0000');
+    });
+  });
+
   describe('validateGroups', () => {
     it('returns false for empty array', () => {
       const result = $exeDevice.validateGroups([]);
@@ -949,6 +980,27 @@ describe('classify edition: shared form tabs and feedback', () => {
             expect(data.instructions).toBe('');
             expect(data.textAfter).toBe('');
             expect(device.save()).not.toContain('Old');
+        });
+
+        // Older versions stored the background of some cards as rgba(). The input
+        // showed it black, and a save without changes stored it black.
+        it('keeps an rgba() card background through a save without changes', () => {
+            const card = { ...game().wordsGame[0], backcolor: 'rgba(255, 255, 255, 0.7)' };
+            device.updateFieldGame(game({ wordsGame: [card] }));
+            device.showQuestion(0);
+
+            expect(document.getElementById('clasificaEBackColor').value).toBe('#ffffff');
+            expect(device.validateData().wordsGame[0].backcolor).toBe('rgba(255, 255, 255, 0.7)');
+        });
+
+        it('saves the background the author picks for a card stored with rgba()', () => {
+            const card = { ...game().wordsGame[0], backcolor: 'rgba(255, 255, 255, 0.7)' };
+            device.updateFieldGame(game({ wordsGame: [card] }));
+            device.showQuestion(0);
+
+            $('#clasificaEBackColor').val('#ff0000').trigger('change');
+
+            expect(device.validateData().wordsGame[0].backcolor).toBe('#ff0000');
         });
 
         it('asks, in the language of the editor, to name a group left without a name', () => {
