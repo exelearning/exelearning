@@ -78,6 +78,11 @@ jobs:
       - name: Build vendor libs
         run: bun run bundle:vendor
 
+      # Exports with the print button package the generated, git-ignored
+      # public/app/common/exe_print/ runtime, which the unit tests check.
+      - name: Build print preview runtime
+        run: bun run bundle:exporters
+
       - name: Unit Tests + 90% Coverage
         run: make test-unit-ci
 
