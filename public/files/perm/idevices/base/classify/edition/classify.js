@@ -29,6 +29,10 @@ var $exeDevice = {
     ],
     numberGroups: 2,
     maxGroups: 9,
+    // How many group names a save stores: as many as the activity was loaded
+    // with (updateFieldGame), so a save without changes keeps the list as it
+    // was, or more if the author adds groups. A new activity stores all nine.
+    savedGroups: 9,
     typeEdit: -1,
     numberCutCuestion: -1,
     clipBoard: '',
@@ -1040,7 +1044,7 @@ var $exeDevice = {
             percentajeQuestions,
             time,
             version: $exeDevice.version,
-            groups: $exeDevice.groups,
+            groups: $exeDevice.groups.slice(0, Math.max($exeDevice.savedGroups, numberGroups)),
             numberGroups,
             gameLevel,
             evaluation: progressBar.evaluation,
@@ -1770,6 +1774,7 @@ var $exeDevice = {
 
         // Retrocompatibilidad: versiones antiguas solo guardaban 4 grupos
         $exeDevice.groups = game.groups.slice();
+        $exeDevice.savedGroups = $exeDevice.groups.length;
         while ($exeDevice.groups.length < $exeDevice.maxGroups) {
             const i = $exeDevice.groups.length;
             $exeDevice.groups.push(_('Group') + ' ' + (i + 1));

@@ -1003,6 +1003,25 @@ describe('classify edition: shared form tabs and feedback', () => {
             expect(device.validateData().wordsGame[0].backcolor).toBe('#ff0000');
         });
 
+        // Loading fills the list up to nine names, which a save stored, so four
+        // names came back as nine.
+        it('keeps the group names it was loaded with through a save without changes', () => {
+            const groups = ['Herbivores', 'Omnivores', 'Carnivores', 'Group 4'];
+            device.updateFieldGame(game({ numberGroups: 3, groups }));
+            device.showQuestion(0);
+
+            expect(device.validateData().groups).toEqual(groups);
+        });
+
+        it('saves a name for every group the author adds', () => {
+            device.updateFieldGame(game());
+            device.showQuestion(0);
+
+            $('#clasificaENumGroups').val('3').trigger('change');
+
+            expect(device.validateData().groups).toEqual(['Group 1', 'Group 2', 'Group 3']);
+        });
+
         it('asks, in the language of the editor, to name a group left without a name', () => {
             device.updateFieldGame(game());
             device.showQuestion(0);
