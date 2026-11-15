@@ -1084,6 +1084,12 @@ var $exeIDevicesEdition = {
                     $("#eXeGameSCORgame,#eXeGameSCORgameAuto,#eXeGameSCORMPercentaje,#eXeGameSCORMinstructionsButton,#eXeGameSCORMinstructionsAuto").addClass('d-none');
 
                     $('#eXeGameSCORMWeight').val(weighted);
+                    // getValues reads the button text in every mode, so every mode loads the stored
+                    // one: otherwise a save without changes stores "Save score" in the language of
+                    // the interface. Without a stored text, the field keeps that default.
+                    if (isScorm == 2 || textButtonScorm) {
+                        $('#eXeGameSCORMbuttonText').val(textButtonScorm);
+                    }
 
                     if (isScorm == 0) {
                         $('#eXeGameSCORMNoSave').prop('checked', true);
@@ -1094,7 +1100,6 @@ var $exeIDevicesEdition = {
                         $('#eXeGameSCORMPercentaje').removeClass('d-none');
                     } else if (isScorm == 2) {
                         $('#eXeGameSCORMButtonSave').prop('checked', true);
-                        $('#eXeGameSCORMbuttonText').val(textButtonScorm);
                         $('#eXeGameSCORgame').removeClass('d-none');
                         $('#eXeGameSCORMinstructionsButton').removeClass('d-none');
                         $('#eXeGameSCORMPercentaje').removeClass('d-none');

@@ -3017,6 +3017,35 @@ describe('common_idevices_edition.js', () => {
       expect($('#eXeGameSCORMbuttonText').val()).toBe('My Button');
     });
 
+    // getValues reads the text in every mode: a game saved from a Spanish interface in mode 0
+    // or 1 must not come back as the English default after a save without changes.
+    it.each([0, 1])('setValues keeps the stored button text in mode %i', (isScorm) => {
+      document.body.innerHTML = `
+        <input type="radio" name="eXeGameSCORM" id="eXeGameSCORMNoSave" value="0" />
+        <input type="radio" name="eXeGameSCORM" id="eXeGameSCORMAutoSave" value="1" />
+        <input type="radio" name="eXeGameSCORM" id="eXeGameSCORMButtonSave" value="2" />
+        <input type="text" id="eXeGameSCORMbuttonText" value="Save score" />
+        <input type="number" id="eXeGameSCORMWeight" />
+      `;
+      const scorm = globalThis.$exeIDevicesEdition.iDevice.gamification.scorm;
+
+      scorm.setValues(isScorm, 'Guardar puntuación', true, 100);
+
+      expect(scorm.getValues()).toMatchObject({ isScorm, textButtonScorm: 'Guardar puntuación' });
+    });
+
+    it('setValues leaves the default button text when none is stored', () => {
+      document.body.innerHTML = `
+        <input type="radio" name="eXeGameSCORM" id="eXeGameSCORMNoSave" value="0" />
+        <input type="text" id="eXeGameSCORMbuttonText" value="Save score" />
+        <input type="number" id="eXeGameSCORMWeight" />
+      `;
+
+      globalThis.$exeIDevicesEdition.iDevice.gamification.scorm.setValues(0, undefined, true, 100);
+
+      expect($('#eXeGameSCORMbuttonText').val()).toBe('Save score');
+    });
+
     it('setValues only shows weighted when saving score', () => {
       document.body.innerHTML = `
         <input type="radio" name="eXeGameSCORM" id="eXeGameSCORMNoSave" value="0" />
