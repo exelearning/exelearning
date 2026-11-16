@@ -878,6 +878,31 @@ describe('text iDevice', () => {
     });
   });
 
+  describe('escapeHtml', () => {
+    it('escapes HTML special characters', () => {
+      $exeDevice.init(mockElement, {});
+
+      expect($exeDevice.escapeHtml('<script>')).toBe('&lt;script&gt;');
+      expect($exeDevice.escapeHtml('a & b')).toBe('a &amp; b');
+    });
+
+    // In text content quotes need no escaping, and escaping them changed the
+    // stored HTML of a task saved without changes.
+    it('leaves quotes as they are', () => {
+      $exeDevice.init(mockElement, {});
+
+      expect($exeDevice.escapeHtml(`2 "groups" of 3's`)).toBe(`2 "groups" of 3's`);
+    });
+
+    it('returns empty string for falsy input', () => {
+      $exeDevice.init(mockElement, {});
+
+      expect($exeDevice.escapeHtml('')).toBe('');
+      expect($exeDevice.escapeHtml(null)).toBe('');
+      expect($exeDevice.escapeHtml(undefined)).toBe('');
+    });
+  });
+
   describe('escapeHtmlAttr', () => {
     it('escapes attribute special characters', () => {
       $exeDevice.init(mockElement, {});

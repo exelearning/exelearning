@@ -167,10 +167,10 @@ var $exeDevice = {
         // Add duration/participants dl if we have values
         if (hasTaskInfo) {
             html += '<dl>';
-            html += `<div class="inline"><dt><span title="${this.escapeHtmlAttr(durationLabel)}">${$exeIDevicesEdition.iDevice.common.escapeHtml(durationLabel)}</span></dt>`;
-            html += `<dd>${$exeIDevicesEdition.iDevice.common.escapeHtml(durationValue)}</dd></div>`;
-            html += `<div class="inline"><dt><span title="${this.escapeHtmlAttr(participantsLabel)}">${$exeIDevicesEdition.iDevice.common.escapeHtml(participantsLabel)}</span></dt>`;
-            html += `<dd>${$exeIDevicesEdition.iDevice.common.escapeHtml(participantsValue)}</dd></div>`;
+            html += `<div class="inline"><dt><span title="${this.escapeHtmlAttr(durationLabel)}">${this.escapeHtml(durationLabel)}</span></dt>`;
+            html += `<dd>${this.escapeHtml(durationValue)}</dd></div>`;
+            html += `<div class="inline"><dt><span title="${this.escapeHtmlAttr(participantsLabel)}">${this.escapeHtml(participantsLabel)}</span></dt>`;
+            html += `<dd>${this.escapeHtml(participantsValue)}</dd></div>`;
             html += '</dl>';
         }
 
@@ -188,6 +188,20 @@ var $exeDevice = {
 
         // Wrap in exe-text-activity container
         return `<div class="exe-text-activity">${html}</div>`;
+    },
+
+    /**
+     * Escape HTML special characters for safe text content. Its own, not the
+     * escapeHtml of the edition library, which also escapes quotes: the
+     * stored HTML keeps ' and " as they were written, and text, which is not
+     * a game, does not depend on that library.
+     */
+    escapeHtml: function (str) {
+        if (!str) return '';
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;');
     },
 
     /**
