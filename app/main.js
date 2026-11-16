@@ -16,7 +16,7 @@ const {
 const { checkLink } = require('./link-check');
 const { extractZipEntries } = require('./zip-extract');
 const { createFileReadGrants } = require('./file-read-grants');
-const { addRecentFile, describeRecentFiles, findRecentFile } = require('./recent-files');
+const { addRecentFile, describeRecentFiles, reopenRecentFile } = require('./recent-files');
 const { savePrintPreviewAsPdf } = require('./print-to-pdf');
 const { printPreview } = require('./print-preview');
 const {
@@ -371,11 +371,11 @@ function persistSaveLocation(key, dirPath, fileName) {
  * per-project slot. Used by the setSavedPath IPC when the renderer opens a
  * file from disk.
  */
-function setCurrentFileSaveInfo(dirPath, fileName) {
+function setCurrentFileSaveInfo(dirPath, fileName, isRecent) {
     const s = readSettings();
     clearSavedNameCache(s);
     s.currentFileSave = { dir: dirPath || null, name: fileName || null };
-    rememberRecentFile(s, dirPath, fileName);
+    if (isRecent) rememberRecentFile(s, dirPath, fileName);
     if (dirPath) s.lastUsedDir = dirPath;
     writeSettings(s);
 }
@@ -1487,7 +1487,9 @@ ipcMain.handle('app:setSavedPath', async (_e, payload = {}) => {
         const filePath = typeof payload === 'string' ? payload : payload?.filePath;
         const split = splitSavePath(filePath);
         if (!split) return false;
-        setCurrentFileSaveInfo(split.dir, split.name);
+        // Only a file the main process handed out (Open dialog, OS) becomes a recent file: the list
+        // feeds reopening, which grants reading, so a path the renderer makes up must not get there.
+        setCurrentFileSaveInfo(split.dir, split.name, fileReadGrants.has(filePath));
         return true;
     } catch (_err) {
         return false;
@@ -1523,15 +1525,20 @@ ipcMain.handle('app:openElp', async e => {
 // Recent project files for the start screen: names and folders only, each under an opaque id.
 ipcMain.handle('app:getRecentFiles', async () => describeRecentFiles(readSettings().recentFiles));
 
-// Open one of them. The window is reloaded first and the file is handed to the fresh page through
-// the same handshake as a file opened by the OS, so the read grant goes to a page that runs no
-// author content yet, never to whatever asked (see recent-files.js).
+// Open one of them: confirm unsaved changes, reload, and hand the file to the fresh page through the
+// same handshake as a file opened by the OS (see reopenRecentFile in recent-files.js).
 ipcMain.handle('app:openRecentFile', async (e, { id } = {}) => {
-    const filePath = findRecentFile(readSettings().recentFiles, id);
-    if (!filePath || !fs.existsSync(filePath)) return false;
-    pendingOpenFileByWebContentsId.set(e.sender.id, filePath);
-    e.sender.reload();
-    return true;
+    const win = BrowserWindow.fromWebContents(e.sender);
+    return reopenRecentFile(e.sender, id, {
+        list: readSettings().recentFiles,
+        hasUnsavedChanges: () => windowHasUnsavedChanges(win),
+        confirmDiscard: async () =>
+            confirmWindowCloseWithUnsavedChanges(
+                win,
+                (await getCloseCopyFromRenderer(win)) || getUnsavedChangesCloseCopy(),
+            ),
+        setPending: filePath => pendingOpenFileByWebContentsId.set(e.sender.id, filePath),
+    });
 });
 
 // Read file contents as base64 for upload (renderer builds a File), only for granted paths

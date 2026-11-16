@@ -79,4 +79,28 @@ function findRecentFile(list, id) {
     return entry ? entry.path : null;
 }
 
-module.exports = { MAX_RECENT_FILES, addRecentFile, describeRecentFiles, findRecentFile };
+/**
+ * Reopen a recent file in the window that asked: reload it and hand the file to the fresh page through
+ * the same handshake as a file opened by the OS. Unsaved changes are confirmed first, as on close.
+ * The file becomes pending only once the reload has committed, so a "ready" message from the page
+ * that asked (which may run author content) cannot claim it; only the reloaded document can.
+ * @param {Electron.WebContents} webContents
+ * @param {string} id
+ * @param {{list: Object[], exists?: (filePath: string) => boolean, hasUnsavedChanges: () => Promise<boolean>,
+ *   confirmDiscard: () => Promise<boolean>, setPending: (filePath: string) => void}} deps
+ * @returns {Promise<boolean>} false when there is nothing to open or the author chose to stay
+ */
+async function reopenRecentFile(
+    webContents,
+    id,
+    { list, exists = fs.existsSync, hasUnsavedChanges, confirmDiscard, setPending },
+) {
+    const filePath = findRecentFile(list, id);
+    if (!filePath || !exists(filePath)) return false;
+    if ((await hasUnsavedChanges()) && !(await confirmDiscard())) return false;
+    webContents.once('did-navigate', () => setPending(filePath));
+    webContents.reload();
+    return true;
+}
+
+module.exports = { MAX_RECENT_FILES, addRecentFile, describeRecentFiles, findRecentFile, reopenRecentFile };

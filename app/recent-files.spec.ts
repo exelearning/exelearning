@@ -1,8 +1,14 @@
-import { describe, expect, it } from 'bun:test';
+import { describe, expect, it, mock } from 'bun:test';
 import * as os from 'os';
 import * as path from 'path';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
-const { MAX_RECENT_FILES, addRecentFile, describeRecentFiles, findRecentFile } = require('./recent-files');
+const {
+    MAX_RECENT_FILES,
+    addRecentFile,
+    describeRecentFiles,
+    findRecentFile,
+    reopenRecentFile,
+} = require('./recent-files');
 
 const root = path.resolve(os.tmpdir(), 'recent-files-spec');
 const home = path.join(root, 'home');
@@ -104,6 +110,81 @@ describe('recent-files', () => {
             expect(findRecentFile(list, '0000000000000000')).toBeNull();
             expect(findRecentFile(list, '')).toBeNull();
             expect(findRecentFile(list, undefined)).toBeNull();
+        });
+    });
+
+    describe('reopenRecentFile', () => {
+        const list = [{ path: file('a.elpx'), openedAt: 1 }];
+        const [{ id }] = describeRecentFiles(list, { exists: () => true, home });
+
+        function fakeWebContents() {
+            const listeners: Record<string, () => void> = {};
+            return {
+                listeners,
+                reload: mock(() => {}),
+                once: mock((event: string, listener: () => void) => {
+                    listeners[event] = listener;
+                }),
+            };
+        }
+
+        function deps(overrides = {}) {
+            return {
+                list,
+                exists: () => true,
+                hasUnsavedChanges: mock(async () => false),
+                confirmDiscard: mock(async () => true),
+                setPending: mock((_filePath: string) => {}),
+                ...overrides,
+            };
+        }
+
+        it('reloads and hands the file only to the document loaded by the reload', async () => {
+            const wc = fakeWebContents();
+            const d = deps();
+
+            expect(await reopenRecentFile(wc, id, d)).toBe(true);
+
+            expect(wc.reload).toHaveBeenCalledTimes(1);
+            // Nothing is pending while the page that asked is still there.
+            expect(d.setPending).not.toHaveBeenCalled();
+            wc.listeners['did-navigate']();
+            expect(d.setPending).toHaveBeenCalledWith(file('a.elpx'));
+        });
+
+        it('asks before discarding unsaved changes and stays when the author cancels', async () => {
+            const wc = fakeWebContents();
+            const d = deps({ hasUnsavedChanges: mock(async () => true), confirmDiscard: mock(async () => false) });
+
+            expect(await reopenRecentFile(wc, id, d)).toBe(false);
+
+            expect(d.confirmDiscard).toHaveBeenCalledTimes(1);
+            expect(wc.reload).not.toHaveBeenCalled();
+            expect(wc.once).not.toHaveBeenCalled();
+        });
+
+        it('reloads when the author chooses to discard the changes', async () => {
+            const wc = fakeWebContents();
+            const d = deps({ hasUnsavedChanges: mock(async () => true) });
+
+            expect(await reopenRecentFile(wc, id, d)).toBe(true);
+            expect(wc.reload).toHaveBeenCalledTimes(1);
+        });
+
+        it('does not ask when there is nothing to lose', async () => {
+            const d = deps();
+            await reopenRecentFile(fakeWebContents(), id, d);
+            expect(d.confirmDiscard).not.toHaveBeenCalled();
+        });
+
+        it('refuses an unknown id or a file that is gone, before asking anything', async () => {
+            const wc = fakeWebContents();
+            const d = deps({ exists: () => false });
+
+            expect(await reopenRecentFile(wc, id, d)).toBe(false);
+            expect(await reopenRecentFile(wc, file('a.elpx'), deps())).toBe(false);
+            expect(d.hasUnsavedChanges).not.toHaveBeenCalled();
+            expect(wc.reload).not.toHaveBeenCalled();
         });
     });
 });
