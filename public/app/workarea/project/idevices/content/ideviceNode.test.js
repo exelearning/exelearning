@@ -3181,7 +3181,44 @@ describe('IdeviceNode', () => {
             vi.useFakeTimers();
             const { alert, confirm } = eXeLearning.app.modals;
             const previous = { alert: alert.showRequests, confirm: confirm.showRequests };
+            const previousDevice = globalThis.$exeDevice;
             // The iDevice says why in the alert window, and the author closes it at once.
+            globalThis.$exeDevice = {
+                save: () => {
+                    alert.showRequests = (alert.showRequests || 0) + 1;
+                    return false;
+                },
+            };
+            idevice.saveIdeviceProcess.mockImplementation(async () => {
+                idevice.saveEditionContent();
+                return false;
+            });
+            idevice.toogleIdeviceButtonsState = vi.fn();
+            alert.modal = { _isShown: false };
+            confirm.modal = { _isShown: false };
+            alert.show.mockClear();
+
+            try {
+                await idevice.save(false);
+                vi.advanceTimersByTime(500);
+
+                expect(alert.show).not.toHaveBeenCalled();
+            } finally {
+                globalThis.$exeDevice = previousDevice;
+                alert.showRequests = previous.alert;
+                confirm.showRequests = previous.confirm;
+                vi.useRealTimers();
+            }
+        });
+
+        // A window something else asks for during the save, such as a warning
+        // from another part of the editor, says nothing about this save.
+        it('still shows the database error when the window came from elsewhere', async () => {
+            vi.useFakeTimers();
+            const { alert, confirm } = eXeLearning.app.modals;
+            const previous = { alert: alert.showRequests, confirm: confirm.showRequests };
+            // The database refuses the content while something else asks for
+            // a window, which is closed at once.
             idevice.saveIdeviceProcess.mockImplementation(async () => {
                 alert.showRequests = (alert.showRequests || 0) + 1;
                 return false;
@@ -3195,7 +3232,9 @@ describe('IdeviceNode', () => {
                 await idevice.save(false);
                 vi.advanceTimersByTime(500);
 
-                expect(alert.show).not.toHaveBeenCalled();
+                expect(alert.show).toHaveBeenCalledWith(
+                    expect.objectContaining({ body: 'Failed to save the iDevice to database' })
+                );
             } finally {
                 alert.showRequests = previous.alert;
                 confirm.showRequests = previous.confirm;
