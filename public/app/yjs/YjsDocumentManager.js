@@ -405,8 +405,9 @@ class YjsDocumentManager {
 
     // Setup beforeunload handler for auto-save on close
     window.addEventListener('beforeunload', this._beforeUnloadHandler);
-    // Setup unload handler to clear awareness (always fires, even if beforeunload cancelled)
-    window.addEventListener('unload', this._unloadHandler);
+    // Clear awareness when the page goes away (fires even if beforeunload was cancelled).
+    // pagehide, not unload: Chromium blocks unload by default via Permissions Policy.
+    window.addEventListener('pagehide', this._unloadHandler);
     // Setup visibility change handler for tab switch recovery
     document.addEventListener('visibilitychange', this._visibilityChangeHandler);
 
@@ -1785,9 +1786,9 @@ class YjsDocumentManager {
   async destroy(options = {}) {
     const { saveBeforeDestroy = false } = options;
 
-    // Remove beforeunload, unload, and visibility change handlers
+    // Remove beforeunload, pagehide, and visibility change handlers
     window.removeEventListener('beforeunload', this._beforeUnloadHandler);
-    window.removeEventListener('unload', this._unloadHandler);
+    window.removeEventListener('pagehide', this._unloadHandler);
     document.removeEventListener('visibilitychange', this._visibilityChangeHandler);
 
     // Stop tab tracker

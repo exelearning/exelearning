@@ -14,12 +14,6 @@ updates:
       interval: "weekly"
     open-pull-requests-limit: 10
     ignore:
-      # Playwright 1.62 ships a Firefox build whose driver intermittently
-      # never attaches the SW-served preview iframe, hanging frameLocator
-      # calls (#2291). Held at ~1.58.2; re-test new releases per the issue's
-      # exit criteria and drop this together with the pin once fixed.
-      - dependency-name: "@playwright/test"
-        versions: [">=1.59"]
       # jQuery 4 removes jQuery.trim and other statics still used by the
       # editor save path, iDevice export runtimes, qTip2 and author/legacy
       # content that ships in every export. Held on 3.x until the migration
