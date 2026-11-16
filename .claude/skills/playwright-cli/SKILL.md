@@ -3,9 +3,9 @@ allowed-tools: Bash(playwright-cli:*) Bash(npx playwright:*) Bash(npx --no-insta
 description: Automate browser interactions, test web pages and work with Playwright tests.
 metadata:
     github-path: skills/playwright-cli
-    github-ref: refs/tags/v0.1.23
+    github-ref: refs/tags/v0.1.24
     github-repo: https://github.com/microsoft/playwright-cli
-    github-tree-sha: 003ec8747c78ceb8e9da5d83f12523a06830093c
+    github-tree-sha: cc70f6e5f0cf42b82d3f72f6f1c3a4134694d518
 name: playwright-cli
 ---
 # Browser Automation with playwright-cli
