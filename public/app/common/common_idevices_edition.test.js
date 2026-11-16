@@ -267,6 +267,53 @@ describe('common_idevices_edition.js', () => {
         expect(document.activeElement).toBe(note);
       });
 
+      // A form has dozens of helps: each one listening to every click would run
+      // all their handlers on each of them.
+      it('listens to the clicks and keys of the document only while its explanation is open', () => {
+        document.body.innerHTML = common().getHelpTooltip('Explain the option');
+        const added = vi.spyOn(document, 'addEventListener');
+        const removed = vi.spyOn(document, 'removeEventListener');
+        const listeners = (spy) =>
+          spy.mock.calls.filter(([type]) => ['click', 'keydown'].includes(type)).map(([type, , capture]) => `${type} ${capture}`);
+        try {
+          common().initHelpTooltips(document.body);
+          expect(listeners(added)).toEqual([]);
+
+          const button = document.querySelector('button');
+          button.click();
+          expect(listeners(added)).toEqual(['keydown true', 'click true']);
+
+          button.click();
+          expect(listeners(removed)).toEqual(['keydown true', 'click true']);
+        } finally {
+          added.mockRestore();
+          removed.mockRestore();
+        }
+      });
+
+      // The preview panel closes on an Escape that reaches the document, and it
+      // listens there from before any help.
+      it('keeps the Escape that closes it from the other listeners of the document', () => {
+        const panel = vi.fn();
+        document.addEventListener('keydown', panel);
+        try {
+          document.body.innerHTML = common().getHelpTooltip('Explain the option');
+          common().initHelpTooltips(document.body);
+          const button = document.querySelector('button');
+          const escape = () => document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+
+          button.click();
+          escape();
+          expect(button.getAttribute('aria-expanded')).toBe('false');
+          expect(panel).not.toHaveBeenCalled();
+
+          escape();
+          expect(panel).toHaveBeenCalledTimes(1);
+        } finally {
+          document.removeEventListener('keydown', panel);
+        }
+      });
+
       it('names the option it explains and describes its control, until the edition closes', () => {
         const help = (text) => common().getHelpTooltip(text);
         document.body.innerHTML = `

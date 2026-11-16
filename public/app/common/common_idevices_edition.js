@@ -171,17 +171,25 @@ var $exeIDevicesEdition = {
                             control.setAttribute('aria-describedby', [...describedBy, content.id].join(' '));
                         }
                     });
+                    // The document listeners exist only while the explanation is
+                    // open: a form has dozens of helps, and every click or key
+                    // would otherwise run each one's handler.
                     const hide = function () {
                         content.classList.add('help-hidden');
                         button.setAttribute('aria-expanded', 'false');
                         window.removeEventListener('resize', fitContent);
                         document.removeEventListener('scroll', fitContent, true);
-                        document.removeEventListener('keydown', escape);
+                        document.removeEventListener('keydown', escape, true);
+                        document.removeEventListener('click', outsideClick, true);
                     };
                     // Escape closes it wherever the focus is. From the explanation
-                    // (a click focuses it), the focus goes back to the icon.
+                    // (a click focuses it), the focus goes back to the icon. The
+                    // key is caught before the document's own listeners and goes no
+                    // further: the same Escape would also close what the help is on,
+                    // such as the preview panel. A second Escape reaches it.
                     const escape = function (event) {
                         if (event.key !== 'Escape') return;
+                        event.stopPropagation();
                         const inside = container.contains(document.activeElement);
                         hide();
                         if (inside) button.focus();
@@ -190,7 +198,6 @@ var $exeIDevicesEdition = {
                     const outsideClick = function (event) {
                         if (!container.contains(event.target)) hide();
                     };
-                    document.addEventListener('click', outsideClick, true);
                     // Reading or selecting the explanation leaves it open, and the
                     // click stays out of the handlers of the row that holds it.
                     $(content).on('click.exeHelpTooltip', function (event) {
@@ -214,16 +221,14 @@ var $exeIDevicesEdition = {
                         fitContent();
                         window.addEventListener('resize', fitContent);
                         document.addEventListener('scroll', fitContent, true);
-                        document.addEventListener('keydown', escape);
-                    }).on('keydown.exeHelpTooltip', function (event) {
-                        if (event.key === 'Escape') hide();
+                        document.addEventListener('keydown', escape, true);
+                        document.addEventListener('click', outsideClick, true);
                     });
                     const dispose = function () {
                         hide();
                         $(button).off('.exeHelpTooltip');
                         $(content).off('.exeHelpTooltip');
                         container.removeEventListener('focusout', focusOut);
-                        document.removeEventListener('click', outsideClick, true);
                         options.forEach((control) => {
                             const ids = (control.getAttribute('aria-describedby') || '')
                                 .split(/\s+/)
