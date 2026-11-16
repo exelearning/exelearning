@@ -203,6 +203,9 @@
 *   Package: showdown
     *   Copyright: Estevão Santos
     *   License: MIT
+*   Package: simplelightbox
+    *   Copyright: Andre Rinas
+    *   License: MIT
 *   Package: typescript
     *   Copyright: Microsoft Corp.
     *   License: Apache-2.0
@@ -249,7 +252,7 @@
     *   License: MIT
 *   Files: /public/app/common/exe\_lightbox/ (prettyPhoto)
     *   Copyright: Stephane Caron
-    *   License: GPLv2 or CC-BY-2.
+    *   License: GPLv2 or CC-BY 2.5
 *   File: /public/app/common/exe\_magnify/mojomagnify.js
     *   Copyright: 2008-2010 Jacob Seidelin, modified 2013 by Fran Macías
     *   License: MIT
@@ -294,7 +297,9 @@
 *   Files: /public/files/perm/idevices/base/image-gallery/export/simple-lightbox.min.{js,css}
     *   Copyright: Andre Rinas
     *   License: MIT
-    *   Note: eXeLearning-patched fork of SimpleLightbox 2.10.3 (array `captionsData`, title/author/license caption links, SDWEB CSS block). Kept in git, outside the npm vendor pipeline, until the patch is ported to an upstream release.
+    *   Note: stock SimpleLightbox 2.14.3, copied from the npm package by
+        scripts/copy-vendor-libs.js. image-gallery.js builds the title, author
+        and license caption itself.
 *   File: public/files/perm/idevices/base/3dmol/3dmol-icon.svg
     *   Copyright: Google (Material Design)
     *   License: Apache License 2.0
