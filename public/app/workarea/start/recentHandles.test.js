@@ -32,7 +32,7 @@ function fakeHandle(name, { permission = 'granted', afterRequest = 'granted', fi
 }
 
 /** A minimal IndexedDB: one object store keyed by `id`, requests settle before the transaction completes. */
-function fakeIndexedDB({ openError, txError } = {}) {
+function fakeIndexedDB({ openError, txError, txAbort, transactionError } = {}) {
     const data = new Map();
     const state = { upgrades: 0, closed: 0 };
     const factory = {
@@ -48,7 +48,8 @@ function fakeIndexedDB({ openError, txError } = {}) {
                         state.closed += 1;
                     },
                     transaction: () => {
-                        const tx = { error: txError || null };
+                        if (transactionError) throw transactionError;
+                        const tx = { error: txError || txAbort || null };
                         tx.objectStore = () => ({
                             getAll: () => ({ result: [...data.values()] }),
                             put: (record) => {
@@ -60,7 +61,11 @@ function fakeIndexedDB({ openError, txError } = {}) {
                                 return { result: undefined };
                             },
                         });
-                        queueMicrotask(() => (txError ? tx.onerror?.() : tx.oncomplete?.()));
+                        queueMicrotask(() => {
+                            if (txAbort) tx.onabort?.();
+                            else if (txError) tx.onerror?.();
+                            else tx.oncomplete?.();
+                        });
                         return tx;
                     },
                 };
@@ -116,13 +121,25 @@ describe('recent file handles (browser)', () => {
             expect(factory.state.closed).toBe(5);
         });
 
-        it('fails when the database cannot be opened or the transaction aborts', async () => {
+        it('fails when the database cannot be opened or the transaction fails', async () => {
             await expect(createHandleStore(fakeIndexedDB({ openError: new Error('blocked') })).getAll()).rejects.toThrow(
                 'blocked',
             );
             await expect(
                 createHandleStore(fakeIndexedDB({ txError: new Error('quota') })).put({ id: 'a' }),
             ).rejects.toThrow('quota');
+        });
+
+        it('fails and closes the database when the transaction aborts without an error event', async () => {
+            const factory = fakeIndexedDB({ txAbort: new Error('aborted') });
+            await expect(createHandleStore(factory).put({ id: 'a' })).rejects.toThrow('aborted');
+            expect(factory.state.closed).toBe(1);
+        });
+
+        it('fails and closes the database when the transaction cannot start', async () => {
+            const factory = fakeIndexedDB({ transactionError: new Error('closing') });
+            await expect(createHandleStore(factory).getAll()).rejects.toThrow('closing');
+            expect(factory.state.closed).toBe(1);
         });
 
         it('uses the browser database by default', () => {
@@ -316,6 +333,16 @@ describe('recent file handles (browser)', () => {
 
             await expect(openRecentHandle('a', { store })).rejects.toThrow('busy');
             expect(store.records.has('a')).toBe(true);
+        });
+
+        it('still returns a readable file when its time cannot be updated', async () => {
+            const file = new File(['x'], 'a.elpx');
+            const handle = fakeHandle('a.elpx', { file });
+            const store = memoryStore([{ id: 'a', name: 'a.elpx', openedAt: 1, handle }]);
+            store.put.mockRejectedValue(new Error('quota'));
+
+            expect(await openRecentHandle('a', { store, now: 9 })).toBe(file);
+            expect(handle.getFile).toHaveBeenCalledTimes(1);
         });
 
         it('rejects an id that is not in the list', async () => {

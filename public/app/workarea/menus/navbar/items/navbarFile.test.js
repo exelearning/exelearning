@@ -3342,6 +3342,22 @@ describe('NavbarFile', () => {
         // Save dialog, not B.elpx. The static path used to skip
         // setSavedPath entirely, so the main-process "current file" slot
         // still held B's name.
+        it('should settle only when the import itself settles', async () => {
+            let finishImport;
+            eXeLearning.app.modals.openuserodefiles = {
+                largeFilesUpload: vi.fn(() => new Promise((resolve) => (finishImport = resolve))),
+            };
+            let settled = false;
+            const opening = navbarFile.openLocalFile(new File(['x'], 'a.elpx')).then(() => (settled = true));
+
+            await new Promise((resolve) => setTimeout(resolve, 0));
+            expect(settled).toBe(false);
+
+            finishImport();
+            await opening;
+            expect(settled).toBe(true);
+        });
+
         it('should persist the opened file name via setSavedPath in static mode', async () => {
             const largeFilesUploadSpy = vi.fn();
             const setSavedPath = vi.fn().mockResolvedValue(true);

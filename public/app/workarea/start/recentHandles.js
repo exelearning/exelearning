@@ -24,16 +24,23 @@ function withStore(factory, mode, run) {
         open.onerror = () => reject(open.error);
         open.onsuccess = () => {
             const db = open.result;
-            const tx = db.transaction(STORE_NAME, mode);
-            const request = run(tx.objectStore(STORE_NAME));
-            tx.oncomplete = () => {
+            const fail = (error) => {
                 db.close();
-                resolve(request.result);
+                reject(error);
             };
-            tx.onerror = () => {
-                db.close();
-                reject(tx.error);
-            };
+            try {
+                const tx = db.transaction(STORE_NAME, mode);
+                const request = run(tx.objectStore(STORE_NAME));
+                tx.oncomplete = () => {
+                    db.close();
+                    resolve(request.result);
+                };
+                // An abort (quota, a closing database) may not fire `error` first.
+                tx.onerror = () => fail(tx.error);
+                tx.onabort = () => fail(tx.error);
+            } catch (error) {
+                fail(error);
+            }
         };
     });
 }
@@ -153,6 +160,9 @@ export async function openRecentHandle(id, { store = createHandleStore(), now = 
         if (error?.name === 'NotFoundError') await store.delete(id);
         throw error;
     }
-    await store.put({ ...record, openedAt: now });
+    // Moving it to the top is a nicety: the file is already read, so open it anyway.
+    await store
+        .put({ ...record, openedAt: now })
+        .catch((error) => console.warn('[RecentHandles] Could not update the recent file:', error));
     return file;
 }

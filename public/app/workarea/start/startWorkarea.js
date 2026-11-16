@@ -19,6 +19,20 @@ export const SKIP_KEY = 'exe-start-screen-skip';
 /** sessionStorage: already offered in this window (New and Open reload the page). */
 export const SEEN_KEY = 'exe-start-screen-seen';
 
+/**
+ * The browser storage, or null where even reaching it throws (an opaque or
+ * sandboxed origin raises SecurityError from the `window.localStorage` getter).
+ * @param {'localStorage'|'sessionStorage'} name
+ * @returns {Storage|null}
+ */
+function browserStorage(name) {
+    try {
+        return window[name];
+    } catch (_e) {
+        return null;
+    }
+}
+
 function read(storage, key) {
     try {
         return storage.getItem(key);
@@ -44,18 +58,14 @@ function write(storage, key, value) {
  * @returns {boolean}
  */
 export function shouldShowStartScreen(app, env = {}) {
-    const local = env.local || window.localStorage;
-    const session = env.session || window.sessionStorage;
-    const search = env.search ?? window.location.search;
-
     if (!app?.runtimeConfig?.isStaticMode?.()) return false;
     // An embedding host (LMS, CMS) decides which project is loaded.
     if (app.capabilities?.embedded?.enabled) return false;
     // The launch already names what to open: a file from the OS or a URL.
     if (app.pendingStaticOpenFiles?.length > 0 || app.pendingElectronOpenFiles?.length > 0) return false;
-    if (new URLSearchParams(search).has('url')) return false;
-    if (read(session, SEEN_KEY) === '1') return false;
-    return read(local, SKIP_KEY) !== '1';
+    if (new URLSearchParams(env.search ?? window.location.search).has('url')) return false;
+    if (read(env.session || browserStorage('sessionStorage'), SEEN_KEY) === '1') return false;
+    return read(env.local || browserStorage('localStorage'), SKIP_KEY) !== '1';
 }
 
 /**
@@ -66,7 +76,7 @@ export function shouldShowStartScreen(app, env = {}) {
  * @param {{session?: Storage}} [env]
  */
 export function dismissStartScreen(app, env = {}) {
-    write(env.session || window.sessionStorage, SEEN_KEY, '1');
+    write(env.session || browserStorage('sessionStorage'), SEEN_KEY, '1');
     app?.startScreen?.close();
 }
 
@@ -159,14 +169,15 @@ export function getRecentHandlesOptions(
  */
 export function maybeShowStartScreen(app, env = {}) {
     if (!shouldShowStartScreen(app, env)) return null;
-    const local = env.local || window.localStorage;
-    const session = env.session || window.sessionStorage;
-    write(session, SEEN_KEY, '1');
+    const local = env.local || browserStorage('localStorage');
+    write(env.session || browserStorage('sessionStorage'), SEEN_KEY, '1');
 
     const strings = getStartScreenStrings();
+    // Close first: the import may ask for confirmation in its own modal, which
+    // the top-layer dialog would cover. Then wait for the import itself.
     const openFile = async (file) => {
-        await app.menus.navbar.file.openLocalFile(file);
         screen.close();
+        await app.menus.navbar.file.openLocalFile(file);
     };
     const screen = new StartScreen({
         strings,

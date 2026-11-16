@@ -95,6 +95,22 @@ describe('start screen in the static and desktop app', () => {
             );
         });
 
+        it('survives storage getters that throw, embedded or not', () => {
+            const denied = () => {
+                throw new DOMException('denied', 'SecurityError');
+            };
+            vi.spyOn(window, 'localStorage', 'get').mockImplementation(denied);
+            vi.spyOn(window, 'sessionStorage', 'get').mockImplementation(denied);
+            const search = { search: '' };
+
+            const embedded = makeApp({ capabilities: { embedded: { enabled: true } } });
+            expect(shouldShowStartScreen(embedded, search)).toBe(false);
+            expect(shouldShowStartScreen(makeApp(), search)).toBe(true);
+            expect(() => dismissStartScreen(makeApp())).not.toThrow();
+            screen = maybeShowStartScreen(makeApp(), search);
+            expect(screen).not.toBeNull();
+        });
+
         it('reads the browser storage and URL by default', () => {
             window.sessionStorage.removeItem(SEEN_KEY);
             window.localStorage.removeItem(SKIP_KEY);
@@ -141,6 +157,24 @@ describe('start screen in the static and desktop app', () => {
 
             expect(app.menus.navbar.file.openLocalFile).toHaveBeenCalledWith(file);
             expect(document.querySelector('.exe-start')).toBeNull();
+        });
+
+        it('closes before the import starts, so its own confirmations are not hidden, and waits for it', async () => {
+            const app = makeApp();
+            let finishImport;
+            app.menus.navbar.file.openLocalFile = vi.fn(() => {
+                expect(document.querySelector('.exe-start')).toBeNull();
+                return new Promise((resolve) => (finishImport = resolve));
+            });
+            screen = maybeShowStartScreen(app, env);
+            const drop = new Event('drop', { bubbles: true, cancelable: true });
+            drop.dataTransfer = { types: ['Files'], files: [new File(['x'], 'unit.elpx')] };
+
+            document.querySelector('.exe-start').dispatchEvent(drop);
+            await flush();
+
+            expect(app.menus.navbar.file.openLocalFile).toHaveBeenCalledTimes(1);
+            finishImport();
         });
 
         it('stores and clears the skip preference from the checkbox', () => {

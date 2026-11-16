@@ -2136,7 +2136,7 @@ export default class NavbarFile {
             // Best effort — must not block Open.
         }
         // Reuse unified open flow (handles unsaved modal + static import)
-        eXeLearning.app.modals.openuserodefiles.largeFilesUpload(file);
+        return eXeLearning.app.modals.openuserodefiles.largeFilesUpload(file);
     }
 
     /**
