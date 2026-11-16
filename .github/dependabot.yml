@@ -14,12 +14,6 @@ updates:
       interval: "weekly"
     open-pull-requests-limit: 10
     ignore:
-      # Playwright 1.62 ships a Firefox build whose driver intermittently
-      # never attaches the SW-served preview iframe, hanging frameLocator
-      # calls (#2291). Held at ~1.58.2; re-test new releases per the issue's
-      # exit criteria and drop this together with the pin once fixed.
-      - dependency-name: "@playwright/test"
-        versions: [">=1.59"]
       # Mermaid 12 breaks the server-side pre-render with "CSSStyleSheet is
       # not defined" (#2528, #2544), so it is held on 11.x. Drop this entry
       # when the Pele replacement (#2556) lands and removes the dependency.
