@@ -1,0 +1,89 @@
+// Non-modal side panel for the WebMCP assistant: the workarea stays usable and visible.
+.webmcp-agent-panel {
+    position: fixed;
+    inset-block: 0;
+    inset-inline-end: 0;
+    z-index: 1050;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    width: min(26rem, 100vw);
+    padding: 1rem;
+    background: var(--white);
+    color: var(--body-text-color);
+    border-inline-start: 1px solid var(--gray-border);
+    box-shadow: -4px 0 16px rgb(0 0 0 / 15%);
+
+    &[hidden] {
+        display: none;
+    }
+
+    [data-provider][hidden] {
+        display: none;
+    }
+
+    .form-label {
+        margin: 0.4rem 0 0.1rem;
+        font-size: 0.85rem;
+    }
+}
+
+.webmcp-agent-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    h2 {
+        margin: 0;
+        font-size: var(--h4-fs);
+    }
+}
+
+.webmcp-agent-log {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    padding: 0.5rem;
+    background: var(--gray-background);
+    border-radius: 0.5rem;
+}
+
+.webmcp-agent-entry {
+    padding: 0.4rem 0.6rem;
+    border-radius: 0.5rem;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    font-size: 0.9rem;
+
+    pre {
+        margin: 0.25rem 0 0;
+        max-height: 12rem;
+        overflow: auto;
+        font-size: 0.75rem;
+        white-space: pre-wrap;
+    }
+}
+
+.webmcp-agent-user {
+    align-self: flex-end;
+    background: var(--brand-primary-50);
+}
+
+.webmcp-agent-assistant {
+    background: var(--white);
+    border: 1px solid var(--gray-border-light);
+}
+
+.webmcp-agent-tool,
+.webmcp-agent-pending {
+    color: var(--gray-600);
+    font-size: 0.8rem;
+}
+
+.webmcp-agent-tool-error,
+.webmcp-agent-error {
+    color: #b42318;
+    font-size: 0.85rem;
+}
