@@ -115,9 +115,9 @@ test.describe('iDevice edition lifecycle (#2293)', () => {
         authenticatedPage: page,
         createProject,
     }) => {
-        // Each information button of the form listens for clicks outside it on
-        // the document, in the capture phase. Track those listeners from the
-        // start of the page, so the count works in every browser.
+        // An open explanation listens for clicks outside it on the document, in
+        // the capture phase, and only while it is open. Track those listeners
+        // from the start of the page, so the count works in every browser.
         await page.addInitScript(() => {
             const tracked = new Set<EventListenerOrEventListenerObject>();
             const isCapture = (options?: boolean | AddEventListenerOptions | EventListenerOptions) =>
@@ -145,7 +145,6 @@ test.describe('iDevice edition lifecycle (#2293)', () => {
         await page.locator('#ri_CreateNewRubric').click();
         await expect(page.locator('#ri_Table')).toBeVisible();
         const ideviceId = (await page.locator('#node-content .idevice_node.rubric').getAttribute('id'))!;
-        const helps = page.locator('#ri_IdeviceForm .exe-idevice-help');
         const closed: number[] = [];
 
         for (let round = 0; round < 2; round++) {
@@ -154,19 +153,24 @@ test.describe('iDevice edition lifecycle (#2293)', () => {
             await page.locator('#eXeGameSCORMButtonSave').check();
             const gradingHelps = page.locator('#ri_IdeviceForm-panel-grading .exe-idevice-help:visible');
             expect(await gradingHelps.count()).toBeGreaterThan(0);
+            // With every explanation closed, no help listens to the document.
+            const idle = await countDocumentClickListeners();
             for (const button of await gradingHelps.all()) {
                 const note = page.locator(`#${await button.getAttribute('aria-controls')}`);
                 await expect(note).toBeHidden();
                 await button.click();
                 await expect(note).toBeVisible();
+                expect(await countDocumentClickListeners()).toBe(idle + 1);
                 await button.press('Escape');
                 await expect(note).toBeHidden();
+                expect(await countDocumentClickListeners()).toBe(idle);
             }
-            const open = await countDocumentClickListeners();
-            const buttons = await helps.count();
+            // Saving with an explanation still open leaves no listener behind.
+            await gradingHelps.first().click();
+            expect(await countDocumentClickListeners()).toBe(idle + 1);
             await saveIdevice(page, ideviceId);
-            await expect.poll(countDocumentClickListeners).toBe(open - buttons);
-            closed.push(open - buttons);
+            await expect.poll(countDocumentClickListeners).toBe(idle);
+            closed.push(idle);
         }
         // Reopening binds them again, and closing releases them again.
         expect(closed[1]).toBe(closed[0]);
