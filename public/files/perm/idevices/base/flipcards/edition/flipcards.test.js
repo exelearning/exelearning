@@ -232,7 +232,6 @@ describe('flipcards iDevice', () => {
 
   describe('createForm', () => {
     let originalExeLearning;
-    let originalExeDevicesEdition;
     let originalExeIDevicesEdition;
     let container;
 
@@ -243,7 +242,6 @@ describe('flipcards iDevice', () => {
       $exeDevice.ci18n = {};
 
       originalExeLearning = global.eXeLearning;
-      originalExeDevicesEdition = global.$exeDevicesEdition;
       originalExeIDevicesEdition = global.$exeIDevicesEdition;
 
       global.eXeLearning = {
@@ -297,14 +295,12 @@ describe('flipcards iDevice', () => {
           },
         },
       };
-      global.$exeDevicesEdition = mockEdition;
       global.$exeIDevicesEdition = mockEdition;
       $exeDevice.enableForm = vi.fn();
     });
 
     afterEach(() => {
       global.eXeLearning = originalExeLearning;
-      global.$exeDevicesEdition = originalExeDevicesEdition;
       global.$exeIDevicesEdition = originalExeIDevicesEdition;
     });
 
@@ -323,11 +319,9 @@ describe('flipcards iDevice', () => {
   });
 
   describe('addEvents', () => {
-    let originalExeDevicesEdition;
     let originalExeIDevicesEdition;
 
     beforeEach(() => {
-      originalExeDevicesEdition = global.$exeDevicesEdition;
       originalExeIDevicesEdition = global.$exeIDevicesEdition;
       const mockEvents = {
         iDevice: {
@@ -339,7 +333,6 @@ describe('flipcards iDevice', () => {
           },
         },
       };
-      global.$exeDevicesEdition = mockEvents;
       global.$exeIDevicesEdition = mockEvents;
     });
 
@@ -347,7 +340,6 @@ describe('flipcards iDevice', () => {
       // Close the edition, so the handlers addEvents() delegated on document
       // do not leak into the next test.
       $exeDevice.$lifecycle.destroy();
-      global.$exeDevicesEdition = originalExeDevicesEdition;
       global.$exeIDevicesEdition = originalExeIDevicesEdition;
     });
 
@@ -366,7 +358,7 @@ describe('flipcards iDevice', () => {
     let previousItinerary;
 
     beforeEach(() => {
-      previousItinerary = (global.$exeIDevicesEdition || global.$exeDevicesEdition).iDevice.gamification.itinerary;
+      previousItinerary = global.$exeIDevicesEdition.iDevice.gamification.itinerary;
       // addEvents wires the whole editor. The itinerary component lives outside
       // this iDevice's source, so it is stubbed rather than exercised here.
       const itin = {
@@ -377,9 +369,6 @@ describe('flipcards iDevice', () => {
       };
       if (global.$exeIDevicesEdition) {
         global.$exeIDevicesEdition.iDevice.gamification.itinerary = itin;
-      }
-      if (global.$exeDevicesEdition) {
-        global.$exeDevicesEdition.iDevice.gamification.itinerary = itin;
       }
       document.body.innerHTML = `
         <script></script>
@@ -393,9 +382,6 @@ describe('flipcards iDevice', () => {
       $exeDevice.$lifecycle.destroy();
       if (global.$exeIDevicesEdition) {
         global.$exeIDevicesEdition.iDevice.gamification.itinerary = previousItinerary;
-      }
-      if (global.$exeDevicesEdition) {
-        global.$exeDevicesEdition.iDevice.gamification.itinerary = previousItinerary;
       }
       document.body.innerHTML = '';
     });
@@ -462,9 +448,7 @@ describe('flipcards iDevice', () => {
     let savedMedia;
 
     beforeEach(() => {
-      savedGamification =
-        global.$exeIDevicesEdition?.iDevice?.gamification ||
-        global.$exeDevicesEdition?.iDevice?.gamification;
+      savedGamification = global.$exeIDevicesEdition?.iDevice?.gamification;
       const mockGam = {
         ...savedGamification,
         progressBar: { addEvents: vi.fn() },
@@ -477,9 +461,6 @@ describe('flipcards iDevice', () => {
         global.$exeIDevicesEdition = { iDevice: {} };
       }
       global.$exeIDevicesEdition.iDevice.gamification = mockGam;
-      if (global.$exeDevicesEdition) {
-        global.$exeDevicesEdition.iDevice.gamification = mockGam;
-      }
       savedMedia = global.$exeDevices.iDevice.gamification.media;
       global.$exeDevices.iDevice.gamification.media = {
         extractURLGD: (url) => url,
@@ -505,9 +486,6 @@ describe('flipcards iDevice', () => {
       document.body.innerHTML = '';
       if (global.$exeIDevicesEdition?.iDevice) {
         global.$exeIDevicesEdition.iDevice.gamification = savedGamification;
-      }
-      if (global.$exeDevicesEdition?.iDevice) {
-        global.$exeDevicesEdition.iDevice.gamification = savedGamification;
       }
       global.$exeDevices.iDevice.gamification.media = savedMedia;
     });

@@ -97,7 +97,7 @@ async function selectImageForMagnifier(page: Page, fixturePath: string): Promise
     // Wait for the button to be created
     await page.waitForTimeout(500);
 
-    // Find the file picker button - it's created after the input by common_edition.js
+    // Find the file picker button - IdeviceNode creates it after the input
     const pickFileBtn = page.locator(
         'input.exe-pick-any-file[data-filepicker="mnfFileInput"], #mnfFileInput + input[type="button"]',
     );

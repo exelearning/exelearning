@@ -892,7 +892,8 @@
             // saveBufferAs IPC channel instead: will-download never fires and a
             // single native dialog is shown. Images keep opening in the
             // lightbox / new tab. This mirrors the bypass documented for the
-            // gamification iDevices in common_edition.js (downloadBlob).
+            // gamification iDevices in common_idevices_edition.js
+            // (gamification.share.downloadBlob).
             const downloadFilename = href.startsWith('blob:') ? link.getAttribute('download') : null;
             if (downloadFilename && saveBlobViaElectron(href, downloadFilename)) {
                 e.preventDefault();

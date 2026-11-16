@@ -464,14 +464,10 @@ describe('Discover Edition Functions', () => {
             const realExeDevice = global.loadIdevice(join(__dirname, 'discover.js'));
             const downloadBlob = vi.fn(() => true);
             const prevShare = global.$exeIDevicesEdition?.iDevice?.gamification?.share;
-            const prevLegacyShare = global.$exeDevicesEdition?.iDevice?.gamification?.share;
 
             try {
                 if (global.$exeIDevicesEdition?.iDevice?.gamification) {
                     global.$exeIDevicesEdition.iDevice.gamification.share = { ...prevShare, downloadBlob };
-                }
-                if (global.$exeDevicesEdition?.iDevice?.gamification) {
-                    global.$exeDevicesEdition.iDevice.gamification.share = { ...prevLegacyShare, downloadBlob };
                 }
                 const validateQuestion = vi.spyOn(realExeDevice, 'validateQuestion').mockReturnValue(true);
                 // Export checks the sets only, and reads the type of game from the form.
@@ -484,9 +480,6 @@ describe('Discover Edition Functions', () => {
             } finally {
                 if (global.$exeIDevicesEdition?.iDevice?.gamification && prevShare) {
                     global.$exeIDevicesEdition.iDevice.gamification.share = prevShare;
-                }
-                if (global.$exeDevicesEdition?.iDevice?.gamification && prevLegacyShare) {
-                    global.$exeDevicesEdition.iDevice.gamification.share = prevLegacyShare;
                 }
             }
         };
@@ -582,8 +575,7 @@ describe('Discover Edition Functions', () => {
             savedGlobals = {
                 $: global.$,
                 jQuery: global.jQuery,
-                gamification: global.$exeDevicesEdition.iDevice.gamification,
-                iGamification: global.$exeIDevicesEdition?.iDevice?.gamification,
+                gamification: global.$exeIDevicesEdition.iDevice.gamification,
                 media: global.$exeDevices.iDevice.gamification.media,
             };
             global.$ = jq;
@@ -596,13 +588,7 @@ describe('Discover Edition Functions', () => {
                 share: { addEvents: vi.fn(), downloadBlob: vi.fn(() => true) },
                 helpers: { stopSound: vi.fn(), playSound: vi.fn() },
             };
-            global.$exeDevicesEdition.iDevice.gamification = gamificationMock;
-            if (global.$exeIDevicesEdition?.iDevice) {
-                global.$exeIDevicesEdition.iDevice.gamification = {
-                    ...savedGlobals.iGamification,
-                    ...gamificationMock,
-                };
-            }
+            global.$exeIDevicesEdition.iDevice.gamification = gamificationMock;
             global.$exeDevices.iDevice.gamification.media = {
                 extractURLGD: url => url,
             };
@@ -628,10 +614,7 @@ describe('Discover Edition Functions', () => {
             document.body.innerHTML = '';
             global.$ = savedGlobals.$;
             global.jQuery = savedGlobals.jQuery;
-            global.$exeDevicesEdition.iDevice.gamification = savedGlobals.gamification;
-            if (global.$exeIDevicesEdition?.iDevice && savedGlobals.iGamification) {
-                global.$exeIDevicesEdition.iDevice.gamification = savedGlobals.iGamification;
-            }
+            global.$exeIDevicesEdition.iDevice.gamification = savedGlobals.gamification;
             global.$exeDevices.iDevice.gamification.media = savedGlobals.media;
         });
 

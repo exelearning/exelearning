@@ -12,7 +12,7 @@ function loadScript(relativePath) {
 
 describe('rubric progress report integration', () => {
     let previousGlobals;
-    const globalNames = ['$exe', '$exeDevices', '$exeDevicesEdition', '$exeDevice', '$rubric', '$eXeInforme', 'eXeLearning', 'eXe'];
+    const globalNames = ['$exe', '$exeDevices', '$exeDevice', '$rubric', '$eXeInforme', 'eXeLearning', 'eXe'];
     const reportId = 'rubric-report';
     const rubricData = {
         id: 'rubric-node',
@@ -32,7 +32,6 @@ describe('rubric progress report integration', () => {
         globalThis.eXeLearning = { app: { project: { odeId: reportId } } };
         vi.spyOn($.fn, 'ready').mockImplementation(function () { return this; });
         loadScript('public/app/common/common.js');
-        loadScript('public/app/common/common_edition.js');
         loadScript('public/files/perm/idevices/base/rubric/edition/rubric.js');
         loadScript('public/files/perm/idevices/base/rubric/export/rubric.js');
         loadScript('public/files/perm/idevices/base/progress-report/export/progress-report.js');

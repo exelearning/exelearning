@@ -141,12 +141,6 @@ describe('quick-questions-multiple-choice edition: $exeDevice guards (#2271)', (
             getURLVideoMediaTeca: vi.fn(() => false),
             extractURLGD: vi.fn((url) => url),
         };
-        global.$exeDevicesEdition.iDevice.gamification.itinerary = {
-            getTab: vi.fn(() => ''),
-            addEvents: vi.fn(),
-            getValues: vi.fn(() => ({})),
-            setValues: vi.fn(),
-        };
         $exeDevice = global.loadIdevice(
             join(__dirname, 'quick-questions-multiple-choice.js')
         );
@@ -371,12 +365,6 @@ describe('quick-questions-multiple-choice edition: lifecycle teardown (#2293)', 
             getIDYoutube: vi.fn(() => false),
             getURLVideoMediaTeca: vi.fn(() => false),
             extractURLGD: vi.fn(url => url),
-        };
-        global.$exeDevicesEdition.iDevice.gamification.itinerary = {
-            getTab: vi.fn(() => ''),
-            addEvents: vi.fn(),
-            getValues: vi.fn(() => ({})),
-            setValues: vi.fn(),
         };
         $exeDevice = global.loadIdevice(join(__dirname, 'quick-questions-multiple-choice.js'));
         $exeDevice.addEvents();

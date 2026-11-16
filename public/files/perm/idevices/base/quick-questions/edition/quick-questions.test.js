@@ -20,19 +20,9 @@ const __dirname = dirname(__filename);
 
 describe('quick-questions iDevice edition', () => {
   let $exeDevice;
-  let previousItinerary;
 
   beforeEach(() => {
     global.$exeDevice = undefined;
-    previousItinerary = $exeDevicesEdition.iDevice.gamification.itinerary;
-    // addEvents wires the whole editor. The itinerary component lives outside
-    // this iDevice's source, so it is stubbed rather than exercised here.
-    $exeDevicesEdition.iDevice.gamification.itinerary = {
-      addEvents: () => {},
-      getTab: () => '',
-      init: () => {},
-      setValues: () => {},
-    };
     document.body.innerHTML = `
       <script></script>
       <form id="gameQEIdeviceForm">
@@ -43,7 +33,6 @@ describe('quick-questions iDevice edition', () => {
   });
 
   afterEach(() => {
-    $exeDevicesEdition.iDevice.gamification.itinerary = previousItinerary;
     document.body.innerHTML = '';
   });
 
@@ -159,12 +148,6 @@ describe('quick-questions edition: lifecycle teardown (#2293)', () => {
             getIDYoutube: vi.fn(() => false),
             getURLVideoMediaTeca: vi.fn(() => false),
             extractURLGD: vi.fn(url => url),
-        };
-        global.$exeDevicesEdition.iDevice.gamification.itinerary = {
-            getTab: vi.fn(() => ''),
-            addEvents: vi.fn(),
-            getValues: vi.fn(() => ({})),
-            setValues: vi.fn(),
         };
         $exeDevice = global.loadIdevice(join(__dirname, 'quick-questions.js'));
     });
