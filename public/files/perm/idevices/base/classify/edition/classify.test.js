@@ -1013,6 +1013,20 @@ describe('classify edition: shared form tabs and feedback', () => {
             expect(device.validateData().groups).toEqual(groups);
         });
 
+        // Hiding a group again does not forget it: raising the number brings
+        // its name back, as when every name was stored.
+        it('keeps the name of a group the author added, named and hid again', () => {
+            const groups = ['G1', 'G2', 'G3', 'G4'];
+            device.updateFieldGame(game({ numberGroups: 4, groups }));
+            device.showQuestion(0);
+
+            $('#clasificaENumGroups').val('5').trigger('change');
+            $('#clasificaTitle4').val('Reptiles').trigger('keyup');
+            $('#clasificaENumGroups').val('4').trigger('change');
+
+            expect(device.validateData().groups).toEqual([...groups, 'Reptiles']);
+        });
+
         it('saves a name for every group the author adds', () => {
             device.updateFieldGame(game());
             device.showQuestion(0);

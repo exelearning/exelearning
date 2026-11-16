@@ -31,7 +31,8 @@ var $exeDevice = {
     maxGroups: 9,
     // How many group names a save stores: as many as the activity was loaded
     // with (updateFieldGame), so a save without changes keeps the list as it
-    // was, or more if the author adds groups. A new activity stores all nine.
+    // was, or as many as the author showed while editing (showGroups), even if
+    // some were hidden again. A new activity stores all nine.
     savedGroups: 9,
     typeEdit: -1,
     numberCutCuestion: -1,
@@ -1553,6 +1554,9 @@ var $exeDevice = {
     },
 
     showGroups: function (number) {
+        // A group shown once is saved even if it is hidden again, so its name
+        // comes back when the author raises the number.
+        $exeDevice.savedGroups = Math.max($exeDevice.savedGroups, number);
         $('.CQE-EGroup').closest('div').hide();
         $('.CQE-EGroup').each(function (i) {
             const id = $(this).attr('id');
