@@ -741,3 +741,31 @@ describe('trivial edition: shared form tabs', () => {
         expect(eXe.app._alertHistory.slice(before)).toEqual([]);
     });
 });
+
+describe('trivial edition: importing Moodle questions', () => {
+    const answer = ([fraction, text]) => `<answer fraction="${fraction}" format="moodle_auto_format"><text>${text}</text></answer>`;
+    const question = (text, answers) =>
+        `<question type="multichoice"><questiontext format="html"><text>${text}</text></questiontext>${answers.map(answer).join('')}</question>`;
+
+    // The activity shows four options, and its solution named a fifth or a sixth.
+    it('keeps the right answers and the first wrong ones of a question with more than four', () => {
+        global.$exeDevice = undefined;
+        const device = global.loadIdevice(join(__dirname, 'trivial.js'));
+        device.selectsGame = [];
+
+        const imported = device.importCuestionaryXML(
+            `<?xml version="1.0" encoding="UTF-8"?><quiz>${question('Which numbers are prime?', [
+                [0, '4'],
+                [33.33333, '2'],
+                [0, '6'],
+                [33.33333, '3'],
+                [0, '8'],
+                [33.33333, '5'],
+            ])}${question('All of them', [1, 2, 3, 4, 5].map((n) => [20, `${n}`]))}</quiz>`
+        );
+
+        expect(imported.map((item) => [item.quextion, item.options.slice(0, item.numberOptions), item.solution])).toEqual([
+            ['Which numbers are prime?', ['4', '2', '3', '5'], 'BCD'],
+        ]);
+    });
+});

@@ -1217,6 +1217,24 @@ var $exeIDevicesEdition = {
                 },
 
                 /**
+                 * The answers of an imported question that fit in an activity
+                 * that shows `max` options. A question with more keeps every
+                 * right answer and, after them in number, the first wrong
+                 * ones, all in their order: a Moodle question can have more
+                 * answers than the activity can show.
+                 *
+                 * @param {Array<{right: boolean}>} answers The answers, in order.
+                 * @param {number} [max=4]
+                 * @returns {Array|null} The answers kept, or null when the
+                 * right ones alone do not fit.
+                 */
+                fitAnswers: function (answers, max = 4) {
+                    let room = max - answers.filter((answer) => answer.right).length;
+                    if (room < 0) return null;
+                    return answers.filter((answer) => answer.right || room-- > 0);
+                },
+
+                /**
                  * The Import, Export and Create with AI buttons of the Activities
                  * tab. Import and Create with AI open a window: an informative
                  * message and the controls of its process. Export has nothing

@@ -1984,27 +1984,25 @@ var $exeDevice = {
                 return;
             }
             const questionText = question.find('questiontext').first().text(),
-                answers = question.find('answer'),
-                options = [],
-                right = [];
-            answers.each(function (index) {
-                const answer = $(this),
-                    answerHtml = $exeIDevicesEdition.iDevice.common.removeTags(answer.text().trim()),
-                    answerText = answerHtml.split('\n')[0].trim();
-                options.push(answerText);
-                if (parseFloat(answer.attr('fraction')) === 100) {
-                    right.push(index);
-                }
-            });
+                answers = question.find('answer').toArray().map((element) => {
+                    const answer = $(element),
+                        answerHtml = $exeIDevicesEdition.iDevice.common.removeTags(answer.text().trim());
+                    return {
+                        text: answerHtml.split('\n')[0].trim(),
+                        right: parseFloat(answer.attr('fraction')) === 100,
+                    };
+                });
             // A question of this activity has one right answer: the one worth
             // 100%. Questions with several right answers are left out.
-            if (right.length !== 1) {
+            if (answers.filter((answer) => answer.right).length !== 1) {
                 return;
             }
+            // Four options at most: the right one and the first wrong ones.
+            const kept = $exeIDevicesEdition.iDevice.gamification.share.fitAnswers(answers);
             questionsJson.push({
                 question: $exeIDevicesEdition.iDevice.common.removeTags(questionText.trim()),
-                options: options,
-                solution: right[0],
+                options: kept.map((answer) => answer.text),
+                solution: kept.findIndex((answer) => answer.right),
             });
         });
         let questionj = [];

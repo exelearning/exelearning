@@ -927,6 +927,22 @@ describe('quick-questions edition: shared form tabs and feedback', () => {
 
       expect(imported().map(([text]) => text)).toEqual(['Capital of France?']);
     });
+
+    // The activity shows four options: its solution was the fifth, which did not exist.
+    it('keeps the right answer and the first wrong ones of a question with more than four', () => {
+      importQuiz(
+        question('multichoice', 'Largest planet?', [
+          [0, 'Mars'],
+          [0, 'Venus'],
+          [0, 'Earth'],
+          [0, 'Mercury'],
+          [100, 'Jupiter'],
+          [0, 'Saturn'],
+        ])
+      );
+
+      expect(imported()).toEqual([['Largest planet?', ['Mars', 'Venus', 'Earth', 'Jupiter'], 3]]);
+    });
   });
 });
 

@@ -3190,6 +3190,21 @@ describe('common_idevices_edition.js', () => {
   });
 
   describe('gamification.share', () => {
+    // A Moodle question can have more answers than the activity shows.
+    it('fitAnswers keeps the right answers and the first wrong ones, in their order', () => {
+      const fit = globalThis.$exeIDevicesEdition.iDevice.gamification.share.fitAnswers;
+      const answers = ['a', 'b', 'c', 'd', 'e', 'f'].map((text) => ({ text, right: text === 'e' }));
+
+      expect(fit(answers).map((answer) => answer.text)).toEqual(['a', 'b', 'c', 'e']);
+      expect(fit(answers.slice(0, 3))).toEqual(answers.slice(0, 3));
+    });
+
+    it('fitAnswers gives null when the right answers alone do not fit', () => {
+      const fit = globalThis.$exeIDevicesEdition.iDevice.gamification.share.fitAnswers;
+
+      expect(fit(Array.from({ length: 5 }, () => ({ right: true })))).toBeNull();
+    });
+
     it('getImportContents keeps the ids the iDevices bind, and takes txt and xml files', () => {
       document.body.innerHTML = globalThis.$exeIDevicesEdition.iDevice.gamification.share.getImportContents();
 

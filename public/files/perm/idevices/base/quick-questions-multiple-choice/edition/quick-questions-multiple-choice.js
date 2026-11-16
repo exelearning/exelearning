@@ -3289,17 +3289,24 @@ var $exeDevice = {
                 solutionQuestion = '';
 
             if (typeSelect === 0) {
-                for (let j = 0; j < answers.length; j++) {
-                    const answer = answers[j],
-                        answerHtml = $exeIDevicesEdition.iDevice.common.removeTags(
-                            $(answer).find('text').eq(0).text().trim()
-                        ),
-                        answerText = answerHtml.split('\n')[0].trim();
-                    options.push(answerText);
-                    if (parseFloat($(answer).attr('fraction')) > 0) {
-                        solution += String.fromCharCode(65 + j);
-                    }
-                }
+                // Four options at most: the right ones and the first wrong ones.
+                // A question with more than four right answers is left out.
+                const kept = $exeIDevicesEdition.iDevice.gamification.share.fitAnswers(
+                    $(answers)
+                        .toArray()
+                        .map((answer) => ({
+                            text: $exeIDevicesEdition.iDevice.common
+                                .removeTags($(answer).find('text').eq(0).text().trim())
+                                .split('\n')[0]
+                                .trim(),
+                            right: parseFloat($(answer).attr('fraction')) > 0,
+                        }))
+                );
+                if (!kept) continue;
+                kept.forEach((answer, j) => {
+                    options.push(answer.text);
+                    if (answer.right) solution += String.fromCharCode(65 + j);
+                });
             } else if (typeSelect === 2) {
                 let maxFraction = -1;
                 for (let j = 0; j < answers.length; j++) {
