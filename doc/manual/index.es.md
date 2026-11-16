@@ -13,7 +13,8 @@ otras plataformas es un documento distinto: consulta [Plugins](../plugins/index.
 
 <a class="md-button" href="../exelearning-manual-es.elpx" download>Descargar el proyecto de eXeLearning (.elpx)</a>
 
-La web y el proyecto corresponden siempre a la última versión publicada.
+La web y el proyecto corresponden siempre a la última versión publicada. El manual también está disponible
+[en inglés](index.md).
 
 ## Descargar una versión concreta
 

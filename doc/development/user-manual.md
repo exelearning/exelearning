@@ -12,7 +12,8 @@ integration manual (`doc/plugins/manual.es.elpx`), which is maintained and publi
 doc/manual/
 ├── index.md, index.es.md   pages of the documentation site
 ├── LICENSE                 CC BY-SA 4.0, the licence of the manual
-└── es/                     one folder per language (es, en, …)
+├── en/                     one folder per language
+└── es/
     ├── content.xml         pages, iDevices and properties
     ├── content/resources/  images, videos, audio and other files used by the manual
     └── screenshot.png      cover shown by eXeLearning
@@ -37,6 +38,8 @@ release publishes the manual with the style of that release. A language folder m
     rm -rf doc/manual/es/content/resources
     unzip -o manual.elpx 'content.xml' 'screenshot.png' 'content/resources/*' -d doc/manual/es
     ```
+
+    Use the folder of the language you edited (`doc/manual/en`, `doc/manual/es`…).
 
 4. Run `make build-manual` and open a pull request, one topic per pull request.
 
@@ -120,7 +123,7 @@ also be started manually.
 ## Add a language
 
 1. Create `doc/manual/<lang>/` with the project sources (`content.xml`, `content/resources/`,
-   `screenshot.png`), using the language code of the documentation (`en`, `ca`, `pt-BR`…).
+   `screenshot.png`), using the language code of the documentation (`ca`, `fr`, `pt-BR`…).
 2. Run `make build-manual MANUAL_LANG=<lang>`.
 3. Add the language to the table in `doc/manual/index.md` and, if it has a translated documentation
    page, to `mkdocs.yml`.
@@ -132,7 +135,8 @@ from the folders: no script or workflow needs to change.
 
 Until eXeLearning 4.0.6 the Spanish manual was maintained in
 [`exelearning/exelearning-manual-es`](https://github.com/exelearning/exelearning-manual-es), with its
-own tags, releases and website. Its sources were imported here from the final 4.0.6 manual. The
+own tags, releases and website. Its sources were imported here from the final 4.0.6 manual, together
+with the English manual, which had no repository of its own. The
 former repository and its published URLs stay available during the transition; new changes and
 releases happen only in this repository.
 

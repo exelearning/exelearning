@@ -555,8 +555,8 @@ describe('the manuals in doc/manual', () => {
     const root = path.resolve(import.meta.dir, '..', DEFAULT_ROOT);
     const languages = discoverLanguages(root);
 
-    it('include the Spanish manual', () => {
-        expect(languages).toContain('es');
+    it('include the English and Spanish manuals', () => {
+        expect(languages).toEqual(expect.arrayContaining(['en', 'es']));
     });
 
     for (const lang of languages) {

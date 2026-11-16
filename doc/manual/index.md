@@ -12,9 +12,10 @@ other platforms is a separate document: see [Plugins](../plugins/index.md).
 
 | Language | Web manual | Editable project |
 | --- | --- | --- |
+| English | <a href="en/index.html">eXeLearning Manual</a> | <a href="exelearning-manual-en.elpx" download>exelearning-manual-en.elpx</a> |
 | Español | <a href="es/index.html">Manual de eXeLearning</a> | <a href="exelearning-manual-es.elpx" download>exelearning-manual-es.elpx</a> |
 
-The web manual and the project above always belong to the latest release. More languages will be
+The web manuals and the projects above always belong to the latest release. More languages will be
 listed here as they are added.
 
 ## Download a specific version
@@ -26,9 +27,9 @@ language, two files named after the release:
 - `exelearning-manual-<language>-<version>-html.zip`: the complete website; unzip it and open
   `index.html`, no connection needed.
 
-For example, `exelearning-manual-es-v4.0.6.elpx` is the Spanish manual of eXeLearning 4.0.6. A
+For example, `exelearning-manual-en-v4.0.6.elpx` is the English manual of eXeLearning 4.0.6. A
 manual corrected after its release is added next to the original files with a correction number
-(`exelearning-manual-es-v4.0.6-1.elpx`); published files are never replaced.
+(`exelearning-manual-en-v4.0.6-1.elpx`); published files are never replaced.
 
 ## Improve the manual
 
