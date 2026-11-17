@@ -266,6 +266,11 @@ var $exeDevice = {
                 )}
                 ${edition.tabs.getHtml('gameQEIdeviceForm', {
                     titles: { contents: _('Problems') },
+                    info: {
+                        contents: _(
+                            'Add the problems of the activity and edit them one by one: the question, the domain of each variable and the formula of the answer.',
+                        ),
+                    },
                     path: $exeDevice.idevicePath,
                     instructions: c_('Solve the following math problems.'),
                     options: options,

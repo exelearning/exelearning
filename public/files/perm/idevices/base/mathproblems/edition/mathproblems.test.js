@@ -271,6 +271,10 @@ describe('mathproblems edition: shared form tabs and feedback', () => {
         ]);
         expect(document.getElementById('gameQEIdeviceForm-tab-contents').textContent.trim()).toBe('Problems');
         expect(panel('contents').classList.contains('active')).toBe(true);
+        // Its message speaks of what the tab is called, not of questions.
+        expect(panel('contents').querySelector(':scope > p').textContent).toBe(
+            'Add the problems of the activity and edit them one by one: the question, the domain of each variable and the formula of the answer.'
+        );
     });
 
     it('puts the problems in the Questions tab and the rest in Options', () => {

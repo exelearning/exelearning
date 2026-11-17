@@ -706,6 +706,10 @@ describe('guess edition: shared form tabs and feedback', () => {
     ]);
     expect(document.getElementById('gameQEIdeviceForm-tab-contents').textContent.trim()).toBe('Words');
     expect(panel('contents').classList.contains('active')).toBe(true);
+    // Its message speaks of what the tab is called, not of questions.
+    expect(panel('contents').querySelector(':scope > p').textContent).toBe(
+      'Add the words and their definitions, and edit them one by one.'
+    );
   });
 
   it('puts each part of the form in its tab', () => {

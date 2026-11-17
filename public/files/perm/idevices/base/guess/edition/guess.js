@@ -535,6 +535,9 @@ var $exeDevice = {
                 )}
                 ${edition.tabs.getHtml('gameQEIdeviceForm', {
                     titles: { contents: _('Words') },
+                    info: {
+                        contents: _('Add the words and their definitions, and edit them one by one.'),
+                    },
                     path: path,
                     instructions: c_('Observe the letters, identify and fill in the missing words.'),
                     options: options,
