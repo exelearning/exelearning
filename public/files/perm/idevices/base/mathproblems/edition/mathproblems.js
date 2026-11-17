@@ -691,8 +691,6 @@ var $exeDevice = {
             showSolution = $('#eCQShowSolution').is(':checked'),
             modeBoard = $('#eCQModeBoard').is(':checked'),
             timeShowSolution = parseInt(clear($('#eCQTimeShowSolution').val())),
-            itinerary =
-                $exeIDevicesEdition.iDevice.gamification.itinerary.getValues(),
             percentajeQuestions = parseInt(
                 clear($('#eCQPercentajeQuestions').val())
             ),
@@ -702,15 +700,17 @@ var $exeDevice = {
             errorRelative = parseFloat(
                 clear($('#eCQPercentajeRelative').val())
             ),
-            progressBar =
-                $exeIDevicesEdition.iDevice.gamification.progressBar.getValues(),
             passScore =
                 $exeIDevicesEdition.iDevice.gamification.passScore.getValues(),
             id = $exeDevice.getIdeviceID();
 
         let errorType = 0;
 
+        const itinerary =
+            $exeIDevicesEdition.iDevice.gamification.itinerary.getValues();
         if (!itinerary) return;
+        const progressBar =
+            $exeIDevicesEdition.iDevice.gamification.progressBar.getValues();
         if (!progressBar) return false;
 
         const feedback =

@@ -910,6 +910,25 @@ describe('guess edition: shared form tabs and feedback', () => {
       expect(global.eXe.app.alert).toHaveBeenCalledWith('Write the message to display when passing the game');
     });
 
+    // Two errors in two tabs: the access code is missing and the report identifier is too short.
+    // Only the first warning shows, with the tab of its field behind it.
+    it('stops at the first warning and shows the tab of its field', () => {
+      device.updateFieldGame(game({ wordsGame: device.wordsGame }));
+      vi.spyOn(device, 'validateQuestion').mockReturnValue(true);
+      $('#eXeGameShowCodeAccess').prop('checked', true);
+      $('#eXeGameCodeAccess').prop('disabled', false).val('');
+      $('#eXeProgressReport').prop('checked', true);
+      $('#eXeProgressReportID').prop('disabled', false).val('abc');
+      global.eXe.app.alert.mockClear();
+
+      expect(device.validateData()).toBe(false);
+
+      expect(global.eXe.app.alert).toHaveBeenCalledTimes(1);
+      expect(global.eXe.app.alert).toHaveBeenCalledWith('You must provide the code to play this game');
+      expect(panel('passwords').classList.contains('active')).toBe(true);
+      expect(panel('grading').classList.contains('active')).toBe(false);
+    });
+
     // Export writes the questions only: the settings are for saving to check.
     describe('Export', () => {
       const share = () => edition().gamification.share;

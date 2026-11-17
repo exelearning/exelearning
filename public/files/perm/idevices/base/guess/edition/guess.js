@@ -1434,8 +1434,6 @@ var $exeDevice = {
             numberLives = parseInt(clear($('#adivinaENumberLives').val())),
             timeQuestion = $exeDevice.timeQuestion,
             percentageShow = 30,
-            itinerary =
-                $exeIDevicesEdition.iDevice.gamification.itinerary.getValues(),
             caseSensitive = $('#adivinaECaseSensitive').is(':checked'),
             gameMode = parseInt($('input[name=qxtgamemode]:checked').val()),
             customMessages = $('#adivinaECustomMessages').is(':checked'),
@@ -1443,14 +1441,16 @@ var $exeDevice = {
                 clear($('#adivinaEPercentajeQuestions').val())
             ),
             activateTranslate = $('#adivinaETranslate').is(':checked'),
-            progressBar =
-                $exeIDevicesEdition.iDevice.gamification.progressBar.getValues(),
             passScore =
                 $exeIDevicesEdition.iDevice.gamification.passScore.getValues(),
             globalTime = parseInt($('#adivinaEGlobalTimes').val(), 10),
             id = $exeDevice.getIdeviceID();
 
+        const itinerary =
+            $exeIDevicesEdition.iDevice.gamification.itinerary.getValues();
         if (!itinerary) return false;
+        const progressBar =
+            $exeIDevicesEdition.iDevice.gamification.progressBar.getValues();
         if (!progressBar) return false;
 
         if (showSolution && timeShowSolution.length == 0) {

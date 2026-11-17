@@ -685,15 +685,15 @@ var $exeDevice = {
             author = $('#bfafEAuthory').val(),
             cardsGame = $exeDevice.cardsGame,
             id = $exeDevice.getIdeviceID(),
-            itinerary =
-                $exeIDevicesEdition.iDevice.gamification.itinerary.getValues(),
             scorm = $exeIDevicesEdition.iDevice.gamification.scorm.getValues(),
-            progressBar =
-                $exeIDevicesEdition.iDevice.gamification.progressBar.getValues(),
             passScore =
                 $exeIDevicesEdition.iDevice.gamification.passScore.getValues();
 
+        const progressBar =
+            $exeIDevicesEdition.iDevice.gamification.progressBar.getValues();
         if (!progressBar) return false;
+        const itinerary =
+            $exeIDevicesEdition.iDevice.gamification.itinerary.getValues();
         if (!itinerary) return;
         return {
             typeGame: 'BeforeAfter',

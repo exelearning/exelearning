@@ -1130,8 +1130,6 @@ var $exeDevice = {
             instructions = tinyMCE.get('eXeGameInstructions').getContent(),
             textAfter = tinyMCE.get('eXeIdeviceTextAfter').getContent(),
             showMinimize = $('#slcmEShowMinimize').is(':checked'),
-            itinerary =
-                $exeIDevicesEdition.iDevice.gamification.itinerary.getValues(),
             customMessages = $('#slcmECustomMessages').is(':checked'),
             percentajeQuestions = parseInt(
                 clear($('#slcmEPercentajeQuestions').val())
@@ -1143,8 +1141,6 @@ var $exeDevice = {
             ),
             author = $('#slcmEAuthor').val(),
             phrasesGame = $exeDevice.phrasesGame,
-            progressBar =
-                $exeIDevicesEdition.iDevice.gamification.progressBar.getValues(),
             passScore =
                 $exeIDevicesEdition.iDevice.gamification.passScore.getValues(),
             id = $exeDevice.getIdeviceID(),
@@ -1152,7 +1148,11 @@ var $exeDevice = {
             numberMaxCards = $('#slcmEANumberMaxCard').val(),
             attempsNumber = parseInt($('#slcmEAttemptsNumber').val());
 
+        const itinerary =
+            $exeIDevicesEdition.iDevice.gamification.itinerary.getValues();
         if (!itinerary) return false;
+        const progressBar =
+            $exeIDevicesEdition.iDevice.gamification.progressBar.getValues();
         if (!progressBar) return false;
 
         const feedback =

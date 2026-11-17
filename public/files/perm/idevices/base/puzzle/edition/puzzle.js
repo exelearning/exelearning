@@ -678,21 +678,21 @@ var $exeDevice = {
             textAfter = tinyMCE.get('eXeIdeviceTextAfter').getContent(),
             showMinimize = $('#puzzleEShowMinimize').is(':checked'),
             randomPuzzles = $('#puzzleERandomPuzzles').is(':checked'),
-            itinerary =
-                $exeIDevicesEdition.iDevice.gamification.itinerary.getValues(),
             percentajeQuestions = parseInt(
                 clear($('#puzzleEPercentajeQuestions').val()),
                 10
             ),
             author = $('#puzzleEAuthor').val(),
             puzzlesGame = $exeDevice.puzzlesGame,
-            progressBar =
-                $exeIDevicesEdition.iDevice.gamification.progressBar.getValues(),
             passScore =
                 $exeIDevicesEdition.iDevice.gamification.passScore.getValues(),
             id = $exeDevice.getIdeviceID();
 
+        const itinerary =
+            $exeIDevicesEdition.iDevice.gamification.itinerary.getValues();
         if (!itinerary) return false;
+        const progressBar =
+            $exeIDevicesEdition.iDevice.gamification.progressBar.getValues();
         if (!progressBar) return false;
 
         const feedback =

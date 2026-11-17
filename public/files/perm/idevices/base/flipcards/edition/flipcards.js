@@ -1034,8 +1034,6 @@ var $exeDevice = {
             timeShowSolution = parseInt(
                 clear($('#flipcardsETimeShowSolution').val())
             ),
-            itinerary =
-                $exeIDevicesEdition.iDevice.gamification.itinerary.getValues(),
             percentajeCards = parseInt(
                 clear($('#flipcardsEPercentajeCards').val())
             ),
@@ -1044,14 +1042,16 @@ var $exeDevice = {
             scorm = $exeIDevicesEdition.iDevice.gamification.scorm.getValues(),
             type = parseInt($('input[name=flctype]:checked').val()),
             time = parseInt($('#flipcardsETime').val()),
-            progressBar =
-                $exeIDevicesEdition.iDevice.gamification.progressBar.getValues(),
             passScore =
                 $exeIDevicesEdition.iDevice.gamification.passScore.getValues(),
             id = $exeDevice.getIdeviceID(),
             imgCard = $('#flipcardsEURLImgCard').val();
 
+        const itinerary =
+            $exeIDevicesEdition.iDevice.gamification.itinerary.getValues();
         if (!itinerary) return false;
+        const progressBar =
+            $exeIDevicesEdition.iDevice.gamification.progressBar.getValues();
         if (!progressBar) return false;
 
         return {

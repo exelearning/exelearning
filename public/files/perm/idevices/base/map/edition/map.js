@@ -2326,8 +2326,6 @@ var $exeDevice = {
             url = $('#mapaURLImageMap').val(),
             authorImage = $('#mapaAuthorImageMap').val(),
             altImage = $('#mapaAltImageMap').val(),
-            itinerary =
-                $exeIDevicesEdition.iDevice.gamification.itinerary.getValues(),
             evaluationG = parseInt($('input[name=mpevaluation]:checked').val()),
             showSolution = $('#mapaEShowSolution').is(':checked'),
             timeShowSolution = parseInt(
@@ -2342,14 +2340,16 @@ var $exeDevice = {
             ),
             autoShow = $('#mapaEAutoShow').is(':checked') || false,
             optionsNumber = parseInt(clear($('#mapaNumOptions').val())),
-            progressBar =
-                $exeIDevicesEdition.iDevice.gamification.progressBar.getValues(),
             passScore =
                 $exeIDevicesEdition.iDevice.gamification.passScore.getValues(),
             id = $exeDevice.getIdeviceID(),
             order = $('#mapaSolutionOrder').val();
 
+        const itinerary =
+            $exeIDevicesEdition.iDevice.gamification.itinerary.getValues();
         if (!itinerary) return;
+        const progressBar =
+            $exeIDevicesEdition.iDevice.gamification.progressBar.getValues();
         if (!progressBar) return false;
 
         let points = $exeDevice.activeMap.pts,

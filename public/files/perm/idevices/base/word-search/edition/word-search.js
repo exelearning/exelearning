@@ -822,27 +822,27 @@ var $exeDevice = {
             textAfter = tinyMCE.get('eXeIdeviceTextAfter').getContent(),
             showMinimize = $('#sopaEShowMinimize').is(':checked'),
             showResolve = $('#sopaEShowResolve').is(':checked'),
-            itinerary =
-                $exeIDevicesEdition.iDevice.gamification.itinerary.getValues(),
-            feedback =
-                $exeIDevicesEdition.iDevice.gamification.feedback.getValues(),
             percentajeQuestions = parseInt(
                 clear($('#sopaEPercentajeQuestions').val())
             ),
             time = parseInt(clear($('#sopaETime').val())),
             diagonals = $('#sopaEDiagonals').is(':checked'),
             reverses = $('#sopaEReverses').is(':checked'),
-            progressBar =
-                $exeIDevicesEdition.iDevice.gamification.progressBar.getValues(),
             passScore =
                 $exeIDevicesEdition.iDevice.gamification.passScore.getValues(),
             id = $exeDevice.getIdeviceID(),
             wordsGame = $exeDevice.wordsGame,
             scorm = $exeIDevicesEdition.iDevice.gamification.scorm.getValues();
 
+        const itinerary =
+            $exeIDevicesEdition.iDevice.gamification.itinerary.getValues();
         if (!itinerary) return false;
+        const progressBar =
+            $exeIDevicesEdition.iDevice.gamification.progressBar.getValues();
         if (!progressBar) return false;
 
+        const feedback =
+            $exeIDevicesEdition.iDevice.gamification.feedback.getValues();
         if (!feedback) return false;
 
         if (!$exeDevice.validateQuestions()) return false;

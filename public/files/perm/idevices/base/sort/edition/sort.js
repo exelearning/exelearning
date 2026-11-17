@@ -1239,8 +1239,6 @@ var $exeDevice = {
             textAfter = tinyMCE.get('eXeIdeviceTextAfter').getContent(),
             showMinimize = $('#ordenaEShowMinimize').is(':checked'),
             wordBorder = $('#ordenaEWordBorder').is(':checked'),
-            itinerary =
-                $exeIDevicesEdition.iDevice.gamification.itinerary.getValues(),
             customMessages = $('#ordenaECustomMessages').is(':checked'),
             percentajeQuestions = parseInt(
                 clear($('#ordenaEPercentajeQuestions').val())
@@ -1259,14 +1257,16 @@ var $exeDevice = {
             maxWidth = $('#ordenaMaxWidth').is(':checked'),
             orderedColumns = $('#ordenaOrderedColumns').is(':checked'),
             phrasesGame = $exeDevice.phrasesGame,
-            progressBar =
-                $exeIDevicesEdition.iDevice.gamification.progressBar.getValues(),
             passScore =
                 $exeIDevicesEdition.iDevice.gamification.passScore.getValues(),
             id = $exeDevice.getIdeviceID(),
             type = parseInt($('input.ODNE-EType[name=odntype]:checked').val());
 
+        const itinerary =
+            $exeIDevicesEdition.iDevice.gamification.itinerary.getValues();
         if (!itinerary) return;
+        const progressBar =
+            $exeIDevicesEdition.iDevice.gamification.progressBar.getValues();
         if (!progressBar) return false;
 
         const feedback =

@@ -1164,19 +1164,19 @@ var $exeDevice = {
             timeShowSolution = parseInt(
                 $exeIDevicesEdition.iDevice.common.removeTags($('#idfETimeShowSolution').val())
             ),
-            itinerary =
-                $exeIDevicesEdition.iDevice.gamification.itinerary.getValues(),
             customMessages = $('#idfECustomMessages').is(':checked'),
             percentajeQuestions = parseInt(
                 $exeIDevicesEdition.iDevice.common.removeTags($('#idfEPercentajeQuestions').val())
             ),
-            progressBar =
-                $exeIDevicesEdition.iDevice.gamification.progressBar.getValues(),
             passScore =
                 $exeIDevicesEdition.iDevice.gamification.passScore.getValues(),
             id = $exeDevice.getIdeviceID();
 
+        const itinerary =
+            $exeIDevicesEdition.iDevice.gamification.itinerary.getValues();
         if (!itinerary) return false;
+        const progressBar =
+            $exeIDevicesEdition.iDevice.gamification.progressBar.getValues();
         if (!progressBar) return false;
 
         const feedback = $exeIDevicesEdition.iDevice.gamification.feedback.getValues();

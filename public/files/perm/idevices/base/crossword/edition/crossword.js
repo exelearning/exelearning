@@ -723,8 +723,6 @@ var $exeDevice = {
                 $exeIDevicesEdition.iDevice.common.getEditorContent(
                     'eXeGameInstructions'
                 ),
-            feedback =
-                $exeIDevicesEdition.iDevice.gamification.feedback.getValues(),
             textAfter = $exeIDevicesEdition.iDevice.common.getEditorContent(
                 'eXeIdeviceTextAfter'
             ),
@@ -734,12 +732,8 @@ var $exeDevice = {
             showSolution = $('#ccgmEShowSolution').is(':checked'),
             hasBack = $('#ccgmBack0').is(':checked'),
             urlBack = $('#ccgmEURLBack').val().trim(),
-            itinerary =
-                $exeIDevicesEdition.iDevice.gamification.itinerary.getValues(),
             caseSensitive = $('#ccgmECaseSensitive').is(':checked'),
             tilde = $('#ccgmETilde').is(':checked'),
-            progressBar =
-                $exeIDevicesEdition.iDevice.gamification.progressBar.getValues(),
             passScore =
                 $exeIDevicesEdition.iDevice.gamification.passScore.getValues(),
             percentajeQuestions = $('#ccgmEPercentajeQuestions').val(),
@@ -748,8 +742,14 @@ var $exeDevice = {
             wordsGame = $exeDevice.wordsGame,
             scorm = $exeIDevicesEdition.iDevice.gamification.scorm.getValues();
 
+        const feedback =
+            $exeIDevicesEdition.iDevice.gamification.feedback.getValues();
         if (!feedback) return false;
+        const itinerary =
+            $exeIDevicesEdition.iDevice.gamification.itinerary.getValues();
         if (!itinerary) return false;
+        const progressBar =
+            $exeIDevicesEdition.iDevice.gamification.progressBar.getValues();
         if (!progressBar) return false;
 
         if (!$exeDevice.validateQuestions()) return false;

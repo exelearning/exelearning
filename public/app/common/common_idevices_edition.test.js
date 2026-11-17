@@ -4864,6 +4864,107 @@ describe('common_idevices_edition.js', () => {
   });
 
   /**
+   * itinerary, progressBar and feedback getValues() each warn, and show the tab of the field, when
+   * their values are not valid. Read together before the first one is checked, two warnings fire back
+   * to back: the second one hides the first, and its tab is the one left on screen. So every iDevice
+   * reads each of them right before its own check, and the first error stops the save.
+   */
+  describe('one warning at a time across every iDevice', () => {
+    const IDEVICES_DIR = join(__dirname, '..', '..', 'files', 'perm', 'idevices', 'base');
+    const WARNING_GETTERS = new Set(['itinerary', 'progressBar', 'feedback']);
+
+    const editions = readdirSync(IDEVICES_DIR)
+      .map((name) => ({ name, dir: join(IDEVICES_DIR, name, 'edition') }))
+      .filter(({ dir }) => existsSync(dir))
+      .flatMap(({ name, dir }) =>
+        readdirSync(dir)
+          .filter((file) => file.endsWith('.js') && !file.endsWith('.test.js'))
+          .map((file) => ({ name, source: readFileSync(join(dir, file), 'utf-8') }))
+      )
+      .filter(({ source }) => /gamification\.(itinerary|progressBar|feedback)\.getValues\(\)/.test(source));
+
+    const warns = (node) =>
+      node?.type === 'CallExpression' &&
+      node.callee.type === 'MemberExpression' && node.callee.property.name === 'getValues' &&
+      node.callee.object.type === 'MemberExpression' && WARNING_GETTERS.has(node.callee.object.property.name);
+
+    // Whether a getter that warns is called anywhere inside a node.
+    const callsWarning = (node) => {
+      if (!node || typeof node !== 'object') return false;
+      if (Array.isArray(node)) return node.some(callsWarning);
+      return warns(node) || Object.values(node).some((child) => typeof child === 'object' && callsWarning(child));
+    };
+
+    // The variables a statement stores what such a getter returns in.
+    const readsInto = (statement) => {
+      if (statement.type === 'VariableDeclaration') {
+        return statement.declarations
+          .filter(({ id, init }) => id.type === 'Identifier' && warns(init))
+          .map(({ id }) => id.name);
+      }
+      const { expression } = statement;
+      return statement.type === 'ExpressionStatement' && expression.type === 'AssignmentExpression' &&
+        expression.left.type === 'Identifier' && warns(expression.right)
+        ? [expression.left.name]
+        : [];
+    };
+
+    const checks = (statement, name) =>
+      statement.type === 'IfStatement' && statement.test.type === 'UnaryExpression' &&
+      statement.test.operator === '!' && statement.test.argument.type === 'Identifier' &&
+      statement.test.argument.name === name;
+
+    // Each read that could warn while an earlier one is still unchecked.
+    const problems = (source) => {
+      const parsed = parseSync('one-warning.js', source, { sourceType: 'commonjs', preserveParens: false });
+      if (parsed.errors.length > 0) return ['the source does not parse'];
+      const found = [];
+      const scan = (statements) =>
+        statements.forEach((statement, index) => {
+          const names = readsInto(statement);
+          if (names.length > 1) found.push(`${names.join(' and ')} are read together`);
+          if (names.length !== 1) return;
+          const checked = statements.findIndex((next, at) => at > index && checks(next, names[0]));
+          const before = statements.slice(index + 1, checked < 0 ? statements.length : checked);
+          if (before.some(callsWarning)) found.push(`another warning comes before ${names[0]} is checked`);
+        });
+      new Visitor({
+        Program: ({ body }) => scan(body),
+        BlockStatement: ({ body }) => scan(body),
+      }).visit(parsed.program);
+      return found;
+    };
+
+    const api = '$exeIDevicesEdition.iDevice.gamification';
+
+    it('accepts each read checked before the next one', () => {
+      expect(problems(`const a = ${api}.itinerary.getValues();\nif (!a) return false;\n` +
+        `const b = ${api}.progressBar.getValues();\nif (!b) return false;`)).toEqual([]);
+      // Other checks in between, and getters that never warn, are fine.
+      expect(problems(`const a = ${api}.itinerary.getValues(), s = ${api}.passScore.getValues();\n` +
+        `if (x) return false;\nif (!a) return false;`)).toEqual([]);
+    });
+
+    it('rejects two reads that can warn before the first one is checked', () => {
+      expect(problems(`const a = ${api}.itinerary.getValues(), b = ${api}.progressBar.getValues();\n` +
+        'if (!a) return false;\nif (!b) return false;')).toEqual(['a and b are read together']);
+      expect(problems(`const a = ${api}.itinerary.getValues();\nconst b = ${api}.feedback.getValues();\n` +
+        'if (!a) return false;\nif (!b) return false;')).toEqual(['another warning comes before a is checked']);
+      expect(problems(`let a;\na = ${api}.feedback.getValues();\nif (${api}.progressBar.getValues()) go();\n` +
+        'if (!a) return false;')).toEqual(['another warning comes before a is checked']);
+    });
+
+    it('finds the iDevices that read the getters that warn', () => {
+      // Guard rail for the scan itself, as in the progress report check above.
+      expect(editions.length).toBeGreaterThan(30);
+    });
+
+    it.each(editions.map(({ name }) => name))('%s reads each one right before its check', (name) => {
+      expect(problems(editions.find((edition) => edition.name === name).source)).toEqual([]);
+    });
+  });
+
+  /**
    * These helpers create resources that live outside the edition form —
    * handlers on `document` and `window`, timers, object URLs, audio and a
    * microphone stream. They belong to the edition that created them, which

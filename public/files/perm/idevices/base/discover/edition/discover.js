@@ -1076,8 +1076,6 @@ var $exeDevice = {
             instructions = $exeIDevicesEdition.iDevice.common.getEditorContent('eXeGameInstructions'),
             textAfter = $exeIDevicesEdition.iDevice.common.getEditorContent('eXeIdeviceTextAfter'),
             showMinimize = $('#descubreEShowMinimize').is(':checked'),
-            itinerary =
-                $exeIDevicesEdition.iDevice.gamification.itinerary.getValues(),
             customMessages = $('#descubreECustomMessages').is(':checked'),
             showCards = $('#descubreEShowCards').is(':checked'),
             percentajeQuestions = parseInt(
@@ -1093,13 +1091,15 @@ var $exeDevice = {
             gameMode = parseInt($('input[name=qtxgamemode]:checked').val()),
             gameLevels = parseInt($('input[name=qtxgamelevels]:checked').val()),
             wordsGame = $exeDevice.wordsGame,
-            progressBar =
-                $exeIDevicesEdition.iDevice.gamification.progressBar.getValues(),
             passScore =
                 $exeIDevicesEdition.iDevice.gamification.passScore.getValues(),
             id = $exeDevice.getIdeviceID();
 
+        const itinerary =
+            $exeIDevicesEdition.iDevice.gamification.itinerary.getValues();
         if (!itinerary) return;
+        const progressBar =
+            $exeIDevicesEdition.iDevice.gamification.progressBar.getValues();
         if (!progressBar) return false;
 
         const feedback = $exeIDevicesEdition.iDevice.gamification.feedback.getValues();

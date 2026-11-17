@@ -1070,16 +1070,16 @@ var $exeDevice = {
                 parseInt(clear($.trim($('#roscoTimeShowSolution').val()))) || 0,
             durationGame = parseInt(clear($('#roscoDuration').val())) || 0,
             numberTurns = parseInt(clear($('#roscoNumberTurns').val())) || 0,
-            itinerary =
-                $exeIDevicesEdition.iDevice.gamification.itinerary.getValues(),
             caseSensitive = $('#roscoCaseSensitive').is(':checked'),
-            progressBar =
-                $exeIDevicesEdition.iDevice.gamification.progressBar.getValues(),
             passScore =
                 $exeIDevicesEdition.iDevice.gamification.passScore.getValues(),
             id = $exeDevice.getIdeviceID();
 
+        const itinerary =
+            $exeIDevicesEdition.iDevice.gamification.itinerary.getValues();
         if (!itinerary) return false;
+        const progressBar =
+            $exeIDevicesEdition.iDevice.gamification.progressBar.getValues();
         if (!progressBar) return false;
 
         if (showSolution && timeShowSolution === 0) {

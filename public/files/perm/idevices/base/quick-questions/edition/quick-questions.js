@@ -2192,16 +2192,12 @@ var $exeDevice = {
             startVideo = $exeDevices.iDevice.gamification.helpers.hourToSeconds(
                 $('#quextEVIStart').val()
             ),
-            itinerary =
-                $exeIDevicesEdition.iDevice.gamification.itinerary.getValues(),
             customScore = $('#quextECustomScore').is(':checked'),
             gameMode = parseInt($('input[name=qxtgamemode]:checked').val()),
             customMessages = $('#quextECustomMessages').is(':checked'),
             percentajeQuestions = parseInt(
                 clear($('#quextEPercentajeQuestions').val())
             ),
-            progressBar =
-                $exeIDevicesEdition.iDevice.gamification.progressBar.getValues(),
             passScore =
                 $exeIDevicesEdition.iDevice.gamification.passScore.getValues(),
             id = $exeDevice.getIdeviceID(),
@@ -2209,7 +2205,11 @@ var $exeDevice = {
             globalTime = parseInt($('#quextEGlobalTimes').val(), 10),
             scorm = $exeIDevicesEdition.iDevice.gamification.scorm.getValues();
 
+        const itinerary =
+            $exeIDevicesEdition.iDevice.gamification.itinerary.getValues();
         if (!itinerary) return false;
+        const progressBar =
+            $exeIDevicesEdition.iDevice.gamification.progressBar.getValues();
         if (!progressBar) return false;
 
         // Asks for the message itself when it is on, or compulsory ("No score").

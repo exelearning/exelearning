@@ -2126,8 +2126,6 @@ var $exeDevice = {
                 $exeDevice.getEditorContent('eXeGameInstructions')
             ),
             textAfter = escape($exeDevice.getEditorContent('eXeIdeviceTextAfter')),
-            feedback =
-                $exeIDevicesEdition.iDevice.gamification.feedback.getValues(),
             showMinimize = $('#elceShowMinimize').is(':checked'),
             modeBoard = $('#elceModeBoard').is(':checked'),
             answersRamdon = $('#elceAnswersRamdon').is(':checked'),
@@ -2136,21 +2134,19 @@ var $exeDevice = {
             timeShowSolution = parseInt(
                 clear($('#elceTimeShowSolution').val())
             ),
-            itinerary =
-                $exeIDevicesEdition.iDevice.gamification.itinerary.getValues(),
             percentajeQuestions = parseInt(
                 clear($('#elcePercentajeQuestionsValue').val())
             ),
-            progressBar =
-                $exeIDevicesEdition.iDevice.gamification.progressBar.getValues(),
-            evaluation = progressBar.evaluation,
-            evaluationID = progressBar.evaluationID,
             passScore =
                 $exeIDevicesEdition.iDevice.gamification.passScore.getValues(),
             id = $exeDevice.getIdeviceID(),
             globalTime = parseInt($('#elceGlobalTimes').val(), 10);
 
+        const feedback =
+            $exeIDevicesEdition.iDevice.gamification.feedback.getValues();
         if (!feedback) return false;
+        const itinerary =
+            $exeIDevicesEdition.iDevice.gamification.itinerary.getValues();
         if (!itinerary) return false;
         // getValues() warns and returns false on a report identifier that is
         // too short. Without this the form carried on and saved the activity
@@ -2158,7 +2154,11 @@ var $exeDevice = {
         // off `false` yields undefined rather than throwing. The check this
         // replaces only ran in test mode, so a bad identifier went through
         // unchallenged in every other one.
+        const progressBar =
+            $exeIDevicesEdition.iDevice.gamification.progressBar.getValues();
         if (!progressBar) return false;
+        const evaluation = progressBar.evaluation,
+            evaluationID = progressBar.evaluationID;
 
         if (activityMode === 'test') {
             if (showSolution && timeShowSolution.length == 0) {

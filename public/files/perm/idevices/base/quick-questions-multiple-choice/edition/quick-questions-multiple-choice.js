@@ -2451,8 +2451,6 @@ var $exeDevice = {
             startVideo = $exeDevices.iDevice.gamification.helpers.hourToSeconds(
                 $('#seleccionaEVIStart').val()
             ),
-            itinerary =
-                $exeIDevicesEdition.iDevice.gamification.itinerary.getValues(),
             customScore = $('#seleccionaECustomScore').is(':checked'),
             customMessages = $('#seleccionaECustomMessages').is(':checked'),
             gameMode = parseInt($('input[name=slcgamemode]:checked').val()),
@@ -2461,14 +2459,16 @@ var $exeDevice = {
             percentajeQuestions = parseInt(
                 clear($('#seleccionaEPercentajeQuestionsValue').val())
             ),
-            progressBar =
-                $exeIDevicesEdition.iDevice.gamification.progressBar.getValues(),
             passScore =
                 $exeIDevicesEdition.iDevice.gamification.passScore.getValues(),
             id = $exeDevice.getIdeviceID(),
             globalTime = parseInt($('#seleccionaEGlobalTimes').val(), 10);
 
+        const itinerary =
+            $exeIDevicesEdition.iDevice.gamification.itinerary.getValues();
         if (!itinerary) return false;
+        const progressBar =
+            $exeIDevicesEdition.iDevice.gamification.progressBar.getValues();
         if (!progressBar) return false;
         if (showSolution && timeShowSolution.length == 0) {
             $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgEProvideTimeSolution);

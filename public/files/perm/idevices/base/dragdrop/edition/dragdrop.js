@@ -738,8 +738,6 @@ var $exeDevice = {
             timeShowSolution = parseInt(
                 clear($('#dadETimeShowSolution').val())
             ),
-            itinerary =
-                $exeIDevicesEdition.iDevice.gamification.itinerary.getValues(),
             percentajeCards = parseInt(clear($('#dadEPercentajeCards').val())),
             author = $('#dadEAuthory').val(),
             cardsGame = $exeDevice.cardsGame,
@@ -748,13 +746,15 @@ var $exeDevice = {
             typeDrag = parseInt($('input[name=flctypedrag]:checked').val()),
             mode = 1,
             time = parseInt($('#dadETime').val()),
-            progressBar =
-                $exeIDevicesEdition.iDevice.gamification.progressBar.getValues(),
             passScore =
                 $exeIDevicesEdition.iDevice.gamification.passScore.getValues(),
             id = $exeDevice.getIdeviceID();
 
+        const itinerary =
+            $exeIDevicesEdition.iDevice.gamification.itinerary.getValues();
         if (!itinerary) return false;
+        const progressBar =
+            $exeIDevicesEdition.iDevice.gamification.progressBar.getValues();
         if (!progressBar) return false;
 
         if (itinerary.showClue && itinerary.clueGame.length == '') {

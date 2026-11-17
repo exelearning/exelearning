@@ -1626,8 +1626,6 @@ var $exeDevice = {
                 $exeDevices.iDevice.gamification.helpers.hourToSeconds(
                     $('#vquextEVIStart').val()
                 ),
-            itinerary =
-                $exeIDevicesEdition.iDevice.gamification.itinerary.getValues(),
             gameMode = parseInt($('input[name=vqxtgamemode]:checked').val()),
             validExtAudio = ['mp3', 'wav'],
             validExt = ['mp4', 'ogg', 'webm', 'ogv'],
@@ -1656,14 +1654,16 @@ var $exeDevice = {
                 clear($('#vquextEPercentajeQuestions').val())
             ),
             modeBoard = $('#vquextEModeBoard').is(':checked'),
-            progressBar =
-                $exeIDevicesEdition.iDevice.gamification.progressBar.getValues(),
             passScore =
                 $exeIDevicesEdition.iDevice.gamification.passScore.getValues(),
             globalTime = parseInt($('#vquextEGlobalTimes').val(), 10),
             id = $exeDevice.getIdeviceID();
 
+        const itinerary =
+            $exeIDevicesEdition.iDevice.gamification.itinerary.getValues();
         if (!itinerary) return false;
+        const progressBar =
+            $exeIDevicesEdition.iDevice.gamification.progressBar.getValues();
         if (!progressBar) return false;
 
         const feedback =

@@ -564,15 +564,11 @@ var $exeDevice = {
             estrictCheck = $('#cmptEEstrictCheck').is(':checked'),
             wordsSize = $('#cmptEWordsSize').is(':checked'),
             time = parseInt($('#cmptETime').val(), 10),
-            itinerary =
-                $exeIDevicesEdition.iDevice.gamification.itinerary.getValues(),
             percentajeError = parseInt($('#cmptEPercentajeError').val(), 10),
             type = parseInt($('input[name=cmpttype]:checked').val(), 10),
             wordsErrors = $('#cmptEWordsErrors').val(),
             wordsLimit = $('#cmptEWordsLimit').is(':checked'),
             attempsNumber = parseInt($('#cmptAttemptsNumber').val(), 10),
-            progressBar =
-                $exeIDevicesEdition.iDevice.gamification.progressBar.getValues(),
             passScore =
                 $exeIDevicesEdition.iDevice.gamification.passScore.getValues(),
             hasBack = $('#cmptBack0').is(':checked'),
@@ -580,7 +576,11 @@ var $exeDevice = {
             authorBackImage = $('#cmptAuthorBack').val(),
             fontColor = $('#cmptEFontColor').val(),
             id = $exeDevice.getIdeviceID();
+        const itinerary =
+            $exeIDevicesEdition.iDevice.gamification.itinerary.getValues();
         if (!itinerary) return;
+        const progressBar =
+            $exeIDevicesEdition.iDevice.gamification.progressBar.getValues();
         if (!progressBar) return false;
 
         const feedback = $exeIDevicesEdition.iDevice.gamification.feedback.getValues();

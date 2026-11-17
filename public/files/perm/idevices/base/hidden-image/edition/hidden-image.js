@@ -931,15 +931,11 @@ var $exeDevice = {
             answersRamdon = $('#hiEAnswersRamdon').is(':checked'),
             showSolution = $('#hiEShowSolution').is(':checked'),
             timeShowSolution = parseInt(clear($('#hiETimeShowSolution').val())),
-            itinerary =
-                $exeIDevicesEdition.iDevice.gamification.itinerary.getValues(),
             customScore = $('#hiECustomScore').is(':checked'),
             customMessages = $('#hiECustomMessages').is(':checked'),
             percentajeQuestions = parseInt(
                 clear($('#hiEPercentajeQuestions').val())
             ),
-            progressBar =
-                $exeIDevicesEdition.iDevice.gamification.progressBar.getValues(),
             passScore =
                 $exeIDevicesEdition.iDevice.gamification.passScore.getValues(),
             id = $exeDevice.getIdeviceID(),
@@ -947,7 +943,11 @@ var $exeDevice = {
             revealTime = $('#hiERevealTime').val(),
             scorm = $exeIDevicesEdition.iDevice.gamification.scorm.getValues();
 
+        const itinerary =
+            $exeIDevicesEdition.iDevice.gamification.itinerary.getValues();
         if (!itinerary) return false;
+        const progressBar =
+            $exeIDevicesEdition.iDevice.gamification.progressBar.getValues();
         if (!progressBar) return false;
 
         for (let i = 0; i < questionsGame.length; i++) {

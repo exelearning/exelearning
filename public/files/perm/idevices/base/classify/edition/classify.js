@@ -979,14 +979,10 @@ var $exeDevice = {
             instructions = $exeIDevicesEdition.iDevice.common.getEditorContent(
                 'eXeGameInstructions'
             ),
-            feedback =
-                $exeIDevicesEdition.iDevice.gamification.feedback.getValues(),
             textAfter = $exeIDevicesEdition.iDevice.common.getEditorContent(
                 'eXeIdeviceTextAfter'
             ),
             showMinimize = $('#clasificaEShowMinimize').is(':checked'),
-            itinerary =
-                $exeIDevicesEdition.iDevice.gamification.itinerary.getValues(),
             customMessages = $('#clasificaECustomMessages').is(':checked'),
             percentajeQuestions = parseInt(
                 clear($('#clasificaEPercentajeQuestions').val())
@@ -995,15 +991,19 @@ var $exeDevice = {
             author = $('#clasificaEGameAuthor').val(),
             numberGroups = parseInt($('#clasificaENumGroups').val()),
             gameLevel = parseInt($('input[name=qtxgamelevel]:checked').val()),
-            progressBar =
-                $exeIDevicesEdition.iDevice.gamification.progressBar.getValues(),
             passScore =
                 $exeIDevicesEdition.iDevice.gamification.passScore.getValues(),
             imgCard = $('#clasificaEURLImgCard').val(),
             id = $exeDevice.getIdeviceID();
 
+        const itinerary =
+            $exeIDevicesEdition.iDevice.gamification.itinerary.getValues();
         if (!itinerary) return;
+        const progressBar =
+            $exeIDevicesEdition.iDevice.gamification.progressBar.getValues();
         if (!progressBar) return false;
+        const feedback =
+            $exeIDevicesEdition.iDevice.gamification.feedback.getValues();
         if (!feedback) return false;
 
         let nogroups = false;

@@ -2297,18 +2297,18 @@ var $exeDevice = {
             idVideo = '',
             endVideo = 0,
             startVideo = 0,
-            itinerary =
-                $exeIDevicesEdition.iDevice.gamification.itinerary.getValues(),
             customScore = false,
             temas = [],
-            progressBar =
-                $exeIDevicesEdition.iDevice.gamification.progressBar.getValues(),
             passScore =
                 $exeIDevicesEdition.iDevice.gamification.passScore.getValues(),
             globalTime = parseInt($('#trivialEGlobalTimes').val(), 10),
             id = $exeDevice.getIdeviceID();
 
+        const itinerary =
+            $exeIDevicesEdition.iDevice.gamification.itinerary.getValues();
         if (!itinerary) return false;
+        const progressBar =
+            $exeIDevicesEdition.iDevice.gamification.progressBar.getValues();
         if (!progressBar) return false;
 
         for (let z = 0; z < numeroTemas; z++) {

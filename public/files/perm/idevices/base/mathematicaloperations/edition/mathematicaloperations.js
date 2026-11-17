@@ -346,8 +346,6 @@ var $exeDevice = {
             textAfter = tinyMCE.get('eXeIdeviceTextAfter').getContent(),
             showMinimize = $('#eRMQShowMinimize').is(':checked'),
             type = $('#eRMQtype').val(),
-            itinerary =
-                $exeIDevicesEdition.iDevice.gamification.itinerary.getValues(),
             decimalsInOperands = parseInt($('#eRMQdecimals').val()),
             decimalsInResults = $('#eRMQdecimalsInResults').is(':checked'),
             negative = $('#eRMQnegative').is(':checked'),
@@ -358,12 +356,12 @@ var $exeDevice = {
             errorRelative = parseFloat($('#eRMQPercentajeRelative').val()),
             errorAbsolute = parseFloat($('#eRMQPercentajeAbsolute').val()),
             mode = $('#eRMQFractions').is(':checked') ? 1 : 0,
-            progressBar =
-                $exeIDevicesEdition.iDevice.gamification.progressBar.getValues(),
             passScore =
                 $exeIDevicesEdition.iDevice.gamification.passScore.getValues(),
             id = $exeDevice.getIdeviceID();
 
+        const progressBar =
+            $exeIDevicesEdition.iDevice.gamification.progressBar.getValues();
         if (!progressBar) return false;
 
         let errorType = 0;
@@ -425,6 +423,8 @@ var $exeDevice = {
             $exeIDevicesEdition.iDevice.common.showMessage(_('No operations selected'));
             return false;
         }
+        const itinerary =
+            $exeIDevicesEdition.iDevice.gamification.itinerary.getValues();
         if (!itinerary) return false;
 
         const feedback = $exeIDevicesEdition.iDevice.gamification.feedback.getValues();
