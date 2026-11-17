@@ -138,7 +138,7 @@ test.describe('Connect MCP modal', () => {
         await expect(panel).toBeHidden();
     });
 
-    test("fills a game iDevice through its own AI tab prompt and importer", async ({
+    test('fills a game iDevice through its own AI tab prompt and importer', async ({
         authenticatedPage: page,
         createProject,
     }) => {
@@ -187,7 +187,9 @@ test.describe('Connect MCP modal', () => {
             const game = JSON.parse(w.$exeDevices.iDevice.gamification.helpers.decrypt(data));
             return game.wordsGame.map((entry: { word: string }) => entry.word);
         }, created.data.componentId);
-        expect(words.map((word: string) => word.toLowerCase())).toEqual(expect.arrayContaining(['heart', 'lung', 'liver']));
+        expect(words.map((word: string) => word.toLowerCase())).toEqual(
+            expect.arrayContaining(['heart', 'lung', 'liver']),
+        );
         // Saved and closed: one crossword on the page and no editor left open.
         await expect(page.locator('#node-content .idevice_node.crossword[mode="export"]')).toHaveCount(1);
         await expect(page.locator('#node-content .idevice_node[mode="edition"]')).toHaveCount(0);
