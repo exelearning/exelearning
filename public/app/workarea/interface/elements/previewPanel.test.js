@@ -985,6 +985,31 @@ describe('PreviewPanelManager', () => {
       window.location = originalLocation;
       window.eXeLearning.app.getBasePath = originalGetBasePath;
     });
+
+    it('should resolve a path-only base path against the document base in a srcdoc embed (#2770)', async () => {
+      manager.isServiceWorkerPreviewAvailable = vi.fn().mockReturnValue(true);
+      manager.refreshWithServiceWorker = vi.fn().mockResolvedValue();
+
+      const mockOpen = vi.fn(() => ({ focus: vi.fn() }));
+      global.open = mockOpen;
+
+      // Drive-style embeds load the editor through iframe srcdoc: the location is
+      // about:srcdoc and only <base href> carries the real editor URL.
+      const originalGetBasePath = window.eXeLearning.app.getBasePath;
+      window.eXeLearning.app.getBasePath = () => '/editor';
+      const baseUriSpy = vi.spyOn(document, 'baseURI', 'get').mockReturnValue('https://drive.example/editor/');
+      const originalLocation = window.location;
+      delete window.location;
+      window.location = { ...originalLocation, origin: 'null', href: 'about:srcdoc', pathname: 'srcdoc' };
+
+      await manager.extractToNewTab();
+
+      expect(mockOpen).toHaveBeenCalledWith('https://drive.example/editor/viewer/index.html?exe-teacher=1', '_blank');
+
+      window.location = originalLocation;
+      window.eXeLearning.app.getBasePath = originalGetBasePath;
+      baseUriSpy.mockRestore();
+    });
   });
 
   // NOTE: generateStandalonePreviewHtml tests removed - method no longer needed with SW approach

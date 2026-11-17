@@ -1422,8 +1422,10 @@ export default class PreviewPanelManager {
             // and the assets plus the preview SW scope from another (the configured base path),
             // so the configured base path wins over the page path when present (#2770).
             const configuredBasePath = eXeLearning.app?.getBasePath?.() || '';
+            // document.baseURI rather than location.href: a srcdoc embed (about:srcdoc) has no
+            // usable location, but its <base href> still points at the editor.
             const viewerBase = configuredBasePath
-                ? new URL(configuredBasePath, window.location.href).href
+                ? new URL(configuredBasePath, document.baseURI).href
                 : `${window.location.origin}${basePath}`;
             // Preview makes the Teacher Mode toggle available (the author is the teacher);
             // see loadPreviewFromServiceWorker(). Exported packages stay hidden by default.
