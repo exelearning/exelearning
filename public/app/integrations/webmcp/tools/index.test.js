@@ -9,8 +9,8 @@ import {
 } from './index.js';
 
 describe('Tool Catalog', () => {
-    it('contains all 27 tools', () => {
-        expect(toolCatalog.length).toBe(27);
+    it('contains all 29 tools', () => {
+        expect(toolCatalog.length).toBe(29);
     });
 
     it('every tool has required fields', () => {
@@ -61,13 +61,13 @@ describe('Tool Catalog', () => {
 
     it('read-only tools have writes=false', () => {
         const readTools = getReadOnlyTools();
-        expect(readTools.length).toBe(4); // context, get_metadata, icons.list, assets.list
+        expect(readTools.length).toBe(5); // context, get_metadata, icons.list, ai_prompt.get, assets.list
         expect(readTools.every((t) => t.writes === false)).toBe(true);
     });
 
     it('write tools have writes=true', () => {
         const writeTools = getWriteTools();
-        expect(writeTools.length).toBe(23);
+        expect(writeTools.length).toBe(24);
         expect(writeTools.every((t) => t.writes === true)).toBe(true);
     });
 

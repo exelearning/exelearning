@@ -99,13 +99,13 @@ Throw away and rebuild `WebMCPService` to reset state.
 - **Declarative catalog.** Tools are plain objects grouped by category under
   `public/app/integrations/webmcp/tools/` (`projectTools.js`, `pageTools.js`,
   `blockTools.js`, `componentTools.js`, `ideviceTextTools.js`,
-  `ideviceSpecializedTools.js`, `assetTools.js`) and aggregated in
+  `ideviceSpecializedTools.js`, `ideviceAiTools.js`, `assetTools.js`) and aggregated in
   `tools/index.js` (`export const toolCatalog = [...]`, lines 10-18) with lookup
   helpers `getToolDefinition`, `getToolsByCategory`, `getReadOnlyTools`,
   `getWriteTools` (lines 21-43). Each definition carries `name`, `description`,
   `inputSchema`, `handlerName`, `writes`, `annotations`, `category` — e.g.
-  `projectTools.js` lines 2-47. The catalog totals 27 tool definitions
-  (`handlerName` count across the seven category files).
+  `projectTools.js` lines 2-47. The catalog totals 29 tool definitions
+  (`handlerName` count across the eight category files).
 - **Handler binding.** `WebMCPService._buildHandlerMap()` maps each
   `handlerName` to a bound method (`WebMCPService.js` lines 587-617);
   `registerDefaultTools()` creates a session and calls

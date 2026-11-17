@@ -156,6 +156,7 @@ Subscribe: `audit.on('tool:invoked', (event) => { ... })`. History: `audit.getHi
 - `exe.context.current`
 - `exe.project.get_metadata`
 - `exe.idevices.icons.list`
+- `exe.idevices.ai_prompt.get`
 - `exe.assets.list`
 
 ### Write tools
@@ -171,6 +172,7 @@ Subscribe: `audit.on('tool:invoked', (event) => { ... })`. History: `audit.getHi
 - `exe.idevices.az_quiz_game.add`
 - `exe.idevices.image_gallery.add`
 - `exe.idevices.form.add`
+- `exe.idevices.ai_content.import`
 - `exe.idevices.text.set_rich_html`
 - `exe.idevices.text.append_rich_html`
 - `exe.idevices.text.insert_image_base64`
@@ -195,6 +197,13 @@ Write tools can require confirmation depending on policy (default: one confirmat
 
 `exe.idevices.az_quiz_game.add` follows the same block/metadata contract and receives
 an `entries` array (word/definition + optional media/mode fields) to generate a ready-to-edit rosco.
+
+`exe.idevices.ai_prompt.get` and `exe.idevices.ai_content.import` reuse the AI tab of the game iDevices instead
+of rebuilding their data. The prompt comes from `share.buildIAPromptText()` in `common_edition.js`; the import opens
+the iDevice through its edit button, waits for `share.aiImport` (registered by `share.addEvents()` and owned by the
+edition lifecycle), runs `share.importAILines()` — the same callback as the AI tab's Save button — and saves the
+iDevice. `AI_FORMAT_IDS` in `ideviceAiContent.js` maps each iDevice type to its `getTabIA(n)` format id; a test
+keeps it in step with the editions.
 
 `exe.idevices.image_gallery.add` creates JSON payloads compatible with `image-gallery` (`img_0`, `img_1`, ...)
 and accepts external URLs or generated `picsum.photos` URLs from seeds.

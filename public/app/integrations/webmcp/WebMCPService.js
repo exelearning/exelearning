@@ -45,6 +45,7 @@ import {
     requireAssetUuidUrl,
 } from './validators.js';
 import { escapeCssAttributeValue } from './webmcpDomUtils.js';
+import { getIdeviceAiPrompt, importIdeviceAiContent } from './ideviceAiContent.js';
 import { sanitizeRichHtml } from './webmcpSanitize.js';
 
 const WEBMCP_DOCS_URL =
@@ -315,6 +316,8 @@ export default class WebMCPService {
             addImageGalleryIdevice: (args) => this.addImageGalleryIdevice(args),
             addFormIdevice: (args) => this.addFormIdevice(args),
             listIdeviceIcons: () => this.listIdeviceIcons(),
+            getIdeviceAiPrompt: (args) => getIdeviceAiPrompt(args),
+            importIdeviceAiContent: (args) => importIdeviceAiContent(this, args),
             setTextIdeviceRichHtml: (args) => this.setTextIdeviceRichHtml(args),
             appendTextIdeviceRichHtml: (args) => this.appendTextIdeviceRichHtml(args),
             insertTextIdeviceImageFromBase64: (args) => this.insertTextIdeviceImageFromBase64(args),

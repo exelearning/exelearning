@@ -5,8 +5,9 @@ import { componentTools } from './componentTools.js';
 import { ideviceTextTools } from './ideviceTextTools.js';
 import { ideviceSpecializedTools } from './ideviceSpecializedTools.js';
 import { assetTools } from './assetTools.js';
+import { ideviceAiTools } from './ideviceAiTools.js';
 
-// Complete tool catalog - all 27 tools
+// Complete tool catalog - all 29 tools
 export const toolCatalog = [
     ...projectTools,
     ...pageTools,
@@ -14,6 +15,7 @@ export const toolCatalog = [
     ...componentTools,
     ...ideviceTextTools,
     ...ideviceSpecializedTools,
+    ...ideviceAiTools,
     ...assetTools,
 ];
 
@@ -43,4 +45,4 @@ export function getWriteTools() {
 }
 
 // Re-export individual collections
-export { projectTools, pageTools, blockTools, componentTools, ideviceTextTools, ideviceSpecializedTools, assetTools };
+export { projectTools, pageTools, blockTools, componentTools, ideviceTextTools, ideviceSpecializedTools, ideviceAiTools, assetTools };

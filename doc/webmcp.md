@@ -6,7 +6,7 @@ client configuration or token: the agent calls the tools of the eXeLearning tab 
 
 ## How it works
 
-eXe registers its 27 tools with the browser WebMCP API. It looks for `document.modelContext` first (the
+eXe registers its 29 tools with the browser WebMCP API. It looks for `document.modelContext` first (the
 current specification) and falls back to `navigator.modelContext` for older Chrome builds (Chrome 150
 deprecated it and Chromium 153 removed it). If the browser exposes neither, the feature is simply not
 available; nothing else changes in the editor.
@@ -80,6 +80,12 @@ The initial integration exposes tools to:
   - `entries` (word/definition pairs, with optional letter/mode/media fields)
 - Create an **Image Gallery** iDevice with `images` (supports direct URLs and `picsum.photos` seeds).
 - Create a **Form** iDevice with `questions` (`selection`, `true-false`, `dropdown`, `fill`).
+- Fill any game iDevice that has an **AI tab** (A-Z quiz, crossword, word search, flip cards, classify,
+  quick questions, true or false, form, adaptative quiz and others) through that tab:
+  `exe.idevices.ai_prompt.get` returns the iDevice's own prompt and line format, and
+  `exe.idevices.ai_content.import` adds the generated lines with the iDevice's own importer, creating the
+  iDevice or appending to an existing one. The iDevice briefly opens in the editor and is saved, as if the
+  lines had been pasted into the AI tab.
 - Set and append formatted HTML in Text iDevices.
 - Insert images into Text iDevices from:
   - base64 content (AI-generated images)
@@ -125,6 +131,8 @@ For project-shape JSON and the generation pipeline, see [Generating .elpx with a
 5. (Optional) Call `exe.idevices.az_quiz_game.add` to create a rosco activity with `entries`.
 6. (Optional) Call `exe.idevices.image_gallery.add` with `images`.
 7. (Optional) Call `exe.idevices.form.add` with `questions`.
+   For any game iDevice with an AI tab, call `exe.idevices.ai_prompt.get`, generate lines in that format and
+   pass them to `exe.idevices.ai_content.import`.
 8. Use rich HTML/image tools to complete content:
    - `exe.idevices.text.set_rich_html`
    - `exe.idevices.text.append_rich_html`

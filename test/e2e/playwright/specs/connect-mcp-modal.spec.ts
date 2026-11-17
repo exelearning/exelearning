@@ -137,4 +137,59 @@ test.describe('Connect MCP modal', () => {
         await panel.locator('#webmcp-agent-close').click();
         await expect(panel).toBeHidden();
     });
+
+    test("fills a game iDevice through its own AI tab prompt and importer", async ({
+        authenticatedPage: page,
+        createProject,
+    }) => {
+        // Write tools ask for confirmation once per session.
+        page.on('dialog', dialog => dialog.accept());
+        await openWorkarea(page, createProject, 'WebMCP AI Content Project');
+
+        const run = (name: string, args: object) =>
+            page.evaluate(
+                async ([toolName, toolArgs]) => {
+                    const result = await (window as any).eXeLearning.app.webmcp.executeTool(toolName, toolArgs);
+                    return JSON.parse(result.content[0].text);
+                },
+                [name, args] as const,
+            );
+
+        const prompt = await run('exe.idevices.ai_prompt.get', { ideviceType: 'crossword' });
+        expect(prompt).toMatchObject({ success: true });
+        expect(prompt.data.prompt).toContain('Word#Definition');
+
+        const page1 = await run('exe.pages.create', { name: 'Human body' });
+        const pageId = page1.data.pageId ?? page1.data.id;
+        const created = await run('exe.idevices.ai_content.import', {
+            ideviceType: 'crossword',
+            pageId,
+            blockName: 'Organs',
+            lines: ['```', 'Heart#Pumps blood', 'Lung#Exchanges gases', 'not a line', '```'],
+        });
+        expect(created, JSON.stringify(created)).toMatchObject({ success: true });
+        expect(created.data).toMatchObject({ addedLines: 2, invalidLines: ['not a line'] });
+
+        const appended = await run('exe.idevices.ai_content.import', {
+            ideviceType: 'crossword',
+            componentId: created.data.componentId,
+            pageId,
+            lines: ['Liver#Filters the blood'],
+        });
+        expect(appended.data.addedLines).toBe(1);
+
+        // The iDevice was saved through its own edition: its stored data holds all three words.
+        const words: string[] = await page.evaluate(id => {
+            const w = window as any;
+            const component = w.eXeLearning.app.webmcp.getStructureBinding().getComponent(id);
+            const html = new DOMParser().parseFromString(component.htmlContent, 'text/html');
+            const data = html.querySelector('.crucigrama-DataGame')?.textContent || '';
+            const game = JSON.parse(w.$exeDevices.iDevice.gamification.helpers.decrypt(data));
+            return game.wordsGame.map((entry: { word: string }) => entry.word);
+        }, created.data.componentId);
+        expect(words.map((word: string) => word.toLowerCase())).toEqual(expect.arrayContaining(['heart', 'lung', 'liver']));
+        // Saved and closed: one crossword on the page and no editor left open.
+        await expect(page.locator('#node-content .idevice_node.crossword[mode="export"]')).toHaveCount(1);
+        await expect(page.locator('#node-content .idevice_node[mode="edition"]')).toHaveCount(0);
+    });
 });

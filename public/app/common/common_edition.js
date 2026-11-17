@@ -1176,6 +1176,7 @@ var $exeDevicesEdition = {
                     const resolveOptions = typeof getOptions === 'function'
                         ? getOptions
                         : () => (getOptions && typeof getOptions === 'object' ? getOptions : {});
+                    $exeDevicesEdition.iDevice.gamification.share.registerAIImport(type, saveQuestions, resolveOptions);
                     const $textQuestionsArea = $('#eXeEQuestionsArea');
                     const $textPrompt = $('#eXeEPromptArea');
                     const $textAreaIa = $('#eXeEQuestionsIA');
@@ -1510,21 +1511,65 @@ var $exeDevicesEdition = {
                 },
 
 
-                validateAndSave: function (gameId, $textQuestionsArea, options = {}) {
-                    const lines = $textQuestionsArea.val().trim().split('\n');
+                /**
+                 * The AI importer of the open edition: its prompt format and the
+                 * iDevice's own callback that turns the format lines into items.
+                 * Owned by the edition lifecycle, so it disappears when the
+                 * editor closes and can never reach the iDevice that replaced it.
+                 */
+                aiImport: null,
+
+                registerAIImport: function (type, saveQuestions, resolveOptions) {
+                    const share = $exeDevicesEdition.iDevice.gamification.share;
+                    if (typeof saveQuestions !== 'function') return;
+                    const lifecycle = $exeDevicesEdition.iDevice.getLifecycle();
+                    const entry = { type, saveQuestions, resolveOptions, lifecycle };
+                    share.aiImport = entry;
+                    if (lifecycle) {
+                        lifecycle.own(() => {
+                            if (share.aiImport === entry) share.aiImport = null;
+                        });
+                    }
+                },
+
+                /**
+                 * Add AI-format lines (one item per line) to the open edition
+                 * through the same callback as the AI tab's Save button.
+                 *
+                 * @param {String|String[]} content
+                 * @returns {Promise<{validLines: String[], invalidLines: String[], result: *}>}
+                 */
+                importAILines: async function (content) {
+                    const entry = $exeDevicesEdition.iDevice.gamification.share.aiImport;
+                    if (!entry) throw new Error('No open iDevice edition accepts AI content');
+                    const lines = Array.isArray(content) ? content : String(content || '').split('\n');
+                    const { validLines, invalidLines } = $exeDevicesEdition.iDevice.gamification.share.splitAILines(
+                        entry.type,
+                        lines,
+                        entry.resolveOptions()
+                    );
+                    const result = validLines.length ? await entry.saveQuestions(validLines, invalidLines) : null;
+                    return { validLines, invalidLines, result };
+                },
+
+                splitAILines: function (gameId, lines, options = {}) {
                     const validLines = [];
                     const invalidLines = [];
                     const regex = $exeDevicesEdition.iDevice.gamification.share.getAllowedFormats(gameId, options).allowRegex;
-
                     lines.forEach((line) => {
-                        const cleanLine = line.trim();
-
+                        const cleanLine = String(line).trim();
                         if (regex.test(cleanLine)) {
                             validLines.push(cleanLine);
                         } else if (cleanLine.length > 0) {
                             invalidLines.push(cleanLine);
                         }
                     });
+                    return { validLines, invalidLines };
+                },
+
+                validateAndSave: function (gameId, $textQuestionsArea, options = {}) {
+                    const lines = $textQuestionsArea.val().trim().split('\n');
+                    const { validLines, invalidLines } = $exeDevicesEdition.iDevice.gamification.share.splitAILines(gameId, lines, options);
                     $textQuestionsArea.val(invalidLines.join('\n'));
                     return {
                         validLines: validLines,
@@ -1533,20 +1578,7 @@ var $exeDevicesEdition = {
                 },
 
                 validateQuesionsIA: function (gameId, lines, options = {}) {
-                    const validLines = [];
-                    const invalidLines = [];
-                    const regex = $exeDevicesEdition.iDevice.gamification.share.getAllowedFormats(gameId, options).allowRegex;
-
-                    lines.forEach((line) => {
-                        const cleanLine = line.trim();
-                        if (regex.test(cleanLine)) {
-                            validLines.push(cleanLine);
-                        } else if (cleanLine.length > 0) {
-                            invalidLines.push(cleanLine);
-                        }
-                    });
-
-                    return validLines;
+                    return $exeDevicesEdition.iDevice.gamification.share.splitAILines(gameId, lines, options).validLines;
                 },
 
                 /**
