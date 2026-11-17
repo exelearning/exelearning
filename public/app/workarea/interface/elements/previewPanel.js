@@ -1418,9 +1418,16 @@ export default class PreviewPanelManager {
             // Remove trailing 'workarea', 'workarea.html', or 'workarea/' to get base directory
             // Also remove any trailing slash to avoid double slashes
             const basePath = pathname.replace(/\/workarea(\.html)?\/?$/, '').replace(/\/$/, '');
+            // An embedding host (e.g. Moodle) serves the shell from one URL (editor/index.php)
+            // and the assets plus the preview SW scope from another (the configured base path),
+            // so the configured base path wins over the page path when present (#2770).
+            const configuredBasePath = eXeLearning.app?.getBasePath?.() || '';
+            const viewerBase = configuredBasePath
+                ? new URL(configuredBasePath, window.location.href).href
+                : `${window.location.origin}${basePath}`;
             // Preview makes the Teacher Mode toggle available (the author is the teacher);
             // see loadPreviewFromServiceWorker(). Exported packages stay hidden by default.
-            const viewerUrl = `${window.location.origin}${basePath}/viewer/index.html?exe-teacher=1`;
+            const viewerUrl = `${viewerBase}/viewer/index.html?exe-teacher=1`;
 
             // Open in new tab
             const newTab = window.open(viewerUrl, '_blank');

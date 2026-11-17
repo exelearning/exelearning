@@ -954,6 +954,37 @@ describe('PreviewPanelManager', () => {
 
       window.location = originalLocation;
     });
+
+    it('should open the viewer under the embedding base path, not the host page path (#2770)', async () => {
+      manager.isServiceWorkerPreviewAvailable = vi.fn().mockReturnValue(true);
+      manager.refreshWithServiceWorker = vi.fn().mockResolvedValue();
+
+      const mockOpen = vi.fn(() => ({ focus: vi.fn() }));
+      global.open = mockOpen;
+
+      // Moodle serves the editor shell from editor/index.php but its assets (and the
+      // preview Service Worker scope) from editor/static.php/{cmid}/.
+      const originalGetBasePath = window.eXeLearning.app.getBasePath;
+      window.eXeLearning.app.getBasePath = () => 'https://moodle.example/mod/exelearning/editor/static.php/12';
+      const originalLocation = window.location;
+      delete window.location;
+      window.location = {
+        ...originalLocation,
+        origin: 'https://moodle.example',
+        href: 'https://moodle.example/mod/exelearning/editor/index.php?id=12',
+        pathname: '/mod/exelearning/editor/index.php',
+      };
+
+      await manager.extractToNewTab();
+
+      expect(mockOpen).toHaveBeenCalledWith(
+        'https://moodle.example/mod/exelearning/editor/static.php/12/viewer/index.html?exe-teacher=1',
+        '_blank'
+      );
+
+      window.location = originalLocation;
+      window.eXeLearning.app.getBasePath = originalGetBasePath;
+    });
   });
 
   // NOTE: generateStandalonePreviewHtml tests removed - method no longer needed with SW approach
