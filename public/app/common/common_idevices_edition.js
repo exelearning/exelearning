@@ -485,10 +485,6 @@ var $exeIDevicesEdition = {
                     $('#eXeProgressReport').prop('checked', evaluation);
                     $('#eXeProgressReportID').val(evaluationID);
                     $('#eXeProgressReportID').prop('disabled', !evaluation);
-                    // Folded at first, its group shows a report the author switched on.
-                    if (evaluation) {
-                        $exeIDevicesEdition.iDevice.common.setGroupOpen(document.getElementById('eXeProgressReportGroup'), true);
-                    }
                 },
                 getValues: function () {
                     var evaluation = $('#eXeProgressReport').is(':checked');
@@ -603,10 +599,6 @@ var $exeIDevicesEdition = {
                     $('#eXePassScoreCustom').prop('checked', custom);
                     $('#eXePassScoreGlobal').prop('checked', !custom);
                     $('#eXePassScoreCustomOptions').toggleClass('d-none', !custom);
-                    // Folded at first, its group shows a mark of the activity's own.
-                    if (custom) {
-                        $exeIDevicesEdition.iDevice.common.setGroupOpen(document.getElementById('eXePassScoreGroup'), true);
-                    }
                 },
 
                 getValues: function () {
@@ -1009,8 +1001,8 @@ var $exeIDevicesEdition = {
                     const progressReport = path
                         ? $exeIDevicesEdition.iDevice.gamification.progressBar.getContents(path)
                         : '';
-                    // Each block is a group that folds, as the groups of Options will be. SCORM is unfolded;
-                    // the other two unfold when their values are set to something of their own (setValues).
+                    // Each block is a group that folds. All three start unfolded, so no setting is hidden
+                    // until the author folds its group.
                     const group = $exeIDevicesEdition.iDevice.common.getGroup;
                     const scorm = `
                         <div class="exe-scorm-wrapper">
@@ -1072,7 +1064,6 @@ var $exeIDevicesEdition = {
                                   id: 'eXeProgressReportGroup',
                                   title: _('Progress report'),
                                   content: progressReport,
-                                  open: false,
                               })
                             : '',
                         group({
@@ -1080,7 +1071,6 @@ var $exeIDevicesEdition = {
                             title: _('Minimum score to pass the activity'),
                             titleId: 'eXePassScoreLabel',
                             content: passScoreContents,
-                            open: false,
                         }),
                     ].join('');
                 },

@@ -2912,7 +2912,7 @@ describe('common_idevices_edition.js', () => {
         expect(passScoreAt).toBeGreaterThan(reportAt);
       });
 
-      it('puts each of the three sections in a group that folds, with only SCORM unfolded', () => {
+      it('puts each of the three sections in a group that folds, all of them unfolded', () => {
         document.body.innerHTML = getContents('/idevice/path/');
         const groups = [...document.querySelectorAll('fieldset.exe-idevice-group')];
 
@@ -2921,13 +2921,14 @@ describe('common_idevices_edition.js', () => {
           'Progress report',
           'Minimum score to pass the activity',
         ]);
-        for (const [group, field, open] of [
-          [groups[0], '#eXeGameSCORMNoSave', 'true'],
-          [groups[1], '#eXeProgressReport', 'false'],
-          [groups[2], '#eXePassScoreGlobal', 'false'],
+        for (const [group, field] of [
+          [groups[0], '#eXeGameSCORMNoSave'],
+          [groups[1], '#eXeProgressReport'],
+          [groups[2], '#eXePassScoreGlobal'],
         ]) {
           expect(group.querySelector(`.exe-idevice-group-body ${field}`)).not.toBeNull();
-          expect(group.querySelector('legend button').getAttribute('aria-expanded')).toBe(open);
+          expect(group.querySelector('legend button').getAttribute('aria-expanded')).toBe('true');
+          expect(group.querySelector('.exe-idevice-group-body').hidden).toBe(false);
         }
         // The pass score choice is named by the title of its group.
         const choice = document.querySelector('[role="radiogroup"][aria-labelledby="eXePassScoreLabel"]');
@@ -2937,28 +2938,25 @@ describe('common_idevices_edition.js', () => {
         expect(document.querySelector('h3')).toBeNull();
       });
 
-      it('unfolds the progress report and the pass score when the activity sets them', () => {
+      it('leaves every group as the author left it when the activity loads its values', () => {
         document.body.innerHTML = getContents('/idevice/path/');
         const gamification = globalThis.$exeIDevicesEdition.iDevice.gamification;
+        const common = globalThis.$exeIDevicesEdition.iDevice.common;
         const isOpen = (id) => !document.getElementById(`${id}-body`).hidden;
+        const ids = ['eXeGameSCORMGroup', 'eXeProgressReportGroup', 'eXePassScoreGroup'];
 
-        // Left as they come, they stay folded.
-        gamification.progressBar.setValues({ evaluation: false, evaluationID: '' });
-        gamification.passScore.setValues({ passScoreMode: 'global' });
-        expect(isOpen('eXeProgressReportGroup')).toBe(false);
-        expect(isOpen('eXePassScoreGroup')).toBe(false);
-
-        gamification.progressBar.setValues({ evaluation: true, evaluationID: 'report-1' });
-        expect(isOpen('eXeProgressReportGroup')).toBe(true);
-        expect(isOpen('eXePassScoreGroup')).toBe(false);
-        gamification.passScore.setValues({ passScoreMode: 'custom', passScoreCustom: 7 });
-        expect(isOpen('eXePassScoreGroup')).toBe(true);
-        // Setting them back does not fold what the author may have opened.
-        gamification.progressBar.setValues({ evaluation: false });
-        gamification.passScore.setValues({ passScoreMode: 'global' });
-        expect(isOpen('eXeProgressReportGroup')).toBe(true);
-        expect(isOpen('eXePassScoreGroup')).toBe(true);
-        expect(isOpen('eXeGameSCORMGroup')).toBe(true);
+        // Loading values unfolds nothing more and folds nothing either.
+        for (const values of [
+          [{ evaluation: false, evaluationID: '' }, { passScoreMode: 'global' }],
+          [{ evaluation: true, evaluationID: 'report-1' }, { passScoreMode: 'custom', passScoreCustom: 7 }],
+        ]) {
+          gamification.progressBar.setValues(values[0]);
+          gamification.passScore.setValues(values[1]);
+          expect(ids.map(isOpen)).toEqual([true, true, true]);
+        }
+        common.setGroupOpen(document.getElementById('eXePassScoreGroup'), false);
+        gamification.passScore.setValues({ passScoreMode: 'custom', passScoreCustom: 8 });
+        expect(ids.map(isOpen)).toEqual([true, true, false]);
       });
 
       it('leaves the progress report group out without a path', () => {

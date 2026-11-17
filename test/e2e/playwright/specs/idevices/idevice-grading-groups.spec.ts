@@ -10,9 +10,8 @@ import {
 
 /**
  * The Grading tab of the iDevice forms: SCORM, Progress report and Minimum score to pass the activity are groups
- * that fold (common.getGroup). A new activity shows SCORM unfolded and the other two folded; reopened, a group also
- * unfolds when the activity has something of its own in it. Checked on Math operations, which saves without
- * anything to fill in.
+ * that fold (common.getGroup). All three open unfolded, in a new activity and in a reopened one, and the author can
+ * fold any of them. Checked on Math operations, which saves without anything to fill in.
  */
 test('The groups of Grading fold and unfold, and a warning unfolds the group of its field', async ({
     authenticatedPage: page,
@@ -29,32 +28,30 @@ test('The groups of Grading fold and unfold, and a warning unfolds the group of 
     const gradingTab = page.locator('#gameQEIdeviceForm-tab-grading');
     await gradingTab.click();
 
-    // Each one is a group named by its title. In a new activity, only SCORM is unfolded.
+    // Each one is a group named by its title, and all three are unfolded.
     const toggle = (name: string) => grading.getByRole('button', { name, exact: true });
+    const names = ['SCORM', 'Progress report', 'Minimum score to pass the activity'];
     const scorm = toggle('SCORM');
     const report = toggle('Progress report');
     const passScore = toggle('Minimum score to pass the activity');
-    for (const [name, expanded] of [
-        ['SCORM', 'true'],
-        ['Progress report', 'false'],
-        ['Minimum score to pass the activity', 'false'],
-    ]) {
-        await expect(grading.getByRole('group', { name, exact: true })).toBeVisible();
-        await expect(toggle(name)).toHaveAttribute('aria-expanded', expanded);
-    }
+    const expectAllUnfolded = async () => {
+        for (const name of names) await expect(toggle(name)).toHaveAttribute('aria-expanded', 'true');
+    };
+    for (const name of names) await expect(grading.getByRole('group', { name, exact: true })).toBeVisible();
+    await expectAllUnfolded();
     const noSave = page.locator('#eXeGameSCORMNoSave');
     const reportSwitch = page.locator('#eXeProgressReport');
     await expect(noSave).toBeVisible();
-    await expect(reportSwitch).toBeHidden();
-    await expect(page.locator('#eXePassScoreGlobal')).toBeHidden();
-
-    // A click unfolds one, and only that one; another folds it.
-    await passScore.click();
-    await expect(passScore).toHaveAttribute('aria-expanded', 'true');
+    await expect(reportSwitch).toBeVisible();
     await expect(grading.getByRole('radiogroup', { name: 'Minimum score to pass the activity' })).toBeVisible();
-    await expect(reportSwitch).toBeHidden();
+
+    // A click folds one, and only that one; another unfolds it.
     await passScore.click();
+    await expect(passScore).toHaveAttribute('aria-expanded', 'false');
     await expect(page.locator('#eXePassScoreGlobal')).toBeHidden();
+    await expect(reportSwitch).toBeVisible();
+    await passScore.click();
+    await expect(page.locator('#eXePassScoreGlobal')).toBeVisible();
     // And so do Enter and Space.
     await scorm.press('Enter');
     await expect(scorm).toHaveAttribute('aria-expanded', 'false');
@@ -64,7 +61,6 @@ test('The groups of Grading fold and unfold, and a warning unfolds the group of 
     await expect(noSave).toBeChecked();
 
     // The report on with too short an identifier, its group folded, and saved from another tab, as an author does.
-    await report.click();
     await reportSwitch.check();
     await page.locator('#eXeProgressReportID').fill('abc');
     await report.click();
@@ -80,23 +76,22 @@ test('The groups of Grading fold and unfold, and a warning unfolds the group of 
     await expect(page.locator('#eXeProgressReportID')).toBeVisible();
     await expect(page.locator('#eXeProgressReportID')).toHaveValue('abc');
 
-    // Saved with the report on and the project's mark: reopened, the report shows and the mark stays folded.
+    // Saved with a group folded: reopened, every group is unfolded again, with the stored values.
     await page.locator('#eXeProgressReportID').fill('grading-groups');
+    await passScore.click();
+    await expect(passScore).toHaveAttribute('aria-expanded', 'false');
     await saveIdevice(page, id!);
     await editIdevice(page, id!);
     await gradingTab.click();
-    await expect(scorm).toHaveAttribute('aria-expanded', 'true');
-    await expect(report).toHaveAttribute('aria-expanded', 'true');
+    await expectAllUnfolded();
     await expect(page.locator('#eXeProgressReportID')).toHaveValue('grading-groups');
-    await expect(passScore).toHaveAttribute('aria-expanded', 'false');
 
-    // With a mark of its own, the mark shows too.
-    await passScore.click();
+    // And so with a mark of its own.
     await page.locator('#eXePassScoreCustom').check();
     await page.locator('#eXePassScoreValue').fill('7');
     await saveIdevice(page, id!);
     await editIdevice(page, id!);
     await gradingTab.click();
-    await expect(passScore).toHaveAttribute('aria-expanded', 'true');
+    await expectAllUnfolded();
     await expect(page.locator('#eXePassScoreValue')).toHaveValue('7');
 });

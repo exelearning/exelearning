@@ -648,8 +648,8 @@ export async function openLeftPanels(page: Page): Promise<void> {
 }
 
 /**
- * Unfold a group of an iDevice form (common.getGroup) if it is folded, e.g. eXePassScoreGroup in Grading, which
- * opens folded until the activity has a mark of its own. Its tab has to be shown.
+ * Unfold a group of an iDevice form (common.getGroup) if it is folded. The groups of Grading open unfolded, so this
+ * only acts if the author folded one. Its tab has to be shown.
  *
  * @param id The id of the group: eXeGameSCORMGroup, eXeProgressReportGroup or eXePassScoreGroup in Grading.
  */
