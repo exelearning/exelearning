@@ -9,13 +9,33 @@
  * - MySQL: Use two-step approach (execute + SELECT)
  */
 
-import type { Kysely, Insertable, Updateable, ColumnDefinitionBuilder, DataTypeExpression } from 'kysely';
+import type { Kysely, Insertable, Updateable, Selectable, ColumnDefinitionBuilder } from 'kysely';
 import { sql } from 'kysely';
 import type { Database } from './types';
 import { getDialectFromEnv, type DbDialect } from './dialect';
 
+/**
+ * Schema-erased Kysely handle for migrations (schema is in flux).
+ */
+// biome-ignore lint/suspicious/noExplicitAny: generic-table fluent API is uncallable under TS 7
+export type UntypedKysely = Kysely<any>;
+
 // Cache the dialect to avoid repeated environment lookups
 let cachedDialect: DbDialect | null = null;
+
+/** Row type returned for rows of an arbitrary table of the database. */
+type TableRow<T extends keyof Database> = Selectable<Database[T]>;
+
+/**
+ * Executes a dynamic table operation against Kysely.
+ * Kysely's query builders are distributive over union types (keyof Database), causing call signature
+ * incompatibility in TypeScript strict mode when chaining methods like .where() or .set() on generic tables.
+ * This helper isolates dynamic query execution to internal helpers while all public helpers maintain strongly-typed signatures.
+ */
+// biome-ignore lint/suspicious/noExplicitAny: internal dynamic query builder for generic table operations
+function dynamicDb(db: Kysely<Database>): any {
+    return db;
+}
 
 /**
  * Get the current database dialect (cached)
@@ -78,7 +98,7 @@ export function fromBinaryData(data: unknown): Uint8Array {
  * Check if a table exists (cross-database compatible)
  * Uses the appropriate query for each database type
  */
-export async function tableExists(db: Kysely<unknown>, tableName: string): Promise<boolean> {
+export async function tableExists<DB>(db: Kysely<DB>, tableName: string): Promise<boolean> {
     const dialect = getDialect();
 
     try {
@@ -116,7 +136,7 @@ export async function tableExists(db: Kysely<unknown>, tableName: string): Promi
 /**
  * Check if a column exists in a table (cross-database compatible)
  */
-export async function columnExists(db: Kysely<unknown>, tableName: string, columnName: string): Promise<boolean> {
+export async function columnExists<DB>(db: Kysely<DB>, tableName: string, columnName: string): Promise<boolean> {
     const dialect = getDialect();
 
     try {
@@ -190,7 +210,7 @@ export function addAutoIncrement(col: ColumnDefinitionBuilder): ColumnDefinition
  *
  * We use LONGBLOB for MySQL to support large Yjs documents (20MB+).
  */
-export function getBinaryType(): DataTypeExpression {
+export function getBinaryType(): 'bytea' | 'blob' | ReturnType<typeof sql> {
     const dialect = getDialect();
     if (dialect === 'postgres') {
         return 'bytea';
@@ -208,7 +228,7 @@ export function getBinaryType(): DataTypeExpression {
 // ============================================================================
 
 /**
- * Insert a row, ignoring if it violates a unique constraint.
+ * Insert a row, ignoring conflicts on unique constraints.
  * - PostgreSQL/SQLite: ON CONFLICT DO NOTHING
  * - MySQL/MariaDB: INSERT IGNORE
  *
@@ -221,26 +241,22 @@ export async function insertIgnore<T extends keyof Database>(
     values: Insertable<Database[T]>,
 ): Promise<void> {
     if (getDialect() === 'mysql') {
-        // MySQL/MariaDB: Use INSERT IGNORE with raw SQL
-        // Note: ON CONFLICT DO NOTHING syntax is not supported
-        const keys = Object.keys(values as object);
-        const vals = Object.values(values as object);
-
-        // Build column list and value placeholders
-        const columnList = keys.map(k => sql.id(k));
-        const valuePlaceholders = vals.map(v => sql.lit(v));
+        // MySQL/MariaDB: INSERT IGNORE with bound parameters (not sql.lit)
+        const entries = Object.entries(values as object).filter(([, v]) => v !== undefined);
+        const columnList = entries.map(([k]) => sql.id(k));
+        const valuePlaceholders = entries.map(([, v]) => sql`${v}`);
 
         await sql`INSERT IGNORE INTO ${sql.table(table)} (${sql.join(columnList)}) VALUES (${sql.join(valuePlaceholders)})`.execute(
             db,
         );
-    } else {
-        // PostgreSQL/SQLite: Use ON CONFLICT DO NOTHING
-        await db
-            .insertInto(table)
-            .values(values as Insertable<Database[T]>)
-            .onConflict(oc => oc.doNothing())
-            .execute();
+        return;
     }
+
+    await dynamicDb(db)
+        .insertInto(table)
+        .values(values)
+        .onConflict((oc: { doNothing: () => unknown }) => oc.doNothing())
+        .execute();
 }
 
 /**
@@ -251,30 +267,20 @@ export async function insertAndReturn<T extends keyof Database>(
     db: Kysely<Database>,
     table: T,
     values: Insertable<Database[T]>,
-): Promise<Database[T]> {
+): Promise<TableRow<T>> {
+    const qdb = dynamicDb(db);
+
     if (supportsReturning()) {
-        // SQLite and PostgreSQL support RETURNING
-        return db
-            .insertInto(table)
-            .values(values as Insertable<Database[T]>)
-            .returningAll()
-            .executeTakeFirstOrThrow() as Promise<Database[T]>;
+        return qdb.insertInto(table).values(values).returningAll().executeTakeFirstOrThrow() as Promise<TableRow<T>>;
     }
 
     // MySQL: Insert then SELECT
-    const result = await db
-        .insertInto(table)
-        .values(values as Insertable<Database[T]>)
-        .executeTakeFirstOrThrow();
-
-    // Get the inserted row by ID
+    const result = await qdb.insertInto(table).values(values).executeTakeFirstOrThrow();
     const insertId = Number(result.insertId);
 
-    return db
-        .selectFrom(table)
-        .selectAll()
-        .where('id' as keyof Database[T] & string, '=', insertId as Database[T][keyof Database[T]])
-        .executeTakeFirstOrThrow() as Promise<Database[T]>;
+    return qdb.selectFrom(table).selectAll().where('id', '=', insertId).executeTakeFirstOrThrow() as Promise<
+        TableRow<T>
+    >;
 }
 
 /**
@@ -284,40 +290,30 @@ export async function insertManyAndReturn<T extends keyof Database>(
     db: Kysely<Database>,
     table: T,
     values: Insertable<Database[T]>[],
-): Promise<Database[T][]> {
+): Promise<TableRow<T>[]> {
     if (values.length === 0) {
         return [];
     }
 
+    const qdb = dynamicDb(db);
+
     if (supportsReturning()) {
-        return db
-            .insertInto(table)
-            .values(values as Insertable<Database[T]>[])
-            .returningAll()
-            .execute() as Promise<Database[T][]>;
+        return qdb.insertInto(table).values(values).returningAll().execute() as Promise<TableRow<T>[]>;
     }
 
     // MySQL: Insert then SELECT by range
-    // First, get the current max ID
-    const maxIdResult = await db
+    const maxIdResult = await qdb
         .selectFrom(table)
-        .select(eb => eb.fn.max<number>('id' as keyof Database[T] & string).as('maxId'))
+        .select((eb: { fn: { max: (col: string) => { as: (alias: string) => unknown } } }) =>
+            eb.fn.max('id').as('maxId'),
+        )
         .executeTakeFirst();
 
-    const startId = ((maxIdResult as { maxId: number | null })?.maxId ?? 0) + 1;
+    const startId = ((maxIdResult as { maxId: number | null } | undefined)?.maxId ?? 0) + 1;
 
-    // Insert all rows
-    await db
-        .insertInto(table)
-        .values(values as Insertable<Database[T]>[])
-        .execute();
+    await qdb.insertInto(table).values(values).execute();
 
-    // Select all newly inserted rows
-    return db
-        .selectFrom(table)
-        .selectAll()
-        .where('id' as keyof Database[T] & string, '>=', startId as Database[T][keyof Database[T]])
-        .execute() as Promise<Database[T][]>;
+    return qdb.selectFrom(table).selectAll().where('id', '>=', startId).execute() as Promise<TableRow<T>[]>;
 }
 
 // ============================================================================
@@ -332,36 +328,12 @@ export async function updateByIdAndReturn<T extends keyof Database>(
     table: T,
     id: number,
     values: Updateable<Database[T]>,
-): Promise<Database[T] | undefined> {
-    if (supportsReturning()) {
-        return db
-            .updateTable(table)
-            .set(values as Updateable<Database[T]>)
-            .where('id' as keyof Database[T] & string, '=', id as Database[T][keyof Database[T]])
-            .returningAll()
-            .executeTakeFirst() as Promise<Database[T] | undefined>;
-    }
-
-    // MySQL: Update then SELECT
-    const result = await db
-        .updateTable(table)
-        .set(values as Updateable<Database[T]>)
-        .where('id' as keyof Database[T] & string, '=', id as Database[T][keyof Database[T]])
-        .executeTakeFirst();
-
-    if (!result || result.numUpdatedRows === 0n) {
-        return undefined;
-    }
-
-    return db
-        .selectFrom(table)
-        .selectAll()
-        .where('id' as keyof Database[T] & string, '=', id as Database[T][keyof Database[T]])
-        .executeTakeFirst() as Promise<Database[T] | undefined>;
+): Promise<TableRow<T> | undefined> {
+    return updateWhereAndReturn(db, table, 'id', id, values);
 }
 
 /**
- * Update rows by a string column (like uuid) and return the updated row
+ * Update rows by a column value and return the updated row
  */
 export async function updateByColumnAndReturn<T extends keyof Database, C extends keyof Database[T] & string>(
     db: Kysely<Database>,
@@ -369,29 +341,36 @@ export async function updateByColumnAndReturn<T extends keyof Database, C extend
     column: C,
     columnValue: Database[T][C],
     values: Updateable<Database[T]>,
-): Promise<Database[T] | undefined> {
+): Promise<TableRow<T> | undefined> {
+    return updateWhereAndReturn(db, table, column, columnValue, values);
+}
+
+async function updateWhereAndReturn<T extends keyof Database>(
+    db: Kysely<Database>,
+    table: T,
+    whereColumn: string,
+    whereValue: unknown,
+    values: Updateable<Database[T]>,
+): Promise<TableRow<T> | undefined> {
+    const qdb = dynamicDb(db);
+
     if (supportsReturning()) {
-        return db
+        return qdb
             .updateTable(table)
-            .set(values as Updateable<Database[T]>)
-            .where(column, '=', columnValue)
+            .set(values)
+            .where(whereColumn, '=', whereValue)
             .returningAll()
-            .executeTakeFirst() as Promise<Database[T] | undefined>;
+            .executeTakeFirst() as Promise<TableRow<T> | undefined>;
     }
 
-    // MySQL: Update then SELECT
-    const result = await db
-        .updateTable(table)
-        .set(values as Updateable<Database[T]>)
-        .where(column, '=', columnValue)
-        .executeTakeFirst();
+    const result = await qdb.updateTable(table).set(values).where(whereColumn, '=', whereValue).executeTakeFirst();
 
     if (!result || result.numUpdatedRows === 0n) {
         return undefined;
     }
 
-    return db.selectFrom(table).selectAll().where(column, '=', columnValue).executeTakeFirst() as Promise<
-        Database[T] | undefined
+    return qdb.selectFrom(table).selectAll().where(whereColumn, '=', whereValue).executeTakeFirst() as Promise<
+        TableRow<T> | undefined
     >;
 }
 
@@ -399,27 +378,43 @@ export async function updateByColumnAndReturn<T extends keyof Database, C extend
 // DELETE HELPERS
 // ============================================================================
 
+async function deleteWhereAndReturn<T extends keyof Database>(
+    db: Kysely<Database>,
+    table: T,
+    whereColumn: string,
+    whereValue: unknown,
+): Promise<TableRow<T>[]> {
+    const qdb = dynamicDb(db);
+
+    if (supportsReturning()) {
+        return qdb.deleteFrom(table).where(whereColumn, '=', whereValue).returningAll().execute() as Promise<
+            TableRow<T>[]
+        >;
+    }
+
+    const rows = (await qdb
+        .selectFrom(table)
+        .selectAll()
+        .where(whereColumn, '=', whereValue)
+        .execute()) as TableRow<T>[];
+
+    if (rows.length > 0) {
+        await qdb.deleteFrom(table).where(whereColumn, '=', whereValue).execute();
+    }
+
+    return rows;
+}
+
 /**
- * Delete rows and return the deleted rows
+ * Delete rows matching a column value and return the deleted rows
  */
 export async function deleteByColumnAndReturn<T extends keyof Database, C extends keyof Database[T] & string>(
     db: Kysely<Database>,
     table: T,
     column: C,
     columnValue: Database[T][C],
-): Promise<Database[T][]> {
-    if (supportsReturning()) {
-        return db.deleteFrom(table).where(column, '=', columnValue).returningAll().execute() as Promise<Database[T][]>;
-    }
-
-    // MySQL: SELECT first, then DELETE
-    const rows = (await db.selectFrom(table).selectAll().where(column, '=', columnValue).execute()) as Database[T][];
-
-    if (rows.length > 0) {
-        await db.deleteFrom(table).where(column, '=', columnValue).execute();
-    }
-
-    return rows;
+): Promise<TableRow<T>[]> {
+    return deleteWhereAndReturn(db, table, column, columnValue);
 }
 
 /**
@@ -429,12 +424,7 @@ export async function deleteByIdAndReturn<T extends keyof Database>(
     db: Kysely<Database>,
     table: T,
     id: number,
-): Promise<Database[T] | undefined> {
-    const rows = await deleteByColumnAndReturn(
-        db,
-        table,
-        'id' as keyof Database[T] & string,
-        id as Database[T][keyof Database[T]],
-    );
+): Promise<TableRow<T> | undefined> {
+    const rows = await deleteWhereAndReturn(db, table, 'id', id);
     return rows[0];
 }

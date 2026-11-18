@@ -931,7 +931,7 @@ export class Html5Exporter extends BaseExporter {
                 // Preview panel (this method) matches the real Web/SCORM export
                 // pipeline (addAssetsToZipWithResourcePath) -- see issue #2034.
                 const data = await this.resolveAssetExportData(asset);
-                files.set(filePath, await this.toPreviewAssetBuffer(data));
+                files.set(filePath, this.toPreviewAssetBuffer(data));
                 if (trackingList) trackingList.push(filePath);
                 assetsAdded++;
             };
@@ -960,11 +960,7 @@ export class Html5Exporter extends BaseExporter {
         return content.buffer.slice(content.byteOffset, content.byteOffset + content.byteLength) as ArrayBuffer;
     }
 
-    private async toPreviewAssetBuffer(content: Uint8Array | Blob | ArrayBuffer | string): Promise<ArrayBuffer> {
-        if (content instanceof Blob) {
-            return content.arrayBuffer();
-        }
-
+    private toPreviewAssetBuffer(content: Uint8Array | ArrayBuffer | string): ArrayBuffer {
         return this.toPreviewArrayBuffer(content);
     }
 }

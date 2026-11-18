@@ -38,7 +38,8 @@ make up-local              # local web development
 make run-app               # Electron development
 make bundle                # runtime/assets build
 make build-static          # static distribution
-make fix                   # Biome code autofix/check
+make fix                   # Biome code autofix/check, then tsc --noEmit
+make typecheck             # TypeScript tsc --noEmit (also part of make lint / make fix)
 make test-unit             # Bun backend/scripts/app suite and coverage
 make test-frontend         # Vitest browser/iDevice suite and coverage (separate)
 make test-integration

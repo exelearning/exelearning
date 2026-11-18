@@ -11,8 +11,8 @@
  *
  *   new Elysia({ prefix: '...' })
  *       .use(withJwtAuth())
- *       .onBeforeHandle(({ jwtPayload, set }) => {
- *           const err = requireAuth(jwtPayload);
+ *       .onBeforeHandle(({ identity, set }) => {
+ *           const err = requireAuth(identity);
  *           if (err) { set.status = err.status; return err; }
  *       })
  *       .get('/...', ...)
@@ -20,20 +20,24 @@
 import { Elysia } from 'elysia';
 import { jwt } from '@elysiajs/jwt';
 import type { Kysely } from 'kysely';
-import { getJwtSecret, type JwtPayload } from '../routes/auth';
+import { getJwtSecret } from '../routes/auth';
+import { toAuthenticatedIdentity, type AuthenticatedIdentity, type JwtPayload } from '../auth/types';
 import { hasRole, ROLES, requireAuth, type AuthorizationError } from './guards';
 import { checkProjectAccess, findProjectByUuid, findProjectById } from '../db/queries';
 import type { Database, Project } from '../db/types';
 
 /**
- * Build an Elysia plugin that exposes a verified `jwtPayload` derived from
- * the request. `jwtPayload` is `null` when no/invalid token is present —
- * downstream handlers decide whether that is acceptable via `requireAuth`
- * or `requireAdmin` from `./guards`.
+ * Build an Elysia plugin that exposes a verified {@link AuthenticatedIdentity}
+ * derived from the request. This is the single JWT boundary: the raw payload's
+ * string `sub` is parsed to the numeric `userId` here and nowhere else.
+ *
+ * `identity` is `null` when no/invalid token is present — downstream handlers
+ * decide whether that is acceptable via `requireAuth` or `requireAdmin` from
+ * `./guards`.
  *
  * Marked `.as('scoped')` so the derive bubbles out to the consumer instance:
  * by default Elysia keeps lifecycle hooks defined inside `.use(plugin)` local
- * to the plugin, which means callers wouldn't see `jwtPayload` on their own
+ * to the plugin, which means callers wouldn't see `identity` on their own
  * routes.
  */
 export function withJwtAuth() {
@@ -51,16 +55,16 @@ export function withJwtAuth() {
             if (authHeader?.startsWith('Bearer ')) {
                 token = authHeader.slice(7);
             } else if (cookieJar.auth?.value) {
-                token = cookieJar.auth.value;
+                token = cookieJar.auth.value as string;
             }
             if (!token) {
-                return { jwtPayload: null as JwtPayload | null };
+                return { identity: null as AuthenticatedIdentity | null };
             }
             try {
                 const payload = (await jwtPlugin.verify(token)) as JwtPayload | false;
-                return { jwtPayload: (payload || null) as JwtPayload | null };
+                return { identity: payload ? toAuthenticatedIdentity(payload) : null };
             } catch {
-                return { jwtPayload: null as JwtPayload | null };
+                return { identity: null as AuthenticatedIdentity | null };
             }
         })
         .as('scoped');
@@ -109,11 +113,11 @@ export interface EnforceProjectAccessOptions {
 }
 
 export async function enforceProjectAccess(
-    jwtPayload: JwtPayload | null | undefined,
+    identity: AuthenticatedIdentity | null | undefined,
     projectIdOrUuid: string,
     opts: EnforceProjectAccessOptions,
 ): Promise<ProjectAccessOk | ProjectAccessError> {
-    const authErr = requireAuth(jwtPayload);
+    const authErr = requireAuth(identity);
     if (authErr) return authErr;
 
     const queries = opts.queries ?? defaultProjectAccessQueries;
@@ -130,10 +134,10 @@ export async function enforceProjectAccess(
         return { status: 404, error: 'NOT_FOUND', message: 'Project not found' };
     }
 
-    if (hasRole(jwtPayload!.roles, ROLES.ADMIN)) {
+    if (hasRole(identity!.roles, ROLES.ADMIN)) {
         return { project };
     }
-    const access = await queries.checkProjectAccess(opts.db, project, Number(jwtPayload!.sub));
+    const access = await queries.checkProjectAccess(opts.db, project, identity!.userId);
     if (!access.hasAccess) {
         return { status: 403, error: 'FORBIDDEN', message: 'Access denied' };
     }

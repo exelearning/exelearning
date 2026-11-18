@@ -14,7 +14,9 @@
  * SQLite handling: Requires table recreation since FK constraints cannot be altered.
  * MySQL/PostgreSQL: Use ALTER TABLE to modify constraints directly.
  */
-import { Kysely, sql } from 'kysely';
+
+import { sql } from 'kysely';
+import type { UntypedKysely } from '../helpers';
 import { getDialectFromEnv, type DbDialect } from '../dialect';
 
 // ============================================================================
@@ -49,7 +51,7 @@ export function resetDependencies(): void {
 // MIGRATION FUNCTIONS
 // ============================================================================
 
-export async function up(db: Kysely<unknown>): Promise<void> {
+export async function up(db: UntypedKysely): Promise<void> {
     const dialect = deps.getDialect();
 
     if (dialect === 'sqlite') {
@@ -61,7 +63,7 @@ export async function up(db: Kysely<unknown>): Promise<void> {
     }
 }
 
-export async function down(db: Kysely<unknown>): Promise<void> {
+export async function down(db: UntypedKysely): Promise<void> {
     const dialect = deps.getDialect();
 
     if (dialect === 'sqlite') {
@@ -77,7 +79,7 @@ export async function down(db: Kysely<unknown>): Promise<void> {
 // SQLITE MIGRATION
 // ============================================================================
 
-async function migrateUpSqlite(db: Kysely<unknown>): Promise<void> {
+async function migrateUpSqlite(db: UntypedKysely): Promise<void> {
     // 1. Recreate projects table with ON DELETE CASCADE
     await recreateProjectsTableSqlite(db, true);
 
@@ -88,7 +90,7 @@ async function migrateUpSqlite(db: Kysely<unknown>): Promise<void> {
     await recreateAppSettingsTableSqlite(db, true);
 }
 
-async function migrateDownSqlite(db: Kysely<unknown>): Promise<void> {
+async function migrateDownSqlite(db: UntypedKysely): Promise<void> {
     // Reverse order to handle dependencies
     // 3. Remove app_settings FK
     await recreateAppSettingsTableSqlite(db, false);
@@ -104,7 +106,7 @@ async function migrateDownSqlite(db: Kysely<unknown>): Promise<void> {
 // MYSQL MIGRATION
 // ============================================================================
 
-async function migrateUpMysql(db: Kysely<unknown>): Promise<void> {
+async function migrateUpMysql(db: UntypedKysely): Promise<void> {
     // 1. Fix projects.owner_id CASCADE
     // Drop existing FK if it exists (name may vary or not exist on fresh databases)
     try {
@@ -151,7 +153,7 @@ async function migrateUpMysql(db: Kysely<unknown>): Promise<void> {
     `.execute(db);
 }
 
-async function migrateDownMysql(db: Kysely<unknown>): Promise<void> {
+async function migrateDownMysql(db: UntypedKysely): Promise<void> {
     // 3. Remove app_settings FK
     await sql`ALTER TABLE app_settings DROP FOREIGN KEY app_settings_updated_by_fk`.execute(db);
 
@@ -179,7 +181,7 @@ async function migrateDownMysql(db: Kysely<unknown>): Promise<void> {
 // POSTGRESQL MIGRATION
 // ============================================================================
 
-async function migrateUpPostgres(db: Kysely<unknown>): Promise<void> {
+async function migrateUpPostgres(db: UntypedKysely): Promise<void> {
     // 1. Fix projects.owner_id CASCADE
     await sql`
         ALTER TABLE projects
@@ -226,7 +228,7 @@ async function migrateUpPostgres(db: Kysely<unknown>): Promise<void> {
     `.execute(db);
 }
 
-async function migrateDownPostgres(db: Kysely<unknown>): Promise<void> {
+async function migrateDownPostgres(db: UntypedKysely): Promise<void> {
     // 3. Remove app_settings FK
     await sql`ALTER TABLE app_settings DROP CONSTRAINT app_settings_updated_by_fk`.execute(db);
 
@@ -257,7 +259,7 @@ async function migrateDownPostgres(db: Kysely<unknown>): Promise<void> {
 /**
  * Recreate the projects table with/without CASCADE on owner_id
  */
-async function recreateProjectsTableSqlite(db: Kysely<unknown>, withCascade: boolean): Promise<void> {
+async function recreateProjectsTableSqlite(db: UntypedKysely, withCascade: boolean): Promise<void> {
     const cascadeClause = withCascade ? 'ON DELETE CASCADE' : '';
 
     await sql`
@@ -301,7 +303,7 @@ async function recreateProjectsTableSqlite(db: Kysely<unknown>, withCascade: boo
 /**
  * Recreate the users_preferences table with owner_id FK or revert to user_id
  */
-async function recreatePreferencesTableSqlite(db: Kysely<unknown>, withFk: boolean): Promise<void> {
+async function recreatePreferencesTableSqlite(db: UntypedKysely, withFk: boolean): Promise<void> {
     if (withFk) {
         await sql`
             CREATE TABLE users_preferences_new (
@@ -358,7 +360,7 @@ async function recreatePreferencesTableSqlite(db: Kysely<unknown>, withFk: boole
 /**
  * Recreate the app_settings table with or without FK constraint
  */
-async function recreateAppSettingsTableSqlite(db: Kysely<unknown>, withFk: boolean): Promise<void> {
+async function recreateAppSettingsTableSqlite(db: UntypedKysely, withFk: boolean): Promise<void> {
     if (withFk) {
         await sql`
             CREATE TABLE app_settings_new (

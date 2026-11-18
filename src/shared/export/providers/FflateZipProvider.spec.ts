@@ -34,6 +34,12 @@ describe('FflateZipProvider', () => {
 
     describe('FflateZipArchive', () => {
         describe('addFile', () => {
+            it('rejects a Blob instead of storing it as "[object Blob]"', () => {
+                const archive = provider.createZip();
+                const blob = new Blob(['data']) as unknown as string;
+                expect(() => archive.addFile('asset.png', blob)).toThrow('convert Blobs');
+            });
+
             it('should add a string file', () => {
                 const archive = provider.createZip();
                 archive.addFile('test.txt', 'Hello, World!');

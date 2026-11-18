@@ -319,7 +319,7 @@ function buildToolbar(): HTMLElement {
             const data = readImportedFile(await file.text());
             previousMeta = data.meta;
             mind.refresh(data);
-            mind.clearHistory();
+            mind.clearHistory?.();
             showMessage('');
         } catch (error) {
             showMessage(`${_('Sorry, wrong file format')} (${describeMindmapError(error, _)})`, true);

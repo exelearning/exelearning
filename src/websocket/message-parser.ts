@@ -7,7 +7,7 @@
  * - Type-safe parsing with proper error handling
  * - Clear separation between Yjs sync and asset coordination
  */
-import type { AssetMessage, AssetMessageType } from './types';
+import type { AssetMessage, AssetMessageData, AssetMessageType } from './types';
 import { DEBUG } from './config';
 
 /**
@@ -214,6 +214,6 @@ export function createAssetMessage<T extends AssetMessageType>(
         type,
         projectId,
         clientId,
-        data,
+        data: data as AssetMessageData,
     };
 }

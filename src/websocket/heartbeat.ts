@@ -7,18 +7,8 @@
  * - Detect dead connections and clean them up
  * - Uses AbortController for safe cleanup (no orphan timers)
  */
-import type { ServerWebSocket } from 'bun';
 import { getConfig, isDebugEnabled } from './config';
-
-/**
- * WebSocket data interface (must match yjs-websocket.ts)
- */
-interface WsData {
-    clientId: string;
-    userId: number;
-    projectUuid: string;
-    docName: string;
-}
+import type { YjsSocket } from './types';
 
 /**
  * State tracked per client for heartbeat
@@ -27,7 +17,7 @@ interface HeartbeatState {
     timer: Timer;
     lastPong: number;
     abortController: AbortController;
-    ws: ServerWebSocket<WsData>;
+    ws: YjsSocket;
 }
 
 /**
@@ -40,9 +30,9 @@ const heartbeats = new Map<string, HeartbeatState>();
  * Sends periodic pings and expects pong responses
  *
  * @param clientId - Unique client identifier
- * @param ws - Bun ServerWebSocket instance
+ * @param ws - Connection that supports ping/close
  */
-export function startHeartbeat(clientId: string, ws: ServerWebSocket<WsData>): void {
+export function startHeartbeat(clientId: string, ws: YjsSocket): void {
     // Clean up any existing heartbeat for this client
     stopHeartbeat(clientId);
 
