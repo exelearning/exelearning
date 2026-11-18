@@ -5075,6 +5075,22 @@ describe('Project Routes', () => {
     });
 
     describe('Visibility Change Notification', () => {
+        // Collaborators keep their connection when a project goes private: the notifier
+        // must receive their user IDs (getProjectCollaborators returns user rows).
+        function appWithNotifierSpy() {
+            const notified: Array<[string, number, number[]]> = [];
+            const accessNotifier = {
+                notifyVisibilityChanged: (uuid: string, ownerId: number, collaboratorIds: number[]) => {
+                    notified.push([uuid, ownerId, collaboratorIds]);
+                    return 0;
+                },
+                notifyCollaboratorRemoved: () => false,
+            } as unknown as ProjectDependencies['accessNotifier'];
+            const deps = { ...mockDeps, accessNotifier };
+            const spyApp = new Elysia().use(createProjectRoutes(deps)).use(createSymfonyCompatProjectRoutes(deps));
+            return { spyApp, notified };
+        }
+
         async function createAuthToken(userId: number = 1) {
             const jwt = await import('@elysiajs/jwt');
             const jwtInstance = jwt.jwt({
@@ -5102,8 +5118,9 @@ describe('Project Routes', () => {
             mockProjectsByUuid.set('visibility-notify-test', project);
             mockCollaborators.set(5001, new Set([2]));
 
+            const { spyApp, notified } = appWithNotifierSpy();
             const token = await createAuthToken(1);
-            const res = await app.handle(
+            const res = await spyApp.handle(
                 new Request('http://localhost/api/projects/5001/visibility', {
                     method: 'PATCH',
                     headers: {
@@ -5118,6 +5135,7 @@ describe('Project Routes', () => {
             const body = await res.json();
             expect(body.responseMessage).toBe('OK');
             expect(project.visibility).toBe('private');
+            expect(notified).toEqual([['visibility-notify-test', 1, [2]]]);
         });
 
         it('should trigger notification when visibility changes to private by UUID', async () => {
@@ -5132,8 +5150,9 @@ describe('Project Routes', () => {
             mockProjectsByUuid.set('visibility-uuid-notify', project);
             mockCollaborators.set(5002, new Set([2]));
 
+            const { spyApp, notified } = appWithNotifierSpy();
             const token = await createAuthToken(1);
-            const res = await app.handle(
+            const res = await spyApp.handle(
                 new Request('http://localhost/api/projects/uuid/visibility-uuid-notify/visibility', {
                     method: 'PATCH',
                     headers: {
@@ -5147,6 +5166,7 @@ describe('Project Routes', () => {
             expect(res.status).toBe(200);
             const body = await res.json();
             expect(body.responseMessage).toBe('OK');
+            expect(notified).toEqual([['visibility-uuid-notify', 1, [2]]]);
         });
     });
 

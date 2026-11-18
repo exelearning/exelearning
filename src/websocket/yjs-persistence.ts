@@ -37,7 +37,7 @@ import {
 import { db as defaultDb } from '../db/client';
 import { getConfig, DEBUG } from './config';
 import type { Kysely } from 'kysely';
-import type { Database } from '../db/schema';
+import type { Database } from '../db/types';
 
 // ============================================================================
 // DEPENDENCY INJECTION INTERFACES

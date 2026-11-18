@@ -27,7 +27,7 @@
  *     - odeComponents (iDevices)
  */
 
-import type { ExportOptions, ExportResult, ElpxExportOptions } from '../interfaces';
+import { type ExportOptions, type ExportResult, type ElpxExportOptions } from '../interfaces';
 import { Html5Exporter } from './Html5Exporter';
 import { validateXml, formatValidationErrors } from '../../../services/xml/xml-parser';
 import { ODE_DTD_FILENAME, ODE_DTD_CONTENT } from '../constants';

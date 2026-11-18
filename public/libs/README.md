@@ -56,11 +56,17 @@
 *   Package: @sinclair/typebox
     *   Copyright: sinclairzx81
     *   License: MIT
+*   Package: @types/bun
+    *   Copyright: Jarred Sumner, Robobun, Dylan Conway
+    *   License: MIT
 *   Package: @types/css-tree
     *   Copyright: Erik Källén, Jason Kratzer
     *   License: MIT
 *   Package: @types/fs-extra
     *   Copyright: Alan Agius, midknight41, Brendan Forster
+    *   License: MIT
+*   Package: @types/jsdom
+    *   Copyright: Leonard Thieu, Johan Palmfjord, ExE Boss
     *   License: MIT
 *   Package: @types/mime-types
     *   Copyright: Gyusun Yeom, Sebastian Beltran

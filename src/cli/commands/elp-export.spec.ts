@@ -1,5 +1,5 @@
 import { describe, expect, it, beforeAll, afterAll } from 'bun:test';
-import { execute, printHelp, VALID_FORMATS } from './elp-export';
+import { assertExporter, execute, printHelp, VALID_FORMATS } from './elp-export';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { zipSync, unzipSync, strToU8 } from 'fflate';
@@ -77,6 +77,17 @@ describe('elp:export command', () => {
     describe('printHelp', () => {
         it('should print help without errors', () => {
             expect(() => printHelp()).not.toThrow();
+        });
+    });
+
+    describe('assertExporter', () => {
+        it('returns the exporter when present', () => {
+            const exporter = { export: async () => ({ success: true }) };
+            expect(assertExporter(exporter, 'html5')).toBe(exporter);
+        });
+
+        it('throws for a missing exporter', () => {
+            expect(() => assertExporter(undefined, 'unknown')).toThrow('Unsupported export format: unknown');
         });
     });
 

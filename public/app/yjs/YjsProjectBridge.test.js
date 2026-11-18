@@ -237,6 +237,32 @@ describe('YjsProjectBridge', () => {
     global.document = originalDocument;
   });
 
+  describe('updateAuthToken', () => {
+    it('swaps the token in every holder that reuses it', () => {
+      const params = { token: 'old' };
+      bridge.authToken = 'old';
+      bridge.documentManager = { config: { token: 'old' }, wsProvider: { params } };
+      bridge.saveManager = { setToken: mock(() => undefined) };
+      bridge.assetWebSocketHandler = { config: { token: 'old' } };
+      bridge.assetManager = { _serverApiBaseUrl: '/api', setServerConfig: mock(() => undefined) };
+
+      bridge.updateAuthToken('new');
+
+      expect(bridge.authToken).toBe('new');
+      expect(bridge.documentManager.config.token).toBe('new');
+      expect(params.token).toBe('new');
+      expect(bridge.saveManager.setToken).toHaveBeenCalledWith('new');
+      expect(bridge.assetWebSocketHandler.config.token).toBe('new');
+      expect(bridge.assetManager.setServerConfig).toHaveBeenCalledWith('/api', 'new');
+    });
+
+    it('works before the managers exist', () => {
+      bridge.updateAuthToken('new');
+
+      expect(bridge.authToken).toBe('new');
+    });
+  });
+
   describe('constructor', () => {
     it('initializes with app reference', () => {
       expect(bridge.app).toBe(mockApp);
