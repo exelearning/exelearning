@@ -464,12 +464,14 @@ Returns all assets in the project.
       "mimeType": "image/jpeg",
       "size": 102400,
       "folderPath": "images",
-      "createdAt": "2024-01-15T10:30:00Z",
-      "updatedAt": "2024-01-16T14:20:00Z"
+      "createdAt": 1705314600000,
+      "updatedAt": 1705414800000
     }
   ]
 }
 ```
+
+`createdAt` and `updatedAt` are Unix timestamps in milliseconds, or `null` when unknown.
 
 ### Upload Asset
 
@@ -493,8 +495,8 @@ folderPath: (optional) Virtual folder path
     "mimeType": "image/jpeg",
     "size": 102400,
     "folderPath": "",
-    "createdAt": "2024-01-15T10:30:00Z",
-    "updatedAt": "2024-01-15T10:30:00Z"
+    "createdAt": 1705314600000,
+    "updatedAt": 1705314600000
   }
 }
 ```

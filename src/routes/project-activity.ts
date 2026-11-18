@@ -21,7 +21,7 @@ import { db as defaultDb } from '../db/client';
 import { findProjectById, findProjectByUuid, checkProjectAccess } from '../db/queries';
 import { withJwtAuth } from '../utils/route-auth';
 import { hasRole, requireAuth, ROLES } from '../utils/guards';
-import type { JwtPayload } from './auth';
+import type { AuthenticatedIdentity } from '../auth/types';
 import {
     projectActivityService as projectActivityServiceDefault,
     ProjectActivityValidationError,
@@ -102,12 +102,12 @@ export function createProjectActivityRoutes(deps: ProjectActivityRouteDependenci
     type Resolved = { project: Project; userId: number; isAdmin: boolean } | { error: ReturnType<typeof jsonError> };
 
     async function resolveReader(
-        jwtPayload: JwtPayload | null | undefined,
+        identity: AuthenticatedIdentity | null | undefined,
         idOrUuid: string,
         byUuid: boolean,
         set: { status?: number | string },
     ): Promise<Resolved> {
-        const authError = requireAuth(jwtPayload);
+        const authError = requireAuth(identity);
         if (authError) return { error: jsonError(set, authError.status, authError.error, authError.message) };
         const project = byUuid
             ? await queries.findProjectByUuid(db, idOrUuid)
@@ -115,21 +115,21 @@ export function createProjectActivityRoutes(deps: ProjectActivityRouteDependenci
               ? await queries.findProjectById(db, parseInt(idOrUuid, 10))
               : undefined;
         if (!project) return { error: jsonError(set, 404, 'NOT_FOUND', 'Project not found') };
-        const userId = Number(jwtPayload!.sub);
-        const isAdmin = hasRole(jwtPayload!.roles, ROLES.ADMIN);
+        const userId = identity!.userId;
+        const isAdmin = hasRole(identity!.roles, ROLES.ADMIN);
         const allowed = await activity.canViewActivity(db, { project, userId, isAdmin });
         if (!allowed) return { error: jsonError(set, 403, 'FORBIDDEN', 'Access denied') };
         return { project, userId, isAdmin };
     }
 
     async function listHandler(
-        jwtPayload: JwtPayload | null | undefined,
+        identity: AuthenticatedIdentity | null | undefined,
         idOrUuid: string,
         byUuid: boolean,
         query: Record<string, string | undefined>,
         set: { status?: number | string },
     ) {
-        const resolved = await resolveReader(jwtPayload, idOrUuid, byUuid, set);
+        const resolved = await resolveReader(identity, idOrUuid, byUuid, set);
         if ('error' in resolved) return resolved.error;
         try {
             return await activity.listActivity(db, resolved.project.id, {
@@ -148,32 +148,32 @@ export function createProjectActivityRoutes(deps: ProjectActivityRouteDependenci
     }
 
     async function actorsHandler(
-        jwtPayload: JwtPayload | null | undefined,
+        identity: AuthenticatedIdentity | null | undefined,
         idOrUuid: string,
         byUuid: boolean,
         set: { status?: number | string },
     ) {
-        const resolved = await resolveReader(jwtPayload, idOrUuid, byUuid, set);
+        const resolved = await resolveReader(identity, idOrUuid, byUuid, set);
         if ('error' in resolved) return resolved.error;
         return { actors: await activity.listActors(db, resolved.project.id) };
     }
 
     return new Elysia({ prefix: '/api/projects' })
         .use(withJwtAuth())
-        .get('/uuid/:uuid/activity', ({ params, query, set, jwtPayload }) =>
-            listHandler(jwtPayload, params.uuid, true, query as Record<string, string | undefined>, set),
+        .get('/uuid/:uuid/activity', ({ params, query, set, identity }) =>
+            listHandler(identity, params.uuid, true, query as Record<string, string | undefined>, set),
         )
-        .get('/uuid/:uuid/activity/actors', ({ params, set, jwtPayload }) =>
-            actorsHandler(jwtPayload, params.uuid, true, set),
+        .get('/uuid/:uuid/activity/actors', ({ params, set, identity }) =>
+            actorsHandler(identity, params.uuid, true, set),
         )
-        .get('/:projectId/activity', ({ params, query, set, jwtPayload }) =>
-            listHandler(jwtPayload, params.projectId, false, query as Record<string, string | undefined>, set),
+        .get('/:projectId/activity', ({ params, query, set, identity }) =>
+            listHandler(identity, params.projectId, false, query as Record<string, string | undefined>, set),
         )
-        .get('/:projectId/activity/actors', ({ params, set, jwtPayload }) =>
-            actorsHandler(jwtPayload, params.projectId, false, set),
+        .get('/:projectId/activity/actors', ({ params, set, identity }) =>
+            actorsHandler(identity, params.projectId, false, set),
         )
-        .post('/uuid/:uuid/activity/events', async ({ params, body, set, jwtPayload, request }) => {
-            const authError = requireAuth(jwtPayload);
+        .post('/uuid/:uuid/activity/events', async ({ params, body, set, identity, request }) => {
+            const authError = requireAuth(identity);
             if (authError) return jsonError(set, authError.status, authError.error, authError.message);
 
             const contentLength = Number(request.headers.get('content-length') ?? 0);
@@ -184,11 +184,11 @@ export function createProjectActivityRoutes(deps: ProjectActivityRouteDependenci
             const project = await queries.findProjectByUuid(db, params.uuid);
             if (!project) return jsonError(set, 404, 'NOT_FOUND', 'Project not found');
 
-            const userId = Number(jwtPayload!.sub);
+            const userId = identity!.userId;
             // Writers need edit access to this project (owner, collaborator, public
             // edit visibility, or administrator). Cross-project injection is not
             // possible: the project comes from the URL and is authorised here.
-            if (!hasRole(jwtPayload!.roles, ROLES.ADMIN)) {
+            if (!hasRole(identity!.roles, ROLES.ADMIN)) {
                 const access = await queries.checkProjectAccess(db, project, userId);
                 if (!access.hasAccess) return jsonError(set, 403, 'FORBIDDEN', 'Access denied');
             }

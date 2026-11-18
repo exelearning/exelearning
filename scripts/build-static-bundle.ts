@@ -486,6 +486,11 @@ interface Theme {
     type: 'base' | 'site' | 'admin' | 'user';
     url: string; // Used by Theme class to build path
     description: string;
+    version?: string;
+    author?: string;
+    authorUrl?: string;
+    license?: string;
+    licenseUrl?: string;
     valid: boolean;
     downloadable: string;
     cssFiles: string[]; // CSS files to load for the theme

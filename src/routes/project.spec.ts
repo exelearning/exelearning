@@ -3445,24 +3445,76 @@ describe('Project Routes', () => {
     });
 
     describe('Project Metadata', () => {
-        it('should update project metadata', async () => {
-            mockSessions.set('metadata-session', {
-                sessionId: 'metadata-session',
-                fileName: 'Old.elp',
-            });
+        const URL = 'http://localhost/api/projects/uuid/metadata-project/metadata';
 
-            const res = await app.handle(
-                new Request('http://localhost/api/projects/uuid/metadata-session/metadata', {
+        beforeEach(() => {
+            const project = {
+                id: 1640,
+                uuid: 'metadata-project',
+                owner_id: 1,
+                title: 'Old',
+                visibility: 'private',
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+            };
+            mockProjects.set(1640, project);
+            mockProjectsByUuid.set('metadata-project', project);
+            mockSessions.set('metadata-project', { sessionId: 'metadata-project', fileName: 'Old.elp' });
+        });
+
+        async function patchTitle(url: string, token?: string) {
+            return app.handle(
+                new Request(url, {
                     method: 'PATCH',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+                    },
                     body: JSON.stringify({ title: 'New Title' }),
                 }),
             );
+        }
+
+        it('should let the owner update the session title', async () => {
+            const res = await patchTitle(URL, await createAuthToken(1));
 
             expect(res.status).toBe(200);
             const body = await res.json();
             expect(body.success).toBe(true);
             expect(body.title).toBe('New Title');
+            expect(mockSessions.get('metadata-project').fileName).toBe('New Title.elp');
+        });
+
+        it('should let a collaborator update the session title', async () => {
+            mockCollaborators.set(1640, new Set([2]));
+
+            const res = await patchTitle(URL, await createAuthToken(2));
+
+            expect(res.status).toBe(200);
+            expect(mockSessions.get('metadata-project').fileName).toBe('New Title.elp');
+        });
+
+        it('should reject an unauthenticated request and leave the session alone', async () => {
+            const res = await patchTitle(URL);
+
+            expect(res.status).toBe(401);
+            expect(mockSessions.get('metadata-project').fileName).toBe('Old.elp');
+        });
+
+        it('should reject a user without access to the project and leave the session alone', async () => {
+            const res = await patchTitle(URL, await createAuthToken(3));
+
+            expect(res.status).toBe(403);
+            expect(mockSessions.get('metadata-project').fileName).toBe('Old.elp');
+        });
+
+        it('should return 404 for an unknown project', async () => {
+            const res = await patchTitle(
+                'http://localhost/api/projects/uuid/no-such-project/metadata',
+                await createAuthToken(1),
+            );
+
+            expect(res.status).toBe(404);
         });
     });
 
@@ -4006,10 +4058,11 @@ describe('Project Routes', () => {
                 metadata: { title: 'Original Title' },
             });
 
+            const token = await createAuthToken(1);
             const res = await app.handle(
                 new Request('http://localhost/api/projects/uuid/meta-update-project/metadata', {
                     method: 'PATCH',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
                     body: JSON.stringify({
                         title: 'Updated Title',
                     }),
@@ -5199,6 +5252,22 @@ describe('Project Routes', () => {
     });
 
     describe('Visibility Change Notification', () => {
+        // Collaborators keep their connection when a project goes private: the notifier
+        // must receive their user IDs (getProjectCollaborators returns user rows).
+        function appWithNotifierSpy() {
+            const notified: Array<[string, number, number[]]> = [];
+            const accessNotifier = {
+                notifyVisibilityChanged: (uuid: string, ownerId: number, collaboratorIds: number[]) => {
+                    notified.push([uuid, ownerId, collaboratorIds]);
+                    return 0;
+                },
+                notifyCollaboratorRemoved: () => false,
+            } as unknown as ProjectDependencies['accessNotifier'];
+            const deps = { ...mockDeps, accessNotifier };
+            const spyApp = new Elysia().use(createProjectRoutes(deps)).use(createSymfonyCompatProjectRoutes(deps));
+            return { spyApp, notified };
+        }
+
         async function createAuthToken(userId: number = 1) {
             const jwt = await import('@elysiajs/jwt');
             const jwtInstance = jwt.jwt({
@@ -5226,8 +5295,9 @@ describe('Project Routes', () => {
             mockProjectsByUuid.set('visibility-notify-test', project);
             mockCollaborators.set(5001, new Set([2]));
 
+            const { spyApp, notified } = appWithNotifierSpy();
             const token = await createAuthToken(1);
-            const res = await app.handle(
+            const res = await spyApp.handle(
                 new Request('http://localhost/api/projects/5001/visibility', {
                     method: 'PATCH',
                     headers: {
@@ -5242,6 +5312,7 @@ describe('Project Routes', () => {
             const body = await res.json();
             expect(body.responseMessage).toBe('OK');
             expect(project.visibility).toBe('private');
+            expect(notified).toEqual([['visibility-notify-test', 1, [2]]]);
         });
 
         it('should trigger notification when visibility changes to private by UUID', async () => {
@@ -5256,8 +5327,9 @@ describe('Project Routes', () => {
             mockProjectsByUuid.set('visibility-uuid-notify', project);
             mockCollaborators.set(5002, new Set([2]));
 
+            const { spyApp, notified } = appWithNotifierSpy();
             const token = await createAuthToken(1);
-            const res = await app.handle(
+            const res = await spyApp.handle(
                 new Request('http://localhost/api/projects/uuid/visibility-uuid-notify/visibility', {
                     method: 'PATCH',
                     headers: {
@@ -5271,6 +5343,7 @@ describe('Project Routes', () => {
             expect(res.status).toBe(200);
             const body = await res.json();
             expect(body.responseMessage).toBe('OK');
+            expect(notified).toEqual([['visibility-uuid-notify', 1, [2]]]);
         });
     });
 

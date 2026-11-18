@@ -1641,6 +1641,23 @@ describe('YjsDocumentManager', () => {
     });
   });
 
+  describe('page lifecycle listeners', () => {
+    // Chromium blocks `unload` by default ("Permissions policy violation:
+    // unload is not allowed in this document"); `pagehide` also fires on close
+    // and keeps the page eligible for the back/forward cache.
+    it('clears awareness on pagehide, never on unload', async () => {
+      await manager.initialize();
+      const added = global.window.addEventListener.mock.calls.map(([type]) => type);
+      expect(added).not.toContain('unload');
+      expect(global.window.addEventListener).toHaveBeenCalledWith('pagehide', manager._unloadHandler);
+
+      await manager.destroy();
+      const removed = global.window.removeEventListener.mock.calls.map(([type]) => type);
+      expect(removed).not.toContain('unload');
+      expect(global.window.removeEventListener).toHaveBeenCalledWith('pagehide', manager._unloadHandler);
+    });
+  });
+
   describe('_handleBeforeUnload', () => {
     beforeEach(async () => {
       await manager.initialize();

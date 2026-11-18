@@ -50,8 +50,10 @@ function extractOwnerFromResult(result: ProjectWithOwnerRow): User {
         external_identifier: result.owner_external_identifier,
         api_token: result.owner_api_token,
         is_active: result.owner_is_active,
-        created_at: result.owner_created_at,
-        updated_at: result.owner_updated_at,
+        created_at:
+            typeof result.owner_created_at === 'string' ? Number(result.owner_created_at) : result.owner_created_at,
+        updated_at:
+            typeof result.owner_updated_at === 'string' ? Number(result.owner_updated_at) : result.owner_updated_at,
     };
 }
 
@@ -73,6 +75,9 @@ function buildProjectWithOwner(result: ProjectWithOwnerRow): Project & { owner: 
         license: result.license,
         last_accessed_at: result.last_accessed_at,
         saved_once: result.saved_once,
+        platform_id: result.platform_id,
+        platform_site: result.platform_site,
+        platform_package_hash: result.platform_package_hash,
         public_view_id: result.public_view_id,
         public_view_enabled: result.public_view_enabled,
         created_at: result.created_at,
@@ -343,11 +348,23 @@ export async function findSavedProjectsForUser(db: Kysely<Database>, userId: num
 // WRITE QUERIES
 // ============================================================================
 
-export async function createProject(db: Kysely<Database>, data: Omit<NewProject, 'uuid'>): Promise<Project> {
+/**
+ * Input for {@link createProject}. Mirrors NewProject minus the generated
+ * uuid; `status`, `visibility` and `public_view_enabled` are optional because the
+ * database defines defaults for them ('active' / 'private' / 0).
+ */
+export type CreateProjectInput = Omit<NewProject, 'uuid' | 'status' | 'visibility' | 'public_view_enabled'> &
+    Partial<Pick<NewProject, 'status' | 'visibility' | 'public_view_enabled'>>;
+
+export async function createProject(db: Kysely<Database>, data: CreateProjectInput): Promise<Project> {
     const timestamp = now();
     const uuid = uuidv4();
     const values = {
         ...data,
+        // Fall back to the column defaults so callers may omit these fields
+        status: data.status ?? 'active',
+        visibility: data.visibility ?? 'private',
+        public_view_enabled: data.public_view_enabled ?? 0,
         uuid,
         created_at: timestamp,
         updated_at: timestamp,
@@ -536,7 +553,7 @@ export async function findProjectsByOwnerId(db: Kysely<Database>, ownerId: numbe
 export async function createProjectWithUuid(
     db: Kysely<Database>,
     uuid: string,
-    data: Omit<NewProject, 'uuid'>,
+    data: CreateProjectInput,
 ): Promise<Project> {
     // The uuid later names session and asset directories, so a caller-chosen
     // value must be a single safe path segment.
@@ -544,6 +561,10 @@ export async function createProjectWithUuid(
     const timestamp = now();
     const values = {
         ...data,
+        // Fall back to the column defaults so callers may omit these fields
+        status: data.status ?? 'active',
+        visibility: data.visibility ?? 'private',
+        public_view_enabled: data.public_view_enabled ?? 0,
         uuid,
         created_at: timestamp,
         updated_at: timestamp,
