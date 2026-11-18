@@ -141,7 +141,7 @@ var $exeDevice = {
                 'It was not that! | Incorrect! | Not correct! | Sorry! | Error!'
             ),
             msgYouScore: c_('Your score'),
-            msgTryAgain: c_('You need at least &percnt;s&percnt; of correct answers to get the information. Please try again.'),
+            msgTryAgain: c_('You need at least %s% of correct answers to get the information. Please try again.'),
             msgQuestion: c_('Question'),
             msgAnswer: c_('Check'),
             msgInformation: c_('Information'),

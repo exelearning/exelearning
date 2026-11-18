@@ -1640,6 +1640,12 @@ describe('electrical-circuits edition: shared form tabs and feedback', () => {
         expect(panel('texts').querySelector('#ci18n_msgScore').value).toBe('Score');
     });
 
+    it('shows the per cent signs of the try-again message in the Texts tab', () => {
+        expect(panel('texts').querySelector('#ci18n_msgTryAgain').value).toBe(
+            'You need at least %s% of correct answers to get the information. Please try again.',
+        );
+    });
+
     it('provides one accessible information button at the end of each options row', () => {
         const options = panel('options');
         const helpButtons = [...options.querySelectorAll('#elceOptions .exe-idevice-help')];
