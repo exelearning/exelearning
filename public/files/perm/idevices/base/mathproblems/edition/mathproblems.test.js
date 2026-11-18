@@ -471,6 +471,28 @@ describe('mathproblems edition: shared form tabs and feedback', () => {
             expect(eXe.app.getLastAlert()).toBe('Write the message to be displayed when passing the game');
         });
 
+        // An emptied field saves the default, which does not go through the
+        // Texts tab, and the Galician catalog writes its % as &percnt;.
+        it('saves the per cent sign of the Galician try-again message when its field is emptied', () => {
+            vi.stubGlobal('c_', (text) =>
+                text === 'You need at least %s% of correct answers to get the information. Please try again.'
+                    ? 'Precisas polo menos %s&percnt; de respostas correctas para obter a información. Téntao de novo.'
+                    : text
+            );
+            device.$lifecycle?.destroy();
+            device = global.loadIdevice(join(__dirname, 'mathproblems.js'));
+            document.body.innerHTML = '<div id="mathProblemsBody"></div>';
+            device.init(document.getElementById('mathProblemsBody'), {}, PATH);
+            device.questions = [question()];
+            device.active = 0;
+            device.updateFieldGame(game());
+            panel('texts').querySelector('#ci18n_msgTryAgain').value = '';
+
+            expect(device.save()).toContain(
+                '"msgTryAgain":"Precisas polo menos %s% de respostas correctas para obter a información. Téntao de novo."'
+            );
+        });
+
         it('keeps the access code and the clue when saving', () => {
             const itinerary = {
                 showClue: true,

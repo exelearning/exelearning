@@ -40,6 +40,9 @@ var $exeDevice = {
         this.idevicePreviousData = previousData;
         this.idevicePath = path;
         this.refreshTranslations();
+        // An emptied field saves this default, and the Galician and Romanian
+        // catalogs write its % as &percnt;.
+        this.ci18n.msgTryAgain = $exeIDevicesEdition.iDevice.common.decodeEntities(this.ci18n.msgTryAgain);
         this.setMessagesInfo();
         this.createForm();
     },
