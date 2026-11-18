@@ -1391,6 +1391,37 @@ describe('Assets Routes', () => {
             expect(body.complete).toBe(true);
         });
 
+        it('should store the sanitized folderPath on the created asset', async () => {
+            const formData = new FormData();
+            formData.append('file', new Blob(['only chunk']));
+            formData.append('resumableIdentifier', 'finalize-folder-test');
+            formData.append('resumableChunkNumber', '1');
+            formData.append('resumableTotalChunks', '1');
+            formData.append('resumableFilename', 'in-folder.zip');
+            await handle(
+                new Request(`http://localhost/api/projects/1/assets/upload-chunk`, {
+                    method: 'POST',
+                    body: formData,
+                }),
+            );
+
+            const res = await handle(
+                new Request(`http://localhost/api/projects/1/assets/upload-chunk/finalize`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        resumableIdentifier: 'finalize-folder-test',
+                        clientId: 'finalize-folder-client',
+                        folderPath: '/docs/unit 1/',
+                    }),
+                }),
+            );
+
+            expect(res.status).toBe(200);
+            const created = Array.from(mockAssets.values()).find(a => a.client_id === 'finalize-folder-client');
+            expect(created?.folder_path).toBe('docs/unit_1');
+        });
+
         it('should return 404 when upload not found', async () => {
             const res = await handle(
                 new Request(`http://localhost/api/projects/1/assets/upload-chunk/finalize`, {
