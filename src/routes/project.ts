@@ -1976,8 +1976,26 @@ export function createSymfonyCompatProjectRoutes(deps: ProjectDependencies = def
             })
 
             // PATCH /api/projects/uuid/:uuid/metadata - Update project metadata (title sync)
-            .patch('/api/projects/uuid/:uuid/metadata', async ({ params, body }) => {
+            .patch('/api/projects/uuid/:uuid/metadata', async ({ params, body, set, currentUser }) => {
                 const { uuid } = params;
+
+                // Renaming the session changes the title and .elp name of every later
+                // export, so it needs the same access as editing the document itself.
+                if (!currentUser) {
+                    set.status = 401;
+                    return { responseMessage: 'UNAUTHORIZED', detail: 'Authentication required' };
+                }
+                const project = await findProjectByUuid(db, uuid);
+                if (!project) {
+                    set.status = 404;
+                    return { responseMessage: 'NOT_FOUND', detail: 'Project not found' };
+                }
+                const access = await checkProjectAccess(db, project, currentUser.id);
+                if (!access.hasAccess) {
+                    set.status = 403;
+                    return { responseMessage: 'FORBIDDEN', detail: access.reason || 'Access denied' };
+                }
+
                 const data = body as ProjectMetadataRequest;
                 const title = data.title;
 
