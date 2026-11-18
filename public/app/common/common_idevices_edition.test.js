@@ -3518,6 +3518,12 @@ describe('common_idevices_edition.js', () => {
       expect(result.format).toEqual([]);
     });
 
+    it('ends the AI prompt with its last sentence, and nothing after its full stop', () => {
+      const share = globalThis.$exeIDevicesEdition.iDevice.gamification.share;
+
+      expect(share.buildIAPromptText(0).endsWith('such as buttons.')).toBe(true);
+    });
+
     describe('adaptative quiz (gameId 10)', () => {
       const share = () => globalThis.$exeIDevicesEdition.iDevice.gamification.share;
 

@@ -1880,7 +1880,7 @@ var $exeIDevicesEdition = {
                         fprompt.explanation,
                         `${c_('Examples')}:`,
                         fprompt.examples.join('\n'),
-                        `${c_('You must return only the questions without numbering, categorization or bullet points, inside a code block, and do not include any additional HTML elements such as buttons.')},`
+                        c_('You must return only the questions without numbering, categorization or bullet points, inside a code block, and do not include any additional HTML elements such as buttons.'),
                     ];
                     return lines.filter((line) => line !== undefined && line !== '').join('\n');
                 },
