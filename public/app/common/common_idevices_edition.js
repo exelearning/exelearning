@@ -1406,6 +1406,10 @@ var $exeIDevicesEdition = {
                  * Open a window of the Activities tab. Focus goes back to the
                  * link that opened it when it closes.
                  *
+                 * Its file controls start empty: the file chosen last time
+                 * was read then, and choosing it again changes nothing in a
+                 * control that still holds it, so it would not be read again.
+                 *
                  * @param {string} name A name in `windows`.
                  * @param {HTMLElement} [trigger] The link that opens it.
                  * @returns {boolean} false when there is no such window or no
@@ -1416,6 +1420,13 @@ var $exeIDevicesEdition = {
                     const Modal = window.bootstrap && window.bootstrap.Modal;
                     if (!el || !Modal) return false;
                     $(el).data('exeShareTrigger', trigger || null);
+                    $(el)
+                        .find('[data-exe-upload]')
+                        .removeAttr('data-has-file')
+                        .each(function () {
+                            $(this).find('.exe-file-input').val('');
+                            $(this).find('[data-exe-file-name]').text(_('No file selected'));
+                        });
                     Modal.getOrCreateInstance(el).show();
                     return true;
                 },

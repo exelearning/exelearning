@@ -2011,6 +2011,26 @@ describe('common_idevices_edition.js', () => {
       expect(modal('import').classList.contains('show')).toBe(false);
     });
 
+    it('opens Import with no file chosen, so that choosing the same file again reads it again', () => {
+      render({ contents: '' });
+      const input = modal('import').querySelector('#eXeGameImportGame');
+      const zone = modal('import').querySelector('[data-exe-upload]');
+      const name = zone.querySelector('[data-exe-file-name]');
+      // What a chosen file leaves behind once Import has closed.
+      const transfer = new DataTransfer();
+      transfer.items.add(new File(['Ecosystem#A community'], 'words.txt', { type: 'text/plain' }));
+      input.files = transfer.files;
+      zone.setAttribute('data-has-file', 'true');
+      name.textContent = 'words.txt';
+
+      link('import').click();
+
+      expect(input.files).toHaveLength(0);
+      expect(input.value).toBe('');
+      expect(zone.hasAttribute('data-has-file')).toBe(false);
+      expect(name.textContent).toBe('No file selected');
+    });
+
     it('saves the questions at once from Export, which opens no window', () => {
       render({ contents: '' });
       const save = vi.fn();

@@ -2,7 +2,7 @@ import type { Locator, Page } from '@playwright/test';
 import { test, expect } from '../../fixtures/auth.fixture';
 import { addIdevice, gotoWorkarea, selectFirstPage, waitForAppReady } from '../../helpers/workarea-helpers';
 import { waitForEditor } from '../../helpers/editor-helpers';
-import { addWithAi, closeAlert } from '../../helpers/idevice-share-helpers';
+import { addWithAi, closeAlert, importText } from '../../helpers/idevice-share-helpers';
 
 /** Opens the form of a new Guess iDevice on the first page of a new project. */
 async function addGuess(page: Page, createProject: (page: Page, title?: string) => Promise<string>, title: string) {
@@ -125,4 +125,28 @@ test('Closing the alert after Create with AI adds the questions gives the focus 
     await closeAlert(page, 'The questions have been added successfully');
 
     await expect(page.locator('[data-exe-share="ai"]')).toBeFocused();
+});
+
+test('Import opens with no file chosen, so the same file can be imported again', async ({
+    authenticatedPage: page,
+    createProject,
+}) => {
+    await addGuess(page, createProject, 'Import the same file twice');
+    const words = 'Heart#A muscular organ that pumps blood through the body\n';
+    const count = page.locator('#adivinaENumQuestions');
+
+    await importText(page, 'words.txt', words, () => expect(count).toHaveText('1'));
+
+    // The window does not keep the file it read: a browser fires no change for a file input that already holds the
+    // file chosen, so the same file would not be read again.
+    await page.locator('[data-exe-share="import"]').click();
+    const importWindow = page.locator('#eXeShareModal-import');
+    await expect(importWindow).toBeVisible();
+    await expect(importWindow.locator('#eXeGameImportGame')).toHaveValue('');
+    await expect(importWindow.locator('[data-exe-file-name]')).toHaveText('No file selected');
+    await importWindow
+        .locator('#eXeGameImportGame')
+        .setInputFiles({ name: 'words.txt', mimeType: 'text/plain', buffer: Buffer.from(words) });
+    await expect(importWindow).toBeHidden();
+    await expect(count).toHaveText('2');
 });
