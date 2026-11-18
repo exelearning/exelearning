@@ -1319,35 +1319,21 @@ describe('electrical-circuits iDevice edition', () => {
                 expect(eXe.app.getLastAlert()).toBe('Sorry, there are no questions for this type of activity.');
             });
 
-            it('revokes the download object URL when the edition closes first', () => {
-                vi.useFakeTimers();
-                document.body.innerHTML =
-                    '<div id="electricalCircuitsIdeviceForm"></div>';
+            it('saves the questions with the shared download, in a file named after the iDevice', async () => {
                 vi.spyOn($exeDevice, 'validateQuestion').mockReturnValue(true);
-                vi.spyOn($exeDevice, 'validateData').mockReturnValue({
-                    selectsGame: [],
-                });
-                vi.spyOn($exeDevice, 'getLinesQuestions').mockReturnValue(['a']);
-                const createObjectURL = vi
-                    .spyOn(window.URL, 'createObjectURL')
-                    .mockReturnValue('blob:elce-1');
-                const revokeObjectURL = vi
-                    .spyOn(window.URL, 'revokeObjectURL')
-                    .mockImplementation(() => {});
+                vi.spyOn($exeDevice, 'getLinesQuestions').mockReturnValue(['a', 'b']);
+                // The shared download uses the desktop app's own save dialog,
+                // and the edition releases what it leaves in the browser.
+                const downloadBlob = vi
+                    .spyOn(global.$exeIDevicesEdition.iDevice.gamification.share, 'downloadBlob')
+                    .mockReturnValue(true);
 
-                $exeDevice.exportQuestions();
-                expect(createObjectURL).toHaveBeenCalledTimes(1);
-                expect(revokeObjectURL).not.toHaveBeenCalled();
-
-                $exeDevice.$lifecycle.destroy();
-
-                expect(revokeObjectURL).toHaveBeenCalledWith('blob:elce-1');
-
-                // The cleanup timer is cancelled, so it cannot run against the
-                // form of the iDevice that replaced this one.
-                revokeObjectURL.mockClear();
-                vi.advanceTimersByTime(1000);
-                expect(revokeObjectURL).not.toHaveBeenCalled();
+                expect($exeDevice.exportQuestions()).toBe(true);
+                expect(downloadBlob).toHaveBeenCalledTimes(1);
+                const [blob, fileName, containerId] = downloadBlob.mock.calls[0];
+                expect(await blob.text()).toBe('a\nb');
+                expect(fileName).toBe('Electrical Circuits.txt');
+                expect(containerId).toBe('electricalCircuitsIdeviceForm');
             });
         });
     });

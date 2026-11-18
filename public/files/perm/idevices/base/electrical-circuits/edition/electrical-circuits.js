@@ -2001,28 +2001,12 @@ var $exeDevice = {
             );
             return false;
         }
-        const fileContent = lines.join('\n');
-        const newBlob = new Blob([fileContent], { type: 'text/plain' });
-        if (window.navigator && window.navigator.msSaveOrOpenBlob) {
-            window.navigator.msSaveOrOpenBlob(newBlob);
-            return;
-        }
-        const data = window.URL.createObjectURL(newBlob);
-        // Owned by the edition, so the blob is released even when the editor
-        // closes before the cleanup timer runs.
-        this.$lifecycle.own(() => window.URL.revokeObjectURL(data));
-        const link = document.createElement('a');
-        link.href = data;
-        link.download = `${_('test')}.txt`;
-
-        document.getElementById('electricalCircuitsIdeviceForm').appendChild(link);
-        link.click();
-        this.$lifecycle.setTimeout(() => {
-            document
-                .getElementById('electricalCircuitsIdeviceForm')
-                .removeChild(link);
-            window.URL.revokeObjectURL(data);
-        }, 100);
+        const newBlob = new Blob([lines.join('\n')], { type: 'text/plain' });
+        return $exeIDevicesEdition.iDevice.gamification.share.downloadBlob(
+            newBlob,
+            `${_('Electrical Circuits')}.txt`,
+            'electricalCircuitsIdeviceForm'
+        );
     },
 
     /**
