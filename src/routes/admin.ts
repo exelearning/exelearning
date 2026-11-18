@@ -13,7 +13,7 @@ import { invalidateMaintenanceCache } from '../services/maintenance';
 import type { Kysely } from 'kysely';
 import type { Database, User } from '../db/types';
 import { parseRoles } from '../db/types';
-import { getJwtSecret } from './auth';
+import { getJwtSecret, passwordFingerprint } from './auth';
 import { toAuthenticatedIdentity, type AuthenticatedIdentity, type JwtPayload } from '../auth/types';
 import {
     findUserById as findUserByIdDefault,
@@ -984,6 +984,7 @@ export function createAdminRoutes(deps: AdminDependencies = defaultDependencies)
                         isImpersonated: true,
                         impersonatedBy: adminUserId,
                         impersonationSessionId: sessionId,
+                        pwh: passwordFingerprint(targetUser.password),
                     };
 
                     const impersonatedToken = await jwtPlugin.sign(impersonatedPayload);
