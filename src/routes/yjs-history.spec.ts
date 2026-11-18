@@ -2,8 +2,10 @@ import { beforeAll, beforeEach, describe, expect, it } from 'bun:test';
 import { Elysia } from 'elysia';
 import { SignJWT } from 'jose';
 import { createYjsRoutes, type YjsDependencies } from './yjs';
+import { getJwtSecret } from '../utils/jwt-secret';
 
-const TEST_SECRET = 'dev_secret_change_me';
+// The routes verify with the configured secret (JWT_SECRET in CI), not the dev default.
+const TEST_SECRET = getJwtSecret();
 
 const mockProject = {
     id: 1,
