@@ -5,11 +5,13 @@
  * Uses Dependency Injection pattern for testability
  */
 import { Elysia } from 'elysia';
-import { getJwtSecret } from './auth';
+import { isProductionEnv } from '../utils/env';
+import { getJwtSecret, passwordFingerprint } from './auth';
+import { parseRoles } from '../db/types';
 import { jwt } from '@elysiajs/jwt';
 import { randomBytes } from 'crypto';
 import type { Kysely } from 'kysely';
-import type { Database } from '../db/schema';
+import type { Database } from '../db/types';
 
 import { renderTemplate as renderTemplateDefault, setRenderLocale } from '../services/template';
 import {
@@ -19,15 +21,25 @@ import {
     findPreference as findPreferenceDefault,
     setPreference as setPreferenceDefault,
     findProjectByUuid as findProjectByUuidDefault,
+    findProjectByPublicViewId as findProjectByPublicViewIdDefault,
     findProjectByPlatformId as findProjectByPlatformIdDefault,
+    findOwnedProjectByPlatformBinding as findOwnedProjectByPlatformBindingDefault,
     checkProjectAccess as checkProjectAccessDefault,
     createProject as createProjectDefault,
 } from '../db/queries';
 import { db as dbDefault } from '../db/client';
 import { createGravatarUrl as createGravatarUrlDefault } from '../utils/gravatar.util';
 import { getBasePath, prefixPath } from '../utils/basepath.util';
+import { getPublicViewFile } from '../services/public-view-content';
+import {
+    PUBLIC_VIEW_SANDBOX,
+    publicViewCspHeader,
+    publicViewPermissionsPolicy,
+    resolvePublicViewCspProfile,
+} from '../shared/security/publicViewSandbox';
 import { isValidReturnUrl } from '../utils/redirect-validator.util';
 import { isOfflineMode } from '../utils/offline.util';
+import { getPlatformBinding, getPlatformIntegrationParams, type PlatformBinding } from '../utils/platform-jwt';
 import { getAppVersion } from '../utils/version';
 import { canChangePassword } from '../services/password';
 import { getAllSettings as getAllSettingsDefault } from '../db/queries/admin';
@@ -36,6 +48,7 @@ import {
     getAuthMethods as getAuthMethodsFromSettings,
     getSettingBoolean as getSettingBooleanFromSettings,
     getSettingString as getSettingStringFromSettings,
+    isPublicViewFeatureEnabled as isPublicViewFeatureEnabledFromSettings,
     parseBoolean as parseAppSettingBoolean,
 } from '../services/app-settings';
 type AppSettingsTable = {
@@ -61,7 +74,7 @@ import {
 import * as pathModule from 'path';
 import { detectLocaleFromHeader, trans, DEFAULT_LOCALE } from '../services/translation';
 import { decodePlatformJWT } from '../utils/platform-jwt';
-import type { JwtPayload } from './types/request-payloads';
+import { toAuthenticatedIdentity, type JwtPayload } from '../auth/types';
 import { getDefaultTheme as getDefaultThemeDefault } from '../db/queries/themes';
 
 const CUSTOMIZATION_MIME_TYPES: Record<string, string> = {
@@ -113,7 +126,9 @@ export interface PagesQueriesDeps {
     findPreference: typeof findPreferenceDefault;
     setPreference: typeof setPreferenceDefault;
     findProjectByUuid: typeof findProjectByUuidDefault;
+    findProjectByPublicViewId: typeof findProjectByPublicViewIdDefault;
     findProjectByPlatformId: typeof findProjectByPlatformIdDefault;
+    findOwnedProjectByPlatformBinding: typeof findOwnedProjectByPlatformBindingDefault;
     checkProjectAccess: typeof checkProjectAccessDefault;
     createProject: typeof createProjectDefault;
     getDefaultTheme: typeof getDefaultThemeDefault;
@@ -146,6 +161,13 @@ export interface PagesTemplateDeps {
 }
 
 /**
+ * Utility functions used while building the page view model.
+ */
+export interface PagesUtilsDeps {
+    createGravatarUrl: typeof createGravatarUrlDefault;
+}
+
+/**
  * Utils interface
  */
 // ... (existing code, added new interface)
@@ -156,6 +178,7 @@ export interface PagesSettingsDeps {
     getAuthMethods: typeof getAuthMethodsFromSettings;
     getSettingBoolean: typeof getSettingBooleanFromSettings;
     getSettingString: typeof getSettingStringFromSettings;
+    isPublicViewFeatureEnabled: typeof isPublicViewFeatureEnabledFromSettings;
 }
 
 /**
@@ -179,7 +202,9 @@ const defaultQueries: PagesQueriesDeps = {
     findPreference: findPreferenceDefault,
     setPreference: setPreferenceDefault,
     findProjectByUuid: findProjectByUuidDefault,
+    findProjectByPublicViewId: findProjectByPublicViewIdDefault,
     findProjectByPlatformId: findProjectByPlatformIdDefault,
+    findOwnedProjectByPlatformBinding: findOwnedProjectByPlatformBindingDefault,
     checkProjectAccess: checkProjectAccessDefault,
     createProject: createProjectDefault,
     getDefaultTheme: getDefaultThemeDefault,
@@ -215,6 +240,7 @@ const defaultSettings: PagesSettingsDeps = {
     getAuthMethods: getAuthMethodsFromSettings,
     getSettingBoolean: getSettingBooleanFromSettings,
     getSettingString: getSettingStringFromSettings,
+    isPublicViewFeatureEnabled: isPublicViewFeatureEnabledFromSettings,
 };
 
 // Default dependencies
@@ -227,6 +253,23 @@ const defaultDependencies: PagesDependencies = {
     utils: defaultUtils,
     settings: defaultSettings,
 };
+
+/**
+ * Platform activity a /workarea request was sent to edit, from its platform JWT.
+ *
+ * Returns null when the token cannot be verified (signature, provider or return
+ * URL allow-list) or does not identify one activity, and when `odeId` is not that
+ * activity's cmid: /edit_ode passes the cmid as `odeId`, so any other value is a
+ * project UUID (or a mismatched request) and keeps its own access-checked lookup.
+ */
+async function getRequestPlatformBinding(jwtToken: string, odeId?: string): Promise<PlatformBinding | null> {
+    const params = await getPlatformIntegrationParams(jwtToken, 'get');
+    const binding = params ? getPlatformBinding(params) : null;
+    if (!binding || (odeId && odeId !== binding.cmid)) {
+        return null;
+    }
+    return binding;
+}
 
 // ============================================================================
 // Factory Function
@@ -245,7 +288,9 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
         findPreference,
         setPreference,
         findProjectByUuid,
+        findProjectByPublicViewId,
         findProjectByPlatformId,
+        findOwnedProjectByPlatformBinding,
         checkProjectAccess,
         createProject,
         getDefaultTheme,
@@ -253,7 +298,8 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
     const { createSession, getSession } = deps.sessionManager ?? defaultSessionManager;
     const { renderTemplate, setRenderLocale: setLocale } = deps.template ?? defaultTemplate;
     const { createGravatarUrl } = deps.utils ?? defaultUtils;
-    const { getAuthMethods, getSettingBoolean, getSettingString } = deps.settings ?? defaultSettings;
+    const { getAuthMethods, getSettingBoolean, getSettingString, isPublicViewFeatureEnabled } =
+        deps.settings ?? defaultSettings;
     const { fileExists, readFile } = deps.fileHelper ?? defaultFileHelper;
 
     /**
@@ -262,8 +308,9 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
      */
     async function getUserLocalePreference(userId: number | string): Promise<string | null> {
         try {
-            const userIdStr = String(userId);
-            const pref = await findPreference(db, userIdStr, 'locale');
+            const userIdNumber = typeof userId === 'number' ? userId : Number(userId);
+            if (!Number.isFinite(userIdNumber)) return null;
+            const pref = await findPreference(db, userIdNumber, 'locale');
 
             if (pref?.value) {
                 // Value might be JSON or plain string
@@ -314,7 +361,7 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
 
             // Derive user from JWT token
             .derive(async ({ jwt, cookie }) => {
-                const token = cookie.auth?.value;
+                const token = cookie.auth?.value as string | undefined;
                 if (!token) {
                     if (cookie.impersonator_auth?.value) {
                         cookie.impersonator_auth.remove();
@@ -335,17 +382,20 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                     impersonatorEmail: string;
                 } | null = null;
 
-                const impersonatorToken = cookie.impersonator_auth?.value;
+                const impersonatorToken = cookie.impersonator_auth?.value as string | undefined;
                 if (impersonatorToken) {
                     try {
-                        const originalPayload = (await jwt.verify(impersonatorToken)) as JwtPayload | false;
-                        if (originalPayload?.sub) {
-                            const impersonatorUser = await findUserById(db, Number(originalPayload.sub));
+                        const originalPayload = (await jwt.verify(impersonatorToken)) as unknown as JwtPayload | false;
+                        const impersonatorIdentity = originalPayload ? toAuthenticatedIdentity(originalPayload) : null;
+                        if (impersonatorIdentity) {
+                            const impersonatorUser = await findUserById(db, impersonatorIdentity.userId);
                             impersonationBase = {
-                                sessionId: cookie.impersonation_session?.value || null,
-                                impersonatorId: Number(originalPayload.sub),
+                                sessionId: (cookie.impersonation_session?.value as string | undefined) || null,
+                                impersonatorId: impersonatorIdentity.userId,
                                 impersonatorEmail:
-                                    impersonatorUser?.email || originalPayload.email || `user-${originalPayload.sub}`,
+                                    impersonatorUser?.email ||
+                                    impersonatorIdentity.email ||
+                                    `user-${impersonatorIdentity.userId}`,
                             };
                         }
                     } catch {
@@ -355,8 +405,8 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                 }
 
                 try {
-                    const payload = (await jwt.verify(token)) as JwtPayload | false;
-                    if (!payload) {
+                    const payload = (await jwt.verify(token)) as unknown as JwtPayload | false;
+                    if (payload === false) {
                         return {
                             currentUser: null,
                             isGuest: false,
@@ -371,12 +421,21 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                     const authMethod = payload.authMethod;
                     const isImpersonated = payload.isImpersonated || false;
 
-                    const isGuest = payload.isGuest || false;
-                    if (isGuest) {
+                    const identity = toAuthenticatedIdentity(payload);
+                    if (!identity) {
+                        return {
+                            currentUser: null,
+                            isGuest: false,
+                            impersonation: null,
+                            authMethod,
+                            isImpersonated,
+                        };
+                    }
+                    if (identity.isGuest) {
                         return {
                             currentUser: {
-                                id: payload.sub,
-                                email: payload.email || 'guest@guest.local',
+                                id: identity.userId,
+                                email: identity.email || 'guest@guest.local',
                                 roles: JSON.stringify(['ROLE_GUEST']),
                             },
                             isGuest: true,
@@ -386,7 +445,7 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                         };
                     }
 
-                    const user = await findUserById(db, payload.sub);
+                    const user = await findUserById(db, identity.userId);
                     const impersonation: ImpersonationContext | null =
                         impersonationBase && user
                             ? {
@@ -395,7 +454,7 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                                   impersonatorId: impersonationBase.impersonatorId,
                                   impersonatorEmail: impersonationBase.impersonatorEmail,
                                   impersonatedId: Number(user.id),
-                                  impersonatedEmail: user.email || payload.email || `user-${user.id}`,
+                                  impersonatedEmail: user.email || identity.email || `user-${identity.userId}`,
                               }
                             : null;
 
@@ -495,6 +554,7 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                                 email: defaultEmail,
                                 password: '', // No password needed for offline
                                 roles: JSON.stringify(['ROLE_USER']),
+                                is_lopd_accepted: 1,
                                 is_active: 1,
                             });
                         }
@@ -502,15 +562,16 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                         if (user) {
                             // Generate JWT token
                             const token = await jwt.sign({
-                                sub: user.id,
+                                sub: String(user.id),
                                 email: user.email,
-                                roles: JSON.parse(user.roles || '["ROLE_USER"]'),
+                                roles: parseRoles(user.roles),
                                 isGuest: false,
+                                pwh: passwordFingerprint(user.password),
                             });
                             cookie.auth.set({
                                 value: token,
                                 httpOnly: true,
-                                secure: process.env.NODE_ENV === 'production',
+                                secure: isProductionEnv(),
                                 sameSite: 'lax',
                                 maxAge: 7 * 24 * 60 * 60, // 7 days
                                 path: '/',
@@ -533,7 +594,12 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                     });
                 }
 
-                let user = null;
+                let user: {
+                    id: number;
+                    username: string;
+                    usernameFirsLetter: string;
+                    gravatarUrl: string;
+                } | null = null;
                 if (currentUser) {
                     const email = currentUser.email || 'user@exelearning.net';
                     user = {
@@ -596,6 +662,114 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
             })
 
             // =====================================================
+            // Public viewer loader (opaque-origin sandbox host page)
+            // =====================================================
+            // Renders the shell page that hosts the untrusted author content in a
+            // sandboxed iframe. The actual content bytes are served separately by
+            // the isolated `/view/:publicViewId/_/*` content route below.
+            .get('/view/:publicViewId', async ({ params, currentUser, request, set, impersonation }) => {
+                const { publicViewId } = params;
+
+                // Public viewer: look up strictly by the opaque public view id.
+                // The internal project UUID is never accepted here, and the
+                // project must have the public read-only link enabled (this is
+                // independent of edit visibility). We return 404 (not 403) for
+                // missing or disabled projects so the route does not reveal
+                // whether a private project exists. The same 404 is returned when
+                // the administrator has disabled public links site-wide.
+                const project = (await isPublicViewFeatureEnabled(db))
+                    ? await findProjectByPublicViewId(db, publicViewId)
+                    : undefined;
+                if (!project?.public_view_enabled) {
+                    set.status = 404;
+                    const html = renderTemplate('workarea/error', {
+                        basePath: getBasePath(),
+                        locale: 'en',
+                        impersonation,
+                        error: 'Project not found.',
+                    });
+                    set.headers['Content-Type'] = 'text/html';
+                    return html;
+                }
+
+                // Get preferred locale
+                let userLocale = null;
+                if (currentUser) {
+                    const pref = await findPreference(db, currentUser.id, 'locale');
+                    if (pref) userLocale = pref.value;
+                }
+
+                const appLocale = process.env.APP_LOCALE;
+                const acceptLanguage = request.headers.get('accept-language');
+                const browserLocale = detectLocaleFromHeader(acceptLanguage);
+                const locale = userLocale || appLocale || browserLocale || DEFAULT_LOCALE;
+
+                setRenderLocale(locale);
+
+                const viewModel = {
+                    basePath: getBasePath(),
+                    publicViewId,
+                    title: project.title || 'Untitled Project',
+                    lang: locale,
+                    impersonation,
+                    // Tokens for the isolating iframe (opaque origin: no
+                    // allow-same-origin). Single source of truth shared with the
+                    // CSP emitted on the content responses below.
+                    sandboxTokens: PUBLIC_VIEW_SANDBOX,
+                };
+
+                const html = renderTemplate('viewer/viewer', viewModel);
+                set.headers['Content-Type'] = 'text/html';
+                return html;
+            })
+
+            // =====================================================
+            // Public viewer content (isolated, opaque origin)
+            // =====================================================
+            // Serves the individual files of a public project's HTML5 export so
+            // the untrusted author content runs inside a sandboxed iframe with an
+            // opaque origin. The `sandbox` directive is emitted in the response
+            // CSP (not only in the iframe attribute) so the document stays opaque
+            // even if the content URL is opened directly (new tab, fullscreen,
+            // raw URL). It must never reach the authenticated session.
+            .get('/view/:publicViewId/_/*', async ({ params, set }) => {
+                const { publicViewId } = params;
+                const relPath = (params as Record<string, string>)['*'] ?? '';
+
+                const project = (await isPublicViewFeatureEnabled(db))
+                    ? await findProjectByPublicViewId(db, publicViewId)
+                    : undefined;
+                if (!project?.public_view_enabled) {
+                    set.status = 404;
+                    return 'Not found';
+                }
+
+                let file;
+                try {
+                    file = await getPublicViewFile(project, relPath);
+                } catch (err) {
+                    console.error('[Public viewer content] Error building export:', err);
+                    set.status = 500;
+                    return 'Error building preview';
+                }
+
+                if (!file) {
+                    set.status = 404;
+                    return 'Not found';
+                }
+
+                return new Response(file.content as BodyInit, {
+                    headers: {
+                        'Content-Type': file.contentType,
+                        'Content-Security-Policy': publicViewCspHeader(resolvePublicViewCspProfile()),
+                        'Permissions-Policy': publicViewPermissionsPolicy(),
+                        'X-Content-Type-Options': 'nosniff',
+                        'Cache-Control': 'no-store',
+                    },
+                });
+            })
+
+            // =====================================================
             // Workarea Page
             // =====================================================
             .get('/workarea', async ctx => {
@@ -621,6 +795,63 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                 let projectUuid = query.project as string | undefined;
                 const odeId = query.odeId as string | undefined;
                 const jwtTokenParam = query.jwt_token as string | undefined;
+
+                // =====================================================
+                // PLATFORM INTEGRATION: one project per user and activity
+                // =====================================================
+                // A verified platform JWT (from /new_ode or /edit_ode) identifies the
+                // activity: the platform site plus its course module id. Reopen the
+                // current user's own project for it, or create one bound to it, and let
+                // the client load the platform's package (it skips the import when the
+                // project already holds that package). Another user's project is never
+                // picked: the platform, not project ownership, decides who may edit the
+                // activity (#2498, #2549).
+                if (!projectUuid && jwtTokenParam && !isOfflineMode()) {
+                    const binding = await getRequestPlatformBinding(jwtTokenParam, odeId);
+                    if (binding) {
+                        try {
+                            let platformProject = await findOwnedProjectByPlatformBinding(
+                                db,
+                                currentUser.id,
+                                binding.site,
+                                binding.cmid,
+                            );
+                            if (platformProject) {
+                                console.log(
+                                    `[Pages] Platform integration: Reusing project ${platformProject.uuid} for cmid ${binding.cmid} on ${binding.site}`,
+                                );
+                            } else {
+                                platformProject = await createProject(db, {
+                                    title: 'New Project',
+                                    owner_id: currentUser.id,
+                                    saved_once: 0,
+                                    platform_id: binding.cmid,
+                                    platform_site: binding.site,
+                                });
+                                createSession({
+                                    sessionId: platformProject.uuid,
+                                    fileName: 'New Project.elp',
+                                    filePath: '',
+                                    createdAt: new Date(),
+                                    updatedAt: new Date(),
+                                    structure: null,
+                                    userId: currentUser.id,
+                                });
+                                console.log(
+                                    `[Pages] Platform integration: Created project ${platformProject.uuid} for cmid ${binding.cmid} on ${binding.site}`,
+                                );
+                            }
+
+                            return Response.redirect(
+                                `${getBasePath()}/workarea?project=${platformProject.uuid}&jwt_token=${encodeURIComponent(jwtTokenParam)}&fetchPlatformElp=1`,
+                                302,
+                            );
+                        } catch (error) {
+                            console.error('[Pages] Platform integration: Failed to open the activity project:', error);
+                            // Continue - will fall through to the unbound flow
+                        }
+                    }
+                }
 
                 // =====================================================
                 // PLATFORM INTEGRATION: Handle odeId parameter from Moodle
@@ -903,10 +1134,13 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                 const basePath = getBasePath();
 
                 // Generate auth token for WebSocket
+                // `pwh` revokes this token with the session when the password
+                // changes; guests have no stored password to bind to.
                 const authToken = await jwt.sign({
-                    sub: userId,
+                    sub: String(userId),
                     email: email,
                     isGuest: isGuest,
+                    ...(isGuest ? {} : { pwh: passwordFingerprint(currentUser.password) }),
                 });
 
                 // Get default theme from database
@@ -1152,9 +1386,10 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                     if (['0', 'false', 'no', 'off'].includes(normalized)) return false;
                     return fallback;
                 };
-                const parseNumber = (value: string | undefined, fallback: number): number => {
+                const parseNumber = (value: string | number | null | undefined, fallback: number): number => {
+                    if (typeof value === 'number') return value;
                     if (value === undefined) return fallback;
-                    const parsed = parseInt(value, 10);
+                    const parsed = parseInt(String(value), 10);
                     return Number.isNaN(parsed) ? fallback : parsed;
                 };
                 const adminSettings = {
@@ -1163,17 +1398,13 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                         online_idevices_install: parseBoolean(process.env.ONLINE_IDEVICES_INSTALL, false),
                         app_auth_methods: process.env.APP_AUTH_METHODS || 'password,cas,openid,guest',
                         version_control: parseBoolean(process.env.VERSION_CONTROL, true),
+                        public_view_enabled: parseBoolean(process.env.PUBLIC_VIEW_ENABLED, false),
                         default_project_visibility: process.env.DEFAULT_PROJECT_VISIBILITY || 'private',
                         user_recent_ode_files_amount: parseNumber(process.env.USER_RECENT_ODE_FILES_AMOUNT, 3),
                         collaborative_block_level: process.env.COLLABORATIVE_BLOCK_LEVEL || 'idevice',
                     },
                     storage: {
-                        user_storage_max_disk_space: parseNumber(process.env.USER_STORAGE_MAX_DISK_SPACE, 1024),
                         default_quota: parseNumber(process.env.DEFAULT_QUOTA, 4096),
-                        count_user_autosave_space_ode_files: parseBoolean(
-                            process.env.COUNT_USER_AUTOSAVE_SPACE_ODE_FILES,
-                            true,
-                        ),
                         file_upload_max_size: parseNumber(process.env.FILE_UPLOAD_MAX_SIZE, 1024),
                     },
                     autosave: {
@@ -1242,15 +1473,11 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                     ONLINE_IDEVICES_INSTALL: { path: ['general', 'online_idevices_install'], type: 'boolean' },
                     APP_AUTH_METHODS: { path: ['general', 'app_auth_methods'], type: 'string' },
                     VERSION_CONTROL: { path: ['general', 'version_control'], type: 'boolean' },
+                    PUBLIC_VIEW_ENABLED: { path: ['general', 'public_view_enabled'], type: 'boolean' },
                     DEFAULT_PROJECT_VISIBILITY: { path: ['general', 'default_project_visibility'], type: 'string' },
                     USER_RECENT_ODE_FILES_AMOUNT: { path: ['general', 'user_recent_ode_files_amount'], type: 'number' },
                     COLLABORATIVE_BLOCK_LEVEL: { path: ['general', 'collaborative_block_level'], type: 'string' },
-                    USER_STORAGE_MAX_DISK_SPACE: { path: ['storage', 'user_storage_max_disk_space'], type: 'number' },
                     DEFAULT_QUOTA: { path: ['storage', 'default_quota'], type: 'number' },
-                    COUNT_USER_AUTOSAVE_SPACE_ODE_FILES: {
-                        path: ['storage', 'count_user_autosave_space_ode_files'],
-                        type: 'boolean',
-                    },
                     FILE_UPLOAD_MAX_SIZE: { path: ['storage', 'file_upload_max_size'], type: 'number' },
                     PERMANENT_SAVE_AUTOSAVE_TIME_INTERVAL: {
                         path: ['autosave', 'permanent_save_autosave_time_interval'],

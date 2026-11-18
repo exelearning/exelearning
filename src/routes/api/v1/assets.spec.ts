@@ -67,7 +67,15 @@ describe('Assets API v1', () => {
         await fs.ensureDir(TEST_FILES_DIR);
         await resetClientCacheForTesting();
         await up(db);
-        await up002(db);
+        // 002 adds a column and is not idempotent when run against an
+        // already-migrated database (e.g. the shared dev DB); skip it when
+        // the column is already there.
+        const tables = await db.introspection.getTables();
+        const assetsTable = tables.find(table => table.name === 'assets');
+        const hasFolderPath = !!assetsTable?.columns.some(column => column.name === 'folder_path');
+        if (!hasFolderPath) {
+            await up002(db);
+        }
 
         mockYDoc = new Y.Doc();
         mockYDoc.getArray('navigation');

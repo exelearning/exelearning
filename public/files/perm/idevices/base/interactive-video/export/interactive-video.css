@@ -19,16 +19,16 @@
 	overflow: hidden;
 }
 
-#slide .exe-block-msg {
+#activity-slide .exe-block-msg {
 	padding: 10px 1em;
 	margin: 25px 0 1.5em 0
 }
 
-#slide .exe-block-msg p {
+#activity-slide .exe-block-msg p {
 	margin: 0
 }
 
-#slide .disabled .field-with-error {
+#activity-slide .disabled .field-with-error {
 	color: #973C3B
 }
 
@@ -39,7 +39,7 @@
 
 .cover-on #player,
 .cover-on #activity-results,
-.cover-on #slide,
+.cover-on #activity-slide,
 .cover-on #activity-results-toggler {
 	display: none !important
 }
@@ -150,7 +150,7 @@
 	}
 }
 
-#slide {
+#activity-slide {
 	display: none;
 	background: #fff;
 	width: 408px;
@@ -161,34 +161,34 @@
 	position: relative
 }
 
-#slide.image {
+#activity-slide.image {
 	padding: 0;
 	width: 448px;
 	height: 356px;
 	background: #fff url(interactive-video-loading.gif) no-repeat 50% 50%
 }
 
-#slide.image img {
+#activity-slide.image img {
 	display: none;
 	margin: 0 auto
 }
 
-#slide.image .square {
+#activity-slide.image .square {
 	max-width: 356px;
 	max-height: 356px
 }
 
-#slide.image .horizontal {
+#activity-slide.image .horizontal {
 	max-width: 448px;
 	height: auto
 }
 
-#slide.image .vertical {
+#activity-slide.image .vertical {
 	max-height: 356px;
 	width: auto
 }
 
-#slide.image a {
+#activity-slide.image a {
 	position: absolute;
 	top: 10px;
 	right: 10px;
@@ -200,24 +200,24 @@
 	border-radius: 4px
 }
 
-#slide.image a:hover {
+#activity-slide.image a:hover {
 	background: #000;
 	text-decoration: underline
 }
 
-#slide.matchElements select {
+#activity-slide.matchElements select {
 	width: 45%
 }
 
-#slide.matchElements .random-a {
+#activity-slide.matchElements .random-a {
 	color: #333
 }
 
-#slide p {
+#activity-slide p {
 	margin: 20px 0
 }
 
-#slide p:first-child {
+#activity-slide p:first-child {
 	margin-top: 0
 }
 
@@ -230,7 +230,7 @@
 	float: left
 }
 
-.active #slide {
+.active #activity-slide {
 	display: block
 }
 
@@ -238,25 +238,25 @@
 	margin-left: 0
 }
 
-#slide .question {
+#activity-slide .question {
 	font-weight: bold
 }
 
-#slide .answers p {
+#activity-slide .answers p {
 	margin: 0 0 10px 0
 }
 
-#slide .actions {
+#activity-slide .actions {
 	margin-top: 2em
 }
 
-#slide .disabled .actions,
-#slide .disabled .sortable a,
-#slide .disabled p.instructions {
+#activity-slide .disabled .actions,
+#activity-slide .disabled .sortable a,
+#activity-slide .disabled p.instructions {
 	display: none
 }
 
-#slide .actions input {
+#activity-slide .actions input {
 	font-size: 1em;
 	border: none;
 	padding: 8px 20px;
@@ -266,13 +266,13 @@
 	border-radius: 4px
 }
 
-#slide .sortable {
+#activity-slide .sortable {
 	margin: 0;
 	padding: 0;
 	list-style: none
 }
 
-#slide .sortable li {
+#activity-slide .sortable li {
 	background: #f3f3f3;
 	padding: .5em 65px .5em 10px;
 	margin: 0 0 .5em 0;
@@ -281,16 +281,16 @@
 	list-style-image: none
 }
 
-#slide .sortable .first .up,
-#slide .sortable .last .down {
+#activity-slide .sortable .first .up,
+#activity-slide .sortable .last .down {
 	visibility: hidden
 }
 
-#slide .sortable li {
+#activity-slide .sortable li {
 	position: relative
 }
 
-#slide .sortable li a {
+#activity-slide .sortable li a {
 	display: block;
 	width: 21px;
 	height: 21px;
@@ -300,22 +300,22 @@
 	top: 6px
 }
 
-#slide .sortable li a:hover,
-#slide .sortable li a:focus {
+#activity-slide .sortable li a:hover,
+#activity-slide .sortable li a:focus {
 	background-position: 0 -21px
 }
 
-#slide .sortable li .down {
+#activity-slide .sortable li .down {
 	background-position: -21px 0;
 	right: 6px
 }
 
-#slide .sortable li .down:hover,
-#slide .sortable li .down:focus {
+#activity-slide .sortable li .down:hover,
+#activity-slide .sortable li .down:focus {
 	background-position: -21px -21px
 }
 
-#slide.sortableList p.instructions {
+#activity-slide.sortableList p.instructions {
 	color: #666;
 	font-size: .9em;
 	margin-bottom: -1em
@@ -416,7 +416,7 @@ tr.even td {
 	background: #FFF url(interactive-video-bg.gif) repeat-y 0 0
 }
 
-.is-mobile #slide {
+.is-mobile #activity-slide {
 	height: auto;
 	min-height: 316px
 }
@@ -443,17 +443,17 @@ tr.even td {
 		width: 100%
 	}
 
-	#slide {
+	#activity-slide {
 		width: 46%;
 		padding-right: 2%;
 		padding-left: 2%
 	}
 
-	#slide.image {
+	#activity-slide.image {
 		width: 50%
 	}
 
-	#slide.image img {
+	#activity-slide.image img {
 		max-width: 100% !important
 	}
 
@@ -550,15 +550,15 @@ tr.even td {
 		max-width: 50% !important
 	}
 
-	#slide {
+	#activity-slide {
 		width: calc(50% - 40px)
 	}
 
-	#slide.image {
+	#activity-slide.image {
 		width: 50% !important
 	}
 
-	#slide.image .horizontal {
+	#activity-slide.image .horizontal {
 		max-width: 100% !important
 	}
 
@@ -599,30 +599,30 @@ tr.even td {
 		max-height: 478px !important
 	}
 
-	body:not(.exe-web-site) #slide,
-	body.no-nav #slide {
+	body:not(.exe-web-site) #activity-slide,
+	body.no-nav #activity-slide {
 		height: calc(478px - 40px)
 	}
 
-	body:not(.exe-web-site) #slide.image,
-	body.no-nav #slide.image {
+	body:not(.exe-web-site) #activity-slide.image,
+	body.no-nav #activity-slide.image {
 		height: 478px
 	}
 
-	body:not(.exe-web-site) #slide.image .square,
-	body.no-nav #slide.image .square {
+	body:not(.exe-web-site) #activity-slide.image .square,
+	body.no-nav #activity-slide.image .square {
 		max-width: 100%;
 		max-height: 478px
 	}
 
-	body:not(.exe-web-site) #slide.image .horizontal,
-	body.no-nav #slide.image .horizontal {
+	body:not(.exe-web-site) #activity-slide.image .horizontal,
+	body.no-nav #activity-slide.image .horizontal {
 		max-width: 100%;
 		height: auto
 	}
 
-	body:not(.exe-web-site) #slide.image .vertical,
-	body.no-nav #slide.image .vertical {
+	body:not(.exe-web-site) #activity-slide.image .vertical,
+	body.no-nav #activity-slide.image .vertical {
 		max-height: 478px;
 		width: auto
 	}

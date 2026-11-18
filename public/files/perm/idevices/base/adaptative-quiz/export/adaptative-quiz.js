@@ -122,6 +122,7 @@ var $adaptativequiz = {
     renderBehaviour: function (data, accesibility, ideviceId) {
         const ldata = this.updateConfig(data, ideviceId);
         this.options[ldata.id] = { ...this.options[ldata.id], ...ldata };
+        $exeDevices.iDevice.gamification.report.showPassScoreNotice(this.options[ldata.id]);
 
         if (typeof eXe !== 'undefined' && eXe.app && typeof eXe.app.isInExe === 'function') {
             this.isInExe = eXe.app.isInExe();

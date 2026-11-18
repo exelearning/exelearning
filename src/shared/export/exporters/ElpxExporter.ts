@@ -27,7 +27,7 @@
  *     - odeComponents (iDevices)
  */
 
-import type { ExportOptions, ExportResult, ElpxExportOptions } from '../interfaces';
+import { type ExportOptions, type ExportResult, type ElpxExportOptions } from '../interfaces';
 import { Html5Exporter } from './Html5Exporter';
 import { validateXml, formatValidationErrors } from '../../../services/xml/xml-parser';
 import { ODE_DTD_FILENAME, ODE_DTD_CONTENT } from '../constants';
@@ -265,7 +265,7 @@ export class ElpxExporter extends Html5Exporter {
                 addFile('theme/style.js', this.getFallbackThemeJs());
             }
 
-            // 1.6 Fetch base libraries (always included - jQuery, Bootstrap, exe_lightbox, etc.)
+            // 1.6 Fetch base libraries (always included - jQuery, Bootstrap, common.js, etc.)
             try {
                 this.logElpxExportDebugPhase('exporter:base-libs:start');
                 const baseLibs = await this.resources.fetchBaseLibraries();
@@ -336,6 +336,21 @@ export class ElpxExporter extends Html5Exporter {
             this.logElpxExportDebugPhase('exporter:idevice-resources:end', {
                 idevices: usedIdevices.length,
             });
+
+            // 1.8.5 Add global font files (if selected). The generated pages reference
+            // fonts/global/<font>/…, so the package must ship them to render outside the editor.
+            if (meta.globalFont && meta.globalFont !== 'default') {
+                try {
+                    const fontFiles = await this.resources.fetchGlobalFontFiles(meta.globalFont);
+                    if (fontFiles) {
+                        for (const [filePath, content] of fontFiles) {
+                            addFile(filePath, content);
+                        }
+                    }
+                } catch (e) {
+                    console.warn(`[ElpxExporter] Failed to fetch global font files: ${meta.globalFont}`, e);
+                }
+            }
 
             // 1.9 Add project assets
             await this.addAssetsToZipWithResourcePath(fileList);

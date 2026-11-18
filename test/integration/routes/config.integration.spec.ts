@@ -182,6 +182,7 @@ describe('Config Routes Integration', () => {
                 'pp_addPagination',
                 'pp_addSearchBox',
                 'pp_addAccessibilityToolbar',
+                'pp_passScore',
                 'pp_extraHeadContent',
                 'footer',
             ];
@@ -191,7 +192,7 @@ describe('Config Routes Integration', () => {
             });
         });
 
-        it('should have exactly 14 project properties', async () => {
+        it('should have exactly 17 project properties including the minimum pass score rules', async () => {
             const response = await configRoutes.handle(
                 new Request('http://localhost/api/parameter-management/parameters/data/list'),
             );
@@ -200,7 +201,15 @@ describe('Config Routes Integration', () => {
             const nestedConfig = data.odeProjectSyncPropertiesConfig as Record<string, Record<string, unknown>>;
             const config = flattenProperties(nestedConfig);
 
-            expect(Object.keys(config).length).toBe(15);
+            expect(Object.keys(config).length).toBe(17);
+            expect(config.pp_passScore).toMatchObject({
+                value: 5,
+                type: 'number',
+                min: 0,
+                max: 10,
+                step: 0.1,
+            });
+            expect(config.pp_passScoreEveryActivity).toMatchObject({ value: 'false', type: 'checkbox' });
         });
 
         it('should have groups attribute on all properties for collapsible sections', async () => {
@@ -218,7 +227,7 @@ describe('Config Routes Integration', () => {
             });
         });
 
-        it('should have three groups: properties_package, export, custom_code', async () => {
+        it('should have four groups: properties_package, export, grading, custom_code', async () => {
             const response = await configRoutes.handle(
                 new Request('http://localhost/api/parameter-management/parameters/data/list'),
             );
@@ -234,8 +243,9 @@ describe('Config Routes Integration', () => {
 
             expect(allGroups.has('properties_package')).toBe(true);
             expect(allGroups.has('export')).toBe(true);
+            expect(allGroups.has('grading')).toBe(true);
             expect(allGroups.has('custom_code')).toBe(true);
-            expect(allGroups.size).toBe(3);
+            expect(allGroups.size).toBe(4);
         });
 
         it('should have help text on properties with help icons', async () => {

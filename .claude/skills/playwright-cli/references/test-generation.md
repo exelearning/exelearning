@@ -86,7 +86,7 @@ Generated code captures actions but not assertions. Add expectations in your tes
 - `toBeVisible()` — element is rendered and visible
 - `toHaveText(text)` — element text content matches
 - `toHaveValue(value) / toBeEmpty()` — input/select value matches
-- `toBeChecked() / toBeUnchecked()` — checkbox state matches
+- `toBeChecked() / not.toBeChecked()` — checkbox state matches
 - `toMatchAriaSnapshot(snapshot)` — page (or locator) matches a partial accessibility snapshot
 
 Use `playwright-cli generate-locator <target>` to produce the locator expression for the assertion, and the snapshot/eval commands to capture the expected value.
@@ -349,7 +349,7 @@ Rules:
 
 ### 2.3 Generate multiple scenarios
 
-Loop 2.2 over the targeted scenarios one at a time, restarting the seed between each so every test starts from a clean page. This is safe to parallelise due to unique generated session names - just make sure each test run is stopped.
+Loop 2.2 over the targeted scenarios one at a time, restarting the seed between each so every test starts from a clean page. Make sure each test run is stopped before starting the next one.
 
 ### 2.4 Run generated tests
 

@@ -515,6 +515,24 @@ describe('Scorm12Exporter', () => {
             expect(html).toContain('page-counter');
         });
 
+        it('should publish the project pass score for the runtime to read', () => {
+            document = new MockDocument({ passScore: 7.5 }, samplePages);
+            exporter = new Scorm12Exporter(document, resources, assets, zip);
+            const html = exporter.generateScormPageHtml(samplePages[0], samplePages, document.getMetadata(), true);
+
+            expect(html).toContain('<meta name="exe-pass-score" content="7.5">');
+        });
+
+        it('should publish the every-activity pass rule only when the project asks for it', () => {
+            const off = exporter.generateScormPageHtml(samplePages[0], samplePages, document.getMetadata(), true);
+            document = new MockDocument({ passScoreEveryActivity: true }, samplePages);
+            exporter = new Scorm12Exporter(document, resources, assets, zip);
+            const on = exporter.generateScormPageHtml(samplePages[0], samplePages, document.getMetadata(), true);
+
+            expect(off).not.toContain('exe-pass-score-every-activity');
+            expect(on).toContain('<meta name="exe-pass-score-every-activity" content="true">');
+        });
+
         it('should NOT include made-with-eXe link when addExeLink is false', () => {
             document = new MockDocument({ addExeLink: false }, samplePages);
             exporter = new Scorm12Exporter(document, resources, assets, zip);

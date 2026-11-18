@@ -21,6 +21,7 @@ import {
     deleteAllUpdates,
     deleteUpdatesBefore,
     getLatestVersion,
+    getDocumentVersion,
     countUpdates,
     documentExists,
     // Full state operations
@@ -40,6 +41,7 @@ import {
     pruneOldVersions,
     deleteAllVersionHistory,
     getLatestVersionHistory,
+    replaceSnapshotIfVersion,
 } from './yjs';
 
 describe('Yjs Queries', () => {
@@ -166,6 +168,55 @@ describe('Yjs Queries', () => {
                 // Verify only one snapshot exists
                 const found = await findSnapshotByProjectId(db, testProjectId);
                 expect(found?.snapshot_version).toBe('2');
+            });
+        });
+
+        describe('replaceSnapshotIfVersion (#2615)', () => {
+            it('replaces the snapshot when the stored version matches', async () => {
+                await createSnapshot(db, {
+                    project_id: testProjectId,
+                    snapshot_data: new Uint8Array([1]),
+                    snapshot_version: '100',
+                });
+
+                const replaced = await replaceSnapshotIfVersion(
+                    db,
+                    testProjectId,
+                    new Uint8Array([7, 8]),
+                    '200',
+                    '100',
+                );
+
+                expect(replaced).toBe(true);
+                const found = await findSnapshotByProjectId(db, testProjectId);
+                expect(found?.snapshot_version).toBe('200');
+                expect(found?.snapshot_data).toEqual(new Uint8Array([7, 8]));
+            });
+
+            it('leaves the snapshot untouched and reports false when the stored version moved on', async () => {
+                await createSnapshot(db, {
+                    project_id: testProjectId,
+                    snapshot_data: new Uint8Array([1]),
+                    snapshot_version: '150',
+                });
+
+                const replaced = await replaceSnapshotIfVersion(
+                    db,
+                    testProjectId,
+                    new Uint8Array([7, 8]),
+                    '200',
+                    '100',
+                );
+
+                expect(replaced).toBe(false);
+                const found = await findSnapshotByProjectId(db, testProjectId);
+                expect(found?.snapshot_version).toBe('150');
+                expect(found?.snapshot_data).toEqual(new Uint8Array([1]));
+            });
+
+            it('reports false when the project has no snapshot row', async () => {
+                const replaced = await replaceSnapshotIfVersion(db, testProjectId, new Uint8Array([7]), '200', '100');
+                expect(replaced).toBe(false);
             });
         });
 
@@ -555,6 +606,55 @@ describe('Yjs Queries', () => {
             it('should return 0 for project with no updates', async () => {
                 const version = await getLatestVersion(db, testProjectId);
                 expect(version).toBe('0');
+            });
+        });
+
+        describe('getDocumentVersion', () => {
+            it('returns 0 when there is no snapshot and no updates', async () => {
+                const version = await getDocumentVersion(db, testProjectId);
+                expect(version).toBe('0');
+            });
+
+            it('returns the latest update version when newer than the snapshot', async () => {
+                await upsertSnapshot(db, testProjectId, new Uint8Array([1]), '100');
+                await createUpdate(db, {
+                    project_id: testProjectId,
+                    update_data: new Uint8Array([2]),
+                    version: '500',
+                    client_id: null,
+                });
+
+                const version = await getDocumentVersion(db, testProjectId);
+                expect(version).toBe('500');
+            });
+
+            it('returns the snapshot version when newer than all updates (post-compaction)', async () => {
+                // After compaction, older updates are folded into the snapshot and
+                // removed, so the snapshot version may exceed any remaining update.
+                await upsertSnapshot(db, testProjectId, new Uint8Array([1]), '900');
+                await createUpdate(db, {
+                    project_id: testProjectId,
+                    update_data: new Uint8Array([2]),
+                    version: '300',
+                    client_id: null,
+                });
+
+                const version = await getDocumentVersion(db, testProjectId);
+                expect(version).toBe('900');
+            });
+
+            it('advances when a new full state is persisted (drives public-view cache invalidation)', async () => {
+                const before = await getDocumentVersion(db, testProjectId);
+                await saveFullState(db, testProjectId, new Uint8Array([1, 2, 3]));
+                const after = await getDocumentVersion(db, testProjectId);
+
+                expect(parseInt(after, 10)).toBeGreaterThan(parseInt(before, 10));
+            });
+
+            it('uses the snapshot version when only a snapshot exists', async () => {
+                await upsertSnapshot(db, testProjectId, new Uint8Array([1]), '777');
+                const version = await getDocumentVersion(db, testProjectId);
+                expect(version).toBe('777');
             });
         });
 

@@ -4,7 +4,7 @@
 
 /* eslint-disable no-undef */
 
-import { existsSync } from 'fs';
+import { existsSync, readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 
@@ -63,16 +63,17 @@ describe('interactive-video iDevice edition', () => {
     document.body.innerHTML = '';
   });
 
-  it('renders the progress report help icon from the iDevice edition assets', () => {
+  it('hands its asset path to the Grading tab, which needs it for the help icon', () => {
+    // The progress report moved into the tab, so this iDevice no longer renders
+    // it. What it still owns is the path the report's help icon is built from,
+    // and the asset that path points at.
     const container = document.createElement('div');
     const path = '/files/perm/idevices/base/interactive-video/edition/';
     document.body.appendChild(container);
 
     $exeDevice.init(container, '', path);
 
-    const helpIcon = document.getElementById('progress-help-icon');
-    expect(helpIcon).not.toBeNull();
-    expect(helpIcon.getAttribute('src')).toBe(`${path}quextIEHelp.png`);
+    expect($exeDevicesEdition.iDevice.gamification.scorm.getTab).toHaveBeenCalledWith(path);
     expect(existsSync(join(__dirname, 'quextIEHelp.png'))).toBe(true);
   });
 
@@ -196,6 +197,51 @@ describe('interactive-video iDevice edition', () => {
     });
   });
 
+  /**
+   * The pass-score control is a shared block in common_edition.js, exercised by
+   * its own tests. What is specific to this iDevice -- and what silently breaks
+   * if someone edits the form -- is the wiring: all four call sites have to be
+   * present, and the two saved fields have to reach the stored data. Reading
+   * the source is how that is checked without standing up the whole edition
+   * form.
+   */
+  describe('pass score wiring', () => {
+    let source;
+
+    beforeEach(() => {
+      source = readFileSync(join(__dirname, 'interactive-video.js'), 'utf-8');
+    });
+
+    it('delegates the evaluation controls to the shared tab', () => {
+        // The pass score and the progress report used to be rendered here,
+        // loose in the general options. They now live in the Grading tab,
+        // so rendering them again would show each control twice.
+        expect(source).not.toContain('passScore.getContents(');
+        expect(source).not.toContain('progressBar.getContents(');
+        expect(source).toContain('gamification.scorm.getTab(');
+    });
+
+    it('restores the control when the iDevice is reopened', () => {
+      expect(source).toContain('gamification.passScore.setValues(');
+      expect(source).toContain('passScoreMode: InteractiveVideo.passScoreMode');
+      expect(source).toContain('passScoreCustom: InteractiveVideo.passScoreCustom');
+    });
+
+    it('saves the mode and the customised mark into the serialised activity', () => {
+      // This iDevice persists through activityToSave, which is JSON.stringified.
+      expect(source).toContain('gamification.passScore.getValues()');
+      expect(source).toContain('activityToSave.passScoreMode');
+      expect(source).toContain('activityToSave.passScoreCustom');
+      // The project value is never copied into the iDevice: it is read live, so
+      // an iDevice on the global mode follows the project.
+      expect(source).not.toContain('passScoreGlobal');
+    });
+
+    it('wires the radio and input handlers', () => {
+      expect(source).toContain('gamification.passScore.addEvents()');
+    });
+  });
+
   describe('edition lifecycle teardown (#2293)', () => {
     let show;
     let hide;
@@ -313,5 +359,15 @@ describe('interactive-video iDevice edition', () => {
       expect(document.body.classList.contains('modal-open')).toBe(true);
       expect(document.querySelectorAll('.modal-backdrop')).toHaveLength(1);
     });
+  });
+});
+
+describe('interactive-video minimum score text', () => {
+  it('offers the notice of the minimum score among the custom texts', () => {
+    global.$exeDevice = undefined;
+    const device = global.loadIdevice(join(__dirname, 'interactive-video.js'));
+    device.refreshTranslations();
+
+    expect(device.ci18n.msgPassScore).toBe('Minimum score needed to pass this activity: %s');
   });
 });

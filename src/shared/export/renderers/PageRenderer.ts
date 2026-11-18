@@ -15,6 +15,7 @@
  */
 
 import type { ExportPage, PageRenderOptions } from '../interfaces';
+import { renderPrintContextScript, type PrintContext } from '../printContext';
 import { IdeviceRenderer } from './IdeviceRenderer';
 import {
     LIBRARY_PATTERNS,
@@ -28,6 +29,7 @@ import {
     formatShortLicenseText,
 } from '../constants';
 import { trans } from '../../../services/translation';
+import { PASS_SCORE_EVERY_ACTIVITY_META_NAME, PASS_SCORE_META_NAME, normalizePassScore } from '../metadata-properties';
 import { JSON_PROPERTY_LIBRARY_EXCLUSIONS, iterateJsonPropertyStrings } from '../utils/jsonPropertyContent';
 
 /**
@@ -122,6 +124,8 @@ export class PageRenderer {
             addSearchBox = false,
             addAccessibilityToolbar = false,
             addMathJax = false,
+            passScore,
+            passScoreEveryActivity = false,
             // Custom head content
             extraHeadContent = '',
             // SCORM-specific options
@@ -212,7 +216,7 @@ export class PageRenderer {
         return `<!DOCTYPE html>
 <html lang="${language}" id="exe-${isIndex ? 'index' : page.id}">
 <head>
-${this.renderHead({ pageTitle, basePath, usedIdevices, customStyles, extraHeadScripts, isScorm, scormVersion, description, licenseUrl, addAccessibilityToolbar, addMathJax, extraHeadContent, addSearchBox, detectedLibraries, themeFiles, faviconPath: options.faviconPath, faviconType: options.faviconType, version })}
+${this.renderHead({ pageTitle, basePath, usedIdevices, customStyles, extraHeadScripts, isScorm, scormVersion, description, licenseUrl, addAccessibilityToolbar, addMathJax, passScore, passScoreEveryActivity, extraHeadContent, addSearchBox, detectedLibraries, themeFiles, faviconPath: options.faviconPath, faviconType: options.faviconType, version })}
 </head>
 <body class="${bodyClassStr}"${onLoadAttr}${onUnloadAttr}>
 <script>document.body.className+=" js"</script>
@@ -253,6 +257,8 @@ ${madeWithExeHtml}
         faviconType?: string;
         version?: string;
         isEpub?: boolean;
+        passScore?: number;
+        passScoreEveryActivity?: boolean;
     }): string {
         const {
             pageTitle,
@@ -273,13 +279,20 @@ ${madeWithExeHtml}
             faviconType = 'image/x-icon',
             version,
             isEpub = false,
+            passScore,
+            passScoreEveryActivity = false,
         } = options;
 
         // Meta tags
+        //
+        // The pass score travels as a META rather than an inline script because
+        // it has to survive EPUB, whose Content Security Policy forbids inline
+        // SCRIPT tags, and because the parser sees it before libs/common.js runs.
         let head = `<meta charset="utf-8">
 <meta name="generator" content="eXeLearning${version ? ` ${version}` : ''}">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-${licenseUrl ? `<link rel="license" type="text/html" href="${licenseUrl}">\n` : ''}<title>${this.escapeHtml(pageTitle)}</title>`;
+<meta name="${PASS_SCORE_META_NAME}" content="${normalizePassScore(passScore)}">
+${this.renderPassScoreEveryActivityMeta(passScoreEveryActivity)}${licenseUrl ? `<link rel="license" type="text/html" href="${licenseUrl}">\n` : ''}<title>${this.escapeHtml(pageTitle)}</title>`;
 
         // Favicon
         head += `\n${this.renderFavicon(basePath, faviconPath, faviconType)}`;
@@ -566,7 +579,7 @@ ${licenseUrl ? `<link rel="license" type="text/html" href="${licenseUrl}">\n` : 
      */
     isAncestorOf(ancestorId: string, childId: string, allPages: ExportPage[]): boolean {
         const child = allPages.find(p => p.id === childId);
-        if (!child || !child.parentId) return false;
+        if (!child?.parentId) return false;
         if (child.parentId === ancestorId) return true;
         return this.isAncestorOf(ancestorId, child.parentId, allPages);
     }
@@ -882,7 +895,7 @@ ${licenseUrl ? `<link rel="license" type="text/html" href="${licenseUrl}">\n` : 
      * @returns Content with exe-package:elp replaced with onclick handler
      */
     replaceElpxProtocol(content: string, projectTitle: string): string {
-        if (!content || !content.includes('exe-package:elp')) {
+        if (!content?.includes('exe-package:elp')) {
             return content;
         }
 
@@ -920,7 +933,7 @@ ${licenseUrl ? `<link rel="license" type="text/html" href="${licenseUrl}">\n` : 
         basePath: string,
         pageFilenameMap?: Map<string, string>,
     ): string {
-        if (!content || !content.includes('exe-node:')) {
+        if (!content?.includes('exe-node:')) {
             return content;
         }
 
@@ -969,7 +982,7 @@ ${licenseUrl ? `<link rel="license" type="text/html" href="${licenseUrl}">\n` : 
      * @returns HTML with exe-node: links replaced by in-page anchors
      */
     replaceSinglePageInternalLinks(content: string, allPages: ExportPage[]): string {
-        if (!content || !content.includes('exe-node:')) {
+        if (!content?.includes('exe-node:')) {
             return content;
         }
 
@@ -1224,6 +1237,18 @@ ${userFooterHtml}</div></footer>`;
     }
 
     /**
+     * META telling the SCORM runtimes to pass a page only when every activity
+     * reaches its own mark. Written only when the author asked for it: a page
+     * without it is judged by the weighted mean of the marks, as every page was
+     * before the option existed.
+     * @param enabled - The project's passScoreEveryActivity option
+     * @returns The META tag and a line break, or an empty string
+     */
+    renderPassScoreEveryActivityMeta(enabled?: boolean): string {
+        return enabled ? `<meta name="${PASS_SCORE_EVERY_ACTIVITY_META_NAME}" content="true">\n` : '';
+    }
+
+    /**
      * Render a single-page HTML document with all pages
      * @param allPages - All pages in the project
      * @param options - Rendering options
@@ -1245,12 +1270,26 @@ ${userFooterHtml}</div></footer>`;
             faviconType?: string;
             detectedLibraries?: string[];
             addMathJax?: boolean;
+            linkToElp?: boolean;
             addAccessibilityToolbar?: boolean;
+            passScore?: number;
+            passScoreEveryActivity?: boolean;
             version?: string;
             addExeLink?: boolean;
             userFooterContent?: string;
-            navLabels?: { previous?: string; next?: string; page?: string; license?: string };
+            navLabels?: {
+                previous?: string;
+                next?: string;
+                page?: string;
+                license?: string;
+                licenseLabel?: string;
+                madeWith?: string;
+                newWindow?: string;
+            };
             materialIconDataUris?: Map<string, string>;
+            printContext?: PrintContext;
+            /** The style's root .js and .css files; style.js and style.css when not given. */
+            themeFiles?: string[];
         } = {},
     ): string {
         const {
@@ -1270,8 +1309,11 @@ ${userFooterHtml}</div></footer>`;
             detectedLibraries = [],
             addMathJax = false,
             addAccessibilityToolbar = false,
+            passScore,
+            passScoreEveryActivity = false,
             navLabels,
             materialIconDataUris,
+            themeFiles = [],
         } = options;
 
         let contentHtml = '';
@@ -1342,24 +1384,38 @@ ${sectionContent}
             ? '\n<script src="libs/exe_atools/exe_atools.js"> </script>\n<link rel="stylesheet" href="libs/exe_atools/exe_atools.css">'
             : '';
 
+        // The style's own scripts, then its stylesheets, as the multi-page export links them. An
+        // older style calls them default.js and content.css, so the names come from the files it
+        // has; without them, the names every current style uses.
+        const rootFiles = themeFiles.length > 0 ? [...themeFiles].sort() : ['style.js', 'style.css'];
+        const themeIncludes = [
+            ...rootFiles
+                .filter(file => file.endsWith('.js'))
+                .map(file => `<script src="theme/${this.escapeAttr(file)}"> </script>`),
+            ...rootFiles
+                .filter(file => file.endsWith('.css'))
+                .map(file => `<link rel="stylesheet" href="theme/${this.escapeAttr(file)}">`),
+        ].join('\n');
+
         return `<!DOCTYPE html>
 <html lang="${language}" id="exe-index">
 <head>
 <meta charset="utf-8">
 <meta name="generator" content="eXeLearning${version ? ` ${version}` : ''}">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>${this.escapeHtml(projectTitle)}</title>
+<meta name="${PASS_SCORE_META_NAME}" content="${normalizePassScore(passScore)}">
+${this.renderPassScoreEveryActivityMeta(passScoreEveryActivity)}<title>${this.escapeHtml(projectTitle)}</title>
 ${this.renderFavicon('', faviconPath, faviconType)}
 <script>document.querySelector("html").classList.add("js");</script>
 <script src="libs/jquery/jquery.min.js"> </script>
 <script src="libs/common_i18n.js"> </script>
 <script src="libs/common.js"> </script>
 <script src="libs/exe_export.js"> </script>
+${options.printContext ? renderPrintContextScript(options.printContext) : ''}
 <script src="libs/bootstrap/bootstrap.bundle.min.js"> </script>
 <link rel="stylesheet" href="libs/bootstrap/bootstrap.min.css">${ideviceIncludes}${libraryIncludes}${atoolsIncludes}
 <link rel="stylesheet" href="content/css/base.css">
-<script src="theme/style.js"> </script>
-<link rel="stylesheet" href="theme/style.css">
+${themeIncludes}
 ${customStyles ? `<style>\n${customStyles}\n</style>` : ''}
 ${addMathJax ? `<script src="libs/exe_math/tex-mml-svg.js"> </script>` : ''}
 </head>
@@ -1372,7 +1428,7 @@ ${contentHtml}
 </main>
 ${this.renderFooterSection({ license, licenseUrl, userFooterContent, language, navLabels })}
 </div>
-${addExeLink ? this.renderMadeWithEXe(language, navLabels) : ''}
+${addExeLink ? this.renderMadeWithEXe(language, { madeWith: navLabels?.madeWith, newWindow: navLabels?.newWindow }) : ''}
 </body>
 </html>`;
     }

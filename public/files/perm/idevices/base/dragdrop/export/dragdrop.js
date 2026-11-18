@@ -39,7 +39,8 @@ var $eXeDragDrop = {
     },
 
     loadGame: function () {
-        $eXeDragDrop.options = [];
+        // Running activities keep their entry; each one is stored at its own index.
+        $eXeDragDrop.options.length = $eXeDragDrop.activities.length;
 
         $eXeDragDrop.activities.each(function (i) {
             const dl = $('.dragdrop-DataGame', this);
@@ -51,11 +52,12 @@ var $eXeDragDrop = {
             mOption.main = 'dadPMainContainer-' + i;
             mOption.idevice = 'dragdrop-IDevice';
 
-            $eXeDragDrop.options.push(mOption);
+            $eXeDragDrop.options[i] = mOption;
 
             const dadP = $eXeDragDrop.createInterfaceCards(i);
 
             dl.before(dadP).remove();
+            $exeDevices.iDevice.gamification.report.showPassScoreNotice(mOption);
             $('#dadPGameContainer-' + i).show();
             $('#dadPGameMinimize-' + i)
                 .css({ cursor: 'pointer' })
@@ -339,14 +341,22 @@ var $eXeDragDrop = {
         ) {
             $('#dadPPTime-' + instance).show();
             $('#dadPImgTime-' + instance).show();
-            mOptions.counterClock = setInterval(function () {
-                let $node = $('#dadPMainContainer-' + instance);
-                let $content = $('#node-content');
+            // Bound to this game's element, not to its id. The editor never
+            // reloads the document between pages and ids are numbered by
+            // position, so the next page's first game takes the same ones: a
+            // clock that looked its game up by id each second found that game
+            // and ran it, counting down on its display and ending it when its
+            // own time ran out.
+            const container = document.getElementById(
+                'dadPMainContainer-' + instance
+            );
+            const clock = setInterval(() => {
+                const $content = $('#node-content');
                 if (
-                    !$node.length ||
+                    !container?.isConnected ||
                     ($content.length && $content.attr('mode') === 'edition')
                 ) {
-                    clearInterval(mOptions.counterClock);
+                    clearInterval(clock);
                     return;
                 }
                 if (typeof mOptions != 'undefined' && mOptions.gameStarted) {
@@ -358,6 +368,7 @@ var $eXeDragDrop = {
                     }
                 }
             }, 1000);
+            mOptions.counterClock = clock;
             $eXeDragDrop.updateTime(mOptions.time * 60, instance);
         }
         $eXeDragDrop.initializeDragAndDrop(instance);
@@ -720,7 +731,7 @@ var $eXeDragDrop = {
             msgs = mOptions.msgs,
             score = ((mOptions.hits * 10) / mOptions.numberCards).toFixed(2);
         let message = msgs.msgEndGameM.replace('%s', score),
-            messageColor = score >= 5 ? 2 : 1,
+            messageColor = score >= $exe.passScore.resolve(mOptions) ? 2 : 1,
             clueMessage = '';
 
         $eXeDragDrop.showMessage(messageColor, message, instance, true);

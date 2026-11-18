@@ -1,6 +1,6 @@
 # Themes in ELPX Packages
 
-This document describes how themes are bundled inside `.elpx` files: the directory layout, the `config.xml` element reference, the six in-tree themes, fallback behaviour, custom theme portability, and where to find the authoring guide.
+This document describes how themes are bundled inside `.elpx` files: the directory layout, the `config.xml` element reference, built-in and installed themes, fallback behaviour, custom theme portability, and where to find the authoring guide.
 
 > **See also**: [ELPX Format hub](../elpx-format.md) | [Libraries](libraries.md) | [Assets](assets.md) | [Screenshot](screenshot.md) | [Theme authoring guide](../development/styles.md)
 
@@ -52,7 +52,7 @@ The project-level `screenshot.png` at the **ZIP root** is the **project thumbnai
 
 Each theme directory contains a `config.xml` that declares its identity and licensing terms. The file is valid XML 1.0.
 
-Annotated example — `public/files/perm/themes/base/base/config.xml`:
+Annotated example (illustrative values; each theme ships its own `config.xml`):
 
 ```xml
 <?xml version="1.0"?>
@@ -63,11 +63,11 @@ Annotated example — `public/files/perm/themes/base/base/config.xml`:
     <!-- Human-readable display name shown in the UI -->
     <title>Default</title>
 
-    <!-- Release year / version tag -->
-    <version>2025</version>
+    <!-- Release date tag (YYYYMMDD) -->
+    <version>20260101</version>
 
     <!-- Minimum eXeLearning version required to use this theme -->
-    <compatibility>3.0</compatibility>
+    <compatibility>4.0.5</compatibility>
 
     <!-- Theme author(s) -->
     <author>eXeLearning.net</author>
@@ -76,15 +76,14 @@ Annotated example — `public/files/perm/themes/base/base/config.xml`:
     <license>Creative Commons by-sa</license>
 
     <!-- Canonical licence URL -->
-    <license-url>http://creativecommons.org/licenses/by-sa/3.0/</license-url>
+    <license-url>http://creativecommons.org/licenses/by-sa/4.0/</license-url>
 
-    <!-- Free-text description shown in the theme picker -->
-    <description>Minimally-styled, feature rich responsive style for eXe.
+    <!-- Free-text description shown in the theme picker; credits third-party material -->
+    <description>Minimally-styled, feature rich responsive style for eXe. Its colours and typography meet WCAG 2.2 level AA.
 
-iDevice icons by Francisco Javier Pulido Cuadrado.</description>
+iDevice icons by Francisco Javier Pulido Cuadrado, under the same license as this style (…).
 
-    <!-- 1 = available for download from the theme repository; 0 = internal only -->
-    <downloadable>1</downloadable>
+Creative Commons license badges (img/licenses.gif) are trademarks of Creative Commons (…).</description>
 </theme>
 ```
 
@@ -94,28 +93,19 @@ iDevice icons by Francisco Javier Pulido Cuadrado.</description>
 |---------|----------|-------------|
 | `<name>` | Yes | Unique machine identifier. Must equal the containing directory name. Used by `OdeXmlGenerator` and `Html5Exporter` to look up the theme. |
 | `<title>` | Yes | Localised display name in the theme picker. |
-| `<version>` | Yes | Version string; current in-tree themes use the four-digit year. No strict format enforced. |
-| `<compatibility>` | Yes | Minimum eXeLearning version. The exporter uses `3.0` for all current themes. |
+| `<version>` | Yes | Release date of the theme, as `YYYYMMDD`. |
+| `<compatibility>` | Yes | Minimum eXeLearning version. |
 | `<author>` | Yes | Attribution text. May include multiple contributors. |
 | `<license>` | Yes | Licence short name. |
 | `<license-url>` | Yes | Full URL to the licence text. |
-| `<description>` | Yes | Multi-line description. May include font and icon attribution. |
-| `<downloadable>` | Yes | `1` if users can install the theme from the online repository; `0` for internal/dev themes. |
+| `<description>` | Yes | Multi-line description. Credits the third-party material the theme ships (fonts, icons, logos): see [Crediting third-party material](../development/styles.md#crediting-third-party-material). |
+| `<downloadable>` | No | Legacy flag, no longer present in the built-in themes and ignored: every style can be downloaded (#1893). |
 
 ---
 
-## 3. The six in-tree themes
+## 3. Built-in and installed themes
 
-All six themes ship in `public/files/perm/themes/base/`. Data read from each `config.xml`:
-
-| `name` | `title` | `version` | `compatibility` | `downloadable` | One-line description |
-|--------|---------|-----------|-----------------|----------------|----------------------|
-| `base` | Default | 2025 | 3.0 | 1 | Minimally-styled, feature-rich responsive theme. iDevice icons by F.J. Pulido. |
-| `flux` | Flux | 2025 | 3.0 | 1 | "Energía en movimiento." Fredoka font, Google Material icons. By 3ipunt / Consejería Ed. Canarias. |
-| `neo` | Neo | 2025 | 3.0 | 1 | "Innovación con propósito." Nunito font. By 3ipunt for eXeLearning.net. |
-| `nova` | Nova | 2025 | 3.0 | 1 | "Aprender, crecer, avanzar." Open Sans font. By 3ipunt / Consejería Ed. Canarias. |
-| `universal` | Universal | 2025 | 3.0 | 1 | Accessibility-focused (UDL). Atkinson Hyperlegible font. By Ignacio Gros for EducaMadrid. |
-| `zen` | Zen | 2025 | 3.0 | 1 | "Equilibrio y claridad." Inter font, Google Material icons. By 3ipunt for eXeLearning.net. |
+The themes that ship with eXeLearning live in `public/files/perm/themes/base/`, one directory per theme. Administrators and users can install more (see [Theme Types](../development/styles.md#theme-types)), so the set available on a given installation is open. The format does not depend on it: whatever its origin, the active theme is always bundled in `theme/` (section 1).
 
 ---
 

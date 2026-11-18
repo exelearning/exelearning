@@ -169,6 +169,17 @@ describe('idevice-config-browser', () => {
             expect(config.cssClass).toBe('file-attachment');
             expect(config.componentType).toBe('json');
         });
+
+        // digcompedu and lomloe declare <component-type>json</component-type> too, but were
+        // missing from the list, so the browser called them 'html' while the server called them
+        // 'json'. Anything keying off componentType in the browser — renderView(), and the
+        // printing path's notion of what counts as an interactive activity — read the wrong
+        // answer for them.
+        it.each(['digcompedu', 'lomloe'])('marks %s as a json component (matches config.xml)', type => {
+            const config = getIdeviceConfig(type);
+            expect(config.cssClass).toBe(type);
+            expect(config.componentType).toBe('json');
+        });
     });
 
     describe('isJsonIdevice', () => {

@@ -175,6 +175,13 @@ deps: check-bun
 css: check-bun
 	@bun run css:node
 
+# Copy gitignored frontend libs from node_modules into public/libs.
+# Needed by host-side Playwright specs that read those files from disk
+# (the DB-matrix E2E targets never run `build:all`).
+.PHONY: vendor-libs
+vendor-libs: check-bun
+	@bun run bundle:vendor
+
 # Build TypeScript + bundle JS
 .PHONY: bundle
 bundle: deps
@@ -458,10 +465,10 @@ endif
 # =============================================================================
 
 .PHONY: lint
-lint: check-bun lint-ts lint-js lint-tests architecture-check update-licenses-check
+lint: check-bun lint-ts lint-js lint-tests typecheck architecture-check update-licenses-check
 
 .PHONY: fix
-fix: check-bun fix-ts fix-js fix-tests
+fix: check-bun fix-ts fix-js fix-tests typecheck
 
 # Regenerate public/app/common/exe_math/ from the pinned `mathjax` npm package.
 # The tree is committed (exports, the static build and Electron all need it on
@@ -488,6 +495,12 @@ architecture-records: check-bun
 .PHONY: architecture-check
 architecture-check: check-bun
 	bun run scripts/architecture-records.mts check
+
+# Typecheck TypeScript (src/) with tsc. Bun/Biome do not do this.
+# Wired into `lint` (CI) and `fix` so a type error fails the same gates as Biome.
+.PHONY: typecheck
+typecheck: check-bun
+	bun run typecheck
 
 # Lint TypeScript source files (src/)
 .PHONY: lint-ts
@@ -549,6 +562,10 @@ endif
 .PHONY: test
 test: check-env check-env test-unit test-integration test-frontend test-e2e   ## Run unit tests (src/) with coverage
 
+.PHONY: test-scripts
+test-scripts: check-bun ## Run scripts/ unit tests (build & vendor helpers)
+	$(TEST_ENV) bun test:scripts
+
 .PHONY: test-unit
 test-unit: check-bun check-tests check-env bundle ## Run unit tests (src/) with coverage and 90% threshold
 	@echo "Running unit tests with coverage..."
@@ -578,7 +595,7 @@ test-unit-ci: check-bun check-tests check-env ## Run unit tests with lcov covera
 
 .PHONY: test-e2e-chromium
 test-e2e-chromium: check-env ## Run Playwright E2E tests with Chromium
-	bun x playwright test --project=chromium
+	bun x --bun playwright test --project=chromium
 
 .PHONY: test-e2e
 test-e2e: test-e2e-chromium bundle ## Run Playwright E2E tests (alias for test-e2e-chromium)
@@ -589,7 +606,7 @@ test-e2e-ui: check-env ## Run Playwright E2E tests with UI
 
 .PHONY: test-e2e-firefox
 test-e2e-firefox: check-env bundle ## Run Playwright E2E tests with Firefox
-	bun x playwright test --project=firefox
+	bun x --bun playwright test --project=firefox
 
 .PHONY: test-e2e-static
 test-e2e-static: check-bun bundle build-static fail-on-windows ## Run E2E tests against static build
@@ -600,7 +617,7 @@ test-e2e-static: check-bun bundle build-static fail-on-windows ## Run E2E tests 
 	@echo ""
 	@echo "Running Playwright tests (server managed by Playwright)..."
 	@echo ""
-	@bun x playwright test --project=static; \
+	@bun x --bun playwright test --project=static; \
 	test_exit=$$?; \
 	echo ""; \
 	if [ $$test_exit -eq 0 ]; then \
@@ -625,6 +642,12 @@ test-e2e-static: check-bun bundle build-static fail-on-windows ## Run E2E tests 
 #   make test-e2e-postgres   # Test with PostgreSQL
 #   make test-e2e-sqlite     # Test with SQLite
 
+# Generate isolated secrets for each database-matrix invocation. The deployment
+# Compose files remain production-like and never receive a published fixed key.
+E2E_API_JWT_SECRET := $(shell openssl rand -hex 32)
+E2E_APP_SECRET := $(shell openssl rand -hex 32)
+E2E_COMPOSE_SECRETS := API_JWT_SECRET=$(E2E_API_JWT_SECRET) APP_SECRET=$(E2E_APP_SECRET)
+
 # Helper to wait for app to be ready
 define wait_for_app
 	@echo "Waiting for app to be ready at http://localhost:8080..."
@@ -635,8 +658,8 @@ define wait_for_app
 		fi; \
 		if [ $$i -eq 30 ]; then \
 			echo "Timeout waiting for app"; \
-			docker compose -p $(1) -f doc/deploy/docker-compose.$(1).yml logs; \
-			docker compose -p $(1) -f doc/deploy/docker-compose.$(1).yml down -v; \
+			$(E2E_COMPOSE_SECRETS) docker compose -p $(1) --env-file doc/deploy/.env.e2e -f doc/deploy/docker-compose.$(1).yml logs; \
+			$(E2E_COMPOSE_SECRETS) docker compose -p $(1) --env-file doc/deploy/.env.e2e -f doc/deploy/docker-compose.$(1).yml down -v; \
 			exit 1; \
 		fi; \
 		echo "  Attempt $$i/30 - waiting..."; \
@@ -648,31 +671,31 @@ endef
 down-e2e:
 	@echo ""
 	@echo "Step 1: Cleaning up previous containers..."
-	-@docker compose -p sqlite -f doc/deploy/docker-compose.sqlite.yml down -v --remove-orphans
-	-@docker compose -p mariadb -f doc/deploy/docker-compose.mariadb.yml down -v --remove-orphans
-	-@docker compose -p postgres -f doc/deploy/docker-compose.postgres.yml down -v --remove-orphans
+	-@$(E2E_COMPOSE_SECRETS) docker compose -p sqlite --env-file doc/deploy/.env.e2e -f doc/deploy/docker-compose.sqlite.yml down -v --remove-orphans
+	-@$(E2E_COMPOSE_SECRETS) docker compose -p mariadb --env-file doc/deploy/.env.e2e -f doc/deploy/docker-compose.mariadb.yml down -v --remove-orphans
+	-@$(E2E_COMPOSE_SECRETS) docker compose -p postgres --env-file doc/deploy/.env.e2e -f doc/deploy/docker-compose.postgres.yml down -v --remove-orphans
 
 
 .PHONY: test-e2e-mariadb
-test-e2e-mariadb: check-docker check-env down-e2e ## Run E2E tests with MariaDB backend
+test-e2e-mariadb: check-docker check-env vendor-libs down-e2e ## Run E2E tests with MariaDB backend
 	@echo ""
 	@echo "============================================================"
 	@echo "  E2E Tests with MariaDB"
 	@echo "============================================================"
 	@echo ""
 	@echo "Step 2: Building and starting services..."
-	@docker compose -p mariadb --env-file doc/deploy/.env.e2e -f doc/deploy/docker-compose.mariadb.yml -f doc/deploy/docker-compose.e2e.yml up --build -d
+	@$(E2E_COMPOSE_SECRETS) docker compose -p mariadb --env-file doc/deploy/.env.e2e -f doc/deploy/docker-compose.mariadb.yml -f doc/deploy/docker-compose.e2e.yml up --build -d
 	@echo ""
 	@echo "Step 3: Waiting for services to be ready..."
 	$(call wait_for_app,mariadb)
 	@echo ""
 	@echo "Step 4: Running Playwright tests..."
 	@echo ""
-	@E2E_BASE_URL=http://localhost:8080 bun x playwright test --project=chromium; \
+	@E2E_BASE_URL=http://localhost:8080 bun x --bun playwright test --project=chromium; \
 	test_exit=$$?; \
 	echo ""; \
 	echo "Step 5: Cleaning up..."; \
-	docker compose -p mariadb -f doc/deploy/docker-compose.mariadb.yml down -v; \
+	$(E2E_COMPOSE_SECRETS) docker compose -p mariadb --env-file doc/deploy/.env.e2e -f doc/deploy/docker-compose.mariadb.yml down -v; \
 	echo ""; \
 	if [ $$test_exit -eq 0 ]; then \
 		echo "============================================================"; \
@@ -686,25 +709,25 @@ test-e2e-mariadb: check-docker check-env down-e2e ## Run E2E tests with MariaDB 
 	exit $$test_exit
 
 .PHONY: test-e2e-postgres
-test-e2e-postgres: check-docker check-env down-e2e ## Run E2E tests with PostgreSQL backend
+test-e2e-postgres: check-docker check-env vendor-libs down-e2e ## Run E2E tests with PostgreSQL backend
 	@echo ""
 	@echo "============================================================"
 	@echo "  E2E Tests with PostgreSQL"
 	@echo "============================================================"
 	@echo ""
 	@echo "Step 2: Building and starting services..."
-	@docker compose -p postgres --env-file doc/deploy/.env.e2e -f doc/deploy/docker-compose.postgres.yml -f doc/deploy/docker-compose.e2e.yml up --build -d
+	@$(E2E_COMPOSE_SECRETS) docker compose -p postgres --env-file doc/deploy/.env.e2e -f doc/deploy/docker-compose.postgres.yml -f doc/deploy/docker-compose.e2e.yml up --build -d
 	@echo ""
 	@echo "Step 3: Waiting for services to be ready..."
 	$(call wait_for_app,postgres)
 	@echo ""
 	@echo "Step 4: Running Playwright tests..."
 	@echo ""
-	@E2E_BASE_URL=http://localhost:8080 bun x playwright test --project=chromium; \
+	@E2E_BASE_URL=http://localhost:8080 bun x --bun playwright test --project=chromium; \
 	test_exit=$$?; \
 	echo ""; \
 	echo "Step 5: Cleaning up..."; \
-	docker compose -p postgres -f doc/deploy/docker-compose.postgres.yml down -v; \
+	$(E2E_COMPOSE_SECRETS) docker compose -p postgres --env-file doc/deploy/.env.e2e -f doc/deploy/docker-compose.postgres.yml down -v; \
 	echo ""; \
 	if [ $$test_exit -eq 0 ]; then \
 		echo "============================================================"; \
@@ -718,25 +741,25 @@ test-e2e-postgres: check-docker check-env down-e2e ## Run E2E tests with Postgre
 	exit $$test_exit
 
 .PHONY: test-e2e-sqlite
-test-e2e-sqlite: check-docker check-env down-e2e ## Run E2E tests with SQLite backend
+test-e2e-sqlite: check-docker check-env vendor-libs down-e2e ## Run E2E tests with SQLite backend
 	@echo ""
 	@echo "============================================================"
 	@echo "  E2E Tests with SQLite"
 	@echo "============================================================"
 	@echo ""
 	@echo "Step 2: Building and starting services..."
-	@docker compose -p sqlite --env-file doc/deploy/.env.e2e -f doc/deploy/docker-compose.sqlite.yml -f doc/deploy/docker-compose.e2e.yml up --build -d
+	@$(E2E_COMPOSE_SECRETS) docker compose -p sqlite --env-file doc/deploy/.env.e2e -f doc/deploy/docker-compose.sqlite.yml -f doc/deploy/docker-compose.e2e.yml up --build -d
 	@echo ""
 	@echo "Step 3: Waiting for services to be ready..."
 	$(call wait_for_app,sqlite)
 	@echo ""
 	@echo "Step 4: Running Playwright tests..."
 	@echo ""
-	@E2E_BASE_URL=http://localhost:8080 bun x playwright test --project=chromium; \
+	@E2E_BASE_URL=http://localhost:8080 bun x --bun playwright test --project=chromium; \
 	test_exit=$$?; \
 	echo ""; \
 	echo "Step 5: Cleaning up..."; \
-	docker compose -p sqlite -f doc/deploy/docker-compose.sqlite.yml down -v; \
+	$(E2E_COMPOSE_SECRETS) docker compose -p sqlite --env-file doc/deploy/.env.e2e -f doc/deploy/docker-compose.sqlite.yml down -v; \
 	echo ""; \
 	if [ $$test_exit -eq 0 ]; then \
 		echo "============================================================"; \
@@ -960,17 +983,18 @@ help:
 	@echo "  make test-e2e-sqlite    Run E2E tests with SQLite backend"
 	@echo "  make test-e2e-ui        Run E2E tests with Playwright UI"
 	@echo ""
-	@echo "Linting (Biome):"
-	@echo "  make fix             Fix all lint issues"
+	@echo "Linting (Biome + tsc):"
+	@echo "  make fix             Fix all lint issues, then typecheck"
 	@echo "  make fix-js          Fix JavaScript linting issues"
 	@echo "  make fix-tests       Fix test linting issues"
 	@echo "  make fix-ts          Fix TypeScript linting issues"
 	@echo "  make format          Format code with Biome"
 	@echo "  make format-check    Check formatting without fixing"
-	@echo "  make lint            Run lint on all files"
+	@echo "  make lint            Run lint + typecheck on all files"
 	@echo "  make lint-js         Lint JavaScript (public/app/)"
 	@echo "  make lint-tests      Lint test files"
 	@echo "  make lint-ts         Lint TypeScript source (src/)"
+	@echo "  make typecheck       Typecheck TypeScript with tsc --noEmit"
 	@echo ""
 	@echo "Packaging:"
 	@echo "  make package VERSION=1.0.0                    Build release"

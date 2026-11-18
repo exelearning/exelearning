@@ -200,7 +200,7 @@ describe('Save / restore round-trip', () => {
         $exeDevice.init(el, null);
         await new Promise(r => setTimeout(r, 50));
         const data = $exeDevice.save();
-        expect(data.lomloeDataset).toBe('ES-CN');
+        expect(data.lomloeDataset).toBe('ES');
     });
 
     it('init() restores selections from previousData and migrates old fields', async () => {
@@ -980,6 +980,41 @@ describe('Dataset configuration', () => {
         el3.remove();
         vi.restoreAllMocks();
     });
+
+    // Issue #2631: the state curriculum is the default and the common base;
+    // the regional concretions and the MEFPD territory hang below it.
+    it('preselects the state curriculum and groups the territorial concretions under it', async () => {
+        const el4 = buildMockElement();
+        globalThis.fetch = vi.fn(() => Promise.resolve({ ok: true, json: () => Promise.resolve(SAMPLE_DATA) }));
+        $exeDevice.init(el4, null);
+        await new Promise(r => setTimeout(r, 50));
+        const dsSelect = el4.querySelector('select[id*="lomloe-ds-"]');
+        // happy-dom 21 misreports select.value for a `selected` option past the
+        // second one, so assert the generated markup instead.
+        const preselected = select => select.querySelector('option[selected]').value;
+
+        expect(preselected(dsSelect)).toBe('ES');
+        expect(dsSelect.children[0].tagName).toBe('OPTION');
+        expect(dsSelect.children[0].value).toBe('ES');
+
+        const groups = Array.from(dsSelect.querySelectorAll('optgroup'));
+        expect(groups.map(g => g.label)).toEqual(['Autonomous Communities', 'Ministry-managed territory (MEFPD)']);
+        const regional = Array.from(groups[0].querySelectorAll('option'));
+        expect(regional.map(o => o.value)).toContain('ES-CN');
+        expect(regional.map(o => o.value)).not.toContain('ES-EFP');
+        const names = regional.map(o => o.textContent);
+        expect(names).toEqual([...names].sort((a, b) => a.localeCompare(b)));
+        expect(Array.from(groups[1].querySelectorAll('option')).map(o => o.value)).toEqual(['ES-EFP']);
+        el4.remove();
+
+        // A saved regional iDevice still reopens on its own dataset inside the group.
+        const el5 = buildMockElement();
+        $exeDevice.init(el5, { lomloeDataset: 'ES-VC', lomloeSelections: [] });
+        await new Promise(r => setTimeout(r, 50));
+        expect(preselected(el5.querySelector('select[id*="lomloe-ds-"]'))).toBe('ES-VC');
+        el5.remove();
+        vi.restoreAllMocks();
+    });
 });
 
 // ════════════════════════════════════════════════════════════════
@@ -1287,6 +1322,24 @@ describe('LOMLOE per-dataset descriptor override', () => {
         expect(dev.save().lomloeDescriptors).toEqual({ CCL2: 'CCL2 — VAL' });
     });
 
+    // Issue #2587: the previous dataset's criterios stayed on screen after switching concreción.
+    it('clears the criterios panel when the dataset changes', async () => {
+        mockFetch(fixtureWithDescriptors(null));
+        dev.init(el, seededPrev());
+        await new Promise(r => setTimeout(r, 50));
+        const items = el.querySelector('[id^="lomloe-items-"]');
+        expect(items.textContent).toContain('Crit 1');
+
+        const dsSelect = el.querySelector('[id^="lomloe-ds-"]');
+        dsSelect.value = 'ES';
+        dsSelect.dispatchEvent(new Event('change', { bubbles: true }));
+        await new Promise(r => setTimeout(r, 50));
+
+        expect(items.hidden).toBe(true);
+        expect(items.textContent).not.toContain('Crit 1');
+        expect(el.querySelector('[id^="lomloe-no-mat-"]').hidden).toBe(false);
+    });
+
     it('does not render the reserved `descriptors` key as an etapa tab', async () => {
         mockFetch(fixtureWithDescriptors({ CCL2: 'x' }));
         dev.init(el, null);
@@ -1328,6 +1381,67 @@ function walkAreas(dataset) {
     }
     return out;
 }
+
+// Issue #2587: 1º–3º ESO Mathematics carried the 4º ESO Matemáticas A and B
+// criteria appended to each competencia, so every criterio showed up three times.
+// The four datasets built from the state minimums all inherited it.
+describe.each(['lomloe-ES.json', 'lomloe-ES-EFP.json', 'lomloe-ES-EX.json', 'lomloe-ES-MD.json'])(
+    '%s — criterios de evaluación (issue #2587)',
+    file => {
+        const data = loadDataset(file);
+
+        it('repeats no criterio inside a competencia', () => {
+            const dupes = [];
+            for (const { area, codArea, etapa, nivel } of walkAreas(data)) {
+                for (const [code, comp] of Object.entries(area.competencias_especificas)) {
+                    const descs = comp.criterios_evaluacion.map(c => c.descripcion.trim());
+                    if (new Set(descs).size !== descs.length) dupes.push(`${etapa}/${nivel}/${codArea}/${code}`);
+                }
+            }
+            expect(dupes).toEqual([]);
+        });
+
+        // RD 217/2022 sets the Mathematics 1º–3º ESO criteria jointly: 3,2,3,2,2,3,2,2,2,2.
+        it('keeps the RD 217/2022 criterio count for 1º–3º ESO Mathematics', () => {
+            for (const nivel of ['1º ESO', '2º ESO', '3º ESO']) {
+                const counts = Object.values(data.ESO[nivel].MAT.competencias_especificas).map(
+                    c => c.criterios_evaluacion.length,
+                );
+                expect(counts, nivel).toEqual([3, 2, 3, 2, 2, 3, 2, 2, 2, 2]);
+            }
+        });
+
+        // The 1º–3º saberes had the 4º ESO items mixed in, and block A held 4º content only.
+        it('keeps only the RD 217/2022 saberes for 1º–3º ESO Mathematics', () => {
+            for (const nivel of ['1º ESO', '2º ESO', '3º ESO']) {
+                const bloques = data.ESO[nivel].MAT.saberes_basicos.bloques;
+                const counts = Object.values(bloques).map(items => items.length);
+                expect(counts, nivel).toEqual([21, 8, 7, 14, 12, 7]);
+                expect(bloques['A. Sentido numérico'][0].subtitulo_nivel_2).toBe(
+                    'Estrategias variadas de recuento sistemático en situaciones de la vida cotidiana.',
+                );
+            }
+        });
+
+        it('offers 4º ESO Matemáticas A and B with their own criterios and saberes', () => {
+            const cuarto = data.ESO['4º ESO'];
+            const expected = {
+                MMA: { denominacion: 'Matemáticas A', saberes: [11, 2, 5, 15, 10, 7] },
+                MMB: { denominacion: 'Matemáticas B', saberes: [8, 2, 7, 15, 10, 7] },
+            };
+            for (const [codArea, { denominacion, saberes }] of Object.entries(expected)) {
+                const area = cuarto[codArea];
+                expect(area?.denominacion, codArea).toBe(denominacion);
+                const criterios = Object.values(area.competencias_especificas).map(c => c.criterios_evaluacion.length);
+                expect(criterios, codArea).toEqual([3, 2, 3, 2, 2, 3, 2, 2, 2, 2]);
+                const bloques = Object.values(area.saberes_basicos.bloques).map(items => items.length);
+                expect(bloques, codArea).toEqual(saberes);
+            }
+            const ce1 = Object.values(cuarto.MMB.competencias_especificas)[0].criterios_evaluacion;
+            expect(ce1[1].descripcion).toMatch(/^Analizar y seleccionar diferentes herramientas/);
+        });
+    },
+);
 
 // The 8 LOMLOE competencias clave (bare codes). Infantil links to these
 // rather than to numbered descriptores operativos (which only exist from

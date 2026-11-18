@@ -5,6 +5,7 @@
  * This test file uses REAL implementations for sibling modules (room-manager, heartbeat,
  * message-parser, config). Only external dependencies are mocked via DI.
  */
+import type { YjsSocketData } from './types';
 import { describe, it, expect, beforeEach, afterEach, mock } from 'bun:test';
 import { Elysia } from 'elysia';
 import type { Kysely } from 'kysely';
@@ -32,7 +33,6 @@ import {
     handleWebSocketPong,
     handleWebSocketMessage,
     handleWebSocketClose,
-    WsData,
     YJS_WS_MAX_PAYLOAD_LENGTH,
     type YjsWebSocketQueries,
     type YjsWebSocketSessionManager,
@@ -73,13 +73,13 @@ function createMockAuth(): YjsWebSocketAuth {
     return {
         verifyToken: async (token: string) => {
             if (token === 'valid-token-user-1') {
-                return { sub: 1, email: 'user1@test.com', roles: ['ROLE_USER'] };
+                return { userId: 1, email: 'user1@test.com', roles: ['ROLE_USER'], isGuest: false };
             }
             if (token === 'valid-token-user-2') {
-                return { sub: 2, email: 'user2@test.com', roles: ['ROLE_USER'] };
+                return { userId: 2, email: 'user2@test.com', roles: ['ROLE_USER'], isGuest: false };
             }
             if (token === 'valid-token-admin') {
-                return { sub: 3, email: 'admin@test.com', roles: ['ROLE_ADMIN'] };
+                return { userId: 3, email: 'admin@test.com', roles: ['ROLE_ADMIN'], isGuest: false };
             }
             return null;
         },
@@ -98,7 +98,7 @@ function createMockAssetCoordinator(): YjsWebSocketAssetCoordinator {
 }
 
 // Mock WebSocket for testing
-function createMockWebSocket(data: Partial<WsData> = {}): any {
+function createMockWebSocket(data: Partial<YjsSocketData> = {}): any {
     const sentMessages: any[] = [];
     const closeArgs: any[] = [];
     return {
@@ -192,6 +192,20 @@ describe('Yjs WebSocket Service', () => {
             wsHook?.pong?.(ws as any, undefined as any);
             wsHook?.message?.(ws as any, Buffer.from([0x01]));
             wsHook?.close?.(ws as any, 1000, 'closed');
+        });
+
+        it('closes the socket when the upgrade token is not a string', async () => {
+            const routes = createWebSocketRoutes();
+            const wsRoute = routes.routes.find(route => route.method === 'WS' && route.path === '/yjs/:docName');
+            const wsHook = (wsRoute?.hooks as any)?.websocket;
+            const ws = createMockWebSocket({
+                params: {},
+                query: { token: ['not-a-string'] as unknown as string },
+            });
+
+            await wsHook?.open?.(ws as any);
+
+            expect(ws.close).toHaveBeenCalled();
         });
 
         it('exposes a public GET /yjs/info liveness probe without leaking ops detail', async () => {
@@ -730,7 +744,7 @@ describe('Yjs WebSocket Service', () => {
             const user = await mockAuth.verifyToken('valid-token-user-1');
 
             expect(user).not.toBeNull();
-            expect(user?.sub).toBe(1);
+            expect(user?.userId).toBe(1);
             expect(user?.email).toBe('user1@test.com');
         });
 
@@ -1156,8 +1170,9 @@ describe('Yjs WebSocket Service', () => {
     });
 
     describe('checkWebSocketProjectAccess', () => {
-        it('should grant access when session exists in memory', async () => {
-            // Session is already set up in beforeEach
+        it('should grant the session creator access to an unsaved in-memory session', async () => {
+            // Fail-closed: only the session's own creator may join it.
+            mockSessions.set('session-uuid', { sessionId: 'session-uuid', userId: 999 });
             const result = await checkWebSocketProjectAccess('session-uuid', 999);
 
             expect(result.hasAccess).toBe(true);
@@ -1190,6 +1205,68 @@ describe('Yjs WebSocket Service', () => {
 
             expect(result.hasAccess).toBe(false);
             expect(result.reason).toBe('Project not found');
+        });
+
+        // Regression: ws-inmemory-session-authz-bypass (security audit)
+        // The presence of an in-memory session must never short-circuit the
+        // authorization check for a persisted private project.
+        it('should deny a non-owner even when an in-memory session exists for a persisted private project', async () => {
+            mockProjects.set('inmemory-uuid', {
+                id: 99,
+                uuid: 'inmemory-uuid',
+                owner_id: 1,
+                visibility: 'private',
+            });
+            mockSessions.set('inmemory-uuid', {
+                sessionId: 'inmemory-uuid',
+                fileName: 'Victim.elp',
+                userId: 1,
+            });
+
+            const result = await checkWebSocketProjectAccess('inmemory-uuid', 2);
+
+            expect(result.hasAccess).toBe(false);
+            expect(result.reason).toBe('Access denied');
+        });
+
+        it('should deny a non-creator for an unsaved in-memory session with no DB record', async () => {
+            mockSessions.set('unsaved-uuid', {
+                sessionId: 'unsaved-uuid',
+                fileName: 'Unsaved.elp',
+                userId: 1,
+            });
+
+            const result = await checkWebSocketProjectAccess('unsaved-uuid', 2);
+
+            expect(result.hasAccess).toBe(false);
+            expect(result.reason).toBe('ACCESS_DENIED');
+        });
+
+        it('should still grant the creator access to their unsaved in-memory session', async () => {
+            mockSessions.set('unsaved-uuid', {
+                sessionId: 'unsaved-uuid',
+                fileName: 'Unsaved.elp',
+                userId: 1,
+            });
+
+            const result = await checkWebSocketProjectAccess('unsaved-uuid', 1);
+
+            expect(result.hasAccess).toBe(true);
+        });
+
+        it('fails closed for an in-memory session that carries no owner userId', async () => {
+            // Authorization must default to denied for an ownerless session rather
+            // than admit any authenticated user (the access check should never fall
+            // open on optional data).
+            mockSessions.set('ownerless-uuid', {
+                sessionId: 'ownerless-uuid',
+                fileName: 'Ownerless.elp',
+            });
+
+            const result = await checkWebSocketProjectAccess('ownerless-uuid', 2);
+
+            expect(result.hasAccess).toBe(false);
+            expect(result.reason).toBe('ACCESS_DENIED');
         });
     });
 
@@ -1232,6 +1309,14 @@ describe('Yjs WebSocket Service', () => {
             expect(result.error?.reason).toBe('Invalid token');
         });
 
+        it('verifies tokens through the session revocation check by default', async () => {
+            resetDependencies();
+            const ws = createMockWebSocket() as any;
+            const result = await handleWebSocketOpen(ws, 'project-a1b2c3d4-e5f6-7890-abcd-ef1234567890', 'not-a-jwt');
+            expect(result.error?.code).toBe(4001);
+            expect(result.error?.reason).toBe('Invalid token');
+        });
+
         it('should return error when access denied', async () => {
             const ws = createMockWebSocket() as any;
             // Add a project that user 2 doesn't have access to (owned by user 1, private)
@@ -1253,10 +1338,11 @@ describe('Yjs WebSocket Service', () => {
         it('should succeed for valid connection', async () => {
             const ws = createMockWebSocket() as any;
 
-            // Need to add the session-uuid to the sessions
+            // Unsaved in-memory session owned by the connecting user (fail-closed).
             mockSessions.set('a1b2c3d4-e5f6-7890-abcd-ef1234567890', {
                 sessionId: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
                 fileName: 'Test.elp',
+                userId: 1,
             });
 
             const result = await handleWebSocketOpen(
@@ -1276,7 +1362,9 @@ describe('Yjs WebSocket Service', () => {
             // during the await, handleWebSocketClose runs first (a no-op,
             // since ws.data.docName isn't set yet) and no further `close`
             // event will ever fire for this connection.
-            let resolveVerify!: (user: { sub: number; email: string; roles: string[] } | null) => void;
+            let resolveVerify!: (
+                user: { userId: number; email: string; roles: string[]; isGuest: boolean } | null,
+            ) => void;
             const mockAuth: YjsWebSocketAuth = {
                 verifyToken: () =>
                     new Promise(resolve => {
@@ -1292,7 +1380,7 @@ describe('Yjs WebSocket Service', () => {
             });
 
             // Before `open` populates it, real Elysia/Bun ws.data only has
-            // {params, query} — none of the WsData fields the default mock
+            // {params, query} — none of the identity fields the default mock
             // pre-fills. Override them to undefined so handleWebSocketClose
             // sees the same "not populated yet" state it would in production.
             const ws = createMockWebSocket({
@@ -1300,7 +1388,7 @@ describe('Yjs WebSocket Service', () => {
                 userId: undefined,
                 projectUuid: undefined,
                 docName: undefined,
-            } as unknown as Partial<WsData>) as any;
+            }) as any;
             const docName = 'project-a1b2c3d4-e5f6-7890-abcd-ef1234567890';
             // In-memory session so checkWebSocketProjectAccess grants access
             // without touching the (unmocked-here) DB path, isolating the
@@ -1318,7 +1406,7 @@ describe('Yjs WebSocket Service', () => {
             handleWebSocketClose(ws, ws.data);
 
             // The awaited verification now resolves successfully.
-            resolveVerify({ sub: 1, email: 'user1@test.com', roles: ['ROLE_USER'] });
+            resolveVerify({ userId: 1, email: 'user1@test.com', roles: ['ROLE_USER'], isGuest: false });
             const result = await openPromise;
 
             expect(result.success).toBe(false);
@@ -1341,6 +1429,7 @@ describe('Yjs WebSocket Service', () => {
             const ws = createMockWebSocket() as any;
             mockSessions.set('b1b2c3d4-e5f6-7890-abcd-ef1234567890', {
                 sessionId: 'b1b2c3d4-e5f6-7890-abcd-ef1234567890',
+                userId: 1,
             });
 
             await handleWebSocketOpen(ws, 'project-b1b2c3d4-e5f6-7890-abcd-ef1234567890', 'valid-token-user-1');
@@ -1364,7 +1453,9 @@ describe('Yjs WebSocket Service', () => {
             const projectUuid = 'd1d2d3d4-e5f6-7890-abcd-ef1234567890';
             const docName = `project-${projectUuid}`;
 
-            // Add session for the project
+            // Public project so both collaborators (users 1 and 2) are authorized
+            // under the hardened WS access check; a session is still present.
+            mockProjects.set(projectUuid, { id: 704, uuid: projectUuid, owner_id: 1, visibility: 'public' });
             mockSessions.set(projectUuid, { sessionId: projectUuid });
 
             // First client connects - no collaboration yet
@@ -1400,6 +1491,8 @@ describe('Yjs WebSocket Service', () => {
             const projectUuid = 'e1e2e3e4-e5f6-7890-abcd-ef1234567890';
             const docName = `project-${projectUuid}`;
 
+            // Public project so both collaborators are authorized (fail-closed WS check).
+            mockProjects.set(projectUuid, { id: 705, uuid: projectUuid, owner_id: 1, visibility: 'public' });
             mockSessions.set(projectUuid, { sessionId: projectUuid });
 
             // First client
@@ -1424,7 +1517,10 @@ describe('Yjs WebSocket Service', () => {
                 uuid: projectUuid,
                 owner_id: 1,
                 status: 'active',
-                visibility: 'private',
+                // Public so the second collaborator (user 2) is legitimately
+                // authorized under the hardened WS access check (the old test
+                // relied on the now-closed in-memory-session authz bypass).
+                visibility: 'public',
                 saved_once: 0, // Not saved yet
             });
 
@@ -1482,7 +1578,8 @@ describe('Yjs WebSocket Service', () => {
                 uuid: projectUuid,
                 owner_id: 1,
                 status: 'active',
-                visibility: 'private',
+                // Public so user 2 is authorized under the hardened WS access check.
+                visibility: 'public',
                 saved_once: 1, // Already saved
             });
 
@@ -1533,8 +1630,11 @@ describe('Yjs WebSocket Service', () => {
             let callCount = 0;
             mockQueries.findProjectByUuid = async (_db: any, uuid: string) => {
                 callCount++;
-                // First call succeeds (for access check), subsequent calls throw
-                if (callCount > 1 && uuid === projectUuid) {
+                // The hardened access check does one lookup per connecting client
+                // (calls #1 and #2). The injected DB error must therefore fire on
+                // the later save-status lookup (#3) so we still exercise the
+                // error-swallowing path during collaboration.
+                if (callCount > 2 && uuid === projectUuid) {
                     throw new Error('Database error');
                 }
                 return mockProjects.get(uuid);
@@ -1545,7 +1645,8 @@ describe('Yjs WebSocket Service', () => {
                 uuid: projectUuid,
                 owner_id: 1,
                 status: 'active',
-                visibility: 'private',
+                // Public so user 2 is authorized under the hardened WS access check.
+                visibility: 'public',
                 saved_once: 0,
             });
 
@@ -1576,15 +1677,21 @@ describe('Yjs WebSocket Service', () => {
             const projectUuid = 'f4e5d6c7-b8a9-0123-def4-567890123456';
             const docName = `project-${projectUuid}`;
 
+            // Public project so both collaborators are authorized (fail-closed WS
+            // check); the access lookups (#1 and #2) succeed, the save-status lookup
+            // during collaboration (#3) throws and must be swallowed.
+            mockProjects.set(projectUuid, { id: 706, uuid: projectUuid, owner_id: 1, visibility: 'public' });
+
             const mockQueries = createMockQueries();
+            let callCount = 0;
             mockQueries.findProjectByUuid = async (_db: any, uuid: string) => {
-                if (uuid === projectUuid) {
+                callCount++;
+                if (callCount > 2 && uuid === projectUuid) {
                     throw new Error('Database error');
                 }
                 return mockProjects.get(uuid);
             };
 
-            // Add session so access check bypasses DB
             mockSessions.set(projectUuid, { sessionId: projectUuid });
 
             configure({
@@ -1619,7 +1726,9 @@ describe('Yjs WebSocket Service', () => {
                 uuid: projectUuid,
                 owner_id: 1,
                 status: 'active',
-                visibility: 'private',
+                // Public so the joining second client (user 2) is authorized
+                // under the hardened WS access check.
+                visibility: 'public',
                 saved_once: 1,
             });
 
@@ -1741,7 +1850,7 @@ describe('Yjs WebSocket Service', () => {
             // Start heartbeat first
             heartbeat.startHeartbeat(clientId, ws as any);
 
-            const data: WsData = {
+            const data: YjsSocketData = {
                 clientId,
                 userId: 1,
                 projectUuid: 'test-uuid',
@@ -1764,7 +1873,7 @@ describe('Yjs WebSocket Service', () => {
                 userId: 1,
                 projectUuid: 'test-uuid',
                 docName: 'project-test-uuid',
-            } as WsData;
+            } as YjsSocketData;
 
             // Should not throw
             handleWebSocketPong(data);
@@ -1780,7 +1889,7 @@ describe('Yjs WebSocket Service', () => {
             roomManager.addConnection(docName, sender as any);
             roomManager.addConnection(docName, receiver as any);
 
-            const data: WsData = {
+            const data: YjsSocketData = {
                 clientId: 'sender-client',
                 userId: 1,
                 projectUuid: 'message-test-uuid',
@@ -1810,7 +1919,7 @@ describe('Yjs WebSocket Service', () => {
             const docName = 'project-asset-msg-test';
             roomManager.addConnection(docName, ws as any);
 
-            const data: WsData = {
+            const data: YjsSocketData = {
                 clientId: 'asset-client',
                 userId: 1,
                 projectUuid: 'asset-test-uuid',
@@ -1850,7 +1959,7 @@ describe('Yjs WebSocket Service', () => {
             const docName = 'project-asset-error-test';
             roomManager.addConnection(docName, ws as any);
 
-            const data: WsData = {
+            const data: YjsSocketData = {
                 clientId: 'asset-error-client',
                 userId: 1,
                 projectUuid: 'asset-error-uuid',
@@ -1871,10 +1980,39 @@ describe('Yjs WebSocket Service', () => {
             await new Promise(resolve => setTimeout(resolve, 20));
         });
 
+        it('should ignore messages when connection metadata is incomplete', () => {
+            const ws = createMockWebSocket();
+
+            expect(() =>
+                handleWebSocketMessage(ws as any, { userId: 1 } as YjsSocketData, Buffer.from([1, 2, 3])),
+            ).not.toThrow();
+            expect(() =>
+                handleWebSocketMessage(
+                    ws as any,
+                    { clientId: 'c1', userId: 1, projectUuid: 'uuid' } as YjsSocketData,
+                    Buffer.from([1, 2, 3]),
+                ),
+            ).not.toThrow();
+            expect(() =>
+                handleWebSocketMessage(
+                    ws as any,
+                    { docName: 'project-x', userId: 1, projectUuid: 'uuid' } as YjsSocketData,
+                    Buffer.from([1, 2, 3]),
+                ),
+            ).not.toThrow();
+            expect(() =>
+                handleWebSocketMessage(
+                    ws as any,
+                    { docName: 'project-x', clientId: 'c1', userId: 1 } as YjsSocketData,
+                    Buffer.from([1, 2, 3]),
+                ),
+            ).not.toThrow();
+        });
+
         it('should ignore messages when room not found', () => {
             const ws = createMockWebSocket();
 
-            const data: WsData = {
+            const data: YjsSocketData = {
                 clientId: 'no-room-client',
                 userId: 1,
                 projectUuid: 'no-room-uuid',
@@ -1890,7 +2028,7 @@ describe('Yjs WebSocket Service', () => {
             const docName = 'project-unknown-msg-test';
             roomManager.addConnection(docName, ws as any);
 
-            const data: WsData = {
+            const data: YjsSocketData = {
                 clientId: 'unknown-msg-client',
                 userId: 1,
                 projectUuid: 'unknown-msg-uuid',
@@ -1899,6 +2037,41 @@ describe('Yjs WebSocket Service', () => {
 
             // Should not throw for invalid JSON
             handleWebSocketMessage(ws as any, data, 'not valid json {');
+        });
+
+        it('logs unknown message types when APP_DEBUG is enabled', () => {
+            const original = process.env.APP_DEBUG;
+            process.env.APP_DEBUG = '1';
+            try {
+                const ws = createMockWebSocket();
+                const docName = 'project-unknown-debug-test';
+                roomManager.addConnection(docName, ws as any);
+
+                const logs: string[] = [];
+                const originalLog = console.log;
+                console.log = (...args: unknown[]) => {
+                    logs.push(args.map(String).join(' '));
+                };
+                try {
+                    handleWebSocketMessage(
+                        ws as any,
+                        {
+                            clientId: 'unknown-debug-client',
+                            userId: 1,
+                            projectUuid: 'unknown-debug-uuid',
+                            docName,
+                        },
+                        'not valid json {',
+                    );
+                } finally {
+                    console.log = originalLog;
+                }
+
+                expect(logs.some(line => line.includes('Unknown message type from unknown-debug-client'))).toBe(true);
+            } finally {
+                if (original === undefined) delete process.env.APP_DEBUG;
+                else process.env.APP_DEBUG = original;
+            }
         });
     });
 
@@ -1911,7 +2084,7 @@ describe('Yjs WebSocket Service', () => {
             roomManager.addConnection(docName, ws as any);
             heartbeat.startHeartbeat(clientId, ws as any);
 
-            const data: WsData = {
+            const data: YjsSocketData = {
                 clientId,
                 userId: 1,
                 projectUuid: 'close-test-uuid',
@@ -1933,7 +2106,7 @@ describe('Yjs WebSocket Service', () => {
         it('should handle data with unknown docName', () => {
             const ws = createMockWebSocket();
 
-            const data: WsData = {
+            const data: YjsSocketData = {
                 clientId: 'unknown-doc-client',
                 userId: 1,
                 projectUuid: 'unknown-doc-uuid',
@@ -1960,7 +2133,7 @@ describe('Yjs WebSocket Service', () => {
             const ws = createMockWebSocket();
             const docName = 'project-unregister-test';
 
-            const data: WsData = {
+            const data: YjsSocketData = {
                 clientId: 'unregister-client',
                 userId: 1,
                 projectUuid: 'unregister-uuid',

@@ -9,6 +9,8 @@ eXeLearning implements a **stateless relay architecture**:
 - **No Y.Doc on server**: The server doesn't maintain document state in memory
 - **Client is the source of truth**: Each client holds the authoritative Y.Doc in memory + IndexedDB
 - **Explicit saves only**: Content persists to server only when user clicks save
+- **Convergence with the stored snapshot**: every online open and every WebSocket reconnection merge the stored snapshot into the local Y.Doc (the relay holds no document state, so this is the only way a tab that was offline while others saved catches up before it saves)
+- **Validated saves**: `GET /yjs-document` returns `X-Document-Version`; the client echoes it as `X-Base-Version` on save. A save built on the current version replaces the snapshot as-is; a stale or header-less save is merged on top of the stored state and answered with `merged: true`, so no save can erase what others stored meanwhile (ADR-2615-01)
 - **Binary Yjs protocol**: Efficient sync using Yjs encoding
 
 ```

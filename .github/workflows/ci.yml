@@ -64,11 +64,19 @@ jobs:
       - name: Install Dependencies
         run: bun install
 
+      # Same bundle OSS-Fuzz builds from fuzz/*.fuzz.ts. A moved or renamed
+      # import fails this pull request instead of the OSS-Fuzz build.
+      - name: Build fuzz targets
+        run: sh fuzz/build.sh
+
       - name: Architecture records (identifiers, metadata, generated indexes)
         run: make architecture-check
 
       - name: Lint (Biome)
         run: make lint
+
+      - name: Build vendor libs
+        run: bun run bundle:vendor
 
       - name: Unit Tests + 90% Coverage
         run: make test-unit-ci

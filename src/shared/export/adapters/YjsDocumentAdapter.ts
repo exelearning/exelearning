@@ -27,6 +27,7 @@ import type {
 
 import { generateOdeXml } from '../generators/OdeXmlGenerator';
 import { getLicenseUrl } from '../constants';
+import { normalizePassScore } from '../metadata-properties';
 
 // Declare the global eXeLearning object for browser context
 declare global {
@@ -97,7 +98,7 @@ export class YjsDocumentAdapter implements ExportDocument {
                 (typeof window !== 'undefined' ? window.eXeLearning?.version : undefined) ||
                 (typeof process !== 'undefined' ? process.env?.APP_VERSION : undefined),
             createdAt: (meta.get('createdAt') as string) || new Date().toISOString(),
-            modified: (meta.get('modifiedAt') as string) || new Date().toISOString(),
+            modifiedAt: (meta.get('modifiedAt') as string) || new Date().toISOString(),
             // Custom styles support
             customStyles: (meta.get('customStyles') as string) || undefined,
 
@@ -109,6 +110,10 @@ export class YjsDocumentAdapter implements ExportDocument {
             addMathJax: this.parseBoolean(meta.get('addMathJax'), false),
             exportSource: this.parseBoolean(meta.get('exportSource'), true), // Default: true
             globalFont: (meta.get('globalFont') as string) || 'default',
+            // Never seeded on project creation (see YjsDocumentManager.initializeDocument),
+            // so the default lives here rather than in the document.
+            passScore: normalizePassScore(meta.get('passScore')),
+            passScoreEveryActivity: this.parseBoolean(meta.get('passScoreEveryActivity'), false),
 
             // Custom content
             extraHeadContent: (meta.get('extraHeadContent') as string) || undefined,
@@ -339,16 +344,9 @@ export class YjsDocumentAdapter implements ExportDocument {
      */
     private convertComponent(compMap: YMap, index: number): ExportComponent {
         // Get HTML content - could be in 'content', 'htmlContent', or 'htmlView'
-        let content =
-            (compMap.get('content') as string) ||
-            (compMap.get('htmlContent') as string) ||
-            (compMap.get('htmlView') as string) ||
-            '';
-
-        // Handle Y.Text objects (convert to string if needed)
-        if (content && typeof content === 'object' && 'toString' in content) {
-            content = content.toString();
-        }
+        const content: string = String(
+            compMap.get('content') || compMap.get('htmlContent') || compMap.get('htmlView') || '',
+        );
 
         // Get iDevice-specific properties (jsonProperties) as plain object
         // jsonProperties can be stored as:

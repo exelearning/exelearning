@@ -1,7 +1,7 @@
 /**
  * Tests for App Settings Service
  */
-import { describe, it, expect } from 'bun:test';
+import { describe, it, expect, afterEach } from 'bun:test';
 import {
     parseBoolean,
     parseNumber,
@@ -11,6 +11,8 @@ import {
     getSettingNumber,
     parseAuthMethods,
     getAuthMethods,
+    isPublicViewFeatureEnabled,
+    getDefaultQuotaMb,
 } from './app-settings';
 import type { Kysely } from 'kysely';
 import type { Database } from '../db/types';
@@ -254,6 +256,69 @@ describe('App Settings Service', () => {
 
             const result = await getAuthMethods(mockDb, 'password,guest');
             expect(result).toEqual(['password', 'guest']);
+        });
+    });
+    describe('isPublicViewFeatureEnabled', () => {
+        const originalEnv = process.env.PUBLIC_VIEW_ENABLED;
+
+        afterEach(() => {
+            if (originalEnv === undefined) delete process.env.PUBLIC_VIEW_ENABLED;
+            else process.env.PUBLIC_VIEW_ENABLED = originalEnv;
+        });
+
+        it('should be disabled by default', async () => {
+            delete process.env.PUBLIC_VIEW_ENABLED;
+
+            expect(await isPublicViewFeatureEnabled(createMockSettingsDb({}))).toBe(false);
+        });
+
+        it('should use the environment value as the default', async () => {
+            process.env.PUBLIC_VIEW_ENABLED = 'true';
+
+            expect(await isPublicViewFeatureEnabled(createMockSettingsDb({}))).toBe(true);
+        });
+
+        it('should let the admin setting override the environment value', async () => {
+            process.env.PUBLIC_VIEW_ENABLED = 'true';
+            expect(await isPublicViewFeatureEnabled(createMockSettingsDb({ PUBLIC_VIEW_ENABLED: 'false' }))).toBe(
+                false,
+            );
+
+            process.env.PUBLIC_VIEW_ENABLED = 'false';
+            expect(await isPublicViewFeatureEnabled(createMockSettingsDb({ PUBLIC_VIEW_ENABLED: 'true' }))).toBe(true);
+        });
+    });
+
+    describe('getDefaultQuotaMb', () => {
+        const originalEnv = process.env.DEFAULT_QUOTA;
+
+        afterEach(() => {
+            if (originalEnv === undefined) delete process.env.DEFAULT_QUOTA;
+            else process.env.DEFAULT_QUOTA = originalEnv;
+        });
+
+        it('should default to 4096 MB', async () => {
+            delete process.env.DEFAULT_QUOTA;
+
+            expect(await getDefaultQuotaMb(createMockSettingsDb({}))).toBe(4096);
+        });
+
+        it('should use the environment value as the default', async () => {
+            process.env.DEFAULT_QUOTA = '512';
+
+            expect(await getDefaultQuotaMb(createMockSettingsDb({}))).toBe(512);
+        });
+
+        it('should ignore an invalid environment value', async () => {
+            process.env.DEFAULT_QUOTA = 'lots';
+
+            expect(await getDefaultQuotaMb(createMockSettingsDb({}))).toBe(4096);
+        });
+
+        it('should let the admin setting override the environment value', async () => {
+            process.env.DEFAULT_QUOTA = '512';
+
+            expect(await getDefaultQuotaMb(createMockSettingsDb({ DEFAULT_QUOTA: '2048' }))).toBe(2048);
         });
     });
 });

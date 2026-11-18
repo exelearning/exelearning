@@ -1,3 +1,5 @@
+@use '../abstracts/mixins';
+
 #head {
     font-family: "Inter", sans-serif;
     -webkit-font-smoothing: antialiased;
@@ -181,15 +183,7 @@
                 // transitions; the visible, compact state lives in the
                 // Save-button badge above.
                 #exe-collab-save-status {
-                    position: absolute;
-                    width: 1px;
-                    height: 1px;
-                    padding: 0;
-                    margin: -1px;
-                    overflow: hidden;
-                    clip: rect(0, 0, 0, 0);
-                    white-space: nowrap;
-                    border: 0;
+                    @include mixins.visually-hidden;
                 }
                 .small-icon.image-icon-green {
                     height: 18px;
@@ -367,6 +361,34 @@
     }
 }
 
+/* Tablet and narrow desktop (768px - 1365px): icon-only Save and Share, still named for screen readers (#2638) */
+@media (min-width: 768px) and (max-width: 1365.98px) {
+    #head .navbar .top .main-menu {
+        #head-top-save-button > span:not(.collab-autosave-badge),
+        #head-top-share-button .button-share-text {
+            @include mixins.visually-hidden;
+        }
+
+        #head-top-save-button {
+            min-width: 36px;
+            padding-inline: 8px;
+        }
+
+        #head-top-share-button {
+            width: 36px;
+            height: 36px;
+            padding: 4px !important;
+        }
+
+        // At 768px the right group still needs a few pixels more
+        @media (max-width: 1023.98px) {
+            .main-menu-right {
+                gap: 4px;
+            }
+        }
+    }
+}
+
 /* ========================================================================
    Mobile Responsive Styles (< 768px)
    ======================================================================== */
@@ -453,16 +475,7 @@
                     padding: 4px !important;
 
                     .button-share-text {
-                        // Visually hidden pero accesible para screen readers
-                        position: absolute;
-                        width: 1px;
-                        height: 1px;
-                        padding: 0;
-                        margin: -1px;
-                        overflow: hidden;
-                        clip: rect(0, 0, 0, 0);
-                        white-space: nowrap;
-                        border: 0;
+                        @include mixins.visually-hidden;
                     }
                 }
 

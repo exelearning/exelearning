@@ -699,6 +699,10 @@ export class Epub3Exporter extends BaseExporter {
             hideNavButtons: true,
             addExeLink: meta.addExeLink ?? true,
             addPagination: meta.addPagination === true,
+            // Project-wide pass score, published to the page as a META so iDevices
+            // resolve it at runtime instead of carrying a copy of their own.
+            passScore: meta.passScore,
+            passScoreEveryActivity: meta.passScoreEveryActivity,
             // Accessibility toolbar (exe_atools) when enabled in project properties (#1978)
             addAccessibilityToolbar: meta.addAccessibilityToolbar ?? false,
             totalPages: allPages.length,
@@ -1088,13 +1092,6 @@ td, th {
             originalCode = originalCode.replace(
                 'console.warn("Error loading abcjs");',
                 'console.warn("Error loading abcjs", error); console.warn("window.ABCJS is:", typeof window.ABCJS);',
-            );
-
-            // EPUB Security Fix: Accessing parent.document throws SecurityError in sandboxed readers
-            // We wrap it in try-catch to allow falling back to the local document selector
-            originalCode = originalCode.replace(
-                'var htmlSource = parent.document.querySelector("#htmlSource");',
-                'var htmlSource = null; try { htmlSource = parent.document.querySelector("#htmlSource"); } catch(e) { console.warn("EPUB: Cannot access parent.document, using fallback"); }',
             );
 
             // Simple guard pattern: if already loaded, skip entire script

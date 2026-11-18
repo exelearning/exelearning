@@ -92,6 +92,21 @@ class MockResourceProvider implements ResourceProvider {
     async fetchI18nTranslations(_language: string): Promise<Map<string, string>> {
         return new Map();
     }
+
+    async fetchGlobalFontFiles(fontId: string): Promise<Map<string, Buffer> | null> {
+        const files = new Map<string, Buffer>();
+        if (fontId === 'andika') {
+            files.set('fonts/global/andika/Andika-Regular.woff2', Buffer.from('mock-andika-regular'));
+            files.set('fonts/global/andika/Andika-Italic.woff2', Buffer.from('mock-andika-italic'));
+            files.set('fonts/global/andika/Andika-Bold.woff2', Buffer.from('mock-andika-bold'));
+            files.set('fonts/global/andika/Andika-BoldItalic.woff2', Buffer.from('mock-andika-bold-italic'));
+            files.set('fonts/global/andika/OFL.txt', Buffer.from('SIL OFL License'));
+        } else if (fontId === 'playwrite-es') {
+            files.set('fonts/global/playwrite-es/PlaywriteES-Regular.woff2', Buffer.from('mock-playwrite-font'));
+            files.set('fonts/global/playwrite-es/OFL.txt', Buffer.from('SIL OFL License'));
+        }
+        return files;
+    }
 }
 
 // Mock asset provider
@@ -763,6 +778,55 @@ describe('ElpxExporter', () => {
             // Version ID format: YYYYMMDDHHmmss + 6 alphanumeric
             const versionIdMatch = contentXml.match(/<key>odeVersionId<\/key>\s*<value>(\d{14}[A-Z0-9]{6})<\/value>/);
             expect(versionIdMatch).toBeTruthy();
+        });
+    });
+
+    describe('Global Font', () => {
+        function createExporter(globalFont: string, res: MockResourceProvider = resources): ElpxExporter {
+            return new ElpxExporter(new MockDocument({ globalFont }, samplePages), res, assets, zip);
+        }
+
+        it('should include the selected global font files', async () => {
+            await createExporter('andika').export();
+
+            expect(zip.files.has('fonts/global/andika/Andika-Regular.woff2')).toBe(true);
+            expect(zip.files.has('fonts/global/andika/Andika-BoldItalic.woff2')).toBe(true);
+            expect(zip.files.has('fonts/global/andika/OFL.txt')).toBe(true);
+        });
+
+        it('should include Playwrite ES font files when selected', async () => {
+            await createExporter('playwrite-es').export();
+
+            expect(zip.files.has('fonts/global/playwrite-es/PlaywriteES-Regular.woff2')).toBe(true);
+        });
+
+        it('should ship every font file referenced by the generated pages', async () => {
+            await createExporter('andika').export();
+
+            const indexHtml = zip.files.get('index.html') as string;
+            const referenced = [...indexHtml.matchAll(/url\('(fonts\/global\/[^']+)'\)/g)].map(m => m[1]);
+            expect(referenced.length).toBeGreaterThan(0);
+            for (const path of referenced) {
+                expect(zip.files.has(path)).toBe(true);
+            }
+        });
+
+        it('should not include global font files when globalFont is default', async () => {
+            await createExporter('default').export();
+
+            expect(zip.getFilePaths().some(path => path.startsWith('fonts/global/'))).toBe(false);
+        });
+
+        it('should still export when fetching the font files fails', async () => {
+            const failingResources = new MockResourceProvider();
+            failingResources.fetchGlobalFontFiles = async () => {
+                throw new Error('Font fetch failed');
+            };
+
+            const result = await createExporter('andika', failingResources).export();
+
+            expect(result.success).toBe(true);
+            expect(zip.getFilePaths().some(path => path.startsWith('fonts/global/'))).toBe(false);
         });
     });
 

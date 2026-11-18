@@ -1193,6 +1193,11 @@ const mockGamificationScorm = {
   init: vi.fn(),
   save: vi.fn(() => ({})),
   load: vi.fn(),
+  // The Grading tab. The real one composes the pass score, the SCORM
+  // options and the progress report; the marker is enough for an iDevice's
+  // createForm to run, and the composition has its own tests.
+  getTab: vi.fn(() => '<div class="exe-form-tab mock-evaluation-tab"></div>'),
+  addEvents: vi.fn(),
   // Used by some iDevices like trueorfalse.js
   getValues: vi.fn(() => ({
     textButtonScorm: 'Save',
@@ -1244,6 +1249,45 @@ const mockGamificationProgressBar = {
       return false;
     }
     return { evaluation, evaluationID };
+  }),
+  addEvents: vi.fn(),
+};
+
+// Minimum score to pass an activity. Mirrors the shared block in
+// common_edition.js closely enough that an iDevice's loadPreviousValues /
+// save round trip can be exercised: the mode and the customised mark travel,
+// and the project value is never among them.
+const mockGamificationPassScore = {
+  MODE_GLOBAL: 'global',
+  MODE_CUSTOM: 'custom',
+  getGlobalValue: vi.fn(() => 5),
+  normalize: vi.fn((value) => {
+    const parsed = Number.parseFloat(value);
+    if (!Number.isFinite(parsed)) return 5;
+    return Math.round(Math.min(10, Math.max(0, parsed)) * 10) / 10;
+  }),
+  getContents: vi.fn(() => ''),
+  refreshGlobalValue: vi.fn(),
+  setValues: vi.fn((data) => {
+    const custom = !!(data && data.passScoreMode === 'custom');
+    if (typeof window !== 'undefined' && window.$) {
+      window.$('#eXePassScoreCustom').prop('checked', custom);
+      window.$('#eXePassScoreGlobal').prop('checked', !custom);
+      if (data && typeof data.passScoreCustom !== 'undefined' && data.passScoreCustom !== '') {
+        window.$('#eXePassScoreValue').val(data.passScoreCustom);
+      }
+    }
+  }),
+  getValues: vi.fn(() => {
+    if (typeof window === 'undefined' || !window.$) {
+      return { passScoreMode: 'global', passScoreCustom: 5 };
+    }
+    const custom = window.$('#eXePassScoreCustom').is(':checked');
+    const raw = Number.parseFloat(window.$('#eXePassScoreValue').val());
+    return {
+      passScoreMode: custom ? 'custom' : 'global',
+      passScoreCustom: Number.isFinite(raw) ? raw : 5,
+    };
   }),
   addEvents: vi.fn(),
 };
@@ -1340,6 +1384,7 @@ const mockGamificationReport = {
   getNodeIdevice: vi.fn(() => ''),
   getNameIdevice: vi.fn(() => ''),
   saveEvaluation: vi.fn(),
+  showPassScoreNotice: vi.fn(() => null),
 };
 
 global.$exeDevices = {
@@ -1358,11 +1403,17 @@ global.$exeDevices = {
 
 global.$exeDevicesEdition = {
   iDevice: {
+    // Wires the form's tab strip. Every iDevice with more than one tab calls
+    // it from createForm, so a stub has to exist for those forms to render.
+    tabs: {
+      init: vi.fn(),
+    },
     gamification: {
       instructions: mockGamificationInstructions,
       scorm: mockGamificationScorm,
       common: mockGamificationCommon,
       progressBar: mockGamificationProgressBar,
+      passScore: mockGamificationPassScore,
       share: mockGamificationShare,
       helpers: mockGamificationHelpers,
       math: mockGamificationMath,
@@ -1445,6 +1496,33 @@ global.$exe = {
   hasTooltips: vi.fn(() => {}),
   setMultimediaGalleries: vi.fn(() => {}),
   setModalWindowContentSize: vi.fn(() => {}),
+  /**
+   * The pass score resolver every scoring iDevice consults to decide whether
+   * the learner passed. Faithful to common.js rather than a stub returning a
+   * constant: a test that customises `passScoreMode` must see the customised
+   * mark, or it proves nothing about the code under test.
+   */
+  passScore: {
+    DEFAULT: 5,
+    MIN: 0,
+    MAX: 10,
+    normalize: (value) => {
+      const parsed = typeof value === 'number' ? value : Number.parseFloat(String(value ?? ''));
+      if (!Number.isFinite(parsed)) return 5;
+      return Math.round(Math.min(10, Math.max(0, parsed)) * 10) / 10;
+    },
+    get: () => global.$exe.passScore.normalize(global.$exe.passScore.DEFAULT),
+    resolve: (data) =>
+      data && data.passScoreMode === 'custom'
+        ? global.$exe.passScore.normalize(data.passScoreCustom)
+        : global.$exe.passScore.get(),
+    toPercent: (value) =>
+      Math.round(
+        (value === undefined
+          ? global.$exe.passScore.get()
+          : global.$exe.passScore.normalize(value)) * 1000
+      ) / 100,
+  },
 };
 
 if (typeof window !== 'undefined') {

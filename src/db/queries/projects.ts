@@ -7,7 +7,9 @@ import type { Kysely } from 'kysely';
 import type { Database, Project, NewProject, ProjectUpdate, User } from '../types';
 import { now } from '../types';
 import { v4 as uuidv4 } from 'uuid';
+import { randomUUID } from 'crypto';
 import { supportsReturning, updateByColumnAndReturn, updateByIdAndReturn, insertIgnore } from '../helpers';
+import { assertSafePathSegment } from '../../utils/safe-path';
 
 // ============================================================================
 // HELPER TYPES AND FUNCTIONS
@@ -48,8 +50,10 @@ function extractOwnerFromResult(result: ProjectWithOwnerRow): User {
         external_identifier: result.owner_external_identifier,
         api_token: result.owner_api_token,
         is_active: result.owner_is_active,
-        created_at: result.owner_created_at,
-        updated_at: result.owner_updated_at,
+        created_at:
+            typeof result.owner_created_at === 'string' ? Number(result.owner_created_at) : result.owner_created_at,
+        updated_at:
+            typeof result.owner_updated_at === 'string' ? Number(result.owner_updated_at) : result.owner_updated_at,
     };
 }
 
@@ -71,6 +75,11 @@ function buildProjectWithOwner(result: ProjectWithOwnerRow): Project & { owner: 
         license: result.license,
         last_accessed_at: result.last_accessed_at,
         saved_once: result.saved_once,
+        platform_id: result.platform_id,
+        platform_site: result.platform_site,
+        platform_package_hash: result.platform_package_hash,
+        public_view_id: result.public_view_id,
+        public_view_enabled: result.public_view_enabled,
         created_at: result.created_at,
         updated_at: result.updated_at,
         owner: extractOwnerFromResult(result),
@@ -113,6 +122,48 @@ export async function findProjectByUuid(db: Kysely<Database>, uuid: string): Pro
 
 export async function findProjectByPlatformId(db: Kysely<Database>, platformId: string): Promise<Project | undefined> {
     return db.selectFrom('projects').selectAll().where('platform_id', '=', platformId).executeTakeFirst();
+}
+
+/**
+ * Find the project a user keeps for one platform activity (site + course module).
+ * Deleted projects are skipped; the most recently updated one wins.
+ */
+export async function findOwnedProjectByPlatformBinding(
+    db: Kysely<Database>,
+    ownerId: number,
+    platformSite: string,
+    platformId: string,
+): Promise<Project | undefined> {
+    return db
+        .selectFrom('projects')
+        .selectAll()
+        .where('owner_id', '=', ownerId)
+        .where('platform_site', '=', platformSite)
+        .where('platform_id', '=', platformId)
+        .where('status', 'in', ['active', 'archived'])
+        .orderBy('updated_at', 'desc')
+        .orderBy('id', 'desc')
+        .executeTakeFirst();
+}
+
+/**
+ * Find a project by its opaque public view id.
+ * This is used only by public viewer/export routes. It never accepts the
+ * internal project UUID, so the editing identifier cannot be used as a
+ * public token.
+ */
+export async function findProjectByPublicViewId(
+    db: Kysely<Database>,
+    publicViewId: string,
+): Promise<Project | undefined> {
+    return db.selectFrom('projects').selectAll().where('public_view_id', '=', publicViewId).executeTakeFirst();
+}
+
+/**
+ * Generate a new opaque public view id, distinct from the project UUID.
+ */
+export function generatePublicViewId(): string {
+    return randomUUID();
 }
 
 export async function findProjectWithOwner(
@@ -297,11 +348,23 @@ export async function findSavedProjectsForUser(db: Kysely<Database>, userId: num
 // WRITE QUERIES
 // ============================================================================
 
-export async function createProject(db: Kysely<Database>, data: Omit<NewProject, 'uuid'>): Promise<Project> {
+/**
+ * Input for {@link createProject}. Mirrors NewProject minus the generated
+ * uuid; `status`, `visibility` and `public_view_enabled` are optional because the
+ * database defines defaults for them ('active' / 'private' / 0).
+ */
+export type CreateProjectInput = Omit<NewProject, 'uuid' | 'status' | 'visibility' | 'public_view_enabled'> &
+    Partial<Pick<NewProject, 'status' | 'visibility' | 'public_view_enabled'>>;
+
+export async function createProject(db: Kysely<Database>, data: CreateProjectInput): Promise<Project> {
     const timestamp = now();
     const uuid = uuidv4();
     const values = {
         ...data,
+        // Fall back to the column defaults so callers may omit these fields
+        status: data.status ?? 'active',
+        visibility: data.visibility ?? 'private',
+        public_view_enabled: data.public_view_enabled ?? 0,
         uuid,
         created_at: timestamp,
         updated_at: timestamp,
@@ -490,11 +553,18 @@ export async function findProjectsByOwnerId(db: Kysely<Database>, ownerId: numbe
 export async function createProjectWithUuid(
     db: Kysely<Database>,
     uuid: string,
-    data: Omit<NewProject, 'uuid'>,
+    data: CreateProjectInput,
 ): Promise<Project> {
+    // The uuid later names session and asset directories, so a caller-chosen
+    // value must be a single safe path segment.
+    assertSafePathSegment(uuid, { label: 'project uuid' });
     const timestamp = now();
     const values = {
         ...data,
+        // Fall back to the column defaults so callers may omit these fields
+        status: data.status ?? 'active',
+        visibility: data.visibility ?? 'private',
+        public_view_enabled: data.public_view_enabled ?? 0,
         uuid,
         created_at: timestamp,
         updated_at: timestamp,
@@ -601,19 +671,14 @@ export async function transferOwnershipByUuid(
     return transferOwnership(db, project.id, newOwnerId);
 }
 
+// Visibility governs edit access only. The public read-only viewer link is
+// controlled independently via public_view_enabled (see setPublicViewEnabled).
 export async function updateProjectVisibility(
     db: Kysely<Database>,
     projectId: number,
     visibility: string,
 ): Promise<void> {
-    await db
-        .updateTable('projects')
-        .set({
-            visibility,
-            updated_at: now(),
-        })
-        .where('id', '=', projectId)
-        .execute();
+    await db.updateTable('projects').set({ visibility, updated_at: now() }).where('id', '=', projectId).execute();
 }
 
 export async function updateProjectVisibilityByUuid(
@@ -621,14 +686,77 @@ export async function updateProjectVisibilityByUuid(
     uuid: string,
     visibility: string,
 ): Promise<void> {
+    await db.updateTable('projects').set({ visibility, updated_at: now() }).where('uuid', '=', uuid).execute();
+}
+
+/**
+ * Enable or disable the public read-only viewer link for a project.
+ *
+ * Independent of `visibility` (edit access). When enabling and the project has
+ * no public_view_id yet, an opaque one is generated. The id is never cleared on
+ * disable, so the previous link is preserved if the project is re-enabled.
+ */
+async function setPublicViewEnabledWhere(
+    db: Kysely<Database>,
+    existing: Project | undefined,
+    enabled: boolean,
+    column: 'id' | 'uuid',
+    value: number | string,
+): Promise<void> {
+    const update: ProjectUpdate = {
+        public_view_enabled: enabled ? 1 : 0,
+        updated_at: now(),
+    };
+    if (enabled && !existing?.public_view_id) {
+        update.public_view_id = generatePublicViewId();
+    }
     await db
         .updateTable('projects')
-        .set({
-            visibility,
-            updated_at: now(),
-        })
+        .set(update)
+        .where(column, '=', value as never)
+        .execute();
+}
+
+export async function setPublicViewEnabled(
+    db: Kysely<Database>,
+    projectId: number,
+    enabled: boolean,
+): Promise<Project | undefined> {
+    const existing = await findProjectById(db, projectId);
+    await setPublicViewEnabledWhere(db, existing, enabled, 'id', projectId);
+    return findProjectById(db, projectId);
+}
+
+export async function setPublicViewEnabledByUuid(
+    db: Kysely<Database>,
+    uuid: string,
+    enabled: boolean,
+): Promise<Project | undefined> {
+    const existing = await findProjectByUuid(db, uuid);
+    await setPublicViewEnabledWhere(db, existing, enabled, 'uuid', uuid);
+    return findProjectByUuid(db, uuid);
+}
+
+/**
+ * Generate a fresh public_view_id, invalidating any previously shared public
+ * link. Does not change public_view_enabled.
+ */
+export async function regeneratePublicViewId(db: Kysely<Database>, projectId: number): Promise<Project | undefined> {
+    await db
+        .updateTable('projects')
+        .set({ public_view_id: generatePublicViewId(), updated_at: now() })
+        .where('id', '=', projectId)
+        .execute();
+    return findProjectById(db, projectId);
+}
+
+export async function regeneratePublicViewIdByUuid(db: Kysely<Database>, uuid: string): Promise<Project | undefined> {
+    await db
+        .updateTable('projects')
+        .set({ public_view_id: generatePublicViewId(), updated_at: now() })
         .where('uuid', '=', uuid)
         .execute();
+    return findProjectByUuid(db, uuid);
 }
 
 // ============================================================================

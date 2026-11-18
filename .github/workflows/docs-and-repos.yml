@@ -53,6 +53,11 @@ jobs:
           sed -i "1s|^|site_url: ${SITE_URL}\n|" mkdocs.yml
           mkdocs build -d site-docs
 
+      # The revised Spanish manual is maintained in eXeLearning. Publish its
+      # embedded website directly to preserve the authored theme and images.
+      - name: Publish unified Spanish plugin manual
+        run: python -m zipfile -e doc/plugins/manual.es.elpx site-docs/plugins/manual-es
+
       # ---- Tools for repo metadata ----
       - name: Install repo tools
         run: |

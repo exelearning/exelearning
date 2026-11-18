@@ -75,7 +75,7 @@ function loadPage() {
   var result = scorm.init();
   var status = scorm.GetCompletionStatus();
 
-  if (status == "not attempted" || status == "incomplete") {
+  if (!applyActivityStatus(true) && (status == "not attempted" || status == "incomplete")) {
     // the student is now attempting the lesson
     scorm.SetCompletionStatus("unknown");
     scorm.SetSuccessStatus("unknown")
@@ -83,6 +83,36 @@ function loadPage() {
 
   exitPageStatus = false;
   startTimer();
+}
+
+/**
+ * Write the SCORM 2004 status the page's activities decide (getLegacyVerdict
+ * in common.js), at entry and at exit, under either pass rule.
+ *
+ * The exported page calls unloadPage() with no argument from its body
+ * attributes, before exe_export.js can pass isSCORM, so the generic rule
+ * below would mark a page with unfinished activities completed and passed.
+ * Deciding from the activities instead keeps it incomplete.
+ *
+ * @param {boolean} atEntry True from loadPage().
+ * @returns {boolean} True when the status was written here.
+ */
+function applyActivityStatus(atEntry) {
+  var devices = window.$exeDevices;
+  var activities = devices && devices.iDevice && devices.iDevice.gamification && devices.iDevice.gamification.scorm;
+  if (scorm.version !== "2004" || !activities ||
+      typeof activities.getLegacyVerdict !== "function" || typeof activities.setLegacyStatus !== "function") {
+    return false;
+  }
+  // At entry, iDevices may not have registered their custom minimums yet.
+  // Preserve the LMS verdict until they do; using the project minimum here
+  // could turn a submitted zero with a custom minimum of zero into a failure.
+  if (atEntry && Object.keys(activities._successThresholdsByNumber).length === 0) return false;
+  var verdict = activities.getLegacyVerdict(activities.parseSuspendData(scorm.get("cmi.suspend_data")));
+  // A page with no activities keeps the existing view-only rule.
+  if (!verdict) return false;
+  activities.setLegacyStatus(verdict);
+  return true;
 }
 
 /**
@@ -201,7 +231,7 @@ function unloadPage(isSCORM) {
   if (exitPageStatus != true) {
     var status = scorm.GetSuccessStatus();
     // In SCORM12, information about completion and success is stored in the same place (cmi.core.lesson_status)
-    if (status != "passed" && status != "failed" && status != "completed") {
+    if (!applyActivityStatus(false) && status != "passed" && status != "failed" && status != "completed") {
       if (isSCORM == true) {
         scorm.SetCompletionStatus("incomplete");
         scorm.SetSuccessStatus("failed")

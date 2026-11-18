@@ -1058,4 +1058,106 @@ describe('complete iDevice export', () => {
       expect($(`#cmptReloadPhrase-${instance}`).css('display')).toBe('none');
     });
   });
+
+  /**
+   * The on-screen verdict used to be "more hits than errors", a rule nothing
+   * else on the page shared. Six right out of ten read as passed however high
+   * the author had set the mark, while the progress report beside it called the
+   * same attempt failed. Only a behavioural test catches this one: there was no
+   * literal threshold to scan for.
+   */
+  describe('the verdict colour follows the pass mark', () => {
+    const attempt = (passScoreMode, passScoreCustom) => ({
+      hits: 6,
+      errors: 4,
+      number: 10,
+      passScoreMode,
+      passScoreCustom,
+    });
+
+    it('scores six right out of ten as a 6', () => {
+      expect($eXeCompleta.getScore(attempt('global'))).toBe(6);
+    });
+
+    it('passes that 6 on the project mark of 5', () => {
+      expect($eXeCompleta.getVerdictColor(attempt('global'))).toBe(2);
+    });
+
+    it('fails it when the author set the mark at 8', () => {
+      expect($eXeCompleta.getVerdictColor(attempt('custom', 8))).toBe(1);
+    });
+
+    it('no longer passes an attempt merely for having more hits than errors', () => {
+      // Six hits and four errors: the old rule said passed outright.
+      expect($eXeCompleta.getVerdictColor(attempt('custom', 6.5))).toBe(1);
+    });
+  });
+
+  // The editor never reloads the document between pages, and a game's ids are
+  // numbered by position: the next page's first game takes the ids this one
+  // had. The clock used to find that game by id and run it, counting down on
+  // its display and ending it when its own time ran out.
+  describe('the clock of a timed game', () => {
+    const instance = 0;
+
+    beforeEach(() => {
+      vi.useFakeTimers();
+      document.body.innerHTML = `<div id="cmptMainContainer-${instance}"></div>`;
+      $eXeCompleta.options = [{ gameStarted: false, time: 1, type: 0 }];
+      for (const method of ['updateTime', 'saveScormScore', 'checkPhrase', 'gameOver']) {
+        vi.spyOn($eXeCompleta, method).mockImplementation(() => {});
+      }
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+      vi.restoreAllMocks();
+      document.body.innerHTML = '';
+    });
+
+    it('counts down on its own game', () => {
+      $eXeCompleta.startGame(instance);
+
+      vi.advanceTimersByTime(3000);
+
+      expect($eXeCompleta.updateTime).toHaveBeenLastCalledWith(57, instance);
+    });
+
+    it('ends its own game when the time runs out', () => {
+      $eXeCompleta.startGame(instance);
+
+      vi.advanceTimersByTime(60000);
+
+      expect($eXeCompleta.gameOver).toHaveBeenCalledWith(2, instance);
+    });
+
+    it("leaves the next page's game alone, though it takes the same ids", () => {
+      $eXeCompleta.startGame(instance);
+      vi.advanceTimersByTime(1000);
+
+      // The author moves to another page, whose first game is numbered the same.
+      document.body.innerHTML = `<div id="cmptMainContainer-${instance}"></div>`;
+      $eXeCompleta.options[instance] = { gameStarted: true, activeCounter: true, counter: 240 };
+      $eXeCompleta.updateTime.mockClear();
+      vi.advanceTimersByTime(120000);
+
+      expect($eXeCompleta.updateTime).not.toHaveBeenCalled();
+      expect($eXeCompleta.checkPhrase).not.toHaveBeenCalled();
+      expect($eXeCompleta.gameOver).not.toHaveBeenCalled();
+      expect($eXeCompleta.options[instance].counter).toBe(240);
+    });
+  });
+});
+
+describe('complete minimum score notice', () => {
+  it('asks for the notice right after its interface replaces the stored data', () => {
+    const source = readFileSync(join(__dirname, 'complete.js'), 'utf-8');
+    const loadGame = source.slice(source.indexOf('loadGame: function'));
+
+    // The main container comes with the interface, so from that line on the
+    // notice can go right before it, below the instructions.
+    expect(loadGame).toMatch(
+      /mOption\.main = [^\n]+[\s\S]*?dl\.before\(\w+\)\.remove\(\);\s*\$exeDevices\.iDevice\.gamification\.report\.showPassScoreNotice\(mOption\);/
+    );
+  });
 });

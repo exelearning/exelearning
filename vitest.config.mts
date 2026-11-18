@@ -21,10 +21,17 @@ export default defineConfig({
         // Rejection" and fails the whole run even though every test passed.
         // Disabling file loading removes the async task entirely and resolves
         // the element as a successful (no-op) load. See HTMLLinkElement.#loadStyleSheet.
+        //
+        // happy-dom 21 disables iframe page loading by default and replaces the
+        // deprecated `disableCSSFileLoading` with `enableCSSFileLoading`. TinyMCE
+        // renders its editor inside an `about:blank` iframe and writes to its
+        // `contentDocument`, which no longer exists unless iframe loading is
+        // enabled, so keep the happy-dom 20 iframe behaviour explicitly.
         environmentOptions: {
             happyDOM: {
                 settings: {
-                    disableCSSFileLoading: true,
+                    enableCSSFileLoading: false,
+                    enableIframePageLoading: true,
                     disableJavaScriptFileLoading: true,
                     handleDisabledFileLoadingAsSuccess: true,
                 },
@@ -35,7 +42,12 @@ export default defineConfig({
         setupFiles: ['./public/vitest.setup.js'],
 
         // Only include frontend tests
-        include: ['public/app/**/*.test.js', 'public/libs/**/*.test.js', 'public/files/perm/idevices/**/*.test.js', 'public/preview-sw.test.js'],
+        include: [
+            'public/app/**/*.test.js',
+            'public/libs/**/*.test.js',
+            'public/files/perm/idevices/**/*.test.js',
+            'public/preview-sw.test.js',
+        ],
 
         // Exclude legacy code
         exclude: [
@@ -47,7 +59,6 @@ export default defineConfig({
             'public/app/common/edicuatex/**/*.html',
             'public/app/common/edicuatex/**/*.json',
             'public/app/common/mermaid/**',
-            'public/app/common/mindmaps/**',
             'public/app/common/fix_webm_duration/**',
             'public/app/common/exe_tooltips/imagesloaded.pkg.min.js',
             'public/app/common/exe_tooltips/jquery.qtip.min.js',
@@ -90,7 +101,6 @@ export default defineConfig({
                 // THIRD-PARTY-NOTICES.md)
                 'public/app/common/scorm/scorm12/vendor/**',
                 'public/app/common/mermaid/**',
-                'public/app/common/mindmaps/**',
                 'public/app/common/fix_webm_duration/**',
                 'public/app/common/exe_tooltips/imagesloaded.pkg.min.js',
                 'public/app/common/exe_tooltips/jquery.qtip.min.js',

@@ -34,6 +34,7 @@ import {
     findProjectsByOwnerId,
 } from '../../../src/db/queries/projects';
 import { getUserStorageUsage } from '../../../src/db/queries/assets';
+import { getDefaultQuotaMb } from '../../../src/services/app-settings';
 
 const TEST_JWT_SECRET = 'test_secret_for_integration_tests';
 
@@ -72,6 +73,7 @@ describe('Admin Routes Integration', () => {
                 updateUserStatus: (db, id, isActive) => updateUserStatus(db, id, isActive),
                 createUserAsAdmin: (db, data) => createUserAsAdmin(db, data),
                 updateUserQuota: (db, id, quota) => updateUserQuota(db, id, quota),
+                getDefaultQuotaMb: db => getDefaultQuotaMb(db),
                 deleteUser: (db, id) => deleteUser(db, id),
                 getSystemStats: db => getSystemStats(db),
                 getUserStorageUsage: (db, userId) => getUserStorageUsage(db, userId),
@@ -314,6 +316,32 @@ describe('Admin Routes Integration', () => {
 
             expect(data.user.email).toBe('newuser@test.local');
             expect(data.user.roles).toContain('ROLE_USER');
+        });
+
+        it('should apply the stored DEFAULT_QUOTA when no quota is given, and null as unlimited (#2514)', async () => {
+            await setSetting(db as any, 'DEFAULT_QUOTA', '321', 'number');
+            try {
+                const create = (email: string, extra: Record<string, unknown> = {}) =>
+                    testRequest(app, '/api/admin/users', {
+                        method: 'POST',
+                        headers: {
+                            Authorization: `Bearer ${adminToken}`,
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ email, password: 'quota1234', ...extra }),
+                    });
+
+                const defaulted = await create('defaulted@test.local');
+                const unlimited = await create('unlimited@test.local', { quota_mb: null });
+                const explicit = await create('explicit@test.local', { quota_mb: 50 });
+
+                expect([defaulted.status, unlimited.status, explicit.status]).toEqual([201, 201, 201]);
+                expect((await findUserByEmail(db, 'defaulted@test.local'))?.quota_mb).toBe(321);
+                expect((await findUserByEmail(db, 'unlimited@test.local'))?.quota_mb).toBeNull();
+                expect((await findUserByEmail(db, 'explicit@test.local'))?.quota_mb).toBe(50);
+            } finally {
+                await db.deleteFrom('app_settings').where('key', '=', 'DEFAULT_QUOTA').execute();
+            }
         });
 
         it('should create user with custom roles', async () => {

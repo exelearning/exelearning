@@ -287,6 +287,19 @@ describe('ConcurrentUsers', () => {
       expect(node.querySelector('.guest-badge')?.textContent).toBe('Guest');
     });
 
+    it('should render the user name as text, not HTML', () => {
+      const name = '<img src=x onerror="alert(1)">';
+      const node = concurrentUsers.createUserElement({
+        clientId: 1,
+        name,
+        email: 'evil@example.com',
+      });
+
+      const username = node.querySelector('.username');
+      expect(username.textContent).toBe(name);
+      expect(username.querySelector('img')).toBeNull();
+    });
+
     it('should fallback to initials on image error', () => {
       const node = concurrentUsers.createUserElement({
         clientId: 1,

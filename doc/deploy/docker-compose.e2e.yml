@@ -16,3 +16,15 @@ services:
       APP_AUTH_METHODS: password,guest,openid
       OIDC_AUTHORIZATION_ENDPOINT: https://oidc.example.test/authorize
       OIDC_CLIENT_ID: e2e-client
+      # test/e2e/playwright/specs/platform-edit-reuses-project.spec.ts runs a
+      # stand-in Moodle on the test runner and signs its JWTs with this secret
+      # (the same values playwright.config.ts gives the local server). Inside
+      # the container "localhost" is the container itself, so the runner is
+      # reached as host.docker.internal; the SSRF guard blocks that private
+      # address unless private networks are allowed.
+      APP_SECRET: e2e-platform-secret
+      PROVIDER_URLS: http://host.docker.internal
+      PROVIDER_ALLOW_PRIVATE_NETWORK: 'true'
+    # Docker Desktop defines host.docker.internal; Linux engines (CI) need it mapped.
+    extra_hosts:
+      - host.docker.internal:host-gateway

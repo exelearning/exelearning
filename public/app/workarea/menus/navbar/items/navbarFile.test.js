@@ -10,7 +10,7 @@ import createTooltip from '../../../../common/app_tooltip.js';
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import NavbarFile from './navbarFile.js';
+import NavbarFile, { COLLAPSE_PANELS_BELOW } from './navbarFile.js';
 
 describe('NavbarFile', () => {
     let mockMenu;
@@ -994,6 +994,28 @@ describe('NavbarFile', () => {
             expect(navbarFile.downloadProjectEvent).toHaveBeenCalled();
         });
 
+        it('setExportPrintEvent should not print while an idevice is open', () => {
+            eXeLearning.app.project.checkOpenIdevice = vi.fn(() => true);
+            vi.spyOn(navbarFile, 'startPrint').mockImplementation(() => {});
+            navbarFile.setExportPrintEvent();
+
+            const clickHandler = mockButtons.exportPrintButton.addEventListener.mock.calls[0][1];
+            clickHandler();
+
+            expect(navbarFile.startPrint).not.toHaveBeenCalled();
+        });
+
+        it('setExportPrintEvent should start printing when no idevice is open', () => {
+            eXeLearning.app.project.checkOpenIdevice = vi.fn(() => false);
+            vi.spyOn(navbarFile, 'startPrint').mockImplementation(() => {});
+            navbarFile.setExportPrintEvent();
+
+            const clickHandler = mockButtons.exportPrintButton.addEventListener.mock.calls[0][1];
+            clickHandler();
+
+            expect(navbarFile.startPrint).toHaveBeenCalledOnce();
+        });
+
         it('setDownloadProjectEvent should return false if idevice is open', () => {
             eXeLearning.app.project.checkOpenIdevice = vi.fn(() => true);
             vi.spyOn(navbarFile, 'downloadProjectEvent');
@@ -1629,6 +1651,14 @@ describe('NavbarFile', () => {
             expect(window.location.href).toBe('/workarea?project=proj-3');
         });
 
+        it('makeRecentProjecList should render project titles as text, not HTML', () => {
+            const title = '<img src=x onerror="alert(1)">';
+            const list = navbarFile.makeRecentProjecList([{ odeId: 'proj-4', title }]);
+            const link = list.querySelector('a');
+            expect(link.textContent).toBe(title);
+            expect(link.querySelector('img')).toBeNull();
+        });
+
         it('makeRecentProjecList should show empty message when list is empty', () => {
             const list = navbarFile.makeRecentProjecList([]);
             expect(list.textContent).toContain('No recent projects');
@@ -1669,6 +1699,49 @@ describe('NavbarFile', () => {
             navbarFile.openPrintPreview();
 
             expect(consoleWarnSpy).toHaveBeenCalledWith('[NavbarFile] Print preview modal not available');
+            consoleWarnSpy.mockRestore();
+        });
+
+        it('should open the overlay in document mode by default', () => {
+            const mockPrintPreviewModal = { show: vi.fn() };
+            eXeLearning.app.modals.printpreview = mockPrintPreviewModal;
+
+            navbarFile.openPrintPreview();
+
+            expect(mockPrintPreviewModal.show).toHaveBeenCalledWith('document', null, null, []);
+        });
+
+        it('should open the overlay in idevices mode when asked', () => {
+            const mockPrintPreviewModal = { show: vi.fn() };
+            eXeLearning.app.modals.printpreview = mockPrintPreviewModal;
+
+            navbarFile.openPrintPreview('idevices');
+
+            expect(mockPrintPreviewModal.show).toHaveBeenCalledWith('idevices', null, null, []);
+        });
+
+        it('should hand the overlay what to do with the activities, and which they are', () => {
+            const mockPrintPreviewModal = { show: vi.fn() };
+            eXeLearning.app.modals.printpreview = mockPrintPreviewModal;
+            const activities = [{ id: 'c1', type: 'guess', pageTitle: 'Tema 1', blockTitle: '' }];
+
+            navbarFile.openPrintPreview('document', 'appendix', ['c1'], activities);
+
+            expect(mockPrintPreviewModal.show).toHaveBeenCalledWith('document', 'appendix', ['c1'], activities);
+        });
+
+        it('should say the print preview is not available, whatever the mode', () => {
+            eXeLearning.app.modals.printpreview = null;
+            const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+            for (const mode of ['idevices', undefined]) {
+                eXeLearning.app.modals.alert.show.mockClear();
+                navbarFile.openPrintPreview(mode);
+                expect(eXeLearning.app.modals.alert.show).toHaveBeenCalledWith(
+                    expect.objectContaining({ body: 'Print preview is not available.' })
+                );
+            }
+
             consoleWarnSpy.mockRestore();
         });
     });
@@ -2300,6 +2373,61 @@ describe('NavbarFile', () => {
             expect(window.location.replace).toHaveBeenCalledWith('http://platform/return');
         });
 
+        // The next edit of the activity may reopen this project as it is, maybe
+        // from another browser, so its assets must be on the server too (#2550).
+        describe('saving the project before sending it to the platform', () => {
+            async function finish(save) {
+                window.location.search = '?jwt_token=ignored';
+                window.SharedExporters = {
+                    quickExport: vi
+                        .fn()
+                        .mockResolvedValue({ success: true, data: new Uint8Array([0x50, 0x4b]), filename: 'p.zip' }),
+                };
+                eXeLearning.app.project._yjsBridge = {
+                    save,
+                    getDocumentManager: () => ({ saveToServer: vi.fn().mockResolvedValue() }),
+                    documentManager: { id: 'doc' },
+                    assetManager: { id: 'asset' },
+                };
+                const fetchMock = vi.fn().mockResolvedValue({
+                    ok: true,
+                    status: 200,
+                    json: async () => ({ responseMessage: 'OK', returnUrl: 'http://platform/return' }),
+                });
+                const originalFetch = global.fetch;
+                global.fetch = fetchMock;
+                try {
+                    await navbarFile.uploadPlatformEvent();
+                } finally {
+                    global.fetch = originalFetch;
+                    delete window.SharedExporters;
+                }
+                return fetchMock.mock.calls[0][1].body;
+            }
+
+            it('uploads the assets with the document and says the project is saved', async () => {
+                const save = vi.fn().mockResolvedValue({ success: true });
+
+                const body = await finish(save);
+
+                expect(save).toHaveBeenCalledWith({ showProgress: false });
+                expect(body.get('projectSaved')).toBe('1');
+                expect(window.location.replace).toHaveBeenCalledWith('http://platform/return');
+            });
+
+            it('still sends the package when the project could not be saved', async () => {
+                const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+                const failed = await finish(vi.fn().mockResolvedValue({ success: false }));
+                const thrown = await finish(vi.fn().mockRejectedValue(new Error('quota')));
+
+                expect(failed.get('projectSaved')).toBeNull();
+                expect(thrown.get('projectSaved')).toBeNull();
+                expect(window.location.replace).toHaveBeenCalledTimes(2);
+                warn.mockRestore();
+            });
+        });
+
         it('uploadPlatformEvent surfaces export failures from SharedExporters', async () => {
             window.location.search = '?jwt_token=ignored';
             const quickExport = vi.fn().mockResolvedValue({ success: false, error: 'no document' });
@@ -2624,8 +2752,16 @@ describe('NavbarFile', () => {
     });
 
     describe('mobile layout helpers', () => {
+        let innerWidth;
+
         beforeEach(() => {
+            innerWidth = window.innerWidth;
             navbarFile = new NavbarFile(mockMenu);
+            document.body.classList.remove('left-column-hidden');
+        });
+
+        afterEach(() => {
+            window.innerWidth = innerWidth;
             document.body.classList.remove('left-column-hidden');
         });
 
@@ -2635,15 +2771,55 @@ describe('NavbarFile', () => {
             expect(document.body.classList.contains('left-column-hidden')).toBe(true);
         });
 
+        it('initMobileLayout should collapse on tablets, where the toolbar does not fit beside the sidebar', () => {
+            window.innerWidth = 1199;
+            navbarFile.initMobileLayout();
+            expect(document.body.classList.contains('left-column-hidden')).toBe(true);
+        });
+
+        it('initMobileLayout should keep the sidebar open from 1200px', () => {
+            expect(COLLAPSE_PANELS_BELOW).toBe(1200);
+            window.innerWidth = 1200;
+            navbarFile.initMobileLayout();
+            expect(document.body.classList.contains('left-column-hidden')).toBe(false);
+        });
+
         it('handleResponsiveLayout should toggle state on resize', () => {
             window.innerWidth = 500;
             navbarFile.handleResponsiveLayout();
             expect(navbarFile._wasResizedToMobile).toBe(true);
             expect(document.body.classList.contains('left-column-hidden')).toBe(true);
 
-            window.innerWidth = 900;
+            window.innerWidth = 1300;
             navbarFile.handleResponsiveLayout();
             expect(navbarFile._wasResizedToMobile).toBe(false);
+        });
+
+        it('handleResponsiveLayout should collapse once when a wide viewport becomes a tablet one', () => {
+            window.innerWidth = 1366;
+            navbarFile.handleResponsiveLayout();
+            expect(document.body.classList.contains('left-column-hidden')).toBe(false);
+
+            window.innerWidth = 1024;
+            navbarFile.handleResponsiveLayout();
+            expect(document.body.classList.contains('left-column-hidden')).toBe(true);
+
+            // Reopened by hand, the panels stay open while the viewport stays narrow
+            document.body.classList.remove('left-column-hidden');
+            window.innerWidth = 1000;
+            navbarFile.handleResponsiveLayout();
+            expect(document.body.classList.contains('left-column-hidden')).toBe(false);
+        });
+
+        it('handleResponsiveLayout should not close panels reopened by hand after a tablet load', () => {
+            window.innerWidth = 810;
+            navbarFile.initMobileLayout();
+            expect(document.body.classList.contains('left-column-hidden')).toBe(true);
+
+            document.body.classList.remove('left-column-hidden');
+            window.innerWidth = 1080;
+            navbarFile.handleResponsiveLayout();
+            expect(document.body.classList.contains('left-column-hidden')).toBe(false);
         });
 
         it('initMobileBackdropClose should hide sidebar on outside click', () => {
@@ -3281,6 +3457,100 @@ describe('NavbarFile', () => {
             navbarFile.openUserOdeFilesEvent();
 
             expect(staticSpy).not.toHaveBeenCalled();
+        });
+    });
+});
+
+describe('NavbarFile printing with interactive activities', () => {
+    let navbarFile;
+    let printPreview;
+
+    /** Two activities, as listProjectInteractiveActivities gives them. */
+    const ACTIVITIES = [
+        { id: 'c1', type: 'guess', pageTitle: 'La Edad Media en la península', blockTitle: '' },
+        { id: 'c2', type: 'crossword', pageTitle: 'Repaso', blockTitle: 'Crucigrama final' },
+    ];
+
+    beforeEach(() => {
+        // The methods under test do not touch the navbar's buttons, so the prototype is exercised
+        // directly rather than rebuilding the whole menu fixture.
+        navbarFile = Object.create(NavbarFile.prototype);
+        printPreview = { show: vi.fn() };
+
+        global._ = (str) => str;
+        global.eXeLearning = {
+            app: {
+                project: { _yjsBridge: { documentManager: {} } },
+                modals: { printpreview: printPreview },
+            },
+        };
+        // The suite above deletes global.window in its teardown, so this stands one up again.
+        global.window = { SharedExporters: { listProjectInteractiveActivities: vi.fn(() => ACTIVITIES) } };
+    });
+
+    afterEach(() => {
+        delete global.window;
+        vi.clearAllMocks();
+    });
+
+    describe('when the project has no interactive activity', () => {
+        beforeEach(() => {
+            global.window.SharedExporters.listProjectInteractiveActivities = vi.fn(() => []);
+        });
+
+        it('opens the preview of the document untouched, with nothing to choose about', () => {
+            navbarFile.startPrint();
+
+            expect(printPreview.show).toHaveBeenCalledTimes(1);
+            expect(printPreview.show).toHaveBeenCalledWith('document', null, null, []);
+        });
+    });
+
+    describe('when the project has them', () => {
+        it('opens the preview at once, with the activities printed where the author put them', () => {
+            navbarFile.startPrint();
+
+            expect(printPreview.show).toHaveBeenCalledTimes(1);
+            expect(printPreview.show).toHaveBeenCalledWith('document', 'in-place', null, ACTIVITIES);
+        });
+
+        it('lists the activities of the project', () => {
+            navbarFile.startPrint();
+
+            expect(global.window.SharedExporters.listProjectInteractiveActivities).toHaveBeenCalledWith(
+                eXeLearning.app.project._yjsBridge.documentManager
+            );
+        });
+    });
+
+    describe('when the project cannot be inspected', () => {
+        it('prints untouched rather than failing, if the list is missing', () => {
+            delete global.window.SharedExporters;
+
+            navbarFile.startPrint();
+
+            expect(printPreview.show).toHaveBeenCalledWith('document', null, null, []);
+        });
+
+        it('prints untouched rather than failing, if there is no document manager yet', () => {
+            eXeLearning.app.project._yjsBridge = null;
+
+            navbarFile.startPrint();
+
+            expect(printPreview.show).toHaveBeenCalledWith('document', null, null, []);
+        });
+
+        it('prints untouched rather than failing, if listing throws', () => {
+            const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+            global.window.SharedExporters.listProjectInteractiveActivities = vi.fn(() => {
+                throw new Error('broken');
+            });
+
+            navbarFile.startPrint();
+
+            expect(printPreview.show).toHaveBeenCalledWith('document', null, null, []);
+            expect(warn).toHaveBeenCalledWith('[NavbarFile] Could not inspect the project:', expect.any(Error));
+            warn.mockRestore();
         });
     });
 });

@@ -10,6 +10,8 @@ import {
     findProjectById,
     findProjectByUuid,
     findProjectByPlatformId,
+    findOwnedProjectByPlatformBinding,
+    findProjectByPublicViewId,
     findProjectWithOwner,
     findProjectByUuidWithOwner,
     getProjectCollaborators,
@@ -37,10 +39,15 @@ import {
     transferOwnershipByUuid,
     updateProjectVisibility,
     updateProjectVisibilityByUuid,
+    setPublicViewEnabled,
+    setPublicViewEnabledByUuid,
+    regeneratePublicViewId,
+    regeneratePublicViewIdByUuid,
     findUnsavedProjectsOlderThan,
     findGuestProjectsOlderThan,
 } from './projects';
 import { createUser } from './users';
+import { UnsafePathError } from '../../utils/safe-path';
 
 describe('Project Queries', () => {
     let db: Kysely<Database>;
@@ -118,6 +125,14 @@ describe('Project Queries', () => {
             });
 
             expect(project.uuid).toBe(customUuid);
+        });
+
+        it('should refuse a UUID that is not a single safe path segment', async () => {
+            for (const uuid of ['../.', '20250101000000/../..', 'a\\b', '..']) {
+                await expect(createProjectWithUuid(db, uuid, { title: 'Bad', owner_id: testUser.id })).rejects.toThrow(
+                    UnsafePathError,
+                );
+            }
         });
 
         it('should enforce unique UUID constraint', async () => {
@@ -206,6 +221,95 @@ describe('Project Queries', () => {
 
             // Project has null platform_id by default
             const found = await findProjectByPlatformId(db, 'any-id');
+            expect(found).toBeUndefined();
+        });
+    });
+
+    describe('findOwnedProjectByPlatformBinding', () => {
+        const site = 'https://moodle.example.com/moodle';
+
+        async function boundProject(
+            uuid: string,
+            binding: { owner_id?: number; platform_site?: string | null; platform_id?: string; status?: string },
+        ) {
+            await createProjectWithUuid(db, uuid, { title: uuid, owner_id: binding.owner_id ?? testUser.id });
+            await db
+                .updateTable('projects')
+                .set({
+                    platform_id: binding.platform_id ?? '1234',
+                    platform_site: binding.platform_site === undefined ? site : binding.platform_site,
+                    status: binding.status ?? 'active',
+                })
+                .where('uuid', '=', uuid)
+                .execute();
+        }
+
+        it("returns the owner's project bound to the site and cmid", async () => {
+            await boundProject('bound', {});
+
+            const found = await findOwnedProjectByPlatformBinding(db, testUser.id, site, '1234');
+
+            expect(found?.uuid).toBe('bound');
+        });
+
+        it('ignores projects of other users bound to the same activity', async () => {
+            const other = await createUser(db, { email: 'other@example.com', user_id: 'other', password: 'x' });
+            await boundProject('other-owner', { owner_id: other.id });
+
+            expect(await findOwnedProjectByPlatformBinding(db, testUser.id, site, '1234')).toBeUndefined();
+        });
+
+        it('ignores the same cmid on another site and legacy bindings without a site', async () => {
+            await boundProject('other-site', { platform_site: 'https://other.example.com' });
+            await boundProject('legacy', { platform_site: null });
+
+            expect(await findOwnedProjectByPlatformBinding(db, testUser.id, site, '1234')).toBeUndefined();
+        });
+
+        it('ignores deleted projects but keeps archived ones', async () => {
+            await boundProject('deleted', { status: 'inactive' });
+            expect(await findOwnedProjectByPlatformBinding(db, testUser.id, site, '1234')).toBeUndefined();
+
+            await boundProject('archived', { status: 'archived' });
+            expect((await findOwnedProjectByPlatformBinding(db, testUser.id, site, '1234'))?.uuid).toBe('archived');
+        });
+
+        it('returns the most recently updated project when several are bound', async () => {
+            await boundProject('older', {});
+            await boundProject('newer', {});
+            await boundProject('oldest', {});
+            for (const [uuid, updatedAt] of [
+                ['older', 2000],
+                ['newer', 3000],
+                ['oldest', 1000],
+            ] as const) {
+                await db.updateTable('projects').set({ updated_at: updatedAt }).where('uuid', '=', uuid).execute();
+            }
+
+            expect((await findOwnedProjectByPlatformBinding(db, testUser.id, site, '1234'))?.uuid).toBe('newer');
+        });
+    });
+
+    describe('findProjectByPublicViewId', () => {
+        it('should find a project by its public_view_id', async () => {
+            const project = await createProject(db, { title: 'Public View', owner_id: testUser.id });
+            const updated = await setPublicViewEnabled(db, project.id, true);
+            const publicViewId = updated?.public_view_id as string;
+
+            const found = await findProjectByPublicViewId(db, publicViewId);
+            expect(found?.id).toBe(project.id);
+        });
+
+        it('should return undefined for an unknown public_view_id', async () => {
+            const found = await findProjectByPublicViewId(db, 'no-such-public-view-id');
+            expect(found).toBeUndefined();
+        });
+
+        it('should not match the internal project UUID', async () => {
+            const project = await createProject(db, { title: 'Uuid Not Token', owner_id: testUser.id });
+            await setPublicViewEnabled(db, project.id, true);
+
+            const found = await findProjectByPublicViewId(db, project.uuid);
             expect(found).toBeUndefined();
         });
     });
@@ -375,6 +479,128 @@ describe('Project Queries', () => {
 
             const found = await findProjectById(db, project.id);
             expect(found?.visibility).toBe('public');
+        });
+
+        it('should not generate a public_view_id on visibility change (decoupled)', async () => {
+            const project = await createProject(db, { title: 'No PV On Visibility', owner_id: testUser.id });
+
+            await updateProjectVisibility(db, project.id, 'public');
+
+            const found = await findProjectById(db, project.id);
+            expect(found?.public_view_id).toBeFalsy();
+        });
+    });
+
+    describe('setPublicViewEnabled', () => {
+        it('should generate a public_view_id on first enable', async () => {
+            const project = await createProject(db, { title: 'PV Gen', owner_id: testUser.id });
+            expect(project.public_view_id).toBeFalsy();
+
+            const updated = await setPublicViewEnabled(db, project.id, true);
+
+            expect(updated?.public_view_enabled).toBe(1);
+            expect(updated?.public_view_id).toBeTruthy();
+            // The public view id must be distinct from the internal UUID.
+            expect(updated?.public_view_id).not.toBe(project.uuid);
+        });
+
+        it('should work while the project remains edit-private (decoupled)', async () => {
+            const project = await createProject(db, { title: 'PV Private', owner_id: testUser.id });
+
+            const updated = await setPublicViewEnabled(db, project.id, true);
+
+            expect(updated?.visibility).toBe('private');
+            expect(updated?.public_view_enabled).toBe(1);
+            expect(updated?.public_view_id).toBeTruthy();
+        });
+
+        it('should keep the public_view_id when disabled and reuse it when re-enabled', async () => {
+            const project = await createProject(db, { title: 'PV Keep', owner_id: testUser.id });
+            const enabled = await setPublicViewEnabled(db, project.id, true);
+            const originalId = enabled?.public_view_id;
+
+            const disabled = await setPublicViewEnabled(db, project.id, false);
+            expect(disabled?.public_view_enabled).toBe(0);
+            expect(disabled?.public_view_id).toBe(originalId);
+
+            const reEnabled = await setPublicViewEnabled(db, project.id, true);
+            expect(reEnabled?.public_view_enabled).toBe(1);
+            expect(reEnabled?.public_view_id).toBe(originalId);
+        });
+
+        it('should return undefined for a non-existent project id', async () => {
+            const updated = await setPublicViewEnabled(db, 9999999, true);
+            expect(updated).toBeUndefined();
+        });
+    });
+
+    describe('regeneratePublicViewId', () => {
+        it('should replace the public_view_id while keeping it enabled', async () => {
+            const project = await createProject(db, { title: 'PV Regen', owner_id: testUser.id });
+            const enabled = await setPublicViewEnabled(db, project.id, true);
+            const originalId = enabled?.public_view_id;
+
+            const regenerated = await regeneratePublicViewId(db, project.id);
+
+            expect(regenerated?.public_view_id).toBeTruthy();
+            expect(regenerated?.public_view_id).not.toBe(originalId);
+            expect(regenerated?.public_view_enabled).toBe(1);
+        });
+
+        it('should return undefined for a non-existent project id', async () => {
+            const regenerated = await regeneratePublicViewId(db, 9999999);
+            expect(regenerated).toBeUndefined();
+        });
+    });
+
+    describe('setPublicViewEnabledByUuid', () => {
+        it('should generate a public_view_id on first enable by UUID', async () => {
+            const project = await createProject(db, { title: 'PV Gen Uuid', owner_id: testUser.id });
+            expect(project.public_view_id).toBeFalsy();
+
+            const updated = await setPublicViewEnabledByUuid(db, project.uuid, true);
+
+            expect(updated?.public_view_enabled).toBe(1);
+            expect(updated?.public_view_id).toBeTruthy();
+            expect(updated?.public_view_id).not.toBe(project.uuid);
+        });
+
+        it('should keep the public_view_id when disabled and reuse it when re-enabled by UUID', async () => {
+            const project = await createProject(db, { title: 'PV Keep Uuid', owner_id: testUser.id });
+            const enabled = await setPublicViewEnabledByUuid(db, project.uuid, true);
+            const originalId = enabled?.public_view_id;
+
+            const disabled = await setPublicViewEnabledByUuid(db, project.uuid, false);
+            expect(disabled?.public_view_enabled).toBe(0);
+            expect(disabled?.public_view_id).toBe(originalId);
+
+            const reEnabled = await setPublicViewEnabledByUuid(db, project.uuid, true);
+            expect(reEnabled?.public_view_enabled).toBe(1);
+            expect(reEnabled?.public_view_id).toBe(originalId);
+        });
+
+        it('should return undefined for a non-existent uuid', async () => {
+            const updated = await setPublicViewEnabledByUuid(db, 'no-such-uuid', true);
+            expect(updated).toBeUndefined();
+        });
+    });
+
+    describe('regeneratePublicViewIdByUuid', () => {
+        it('should replace the public_view_id while keeping it enabled by UUID', async () => {
+            const project = await createProject(db, { title: 'PV Regen Uuid', owner_id: testUser.id });
+            const enabled = await setPublicViewEnabledByUuid(db, project.uuid, true);
+            const originalId = enabled?.public_view_id;
+
+            const regenerated = await regeneratePublicViewIdByUuid(db, project.uuid);
+
+            expect(regenerated?.public_view_id).toBeTruthy();
+            expect(regenerated?.public_view_id).not.toBe(originalId);
+            expect(regenerated?.public_view_enabled).toBe(1);
+        });
+
+        it('should return undefined for a non-existent uuid', async () => {
+            const regenerated = await regeneratePublicViewIdByUuid(db, 'no-such-uuid');
+            expect(regenerated).toBeUndefined();
         });
     });
 

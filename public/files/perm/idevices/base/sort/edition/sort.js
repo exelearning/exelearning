@@ -126,6 +126,7 @@ var $exeDevice = {
             msgUncompletedActivity: c_('Incomplete activity'),
             msgSuccessfulActivity: c_('Activity: Passed. Score: %s'),
             msgUnsuccessfulActivity: c_('Activity: Not passed. Score: %s'),
+            msgPassScore: c_('Minimum score needed to pass this activity: %s'),
             msgPhrases: c_('Phrases'),
             msgTypeGame: c_('Sort'),
         };
@@ -313,7 +314,6 @@ var $exeDevice = {
                         <label class="toggle-label" for="ordenaEWordBorder">${_('Word border')}.</label>
                     </div>
                     <div class="d-flex flex-nowrap align-items-center gap-2 mb-3">
-                        ${$exeDevicesEdition.iDevice.gamification.progressBar.getContents(path)}
                     </div>
                 </div>
             </fieldset>
@@ -376,7 +376,7 @@ var $exeDevice = {
             ${$exeDevicesEdition.iDevice.common.getTextFieldset('after')}
         </div>
         ${$exeDevicesEdition.iDevice.gamification.itinerary.getTab()}
-        ${$exeDevicesEdition.iDevice.gamification.scorm.getTab()}
+        ${$exeDevicesEdition.iDevice.gamification.scorm.getTab(path)}
         ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
     </div>`;
 
@@ -1363,6 +1363,8 @@ var $exeDevice = {
             phrasesGame = $exeDevice.phrasesGame,
             progressBar =
                 $exeDevicesEdition.iDevice.gamification.progressBar.getValues(),
+            passScore =
+                $exeDevicesEdition.iDevice.gamification.passScore.getValues(),
             id = $exeDevice.getIdeviceID(),
             type = parseInt($('input.ODNE-EType[name=odntype]:checked').val());
 
@@ -1404,6 +1406,8 @@ var $exeDevice = {
             gameColumns: gameColumns,
             evaluation: progressBar.evaluation,
             evaluationID: progressBar.evaluationID,
+            passScoreMode: passScore.passScoreMode,
+            passScoreCustom: passScore.passScoreCustom,
             wordBorder: wordBorder,
             id: id,
             type: type,
@@ -1743,6 +1747,8 @@ var $exeDevice = {
 
         $exeDevicesEdition.iDevice.gamification.progressBar.addEvents();
 
+        $exeDevicesEdition.iDevice.gamification.passScore.addEvents();
+
         const gameColumns = parseInt(
                 $('input.ODNE-EColumns[name=odncolumns]:checked').val()
             ),
@@ -2029,6 +2035,10 @@ var $exeDevice = {
         $exeDevicesEdition.iDevice.gamification.progressBar.setValues({
             evaluation: game.evaluation,
             evaluationID: game.evaluationID,
+        });
+        $exeDevicesEdition.iDevice.gamification.passScore.setValues({
+            passScoreMode: game.passScoreMode,
+            passScoreCustom: game.passScoreCustom,
         });
         $("input.ODNE-EType[name='odntype'][value='" + game.type + "']").prop(
             'checked',

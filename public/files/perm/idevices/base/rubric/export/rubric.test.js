@@ -1460,3 +1460,69 @@ describe('rubric iDevice SCORM integration', () => {
       });
     });
 });
+
+describe('rubric minimum score notice', () => {
+  let $rubric;
+  let showPassScoreNotice;
+
+  const payload = (extra) =>
+    escape(
+      JSON.stringify({
+        title: 'Rubric',
+        categories: ['Criterion'],
+        scores: ['Level 1', 'Level 2'],
+        descriptions: [[{ text: 'Good', weight: '4' }, { text: 'Fair', weight: '3' }]],
+        passScoreMode: 'custom',
+        passScoreCustom: 8,
+        ...extra,
+      })
+    );
+
+  function render(extra) {
+    document.body.innerHTML = `
+      <div class="idevice_node rubric" id="rubric_notice">
+        <div class="rubric"><div class="exe-rubrics-DataGame js-hidden">${payload(extra)}</div></div>
+      </div>`;
+    $rubric.loadGame();
+  }
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    global.$rubric = undefined;
+    $rubric = loadExportIdevice(readFileSync(join(__dirname, 'rubric.js'), 'utf-8'));
+    showPassScoreNotice = vi.spyOn(global.$exeDevices.iDevice.gamification.report, 'showPassScoreNotice');
+  });
+
+  afterEach(() => {
+    vi.clearAllTimers();
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+    document.body.innerHTML = '';
+  });
+
+  it('asks for it right above the table, below the learner details', () => {
+    // The progress report alone, so no SCORM session is involved.
+    render({ evaluation: true, evaluationID: 'report-1', i18n: { msgPassScore: 'Nota mínima: %s' } });
+
+    expect(showPassScoreNotice).toHaveBeenCalledTimes(1);
+    const [game, slot] = showPassScoreNotice.mock.calls[0];
+    expect(game).toMatchObject({ passScoreCustom: 8, msgs: { msgPassScore: 'Nota mínima: %s' } });
+    expect(slot[0].classList.contains('exe-rubrics-table-slot')).toBe(true);
+    expect(slot.find('table').length).toBe(1);
+    expect(slot.prev().attr('id')).toBe('exe-rubrics-header');
+  });
+
+  it('does not ask while neither SCORM nor the progress report judges the mark', () => {
+    render({ isScorm: 0, evaluation: false });
+
+    expect(showPassScoreNotice).not.toHaveBeenCalled();
+  });
+
+  it('keeps the author text, and invents none when the rubric was saved without it', () => {
+    expect($rubric.getStringsFromData({ i18n: { msgPassScore: 'Nota mínima: %s' } }).msgPassScore).toBe(
+      'Nota mínima: %s'
+    );
+    // No English literal: the shared runtime falls back to the page's text.
+    expect($rubric.getStringsFromData({ i18n: {} }).msgPassScore).toBeUndefined();
+  });
+});

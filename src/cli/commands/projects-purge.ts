@@ -155,8 +155,18 @@ export async function execute(
     await removePath(fileHelper, assetsRoot, diskStats);
 
     for (const uuid of projectUuids) {
-        await removePath(fileHelper, fileHelper.getOdeSessionTempDir(uuid), diskStats);
-        await removePath(fileHelper, fileHelper.getOdeSessionDistDir(uuid), diskStats);
+        // A crafted uuid is rejected by the file helper; record it and keep purging the rest.
+        let sessionDirs: string[];
+        try {
+            sessionDirs = [fileHelper.getOdeSessionTempDir(uuid), fileHelper.getOdeSessionDistDir(uuid)];
+        } catch (err) {
+            const message = err instanceof Error ? err.message : String(err);
+            diskStats.failures.push(`${JSON.stringify(uuid)}: ${message}`);
+            continue;
+        }
+        for (const dir of sessionDirs) {
+            await removePath(fileHelper, dir, diskStats);
+        }
     }
 
     return {

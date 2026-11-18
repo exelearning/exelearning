@@ -106,6 +106,37 @@ export async function upsertSnapshot(
     return db.selectFrom('yjs_documents').selectAll().where('project_id', '=', projectId).executeTakeFirstOrThrow();
 }
 
+/**
+ * Replace a project's snapshot only if it still carries `expectedVersion`
+ * (compare-and-set). Used by the save endpoint so two clients that saved from
+ * the same base cannot silently overwrite each other: the loser of the race
+ * sees `false`, reloads the stored state, merges and tries again (#2615).
+ * Portable across SQLite, PostgreSQL and MySQL/MariaDB: a single conditional
+ * UPDATE, no row locks or RETURNING.
+ *
+ * @returns true when exactly one row was replaced, false when the stored
+ *   version had moved on (or no snapshot row exists).
+ */
+export async function replaceSnapshotIfVersion(
+    db: Kysely<Database>,
+    projectId: number,
+    snapshotData: Uint8Array,
+    snapshotVersion: string,
+    expectedVersion: string,
+): Promise<boolean> {
+    const result = await db
+        .updateTable('yjs_documents')
+        .set({
+            snapshot_data: toBinaryData(snapshotData),
+            snapshot_version: snapshotVersion,
+            updated_at: now(),
+        })
+        .where('project_id', '=', projectId)
+        .where('snapshot_version', '=', expectedVersion)
+        .executeTakeFirst();
+    return Number(result.numUpdatedRows ?? 0) === 1;
+}
+
 export async function deleteSnapshot(db: Kysely<Database>, projectId: number): Promise<void> {
     await db.deleteFrom('yjs_documents').where('project_id', '=', projectId).execute();
 }
@@ -198,6 +229,32 @@ export async function getLatestVersion(db: Kysely<Database>, projectId: number):
         .executeTakeFirst();
 
     return result?.maxVersion != null ? String(result.maxVersion) : '0';
+}
+
+/**
+ * Effective persisted document version for a project.
+ *
+ * Returns the greater of the snapshot version and the latest incremental update
+ * version. Every persistence path — full-state replace ({@link saveFullState}),
+ * incremental update ({@link saveIncrementalUpdate}) and snapshot upsert
+ * ({@link upsertSnapshot}) — writes a monotonic `Date.now()` version, so this
+ * value strictly increases on every edit. It stays correct after compaction,
+ * when older updates are folded into the snapshot and removed.
+ *
+ * Used as a cache key for derived artifacts (e.g. the public read-only export),
+ * which must invalidate whenever the document content changes — note that Yjs
+ * persistence does NOT bump `projects.updated_at`, so that column cannot be used
+ * for this purpose.
+ */
+export async function getDocumentVersion(db: Kysely<Database>, projectId: number): Promise<string> {
+    const [snapshot, latestUpdate] = await Promise.all([
+        findSnapshotByProjectId(db, projectId),
+        getLatestVersion(db, projectId),
+    ]);
+
+    const snapshotVersionNum = parseInt(snapshot?.snapshot_version ?? '0', 10) || 0;
+    const updateVersionNum = parseInt(latestUpdate, 10) || 0;
+    return String(Math.max(snapshotVersionNum, updateVersionNum));
 }
 
 export async function countUpdates(db: Kysely<Database>, projectId: number): Promise<number> {

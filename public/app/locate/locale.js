@@ -106,7 +106,11 @@ export default class Locale {
      * the project's content language (e.g. Spanish) rather than English defaults.
      */
     async refreshI18nGlobals() {
-        const lang = (this._contentLang || this.lang || 'en').split('-')[0];
+        // The content language comes from the shared project metadata, so a
+        // collaborator picks it, and it selects a script that is executed below:
+        // only a plain language subtag may reach the URL.
+        const subtag = String(this._contentLang || this.lang || 'en').split('-')[0].toLowerCase();
+        const lang = /^[a-z]{2,3}$/.test(subtag) ? subtag : 'en';
         // In static mode files are served at root with no version routing, skip version prefix
         const isStatic = window.__EXE_STATIC_MODE__ === true;
         const version = isStatic ? '' : (window.eXeLearning?.version || '');
@@ -119,7 +123,11 @@ export default class Locale {
             const response = await fetch(url);
             if (response.ok) {
                 content = await response.text();
-            } else if (lang !== 'en') {
+            }
+            // Hosts with an SPA fallback answer a language without a bundle
+            // (e.g. ru, und) with index.html and a 200.
+            if (content?.trimStart().startsWith('<')) content = null;
+            if (!content && lang !== 'en') {
                 // Fall back to English
                 const enUrl = `${base}/app/common/i18n/common_i18n.en.js`;
                 try {

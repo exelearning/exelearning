@@ -46,6 +46,9 @@ var $rubric = {
 
     init: function () {
         if (this.initialized) return;
+        this.idevicePath = eXe.app.isInExe()
+            ? eXe.app.getIdeviceInstalledExportPath('rubric')
+            : $('.idevice_node.rubric').first().attr('data-idevice-path');
         this.initialized = true;
         this.loadGame();
     },
@@ -72,6 +75,8 @@ var $rubric = {
             self.initializeInteractiveState(data.table);
             self.addEvents(data.table, data.strings);
             self.initScorm(data);
+            self.initProgressReport(data);
+            self.showPassScoreNotice(data);
         });
     },
 
@@ -140,6 +145,13 @@ var $rubric = {
             textButtonScorm: stored.textButtonScorm || '',
             repeatActivity: true,
             weighted: $rubric.normalizeWeight(stored.weighted),
+            // Listed here because this object is built field by field rather
+            // than spread from `stored`, so anything unlisted never reaches the
+            // runtime.
+            passScoreMode: stored.passScoreMode,
+            passScoreCustom: stored.passScoreCustom,
+            evaluation: !!stored.evaluation,
+            evaluationID: stored.evaluationID || '',
         };
     },
 
@@ -350,8 +362,13 @@ var $rubric = {
         var strings = $.extend({}, this.ci18n);
         if (!data || typeof data !== 'object' || !data.i18n || typeof data.i18n !== 'object') return strings;
 
+        // Texts the saved data may carry with no English default above. Without
+        // one, the shared runtime uses the page's text in the content language,
+        // which a literal here would hide.
+        var withoutDefault = ['msgPassScore'];
         Object.keys(data.i18n).forEach(function (key) {
-            if (Object.prototype.hasOwnProperty.call(strings, key) && typeof data.i18n[key] === 'string') {
+            var known = Object.prototype.hasOwnProperty.call(strings, key) || withoutDefault.indexOf(key) !== -1;
+            if (known && typeof data.i18n[key] === 'string') {
                 strings[key] = data.i18n[key];
             }
         });
@@ -607,6 +624,11 @@ var $rubric = {
             var data = $rubric.getDataForTable($table);
             if (data && data.isScorm === 1) {
                 $rubric.sendRubricScore(true, data);
+            } else {
+                // The progress report does not depend on SCORM: it has to keep
+                // working when the author chose not to send the score anywhere,
+                // and when the learner saves by hand rather than automatically.
+                $rubric.updateProgressReport(data, $table);
             }
         });
     },
@@ -1477,6 +1499,17 @@ var $rubric = {
             textButtonScorm: data.textButtonScorm || '',
             repeatActivity: true,
             weighted: $rubric.normalizeWeight(data.weighted),
+            evaluation: !!data.evaluation,
+            evaluationID: data.evaluationID || '',
+            // The author's choice, on the same 0-10 scale as every other
+            // activity, so a page mixing rubrics with other iDevices judges
+            // them all alike.
+            passScoreMode: data.passScoreMode,
+            passScoreCustom: data.passScoreCustom,
+            // The report needs to know which iDevice type it is listing, and
+            // where to put the verdict icon.
+            idevice: 'rubric',
+            idevicePath: $rubric.idevicePath,
             scorerp: 0,
             gameStarted: false,
             gameOver: false,
@@ -1495,10 +1528,77 @@ var $rubric = {
                 msgSaveAuto: strings.msgSaveAuto || 'Your score will be automatically saved after each change.',
                 msgSeveralScore: strings.msgSeveralScore || 'You can save the score as many times as you want',
                 msgYouLastScore: strings.msgYouLastScore || 'The last score saved is',
+                // Progress report: the type it is listed under, and the three
+                // verdicts showEvaluationIcon can display.
+                msgTypeGame: strings.msgTypeGame || 'Rubric',
+                msgUncompletedActivity: strings.msgUncompletedActivity || 'Incomplete activity',
+                msgSuccessfulActivity: strings.msgSuccessfulActivity || 'Activity: Passed. Score: %s',
+                msgUnsuccessfulActivity: strings.msgUnsuccessfulActivity || 'Activity: Not passed. Score: %s',
                 msgActityComply: strings.msgActityComply || 'You have already done this activity.',
                 msgPlaySeveralTimes: strings.msgPlaySeveralTimes || 'You can do this activity as many times as you want',
+                // No literal: without the author's text the shared runtime
+                // uses the page's own, in the content language.
+                msgPassScore: strings.msgPassScore,
             },
         };
+    },
+
+    /**
+     * Tell the learner the minimum score, right above the table.
+     *
+     * The rubric has no main container of its own above its activity, so the
+     * notice goes before the table's slot: below the instructions and the
+     * learner's details, above the criteria. `scormGame` exists only when SCORM
+     * or the progress report is on, which is when anything judges the mark.
+     *
+     * @param {Object} data The activity options.
+     * @returns {jQuery|null} The notice, or null when none is shown.
+     */
+    showPassScoreNotice: function (data) {
+        if (!data || !data.scormGame) return null;
+        var $slot = $(data.table).closest('.exe-rubrics-table-slot');
+        if ($slot.length !== 1) return null;
+        return $exeDevices.iDevice.gamification.report.showPassScoreNotice(data.scormGame, $slot);
+    },
+
+    /**
+     * Record the rubric in the learner's progress report.
+     *
+     * The rubric used to be the one scoring iDevice that never registered, so a
+     * course mixing rubrics with other activities produced a report the rubrics
+     * were simply missing from -- and its pass mark had nowhere to show a
+     * verdict. The report decides Passed / Not passed from the mark and the
+     * threshold the options carry, which is why this runs after the threshold
+     * has been put on `game`.
+     *
+     * @param {Object} game The SCORM options, already carrying scorerp and the
+     * pass mark.
+     */
+    saveEvaluation: function (game) {
+        if (!game || !game.evaluation || !game.evaluationID) return;
+        $exeDevices.iDevice.gamification.report.saveEvaluation(game);
+    },
+
+    /**
+     * Record the current marks in the progress report, outside the SCORM path.
+     *
+     * Used when the activity does not report automatically, so the learner's
+     * report still reflects what they have done.
+     *
+     * @param {Object} data The activity options.
+     * @param {jQuery} $table The rendered rubric.
+     */
+    updateProgressReport: function (data, $table) {
+        if (!data || !data.evaluation || !data.evaluationID) return;
+        if (typeof $exeDevices === 'undefined' || !$exeDevices.iDevice || !$exeDevices.iDevice.gamification) {
+            return;
+        }
+
+        var game = data.scormGame || this.buildScormGame(data);
+        data.scormGame = game;
+        game.scorerp = this.calculateScormScore($table);
+
+        this.saveEvaluation(game);
     },
 
     calculateScormScore: function (table) {
@@ -1545,6 +1645,34 @@ var $rubric = {
         $exeDevices.iDevice.gamification.scorm.registerActivity(scormGame);
 
         this.restoreVisibleScoreFromLms(data);
+    },
+
+    /**
+     * Show the verdict this learner already earned, if any.
+     *
+     * Deliberately not part of initScorm: that one returns early when the
+     * author chose not to save the score, and the progress report does not
+     * depend on SCORM at all -- it is kept in the learner's own browser. Tying
+     * the two together is what would make "do not save the score" silently
+     * switch the report off as well.
+     *
+     * Deferred like every other iDevice does it: the icon is placed relative to
+     * markup the rest of the initialisation is still assembling.
+     *
+     * @param {Object} data The activity options.
+     */
+    initProgressReport: function (data) {
+        if (!data || !data.evaluation || !data.evaluationID) return;
+        if (typeof $exeDevices === 'undefined' || !$exeDevices.iDevice || !$exeDevices.iDevice.gamification) {
+            return;
+        }
+
+        var game = data.scormGame || this.buildScormGame(data);
+        data.scormGame = game;
+
+        setTimeout(function () {
+            $exeDevices.iDevice.gamification.report.updateEvaluationIcon(game);
+        }, 500);
     },
 
     /**
@@ -1654,6 +1782,7 @@ var $rubric = {
 
         if (typeof $exeDevices !== 'undefined' && $exeDevices.iDevice && $exeDevices.iDevice.gamification) {
             $exeDevices.iDevice.gamification.scorm.sendScoreNew(auto, game);
+            this.saveEvaluation(game);
             return;
         }
     },

@@ -18,12 +18,13 @@ import * as fs from 'fs-extra';
 import * as path from 'path';
 import { randomUUID } from 'crypto';
 import { buildContentDisposition } from '../shared/http/headers';
+import { safeJoin, sanitizeFileExtension } from '../utils/safe-path';
 import type { Kysely } from 'kysely';
 
 import { db as defaultDb } from '../db/client';
 import type { Database } from '../db/types';
 import { findUserById as findUserByIdDefault } from '../db/queries';
-import type { ConvertRequest } from './types/request-payloads';
+import { castRequestBody, type ConvertRequest } from './types/request-payloads';
 
 // Centralized export system
 import {
@@ -45,7 +46,9 @@ import {
 // Import system (ELP → Y.Doc)
 import { ElpxImporter, FileSystemAssetHandler } from '../shared/import';
 import * as Y from 'yjs';
+import { toAuthenticatedIdentity, type JwtPayload } from '../auth/types';
 import { getAppVersion } from '../utils/version';
+import { getJwtSecret } from '../utils/jwt-secret';
 
 // =============================================================================
 // Types and Interfaces
@@ -59,13 +62,6 @@ export interface ConvertDependencies {
     publicDir?: string;
     tempDir?: string;
     fs?: typeof fs;
-}
-
-interface JwtPayload {
-    sub: number;
-    email: string;
-    roles: string[];
-    isGuest?: boolean;
 }
 
 // Supported export formats
@@ -90,6 +86,8 @@ const _ALLOWED_MIME_TYPES = ['application/zip', 'application/x-zip-compressed', 
 interface FileWithName extends Blob {
     name?: string;
 }
+
+type UploadedFile = Blob | File | Buffer;
 
 /**
  * Export options type
@@ -125,11 +123,6 @@ const defaultDeps: ConvertDependencies = {
     fs: fs,
 };
 
-// Get JWT secret from environment
-const getJwtSecret = (): string => {
-    return process.env.API_JWT_SECRET || process.env.JWT_SECRET || 'dev_secret_change_me';
-};
-
 // =============================================================================
 // Factory Function
 // =============================================================================
@@ -142,14 +135,15 @@ export function createConvertRoutes(deps: ConvertDependencies = defaultDeps) {
     /**
      * Validate uploaded file
      */
-    function validateFile(file: File | Blob | null | undefined): { valid: boolean; error?: string } {
+    function validateFile(file: UploadedFile | null | undefined): { valid: boolean; error?: string } {
         if (!file) {
             return { valid: false, error: 'No file uploaded' };
         }
 
         // Check file size
         const maxSize = getMaxUploadSize();
-        if (file.size > maxSize) {
+        const fileSize = Buffer.isBuffer(file) ? file.byteLength : file.size;
+        if (fileSize > maxSize) {
             return {
                 valid: false,
                 error: `File too large. Maximum size is ${Math.round(maxSize / 1024 / 1024)}MB`,
@@ -179,11 +173,17 @@ export function createConvertRoutes(deps: ConvertDependencies = defaultDeps) {
     }
 
     /**
-     * Write uploaded file to disk
+     * Write an uploaded file into the per-conversion temp dir under a
+     * server-generated name, so the client-supplied filename can never traverse
+     * out of it. safeJoin validates the segment and asserts containment. Returns
+     * the on-disk path the export pipeline should read.
      */
-    async function writeUploadedFile(file: File | Blob, destPath: string): Promise<void> {
-        const buffer = Buffer.from(await file.arrayBuffer());
-        await fs.writeFile(destPath, buffer);
+    async function writeUploadedFile(file: UploadedFile, tempDirPath: string): Promise<string> {
+        const ext = sanitizeFileExtension((file as FileWithName).name) || '.elp';
+        const uploadPath = safeJoin(tempDirPath, `upload-${randomUUID()}${ext}`);
+        const buffer = Buffer.isBuffer(file) ? file : Buffer.from(await file.arrayBuffer());
+        await fs.writeFile(uploadPath, buffer);
+        return uploadPath;
     }
 
     /**
@@ -296,7 +296,7 @@ export function createConvertRoutes(deps: ConvertDependencies = defaultDeps) {
                 if (authHeader?.startsWith('Bearer ')) {
                     token = authHeader.slice(7);
                 } else if (cookie.auth?.value) {
-                    token = cookie.auth.value;
+                    token = cookie.auth.value as string;
                 }
 
                 if (!token) {
@@ -304,12 +304,13 @@ export function createConvertRoutes(deps: ConvertDependencies = defaultDeps) {
                 }
 
                 try {
-                    const payload = (await jwt.verify(token)) as JwtPayload | false;
-                    if (!payload || !payload.sub) {
+                    const payload = (await jwt.verify(token)) as unknown as JwtPayload | false;
+                    const identity = payload ? toAuthenticatedIdentity(payload) : null;
+                    if (!identity) {
                         return { currentUser: null };
                     }
 
-                    const user = await findUserById(db, payload.sub);
+                    const user = await findUserById(db, identity.userId);
                     return { currentUser: user || null };
                 } catch {
                     return { currentUser: null };
@@ -338,7 +339,7 @@ export function createConvertRoutes(deps: ConvertDependencies = defaultDeps) {
                         return { code: 'UNAUTHORIZED', detail: 'Authentication required' };
                     }
 
-                    const data = body as ConvertRequest;
+                    const data = castRequestBody<ConvertRequest>(body);
                     const download = query.download === '1';
 
                     // Validate file
@@ -354,10 +355,8 @@ export function createConvertRoutes(deps: ConvertDependencies = defaultDeps) {
                         // Create temp directory
                         tempDirPath = await createTempDir();
 
-                        // Write uploaded file
-                        const filename = (data.file as FileWithName).name || 'upload.elp';
-                        const uploadPath = path.join(tempDirPath, filename);
-                        await writeUploadedFile(data.file, uploadPath);
+                        // Write uploaded file under a server-generated, contained name.
+                        const uploadPath = await writeUploadedFile(data.file, tempDirPath);
 
                         // Run ELPX export (conversion)
                         const result = await runExport(uploadPath, 'elpx');
@@ -372,14 +371,14 @@ export function createConvertRoutes(deps: ConvertDependencies = defaultDeps) {
                             const exportFilename = result.filename || 'converted.elpx';
                             set.headers['content-type'] = 'application/x-exelearning';
                             set.headers['content-disposition'] = buildContentDisposition(exportFilename);
-                            set.headers['content-length'] = String(result.data.length);
+                            set.headers['content-length'] = String(result.data.byteLength);
                             return result.data;
                         }
 
                         return {
                             status: 'success',
                             fileName: result.filename || 'converted.elpx',
-                            size: result.data?.length || 0,
+                            size: result.data?.byteLength ?? 0,
                             message: 'Conversion completed. Use ?download=1 to download the file directly.',
                         };
                     } catch (error: unknown) {
@@ -429,7 +428,7 @@ export function createConvertRoutes(deps: ConvertDependencies = defaultDeps) {
                         };
                     }
 
-                    const data = body as ConvertRequest;
+                    const data = castRequestBody<ConvertRequest>(body);
                     const download = query.download === '1';
                     const baseUrl = data.baseUrl || undefined;
                     const theme = data.theme || undefined;
@@ -447,10 +446,8 @@ export function createConvertRoutes(deps: ConvertDependencies = defaultDeps) {
                         // Create temp directory
                         tempDirPath = await createTempDir();
 
-                        // Write uploaded file
-                        const filename = (data.file as FileWithName).name || 'upload.elp';
-                        const uploadPath = path.join(tempDirPath, filename);
-                        await writeUploadedFile(data.file, uploadPath);
+                        // Write uploaded file under a server-generated, contained name.
+                        const uploadPath = await writeUploadedFile(data.file, tempDirPath);
 
                         // Run export
                         const result = await runExport(uploadPath, format, { baseUrl, theme });
@@ -465,7 +462,7 @@ export function createConvertRoutes(deps: ConvertDependencies = defaultDeps) {
                             const exportFilename = result.filename || `export_${format}.${formatInfo.extension}`;
                             set.headers['content-type'] = formatInfo.mimeType;
                             set.headers['content-disposition'] = buildContentDisposition(exportFilename);
-                            set.headers['content-length'] = String(result.data.length);
+                            set.headers['content-length'] = String(result.data.byteLength);
                             return result.data;
                         }
 
@@ -473,7 +470,7 @@ export function createConvertRoutes(deps: ConvertDependencies = defaultDeps) {
                             status: 'success',
                             format: format,
                             fileName: result.filename || `export_${format}.${formatInfo.extension}`,
-                            size: result.data?.length || 0,
+                            size: result.data?.byteLength ?? 0,
                             message: 'Export completed. Use ?download=1 to download the file directly.',
                         };
                     } catch (error: unknown) {

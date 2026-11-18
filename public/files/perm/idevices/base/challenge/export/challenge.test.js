@@ -41,6 +41,25 @@ describe('challenge iDevice export', () => {
     $eXeDesafio = loadExportIdevice(code);
   });
 
+  describe('storageKeyOf', () => {
+    afterEach(() => {
+      document.body.innerHTML = '';
+    });
+
+    it("names the entry after the game's own component", () => {
+      document.body.innerHTML =
+        '<div class="idevice_node challenge" id="idevice-abc"><div class="desafio-IDevice"></div></div>';
+
+      expect($eXeDesafio.storageKeyOf(document.querySelector('.desafio-IDevice'))).toBe('dataDesafio-idevice-abc');
+    });
+
+    it('gives no key to a game outside any component', () => {
+      document.body.innerHTML = '<div class="desafio-IDevice"></div>';
+
+      expect($eXeDesafio.storageKeyOf(document.querySelector('.desafio-IDevice'))).toBe('');
+    });
+  });
+
   describe('createArrayStateChallenges', () => {
     it('creates array with correct length', () => {
       const result = $eXeDesafio.createArrayStateChallenges(0, 5);
@@ -431,6 +450,26 @@ describe('challenge iDevice export', () => {
       expect(calls[0].gameOver).toBe(false);
     });
 
+    // A duplicated desafio carries the same desafioID. Kept under it, the two
+    // copies shared one entry and each resumed the other's game.
+    it('keeps its progress under its own component, not under the id its data carries', () => {
+      const instance = givenInstance({ storageKey: 'dataDesafio-idevice-copy-a' });
+
+      $eXeDesafio.saveDataStorage(instance);
+
+      expect(localStorage.getItem('dataDesafio-idevice-copy-a')).not.toBeNull();
+      expect(localStorage.getItem('dataDesafio-7')).toBeNull();
+      expect(localStorage.getItem('dataDesafio-idevice-copy-b')).toBeNull();
+    });
+
+    it('keeps nothing when it belongs to no component, and still reports', () => {
+      $eXeDesafio.saveDataStorage(givenInstance({ storageKey: '' }));
+
+      expect(localStorage.getItem('dataDesafio-')).toBeNull();
+      expect(localStorage.getItem('dataDesafio-7')).toBeNull();
+      expect(calls).toHaveLength(1);
+    });
+
     it('reports the activity as finished once the desafio is solved', () => {
       // Full marks: every challenge and the desafio itself.
       const instance = givenInstance({
@@ -513,5 +552,81 @@ describe('challenge iDevice export', () => {
 
       expect(calls.map((call) => call.gameOver)).toEqual([false, true]);
     });
+  });
+
+  // The editor never reloads the document between pages, and a game's ids are
+  // numbered by position: the next page's first game takes the ids this one
+  // had. The clock used to find that game by id and run it, counting down on
+  // its display and ending it when its own time ran out.
+  describe('the clock of a game', () => {
+    const instance = 0;
+
+    beforeEach(() => {
+      vi.useFakeTimers();
+      document.body.innerHTML = `<div id="desafioMainContainer-${instance}"></div>`;
+      $eXeDesafio.options = [
+        {
+          gameStarted: false,
+          counter: 60,
+          typeQuestion: 0,
+          solvedsChallenges: [],
+          challengesGame: [],
+          msgs: { msgReadTime: '' },
+        },
+      ];
+      for (const method of ['updateTime', 'gameOver', 'showDesafio', 'showMessage', 'saveDataStorage']) {
+        vi.spyOn($eXeDesafio, method).mockImplementation(() => {});
+      }
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+      vi.restoreAllMocks();
+      document.body.innerHTML = '';
+    });
+
+    it('counts down on its own game', () => {
+      $eXeDesafio.startGame(instance, 0);
+
+      vi.advanceTimersByTime(3000);
+
+      expect($eXeDesafio.updateTime).toHaveBeenLastCalledWith(57, instance);
+    });
+
+    it('ends its own game when the time runs out', () => {
+      $eXeDesafio.startGame(instance, 0);
+
+      vi.advanceTimersByTime(60000);
+
+      expect($eXeDesafio.gameOver).toHaveBeenCalledWith(1, instance);
+    });
+
+    it("leaves the next page's game alone, though it takes the same ids", () => {
+      $eXeDesafio.startGame(instance, 0);
+      vi.advanceTimersByTime(1000);
+
+      // The author moves to another page, whose first game is numbered the same.
+      document.body.innerHTML = `<div id="desafioMainContainer-${instance}"></div>`;
+      $eXeDesafio.options[instance] = { gameStarted: true, counter: 240, typeQuestion: 0 };
+      $eXeDesafio.updateTime.mockClear();
+      vi.advanceTimersByTime(120000);
+
+      expect($eXeDesafio.updateTime).not.toHaveBeenCalled();
+      expect($eXeDesafio.gameOver).not.toHaveBeenCalled();
+      expect($eXeDesafio.options[instance].counter).toBe(240);
+    });
+  });
+});
+
+describe('challenge minimum score notice', () => {
+  it('asks for the notice right after its interface replaces the stored data', () => {
+    const source = readFileSync(join(__dirname, 'challenge.js'), 'utf-8');
+    const loadGame = source.slice(source.indexOf('loadGame: function'));
+
+    // The main container comes with the interface, so from that line on the
+    // notice can go right before it, below the instructions.
+    expect(loadGame).toMatch(
+      /mOption\.main = [^\n]+[\s\S]*?dl\.before\(\w+\)\.remove\(\);\s*\$exeDevices\.iDevice\.gamification\.report\.showPassScoreNotice\(mOption\);/
+    );
   });
 });

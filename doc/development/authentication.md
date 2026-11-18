@@ -48,7 +48,7 @@ OIDC_CLIENT_ID=interactive.confidential
 OIDC_CLIENT_SECRET=secret
 
 # API (local JWTs accepted by the backend)
-API_JWT_SECRET=dev_secret_change_me
+API_JWT_SECRET=<unique-random-secret-of-at-least-32-bytes>
 # API_JWT_ISSUER=exelearning
 # API_JWT_AUDIENCE=exelearning_clients
 ```
@@ -329,7 +329,7 @@ The password is never accepted as a command-line argument.
 The backend can accept locally signed JWTs (useful for scripts/internal services).
 
 ```
-API_JWT_SECRET=dev_secret_change_me
+API_JWT_SECRET=<unique-random-secret-of-at-least-32-bytes>
 # API_JWT_ISSUER=exelearning
 # API_JWT_AUDIENCE=exelearning_clients
 ```

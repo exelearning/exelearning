@@ -55,7 +55,8 @@ var $azquizgame = {
     },
 
     loadGame: function () {
-        $azquizgame.options = [];
+        // Running activities keep their entry; each one is stored at its own index.
+        $azquizgame.options.length = $('.rosco-IDevice').length;
 
         $('.rosco-IDevice').each(function (i) {
             const dl = $('.rosco-DataGame', this);
@@ -79,10 +80,16 @@ var $azquizgame = {
             option.main = 'roscoMainContainer-' + i;
             option.idevice = 'rosco-IDevice';
 
-            $azquizgame.options.push(option);
+            $azquizgame.options[i] = option;
 
             const rosco = $azquizgame.createInterfaceRosco(i);
             dl.before(rosco).remove();
+            // Before .rosco-Main rather than inside it: its scoreboard is
+            // positioned absolutely at its top and would sit on the notice.
+            $exeDevices.iDevice.gamification.report.showPassScoreNotice(
+                option,
+                '#roscoMain-' + i
+            );
 
             const msg = $azquizgame.options[i].msgs.msgPlayStart;
 
@@ -779,24 +786,33 @@ var $azquizgame = {
         $azquizgame.updateTime(mOptions.durationGame, instance);
         $azquizgame.drawRosco(instance);
 
-        mOptions.counterClock = setInterval(function () {
-            let $node = $('#roscoMainContainer-' + instance);
-            let $content = $('#node-content');
+        // Bound to this game's element, not to its id. The editor never
+        // reloads the document between pages and ids are numbered by
+        // position, so the next page's first game takes the same ones: a
+        // clock that looked its game up by id each second found that game and
+        // ran it, counting down on its display and ending it when its own
+        // time ran out.
+        const container = document.getElementById(
+            'roscoMainContainer-' + instance
+        );
+        const clock = setInterval(() => {
+            const $content = $('#node-content');
             if (
-                !$node.length ||
+                !container?.isConnected ||
                 ($content.length && $content.attr('mode') === 'edition')
             ) {
-                clearInterval(mOptions.counterClock);
+                clearInterval(clock);
                 return;
             }
             $azquizgame.updateTime(mOptions.counter, instance);
             mOptions.counter--;
             if (mOptions.counter <= 0) {
-                clearInterval(mOptions.counterClock);
+                clearInterval(clock);
                 $azquizgame.gameOver(1, instance);
                 return;
             }
         }, 1000);
+        mOptions.counterClock = clock;
 
         $('#roscoPShowClue-' + instance)
             .text('')
@@ -1048,6 +1064,10 @@ var $azquizgame = {
             .attr('src', '')
             .attr('src', url)
             .on('load', function () {
+                // A picture that finishes loading after the page has changed
+                // belongs to a game that is gone; its number now names the
+                // next page's game.
+                if (!this.isConnected) return;
                 if (
                     !this.complete ||
                     typeof this.naturalWidth === 'undefined' ||
@@ -1077,8 +1097,10 @@ var $azquizgame = {
 
     positionPointer: function (instance) {
         const mOptions = $azquizgame.options[instance],
-            mWord = mOptions.wordsGame[mOptions.activeWord],
-            x = parseFloat(mWord.x) || 0,
+            mWord = mOptions.wordsGame[mOptions.activeWord];
+        // No word on the board, as before the game starts or once it is over.
+        if (!mWord) return;
+        const x = parseFloat(mWord.x) || 0,
             y = parseFloat(mWord.y) || 0,
             $cursor = $('#roscoCursor-' + instance);
 
@@ -1134,7 +1156,17 @@ var $azquizgame = {
                 $azquizgame.showImageNeo(mWord.url, instance);
             } else {
                 $('#roscoCursor-' + instance).hide();
-                setTimeout(() => $azquizgame.positionPointer(instance), 1000);
+                // Only for this game: in the editor the next page's first game
+                // takes the same number, and a pointer placed a second later
+                // by number landed on that one.
+                setTimeout(() => {
+                    if (
+                        imgElement?.isConnected &&
+                        $azquizgame.options[instance] === mOptions
+                    ) {
+                        $azquizgame.positionPointer(instance);
+                    }
+                }, 1000);
             }
         }
     },

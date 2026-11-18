@@ -9,6 +9,13 @@
  *    plain English, which the frontend translates at render time via _().
  */
 
+import {
+    PASS_SCORE_DEFAULT,
+    PASS_SCORE_MAX,
+    PASS_SCORE_MIN,
+    PASS_SCORE_STEP,
+} from '../shared/export/metadata-properties';
+
 export interface ConfigParamsDeps {
     TRANS_PREFIX: string;
     LICENSES: Record<string, string>;
@@ -44,6 +51,7 @@ export function buildConfigParams(deps: ConfigParamsDeps) {
     const GROUPS_TITLE = {
         properties_package: `${TRANS_PREFIX}Content metadata`,
         export: `${TRANS_PREFIX}Export options`,
+        grading: `${TRANS_PREFIX}Grading`,
         custom_code: `${TRANS_PREFIX}Custom code`,
     };
 
@@ -398,6 +406,25 @@ export function buildConfigParams(deps: ConfigParamsDeps) {
                 },
                 category: 'properties',
                 groups: { export: GROUPS_TITLE.export },
+            },
+            pp_passScore: {
+                title: `${TRANS_PREFIX}Minimum score to pass`,
+                help: `${TRANS_PREFIX}Mark out of 10 that learners must reach for an activity to count as passed. Every iDevice uses this value unless it defines its own.`,
+                value: PASS_SCORE_DEFAULT,
+                type: 'number',
+                min: PASS_SCORE_MIN,
+                max: PASS_SCORE_MAX,
+                step: PASS_SCORE_STEP,
+                category: 'properties',
+                groups: { grading: GROUPS_TITLE.grading },
+            },
+            pp_passScoreEveryActivity: {
+                title: `${TRANS_PREFIX}Each SCORM activity must reach its minimum score`,
+                help: `${TRANS_PREFIX}A SCORM page is passed only when each of its activities reaches its own minimum score. When unchecked, the page is passed when the weighted average of its scores reaches the weighted average of their minimum scores, so a high mark can make up for a low one.`,
+                value: 'false',
+                type: 'checkbox',
+                category: 'properties',
+                groups: { grading: GROUPS_TITLE.grading },
             },
             pp_extraHeadContent: {
                 title: `${TRANS_PREFIX}HEAD`,

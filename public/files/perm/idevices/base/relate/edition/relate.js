@@ -101,6 +101,7 @@ var $exeDevice = {
             msgUncompletedActivity: c_('Incomplete activity'),
             msgSuccessfulActivity: c_('Activity: Passed. Score: %s'),
             msgUnsuccessfulActivity: c_('Activity: Not passed. Score: %s'),
+            msgPassScore: c_('Minimum score needed to pass this activity: %s'),
             msgTypeGame: c_('Relate'),
             msgCheck: c_('Check'),
             msgRestart: c_('Restart'),
@@ -191,7 +192,6 @@ var $exeDevice = {
                             <input id="rclEAuthory" type="text" class="form-control" />
                         </div>
                         <div class="d-flex flex-nowrap align-items-center gap-2 mb-3">
-                            ${$exeDevicesEdition.iDevice.gamification.progressBar.getContents(path)}
                         </div>
                     </div>
                 </fieldset>
@@ -355,7 +355,7 @@ var $exeDevice = {
             </div>
 
             ${$exeDevicesEdition.iDevice.gamification.itinerary.getTab()}
-            ${$exeDevicesEdition.iDevice.gamification.scorm.getTab()}
+            ${$exeDevicesEdition.iDevice.gamification.scorm.getTab(path)}
             ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
             ${$exeDevicesEdition.iDevice.gamification.share.getTab(true, 0, true)}
             ${$exeDevicesEdition.iDevice.gamification.share.getTabIA(0)}
@@ -1011,6 +1011,8 @@ var $exeDevice = {
             time = parseInt($('#rclETime').val()),
             progressBar =
                 $exeDevicesEdition.iDevice.gamification.progressBar.getValues(),
+            passScore =
+                $exeDevicesEdition.iDevice.gamification.passScore.getValues(),
             id = $exeDevice.getIdeviceID();
 
         if (!itinerary) return false;
@@ -1049,6 +1051,8 @@ var $exeDevice = {
             time,
             evaluation: progressBar.evaluation,
             evaluationID: progressBar.evaluationID,
+            passScoreMode: passScore.passScoreMode,
+            passScoreCustom: passScore.passScoreCustom,
             id,
         };
     },
@@ -1335,6 +1339,8 @@ var $exeDevice = {
 
         $exeDevicesEdition.iDevice.gamification.progressBar.addEvents();
 
+        $exeDevicesEdition.iDevice.gamification.passScore.addEvents();
+
         $exeDevicesEdition.iDevice.gamification.itinerary.addEvents();
         $exeDevicesEdition.iDevice.gamification.share.addEvents(
             0,
@@ -1480,6 +1486,10 @@ var $exeDevice = {
         $exeDevicesEdition.iDevice.gamification.progressBar.setValues({
             evaluation: game.evaluation,
             evaluationID: game.evaluationID,
+        });
+        $exeDevicesEdition.iDevice.gamification.passScore.setValues({
+            passScoreMode: game.passScoreMode,
+            passScoreCustom: game.passScoreCustom,
         });
         if (game.type == 2) {
             $('#rclETimeDiv').removeClass('d-none').addClass('d-flex');

@@ -36,7 +36,8 @@ var $eXeRelaciona = {
     },
 
     loadGame: function () {
-        $eXeRelaciona.options = [];
+        // Running activities keep their entry; each one is stored at its own index.
+        $eXeRelaciona.options.length = $eXeRelaciona.activities.length;
 
         $eXeRelaciona.activities.each(function (i) {
             const dl = $('.relaciona-DataGame', this);
@@ -48,11 +49,12 @@ var $eXeRelaciona = {
             mOption.main = 'rlcMainContainer-' + i;
             mOption.idevice = 'relaciona-IDevice';
 
-            $eXeRelaciona.options.push(mOption);
+            $eXeRelaciona.options[i] = mOption;
 
             const rlc = $eXeRelaciona.createInterfaceCards(i);
 
             dl.before(rlc).remove();
+            $exeDevices.iDevice.gamification.report.showPassScoreNotice(mOption);
             $('#rlcGameMinimize-' + i).hide();
             $('#rlcGameContainer-' + i).hide();
             $('#rlcCubierta-' + i).hide();
@@ -363,14 +365,23 @@ var $eXeRelaciona = {
         ) {
             $(`#rlcPTime-${instance}`).show();
             $(`#rlcImgTime-${instance}`).show();
-            let $node = $('#rlcMainContainer-' + instance);
-            let $content = $('#node-content');
-            mOptions.counterClock = setInterval(function () {
+            // Bound to this game's element, and asked each second whether it is
+            // still on the page. The editor never reloads the document between
+            // pages and ids are numbered by position, so the next page's first
+            // game takes the same ones. The element used to be looked up once,
+            // before the clock started, and a lookup's length never changes:
+            // the clock never stopped, and went on counting down on the next
+            // page's game and ending it when its own time ran out.
+            const container = document.getElementById(
+                'rlcMainContainer-' + instance
+            );
+            const clock = setInterval(() => {
+                const $content = $('#node-content');
                 if (
-                    !$node.length ||
+                    !container?.isConnected ||
                     ($content.length && $content.attr('mode') === 'edition')
                 ) {
-                    clearInterval(mOptions.counterClock);
+                    clearInterval(clock);
                     return;
                 }
                 if (typeof mOptions != 'undefined' && mOptions.gameStarted) {
@@ -382,6 +393,7 @@ var $eXeRelaciona = {
                     }
                 }
             }, 1000);
+            mOptions.counterClock = clock;
             $eXeRelaciona.updateTime(mOptions.time * 60, instance);
         }
 

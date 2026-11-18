@@ -3,6 +3,7 @@
  * Uses Dependency Injection pattern - no mock.module needed
  */
 import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
+import * as pathModule from 'path';
 import { Elysia } from 'elysia';
 import type { Kysely } from 'kysely';
 import type { Database } from '../db/schema';
@@ -17,6 +18,11 @@ import {
     type PagesUtilsDeps,
     type PagesSettingsDeps,
 } from './pages';
+import { zipSync, strToU8 } from 'fflate';
+import { SignJWT } from 'jose';
+import { configurePublicViewContent, resetPublicViewContent, type ExportResult } from '../services/public-view-content';
+import { PUBLIC_VIEW_SANDBOX } from '../shared/security/publicViewSandbox';
+import { passwordFingerprint, verifyToken } from './auth';
 
 // Mock data stores
 let mockUsers: Map<number, any>;
@@ -58,12 +64,29 @@ function createMockQueries(): PagesQueriesDeps {
             };
         },
         findProjectByUuid: async (_db: any, uuid: string) => mockProjects.get(uuid),
+        findProjectByPublicViewId: async (_db: any, publicViewId: string) => {
+            for (const project of mockProjects.values()) {
+                if (project.public_view_id === publicViewId) return project;
+            }
+            return undefined;
+        },
         findProjectByPlatformId: async (_db: any, platformId: string) => {
             // Search for project with matching platform_id
             for (const project of mockProjects.values()) {
                 if (project.platform_id === platformId) return project;
             }
             return undefined;
+        },
+        findOwnedProjectByPlatformBinding: async (_db: any, ownerId: number, site: string, platformId: string) => {
+            return [...mockProjects.values()]
+                .filter(
+                    project =>
+                        project.owner_id === ownerId &&
+                        project.platform_site === site &&
+                        project.platform_id === platformId &&
+                        project.status !== 'inactive',
+                )
+                .sort((a, b) => b.updated_at - a.updated_at)[0];
         },
         checkProjectAccess: async (_db: any, project: any, userId?: number) => {
             // Check owner (support both ownerId and owner_id)
@@ -97,7 +120,9 @@ function createMockQueries(): PagesQueriesDeps {
                 author: null,
                 license: null,
                 last_accessed_at: Date.now(),
-                platform_id: null,
+                platform_id: data.platform_id ?? null,
+                platform_site: data.platform_site ?? null,
+                platform_package_hash: null,
             };
             mockProjects.set(uuid, project);
             return project;
@@ -162,6 +187,7 @@ function createMockSettings(): PagesSettingsDeps {
         },
         getSettingBoolean: async (_db: any, _key: string, fallback: boolean) => fallback,
         getSettingString: async (_db: any, _key: string, fallback: string) => fallback,
+        isPublicViewFeatureEnabled: async () => true,
     };
 }
 
@@ -842,7 +868,9 @@ describe('Pages Routes', () => {
 
             const tempApp = new Elysia().use(jwtInstance);
             const token = await tempApp.decorator.jwt.sign({
-                sub: 'guest-123',
+                // Real guest tokens always carry a numeric `sub`: guests are
+                // backed by a real (ephemeral) user row.
+                sub: '77',
                 email: 'guest@guest.local',
                 isGuest: true,
             });
@@ -1304,6 +1332,171 @@ describe('Pages Routes', () => {
 
             // Should render workarea with the found project (not create new)
             expect(res.status).toBe(200);
+        });
+    });
+
+    describe('platform integration (one project per user and activity)', () => {
+        const site = 'https://moodle.example.com/moodle';
+
+        beforeEach(() => {
+            process.env.APP_SECRET = 'platform-secret-for-testing';
+            process.env.PROVIDER_URLS = 'https://moodle.example.com';
+        });
+
+        async function signInAs(userId: number): Promise<string> {
+            const jwt = await import('@elysiajs/jwt');
+            const tempApp = new Elysia().use(jwt.jwt({ name: 'jwt', secret: 'test-secret-for-testing-only' }));
+            if (!mockUsers.has(userId)) {
+                mockUsers.set(userId, { id: userId, email: `user${userId}@test.com`, roles: '["ROLE_USER"]' });
+            }
+            return tempApp.decorator.jwt.sign({
+                sub: userId,
+                email: `user${userId}@test.com`,
+                roles: ['ROLE_USER'],
+                isGuest: false,
+            });
+        }
+
+        // Shape of the token mod_exescorm signs: cmid is a JSON number.
+        function platformToken(payload: Record<string, unknown> = {}): Promise<string> {
+            return new SignJWT({
+                action: '/new_ode',
+                cmid: 1234,
+                pkgtype: 'scorm',
+                returnurl: `${site}/mod/exescorm/view.php?id=1234&forceview=1`,
+                userid: '5678',
+                provider: { name: 'Moodle', version: '5.0' },
+                ...payload,
+            })
+                .setProtectedHeader({ alg: 'HS256' })
+                .setIssuedAt()
+                .setExpirationTime('1h')
+                .sign(new TextEncoder().encode(process.env.APP_SECRET));
+        }
+
+        function bindProject(uuid: string, fields: Record<string, unknown> = {}): void {
+            mockProjects.set(uuid, {
+                id: mockProjects.size + 100,
+                uuid,
+                owner_id: 1,
+                status: 'active',
+                visibility: 'private',
+                platform_id: '1234',
+                platform_site: site,
+                updated_at: 1000,
+                ...fields,
+            });
+        }
+
+        async function openWorkarea(query: string, userId = 1): Promise<Response> {
+            return app.handle(
+                new Request(`http://localhost/workarea?${query}`, {
+                    headers: { Cookie: `auth=${await signInAs(userId)}` },
+                }),
+            );
+        }
+
+        function redirectParams(res: Response): URLSearchParams {
+            return new URL(res.headers.get('location') || '', 'http://localhost').searchParams;
+        }
+
+        it('creates a project bound to the activity on the first edit', async () => {
+            const token = await platformToken();
+
+            const res = await openWorkarea(`newOde=new&jwt_token=${encodeURIComponent(token)}`);
+
+            expect(res.status).toBe(302);
+            const params = redirectParams(res);
+            const created = mockProjects.get(params.get('project') || '');
+            expect(created).toMatchObject({ owner_id: 1, platform_id: '1234', platform_site: site });
+            expect(params.get('jwt_token')).toBe(token);
+            expect(params.get('fetchPlatformElp')).toBe('1');
+        });
+
+        it("reopens the user's project for the activity instead of creating another one", async () => {
+            bindProject('my-activity-project');
+            const token = await platformToken();
+
+            const res = await openWorkarea(`newOde=new&jwt_token=${encodeURIComponent(token)}`);
+
+            expect(res.status).toBe(302);
+            const params = redirectParams(res);
+            expect(params.get('project')).toBe('my-activity-project');
+            expect(params.get('jwt_token')).toBe(token);
+            expect(params.get('fetchPlatformElp')).toBe('1');
+            expect(mockProjects.size).toBe(1);
+        });
+
+        it('opens a project of its own for a teacher whose colleague saved the activity last (/edit_ode, #2498)', async () => {
+            bindProject('colleague-project', { owner_id: 2 });
+            bindProject('colleague-legacy-project', { owner_id: 2, platform_site: null });
+            const token = await platformToken({ action: '/edit_ode' });
+
+            const res = await openWorkarea(`odeId=1234&jwt_token=${encodeURIComponent(token)}`);
+
+            expect(res.status).toBe(302);
+            const created = mockProjects.get(redirectParams(res).get('project') || '');
+            expect(created).toMatchObject({ owner_id: 1, platform_id: '1234', platform_site: site });
+        });
+
+        it('does not reuse a project bound to the same cmid on another platform site', async () => {
+            bindProject('other-site-project', { platform_site: 'https://other.example.com' });
+            const token = await platformToken();
+
+            const res = await openWorkarea(`newOde=new&jwt_token=${encodeURIComponent(token)}`);
+
+            expect(res.status).toBe(302);
+            expect(redirectParams(res).get('project')).not.toBe('other-site-project');
+            expect(mockProjects.size).toBe(2);
+        });
+
+        it('keeps the previous lookup when odeId is not the cmid of the platform token', async () => {
+            bindProject('colleague-project', { owner_id: 2, platform_id: '999', platform_site: null });
+            const token = await platformToken();
+
+            const res = await openWorkarea(`odeId=999&jwt_token=${encodeURIComponent(token)}`);
+
+            expect(res.status).toBe(403);
+            expect(mockProjects.size).toBe(1);
+        });
+
+        it('does not bind a project when the platform token cannot be verified', async () => {
+            const token = await platformToken();
+            process.env.APP_SECRET = 'another-secret';
+
+            const res = await openWorkarea(`newOde=new&jwt_token=${encodeURIComponent(token)}`);
+
+            expect(res.status).toBe(302);
+            const created = mockProjects.get(redirectParams(res).get('project') || '');
+            expect(created).toMatchObject({ owner_id: 1, platform_id: null, platform_site: null });
+        });
+
+        it('falls back to an unbound project when the bound one cannot be created', async () => {
+            const createdUnbound: unknown[] = [];
+            const customApp = new Elysia().use(
+                createPagesRoutes({
+                    ...mockDeps,
+                    queries: {
+                        ...createMockQueries(),
+                        createProject: async (db: any, data: any) => {
+                            if (data.platform_id) throw new Error('insert failed');
+                            createdUnbound.push(data);
+                            return createMockQueries().createProject(db, data);
+                        },
+                    },
+                }),
+            );
+            const token = await platformToken();
+
+            const res = await customApp.handle(
+                new Request(`http://localhost/workarea?newOde=new&jwt_token=${encodeURIComponent(token)}`, {
+                    headers: { Cookie: `auth=${await signInAs(1)}` },
+                }),
+            );
+
+            expect(res.status).toBe(302);
+            expect(redirectParams(res).get('fetchPlatformElp')).toBe('1');
+            expect(createdUnbound).toHaveLength(1);
         });
     });
 
@@ -1803,6 +1996,48 @@ describe('Pages Routes', () => {
 
             expect(templateData.user).not.toBeNull();
             expect(templateData.user.id).toBe(1);
+        });
+    });
+
+    describe('session tokens match the revocation check', () => {
+        it('signs the offline login with the roles the revocation check reads', async () => {
+            process.env.APP_ONLINE_MODE = '0';
+            process.env.DEFAULT_USER_EMAIL = 'test@test.com';
+            mockUsers.set(1, { id: 1, email: 'test@test.com', roles: '', password: 'stored-hash' });
+
+            const res = await app.handle(new Request('http://localhost/login'));
+
+            const token = res.headers.get('set-cookie')?.match(/auth=([^;]+)/)?.[1];
+            const payload = await verifyToken(token!);
+            expect(payload?.roles).toEqual([]);
+        });
+
+        it('binds the workarea token to the current password', async () => {
+            let templateData: any = null;
+            const customApp = new Elysia().use(
+                createPagesRoutes({
+                    ...mockDeps,
+                    template: {
+                        renderTemplate: (_template: string, data: any) => {
+                            templateData = data;
+                            return '<html></html>';
+                        },
+                        setRenderLocale: () => {},
+                    },
+                }),
+            );
+            mockUsers.set(1, { id: 1, email: 'test@test.com', roles: '["ROLE_USER"]', password: 'stored-hash' });
+            mockSessions.set('pwh-test', { sessionId: 'pwh-test', fileName: 'Test.elp' });
+            const cookie = await new SignJWT({ sub: 1, email: 'test@test.com', roles: ['ROLE_USER'] } as any)
+                .setProtectedHeader({ alg: 'HS256' })
+                .sign(new TextEncoder().encode('test-secret-for-testing-only'));
+
+            await customApp.handle(
+                new Request('http://localhost/workarea?project=pwh-test', { headers: { Cookie: `auth=${cookie}` } }),
+            );
+
+            const payload = await verifyToken(templateData.config.token);
+            expect(payload?.pwh).toBe(passwordFingerprint('stored-hash'));
         });
     });
 
@@ -2672,10 +2907,25 @@ describe('Pages Routes', () => {
             expect(res.headers.get('content-type')).toBe('image/png');
         });
 
-        it('should return 400 for path traversal attempt', async () => {
-            const res = await app.handle(new Request('http://localhost/customization/assets/..%2Fetc%2Fpasswd'));
+        it('should not serve a file outside the assets directory on path traversal', async () => {
+            // Only the traversal target "exists", so a missing containment check would serve it
+            // instead of falling through to the handler's 404.
+            const insideAssets = `${pathModule.sep}customization${pathModule.sep}assets${pathModule.sep}`;
+            const customDeps = {
+                ...mockDeps,
+                fileHelper: {
+                    ...createMockFileHelper(),
+                    fileExists: async (p: string) => !p.includes(insideAssets),
+                    readFile: async (_p: string) => Buffer.from('root:x:0:0'),
+                },
+            };
+            const customApp = new Elysia().use(createPagesRoutes(customDeps));
+            const res = await customApp.handle(new Request('http://localhost/customization/assets/..%2Fetc%2Fpasswd'));
 
-            expect(res.status).toBe(400);
+            // Elysia < 1.4.31 decodes %2F, so the handler's guard answers 400. From 1.4.31 the
+            // param keeps %2F, resolves inside the assets directory and is a plain 404.
+            expect([400, 404]).toContain(res.status);
+            expect(await res.text()).toBe('');
         });
     });
 
@@ -2846,6 +3096,817 @@ describe('Pages Routes', () => {
             );
 
             expect(user.canChangePassword).toBe(false);
+        });
+    });
+
+    describe('GET /view/:publicViewId', () => {
+        it('should return 404 for unknown public view id', async () => {
+            const res = await app.handle(new Request('http://localhost/view/nonexistent-public-id'));
+
+            expect(res.status).toBe(404);
+            const html = await res.text();
+            expect(html).toContain('workarea/error');
+        });
+
+        it('should render viewer when the public read-only link is enabled (no auth needed)', async () => {
+            mockProjects.set('public-view-project', {
+                id: 50,
+                uuid: 'public-view-project-uuid',
+                public_view_id: 'public-view-id-50',
+                public_view_enabled: 1,
+                owner_id: 999,
+                visibility: 'public',
+                title: 'Public Project',
+            });
+
+            const res = await app.handle(new Request('http://localhost/view/public-view-id-50'));
+
+            expect(res.status).toBe(200);
+            const html = await res.text();
+            expect(html).toContain('viewer/viewer');
+        });
+
+        it('should render viewer when enabled even if edit access is private (decoupled)', async () => {
+            mockProjects.set('private-enabled-project', {
+                id: 56,
+                uuid: 'private-enabled-uuid',
+                public_view_id: 'public-view-id-56',
+                public_view_enabled: 1,
+                owner_id: 999,
+                visibility: 'private',
+                title: 'Private but publicly viewable',
+            });
+
+            const res = await app.handle(new Request('http://localhost/view/public-view-id-56'));
+
+            expect(res.status).toBe(200);
+            const html = await res.text();
+            expect(html).toContain('viewer/viewer');
+        });
+
+        it('should not expose the internal project uuid in the rendered viewer', async () => {
+            let templateData: any = null;
+            const customTemplate: PagesTemplateDeps = {
+                renderTemplate: (_template: string, data: any) => {
+                    templateData = data;
+                    return `<html><body>${JSON.stringify(data)}</body></html>`;
+                },
+                setRenderLocale: () => {},
+            };
+            const customApp = new Elysia().use(createPagesRoutes({ ...mockDeps, template: customTemplate }));
+
+            mockProjects.set('uuid-leak-project', {
+                id: 55,
+                uuid: 'secret-internal-uuid',
+                public_view_id: 'public-view-id-55',
+                public_view_enabled: 1,
+                owner_id: 999,
+                visibility: 'public',
+                title: 'No Leak',
+            });
+
+            const res = await customApp.handle(new Request('http://localhost/view/public-view-id-55'));
+
+            expect(res.status).toBe(200);
+            const html = await res.text();
+            expect(html).not.toContain('secret-internal-uuid');
+            expect(templateData.uuid).toBeUndefined();
+            expect(templateData.publicViewId).toBe('public-view-id-55');
+        });
+
+        it('should return 404 for an enabled link when the site disables public links', async () => {
+            mockProjects.set('site-disabled-project', {
+                id: 57,
+                uuid: 'site-disabled-uuid',
+                public_view_id: 'public-view-id-57',
+                public_view_enabled: 1,
+                owner_id: 999,
+                visibility: 'public',
+                title: 'Site disabled',
+            });
+            const customApp = new Elysia().use(
+                createPagesRoutes({
+                    ...mockDeps,
+                    settings: { ...createMockSettings(), isPublicViewFeatureEnabled: async () => false },
+                }),
+            );
+
+            const res = await customApp.handle(new Request('http://localhost/view/public-view-id-57'));
+
+            expect(res.status).toBe(404);
+            expect(await res.text()).toContain('workarea/error');
+        });
+
+        it('should return 404 when the public read-only link is disabled', async () => {
+            mockProjects.set('disabled-view-project', {
+                id: 51,
+                uuid: 'disabled-view-project-uuid',
+                public_view_id: 'public-view-id-51',
+                public_view_enabled: 0,
+                owner_id: 999,
+                visibility: 'public',
+                title: 'Disabled Project',
+            });
+
+            const res = await app.handle(new Request('http://localhost/view/public-view-id-51'));
+
+            expect(res.status).toBe(404);
+            const html = await res.text();
+            expect(html).toContain('workarea/error');
+        });
+
+        it('should return 404 when the internal project uuid is used as the public view id', async () => {
+            mockProjects.set('uuid-as-id-project', {
+                id: 52,
+                uuid: 'public-uuid-as-id',
+                public_view_id: 'public-view-id-52',
+                public_view_enabled: 1,
+                owner_id: 999,
+                visibility: 'public',
+                title: 'Uuid As Id',
+            });
+
+            // The editing UUID must not work as a public view id.
+            const res = await app.handle(new Request('http://localhost/view/public-uuid-as-id'));
+
+            expect(res.status).toBe(404);
+            const html = await res.text();
+            expect(html).toContain('workarea/error');
+        });
+
+        it('should use user locale preference for viewer', async () => {
+            let templateData: any = null;
+            const customTemplate: PagesTemplateDeps = {
+                renderTemplate: (_template: string, data: any) => {
+                    templateData = data;
+                    return `<html><body>viewer lang: ${data.lang}</body></html>`;
+                },
+                setRenderLocale: () => {},
+            };
+
+            const customDeps = {
+                ...mockDeps,
+                template: customTemplate,
+            };
+            const customApp = new Elysia().use(createPagesRoutes(customDeps));
+
+            mockProjects.set('locale-view-project', {
+                id: 54,
+                uuid: 'locale-view-project-uuid',
+                public_view_id: 'public-view-id-54',
+                public_view_enabled: 1,
+                owner_id: 1,
+                visibility: 'public',
+                title: 'Locale View',
+            });
+
+            mockPreferences.set('1:locale', { value: 'fr' });
+
+            const jwt = await import('@elysiajs/jwt');
+            const jwtInstance = jwt.jwt({
+                name: 'jwt',
+                secret: 'test-secret-for-testing-only',
+            });
+
+            const tempApp = new Elysia().use(jwtInstance);
+            const token = await tempApp.decorator.jwt.sign({
+                sub: 1,
+                email: 'test@test.com',
+                roles: ['ROLE_USER'],
+                isGuest: false,
+            });
+
+            const res = await customApp.handle(
+                new Request('http://localhost/view/public-view-id-54', {
+                    headers: {
+                        Cookie: `auth=${token}`,
+                        'Accept-Language': 'de-DE',
+                    },
+                }),
+            );
+
+            expect(res.status).toBe(200);
+            expect(templateData.lang).toBe('fr');
+        });
+    });
+
+    describe('workarea access control edge cases', () => {
+        it('should deny access when session exists and project DB access check fails', async () => {
+            const jwt = await import('@elysiajs/jwt');
+            const jwtInstance = jwt.jwt({
+                name: 'jwt',
+                secret: 'test-secret-for-testing-only',
+            });
+
+            const tempApp = new Elysia().use(jwtInstance);
+            const token = await tempApp.decorator.jwt.sign({
+                sub: 1,
+                email: 'test@test.com',
+                roles: ['ROLE_USER'],
+                isGuest: false,
+            });
+
+            // Session exists in memory
+            mockSessions.set('session-db-denied', {
+                sessionId: 'session-db-denied',
+                fileName: 'Test.elp',
+            });
+
+            // Project also exists in DB but owned by different user
+            mockProjects.set('session-db-denied', {
+                id: 60,
+                uuid: 'session-db-denied',
+                owner_id: 999,
+                visibility: 'private',
+            });
+
+            const res = await app.handle(
+                new Request('http://localhost/workarea?project=session-db-denied', {
+                    headers: {
+                        Cookie: `auth=${token}`,
+                    },
+                }),
+            );
+
+            expect(res.status).toBe(403);
+            const html = await res.text();
+            expect(html).toContain('access-denied');
+        });
+
+        it('should deny access when session belongs to another user', async () => {
+            const jwt = await import('@elysiajs/jwt');
+            const jwtInstance = jwt.jwt({
+                name: 'jwt',
+                secret: 'test-secret-for-testing-only',
+            });
+
+            const tempApp = new Elysia().use(jwtInstance);
+            const token = await tempApp.decorator.jwt.sign({
+                sub: 1,
+                email: 'test@test.com',
+                roles: ['ROLE_USER'],
+                isGuest: false,
+            });
+
+            // Session in memory created by another user, no project in DB
+            mockSessions.set('other-user-mem-session', {
+                sessionId: 'other-user-mem-session',
+                fileName: 'Other.elp',
+                userId: 999,
+            });
+
+            // Ensure NO project in DB for this UUID
+            // (mockProjects does not have this key)
+
+            const res = await app.handle(
+                new Request('http://localhost/workarea?project=other-user-mem-session', {
+                    headers: {
+                        Cookie: `auth=${token}`,
+                    },
+                }),
+            );
+
+            expect(res.status).toBe(403);
+            const html = await res.text();
+            expect(html).toContain('access-denied');
+        });
+    });
+
+    describe('offline mode workarea', () => {
+        it('should create ephemeral session in offline mode', async () => {
+            process.env.APP_ONLINE_MODE = '0';
+
+            const jwt = await import('@elysiajs/jwt');
+            const jwtInstance = jwt.jwt({
+                name: 'jwt',
+                secret: 'test-secret-for-testing-only',
+            });
+
+            const tempApp = new Elysia().use(jwtInstance);
+            const token = await tempApp.decorator.jwt.sign({
+                sub: 1,
+                email: 'test@test.com',
+                roles: ['ROLE_USER'],
+                isGuest: false,
+            });
+
+            const res = await app.handle(
+                new Request('http://localhost/workarea', {
+                    headers: {
+                        Cookie: `auth=${token}`,
+                    },
+                }),
+            );
+
+            // Should redirect with a new project ID
+            expect(res.status).toBe(302);
+            const location = res.headers.get('location');
+            expect(location).toContain('project=');
+        });
+    });
+
+    describe('error handling edge cases', () => {
+        it('should handle findPreference error gracefully in getUserLocalePreference', async () => {
+            const customQueries = {
+                ...createMockQueries(),
+                findPreference: async () => {
+                    throw new Error('DB connection failed');
+                },
+            };
+
+            const customDeps = {
+                ...mockDeps,
+                queries: customQueries,
+            };
+            const customApp = new Elysia().use(createPagesRoutes(customDeps));
+
+            const jwt = await import('@elysiajs/jwt');
+            const jwtInstance = jwt.jwt({
+                name: 'jwt',
+                secret: 'test-secret-for-testing-only',
+            });
+
+            const tempApp = new Elysia().use(jwtInstance);
+            const token = await tempApp.decorator.jwt.sign({
+                sub: 1,
+                email: 'test@test.com',
+                roles: ['ROLE_USER'],
+                isGuest: false,
+            });
+
+            mockSessions.set('pref-error-test', {
+                sessionId: 'pref-error-test',
+                fileName: 'Test.elp',
+            });
+
+            const res = await customApp.handle(
+                new Request('http://localhost/workarea?project=pref-error-test', {
+                    headers: {
+                        Cookie: `auth=${token}`,
+                    },
+                }),
+            );
+
+            // Should still render workarea, falling back to browser/default locale
+            expect(res.status).toBe(200);
+        });
+
+        it('should handle createProject failure gracefully', async () => {
+            const customQueries = {
+                ...createMockQueries(),
+                createProject: async () => {
+                    throw new Error('DB write failed');
+                },
+            };
+
+            const customDeps = {
+                ...mockDeps,
+                queries: customQueries,
+            };
+            const customApp = new Elysia().use(createPagesRoutes(customDeps));
+
+            const jwt = await import('@elysiajs/jwt');
+            const jwtInstance = jwt.jwt({
+                name: 'jwt',
+                secret: 'test-secret-for-testing-only',
+            });
+
+            const tempApp = new Elysia().use(jwtInstance);
+            const token = await tempApp.decorator.jwt.sign({
+                sub: 1,
+                email: 'test@test.com',
+                roles: ['ROLE_USER'],
+                isGuest: false,
+            });
+
+            const res = await customApp.handle(
+                new Request('http://localhost/workarea', {
+                    headers: {
+                        Cookie: `auth=${token}`,
+                    },
+                }),
+            );
+
+            // Should still render something even if project creation fails
+            expect([200, 302, 500]).toContain(res.status);
+        });
+
+        it('should handle platform integration project creation failure', async () => {
+            const customQueries = {
+                ...createMockQueries(),
+                createProject: async () => {
+                    throw new Error('Platform project creation failed');
+                },
+            };
+
+            const customDeps = {
+                ...mockDeps,
+                queries: customQueries,
+            };
+            const customApp = new Elysia().use(createPagesRoutes(customDeps));
+
+            const jwt = await import('@elysiajs/jwt');
+            const jwtInstance = jwt.jwt({
+                name: 'jwt',
+                secret: 'test-secret-for-testing-only',
+            });
+
+            const tempApp = new Elysia().use(jwtInstance);
+            const token = await tempApp.decorator.jwt.sign({
+                sub: 1,
+                email: 'test@test.com',
+                roles: ['ROLE_USER'],
+                isGuest: false,
+            });
+
+            const res = await customApp.handle(
+                new Request('http://localhost/workarea?odeId=new-moodle-cmid&jwt_token=test-jwt', {
+                    headers: {
+                        Cookie: `auth=${token}`,
+                    },
+                }),
+            );
+
+            // Should fall through to normal flow even if platform project creation fails
+            expect([200, 302, 500]).toContain(res.status);
+        });
+
+        it('should handle setPreference error when auto-saving locale', async () => {
+            const customQueries = {
+                ...createMockQueries(),
+                findPreference: async () => undefined, // No locale preference stored
+                setPreference: async () => {
+                    throw new Error('Failed to save preference');
+                },
+            };
+
+            const customDeps = {
+                ...mockDeps,
+                queries: customQueries,
+            };
+            const customApp = new Elysia().use(createPagesRoutes(customDeps));
+
+            const jwt = await import('@elysiajs/jwt');
+            const jwtInstance = jwt.jwt({
+                name: 'jwt',
+                secret: 'test-secret-for-testing-only',
+            });
+
+            const tempApp = new Elysia().use(jwtInstance);
+            const token = await tempApp.decorator.jwt.sign({
+                sub: 1,
+                email: 'test@test.com',
+                roles: ['ROLE_USER'],
+                isGuest: false,
+            });
+
+            mockSessions.set('save-pref-error-test', {
+                sessionId: 'save-pref-error-test',
+                fileName: 'Test.elp',
+            });
+
+            const res = await customApp.handle(
+                new Request('http://localhost/workarea?project=save-pref-error-test', {
+                    headers: {
+                        Cookie: `auth=${token}`,
+                    },
+                }),
+            );
+
+            // Should still render workarea even if locale save fails
+            expect(res.status).toBe(200);
+        });
+    });
+
+    describe('impersonation cookie cleanup', () => {
+        it('should clean up impersonation cookies when no auth token', async () => {
+            const res = await app.handle(
+                new Request('http://localhost/workarea', {
+                    headers: {
+                        Cookie: 'impersonator_auth=some-token; impersonation_session=some-session',
+                    },
+                }),
+            );
+
+            // Should redirect to login
+            expect(res.status).toBe(302);
+            const location = res.headers.get('location');
+            expect(location).toContain('/login');
+        });
+
+        it('should handle invalid impersonator JWT gracefully', async () => {
+            const jwt = await import('@elysiajs/jwt');
+            const jwtInstance = jwt.jwt({
+                name: 'jwt',
+                secret: 'test-secret-for-testing-only',
+            });
+
+            const tempApp = new Elysia().use(jwtInstance);
+            const token = await tempApp.decorator.jwt.sign({
+                sub: 1,
+                email: 'test@test.com',
+                roles: ['ROLE_USER'],
+                isGuest: false,
+            });
+
+            mockSessions.set('impersonation-error-test', {
+                sessionId: 'impersonation-error-test',
+                fileName: 'Test.elp',
+            });
+
+            const res = await app.handle(
+                new Request('http://localhost/workarea?project=impersonation-error-test', {
+                    headers: {
+                        Cookie: `auth=${token}; impersonator_auth=invalid-jwt-token; impersonation_session=session-xyz`,
+                    },
+                }),
+            );
+
+            // Should still work, just without impersonation context
+            expect(res.status).toBe(200);
+        });
+    });
+
+    describe('platform JWT in workarea', () => {
+        it('should handle jwt_token parameter for platform integration', async () => {
+            let templateData: any = null;
+            const customTemplate: PagesTemplateDeps = {
+                renderTemplate: (_template: string, data: any) => {
+                    templateData = data;
+                    return '<html></html>';
+                },
+                setRenderLocale: () => {},
+            };
+
+            const customDeps = {
+                ...mockDeps,
+                template: customTemplate,
+            };
+            const customApp = new Elysia().use(createPagesRoutes(customDeps));
+
+            const jwt = await import('@elysiajs/jwt');
+            const jwtInstance = jwt.jwt({
+                name: 'jwt',
+                secret: 'test-secret-for-testing-only',
+            });
+
+            const tempApp = new Elysia().use(jwtInstance);
+            const token = await tempApp.decorator.jwt.sign({
+                sub: 1,
+                email: 'test@test.com',
+                roles: ['ROLE_USER'],
+                isGuest: false,
+            });
+
+            mockSessions.set('platform-jwt-test', {
+                sessionId: 'platform-jwt-test',
+                fileName: 'Test.elp',
+            });
+
+            await customApp.handle(
+                new Request('http://localhost/workarea?project=platform-jwt-test&jwt_token=some-platform-jwt', {
+                    headers: {
+                        Cookie: `auth=${token}`,
+                    },
+                }),
+            );
+
+            // Should render with platform config
+            expect(templateData).not.toBeNull();
+            expect(templateData.config).toBeDefined();
+        });
+    });
+
+    describe('admin settings from database', () => {
+        it('should parse stored settings with boolean, number, and string types', async () => {
+            let templateData: any = null;
+            const customTemplate: PagesTemplateDeps = {
+                renderTemplate: (_template: string, data: any) => {
+                    templateData = data;
+                    return '<html></html>';
+                },
+                setRenderLocale: () => {},
+            };
+
+            // Override getAllSettingsDefault to return mock settings
+            // We need to use the real admin route which calls getAllSettingsDefault directly
+            // Since getAllSettingsDefault is imported at module level, we test via the actual mock DB
+            // The admin route calls getAllSettingsDefault(db) where db is the mock
+            // Since our mock db is an empty object, it will throw and hit the catch block
+
+            const customDeps = {
+                ...mockDeps,
+                template: customTemplate,
+            };
+            const customApp = new Elysia().use(createPagesRoutes(customDeps));
+
+            mockUsers.set(30, {
+                id: 30,
+                email: 'admin-settings@test.com',
+                roles: '["ROLE_USER", "ROLE_ADMIN"]',
+            });
+
+            const jwt = await import('@elysiajs/jwt');
+            const jwtInstance = jwt.jwt({
+                name: 'jwt',
+                secret: 'test-secret-for-testing-only',
+            });
+
+            const tempApp = new Elysia().use(jwtInstance);
+            const token = await tempApp.decorator.jwt.sign({
+                sub: 30,
+                email: 'admin-settings@test.com',
+                roles: ['ROLE_USER', 'ROLE_ADMIN'],
+                isGuest: false,
+            });
+
+            await customApp.handle(
+                new Request('http://localhost/admin', {
+                    headers: {
+                        Cookie: `auth=${token}`,
+                    },
+                }),
+            );
+
+            // Even with the DB error, admin settings should have default values
+            expect(templateData).not.toBeNull();
+            expect(templateData.adminSettings).toBeDefined();
+            expect(templateData.adminSettings.general).toBeDefined();
+            expect(templateData.adminSettings.storage).toBeDefined();
+            // Only settings that have an effect are offered under "Storage and quotas" (#2514)
+            expect(Object.keys(templateData.adminSettings.storage).sort()).toEqual([
+                'default_quota',
+                'file_upload_max_size',
+            ]);
+        });
+
+        it('should seed the public view toggle from PUBLIC_VIEW_ENABLED (disabled when unset)', async () => {
+            const rendered: any[] = [];
+            const customApp = new Elysia().use(
+                createPagesRoutes({
+                    ...mockDeps,
+                    template: {
+                        renderTemplate: (_template: string, data: any) => {
+                            rendered.push(data);
+                            return '<html></html>';
+                        },
+                        setRenderLocale: () => {},
+                    },
+                }),
+            );
+            mockUsers.set(31, { id: 31, email: 'admin-public-view@test.com', roles: '["ROLE_USER", "ROLE_ADMIN"]' });
+
+            const jwt = await import('@elysiajs/jwt');
+            const tempApp = new Elysia().use(jwt.jwt({ name: 'jwt', secret: 'test-secret-for-testing-only' }));
+            const token = await tempApp.decorator.jwt.sign({
+                sub: 31,
+                email: 'admin-public-view@test.com',
+                roles: ['ROLE_USER', 'ROLE_ADMIN'],
+                isGuest: false,
+            });
+            const openAdmin = () =>
+                customApp.handle(new Request('http://localhost/admin', { headers: { Cookie: `auth=${token}` } }));
+
+            delete process.env.PUBLIC_VIEW_ENABLED;
+            await openAdmin();
+            process.env.PUBLIC_VIEW_ENABLED = 'true';
+            await openAdmin();
+
+            expect(rendered.map(data => data.adminSettings.general.public_view_enabled)).toEqual([false, true]);
+        });
+    });
+
+    describe('JWT verification catch block', () => {
+        it('should handle JWT verify throwing an error', async () => {
+            // Use a token signed with a different secret to trigger verification failure
+            const jwt = await import('@elysiajs/jwt');
+            const wrongJwtInstance = jwt.jwt({
+                name: 'jwt',
+                secret: 'wrong-secret-key',
+            });
+
+            const wrongApp = new Elysia().use(wrongJwtInstance);
+            const badToken = await wrongApp.decorator.jwt.sign({
+                sub: 1,
+                email: 'test@test.com',
+                roles: ['ROLE_USER'],
+                isGuest: false,
+            });
+
+            const res = await app.handle(
+                new Request('http://localhost/workarea', {
+                    headers: {
+                        Cookie: `auth=${badToken}`,
+                    },
+                }),
+            );
+
+            // Should treat as unauthenticated and redirect to login
+            expect(res.status).toBe(302);
+            const location = res.headers.get('location');
+            expect(location).toContain('/login');
+        });
+    });
+
+    describe('GET /view/:publicViewId/_/* (isolated public content)', () => {
+        beforeEach(() => {
+            mockProjects.set('pub-1', {
+                id: 10,
+                uuid: 'pub-1-uuid',
+                public_view_id: 'pub-1',
+                public_view_enabled: 1,
+                updated_at: 1000,
+                title: 'Public project',
+            });
+            mockProjects.set('pub-disabled', {
+                id: 11,
+                uuid: 'pub-disabled-uuid',
+                public_view_id: 'pub-disabled',
+                public_view_enabled: 0,
+                updated_at: 1000,
+                title: 'Disabled',
+            });
+
+            configurePublicViewContent({
+                // Inject a deterministic version so the content service does not
+                // query the (unmocked) yjs_documents table in this route test.
+                resolveVersion: async (): Promise<string> => '1',
+                buildExport: async (): Promise<ExportResult> => ({
+                    success: true,
+                    data: zipSync({
+                        'index.html': strToU8('<h1>public</h1>'),
+                        'html/page.html': strToU8('<p>page</p>'),
+                        'css/style.css': strToU8('body{}'),
+                    }),
+                }),
+            });
+        });
+
+        afterEach(() => {
+            resetPublicViewContent();
+        });
+
+        it('serves index.html in an opaque origin via the response CSP sandbox directive', async () => {
+            const res = await app.handle(new Request('http://localhost/view/pub-1/_/index.html'));
+            expect(res.status).toBe(200);
+            expect(res.headers.get('Content-Type')).toBe('text/html; charset=utf-8');
+
+            const csp = res.headers.get('Content-Security-Policy') ?? '';
+            expect(csp).toContain(`sandbox ${PUBLIC_VIEW_SANDBOX}`);
+            expect(csp).not.toContain('allow-same-origin');
+            expect(csp).toContain("frame-ancestors 'self'");
+
+            expect(res.headers.get('Permissions-Policy')).toContain('camera=()');
+            expect(res.headers.get('X-Content-Type-Options')).toBe('nosniff');
+            expect(res.headers.get('Cache-Control')).toBe('no-store');
+
+            expect(await res.text()).toBe('<h1>public</h1>');
+        });
+
+        it('serves nested files with the right content type', async () => {
+            const res = await app.handle(new Request('http://localhost/view/pub-1/_/css/style.css'));
+            expect(res.status).toBe(200);
+            expect(res.headers.get('Content-Type')).toBe('text/css; charset=utf-8');
+            expect(await res.text()).toBe('body{}');
+        });
+
+        it('returns 404 for a file that is not in the export', async () => {
+            const res = await app.handle(new Request('http://localhost/view/pub-1/_/missing.html'));
+            expect(res.status).toBe(404);
+        });
+
+        it('returns 404 for an unknown public view id without leaking existence', async () => {
+            const res = await app.handle(new Request('http://localhost/view/does-not-exist/_/index.html'));
+            expect(res.status).toBe(404);
+        });
+
+        it('returns 404 for an enabled link when the site disables public links', async () => {
+            const customApp = new Elysia().use(
+                createPagesRoutes({
+                    ...mockDeps,
+                    settings: { ...createMockSettings(), isPublicViewFeatureEnabled: async () => false },
+                }),
+            );
+
+            const res = await customApp.handle(new Request('http://localhost/view/pub-1/_/index.html'));
+
+            expect(res.status).toBe(404);
+            expect(res.headers.get('Content-Security-Policy')).toBeNull();
+        });
+
+        it('returns 404 when the public view link is disabled', async () => {
+            const res = await app.handle(new Request('http://localhost/view/pub-disabled/_/index.html'));
+            expect(res.status).toBe(404);
+        });
+
+        it('returns 500 when the export build throws', async () => {
+            configurePublicViewContent({
+                buildExport: async (): Promise<ExportResult> => {
+                    throw new Error('build failed');
+                },
+            });
+            const res = await app.handle(new Request('http://localhost/view/pub-1/_/index.html'));
+            expect(res.status).toBe(500);
         });
     });
 });

@@ -71,12 +71,16 @@ interface ProjectsTable {
     owner_id: number;
     status: string; // 'active' | 'inactive' | 'archived'
     visibility: string; // 'public' | 'private'
+    public_view_id: string | null; // Opaque id for public viewer URLs (distinct from uuid)
+    public_view_enabled: number; // 0/1 flag: public read-only viewer link enabled (independent of visibility)
     language: string | null;
     author: string | null;
     license: string | null;
     last_accessed_at: number | null; // Unix timestamp in milliseconds
     saved_once: number;
     platform_id: string | null; // External platform ID (e.g., Moodle cmid)
+    platform_site: string | null; // Base URL of the platform site platform_id belongs to
+    platform_package_hash: string | null; // SHA-256 of the last package exchanged with the platform
     created_at: number | null; // Unix timestamp in milliseconds
     updated_at: number | null; // Unix timestamp in milliseconds
 }

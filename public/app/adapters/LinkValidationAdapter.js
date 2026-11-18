@@ -237,7 +237,7 @@ export default class LinkValidationAdapter {
      * so the link is reported as needing a manual review.
      *
      * @param {string} url
-     * @returns {Promise<{status: 'valid'|'broken'|'unknown', error: string|null}>}
+     * @returns {Promise<{status: 'valid'|'broken'|'unavailable'|'unknown', error: string|null}>}
      * @private
      */
     async _validateExternalUrl(url) {
@@ -247,7 +247,7 @@ export default class LinkValidationAdapter {
         if (electronCheck) {
             try {
                 const result = await electronCheck(normalizedUrl);
-                if (result?.status === 'valid' || result?.status === 'broken') {
+                if (['valid', 'broken', 'unavailable'].includes(result?.status)) {
                     return { status: result.status, error: result.error ?? null };
                 }
                 if (result?.status === 'unknown') {

@@ -4,6 +4,7 @@ import {
     waitForAppReady,
     gotoWorkarea,
     addTextIdevice,
+    addIdevice,
     editIdevice,
     saveIdevice,
     selectFirstPage,
@@ -24,6 +25,15 @@ import {
 const IGNORED_ERROR = /favicon\.ico|net::ERR|ResizeObserver loop|404 \(Not Found\)/i;
 
 /**
+ * Chromium blocks `unload` listeners by default and logs this as a console error.
+ * Vendored libraries (TinyMCE 5, jQuery's Sizzle, interact.js) still add them inside
+ * iframes, which we do not patch. Only those are ignored: an `unload` listener in our
+ * own code (public/app) must still fail the test.
+ */
+const UNLOAD_VIOLATION = /Permissions policy violation: unload is not allowed/;
+const VENDORED_SCRIPT = /\/libs\//;
+
+/**
  * Collect page errors and console errors for the whole test.
  *
  * A stale edition callback surfaces as an uncaught `TypeError` mentioning
@@ -37,7 +47,9 @@ function collectErrors(page: Page): string[] {
     };
     page.on('pageerror', error => add(error.message));
     page.on('console', message => {
-        if (message.type() === 'error') add(message.text());
+        if (message.type() !== 'error') return;
+        if (UNLOAD_VIOLATION.test(message.text()) && VENDORED_SCRIPT.test(message.location().url)) return;
+        add(message.text());
     });
     return errors;
 }
@@ -99,6 +111,54 @@ async function readEditionGlobals(page: Page): Promise<{ device: string; lifecyc
 }
 
 test.describe('iDevice edition lifecycle (#2293)', () => {
+    test('releases grading help handlers and restores them on reopening', async ({
+        authenticatedPage: page,
+        createProject,
+    }) => {
+        const uuid = await createProject(page, 'Grading help lifecycle');
+        await gotoWorkarea(page, uuid);
+        await waitForAppReady(page);
+        await selectFirstPage(page);
+        await addIdevice(page, 'rubric');
+        await page.locator('#ri_CreateNewRubric').click();
+        await expect(page.locator('#ri_Table')).toBeVisible();
+        const ideviceId = (await page.locator('#node-content .idevice_node.rubric').getAttribute('id'))!;
+        const helpIds = [
+            'eXePassScoreHelp',
+            'eXeGameSCORMNoSaveHelp',
+            'eXeGameSCORMAutoSaveHelp',
+            'eXeGameSCORMButtonSaveHelp',
+            'eXeGameSCORMWeightHelp',
+        ];
+        const countHelpHandlers = () =>
+            page.evaluate(ids => {
+                const handlers = (window as any).jQuery._data(document, 'events')?.click || [];
+                return handlers.filter((handler: { selector: string }) =>
+                    ids.some(id => handler.selector === `#${id}Lnk`),
+                ).length;
+            }, helpIds);
+
+        for (let round = 0; round < 2; round++) {
+            if (round > 0) await editIdevice(page, ideviceId);
+            await page
+                .locator('.exe-form-tabs a')
+                .filter({ hasText: /^Grading$/ })
+                .click();
+            await expect.poll(countHelpHandlers).toBe(helpIds.length);
+            await page.locator('#eXeGameSCORMButtonSave').check();
+            for (const id of helpIds) {
+                const note = page.locator(`#${id}`);
+                await expect(note).toBeHidden();
+                await page.locator(`#${id}Lnk`).click();
+                await expect(note).toBeVisible();
+                await page.locator(`#${id}Lnk`).click();
+                await expect(note).toBeHidden();
+            }
+            await saveIdevice(page, ideviceId);
+            await expect.poll(countHelpHandlers).toBe(0);
+        }
+    });
+
     for (const exit of ['save', 'discard', 'delete'] as const) {
         test(`releases the edition when leaving through ${exit}`, async ({ authenticatedPage, createProject }) => {
             const page = authenticatedPage;

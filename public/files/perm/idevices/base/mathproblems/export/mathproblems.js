@@ -55,7 +55,8 @@ var $eXeMathProblems = {
     },
 
     loadGame: function () {
-        $eXeMathProblems.options = [];
+        // Running activities keep their entry; each one is stored at its own index.
+        $eXeMathProblems.options.length = $eXeMathProblems.activities.length;
         $eXeMathProblems.activities.each(function (i) {
             const dl = $('.mathproblems-DataGame', this);
             if (dl.length === 0) return; // Skip already initialized activities
@@ -74,11 +75,12 @@ var $eXeMathProblems = {
             mOption.idevice = 'mathproblems-IDevice';
             mOption.isScorm = mOption.scorm.isScorm;
 
-            $eXeMathProblems.options.push(mOption);
+            $eXeMathProblems.options[i] = mOption;
 
             const mathp = $eXeMathProblems.createInterfaceMathP(i);
 
             dl.before(mathp).remove();
+            $exeDevices.iDevice.gamification.report.showPassScoreNotice(mOption);
 
             $('#mthpGameMinimize-' + i).hide();
             $('#mthpGameContainer-' + i).hide();
@@ -988,17 +990,25 @@ var $eXeMathProblems = {
         $('#mthpPNumber-' + instance).text(mOptions.numberQuestions);
         $('#mthpDivReply-' + instance).show();
 
-        mOptions.counterClock = setInterval(function () {
+        // Bound to this game's element, not to its id. The editor never
+        // reloads the document between pages and ids are numbered by
+        // position, so the next page's first game takes the same ones: a
+        // clock that looked its game up by id each second found that game and
+        // ran it, counting down on its display and answering its question when
+        // its own time ran out.
+        const container = document.getElementById(
+            'mthpMainContainer-' + instance
+        );
+        const clock = setInterval(() => {
+            const $content = $('#node-content');
+            if (
+                !container?.isConnected ||
+                ($content.length && $content.attr('mode') === 'edition')
+            ) {
+                clearInterval(clock);
+                return;
+            }
             if (mOptions.gameStarted && mOptions.activeCounter) {
-                let $node = $('#mthpMainContainer-' + instance);
-                let $content = $('#node-content');
-                if (
-                    !$node.length ||
-                    ($content.length && $content.attr('mode') === 'edition')
-                ) {
-                    clearInterval(mOptions.counterClock);
-                    return;
-                }
                 mOptions.counter--;
                 $eXeMathProblems.uptateTime(mOptions.counter, instance);
                 if (mOptions.counter <= 0) {
@@ -1024,6 +1034,7 @@ var $eXeMathProblems = {
                 }
             }
         }, 1000);
+        mOptions.counterClock = clock;
 
         $eXeMathProblems.uptateTime(0, instance);
         mOptions.gameStarted = true;
@@ -1102,7 +1113,7 @@ var $eXeMathProblems = {
             '%s',
             mOptions.score.toFixed(2)
         );
-        type = mOptions.score >= 5 ? 2 : 1;
+        type = mOptions.score >= $exe.passScore.resolve(mOptions) ? 2 : 1;
 
         $eXeMathProblems.showMessage(type, message, instance);
         const aa = $exeDevices.iDevice.gamification.helpers.shuffleAds(

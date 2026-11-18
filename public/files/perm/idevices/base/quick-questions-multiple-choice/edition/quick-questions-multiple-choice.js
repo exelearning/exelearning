@@ -159,6 +159,7 @@ var $exeDevice = {
             msgUncompletedActivity: c_('Incomplete activity'),
             msgSuccessfulActivity: c_('Activity: Passed. Score: %s'),
             msgUnsuccessfulActivity: c_('Activity: Not passed. Score: %s'),
+            msgPassScore: c_('Minimum score needed to pass this activity: %s'),
             msgTypeGame: c_('Multiple Choice Quiz'),
         };
     },
@@ -1004,7 +1005,7 @@ var $exeDevice = {
                 }
             }
         } else if (p.type === 3) {
-            tinyMCE.get('seleccionaEText').setContent(unescape(p.eText));
+            tinyMCE.get('seleccionaEText').setContent($exeDevices.iDevice.gamification.helpers.decodeStoredText(p.eText));
         }
 
         $('.SLCNE-EAnwersOptions').each(function (j) {
@@ -1440,7 +1441,6 @@ var $exeDevice = {
                                 <button id="seleccionaGlobalTimeButton" class="btn btn-primary" type="button">${_('Accept')}</button> 
                             </div>
                             <div class="d-flex align-items-center flex-wrap gap-2 mb-3">
-                                ${$exeDevicesEdition.iDevice.gamification.progressBar.getContents(path)}
                             </div>
                         </div>
                     </fieldset>
@@ -1729,7 +1729,7 @@ var $exeDevice = {
                     ${$exeDevicesEdition.iDevice.common.getTextFieldset('after')}
                  </div>
                 ${$exeDevicesEdition.iDevice.gamification.itinerary.getTab()}
-                ${$exeDevicesEdition.iDevice.gamification.scorm.getTab()}
+                ${$exeDevicesEdition.iDevice.gamification.scorm.getTab(path)}
                 ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
                 ${$exeDevicesEdition.iDevice.gamification.share.getTab(true, 3, true)}
                 ${$exeDevicesEdition.iDevice.gamification.share.getTabIA(3)}
@@ -2010,6 +2010,10 @@ var $exeDevice = {
         $exeDevicesEdition.iDevice.gamification.progressBar.setValues({
             evaluation: game.evaluation,
             evaluationID: game.evaluationID,
+        });
+        $exeDevicesEdition.iDevice.gamification.passScore.setValues({
+            passScoreMode: game.passScoreMode,
+            passScoreCustom: game.passScoreCustom,
         });
         $('#seleccionaEGlobalTimes').val(game.globalTime);
 
@@ -2441,6 +2445,8 @@ var $exeDevice = {
             ),
             progressBar =
                 $exeDevicesEdition.iDevice.gamification.progressBar.getValues(),
+            passScore =
+                $exeDevicesEdition.iDevice.gamification.passScore.getValues(),
             id = $exeDevice.getIdeviceID(),
             globalTime = parseInt($('#seleccionaEGlobalTimes').val(), 10);
 
@@ -2555,6 +2561,8 @@ var $exeDevice = {
             modeBoard: modeBoard,
             evaluation: progressBar.evaluation,
             evaluationID: progressBar.evaluationID,
+            passScoreMode: passScore.passScoreMode,
+            passScoreCustom: passScore.passScoreCustom,
             id: id,
             globalTime: globalTime,
         };
@@ -3126,6 +3134,8 @@ var $exeDevice = {
 
         $exeDevicesEdition.iDevice.gamification.progressBar.addEvents();
 
+        $exeDevicesEdition.iDevice.gamification.passScore.addEvents();
+
         $exeDevicesEdition.iDevice.gamification.itinerary.addEvents();
         $exeDevicesEdition.iDevice.gamification.share.addEvents(
             3,
@@ -3550,6 +3560,8 @@ var $exeDevice = {
             p.imageVideo = cuestion.imageVideo;
             p.iVideo = cuestion.iVideo;
             p.fVideo = cuestion.fVideo;
+            // As stored, like a question loaded with the activity: showQuestion decodes it, and
+            // decoding it here too would take one more level off.
             p.eText = cuestion.eText;
             p.quextion = cuestion.quextion;
             p.options = [...cuestion.options];
@@ -3561,10 +3573,6 @@ var $exeDevice = {
                     break;
                 }
                 numOpt++;
-            }
-
-            if (p.type === 3) {
-                p.eText = unescape(p.eText);
             }
 
             p.audio = cuestion.audio || '';

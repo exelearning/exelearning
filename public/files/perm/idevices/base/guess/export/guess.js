@@ -39,7 +39,8 @@ var $guess = {
     },
 
     loadGame: function () {
-        $guess.options = [];
+        // Running activities keep their entry; each one is stored at its own index.
+        $guess.options.length = $guess.activities.length;
         $guess.activities.each(function (i) {
             const id = $(this).closest('.idevice_node').attr('id');
             const dl = $('.adivina-DataGame', this);
@@ -62,10 +63,11 @@ var $guess = {
             mOption.main = 'adivinaMainContainer-' + i;
             mOption.idevice = 'adivina-IDevice';
 
-            $guess.options.push(mOption);
+            $guess.options[i] = mOption;
 
             const adivina = $guess.createInterfaceAdivina(i);
             dl.before(adivina).remove();
+            $exeDevices.iDevice.gamification.report.showPassScoreNotice(mOption);
 
             $('#adivinaGameMinimize-' + i).hide();
             $('#adivinaGameContainer-' + i).hide();
@@ -881,17 +883,25 @@ var $guess = {
             mOptions.counter += durationVideo;
         }
 
-        mOptions.counterClock = setInterval(() => {
+        // Bound to this game's element, not to its id. The editor never
+        // reloads the document between pages and ids are numbered by
+        // position, so the next page's first game takes the same ones: a
+        // clock that looked its game up by id each second found that game and
+        // ran it, counting down on its display and moving it on to the next
+        // question when its own time ran out.
+        const container = document.getElementById(
+            'adivinaMainContainer-' + instance
+        );
+        const clock = setInterval(() => {
+            const $content = $('#node-content');
+            if (
+                !container?.isConnected ||
+                ($content.length && $content.attr('mode') === 'edition')
+            ) {
+                clearInterval(clock);
+                return;
+            }
             if (mOptions.gameStarted && mOptions.activeCounter) {
-                let $node = $('#adivinaMainContainer-' + instance);
-                let $content = $('#node-content');
-                if (
-                    !$node.length ||
-                    ($content.length && $content.attr('mode') === 'edition')
-                ) {
-                    clearInterval(mOptions.counterClock);
-                    return;
-                }
                 mOptions.counter--;
                 $guess.updateTime(mOptions.counter, instance);
                 $guess.updateSoundVideo(instance);
@@ -919,6 +929,7 @@ var $guess = {
                 }
             }
         }, 1000);
+        mOptions.counterClock = clock;
 
         $guess.updateTime(mOptions.counter, instance);
         mOptions.gameStarted = true;
@@ -1146,7 +1157,7 @@ var $guess = {
             $guess.showImage(q.url, instance);
             $('#adivinaPAuthor-' + instance).text(q.author);
         } else if (q.type === 3) {
-            let text = unescape(q.eText);
+            let text = $exeDevices.iDevice.gamification.helpers.decodeStoredText(q.eText);
             $('#adivinaEText-' + instance).html(text);
             $('#adivinaCover-' + instance).hide();
             $('#adivinaEText-' + instance).show();

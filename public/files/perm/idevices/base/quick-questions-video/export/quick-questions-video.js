@@ -33,7 +33,7 @@ var $quickquestionsvideo = {
     image: '',
     widthImage: 0,
     heightImage: 0,
-    options: {},
+    options: [],
     userName: '',
     previousScore: '',
     msgs: '',
@@ -96,7 +96,8 @@ var $quickquestionsvideo = {
     },
 
     loadGame: function () {
-        $quickquestionsvideo.options = [];
+        // Running activities keep their entry; each one is stored at its own index.
+        $quickquestionsvideo.options.length = $quickquestionsvideo.activities.length;
 
         $quickquestionsvideo.activities.each(function (i) {
             const dl = $('.vquext-DataGame', this);
@@ -117,10 +118,11 @@ var $quickquestionsvideo = {
             mOption.main = 'vquextMainContainer-' + i;
             mOption.idevice = 'vquext-IDevice';
 
-            $quickquestionsvideo.options.push(mOption);
+            $quickquestionsvideo.options[i] = mOption;
 
             const vquext = $quickquestionsvideo.createInterfaceVideoQuExt(i);
             dl.before(vquext).remove();
+            $exeDevices.iDevice.gamification.report.showPassScoreNotice(mOption);
             $('#vquextGameMinimize-' + i).hide();
             $('#vquextGameContainer-' + i).hide();
 
@@ -1428,14 +1430,22 @@ var $quickquestionsvideo = {
             mOptions.questionsGame[i].answerScore = -1;
         }
 
-        mOptions.counterClock = setInterval(function () {
-            let $node = $('#vquextMainContainer-' + instance);
-            let $content = $('#node-content');
+        // Bound to this game's element, not to its id. The editor never
+        // reloads the document between pages and ids are numbered by
+        // position, so the next page's first game takes the same ones: a
+        // clock that looked its game up by id each second found that game and
+        // drove it, stopping its video at this one's questions and counting
+        // down on its display.
+        const container = document.getElementById(
+            'vquextMainContainer-' + instance
+        );
+        const clock = setInterval(() => {
+            const $content = $('#node-content');
             if (
-                !$node.length ||
+                !container?.isConnected ||
                 ($content.length && $content.attr('mode') === 'edition')
             ) {
-                clearInterval(mOptions.counterClock);
+                clearInterval(clock);
                 return;
             }
             let timeVideo = 0;
@@ -1589,6 +1599,7 @@ var $quickquestionsvideo = {
                     break;
             }
         }, 1000);
+        mOptions.counterClock = clock;
 
         $quickquestionsvideo.uptateTime(0, instance);
 

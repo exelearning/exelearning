@@ -10,10 +10,9 @@ import { describe, it, expect, beforeAll } from 'bun:test';
 import { Elysia } from 'elysia';
 import { SignJWT } from 'jose';
 import { createWebSocketInfoRoutes, type WebSocketInfoDependencies } from './websocket-info';
+import { getJwtSecret } from '../utils/jwt-secret';
 
-// Match getJwtSecret()'s fallback so we don't have to mutate process.env
-// (which would race with other test suites in the same Bun process).
-const TEST_SECRET = 'dev_secret_change_me';
+const TEST_SECRET = getJwtSecret();
 
 async function signToken(sub: number, roles: string[]): Promise<string> {
     const secret = new TextEncoder().encode(TEST_SECRET);
@@ -143,6 +142,17 @@ describe('WebSocket info routes', () => {
             const res = await app.handle(
                 new Request('http://localhost/api/websocket/my-rooms', {
                     headers: { Authorization: `Bearer ${userToken}` },
+                }),
+            );
+            expect(res.status).toBe(200);
+            const data = (await res.json()) as { rooms: Array<{ projectUuid: string; myConnections: number }> };
+            expect(data.rooms).toEqual([{ projectUuid: 'uuid-a', myConnections: 1 }]);
+        });
+
+        it('accepts the auth token from a cookie', async () => {
+            const res = await app.handle(
+                new Request('http://localhost/api/websocket/my-rooms', {
+                    headers: { Cookie: `auth=${userToken}` },
                 }),
             );
             expect(res.status).toBe(200);

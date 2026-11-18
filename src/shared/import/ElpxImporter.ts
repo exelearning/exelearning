@@ -46,6 +46,7 @@ import {
     LEGACY_TYPE_ALIASES,
     defaultLogger,
 } from './interfaces';
+import { PASS_SCORE_DEFAULT, normalizePassScore } from '../export/metadata-properties';
 import { stripLegacyExeTextWrapper } from './legacyExeTextWrapper';
 import { isLegacyGenericTextTemplate } from './legacyGenericTextTemplate';
 import { addUnresolvedAssetRefs, type UnresolvedAssetRef } from './unresolvedAssetRefs';
@@ -441,7 +442,10 @@ export class ElpxImporter {
         }
 
         // Extract and import structure (modern format)
-        const stats = await this.importStructure(xmlDoc, workingZip, { clearExisting, parentId });
+        const stats = await this.importStructure(xmlDoc as unknown as Document, workingZip, {
+            clearExisting,
+            parentId,
+        });
 
         // Note: detailed stats already logged in importStructure
         return stats;
@@ -537,7 +541,10 @@ export class ElpxImporter {
         }
 
         // Extract and import structure (modern format)
-        const stats = await this.importStructure(xmlDoc, zipContents, { clearExisting, parentId });
+        const stats = await this.importStructure(xmlDoc as unknown as Document, zipContents, {
+            clearExisting,
+            parentId,
+        });
 
         // Note: detailed stats already logged in importStructure
         return stats;
@@ -1051,9 +1058,11 @@ export class ElpxImporter {
         metadata.set('addAccessibilityToolbar', legacyMeta.pp_addAccessibilityToolbar);
         metadata.set('exportSource', legacyMeta.exportSource);
 
-        // Legacy files don't have addMathJax or globalFont - use defaults
+        // Legacy files don't have addMathJax, globalFont or the pass score options - use defaults
         metadata.set('addMathJax', false);
         metadata.set('globalFont', 'default');
+        metadata.set('passScore', PASS_SCORE_DEFAULT);
+        metadata.set('passScoreEveryActivity', false);
 
         metadata.set('extraHeadContent', legacyMeta.extraHeadContent);
         metadata.set('footer', legacyMeta.footer);
@@ -1112,10 +1121,10 @@ export class ElpxImporter {
     }
 
     private extractScrambledListProperties(htmlView: string): Record<string, unknown> | null {
-        if (!htmlView || !htmlView.includes('exe-sortableList')) return null;
+        if (!htmlView?.includes('exe-sortableList')) return null;
 
         const doc = new DOMParser().parseFromString(`<div>${htmlView}</div>`, 'text/html');
-        const activity = this.getFirstElementByClass(doc, 'exe-sortableList');
+        const activity = this.getFirstElementByClass(doc as unknown as Document, 'exe-sortableList');
         if (!activity) return null;
 
         const optionsList =
@@ -1188,7 +1197,11 @@ export class ElpxImporter {
 
         const serializer = new XMLSerializer();
         const html = Array.from(element.childNodes || [])
-            .map(child => serializer.serializeToString(child))
+            .map(child => {
+                // Runtime type is @xmldom/xmldom's Node; DOM lib types don't model it.
+                const xmlNode = child as unknown as import('@xmldom/xmldom').Node;
+                return serializer.serializeToString(xmlNode);
+            })
             .join('');
         return this.stripXhtmlNamespaceAttributes(html).trim();
     }
@@ -1277,6 +1290,10 @@ export class ElpxImporter {
             footer: this.getMetadataProperty(odeProperties, 'footer'),
             addMathJax: this.getBooleanMetadataProperty(odeProperties, 'pp_addMathJax', false),
             globalFont: this.getMetadataProperty(odeProperties, 'pp_globalFont', 'default'),
+            // normalizePassScore turns a missing or unparseable value into the
+            // default, so no separate fallback is needed here.
+            passScore: normalizePassScore(this.getMetadataProperty(odeProperties, 'pp_passScore')),
+            passScoreEveryActivity: this.getBooleanMetadataProperty(odeProperties, 'pp_passScoreEveryActivity', false),
         };
     }
 
@@ -1300,6 +1317,8 @@ export class ElpxImporter {
         metadata.set('exportSource', values.exportSource);
         metadata.set('addMathJax', values.addMathJax);
         metadata.set('globalFont', values.globalFont);
+        metadata.set('passScore', values.passScore);
+        metadata.set('passScoreEveryActivity', values.passScoreEveryActivity);
         metadata.set('extraHeadContent', values.extraHeadContent);
         metadata.set('footer', values.footer);
         // Screenshot (optional, extracted from archive root)

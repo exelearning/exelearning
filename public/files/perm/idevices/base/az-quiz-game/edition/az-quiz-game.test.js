@@ -537,6 +537,49 @@ describe('az-quiz-game iDevice', () => {
       expect(typeof $exeDevice.validateData).toBe('function');
     });
   });
+
+  /**
+   * The pass-score control is a shared block in common_edition.js, exercised by
+   * its own tests. What is specific to this iDevice -- and what silently breaks
+   * if someone edits the form -- is the wiring: all four call sites have to be
+   * present, and the two saved fields have to reach the stored data. Reading the
+   * source is how that is checked without standing up the whole edition form.
+   */
+  describe('pass score wiring', () => {
+    let source;
+
+    beforeEach(() => {
+      source = readFileSync(join(__dirname, 'az-quiz-game.js'), 'utf-8');
+    });
+
+    it('delegates the evaluation controls to the shared tab', () => {
+        // The pass score and the progress report used to be rendered here,
+        // loose in the general options. They now live in the Grading tab,
+        // so rendering them again would show each control twice.
+        expect(source).not.toContain('passScore.getContents(');
+        expect(source).not.toContain('progressBar.getContents(');
+        expect(source).toContain('gamification.scorm.getTab(');
+    });
+
+    it('restores the control when the iDevice is reopened', () => {
+      expect(source).toContain('gamification.passScore.setValues(');
+      expect(source).toContain('passScoreMode: dataGame.passScoreMode');
+      expect(source).toContain('passScoreCustom: dataGame.passScoreCustom');
+    });
+
+    it('saves the mode and the customised mark, and nothing else', () => {
+      expect(source).toContain('gamification.passScore.getValues()');
+      expect(source).toContain('passScoreMode: passScore.passScoreMode');
+      expect(source).toContain('passScoreCustom: passScore.passScoreCustom');
+      // The project value is never copied into the iDevice: it is read live, so
+      // an iDevice on the global mode keeps following the project.
+      expect(source).not.toContain('passScoreGlobal');
+    });
+
+    it('wires the radio and input handlers', () => {
+      expect(source).toContain('gamification.passScore.addEvents()');
+    });
+  });
 });
 
 describe('az-quiz-game edition lifecycle', () => {
@@ -563,6 +606,7 @@ describe('az-quiz-game edition lifecycle', () => {
             iDevice: {
                 gamification: {
                     progressBar: { addEvents: vi.fn() },
+                    passScore: { addEvents: vi.fn() },
                     itinerary: { addEvents: vi.fn() },
                     share: { addEvents: vi.fn(), downloadBlob: vi.fn(() => true) },
                     helpers: { stopSound: vi.fn(), playSound: vi.fn() },
@@ -804,5 +848,78 @@ describe('az-quiz-game edition lifecycle', () => {
             expect(play).toHaveBeenCalledTimes(1);
             play.mockRestore();
         });
+    });
+});
+
+/**
+ * The notice of the minimum score is editable in the Custom texts tab, which the
+ * shared getLanguageTab() builds from ci18n, and save() writes from it.
+ */
+describe('az-quiz-game minimum score text', () => {
+    const DEFAULT_TEXT = 'Minimum score needed to pass this activity: %s';
+    let $exeDevice;
+
+    /** The Custom texts tab as getLanguageTab() renders it: one input per key. */
+    function renderCustomTexts(overrides = {}) {
+        const inputs = Object.keys($exeDevice.ci18n)
+            .map(key => `<input id="ci18n_${key}">`)
+            .join('');
+        document.body.innerHTML = inputs;
+        for (const key of Object.keys($exeDevice.ci18n)) {
+            const value = key in overrides ? overrides[key] : $exeDevice.ci18n[key];
+            document.getElementById(`ci18n_${key}`).value = value;
+        }
+    }
+
+    /** Save with the form's own data stubbed, and read back the stored options. */
+    function saveAndReadMsgs() {
+        vi.spyOn($exeDevice, 'validateData').mockReturnValue({
+            instructions: '',
+            wordsGame: [],
+            evaluation: false,
+            evaluationID: '',
+        });
+        vi.spyOn($exeDevice, 'getIdeviceID').mockReturnValue('idevice-1');
+        const html = $exeDevice.save();
+        const container = document.createElement('div');
+        container.innerHTML = html;
+        return JSON.parse(container.querySelector('.rosco-DataGame').textContent).msgs;
+    }
+
+    beforeEach(() => {
+        global.$ = realEnvironment.$;
+        global.jQuery = realEnvironment.jQuery;
+        global.document = realEnvironment.document;
+        global._ = realEnvironment.translate;
+        global.$exeDevices = {
+            iDevice: { gamification: { helpers: { encrypt: json => json } } },
+        };
+        global.tinymce = { editors: [{}, { getContent: () => '' }] };
+        global.$exeDevice = undefined;
+        $exeDevice = global.loadIdevice(join(__dirname, 'az-quiz-game.js'));
+        $exeDevice.refreshTranslations();
+        $exeDevice.msgs = { msgNoSuportBrowser: 'Unsupported browser' };
+    });
+
+    afterEach(() => {
+        vi.restoreAllMocks();
+        delete global.tinymce;
+        document.body.innerHTML = '';
+    });
+
+    it('offers the text among the custom texts, with the mark as %s', () => {
+        expect($exeDevice.ci18n.msgPassScore).toBe(DEFAULT_TEXT);
+    });
+
+    it('saves the default text when the author leaves it alone', () => {
+        renderCustomTexts();
+
+        expect(saveAndReadMsgs().msgPassScore).toBe(DEFAULT_TEXT);
+    });
+
+    it('saves the text the author wrote', () => {
+        renderCustomTexts({ msgPassScore: 'Nota mínima para superar la actividad: %s' });
+
+        expect(saveAndReadMsgs().msgPassScore).toBe('Nota mínima para superar la actividad: %s');
     });
 });

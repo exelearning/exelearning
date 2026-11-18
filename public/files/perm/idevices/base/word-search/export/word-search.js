@@ -106,6 +106,7 @@ var $eXeSopa = {
             const sopa = $eXeSopa.createInterfaceSopa(i);
 
             dl.before(sopa).remove();
+            $exeDevices.iDevice.gamification.report.showPassScoreNotice(mOption);
 
             const $container = $('#sopaMainContainer-' + i);
             $container.find('#sopaGameMinimize-' + i).hide();
@@ -497,14 +498,20 @@ var $eXeSopa = {
         mOptions.gameStarted = true;
 
         $eXeSopa.uptateTime(mOptions.counter, instanceId);
-        mOptions.counterClock = setInterval(function () {
-            let $node = $('#sopaMainContainer-' + instanceId);
-            let $content = $('#node-content');
+        // Bound to this game's element, not to its id. The editor never
+        // reloads the document between pages and ids are numbered by
+        // position, so the next page's first game takes the same ones: a
+        // clock that looked its game up by id each second found that game and
+        // ran it, counting down on its display and ending it when its own
+        // time ran out.
+        const container = $container[0];
+        const clock = setInterval(() => {
+            const $content = $('#node-content');
             if (
-                !$node.length ||
+                !container?.isConnected ||
                 ($content.length && $content.attr('mode') === 'edition')
             ) {
-                clearInterval(mOptions.counterClock);
+                clearInterval(clock);
                 return;
             }
 
@@ -518,6 +525,7 @@ var $eXeSopa = {
                 }
             }
         }, 1000);
+        mOptions.counterClock = clock;
 
         // After gameStarted, never before: sendScoreNew ignores a game that
         // reports as neither started nor over.
@@ -1027,7 +1035,10 @@ var $eXeSopa = {
         }
 
         const type =
-            (mOptions.hits * 10) / mOptions.numberQuestions >= 5 ? 2 : 1;
+            (mOptions.hits * 10) / mOptions.numberQuestions >=
+            $exe.passScore.resolve(mOptions)
+                ? 2
+                : 1;
         $eXeSopa.showMessage(type, message, instanceId);
         $eXeSopa.showFeedBack(instanceId);
     },

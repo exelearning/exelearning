@@ -181,6 +181,13 @@ class ResourceCache {
 
     const key = ResourceCache.buildKey(type, name, version);
 
+    // Partial loose-file bundle (see ResourceFetcher.assembleBundleFromLoose):
+    // keep it in memory only, so the next session fetches it again.
+    if (files?.incomplete) {
+      console.warn(`[ResourceCache] Not caching incomplete bundle: ${key}`);
+      return;
+    }
+
     // Convert Map to array of {path, blob} for storage
     const filesArray = [];
     for (const [path, blob] of files) {

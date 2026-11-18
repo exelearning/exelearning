@@ -46,20 +46,6 @@ describe('MenuEngine', () => {
       return [];
     });
 
-    // Mock document.body (used by initMobileLayout)
-    Object.defineProperty(document, 'body', {
-      writable: true,
-      configurable: true,
-      value: mockBody,
-    });
-
-    // Mock window
-    Object.defineProperty(window, 'innerWidth', {
-      writable: true,
-      configurable: true,
-      value: 1024,
-    });
-
     window.addEventListener = vi.fn();
     document.addEventListener = vi.fn();
 
@@ -165,10 +151,11 @@ describe('MenuEngine', () => {
 
     it('should return early if userDropdown is not found', () => {
       vi.spyOn(document, 'querySelector').mockReturnValue(null);
+      const spy = vi.spyOn(menuEngine, 'initMobileButtonHandlers');
 
       menuEngine.initMobileMenuBehavior();
 
-      expect(window.addEventListener).not.toHaveBeenCalled();
+      expect(spy).not.toHaveBeenCalled();
     });
 
     it('should add click event listener to userDropdown', () => {
@@ -184,17 +171,10 @@ describe('MenuEngine', () => {
       expect(spy).toHaveBeenCalled();
     });
 
-    it('should call initMobileLayout', () => {
-      const spy = vi.spyOn(menuEngine, 'initMobileLayout');
+    it('should leave the panels layout to NavbarFile, without its own resize listener', () => {
       menuEngine.initMobileMenuBehavior();
 
-      expect(spy).toHaveBeenCalled();
-    });
-
-    it('should add resize event listener', () => {
-      menuEngine.initMobileMenuBehavior();
-
-      expect(window.addEventListener).toHaveBeenCalledWith('resize', expect.any(Function));
+      expect(window.addEventListener).not.toHaveBeenCalledWith('resize', expect.any(Function));
     });
   });
 
@@ -299,73 +279,6 @@ describe('MenuEngine', () => {
 
       expect(preferredDesktopButton.click).toHaveBeenCalled();
       expect(fallbackDesktopButton.click).not.toHaveBeenCalled();
-    });
-  });
-
-  describe('initMobileLayout', () => {
-    it('should add left-column-hidden class on mobile', () => {
-      Object.defineProperty(window, 'innerWidth', { value: 600, writable: true });
-
-      menuEngine.initMobileLayout();
-
-      expect(mockBody.classList.add).toHaveBeenCalledWith('left-column-hidden');
-    });
-
-    it('should not add class on desktop', () => {
-      Object.defineProperty(window, 'innerWidth', { value: 1024, writable: true });
-
-      menuEngine.initMobileLayout();
-
-      expect(mockBody.classList.add).not.toHaveBeenCalled();
-    });
-
-    it('should use 768px as mobile breakpoint', () => {
-      Object.defineProperty(window, 'innerWidth', { value: 767, writable: true });
-      menuEngine.initMobileLayout();
-      expect(mockBody.classList.add).toHaveBeenCalledWith('left-column-hidden');
-
-      mockBody.classList.add.mockClear();
-      Object.defineProperty(window, 'innerWidth', { value: 768, writable: true });
-      const engine2 = new MenuEngine();
-      engine2.initMobileLayout();
-      expect(mockBody.classList.add).not.toHaveBeenCalled();
-    });
-  });
-
-  describe('handleResponsiveLayout', () => {
-    beforeEach(() => {
-      mockBody.classList.add.mockClear();
-      delete menuEngine._wasResizedToMobile;
-    });
-
-    it('should add left-column-hidden on first resize to mobile', () => {
-      Object.defineProperty(window, 'innerWidth', { value: 600, writable: true, configurable: true });
-
-      menuEngine.handleResponsiveLayout();
-
-      expect(mockBody.classList.add).toHaveBeenCalledWith('left-column-hidden');
-      expect(menuEngine._wasResizedToMobile).toBe(true);
-    });
-
-    it('should not add class again if already resized to mobile', () => {
-      Object.defineProperty(window, 'innerWidth', { value: 600, writable: true });
-
-      menuEngine.handleResponsiveLayout();
-      mockBody.classList.add.mockClear();
-
-      menuEngine.handleResponsiveLayout();
-
-      expect(mockBody.classList.add).not.toHaveBeenCalled();
-    });
-
-    it('should reset flag when resizing to desktop', () => {
-      Object.defineProperty(window, 'innerWidth', { value: 600, writable: true });
-      menuEngine.handleResponsiveLayout();
-
-      Object.defineProperty(window, 'innerWidth', { value: 1024, writable: true });
-      menuEngine.handleResponsiveLayout();
-
-      expect(menuEngine._wasResizedToMobile).toBe(false);
     });
   });
 
@@ -516,21 +429,6 @@ describe('MenuEngine', () => {
 
       expect(closeMenusSpy).toHaveBeenCalled();
       expect(mobileSpy).toHaveBeenCalled();
-    });
-
-    it('should handle mobile and desktop layout transitions', () => {
-      mockBody.classList.add.mockClear();
-
-      // Test mobile layout
-      Object.defineProperty(window, 'innerWidth', { value: 600, writable: true, configurable: true });
-      menuEngine.initMobileLayout();
-      expect(mockBody.classList.add).toHaveBeenCalledWith('left-column-hidden');
-
-      // Test desktop layout (using existing instance)
-      mockBody.classList.add.mockClear();
-      Object.defineProperty(window, 'innerWidth', { value: 1024, writable: true, configurable: true });
-      menuEngine.initMobileLayout();
-      expect(mockBody.classList.add).not.toHaveBeenCalled();
     });
   });
 });

@@ -355,11 +355,6 @@ ul#formPreview>li p {
     position: relative;
 }
 
-#formIdeviceForm .dropdownPassRate {
-    margin: 0 10px;
-    min-width: 80px;
-}
-
 #formPreview .true-false-radio-buttons-container label{
     margin-right: 1em!important;
 }

@@ -223,4 +223,326 @@ describe('checklist iDevice export', () => {
             global.$exeDevices = origHelpers;
         });
     });
+
+    describe('where a checklist keeps its list', () => {
+        let previousLocalStorage;
+        let previousExeDevices;
+        let store;
+
+        // One checkbox item, as createItems renders it, plus the learner's name and date.
+        const renderList = () => {
+            document.body.innerHTML = `
+                <input type="text" id="ctjUserName-0">
+                <input type="text" id="ctjUserDate-0">
+                <div id="ctjItems-0"><div class="CTJP-Item"><input type="checkbox"></div></div>
+                <button type="button" id="ctjReboot-0"></button>`;
+        };
+        const ticked = () => $('#ctjItems-0 input[type="checkbox"]').is(':checked');
+
+        beforeEach(() => {
+            previousLocalStorage = global.localStorage;
+            previousExeDevices = global.$exeDevices;
+            store = {};
+            global.localStorage = {
+                getItem: (key) => (key in store ? store[key] : null),
+                setItem: (key, value) => {
+                    store[key] = String(value);
+                },
+                removeItem: (key) => {
+                    delete store[key];
+                },
+            };
+            global.$exeDevices = {
+                iDevice: {
+                    gamification: {
+                        helpers: {
+                            isJsonString: (value) => (typeof value === 'string' ? JSON.parse(value) : false),
+                        },
+                        math: { hasLatex: () => false },
+                    },
+                },
+            };
+            renderList();
+        });
+
+        afterEach(() => {
+            global.localStorage = previousLocalStorage;
+            global.$exeDevices = previousExeDevices;
+            document.body.innerHTML = '';
+            vi.restoreAllMocks();
+            vi.unstubAllGlobals();
+        });
+
+        it("names the entry after the checklist's own component", () => {
+            document.body.innerHTML =
+                '<div class="idevice_node checklist" id="idevice-abc"><div class="listacotejo-IDevice"></div></div>';
+
+            expect($checklist.storageKeyOf(document.querySelector('.listacotejo-IDevice'))).toBe(
+                'dataCotejo-idevice-abc'
+            );
+        });
+
+        it('gives no key to a checklist outside any component', () => {
+            document.body.innerHTML = '<div class="listacotejo-IDevice"></div>';
+
+            expect($checklist.storageKeyOf(document.querySelector('.listacotejo-IDevice'))).toBe('');
+        });
+
+        it('keeps the list under its own component, not under the id its data carries', () => {
+            $checklist.options = [
+                { id: 'idevice-original', storageKey: 'dataCotejo-idevice-copy', saveData: true, save: true },
+            ];
+            $('#ctjItems-0 input[type="checkbox"]').prop('checked', true);
+
+            $checklist.saveCotejo(0);
+
+            expect(JSON.parse(store['dataCotejo-idevice-copy']).items).toEqual([{ type: 0, state: 1, text: '' }]);
+            expect(store['dataCotejo-idevice-original']).toBeUndefined();
+        });
+
+        it('keeps nothing when it belongs to no component', () => {
+            $checklist.options = [{ id: 'idevice-original', storageKey: '', saveData: true, save: true }];
+
+            $checklist.saveCotejo(0);
+
+            expect(Object.keys(store)).toEqual([]);
+        });
+
+        it("comes back with its own list, not another checklist's", () => {
+            const tickedList = JSON.stringify({ name: '', date: '', items: [{ type: 0, state: 1, text: '' }] });
+            store['dataCotejo-idevice-original'] = tickedList;
+            vi.spyOn($checklist, 'counter').mockImplementation(() => {});
+            $checklist.options = [
+                { id: 'idevice-original', storageKey: 'dataCotejo-idevice-copy', saveData: true, msgs: {} },
+            ];
+
+            $checklist.addEvents(0);
+            expect(ticked()).toBe(false);
+
+            store['dataCotejo-idevice-copy'] = tickedList;
+            renderList();
+            $checklist.addEvents(0);
+            expect(ticked()).toBe(true);
+        });
+
+        it('starting over forgets its own list only', () => {
+            store['dataCotejo-idevice-copy'] = '{}';
+            store['dataCotejo-idevice-original'] = '{}';
+            vi.spyOn($checklist, 'counter').mockImplementation(() => {});
+            vi.spyOn($checklist, 'createItems').mockReturnValue('');
+            vi.stubGlobal('confirm', () => true);
+            $checklist.options = [
+                { id: 'idevice-original', storageKey: 'dataCotejo-idevice-copy', saveData: true, msgs: {} },
+            ];
+            $checklist.addEvents(0);
+
+            $('#ctjReboot-0').trigger('click');
+
+            expect(store['dataCotejo-idevice-copy']).toBeUndefined();
+            expect(store['dataCotejo-idevice-original']).toBe('{}');
+        });
+
+        it('starting over touches no entry when it belongs to no component', () => {
+            store['dataCotejo-'] = '{}';
+            vi.spyOn($checklist, 'counter').mockImplementation(() => {});
+            vi.spyOn($checklist, 'createItems').mockReturnValue('');
+            vi.stubGlobal('confirm', () => true);
+            $checklist.options = [{ id: false, storageKey: '', saveData: true, msgs: {} }];
+            $checklist.addEvents(0);
+
+            $('#ctjReboot-0').trigger('click');
+
+            expect(store['dataCotejo-']).toBe('{}');
+        });
+    });
+
+    describe('a Text item', () => {
+        let store;
+
+        // One Text item: a box to tick and a field to write in, as the editor's "Text" type asks.
+        const renderTextItem = () => {
+            $checklist.options = [
+                {
+                    storageKey: 'dataCotejo-idevice-abc',
+                    saveData: true,
+                    save: true,
+                    showCounter: true,
+                    useScore: false,
+                    levels: [{ type: '1', nivel: '0', item: 'Write the summary', points: '' }],
+                    msgs: { msgPoint: 'point', msgPoints: 'points', msgComplit: 'Completed' },
+                },
+            ];
+            document.body.innerHTML = `
+                <div id="ctjCounter-0"></div>
+                <div id="ctjItems-0">${$checklist.createItems(0)}</div>`;
+        };
+        const box = () => document.querySelector('#ctjItems-0 .toggle-control input[type="checkbox"]');
+
+        beforeEach(() => {
+            store = {};
+            vi.stubGlobal('localStorage', {
+                getItem: (key) => (key in store ? store[key] : null),
+                setItem: (key, value) => {
+                    store[key] = String(value);
+                },
+            });
+            renderTextItem();
+        });
+
+        afterEach(() => {
+            document.body.innerHTML = '';
+            vi.unstubAllGlobals();
+        });
+
+        it('has a box to tick, which its label ticks', () => {
+            // The box's wrapper was left unclosed, so the browser read the box as attributes of the
+            // wrapper: there was nothing to tick, and the label pointed at the wrapper.
+            expect(box()).not.toBeNull();
+            expect(document.querySelector('#ctjItems-0 .toggle-label').htmlFor).toBe(box().id);
+            expect(document.querySelector('#ctjItems-0 input[type="text"]')).not.toBeNull();
+        });
+
+        it('keeps what is ticked and written as a Text item', () => {
+            box().checked = true;
+            $('#ctjItems-0 input[type="text"]').val('Done in class');
+
+            $checklist.saveCotejo(0);
+
+            expect(JSON.parse(store['dataCotejo-idevice-abc']).items).toEqual([
+                { type: 1, state: 1, text: 'Done in class' },
+            ]);
+        });
+
+        it('counts towards what is completed once ticked', () => {
+            box().checked = true;
+
+            $checklist.counter(0);
+
+            expect($('#ctjCounter-0').text()).toBe('Completed: 1/1. ');
+        });
+    });
+
+    describe('starting over', () => {
+        let store;
+
+        // A Box, a Text and a Selection item, scored, with the learner's name and date.
+        const renderList = () => {
+            $checklist.options = [
+                {
+                    storageKey: 'dataCotejo-idevice-abc',
+                    saveData: true,
+                    save: true,
+                    showCounter: true,
+                    useScore: true,
+                    points: 0,
+                    totalPoints: 6,
+                    levels: [
+                        { type: '0', nivel: '0', item: 'Box', points: '2' },
+                        { type: '1', nivel: '0', item: 'Text', points: '2' },
+                        { type: '2', nivel: '0', item: 'Selection', points: '2' },
+                    ],
+                    msgs: {
+                        msgPoint: 'point',
+                        msgPoints: 'points',
+                        msgComplit: 'Completed',
+                        msgtaskNumber: 'Number of tasks',
+                        msgScore: 'Score',
+                        msgDelete: 'Clear?',
+                    },
+                },
+            ];
+            document.body.innerHTML = `
+                <input type="text" id="ctjUserName-0">
+                <input type="text" id="ctjUserDate-0">
+                <div id="ctjCounter-0"></div>
+                <div id="ctjScore-0"></div>
+                <div id="ctjItems-0">${$checklist.createItems(0)}</div>
+                <button type="button" id="ctjReboot-0"></button>`;
+        };
+        const items = () => $('#ctjItems-0');
+        // Ticked as the learner ticks it, so the handlers bound to the items are the ones that run.
+        const tickBox = () => {
+            const box = items().find('input[type="checkbox"]').get(0);
+            box.checked = true;
+            box.dispatchEvent(new Event('input', { bubbles: true }));
+        };
+        const saved = () => JSON.parse(store['dataCotejo-idevice-abc']).items;
+
+        beforeEach(() => {
+            store = {};
+            vi.stubGlobal('localStorage', {
+                getItem: (key) => (key in store ? store[key] : null),
+                setItem: (key, value) => {
+                    store[key] = String(value);
+                },
+                removeItem: (key) => {
+                    delete store[key];
+                },
+            });
+            vi.stubGlobal('confirm', () => true);
+            vi.stubGlobal('$exeDevices', {
+                iDevice: {
+                    gamification: {
+                        helpers: {
+                            isJsonString: (value) => (typeof value === 'string' ? JSON.parse(value) : false),
+                        },
+                        math: { hasLatex: () => false },
+                    },
+                },
+            });
+            renderList();
+            $checklist.addEvents(0);
+        });
+
+        afterEach(() => {
+            document.body.innerHTML = '';
+            vi.unstubAllGlobals();
+        });
+
+        it('clears what was ticked, written and chosen, and the learner’s details', () => {
+            tickBox();
+            items().find('input[type="text"]').val('Written');
+            items().find('select').val('1');
+            $('#ctjUserName-0').val('Ana');
+            $('#ctjUserDate-0').val('Monday');
+
+            $('#ctjReboot-0').trigger('click');
+
+            expect(items().find('input[type="checkbox"]:checked')).toHaveLength(0);
+            expect(items().find('input[type="text"]').val()).toBe('');
+            expect(items().find('select').val()).toBe('0');
+            expect($('#ctjUserName-0').val()).toBe('');
+            expect($('#ctjUserDate-0').val()).toBe('');
+            expect(store['dataCotejo-idevice-abc']).toBeUndefined();
+        });
+
+        it('keeps the items it had, rather than drawing new ones', () => {
+            // New ones had none of the handlers bound to the old, and none of their typeset formulas.
+            const before = items().find('.CTJP-Item').get();
+
+            $('#ctjReboot-0').trigger('click');
+
+            expect(before.every((item) => item.isConnected)).toBe(true);
+            expect(items().find('.CTJP-Item')).toHaveLength(before.length);
+        });
+
+        it('still keeps and counts what is ticked afterwards', () => {
+            tickBox();
+            $('#ctjReboot-0').trigger('click');
+            expect($('#ctjCounter-0').text()).toBe('Number of tasks: 3');
+
+            tickBox();
+
+            expect(saved()[0]).toEqual({ type: 0, state: 1, text: '' });
+            expect($('#ctjCounter-0').text()).toBe('Completed: 1/3. ');
+        });
+
+        it('still shows the score out of the whole list afterwards', () => {
+            $('#ctjReboot-0').trigger('click');
+            tickBox();
+
+            expect($('#ctjScore-0').text()).toBe('Score: 2/6.');
+            expect($('#ctjScore-0').css('display')).not.toBe('none');
+        });
+    });
 });

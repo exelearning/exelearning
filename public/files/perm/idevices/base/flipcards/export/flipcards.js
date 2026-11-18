@@ -52,7 +52,8 @@ var $eXeFlipCards = {
     },
 
     loadGame: function () {
-        $eXeFlipCards.options = [];
+        // Running activities keep their entry; each one is stored at its own index.
+        $eXeFlipCards.options.length = $eXeFlipCards.activities.length;
         $eXeFlipCards.activities.each(function (i) {
             const dl = $('.flipcards-DataGame', this);
             if (dl.length === 0) return; // Skip already initialized activities
@@ -68,7 +69,7 @@ var $eXeFlipCards = {
                 mOption.imgCard = $imageBack.attr('href') || '';
             }
 
-            $eXeFlipCards.options.push(mOption);
+            $eXeFlipCards.options[i] = mOption;
 
             if (mOption.type == 3) {
                 mOption.cardsGame = $eXeFlipCards.createCardsData(
@@ -78,6 +79,7 @@ var $eXeFlipCards = {
 
             const flcds = $eXeFlipCards.createInterfaceCards(i);
             dl.before(flcds).remove();
+            $exeDevices.iDevice.gamification.report.showPassScoreNotice(mOption);
 
             $('#flcdsGameMinimize-' + i).hide();
             $('#flcdsGameContainer-' + i).hide();
@@ -845,25 +847,33 @@ var $eXeFlipCards = {
         if (mOptions.time > 0) {
             $('#flcdsPTime-' + instance).show();
             $('#flcdsImgTime-' + instance).show();
-            mOptions.counterClock = setInterval(function () {
-                let $node = $('#flcdsMainContainer-' + instance);
-                let $content = $('#node-content');
+            // Bound to this game's element, not to its id. The editor never
+            // reloads the document between pages and ids are numbered by
+            // position, so the next page's first game takes the same ones: a
+            // clock that looked its game up by id each second found that game
+            // and ran it, counting down on its display and ending it when its
+            // own time ran out.
+            const container = document.getElementById(
+                'flcdsMainContainer-' + instance
+            );
+            const clock = setInterval(() => {
+                const $content = $('#node-content');
                 if (
-                    !$node.length ||
+                    !container?.isConnected ||
                     ($content.length && $content.attr('mode') === 'edition')
                 ) {
-                    clearInterval(mOptions.counterClock);
+                    clearInterval(clock);
                     return;
                 }
-                if (mOptions.gameStarted) {
-                    mOptions.counter--;
-                    if (mOptions.counter <= 0) {
-                        $eXeFlipCards.gameOverMemory(1, instance);
-                        return;
-                    }
-                    $eXeFlipCards.updateTimeMemory(mOptions.counter, instance);
+                if (!mOptions.gameStarted) return;
+                mOptions.counter--;
+                if (mOptions.counter <= 0) {
+                    $eXeFlipCards.gameOverMemory(1, instance);
+                    return;
                 }
+                $eXeFlipCards.updateTimeMemory(mOptions.counter, instance);
             }, 1000);
+            mOptions.counterClock = clock;
             $eXeFlipCards.updateTimeMemory(mOptions.time * 60, instance);
         }
 

@@ -2,12 +2,12 @@
  * Kysely Migrations
  * Programmatic migrations for SQLite, PostgreSQL, and MySQL
  */
-import { Kysely, sql } from 'kysely';
+import { sql } from 'kysely';
 // Kysely 0.29 moved Migrator, Migration and MigrationProvider out of the
 // package root. They must now be imported from the `kysely/migration`
 // subpath export; importing them from `'kysely'` throws at runtime.
 import { Migrator, type Migration, type MigrationProvider } from 'kysely/migration';
-import { tableExists as tableExistsHelper, getDialect } from '../helpers';
+import { type UntypedKysely, tableExists as tableExistsHelper, getDialect } from '../helpers';
 
 // Import all migrations
 import * as migration000 from './000_legacy_symfony';
@@ -18,6 +18,9 @@ import * as migration004 from './004_fix_user_foreign_keys';
 import * as migration005 from './005_user_id_nullable';
 import * as migration006 from './006_impersonation_audit_log';
 import * as migration007 from './007_activity_log';
+import * as migration008 from './008_project_public_view_id';
+import * as migration009 from './009_project_public_view_enabled';
+import * as migration010 from './010_project_platform_binding';
 
 // ============================================================================
 // MIGRATION REGISTRY
@@ -32,6 +35,9 @@ const migrations: Record<string, Migration> = {
     '005_user_id_nullable': migration005,
     '006_impersonation_audit_log': migration006,
     '007_activity_log': migration007,
+    '008_project_public_view_id': migration008,
+    '009_project_public_view_enabled': migration009,
+    '010_project_platform_binding': migration010,
 };
 
 // ============================================================================
@@ -48,7 +54,7 @@ class StaticMigrationProvider implements MigrationProvider {
 // MIGRATOR FACTORY
 // ============================================================================
 
-export function createMigrator(db: Kysely<unknown>): Migrator {
+export function createMigrator(db: UntypedKysely): Migrator {
     return new Migrator({
         db,
         provider: new StaticMigrationProvider(),
@@ -60,7 +66,7 @@ export function createMigrator(db: Kysely<unknown>): Migrator {
 // ============================================================================
 
 export interface MigrationDependencies {
-    createMigrator: (db: Kysely<unknown>) => Migrator;
+    createMigrator: (db: UntypedKysely) => Migrator;
 }
 
 const defaultDependencies: MigrationDependencies = {
@@ -74,7 +80,7 @@ const defaultDependencies: MigrationDependencies = {
 /**
  * Check if a table exists in the database (cross-database compatible)
  */
-export async function tableExists(db: Kysely<unknown>, tableName: string): Promise<boolean> {
+export async function tableExists(db: UntypedKysely, tableName: string): Promise<boolean> {
     return tableExistsHelper(db, tableName);
 }
 
@@ -87,7 +93,7 @@ export async function tableExists(db: Kysely<unknown>, tableName: string): Promi
  * 2. Symfony legacy DB: users exists, projects doesn't → Run 000 (cleanup) + 001 (create)
  * 3. Normal DB with tracking: kysely_migration exists → Run pending migrations
  */
-async function syncLegacyMigrations(db: Kysely<unknown>): Promise<void> {
+async function syncLegacyMigrations(db: UntypedKysely): Promise<void> {
     const usersTableExists = await tableExists(db, 'users');
     const projectsTableExists = await tableExists(db, 'projects');
     const migrationTableExists = await tableExists(db, 'kysely_migration');
@@ -158,7 +164,7 @@ async function syncLegacyMigrations(db: Kysely<unknown>): Promise<void> {
 /**
  * Check if all migrations are already executed (without acquiring lock)
  */
-async function areAllMigrationsExecuted(db: Kysely<unknown>): Promise<boolean> {
+async function areAllMigrationsExecuted(db: UntypedKysely): Promise<boolean> {
     const migrationTableExists = await tableExists(db, 'kysely_migration');
     const dialect = getDialect();
     console.log('[Migration] Migration table exists:', migrationTableExists);
@@ -197,7 +203,7 @@ async function areAllMigrationsExecuted(db: Kysely<unknown>): Promise<boolean> {
  * This is necessary because Kysely uses INSERT to acquire locks,
  * which fails in MySQL if a lock row already exists from a previous run.
  */
-async function cleanStaleLocks(db: Kysely<unknown>): Promise<void> {
+async function cleanStaleLocks(db: UntypedKysely): Promise<void> {
     try {
         // Delete any existing lock rows - they're stale since we're just starting
         // We try unconditionally because tableExists() might fail for some databases
@@ -213,7 +219,7 @@ async function cleanStaleLocks(db: Kysely<unknown>): Promise<void> {
  * Run all pending migrations
  */
 export async function migrateToLatest(
-    db: Kysely<unknown>,
+    db: UntypedKysely,
     deps: MigrationDependencies = defaultDependencies,
 ): Promise<{
     success: boolean;
@@ -240,7 +246,7 @@ export async function migrateToLatest(
 
     if (error) {
         console.error('Migration failed:', error);
-        return { success: false, executedMigrations, error };
+        return { success: false, executedMigrations, error: error instanceof Error ? error : new Error(String(error)) };
     }
 
     if (executedMigrations.length > 0) {
@@ -256,7 +262,7 @@ export async function migrateToLatest(
  * Rollback the last migration
  */
 export async function migrateDown(
-    db: Kysely<unknown>,
+    db: UntypedKysely,
     deps: MigrationDependencies = defaultDependencies,
 ): Promise<{
     success: boolean;
@@ -270,7 +276,7 @@ export async function migrateDown(
 
     if (error) {
         console.error('Rollback failed:', error);
-        return { success: false, error };
+        return { success: false, error: error instanceof Error ? error : new Error(String(error)) };
     }
 
     if (rolledBack) {
@@ -286,7 +292,7 @@ export async function migrateDown(
  * Get migration status
  */
 export async function getMigrationStatus(
-    db: Kysely<unknown>,
+    db: UntypedKysely,
     deps: MigrationDependencies = defaultDependencies,
 ): Promise<{
     executed: string[];
@@ -317,7 +323,7 @@ export async function getMigrationStatus(
  * CLI dependencies for testing
  */
 export interface CliDependencies {
-    db: Kysely<unknown>;
+    db: UntypedKysely;
     argv: string[];
     exit: (code: number) => void;
 }
@@ -358,7 +364,7 @@ export async function runCli(deps: CliDependencies): Promise<void> {
  * Main dependencies for testing
  */
 export interface MainDependencies {
-    getDb: () => Promise<Kysely<unknown>>;
+    getDb: () => Promise<UntypedKysely>;
     argv: string[];
     exit: (code: number) => void;
 }

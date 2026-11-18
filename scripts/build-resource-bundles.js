@@ -55,10 +55,18 @@ function relToPublic(fullPath) {
 // Base libraries to include (matching resources.ts)
 // Content-specific libraries (exe_lightbox, exe_tooltips, exe_effects, jquery-ui, etc.)
 // are detected and fetched on-demand via LibraryDetector, NOT included in base bundle
+//
+// `required: true` marks vendor files that are copied into public/ by
+// `bundle:vendor` (scripts/copy-vendor-libs.js). They are gitignored, so a
+// skipped or mis-ordered `bundle:vendor` step would otherwise produce a libs
+// bundle silently missing jquery/bootstrap. Missing a required lib FAILS the
+// build instead of shipping a broken bundle. The non-required entries are
+// repository-tracked source files (common.js, favicon, ...) and are only warned
+// about, matching the previous lenient behaviour.
 const BASE_LIBS = [
-  { src: 'libs/jquery/jquery.min.js', dest: 'jquery/jquery.min.js' },
-  { src: 'libs/bootstrap/bootstrap.bundle.min.js', dest: 'bootstrap/bootstrap.bundle.min.js' },
-  { src: 'libs/bootstrap/bootstrap.min.css', dest: 'bootstrap/bootstrap.min.css' },
+  { src: 'libs/jquery/jquery.min.js', dest: 'jquery/jquery.min.js', required: true },
+  { src: 'libs/bootstrap/bootstrap.bundle.min.js', dest: 'bootstrap/bootstrap.bundle.min.js', required: true },
+  { src: 'libs/bootstrap/bootstrap.min.css', dest: 'bootstrap/bootstrap.min.css', required: true },
   { src: 'app/common/common.js', dest: 'common.js' },
   { src: 'app/common/common_i18n.js', dest: 'common_i18n.js' },
   { src: 'app/common/exe_export.js', dest: 'exe_export.js' },
@@ -253,6 +261,13 @@ function buildLibsBundle(manifest) {
 
     if (fs.existsSync(fullPath)) {
       files.push({ fullPath, relativePath: lib.dest });
+    } else if (lib.required) {
+      // Required vendor file is produced by `bundle:vendor` (copy-vendor-libs.js).
+      // If it is missing, the vendor step was skipped or ran out of order — fail
+      // the build instead of silently shipping a libs bundle without jquery/bootstrap.
+      throw new Error(
+        `Missing required library '${lib.src}'. Run 'bun run bundle:vendor' before 'bundle:resources'.`,
+      );
     } else {
       console.warn(`  Warning: ${lib.src} not found`);
     }
@@ -434,5 +449,19 @@ function build() {
   console.log('\nResource bundles built successfully!');
 }
 
-// Run build
-build();
+// Exported for unit testing. The CLI entry point runs build() below.
+module.exports = {
+  BASE_LIBS,
+  buildLibsBundle,
+  build,
+};
+
+// Run build only when executed directly (not when imported by a test).
+if (require.main === module) {
+  try {
+    build();
+  } catch (err) {
+    console.error(`ERROR: ${err.message}`);
+    process.exit(1);
+  }
+}

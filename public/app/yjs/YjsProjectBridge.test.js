@@ -10,6 +10,7 @@
  
 
 const YjsProjectBridge = require('./YjsProjectBridge');
+const { JSDOM } = require('jsdom');
 
 // Mock YjsDocumentManager
 class MockYjsDocumentManager {
@@ -236,6 +237,32 @@ describe('YjsProjectBridge', () => {
     global.document = originalDocument;
   });
 
+  describe('updateAuthToken', () => {
+    it('swaps the token in every holder that reuses it', () => {
+      const params = { token: 'old' };
+      bridge.authToken = 'old';
+      bridge.documentManager = { config: { token: 'old' }, wsProvider: { params } };
+      bridge.saveManager = { setToken: mock(() => undefined) };
+      bridge.assetWebSocketHandler = { config: { token: 'old' } };
+      bridge.assetManager = { _serverApiBaseUrl: '/api', setServerConfig: mock(() => undefined) };
+
+      bridge.updateAuthToken('new');
+
+      expect(bridge.authToken).toBe('new');
+      expect(bridge.documentManager.config.token).toBe('new');
+      expect(params.token).toBe('new');
+      expect(bridge.saveManager.setToken).toHaveBeenCalledWith('new');
+      expect(bridge.assetWebSocketHandler.config.token).toBe('new');
+      expect(bridge.assetManager.setServerConfig).toHaveBeenCalledWith('/api', 'new');
+    });
+
+    it('works before the managers exist', () => {
+      bridge.updateAuthToken('new');
+
+      expect(bridge.authToken).toBe('new');
+    });
+  });
+
   describe('constructor', () => {
     it('initializes with app reference', () => {
       expect(bridge.app).toBe(mockApp);
@@ -339,6 +366,75 @@ describe('YjsProjectBridge', () => {
       await bridge._captureHtmlAsScreenshot('<div>x</div>');
 
       expect(createdScript.src).toBe('/files/perm/idevices/base/rubric/export/html2canvas.js');
+    });
+  });
+
+  describe('_captureHtmlAsScreenshot sandboxing', () => {
+    // The page HTML is built from collaborator-controlled project content, so
+    // the render frame must have scripting disabled before anything is written
+    // into it. allow-same-origin is kept so html2canvas can read its DOM.
+    const setupDom = () => {
+      const written = [];
+      const iframe = {
+        style: {},
+        contentDocument: {
+          readyState: 'complete',
+          body: { id: 'frame-body' },
+          open: vi.fn(),
+          write: vi.fn((html) => written.push(html)),
+          close: vi.fn(),
+        },
+      };
+      const canvas = { width: 0, height: 0, getContext: () => ({ fillRect: vi.fn(), drawImage: vi.fn() }), toDataURL: () => 'data:image/png;base64,ok' };
+      let sandboxAtAppend;
+      let sandboxAtWrite;
+      iframe.contentDocument.write = vi.fn((html) => {
+        sandboxAtWrite = iframe.sandbox;
+        written.push(html);
+      });
+      global.document.createElement = vi.fn((tag) => (tag === 'iframe' ? iframe : canvas));
+      global.document.body = {
+        appendChild: vi.fn((el) => {
+          sandboxAtAppend = el.sandbox;
+        }),
+        removeChild: vi.fn(),
+      };
+      window.html2canvas = vi.fn(async () => canvas);
+      return { iframe, written, sandboxAtAppend: () => sandboxAtAppend, sandboxAtWrite: () => sandboxAtWrite };
+    };
+
+    beforeEach(() => vi.useFakeTimers());
+    afterEach(() => {
+      vi.useRealTimers();
+      delete window.html2canvas;
+    });
+
+    it('disables scripts in the render frame before it is attached or written', async () => {
+      const dom = setupDom();
+      const pending = bridge._captureHtmlAsScreenshot('<html><body><img src=x onerror="window.__xss=1"></body></html>');
+      await vi.advanceTimersByTimeAsync(500);
+      const result = await pending;
+
+      expect(dom.sandboxAtAppend()).toBe('allow-same-origin');
+      expect(dom.sandboxAtWrite()).toBe('allow-same-origin');
+      expect(dom.iframe.sandbox).not.toMatch(/allow-scripts/);
+      expect(dom.written).toHaveLength(1);
+      expect(window.html2canvas).toHaveBeenCalledWith(dom.iframe.contentDocument.body, expect.any(Object));
+      expect(result).toBe('data:image/png;base64,ok');
+      expect(global.document.body.removeChild).toHaveBeenCalledWith(dom.iframe);
+    });
+
+    it('still removes the frame when html2canvas fails', async () => {
+      const dom = setupDom();
+      window.html2canvas = vi.fn(async () => {
+        throw new Error('render failed');
+      });
+      const pending = bridge._captureHtmlAsScreenshot('<p>x</p>').catch((e) => e);
+      await vi.advanceTimersByTimeAsync(500);
+      const error = await pending;
+
+      expect(error).toBeInstanceOf(Error);
+      expect(global.document.body.removeChild).toHaveBeenCalledWith(dom.iframe);
     });
   });
 
@@ -3880,6 +3976,65 @@ describe('YjsProjectBridge', () => {
     });
   });
 
+  describe('pass score notice metadata updates', () => {
+    let metadata;
+    let refreshNotices;
+    let originalDevices;
+
+    beforeEach(() => {
+      originalDevices = window.$exeDevices;
+      metadata = new window.Y.Doc().getMap('metadata');
+      bridge.documentManager = { getMetadata: () => metadata };
+      bridge.updateUndoRedoButtons = mock(() => {});
+      bridge.syncMetadataToLegacy = mock(() => {});
+      refreshNotices = mock(() => {});
+      window.$exeDevices = {
+        iDevice: { gamification: { report: { refreshPassScoreNotices: refreshNotices } } },
+      };
+      bridge.setupMetadataObserver();
+    });
+
+    afterEach(() => {
+      metadata.doc.destroy();
+      window.$exeDevices = originalDevices;
+    });
+
+    it.each(['remote', 'local', 'undo'])('refreshes notices on %s pass score changes', (origin) => {
+      bridge.isUndoRedoInProgress = origin === 'undo';
+      metadata.doc.transact(() => metadata.set('passScore', 9), origin);
+
+      expect(refreshNotices).toHaveBeenCalledTimes(1);
+      expect(bridge.updateUndoRedoButtons).toHaveBeenCalled();
+    });
+
+    it('ignores unrelated metadata changes', () => {
+      metadata.set('description', 'Updated description');
+
+      expect(refreshNotices).not.toHaveBeenCalled();
+    });
+
+    it('handles a pass score change before the activity runtime has loaded', () => {
+      delete window.$exeDevices;
+
+      expect(() => metadata.set('passScore', 7)).not.toThrow();
+      expect(bridge.updateUndoRedoButtons).toHaveBeenCalled();
+    });
+
+    it('keeps syncing the metadata when a notice fails to refresh', () => {
+      const failure = new Error('notice failed');
+      refreshNotices.mockImplementation(() => {
+        throw failure;
+      });
+      bridge.app = { project: { properties: {} } };
+
+      expect(() => metadata.set('passScore', 7)).not.toThrow();
+
+      expect(console.error).toHaveBeenCalledWith('[YjsProjectBridge] Error refreshing pass score notices:', failure);
+      expect(bridge.syncMetadataToLegacy).toHaveBeenCalled();
+      expect(bridge.updateUndoRedoButtons).toHaveBeenCalled();
+    });
+  });
+
   describe('syncMetadataToLegacy', () => {
     beforeEach(async () => {
       await bridge.initialize(123, 'test-token');
@@ -4009,6 +4164,23 @@ describe('YjsProjectBridge', () => {
         get: (key) => key === 'addExeLink' ? 'true' : undefined,
       };
       bridge.documentManager.getMetadata = () => mockMetadata;
+
+      bridge.forceAllFormInputsSync();
+
+      expect(mockInput.checked).toBe(true);
+    });
+
+    it('updates the every-activity pass rule checkbox from its metadata key', () => {
+      const mockInput = {
+        getAttribute: (attr) => attr === 'property' ? 'pp_passScoreEveryActivity' : 'checkbox',
+        type: 'checkbox',
+        checked: false,
+        value: '',
+      };
+      global.document.querySelectorAll = mock(() => [mockInput]);
+      bridge.documentManager.getMetadata = () => ({
+        get: (key) => key === 'passScoreEveryActivity' ? 'true' : undefined,
+      });
 
       bridge.forceAllFormInputsSync();
 
@@ -5449,6 +5621,48 @@ describe('YjsProjectBridge', () => {
       delete global.window.electronAPI;
       delete global.window.__lastElpxExportSummary;
       delete global.window.__lastElpxExportTimeline;
+    });
+
+    it('measures Electron phases from one clock reading, however slow the bridge is', async () => {
+      // On a loaded CI runner the clock moves between two reads in the bridge,
+      // which made the Electron durations come out a millisecond short.
+      let now = 0;
+      bridge.getElpxExportDebugNow = () => (now += 1);
+      global.window.SharedExporters = {
+        createExporter: mock(() => ({
+          export: mock(() => Promise.resolve({
+            success: true,
+            data: new ArrayBuffer(8),
+            filename: 'project.elpx',
+          })),
+        })),
+      };
+      global.eXeLearning = { config: { debugElpxExport: true, isOfflineInstallation: true } };
+      global.window.eXeLearning = global.eXeLearning;
+      global.window.electronAPI = {
+        saveBuffer: mock(() => Promise.resolve({
+          saved: true,
+          canceled: false,
+          canceledAt: null,
+          filePath: '/tmp/project.elpx',
+          timings: { totalMs: 44, promptMs: 30, normalizeMs: 4, writeMs: 10 },
+        })),
+      };
+
+      try {
+        await bridge.exportToElpx();
+
+        expect(global.window.__lastElpxExportSummary).toEqual(
+          expect.objectContaining({ electronSaveMs: 44, electronPromptMs: 30 })
+        );
+      } finally {
+        delete bridge.getElpxExportDebugNow;
+        delete global.eXeLearning;
+        delete global.window.eXeLearning;
+        delete global.window.electronAPI;
+        delete global.window.__lastElpxExportSummary;
+        delete global.window.__lastElpxExportTimeline;
+      }
     });
 
     it('falls back to browser download when not in Electron mode', async () => {
@@ -6960,6 +7174,111 @@ describe('YjsProjectBridge', () => {
         bridge._syncBlockIcon(mockIconEl, 'some-icon', 'block-1');
       }).not.toThrow();
     });
+
+    describe('collaborator-controlled icon descriptors (remote sync, undo/redo)', () => {
+      const makeIconEl = () => ({
+        innerHTML: '',
+        style: { removeProperty: mock(() => {}) },
+        classList: { add: mock(() => {}), remove: mock(() => {}), contains: () => true },
+        querySelector: () => null,
+      });
+
+      // global.document is a mock in this suite; parse with a real DOM.
+      const parse = (html) => {
+        const { window: parseWindow } = new JSDOM('<!doctype html><body></body>');
+        const host = parseWindow.document.createElement('div');
+        host.innerHTML = html;
+        return host;
+      };
+
+      const expectSingleInertImg = (html) => {
+        const host = parse(html);
+        expect(host.children).toHaveLength(1);
+        const img = host.querySelector('img');
+        expect(img).not.toBeNull();
+        for (const attr of Array.from(img.attributes)) {
+          expect(['src', 'alt']).toContain(attr.name);
+        }
+        return img;
+      };
+
+      const BREAKOUTS = [
+        'asset://uuid/x.png" onerror="window.__xss=1',
+        "asset://uuid/x.png' onerror='window.__xss=1",
+        'asset://uuid/x.png"><img src=x onerror="window.__xss=1">',
+        '/icons/a.png"><script>window.__xss=1</script>',
+        'asset://uuid/x.png\u0000" onload="window.__xss=1',
+      ];
+
+      it.each(BREAKOUTS)('asset value %s cannot break out of the <img> (unresolved URL)', (value) => {
+        window.eXeLearning = {
+          app: { project: { _yjsBridge: { assetManager: { resolveAssetURLSync: () => null } } }, themes: { getThemeIcons: () => ({}) } },
+        };
+        const iconEl = makeIconEl();
+        bridge._syncBlockIcon(iconEl, { source: 'asset', value }, 'block-1');
+        expectSingleInertImg(iconEl.innerHTML);
+      });
+
+      it('asset value cannot break out through the alt attribute when the URL resolves', () => {
+        const value = 'asset://uuid/x.png" onerror="window.__xss=1';
+        window.eXeLearning = {
+          app: {
+            project: { _yjsBridge: { assetManager: { resolveAssetURLSync: () => 'blob:http://localhost/1' } } },
+            themes: { getThemeIcons: () => ({}) },
+          },
+        };
+        const iconEl = makeIconEl();
+        bridge._syncBlockIcon(iconEl, { source: 'asset', value }, 'block-1');
+        const img = expectSingleInertImg(iconEl.innerHTML);
+        expect(img.getAttribute('src')).toBe('blob:http://localhost/1');
+        expect(img.getAttribute('alt')).toBe(value);
+      });
+
+      it('theme icon title from a theme cannot inject markup', () => {
+        window.eXeLearning = {
+          app: {
+            themes: {
+              getThemeIcons: () => ({
+                info: { id: 'info', value: '/icons/info.png', title: '"><img src=x onerror="window.__xss=1">' },
+              }),
+            },
+          },
+        };
+        const iconEl = makeIconEl();
+        bridge._syncBlockIcon(iconEl, { source: 'theme', value: 'info' }, 'block-1');
+        const img = expectSingleInertImg(iconEl.innerHTML);
+        expect(img.getAttribute('src')).toBe('/icons/info.png');
+        expect(img.getAttribute('alt')).toBe('"><img src=x onerror="window.__xss=1">');
+      });
+
+      it('an unknown theme icon name is not rendered at all', () => {
+        window.eXeLearning = { app: { themes: { getThemeIcons: () => ({}) } } };
+        const iconEl = makeIconEl();
+        bridge._syncBlockIcon(iconEl, { source: 'theme', value: '"><img src=x onerror=1>' }, 'block-1');
+        expect(iconEl.innerHTML).toBe('');
+      });
+
+      it('a crafted material icon name falls back to a known glyph', () => {
+        window.eXeLearning = { app: { themes: { getThemeIcons: () => ({}) } } };
+        const iconEl = makeIconEl();
+        bridge._syncBlockIcon(iconEl, { source: 'material', value: '"><img src=x onerror=1>' }, 'block-1');
+        const host = parse(iconEl.innerHTML);
+        expect(host.querySelector('img')).toBeNull();
+        expect(host.querySelector('.exe-material-icon')).not.toBeNull();
+      });
+
+      it('a legitimate asset icon still renders', () => {
+        window.eXeLearning = {
+          app: {
+            project: { _yjsBridge: { assetManager: { resolveAssetURLSync: () => 'blob:http://localhost/ok' } } },
+            themes: { getThemeIcons: () => ({}) },
+          },
+        };
+        const iconEl = makeIconEl();
+        bridge._syncBlockIcon(iconEl, { source: 'asset', value: 'asset://uuid/ok.png' }, 'block-1');
+        expect(iconEl.innerHTML).toBe('<img src="blob:http://localhost/ok" alt="asset://uuid/ok.png">');
+      });
+    });
   });
 
   describe('hasUnsavedChangesForUI', () => {
@@ -7089,6 +7408,47 @@ describe('YjsProjectBridge', () => {
       await bridge.importFromElpx(file, { clearExisting: false });
 
       expect(bridge.documentManager.markDirty).toHaveBeenCalled();
+    });
+
+    // #2540: without server storage the opened file is where the assets live,
+    // so they must not count as unsaved changes right after opening it.
+    describe('assets of the opened file', () => {
+      beforeEach(() => {
+        bridge.assetManager = { markAssetsSavedLocally: mock(() => {}) };
+      });
+
+      it('marks them saved locally when the project has no server storage', async () => {
+        window.eXeLearning.app.capabilities = { storage: { remote: false } };
+
+        await bridge.importFromElpx(new File(['test'], 'test.elpx'), { clearExisting: true });
+
+        expect(bridge.assetManager.markAssetsSavedLocally).toHaveBeenCalled();
+      });
+
+      it('leaves them pending upload when the server stores the project', async () => {
+        window.eXeLearning.app.capabilities = { storage: { remote: true } };
+
+        await bridge.importFromElpx(new File(['test'], 'test.elpx'), { clearExisting: true });
+
+        expect(bridge.assetManager.markAssetsSavedLocally).not.toHaveBeenCalled();
+      });
+
+      it('leaves them unsaved when importing into the current project', async () => {
+        window.eXeLearning.app.capabilities = { storage: { remote: false } };
+
+        await bridge.importFromElpx(new File(['test'], 'test.elpx'), { clearExisting: false });
+
+        expect(bridge.assetManager.markAssetsSavedLocally).not.toHaveBeenCalled();
+      });
+
+      it('opens fine with an asset handler that does not track local saves', async () => {
+        window.eXeLearning.app.capabilities = { storage: { remote: false } };
+        bridge.assetManager = {};
+
+        const stats = await bridge.importFromElpx(new File(['test'], 'test.elpx'), { clearExisting: true });
+
+        expect(stats.pages).toBe(1);
+      });
     });
   });
 

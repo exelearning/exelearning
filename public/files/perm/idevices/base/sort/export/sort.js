@@ -50,7 +50,8 @@ var $eXeOrdena = {
     },
 
     loadGame: function () {
-        $eXeOrdena.options = [];
+        // Running activities keep their entry; each one is stored at its own index.
+        $eXeOrdena.options.length = $eXeOrdena.activities.length;
 
         $eXeOrdena.activities.each(function (i) {
             const dl = $('.ordena-DataGame', this);
@@ -62,11 +63,12 @@ var $eXeOrdena = {
             mOption.main = 'ordenaMainContainer-' + i;
             mOption.idevice = 'ordena-IDevice';
 
-            $eXeOrdena.options.push(mOption);
+            $eXeOrdena.options[i] = mOption;
 
             const ordena = $eXeOrdena.createInterfaceOrdena(i);
 
             dl.before(ordena).remove();
+            $exeDevices.iDevice.gamification.report.showPassScoreNotice(mOption);
 
             $('#ordenaGameMinimize-' + i).hide();
             $('#ordenaGameContainer-' + i).hide();
@@ -131,15 +133,25 @@ var $eXeOrdena = {
         mOptions.playerAudio = '';
 
         for (let i = 0; i < mOptions.phrasesGame.length; i++) {
+            if (!Array.isArray(mOptions.phrasesGame[i].cards)) {
+                mOptions.phrasesGame[i].cards = [];
+            }
             const $imagesLink = $('.ordena-LinkImages-' + i, sthis),
                 $audiosLink = $('.ordena-LinkAudios-' + i, sthis),
                 cards = mOptions.phrasesGame[i].cards;
 
+            // Older or edited data can lack some card fields (#2627).
+            for (const card of cards) {
+                card.url = typeof card.url === 'string' ? card.url : '';
+                card.eText = typeof card.eText === 'string' ? card.eText : '';
+                card.audio = typeof card.audio === 'string' ? card.audio : '';
+            }
+
             $imagesLink.each(function () {
                 const iq = parseInt($(this).text());
                 if (!isNaN(iq) && iq < cards.length) {
-                    cards[iq].url = $(this).attr('href');
-                    if (cards[iq].url < 4) {
+                    cards[iq].url = $(this).attr('href') || '';
+                    if (cards[iq].url.length < 4) {
                         cards[iq].url = '';
                     }
                 }
@@ -147,7 +159,7 @@ var $eXeOrdena = {
             $audiosLink.each(function () {
                 const iqa = parseInt($(this).text());
                 if (!isNaN(iqa) && iqa < cards.length) {
-                    cards[iqa].audio = $(this).attr('href');
+                    cards[iqa].audio = $(this).attr('href') || '';
                     if (cards[iqa].audio.length < 4) {
                         cards[iqa].audio = '';
                     }
@@ -1921,14 +1933,22 @@ var $eXeOrdena = {
         }
 
         if (mOptions.time > 0) {
-            mOptions.counterClock = setInterval(function () {
-                let $node = $('#ordenaMainContainer-' + instance);
-                let $content = $('#node-content');
+            // Bound to this game's element, not to its id. The editor never
+            // reloads the document between pages and ids are numbered by
+            // position, so the next page's first game takes the same ones: a
+            // clock that looked its game up by id each second found that game
+            // and ran it, counting down on its display and ending it when its
+            // own time ran out.
+            const container = document.getElementById(
+                'ordenaMainContainer-' + instance
+            );
+            const clock = setInterval(() => {
+                const $content = $('#node-content');
                 if (
-                    !$node.length ||
+                    !container?.isConnected ||
                     ($content.length && $content.attr('mode') === 'edition')
                 ) {
-                    clearInterval(mOptions.counterClock);
+                    clearInterval(clock);
                     return;
                 }
                 if (mOptions.gameStarted) {
@@ -1940,6 +1960,7 @@ var $eXeOrdena = {
                 }
                 $eXeOrdena.uptateTime(mOptions.counter, instance);
             }, 1000);
+            mOptions.counterClock = clock;
             $eXeOrdena.uptateTime(mOptions.time * 60, instance);
         }
         if (mOptions.type === 1) {

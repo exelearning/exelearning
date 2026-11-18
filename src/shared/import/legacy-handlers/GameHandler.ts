@@ -14,6 +14,7 @@
  * - XOR-encrypted: %E9%B0%F3... (key=146)
  */
 
+import { decryptDataGame } from '../../export/utils/dataGameCipher';
 import { BaseLegacyHandler } from './BaseLegacyHandler';
 import type { IdeviceHandlerContext, FeedbackResult } from './IdeviceHandler';
 import { resolveFieldInstances } from '../resolveFieldInstances';
@@ -354,7 +355,7 @@ export class GameHandler extends BaseLegacyHandler {
                 let parsedData: Record<string, unknown> | null = null;
                 if (isEncrypted && gameData.startsWith('%')) {
                     // Encrypted data - decrypt first
-                    const decrypted = this.decrypt(gameData);
+                    const decrypted = decryptDataGame(gameData);
                     parsedData = this.parseJson(decrypted);
                 } else if (gameData.trim().startsWith('{')) {
                     // Plain JSON
@@ -403,42 +404,6 @@ export class GameHandler extends BaseLegacyHandler {
         }
 
         return null;
-    }
-
-    /**
-     * Decrypt XOR-encrypted game data
-     * Uses the same algorithm as $exeDevices.iDevice.gamification.helpers.decrypt()
-     *
-     * @param str - Encrypted string (URL-encoded, XOR key=146)
-     * @returns Decrypted string
-     */
-    private decrypt(str: string): string {
-        if (!str) return '';
-        if (str === 'undefined' || str === 'null') return '';
-
-        let decoded = str;
-        try {
-            // Unescape URL encoding
-            decoded = decodeURIComponent(str);
-        } catch (_e) {
-            // If decodeURIComponent fails, try unescape as fallback
-            try {
-                decoded = unescape(str);
-            } catch (_e2) {
-                return '';
-            }
-        }
-
-        try {
-            const key = 146;
-            let output = '';
-            for (let i = 0; i < decoded.length; i++) {
-                output += String.fromCharCode(key ^ decoded.charCodeAt(i));
-            }
-            return output;
-        } catch (_e) {
-            return '';
-        }
     }
 
     /**

@@ -5,9 +5,11 @@ import {
     isValidProvider,
     isAllowedProviderUrl,
     isSafeReturnUrl,
+    isPrivateNetworkProviderAllowed,
     extractProviderId,
     decodePlatformJWT,
     buildIntegrationUrl,
+    getPlatformBinding,
     getPlatformIntegrationParams,
     getExportTypeFromPkgType,
     validateProviderConfiguration,
@@ -26,7 +28,9 @@ describe('Platform JWT Utilities', () => {
             PROVIDER_URLS: process.env.PROVIDER_URLS,
             PROVIDER_TOKENS: process.env.PROVIDER_TOKENS,
             PROVIDER_IDS: process.env.PROVIDER_IDS,
+            PROVIDER_ALLOW_PRIVATE_NETWORK: process.env.PROVIDER_ALLOW_PRIVATE_NETWORK,
         };
+        delete process.env.PROVIDER_ALLOW_PRIVATE_NETWORK;
     });
 
     afterEach(() => {
@@ -439,6 +443,38 @@ describe('Platform JWT Utilities', () => {
             expect(isSafeReturnUrl('http://[::1]/mod/exescorm/view.php')).toBe(false);
             expect(isSafeReturnUrl('http://[fe80::1]/mod/exescorm/view.php')).toBe(false);
         });
+
+        it('should allow a private-network IP literal only with allowPrivateNetwork', () => {
+            const options = { allowPrivateNetwork: true };
+            expect(isSafeReturnUrl('http://192.168.1.10/mod/exescorm/view.php', options)).toBe(true);
+            expect(isSafeReturnUrl('http://[::1]/mod/exescorm/view.php', options)).toBe(true);
+            // Link-local metadata is never a trusted private network.
+            expect(isSafeReturnUrl('http://169.254.169.254/latest/meta-data/', options)).toBe(false);
+            expect(isSafeReturnUrl('http://[fe80::1]/mod/exescorm/view.php', options)).toBe(false);
+        });
+    });
+
+    describe('isPrivateNetworkProviderAllowed', () => {
+        beforeEach(() => {
+            process.env.PROVIDER_URLS = 'http://moodle.intranet';
+        });
+
+        it('is false by default, even for an allow-listed provider', () => {
+            expect(isPrivateNetworkProviderAllowed('http://moodle.intranet/mod/exescorm/get_ode.php')).toBe(false);
+        });
+
+        it('is true only for allow-listed providers once PROVIDER_ALLOW_PRIVATE_NETWORK is enabled', () => {
+            process.env.PROVIDER_ALLOW_PRIVATE_NETWORK = 'true';
+            expect(isPrivateNetworkProviderAllowed('http://moodle.intranet/mod/exescorm/get_ode.php')).toBe(true);
+            expect(isPrivateNetworkProviderAllowed('http://other.intranet/mod/exescorm/get_ode.php')).toBe(false);
+        });
+
+        it('accepts 1 as an enabled value and ignores any other value', () => {
+            process.env.PROVIDER_ALLOW_PRIVATE_NETWORK = '1';
+            expect(isPrivateNetworkProviderAllowed('http://moodle.intranet/x')).toBe(true);
+            process.env.PROVIDER_ALLOW_PRIVATE_NETWORK = 'yes';
+            expect(isPrivateNetworkProviderAllowed('http://moodle.intranet/x')).toBe(false);
+        });
     });
 
     describe('extractProviderId', () => {
@@ -608,6 +644,63 @@ describe('Platform JWT Utilities', () => {
         it('should return null for unknown URL pattern', () => {
             const returnUrl = 'https://moodle.com/some/other/path';
             expect(buildIntegrationUrl(returnUrl, 'set')).toBeNull();
+        });
+    });
+
+    describe('getPlatformBinding', () => {
+        const binding = (returnurl: string, ...cmid: unknown[]) =>
+            getPlatformBinding({ returnurl, cmid: cmid.length ? cmid[0] : 1234 } as unknown as PlatformJWTPayload);
+
+        it('binds the cmid to the site that serves the module callbacks', () => {
+            expect(binding('https://moodle.example.com/mod/exescorm/view.php?id=1234&forceview=1')).toEqual({
+                site: 'https://moodle.example.com',
+                cmid: '1234',
+            });
+        });
+
+        it('keeps the path of a Moodle installed in a subdirectory', () => {
+            expect(binding('https://example.com/moodle/mod/exeweb/view.php?id=1234')).toEqual({
+                site: 'https://example.com/moodle',
+                cmid: '1234',
+            });
+        });
+
+        it('derives the same site from the module return script and the course section page', () => {
+            const returnto = binding('https://example.com/moodle/mod/exescorm/returnto.php?id=1234&returnurl=%2Fx');
+            const section = binding('https://example.com/moodle/course/section.php?id=7');
+            expect(returnto?.site).toBe('https://example.com/moodle');
+            expect(section?.site).toBe('https://example.com/moodle');
+        });
+
+        it('normalizes host case and default ports so one site has one key', () => {
+            expect(binding('https://Moodle.Example.COM:443/mod/exescorm/view.php?id=1')?.site).toBe(
+                'https://moodle.example.com',
+            );
+            expect(binding('http://moodle.example.com:8080/mod/exescorm/view.php?id=1')?.site).toBe(
+                'http://moodle.example.com:8080',
+            );
+        });
+
+        it('stores numeric cmids (as Moodle sends them) as strings', () => {
+            expect(binding('https://moodle.example.com/mod/exescorm/view.php?id=1', 42)?.cmid).toBe('42');
+            expect(binding('https://moodle.example.com/mod/exescorm/view.php?id=1', '42')?.cmid).toBe('42');
+        });
+
+        it('returns null when the JWT carries no usable cmid', () => {
+            const url = 'https://moodle.example.com/mod/exescorm/view.php?id=1';
+            expect(binding(url, undefined)).toBeNull();
+            expect(binding(url, '')).toBeNull();
+            expect(binding(url, 'x'.repeat(65))).toBeNull();
+        });
+
+        it('returns null when the return URL does not point at a known module path', () => {
+            expect(binding('https://moodle.example.com/some/other/path')).toBeNull();
+            expect(binding('https://moodle.example.com/view.php?next=/mod/exescorm/view.php')).toBeNull();
+            expect(binding('not a url')).toBeNull();
+        });
+
+        it('returns null when the site does not fit the stored column', () => {
+            expect(binding(`https://moodle.example.com/${'a'.repeat(250)}/mod/exescorm/view.php?id=1`)).toBeNull();
         });
     });
 
@@ -852,6 +945,66 @@ describe('Platform JWT Utilities', () => {
 
             const params = await getPlatformIntegrationParams(token, 'set');
             expect(params).toBeNull();
+        });
+    });
+
+    describe('SSRF allow-list bypass hardening (isAllowedProviderUrl)', () => {
+        beforeEach(() => {
+            process.env.PROVIDER_URLS = 'https://moodle.allowed.example';
+        });
+
+        it('rejects a userinfo-smuggled internal host that prefix-matches an allowed origin', () => {
+            // Real host is internal.svc.cluster.local; the `@` makes
+            // url.startsWith('https://moodle.allowed.example') deceptively true.
+            expect(
+                isAllowedProviderUrl('https://moodle.allowed.example@internal.svc.cluster.local/mod/exescorm/x'),
+            ).toBe(false);
+        });
+
+        it('rejects a look-alike host that has an allowed origin as a string prefix', () => {
+            expect(isAllowedProviderUrl('https://moodle.allowed.example.evil.test/mod/exescorm/x')).toBe(false);
+        });
+
+        it('still allows a genuine returnurl on the configured provider origin', () => {
+            expect(isAllowedProviderUrl('https://moodle.allowed.example/mod/exescorm/view.php?id=1')).toBe(true);
+        });
+    });
+
+    describe('SSRF allow-list bypass hardening (getPlatformIntegrationParams end-to-end)', () => {
+        const signToken = async (returnurl: string) =>
+            new SignJWT({ userid: '1', cmid: '1', returnurl, pkgtype: 'scorm' } as unknown as Record<string, unknown>)
+                .setProtectedHeader({ alg: 'HS256' })
+                .setIssuedAt()
+                .setExpirationTime('1h')
+                .sign(new TextEncoder().encode('test-secret'));
+
+        beforeEach(() => {
+            process.env.APP_SECRET = 'test-secret';
+            delete process.env.PROVIDER_IDS;
+            process.env.PROVIDER_URLS = 'https://moodle.allowed.example';
+        });
+
+        it('accepts an allow-listed private-network IP literal only with PROVIDER_ALLOW_PRIVATE_NETWORK', async () => {
+            process.env.PROVIDER_URLS = 'http://192.168.1.10';
+            const token = await signToken('http://192.168.1.10/mod/exescorm/view.php?id=1');
+            expect(await getPlatformIntegrationParams(token, 'get')).toBeNull();
+
+            process.env.PROVIDER_ALLOW_PRIVATE_NETWORK = 'true';
+            const params = await getPlatformIntegrationParams(token, 'get');
+            expect(params?.platformIntegrationUrl).toBe('http://192.168.1.10/mod/exescorm/get_ode.php');
+        });
+
+        it('still rejects a private IP literal that is not allow-listed when the opt-in is enabled', async () => {
+            process.env.PROVIDER_ALLOW_PRIVATE_NETWORK = 'true';
+            const token = await signToken('http://10.0.0.5/mod/exescorm/view.php?id=1');
+            expect(await getPlatformIntegrationParams(token, 'get')).toBeNull();
+        });
+
+        it('returns null for a userinfo-smuggled internal returnurl', async () => {
+            const token = await signToken(
+                'https://moodle.allowed.example@internal.svc.cluster.local/mod/exescorm/view.php',
+            );
+            expect(await getPlatformIntegrationParams(token, 'get')).toBeNull();
         });
     });
 });

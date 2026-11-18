@@ -311,4 +311,69 @@ describe('word-search iDevice export', () => {
             expect($eXeSopa.sendScore).not.toHaveBeenCalled();
         });
     });
+
+    // The editor never reloads the document between pages, and a game's ids
+    // are numbered by position: the next page's first game takes the ids this
+    // one had. The clock used to find that game by id and run it, counting
+    // down on its display and ending it when its own time ran out.
+    describe('the clock of a timed game', () => {
+        const instance = 0;
+
+        beforeEach(() => {
+            vi.useFakeTimers();
+            document.body.innerHTML = `<div id="sopaMainContainer-${instance}"></div>`;
+            $eXeSopa.instances = [{ gameStarted: false, time: 1, game: { solve: vi.fn() } }];
+            for (const method of ['uptateTime', 'saveScormScore', 'gameOver']) {
+                vi.spyOn($eXeSopa, method).mockImplementation(() => {});
+            }
+        });
+
+        afterEach(() => {
+            vi.useRealTimers();
+        });
+
+        it('counts down on its own game', () => {
+            $eXeSopa.startGame(instance);
+
+            vi.advanceTimersByTime(3000);
+
+            expect($eXeSopa.uptateTime).toHaveBeenLastCalledWith(57, instance);
+        });
+
+        it('ends its own game when the time runs out', () => {
+            $eXeSopa.startGame(instance);
+
+            vi.advanceTimersByTime(60000);
+
+            expect($eXeSopa.gameOver).toHaveBeenCalledWith(2, instance);
+        });
+
+        it("leaves the next page's game alone, though it takes the same ids", () => {
+            $eXeSopa.startGame(instance);
+            vi.advanceTimersByTime(1000);
+
+            // The author moves to another page, whose first game is numbered the same.
+            document.body.innerHTML = `<div id="sopaMainContainer-${instance}"></div>`;
+            $eXeSopa.instances[instance] = { gameStarted: true, activeCounter: true, counter: 240 };
+            $eXeSopa.uptateTime.mockClear();
+            vi.advanceTimersByTime(120000);
+
+            expect($eXeSopa.uptateTime).not.toHaveBeenCalled();
+            expect($eXeSopa.gameOver).not.toHaveBeenCalled();
+            expect($eXeSopa.instances[instance].counter).toBe(240);
+        });
+    });
+});
+
+describe('word-search minimum score notice', () => {
+    it('asks for the notice right after its interface replaces the stored data', () => {
+        const source = readFileSync(join(__dirname, 'word-search.js'), 'utf-8');
+        const loadGame = source.slice(source.search(/\bloadGame: function/));
+
+        // The main container comes with the interface, so from that line on the
+        // notice can go right before it, below the instructions.
+        expect(loadGame).toMatch(
+            /mOption\.main = [^\n]+[\s\S]*?dl\.before\(\w+\)\.remove\(\);\s*\$exeDevices\.iDevice\.gamification\.report\.showPassScoreNotice\(mOption\);/
+        );
+    });
 });

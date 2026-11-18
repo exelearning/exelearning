@@ -32,6 +32,9 @@
 *   Package: @elysiajs/swagger
     *   Copyright: saltyAom
     *   License: MIT
+*   Package: @erseco/mind-elixir-export-svg
+    *   Copyright: Ernesto Serrano
+    *   License: MIT
 *   Package: @material-symbols/svg-400
     *   Copyright: Google LLC
     *   License: Apache-2.0
@@ -53,8 +56,17 @@
 *   Package: @sinclair/typebox
     *   Copyright: sinclairzx81
     *   License: MIT
+*   Package: @types/bun
+    *   Copyright: Jarred Sumner, Robobun, Dylan Conway
+    *   License: MIT
+*   Package: @types/css-tree
+    *   Copyright: Erik Källén, Jason Kratzer
+    *   License: MIT
 *   Package: @types/fs-extra
     *   Copyright: Alan Agius, midknight41, Brendan Forster
+    *   License: MIT
+*   Package: @types/jsdom
+    *   Copyright: Leonard Thieu, Johan Palmfjord, ExE Boss
     *   License: MIT
 *   Package: @types/mime-types
     *   Copyright: Gyusun Yeom, Sebastian Beltran
@@ -77,11 +89,20 @@
 *   Package: @xmldom/xmldom
     *   Copyright: Christopher J. Brody and other contributors
     *   License: MIT
+*   Package: abcjs
+    *   Copyright: Paul Rosen
+    *   License: MIT
 *   Package: bcryptjs
     *   Copyright: Daniel Wirtz
     *   License: BSD-3-Clause
+*   Package: bootstrap
+    *   Copyright: The Bootstrap Authors
+    *   License: MIT
 *   Package: cross-env
     *   Copyright: Kent C. Dodds
+    *   License: MIT
+*   Package: css-tree
+    *   Copyright: Roman Dvornov
     *   License: MIT
 *   Package: dompurify
     *   Copyright: Dr.-Ing. Mario Heiderich, Cure53
@@ -110,6 +131,9 @@
 *   Package: fast-xml-parser
     *   Copyright: Amit Gupta
     *   License: MIT
+*   Package: fflate
+    *   Copyright: Arjun Barrett
+    *   License: MIT
 *   Package: fs-extra
     *   Copyright: JP Richardson
     *   License: MIT
@@ -119,17 +143,29 @@
 *   Package: happy-dom
     *   Copyright: David Ortner
     *   License: MIT
+*   Package: html2canvas
+    *   Copyright: Niklas von Hertzen
+    *   License: MIT
 *   Package: http-proxy-middleware
     *   Copyright: Steven Chim
     *   License: MIT
 *   Package: i18n
     *   Copyright: Marcus Spiegel
     *   License: MIT
+*   Package: interactjs
+    *   Copyright: Taye Adeyemi
+    *   License: MIT
 *   Package: ioredis
     *   Copyright: Zihua Li
     *   License: MIT
 *   Package: jose
     *   Copyright: Filip Skokan
+    *   License: MIT
+*   Package: jquery
+    *   Copyright: OpenJS Foundation and other contributors
+    *   License: MIT
+*   Package: jquery-ui
+    *   Copyright: OpenJS Foundation and other contributors
     *   License: MIT
 *   Package: jsdom
     *   Copyright: Elijah Insua, Domenic Denicola, Sebastian Mayr
@@ -155,12 +191,18 @@
 *   Package: mime-types
     *   Copyright: Douglas Christopher Wilson, Jeremiah Senkpiel, Jonathan Ong
     *   License: MIT
+*   Package: mind-elixir
+    *   Copyright: ssshooter
+    *   License: MIT
 *   Package: mysql2
     *   Copyright: Andrey Sidorov
     *   License: MIT
 *   Package: nunjucks
     *   Copyright: James Long
     *   License: BSD-2-Clause
+*   Package: parse5
+    *   Copyright: Ivan Nikulin
+    *   License: MIT
 *   Package: pdfjs-dist
     *   Copyright: Mozilla Foundation
     *   License: Apache-2.0
@@ -169,6 +211,12 @@
     *   License: MIT
 *   Package: scorm-again
     *   Copyright: Jonathan Putney
+    *   License: MIT
+*   Package: showdown
+    *   Copyright: Estevão Santos
+    *   License: MIT
+*   Package: simplelightbox
+    *   Copyright: Andre Rinas
     *   License: MIT
 *   Package: typescript
     *   Copyright: Microsoft Corp.
@@ -216,7 +264,7 @@
     *   License: MIT
 *   Files: /public/app/common/exe\_lightbox/ (prettyPhoto)
     *   Copyright: Stephane Caron
-    *   License: GPLv2 or CC-BY-2.
+    *   License: GPLv2 or CC-BY 2.5
 *   File: /public/app/common/exe\_magnify/mojomagnify.js
     *   Copyright: 2008-2010 Jacob Seidelin, modified 2013 by Fran Macías
     *   License: MIT
@@ -232,12 +280,6 @@
 *   Files: public/app/common/fix\_webm\_duration/\*
     *   Copyright: 2018 Yury Sitnikov
     *   License: MIT
-*   Files: /public/app/common/mindmaps/\*
-    *   Copyright: David Richard
-    *   License: AGPL V3
-    *   Note: [mindmaps](https://www.mindmaps.app/) is included in eXeLearning
-        with the developer's consent. For a different use of mindmaps, read
-        its LICENSE file or contact its author.
 *   File: /public/app/common/scorm/SCORM\_API\_wrapper.js
     *   Copyright: Philip Hutchison
     *   License: MIT
@@ -258,6 +300,12 @@
 *   Files: /public/files/perm/idevices/\*/export/html2canvas.js
     *   Copyright: Niklas von Hertzen
     *   License: MIT
+*   Files: /public/files/perm/idevices/base/image-gallery/export/simple-lightbox.min.{js,css}
+    *   Copyright: Andre Rinas
+    *   License: MIT
+    *   Note: stock SimpleLightbox 2.14.3, copied from the npm package by
+        scripts/copy-vendor-libs.js. image-gallery.js builds the title, author
+        and license caption itself.
 *   File: public/files/perm/idevices/base/3dmol/3dmol-icon.svg
     *   Copyright: Google (Material Design)
     *   License: Apache License 2.0
@@ -353,24 +401,12 @@
 *   Files: /public/libs/showdown/* (Showdown v2)
     *   Copyright: ShowdownJS
     *   License: MIT
-*   Files: /public/libs/simplelightbox/\*
-    *   Copyright: Andre Rinas
-    *   License: MIT
 *   Files: /public/libs/tinymce\_5/\*
     *   Copyright: Tiny Technologies Inc.
     *   License: LGPL-2.1
-*   Files: /public/libs/tinymce\_5/js/tinymce/plugins/exemindmap/editor (cropper.js, jquery-cropper.js and CSS)
-    *   Copyright: Chen Fengyuan
-    *   License: MIT
-*   Files: /public/libs/tinymce\_5/js/tinymce/plugins/exemindmap/editor/js/FileSaver.min.js
-    *   Copyright: Eli Grey
-    *   License: MIT
-*   Files: /public/libs/tinymce\_5/js/tinymce/plugins/exemindmap/editor/js/jquery.min.js
-    *   Copyright: John Resig
-    *   License: MIT
-*   Files: /public/libs/tinymce\_5/js/tinymce/plugins/exemindmap/editor/js/jquery.min.js
-    *   Copyright: John Resig
-    *   License: MIT
+*   Files: /public/libs/tinymce\_5/js/tinymce/plugins/exemindmap/editor/mindmap-editor.bundle.\* (generated by `scripts/build-mindmap-editor.ts`)
+    *   [Mind Elixir](https://github.com/SSShooter/mind-elixir-core) 6.0.0. Copyright: DjZhou. License: MIT
+    *   [@erseco/mind-elixir-export-svg](https://github.com/erseco/mind-elixir-export-svg) 0.3.0. Copyright: Ernesto Serrano. License: MIT. Includes font metrics from Arimo (Copyright: The Arimo Project Authors. License: SIL Open Font License version 1.1)
 *   Files: /public/style/workarea/fonts/\Catamaran*
     *   Copyright: The Catamaran Authors. Designed by Pria Ravichandran
     *   License: SIL Open Font License version 1.1

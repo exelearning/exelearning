@@ -1,5 +1,12 @@
 import { test, expect } from '../../fixtures/auth.fixture';
-import { waitForAppReady, reloadPage, gotoWorkarea } from '../../helpers/workarea-helpers';
+import { openPage, storedIdevice } from '../../helpers/idevice-clock-helpers';
+import {
+    waitForAppReady,
+    reloadPage,
+    gotoWorkarea,
+    expandIdeviceCategory,
+    getPreviewFrame,
+} from '../../helpers/workarea-helpers';
 import { WorkareaPage } from '../../pages/workarea.page';
 import type { Page, FrameLocator } from '@playwright/test';
 
@@ -434,6 +441,33 @@ async function createSingleChoiceSlide(
 /**
  * Helper to save the editor and close it
  */
+/**
+ * Serve a stand-in for YouTube's iframe API, so the runtime's real YouTube
+ * callbacks run without network or playback. The test drives its player by
+ * hand (`emitState`), and it counts every read of its position in `reads`.
+ */
+async function fakeYouTubeApi(page: Page): Promise<void> {
+    await page.context().route('https://www.youtube.com/iframe_api', route =>
+        route.fulfill({
+            contentType: 'application/javascript',
+            body: `window.YT = { Player: class {
+                constructor(id, options) {
+                    this.events = options.events;
+                    this.position = 4;
+                    this.reads = 0;
+                    queueMicrotask(() => this.events.onReady({ target: this }));
+                }
+                emitState(data) { this.events.onStateChange({ target: this, data }); }
+                getCurrentTime() { this.reads++; return this.position; }
+                playVideo() { this.emitState(1); }
+                pauseVideo() { this.emitState(2); }
+                stopVideo() { this.emitState(0); }
+                seekTo(position) { this.position = position; }
+            }};`,
+        }),
+    );
+}
+
 async function saveAndCloseEditor(page: Page, editorIframe: FrameLocator): Promise<void> {
     // Click the Save link in the actions menu (using CSS class selector to avoid translation issues)
     const saveLink = editorIframe.locator('#actions li.save a').first();
@@ -696,6 +730,174 @@ test.describe('Interactive Video iDevice', () => {
             const videoContainer = previewIframe.locator('.exe-interactive-video').first();
             await expect(videoContainer).toBeAttached({ timeout: 10000 });
         });
+    });
+
+    // The iDevices menu gives each iDevice's button its type name as id, and it
+    // comes before the page: the Slide iDevice's button is `#slide`. The player's
+    // question box used to have that same id, so in the editor a question was
+    // written into the menu button and never shown, and the player's stylesheet
+    // hid the button.
+    test.describe('Editor view', () => {
+        test('shows a question inside the video and leaves the Slide iDevice in the menu', async ({
+            authenticatedPage: page,
+            createProject,
+        }) => {
+            const errors: string[] = [];
+            page.on('pageerror', error => errors.push(error.message));
+
+            const projectUuid = await createProject(page, 'Interactive Video Question Test');
+            await gotoWorkarea(page, projectUuid);
+            await waitForAppReady(page);
+
+            // The stored interactive video: a YouTube video with a single-choice
+            // question, "1+1 =", at its fifth second.
+            await page.evaluate(html => {
+                const binding = (window as any).eXeLearning.app.project._yjsBridge.structureBinding;
+                const parent = binding.createPage('Quiz clip');
+                binding.createComponent(parent.id, binding.createBlock(parent.id), 'interactive-video', {
+                    htmlContent: html,
+                });
+            }, storedIdevice('interactive-video').html);
+            await page.locator('.nav-element .nav-element-text', { hasText: 'Quiz clip' }).first().click();
+            const activity = page.locator('#node-content .exe-interactive-video #activity');
+            await page.locator('#start-link').waitFor({ state: 'visible', timeout: 30000 });
+
+            const slideButton = page.locator('.idevice_item#slide');
+            await expandIdeviceCategory(page, /Information and presentation/i);
+            await expect(slideButton, "the player's stylesheet hid the Slide iDevice").toBeVisible();
+
+            // The learner starts the video and it reaches the question: the
+            // player follows the time and shows the question at its second.
+            // No video actually plays here, so there is nothing to play or pause.
+            await page.evaluate(() => {
+                const controls = (window as any).$interactivevideo.controls;
+                controls.play = () => {};
+                controls.pause = () => {};
+            });
+            await page.locator('#start-link').click();
+            await page.evaluate(() => {
+                const player = (window as any).$interactivevideo;
+                player.track(4);
+                player.track(5);
+            });
+
+            await expect(activity.locator('.question'), 'the question is not shown inside the video').toBeVisible();
+            await expect(activity.locator('.question')).toContainText('1+1');
+            await expect(slideButton, 'the question was written into the Slide iDevice button').not.toContainText(
+                '1+1',
+            );
+            // A click in the page folds the menu's categories: open it again.
+            await expandIdeviceCategory(page, /Information and presentation/i);
+            await expect(slideButton).toBeVisible();
+            expect(errors, 'the page threw').toEqual([]);
+        });
+    });
+
+    for (const view of ['editor', 'preview'] as const) {
+        test(`keeps one YouTube tracking timer and cancels it on cleanup in ${view}`, async ({
+            authenticatedPage: page,
+            createProject,
+        }) => {
+            await fakeYouTubeApi(page);
+            const uuid = await createProject(page, `YouTube timer ${view}`);
+            await gotoWorkarea(page, uuid);
+            await waitForAppReady(page);
+            const pageId = await page.evaluate(html => {
+                const binding = (window as any).eXeLearning.app.project._yjsBridge.structureBinding;
+                const parent = binding.getPages()[0];
+                binding.createComponent(parent.id, binding.createBlock(parent.id), 'interactive-video', {
+                    htmlContent: html,
+                });
+                return parent.id;
+            }, storedIdevice('interactive-video').html);
+            await page.locator(`.nav-element-text[data-node-id="${pageId}"]`).click();
+            await page.locator('#start-link').waitFor({ state: 'visible' });
+            if (view === 'preview') {
+                await page.click('#head-bottom-preview');
+            }
+            const root = view === 'preview' ? getPreviewFrame(page) : page;
+            await root.locator('#start-link').waitFor({ state: 'visible', timeout: 30000 });
+            const body = root.locator('body');
+            await expect
+                .poll(() => body.evaluate(() => typeof (window as any).$interactivevideo?.player?.emitState))
+                .toBe('function');
+            await page.clock.install();
+            await root.locator('#start-link').click();
+            await body.evaluate(() => {
+                const player = (window as any).$interactivevideo.player;
+                for (const state of [2, 3, 1, 2, 1]) player.emitState(state);
+            });
+            await page.clock.runFor(500);
+            expect(await body.evaluate(() => (window as any).$interactivevideo.player.reads)).toBe(1);
+            await body.evaluate(() => {
+                (window as any).$interactivevideo.player.position = 5;
+            });
+            await page.clock.runFor(500);
+            await expect(root.locator('#activity-slide .question')).toBeVisible();
+            await expect(root.locator('#activity-slide .question')).toContainText('1+1');
+            expect(await body.evaluate(() => (window as any).$interactivevideo.player.reads)).toBe(2);
+            await body.evaluate(() => {
+                const runtime = (window as any).$interactivevideo;
+                runtime.observersDisconnect();
+                runtime.player.emitState(1); // An event queued before cleanup must not restart polling.
+            });
+            await page.clock.runFor(1000);
+            expect(
+                await body.evaluate(() => ({
+                    reads: (window as any).$interactivevideo.player.reads,
+                    timer: (window as any).$interactivevideo.youtubeCounter,
+                })),
+            ).toEqual({ reads: 2, timer: null });
+        });
+    }
+
+    // The editor never reloads the document between pages and runs a new copy
+    // of the player's script for the next page. The first page's tracking used
+    // to outlive its video: the observer meant to stop it gives up as the page
+    // loads, when the editor marks the page as selected.
+    test('stops tracking a YouTube video once its page is left', async ({ authenticatedPage: page, createProject }) => {
+        await fakeYouTubeApi(page);
+        const uuid = await createProject(page, 'YouTube tracking across pages');
+        await gotoWorkarea(page, uuid);
+        await waitForAppReady(page);
+        await page.evaluate(html => {
+            const binding = (window as any).eXeLearning.app.project._yjsBridge.structureBinding;
+            for (const title of ['Clip one', 'Clip two']) {
+                const parent = binding.createPage(title);
+                binding.createComponent(parent.id, binding.createBlock(parent.id), 'interactive-video', {
+                    htmlContent: html,
+                });
+            }
+        }, storedIdevice('interactive-video').html);
+
+        await openPage(page, 'Clip one', '#start-link');
+        await expect
+            .poll(() => page.evaluate(() => typeof (window as any).$interactivevideo?.player?.emitState))
+            .toBe('function');
+        await page.clock.install();
+        await page.locator('#start-link').click();
+        await page.evaluate(() => {
+            const runtime = (window as any).$interactivevideo;
+            (window as any).__firstPage = runtime;
+            runtime.player.emitState(1);
+        });
+        await page.clock.runFor(500);
+        const readsOnItsPage = await page.evaluate(() => (window as any).__firstPage.player.reads);
+        expect(readsOnItsPage, "the first page's video was never tracked").toBeGreaterThan(0);
+
+        const firstVideo = await page.locator('#activity').elementHandle();
+        await openPage(page, 'Clip two', '#start-link');
+        await page.waitForFunction(element => !element?.isConnected, firstVideo);
+        const readsWhenLeft = await page.evaluate(() => (window as any).__firstPage.player.reads);
+        await page.clock.runFor(2000);
+
+        expect(
+            await page.evaluate(() => {
+                const first = (window as any).__firstPage;
+                return { reads: first.player.reads, timer: first.youtubeCounter };
+            }),
+            "the first page's video is still being tracked",
+        ).toEqual({ reads: readsWhenLeft, timer: null });
     });
 
     test.describe('Configuration API', () => {
