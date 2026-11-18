@@ -1620,6 +1620,9 @@ var $exeDevice = {
                 </div>`,
             html = `
                 <div id="dMoleIdeviceForm">
+                    ${edition.common.getIdeviceDescription(
+                        _('Create quiz activities based on interactive 3D models.')
+                    )}
                     ${edition.tabs.getHtml('dMoleIdeviceForm', {
                         titles: { contents: _('Questions') },
                         path: path,
@@ -2565,12 +2568,6 @@ var $exeDevice = {
                 $(this).val(1);
             }
         });
-
-        $('#eXeGameExportImport').show();
-        $('#eXeGameExportQuestions').on('click', () => {
-            $exeDevice.exportQuestions();
-        });
-
 
         $dmoleShowSolution.on('change', function () {
             const marcado = $(this).is(':checked');

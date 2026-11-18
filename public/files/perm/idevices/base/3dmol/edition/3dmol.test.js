@@ -915,6 +915,16 @@ describe('3dmol edition: shared form tabs and feedback', () => {
         expect(document.querySelectorAll('[role="switch"], [aria-checked]')).toHaveLength(0);
     });
 
+    it('says what the iDevice does above its tabs', () => {
+        const form = document.getElementById('dMoleIdeviceForm');
+        const description = form.firstElementChild;
+
+        expect(description.classList.contains('alert-info')).toBe(true);
+        expect(description.textContent).toContain('Create quiz activities based on interactive 3D models.');
+        const tabList = document.getElementById('dMoleIdeviceForm-tabs');
+        expect(description.compareDocumentPosition(tabList) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    });
+
     it('lays the form out in the shared tabs, and opens on its questions', () => {
         expect(tabNames()).toEqual([
             'instructions',
