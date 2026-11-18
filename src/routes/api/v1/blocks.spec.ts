@@ -12,7 +12,15 @@ import { now } from '../../../db/types';
 import { blocksRoutes } from './blocks';
 import { createAuthRoutes } from '../../auth';
 import { findUserByEmail, findUserById, createUser } from '../../../db/queries';
-import { configureDocManager, resetDocManager, configureBroadcaster, resetBroadcaster } from '../../../yjs';
+import {
+    addPage,
+    configureBroadcaster,
+    configureDocManager,
+    createBlock,
+    getBlock,
+    resetBroadcaster,
+    resetDocManager,
+} from '../../../yjs';
 import * as Y from 'yjs';
 
 let originalEnv: Record<string, string | undefined>;
@@ -337,6 +345,34 @@ describe('Blocks API v1', () => {
             );
             // Should return 404 or 400 when block not found
             expect([400, 404]).toContain(response.status);
+        });
+
+        it('should update a block with a structured icon', async () => {
+            await db
+                .insertInto('projects')
+                .values({
+                    uuid: 'user-update-block-icon',
+                    title: 'User Project',
+                    owner_id: userId,
+                    created_at: now(),
+                })
+                .execute();
+            const page = addPage(mockYDoc, { title: 'Page' });
+            const block = createBlock(mockYDoc, { pageId: page.data!.id });
+
+            const response = await app.handle(
+                new Request(`http://localhost/projects/user-update-block-icon/blocks/${block.data!.id}`, {
+                    method: 'PATCH',
+                    headers: {
+                        Authorization: `Bearer ${userToken}`,
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ icon: { source: 'material', value: 'lightbulb' } }),
+                }),
+            );
+
+            expect(response.status).toBe(200);
+            expect(getBlock(mockYDoc, block.data!.id)?.icon).toEqual({ source: 'material', value: 'lightbulb' });
         });
     });
 

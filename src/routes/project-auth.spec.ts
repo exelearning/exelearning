@@ -45,7 +45,7 @@ function createTestProjectApp(db: Kysely<Database>) {
 
                 try {
                     const payload = (await jwtPlugin.verify(token)) as { sub: number } | false;
-                    if (!payload || !payload.sub) {
+                    if (!payload?.sub) {
                         return { currentUser: null };
                     }
                     const user = await db

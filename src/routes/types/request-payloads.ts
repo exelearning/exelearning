@@ -5,6 +5,17 @@
  * Replaces `body as any` casts with proper typed interfaces.
  */
 
+/**
+ * Compile-time cast for route handler request bodies where Elysia plugin chaining
+ * collapses handler `body` to `unknown`.
+ *
+ * It does NOT validate anything at runtime. Routes without a TypeBox schema in
+ * `{ body: t.Object(...) }` still receive whatever the client sent.
+ */
+export function castRequestBody<T>(body: unknown): T {
+    return body as T;
+}
+
 // ============================================================================
 // File Upload Types
 // ============================================================================
@@ -93,20 +104,8 @@ export interface GuestLoginRequest {
 }
 
 /**
- * JWT payload structure
+ * JWT payload shape: canonical definition lives in `src/auth/types.ts`.
  */
-export interface JwtPayload {
-    sub: number;
-    email: string;
-    roles: string[];
-    isGuest: boolean;
-    authMethod?: 'local' | 'cas' | 'openid' | 'saml' | 'guest';
-    isImpersonated?: boolean;
-    impersonatedBy?: number;
-    impersonationSessionId?: string;
-    exp: number;
-    iat: number;
-}
 
 // ============================================================================
 // Export Types
@@ -195,14 +194,21 @@ export interface ConvertRequest {
 // ============================================================================
 
 /**
- * iDevice file upload request
+ * iDevice file upload request.
+ *
+ * Mirrors the wire protocol of `/api/idevices/upload/*`:
+ *   - The small-upload payload may arrive as `base64String` or, for legacy
+ *     clients, as a base64/data-URL string in `file`. The large-upload
+ *     endpoint accepts a Blob/File or a plain string with raw content.
+ *   - `createThumbnail` may be a boolean or the strings 'true'/'false'.
  */
 export interface IdeviceFileUploadRequest {
     odeIdeviceId: string;
-    file?: Blob | Buffer;
-    filename: string;
-    createThumbnail?: boolean;
+    file?: string | Blob | Buffer;
+    filename?: string;
+    createThumbnail?: boolean | string;
     base64String?: string;
+    odeSessionId?: string;
 }
 
 /**
@@ -271,7 +277,9 @@ export interface AssetMetadata {
 export interface UsedFilesRequest {
     idevices: Array<{
         id: string;
-        htmlView: string;
+        /** The iDevice markup; read before `html` when both are sent. */
+        htmlView?: string;
+        html?: string;
     }>;
     assetMetadata?: Record<string, AssetMetadata>;
 }

@@ -168,6 +168,15 @@ describe('Yjs Document Routes', () => {
     });
 
     describe('Authentication', () => {
+        it('GET should accept the auth token from a cookie', async () => {
+            const res = await app.handle(
+                new Request('http://localhost/api/projects/uuid/test-uuid-123/yjs-document', {
+                    headers: { Cookie: `auth=${ownerToken}` },
+                }),
+            );
+            expect(res.status).toBe(200);
+        });
+
         it('GET should return 401 without token', async () => {
             const res = await app.handle(new Request('http://localhost/api/projects/uuid/test-uuid-123/yjs-document'));
             expect(res.status).toBe(401);

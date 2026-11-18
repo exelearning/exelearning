@@ -70,18 +70,18 @@ export function createPreviewSnapshotApiRoutes(deps: PreviewSnapshotRouteDeps = 
 
     return new Elysia({ prefix: '/api/preview-snapshot' })
         .use(withJwtAuth())
-        .onBeforeHandle(({ jwtPayload, request, set }) => {
+        .onBeforeHandle(({ identity, request, set }) => {
             if (isCrossSiteRequest(request)) {
                 set.status = 403;
                 return { success: false, error: 'Cross-site requests are not allowed' };
             }
-            const err = requireAuth(jwtPayload);
+            const err = requireAuth(identity);
             if (err) {
                 set.status = err.status;
                 return err;
             }
         })
-        .post('/', async ({ body, jwtPayload, set }) => {
+        .post('/', async ({ body, identity, set }) => {
             const data = (body ?? {}) as SnapshotUploadBody;
             const blob = data.snapshot;
             if (!(blob instanceof Blob) || blob.size === 0) {
@@ -99,7 +99,7 @@ export function createPreviewSnapshotApiRoutes(deps: PreviewSnapshotRouteDeps = 
                 return { success: false, error: unpacked.error };
             }
             const previewId = typeof data.previewId === 'string' && data.previewId ? data.previewId : null;
-            const result = store.createOrReplace(Number(jwtPayload!.sub), previewId, unpacked.files);
+            const result = store.createOrReplace(identity!.userId, previewId, unpacked.files);
             if ('status' in result) {
                 set.status = result.status;
                 return { success: false, error: result.error };
@@ -109,8 +109,8 @@ export function createPreviewSnapshotApiRoutes(deps: PreviewSnapshotRouteDeps = 
                 previewUrl: prefixPath(`/preview-snapshot/${result.snapshot.id}/index.html`),
             };
         })
-        .delete('/:previewId', ({ params, jwtPayload, set }) => {
-            const owned = store.getOwned(params.previewId, Number(jwtPayload!.sub));
+        .delete('/:previewId', ({ params, identity, set }) => {
+            const owned = store.getOwned(params.previewId, identity!.userId);
             if ('status' in owned) {
                 set.status = owned.status;
                 return { success: false, error: owned.status === 403 ? 'Access denied' : 'Snapshot not found' };

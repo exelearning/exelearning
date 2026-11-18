@@ -101,9 +101,14 @@ describe('Export API v1', () => {
         originalEnv = {
             APP_AUTH_METHODS: process.env.APP_AUTH_METHODS,
             JWT_SECRET: process.env.JWT_SECRET,
+            DB_DRIVER: process.env.DB_DRIVER,
+            DB_PATH: process.env.DB_PATH,
         };
         process.env.APP_AUTH_METHODS = 'password';
         process.env.JWT_SECRET = 'test-secret-for-export-tests';
+        // Users and projects are wiped below: never let that reach a .env-configured database.
+        process.env.DB_DRIVER = 'pdo_sqlite';
+        process.env.DB_PATH = ':memory:';
 
         await resetClientCacheForTesting();
         await up(db);
