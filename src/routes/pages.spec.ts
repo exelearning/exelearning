@@ -3,6 +3,7 @@
  * Uses Dependency Injection pattern - no mock.module needed
  */
 import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
+import * as pathModule from 'path';
 import { Elysia } from 'elysia';
 import type { Kysely } from 'kysely';
 import type { Database } from '../db/schema';
@@ -21,6 +22,7 @@ import { zipSync, strToU8 } from 'fflate';
 import { SignJWT } from 'jose';
 import { configurePublicViewContent, resetPublicViewContent, type ExportResult } from '../services/public-view-content';
 import { PUBLIC_VIEW_SANDBOX } from '../shared/security/publicViewSandbox';
+import { passwordFingerprint, verifyToken } from './auth';
 
 // Mock data stores
 let mockUsers: Map<number, any>;
@@ -866,7 +868,9 @@ describe('Pages Routes', () => {
 
             const tempApp = new Elysia().use(jwtInstance);
             const token = await tempApp.decorator.jwt.sign({
-                sub: 'guest-123',
+                // Real guest tokens always carry a numeric `sub`: guests are
+                // backed by a real (ephemeral) user row.
+                sub: '77',
                 email: 'guest@guest.local',
                 isGuest: true,
             });
@@ -1995,6 +1999,48 @@ describe('Pages Routes', () => {
         });
     });
 
+    describe('session tokens match the revocation check', () => {
+        it('signs the offline login with the roles the revocation check reads', async () => {
+            process.env.APP_ONLINE_MODE = '0';
+            process.env.DEFAULT_USER_EMAIL = 'test@test.com';
+            mockUsers.set(1, { id: 1, email: 'test@test.com', roles: '', password: 'stored-hash' });
+
+            const res = await app.handle(new Request('http://localhost/login'));
+
+            const token = res.headers.get('set-cookie')?.match(/auth=([^;]+)/)?.[1];
+            const payload = await verifyToken(token!);
+            expect(payload?.roles).toEqual([]);
+        });
+
+        it('binds the workarea token to the current password', async () => {
+            let templateData: any = null;
+            const customApp = new Elysia().use(
+                createPagesRoutes({
+                    ...mockDeps,
+                    template: {
+                        renderTemplate: (_template: string, data: any) => {
+                            templateData = data;
+                            return '<html></html>';
+                        },
+                        setRenderLocale: () => {},
+                    },
+                }),
+            );
+            mockUsers.set(1, { id: 1, email: 'test@test.com', roles: '["ROLE_USER"]', password: 'stored-hash' });
+            mockSessions.set('pwh-test', { sessionId: 'pwh-test', fileName: 'Test.elp' });
+            const cookie = await new SignJWT({ sub: 1, email: 'test@test.com', roles: ['ROLE_USER'] } as any)
+                .setProtectedHeader({ alg: 'HS256' })
+                .sign(new TextEncoder().encode('test-secret-for-testing-only'));
+
+            await customApp.handle(
+                new Request('http://localhost/workarea?project=pwh-test', { headers: { Cookie: `auth=${cookie}` } }),
+            );
+
+            const payload = await verifyToken(templateData.config.token);
+            expect(payload?.pwh).toBe(passwordFingerprint('stored-hash'));
+        });
+    });
+
     describe('offline mode with existing user', () => {
         it('should use existing user in offline mode', async () => {
             process.env.APP_ONLINE_MODE = '0';
@@ -2806,10 +2852,25 @@ describe('Pages Routes', () => {
             expect(res.headers.get('content-type')).toBe('image/png');
         });
 
-        it('should return 400 for path traversal attempt', async () => {
-            const res = await app.handle(new Request('http://localhost/customization/assets/..%2Fetc%2Fpasswd'));
+        it('should not serve a file outside the assets directory on path traversal', async () => {
+            // Only the traversal target "exists", so a missing containment check would serve it
+            // instead of falling through to the handler's 404.
+            const insideAssets = `${pathModule.sep}customization${pathModule.sep}assets${pathModule.sep}`;
+            const customDeps = {
+                ...mockDeps,
+                fileHelper: {
+                    ...createMockFileHelper(),
+                    fileExists: async (p: string) => !p.includes(insideAssets),
+                    readFile: async (_p: string) => Buffer.from('root:x:0:0'),
+                },
+            };
+            const customApp = new Elysia().use(createPagesRoutes(customDeps));
+            const res = await customApp.handle(new Request('http://localhost/customization/assets/..%2Fetc%2Fpasswd'));
 
-            expect(res.status).toBe(400);
+            // Elysia < 1.4.31 decodes %2F, so the handler's guard answers 400. From 1.4.31 the
+            // param keeps %2F, resolves inside the assets directory and is a plain 404.
+            expect([400, 404]).toContain(res.status);
+            expect(await res.text()).toBe('');
         });
     });
 
@@ -3617,6 +3678,11 @@ describe('Pages Routes', () => {
             expect(templateData.adminSettings).toBeDefined();
             expect(templateData.adminSettings.general).toBeDefined();
             expect(templateData.adminSettings.storage).toBeDefined();
+            // Only settings that have an effect are offered under "Storage and quotas" (#2514)
+            expect(Object.keys(templateData.adminSettings.storage).sort()).toEqual([
+                'default_quota',
+                'file_upload_max_size',
+            ]);
         });
 
         it('should seed the public view toggle from PUBLIC_VIEW_ENABLED (disabled when unset)', async () => {

@@ -43,8 +43,9 @@ import { migrateAssetStorage } from './services/asset-storage-migration';
 import { findUserByEmail, createUser, updateUser } from './db/queries/users';
 import { upsertBaseTheme, removeOrphanedBaseThemes } from './db/queries/themes';
 import { renderTemplate, setRenderLocale } from './services/template';
-import { getSettingNumber } from './services/app-settings';
+import { getDefaultQuotaMb } from './services/app-settings';
 import { isMaintenanceMode, shouldBypassMaintenance, isAdminRequest } from './services/maintenance';
+import { sessionRevocationGuard } from './services/session-revocation';
 import { getBasePath } from './utils/basepath.util';
 import { serveSiteThemeFile } from './utils/site-theme-file';
 import { rewriteCodemagicAssetPaths } from './utils/editor-html.util';
@@ -64,14 +65,25 @@ import * as path from 'path';
 // APP_PORT is used by Electron, PORT is standard convention
 const PORT = parseInt(process.env.APP_PORT || process.env.PORT || '8080', 10);
 
+/**
+ * Build a binary file Response with Content-Type/Content-Length headers.
+ * Returning a Response directly keeps route handlers independent from
+ * Elysia's mutable `set` object.
+ */
+function binaryFileResponse(content: Buffer, contentType: string, cacheControl?: string): Response {
+    const headers: Record<string, string> = {
+        'Content-Type': contentType,
+        'Content-Length': content.length.toString(),
+    };
+    if (cacheControl) {
+        headers['Cache-Control'] = cacheControl;
+    }
+    // BodyInit wants a view over a concrete ArrayBuffer; cast instead of copying the file
+    return new Response(content as Uint8Array<ArrayBuffer>, { headers });
+}
+
 // Reusable handler for exemindmap editor (to register at both root and BASE_PATH)
-const exemindmapEditorHandler = ({
-    params,
-    set,
-}: {
-    params: { '*': string };
-    set: { status: number; headers: Record<string, string> };
-}) => {
+const exemindmapEditorHandler = ({ params }: { params: { '*': string } }) => {
     const relativePath = params['*'] || 'index.html';
     const editorBase = 'public/libs/tinymce_5/js/tinymce/plugins/exemindmap/editor';
     const filePath = path.join(process.cwd(), editorBase, relativePath);
@@ -80,49 +92,26 @@ const exemindmapEditorHandler = ({
     const resolvedPath = path.resolve(filePath);
     const resolvedBase = path.resolve(path.join(process.cwd(), editorBase));
     if (!resolvedPath.startsWith(resolvedBase)) {
-        set.status = 403;
-        return 'Forbidden';
+        return new Response('Forbidden', { status: 403 });
     }
 
     if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
-        let content = fs.readFileSync(filePath);
+        // The editor page only references files next to it, so it is served as is
+        const content = fs.readFileSync(filePath);
         const ext = path.extname(filePath).toLowerCase();
         const contentType = MIME_TYPES[ext] || 'application/octet-stream';
 
-        // For HTML files, rewrite relative paths to absolute paths
-        if (ext === '.html' || ext === '.htm') {
-            let html = content.toString('utf-8');
-            // Fix relative paths like ../../../../../../../app/ -> /app/
-            html = html.replace(/href="\.\.\/\.\.\/\.\.\/\.\.\/\.\.\/\.\.\/\.\.\/app\//g, 'href="/app/');
-            html = html.replace(/src="\.\.\/\.\.\/\.\.\/\.\.\/\.\.\/\.\.\/\.\.\/app\//g, 'src="/app/');
-            // Fix local paths like css/ and js/ -> /api/exemindmap-editor/css/ etc
-            html = html.replace(/href="css\//g, 'href="/api/exemindmap-editor/css/');
-            html = html.replace(/src="js\//g, 'src="/api/exemindmap-editor/js/');
-            content = Buffer.from(html, 'utf-8');
-        }
-
-        set.headers['Content-Type'] = contentType;
-        set.headers['Content-Length'] = content.length.toString();
-        return content;
+        return binaryFileResponse(content, contentType);
     }
 
-    set.status = 404;
-    return 'Not Found';
+    return new Response('Not Found', { status: 404 });
 };
 
 // Base route handler for exemindmap editor (when no path is provided)
-const exemindmapEditorBaseHandler = ({ set }: { set: { status: number; headers: Record<string, string> } }) => {
-    return exemindmapEditorHandler({ params: { '*': '' }, set });
-};
+const exemindmapEditorBaseHandler = () => exemindmapEditorHandler({ params: { '*': '' } });
 
 // Reusable handler for codemagic editor (to register at both root and BASE_PATH)
-const codemagicEditorHandler = ({
-    params,
-    set,
-}: {
-    params: { '*': string };
-    set: { status: number; headers: Record<string, string> };
-}) => {
+const codemagicEditorHandler = ({ params }: { params: { '*': string } }) => {
     const relativePath = params['*'] || 'codemagic.html';
     const editorBase = 'public/libs/tinymce_5/js/tinymce/plugins/codemagic';
     const filePath = path.join(process.cwd(), editorBase, relativePath);
@@ -131,8 +120,7 @@ const codemagicEditorHandler = ({
     const resolvedPath = path.resolve(filePath);
     const resolvedBase = path.resolve(path.join(process.cwd(), editorBase));
     if (!resolvedPath.startsWith(resolvedBase)) {
-        set.status = 403;
-        return 'Forbidden';
+        return new Response('Forbidden', { status: 403 });
     }
 
     if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
@@ -147,28 +135,17 @@ const codemagicEditorHandler = ({
             content = Buffer.from(html, 'utf-8');
         }
 
-        set.headers['Content-Type'] = contentType;
-        set.headers['Content-Length'] = content.length.toString();
-        return content;
+        return binaryFileResponse(content, contentType);
     }
 
-    set.status = 404;
-    return 'Not Found';
+    return new Response('Not Found', { status: 404 });
 };
 
 // Base route handler for codemagic editor (when no path is provided)
-const codemagicEditorBaseHandler = ({ set }: { set: { status: number; headers: Record<string, string> } }) => {
-    return codemagicEditorHandler({ params: { '*': '' }, set });
-};
+const codemagicEditorBaseHandler = () => codemagicEditorHandler({ params: { '*': '' } });
 
 // Reusable handler for mermaid library (alias /libs/mermaid/* to /app/common/mermaid/*)
-const mermaidLibHandler = ({
-    params,
-    set,
-}: {
-    params: { '*': string };
-    set: { status: number; headers: Record<string, string> };
-}) => {
+const mermaidLibHandler = ({ params }: { params: { '*': string } }) => {
     const relativePath = params['*'] || 'mermaid.min.js';
     const mermaidBase = 'public/app/common/mermaid';
     const filePath = path.join(process.cwd(), mermaidBase, relativePath);
@@ -177,8 +154,7 @@ const mermaidLibHandler = ({
     const resolvedPath = path.resolve(filePath);
     const resolvedBase = path.resolve(path.join(process.cwd(), mermaidBase));
     if (!resolvedPath.startsWith(resolvedBase)) {
-        set.status = 403;
-        return 'Forbidden';
+        return new Response('Forbidden', { status: 403 });
     }
 
     if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
@@ -186,20 +162,15 @@ const mermaidLibHandler = ({
         const ext = path.extname(filePath).toLowerCase();
         const contentType = MIME_TYPES[ext] || 'application/octet-stream';
 
-        set.headers['Content-Type'] = contentType;
-        set.headers['Content-Length'] = content.length.toString();
-        set.headers['Cache-Control'] = 'public, max-age=31536000'; // 1 year cache
-        return content;
+        // Mermaid is immutable library code: cache it for a year
+        return binaryFileResponse(content, contentType, 'public, max-age=31536000');
     }
 
-    set.status = 404;
-    return 'Not Found';
+    return new Response('Not Found', { status: 404 });
 };
 
 // Base route handler for mermaid (when no path is provided)
-const mermaidLibBaseHandler = ({ set }: { set: { status: number; headers: Record<string, string> } }) => {
-    return mermaidLibHandler({ params: { '*': '' }, set });
-};
+const mermaidLibBaseHandler = () => mermaidLibHandler({ params: { '*': '' } });
 
 const app = new Elysia()
     // === GLOBAL ERROR HANDLER ===
@@ -214,13 +185,14 @@ const app = new Elysia()
 
         const url = new URL(request.url);
         const pathname = url.pathname;
+        const errorMessage =
+            error instanceof Error ? error.message : String((error as { message?: unknown }).message ?? error);
+        const errorStack = error instanceof Error ? error.stack : undefined;
 
         // Log error (5xx = error, 4xx = warning)
         const logLevel = statusCode >= 500 ? 'error' : 'warn';
-        console[logLevel](
-            `[${logLevel.toUpperCase()}] ${request.method} ${pathname} - ${statusCode}: ${error.message}`,
-        );
-        if (statusCode >= 500) console.error(error.stack);
+        console[logLevel](`[${logLevel.toUpperCase()}] ${request.method} ${pathname} - ${statusCode}: ${errorMessage}`);
+        if (statusCode >= 500) console.error(errorStack);
 
         // Detect if API request
         const isApi =
@@ -234,7 +206,7 @@ const app = new Elysia()
         if (isApi) {
             return {
                 statusCode,
-                message: error.message,
+                message: errorMessage,
                 error: getStatusText(statusCode),
                 timestamp: new Date().toISOString(),
                 path: pathname,
@@ -254,8 +226,8 @@ const app = new Elysia()
 
         try {
             return renderTemplate(template, {
-                error: error.message || getStatusText(statusCode),
-                message: error.message,
+                error: errorMessage || getStatusText(statusCode),
+                message: errorMessage,
                 status_code: statusCode,
                 is_authenticated: false, // TODO: extract from JWT if present
                 basePath: getBasePath(),
@@ -267,7 +239,7 @@ const app = new Elysia()
             const basePath = getBasePath();
             return `<!DOCTYPE html>
 <html><head><title>Error ${statusCode}</title></head>
-<body><h1>Error ${statusCode}</h1><p>${error.message}</p>
+<body><h1>Error ${statusCode}</h1><p>${errorMessage}</p>
 <a href="${basePath}/login">Return to login</a></body></html>`;
         }
     })
@@ -449,6 +421,9 @@ const app = new Elysia()
             },
         });
     })
+    // Drop session tokens whose account was deleted, deactivated, demoted or had
+    // its password changed, before any route (or the maintenance check) reads them.
+    .use(sessionRevocationGuard())
     // Maintenance mode check — runs after static file serving
     .onRequest(async ({ request }) => {
         if (!(await isMaintenanceMode(db))) return;
@@ -730,11 +705,7 @@ async function bootstrap() {
         if (!existingUser) {
             console.log('[DB] Creating test user...');
             const hashedPassword = await Bun.password.hash(testPassword, { algorithm: 'bcrypt' });
-            const defaultQuota = await getSettingNumber(
-                db,
-                'DEFAULT_QUOTA',
-                parseInt(process.env.DEFAULT_QUOTA || '4096', 10),
-            );
+            const defaultQuota = await getDefaultQuotaMb(db);
             await createUser(db, {
                 email: testEmail,
                 // user_id: not set for local users (null)
@@ -759,11 +730,7 @@ async function bootstrap() {
 
         if (!existingAdmin) {
             console.log('[DB] Creating admin user...');
-            const defaultQuota = await getSettingNumber(
-                db,
-                'DEFAULT_QUOTA',
-                parseInt(process.env.DEFAULT_QUOTA || '4096', 10),
-            );
+            const defaultQuota = await getDefaultQuotaMb(db);
             await createUser(db, {
                 email: adminEmail,
                 // user_id: not set for local users (null)

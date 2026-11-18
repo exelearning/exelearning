@@ -232,7 +232,7 @@ async function cleanupProjectAssets(
 async function findProjectsToClean(
     deps: CleanupSchedulerDeps,
     config: CleanupSchedulerConfig,
-): Promise<{ unsaved: Array<{ id: string }>; guests: Array<{ id: string }> }> {
+): Promise<{ unsaved: Array<{ id: number; uuid: string }>; guests: Array<{ id: number; uuid: string }> }> {
     const unsaved = await deps.queries.findUnsavedProjectsOlderThan(deps.db, config.unsavedAgeHours * HOUR_MS);
     const guestProjects = await deps.queries.findGuestProjectsOlderThan(deps.db, config.guestAgeDays * DAY_MS);
 

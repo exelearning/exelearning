@@ -85,7 +85,8 @@ function buildClues(clues: string[], word: string): string {
     const items = clues
         .map((clue, index) => {
             const label = word ? `${word} ${index + 1}.` : `${index + 1}.`;
-            const text = sanitizeHtml(clue);
+            // A link's address, printed after it, can name what the clues are about.
+            const text = sanitizeHtml(clue, { links: false });
 
             return `<li><span class="worksheet-clue-label">${escapeText(label)}</span>${text}</li>`;
         })
@@ -96,7 +97,7 @@ function buildClues(clues: string[], word: string): string {
 
 /** One question: the statement, its clues, then room to name the answer in. */
 function buildQuestion(question: IdentifyQuestion, word: string): PrintableItem | null {
-    const prompt = sanitizeHtml(question.question);
+    const prompt = sanitizeHtml(question.question, { links: false });
     const clues = buildClues(cluesOf(question), word);
 
     // Without the picture, a question with neither a statement nor a clue asks nothing at all.

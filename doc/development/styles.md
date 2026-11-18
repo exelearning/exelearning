@@ -704,10 +704,15 @@ Common functionality found in built-in eXe styles:
   ```
 - **Presentation mode**. Opening a web site export with `?exe-presentation=1` collapses the
   menu, adds a "Presentation mode" toggle button (`#exe-presentation-toggler`, next to
-  `#made-with-eXe`, its state in `aria-pressed`) and lets the reader present with the keyboard: `←`/`PageUp` and
-  `→`/`PageDown` change page, `M` shows/hides the menu and `T` toggles Teacher Mode where its
-  toggle exists. The runtime drives the style's own controls, so a style only has to keep
-  them where it expects:
+  `#made-with-eXe`, its state in `aria-pressed`) and lets the reader present with the keyboard
+  or a presenter remote:
+  - `←`/`PageUp` and `→`/`PageDown` change page.
+  - `M` shows/hides the menu.
+  - `T` toggles Teacher Mode where its toggle exists.
+  - `F5` and `Shift+F5`, sent by a remote's start/stop button, do nothing. `Ctrl`/`Cmd`+`R` is
+    the way to reload while presenting.
+
+  The runtime drives the style's own controls, so a style only has to keep them where it expects:
   - The menu toggler is `#siteNavToggler`, and its click handler must update
     `aria-expanded` **synchronously**: the runtime reads it right after clicking to know the
     new state.

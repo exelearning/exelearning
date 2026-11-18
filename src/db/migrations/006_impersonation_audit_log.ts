@@ -3,10 +3,10 @@
  *
  * Stores who impersonated whom and when the impersonation started/ended.
  */
-import { Kysely } from 'kysely';
-import { addAutoIncrement, getAutoIncrementType } from '../helpers';
 
-export async function up(db: Kysely<unknown>): Promise<void> {
+import { type UntypedKysely, addAutoIncrement, getAutoIncrementType } from '../helpers';
+
+export async function up(db: UntypedKysely): Promise<void> {
     const idType = getAutoIncrementType();
 
     await db.schema
@@ -46,6 +46,6 @@ export async function up(db: Kysely<unknown>): Promise<void> {
         .execute();
 }
 
-export async function down(db: Kysely<unknown>): Promise<void> {
+export async function down(db: UntypedKysely): Promise<void> {
     await db.schema.dropTable('impersonation_audit_logs').ifExists().execute();
 }

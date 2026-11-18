@@ -61,7 +61,7 @@ export function getExtensionFromUrl(url: string): string | null {
  * @returns true if type needs to be set
  */
 export function needsTypeAttribute(typeAttr: string | null): boolean {
-    return !typeAttr || !typeAttr.includes('/');
+    return !typeAttr?.includes('/');
 }
 
 /**
