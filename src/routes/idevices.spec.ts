@@ -472,6 +472,25 @@ describe('iDevices Routes', () => {
             expect(body.savedPath).toContain('test-session-upload');
         });
 
+        it('should reject a data URL with an empty payload instead of writing an empty file', async () => {
+            const res = await handle(
+                new Request('http://localhost/api/idevices/upload/file/resources', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        odeIdeviceId: 'test-idevice-empty',
+                        file: 'data:image/png;base64,',
+                        filename: 'empty.png',
+                        odeSessionId: 'test-session-empty',
+                    }),
+                }),
+            );
+
+            expect(res.status).toBe(400);
+            const body = await res.json();
+            expect(body.code).toBe('error: invalid data');
+        });
+
         it('should clean special characters from filename', async () => {
             const res = await handle(
                 new Request('http://localhost/api/idevices/upload/file/resources', {
