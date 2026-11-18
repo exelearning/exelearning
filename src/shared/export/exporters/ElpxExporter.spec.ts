@@ -13,6 +13,8 @@ import type {
     ResourceProvider,
     AssetProvider,
     ZipProvider,
+    ExportAsset,
+    ZipArchive,
 } from '../interfaces';
 
 // Mock document adapter
@@ -44,7 +46,7 @@ class MockDocument implements ExportDocument {
 
 // Mock resource provider
 class MockResourceProvider implements ResourceProvider {
-    async fetchTheme(_name: string): Promise<Map<string, Buffer>> {
+    async fetchTheme(_name: string): Promise<Map<string, Uint8Array>> {
         const files = new Map<string, Buffer>();
         // Use original names to trigger renaming logic
         files.set('style.css', Buffer.from('/* theme css */'));
@@ -52,22 +54,22 @@ class MockResourceProvider implements ResourceProvider {
         return files;
     }
 
-    async fetchIdeviceResources(_type: string): Promise<Map<string, Buffer>> {
+    async fetchIdeviceResources(_type: string): Promise<Map<string, Uint8Array>> {
         return new Map();
     }
 
-    async fetchBaseLibraries(): Promise<Map<string, Buffer>> {
+    async fetchBaseLibraries(): Promise<Map<string, Uint8Array>> {
         const files = new Map<string, Buffer>();
         files.set('jquery/jquery.min.js', Buffer.from('// jquery'));
         files.set('common.js', Buffer.from('// common'));
         return files;
     }
 
-    async fetchLibraryFiles(_files: string[]): Promise<Map<string, Buffer>> {
+    async fetchLibraryFiles(_files: string[]): Promise<Map<string, Uint8Array>> {
         return new Map();
     }
 
-    async fetchScormFiles(_version: string): Promise<Map<string, Buffer>> {
+    async fetchScormFiles(_version: string): Promise<Map<string, Uint8Array>> {
         return new Map();
     }
 
@@ -75,11 +77,11 @@ class MockResourceProvider implements ResourceProvider {
         return ideviceType.toLowerCase().replace(/idevice$/i, '');
     }
 
-    async fetchExeLogo(): Promise<Buffer | null> {
+    async fetchExeLogo(): Promise<Uint8Array | null> {
         return Buffer.from('fake-logo-data');
     }
 
-    async fetchContentCss(): Promise<Map<string, Buffer>> {
+    async fetchContentCss(): Promise<Map<string, Uint8Array>> {
         const files = new Map<string, Buffer>();
         files.set('content/css/base.css', Buffer.from('/* base css */'));
         return files;
@@ -93,7 +95,7 @@ class MockResourceProvider implements ResourceProvider {
         return new Map();
     }
 
-    async fetchGlobalFontFiles(fontId: string): Promise<Map<string, Buffer> | null> {
+    async fetchGlobalFontFiles(fontId: string): Promise<Map<string, Uint8Array> | null> {
         const files = new Map<string, Buffer>();
         if (fontId === 'andika') {
             files.set('fonts/global/andika/Andika-Regular.woff2', Buffer.from('mock-andika-regular'));
@@ -111,26 +113,26 @@ class MockResourceProvider implements ResourceProvider {
 
 // Mock asset provider
 class MockAssetProvider implements AssetProvider {
-    async getAsset(_path: string): Promise<Buffer | null> {
+    async getAsset(_path: string): Promise<ExportAsset | null> {
         return null;
     }
 
-    async getAllAssets(): Promise<
-        Array<{
-            id: string;
-            filename: string;
-            path: string;
-            mimeType: string;
-            data: Buffer;
-        }>
-    > {
+    async getAllAssets(): Promise<ExportAsset[]> {
         return [];
+    }
+
+    async getProjectAssets(): Promise<ExportAsset[]> {
+        return this.getAllAssets();
     }
 }
 
 // Mock zip provider that tracks files added
 class MockZipProvider implements ZipProvider {
-    files = new Map<string, string | Buffer>();
+    createZip(): ZipArchive {
+        throw new Error('createZip is not used by the exporters under test');
+    }
+
+    files = new Map<string, string | Uint8Array>();
 
     addFile(path: string, content: string | Buffer): void {
         this.files.set(path, content);
@@ -224,6 +226,7 @@ const samplePages: ExportPage[] = [
                         type: 'FreeTextIdevice',
                         order: 0,
                         content: '<p>This is chapter 1.</p>',
+                        properties: {},
                     },
                 ],
             },
@@ -721,12 +724,12 @@ describe('ElpxExporter', () => {
 
         it('should catch and return errors', async () => {
             // Create a failing zip provider
-            const failingZip: ZipProvider = {
+            const failingZip = {
                 addFile: () => {},
                 generateAsync: async () => {
                     throw new Error('ZIP generation failed');
                 },
-            };
+            } as unknown as ZipProvider;
             exporter = new ElpxExporter(document, resources, assets, failingZip);
 
             const result = await exporter.export();
@@ -993,6 +996,7 @@ describe('ElpxExporter', () => {
                                         teacherOnly: false,
                                         cssClass: 'comp-custom-class',
                                     },
+                                    properties: {},
                                 },
                             ],
                         },
@@ -1144,6 +1148,7 @@ describe('ElpxExporter', () => {
                                 type: 'FreeTextIdevice',
                                 order: 0,
                                 content: '<p>Welcome to the course.</p>',
+                                properties: {},
                             },
                         ],
                     },
@@ -1166,6 +1171,7 @@ describe('ElpxExporter', () => {
                                 order: 0,
                                 content:
                                     '<a class="exe-download-package-link" href="exe-package:elp">Download source file</a>',
+                                properties: {},
                             },
                         ],
                     },
@@ -1308,6 +1314,7 @@ describe('ElpxExporter', () => {
                                     type: 'download-source-file',
                                     order: 0,
                                     content: '<a class="exe-download-package-link" href="exe-package:elp">Download</a>',
+                                    properties: {},
                                 },
                             ],
                         },
@@ -1478,6 +1485,7 @@ const internalLinkPages: ExportPage[] = [
                         order: 0,
                         content:
                             '<p>Go to <a href="exe-node:page-2">About</a> and <a href="exe-node:page-2#sec">a section</a>.</p>',
+                        properties: {},
                     },
                 ],
             },
@@ -1499,6 +1507,7 @@ const internalLinkPages: ExportPage[] = [
                         type: 'FreeTextIdevice',
                         order: 0,
                         content: '<p>Back to <a href="exe-node:page-1">Home</a>.</p>',
+                        properties: {},
                     },
                 ],
             },

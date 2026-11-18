@@ -13,6 +13,8 @@ import type {
     ResourceProvider,
     AssetProvider,
     ZipProvider,
+    ExportAsset,
+    ZipArchive,
 } from '../interfaces';
 
 // Mock document adapter
@@ -52,7 +54,7 @@ class MockDocumentWithSource extends MockDocument {
 
 // Mock resource provider
 class MockResourceProvider implements ResourceProvider {
-    async fetchTheme(_name: string): Promise<Map<string, Buffer>> {
+    async fetchTheme(_name: string): Promise<Map<string, Uint8Array>> {
         const files = new Map<string, Buffer>();
         // Theme files keep their original names (style.css, style.js)
         files.set('style.css', Buffer.from('/* theme css */'));
@@ -60,17 +62,17 @@ class MockResourceProvider implements ResourceProvider {
         return files;
     }
 
-    async fetchIdeviceResources(_type: string): Promise<Map<string, Buffer>> {
+    async fetchIdeviceResources(_type: string): Promise<Map<string, Uint8Array>> {
         return new Map();
     }
 
-    async fetchBaseLibraries(): Promise<Map<string, Buffer>> {
+    async fetchBaseLibraries(): Promise<Map<string, Uint8Array>> {
         const files = new Map<string, Buffer>();
         files.set('jquery/jquery.min.js', Buffer.from('// jquery'));
         return files;
     }
 
-    async fetchLibraryFiles(_files: string[]): Promise<Map<string, Buffer>> {
+    async fetchLibraryFiles(_files: string[]): Promise<Map<string, Uint8Array>> {
         const files = new Map<string, Buffer>();
         if (_files.includes('material-icons/material-icons.svg')) {
             files.set(
@@ -90,7 +92,7 @@ class MockResourceProvider implements ResourceProvider {
         return files;
     }
 
-    async fetchScormFiles(_version: string): Promise<Map<string, Buffer>> {
+    async fetchScormFiles(_version: string): Promise<Map<string, Uint8Array>> {
         const files = new Map<string, Buffer>();
         files.set('SCORM_API_wrapper.js', Buffer.from('// SCORM 2004 API'));
         files.set('SCOFunctions.js', Buffer.from('// SCO 2004 Functions'));
@@ -101,11 +103,11 @@ class MockResourceProvider implements ResourceProvider {
         return ideviceType.toLowerCase().replace(/idevice$/i, '');
     }
 
-    async fetchExeLogo(): Promise<Buffer | null> {
+    async fetchExeLogo(): Promise<Uint8Array | null> {
         return null;
     }
 
-    async fetchContentCss(): Promise<Map<string, Buffer>> {
+    async fetchContentCss(): Promise<Map<string, Uint8Array>> {
         const files = new Map<string, Buffer>();
         files.set('content/css/base.css', Buffer.from('/* base css */'));
         return files;
@@ -118,30 +120,34 @@ class MockResourceProvider implements ResourceProvider {
     async fetchI18nTranslations(_language: string): Promise<Map<string, string>> {
         return new Map();
     }
+
+    async fetchGlobalFontFiles(_fontName: string): Promise<Map<string, Uint8Array> | null> {
+        return null;
+    }
 }
 
 // Mock asset provider
 class MockAssetProvider implements AssetProvider {
-    async getAsset(_path: string): Promise<Buffer | null> {
+    async getAsset(_path: string): Promise<ExportAsset | null> {
         return null;
     }
 
-    async getAllAssets(): Promise<
-        Array<{
-            id: string;
-            filename: string;
-            path: string;
-            mimeType: string;
-            data: Buffer;
-        }>
-    > {
+    async getAllAssets(): Promise<ExportAsset[]> {
         return [];
+    }
+
+    async getProjectAssets(): Promise<ExportAsset[]> {
+        return this.getAllAssets();
     }
 }
 
 // Mock zip provider
 class MockZipProvider implements ZipProvider {
-    files = new Map<string, string | Buffer>();
+    createZip(): ZipArchive {
+        throw new Error('createZip is not used by the exporters under test');
+    }
+
+    files = new Map<string, string | Uint8Array>();
 
     addFile(path: string, content: string | Buffer): void {
         this.files.set(path, content);
@@ -187,7 +193,8 @@ const samplePages: ExportPage[] = [
                         id: 'comp-1',
                         type: 'FreeTextIdevice',
                         order: 0,
-                        htmlContent: '<p>SCORM 2004 Introduction</p>',
+                        content: '<p>SCORM 2004 Introduction</p>',
+                        properties: {},
                     },
                 ],
             },
@@ -208,7 +215,8 @@ const samplePages: ExportPage[] = [
                         id: 'comp-2',
                         type: 'FreeTextIdevice',
                         order: 0,
-                        htmlContent: '<p>Module content</p>',
+                        content: '<p>Module content</p>',
+                        properties: {},
                     },
                 ],
             },

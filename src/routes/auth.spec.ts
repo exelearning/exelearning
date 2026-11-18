@@ -28,6 +28,10 @@ import {
 import { findUserByEmail, findUserById, createUser } from '../db/queries';
 import { resetOidcDiscoveryCache } from '../services/oidc-discovery';
 
+// Bun's `typeof fetch` also requires `preconnect`; the fakes below only replace the call itself.
+type FetchFn = (input: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) => Promise<Response>;
+const fetchHost = globalThis as unknown as { fetch: FetchFn };
+
 let testDb: Kysely<Database>;
 let originalEnv: Record<string, string | undefined>;
 
@@ -1530,7 +1534,7 @@ describe('Auth Routes', () => {
             process.env.APP_AUTH_METHODS = 'password,cas';
             process.env.CAS_URL = 'https://cas.example.com';
 
-            globalThis.fetch = async () =>
+            fetchHost.fetch = async () =>
                 new Response('<cas:serviceResponse><cas:authenticationFailure /></cas:serviceResponse>');
 
             const response = await app.handle(new Request('http://localhost/login/cas/callback?ticket=ST-invalid'));
@@ -1548,7 +1552,7 @@ describe('Auth Routes', () => {
             process.env.APP_AUTH_METHODS = 'password,cas';
             process.env.CAS_URL = 'https://cas.example.com';
 
-            globalThis.fetch = async () =>
+            fetchHost.fetch = async () =>
                 new Response(`
                     <cas:serviceResponse>
                         <cas:authenticationSuccess>
@@ -1585,7 +1589,7 @@ describe('Auth Routes', () => {
             process.env.APP_AUTH_METHODS = 'password,cas';
             process.env.CAS_URL = 'https://cas.example.com';
 
-            globalThis.fetch = async () =>
+            fetchHost.fetch = async () =>
                 new Response(`
                     <cas:serviceResponse>
                         <cas:authenticationSuccess>
@@ -1616,7 +1620,7 @@ describe('Auth Routes', () => {
             process.env.APP_AUTH_METHODS = 'password,cas';
             process.env.CAS_URL = 'https://cas.example.com';
 
-            globalThis.fetch = async () =>
+            fetchHost.fetch = async () =>
                 new Response(`
                     <cas:serviceResponse>
                         <cas:authenticationSuccess>
@@ -1647,7 +1651,7 @@ describe('Auth Routes', () => {
             process.env.APP_AUTH_METHODS = 'password,cas';
             process.env.CAS_URL = 'https://cas.example.com';
 
-            globalThis.fetch = async () =>
+            fetchHost.fetch = async () =>
                 new Response(`
                     <cas:serviceResponse>
                         <cas:authenticationSuccess>
@@ -1683,7 +1687,7 @@ describe('Auth Routes', () => {
             process.env.APP_AUTH_METHODS = 'password,cas';
             process.env.CAS_URL = 'https://cas.example.com';
 
-            globalThis.fetch = async () => {
+            fetchHost.fetch = async () => {
                 throw new Error('Network error');
             };
 
@@ -1718,7 +1722,7 @@ describe('Auth Routes', () => {
                 })
                 .execute();
 
-            globalThis.fetch = async () =>
+            fetchHost.fetch = async () =>
                 new Response(`
                     <cas:serviceResponse>
                         <cas:authenticationSuccess>
@@ -1763,7 +1767,7 @@ describe('Auth Routes', () => {
                 })
                 .execute();
 
-            globalThis.fetch = async () =>
+            fetchHost.fetch = async () =>
                 new Response(`
                     <cas:serviceResponse>
                         <cas:authenticationSuccess>
@@ -1914,7 +1918,7 @@ describe('Auth Routes', () => {
             ).toString('base64url');
             const mockIdToken = `header.${idTokenPayload}.signature`;
 
-            globalThis.fetch = async () =>
+            fetchHost.fetch = async () =>
                 new Response(
                     JSON.stringify({
                         access_token: 'access-token-123',
@@ -1962,7 +1966,7 @@ describe('Auth Routes', () => {
             const mockIdToken = `header.${idTokenPayload}.signature`;
 
             let requestCount = 0;
-            globalThis.fetch = async (url: string | URL | Request) => {
+            fetchHost.fetch = async (url: string | URL | Request) => {
                 requestCount++;
                 const urlStr = typeof url === 'string' ? url : url.toString();
                 if (urlStr.includes('userinfo')) {
@@ -2015,7 +2019,7 @@ describe('Auth Routes', () => {
             ).toString('base64url');
             const mockIdToken = `header.${idTokenPayload}.signature`;
 
-            globalThis.fetch = async () =>
+            fetchHost.fetch = async () =>
                 new Response(
                     JSON.stringify({
                         access_token: 'access-token-789',
@@ -2065,7 +2069,7 @@ describe('Auth Routes', () => {
                     iat: Math.floor(Date.now() / 1000),
                 }),
             ).toString('base64url');
-            globalThis.fetch = async () =>
+            fetchHost.fetch = async () =>
                 new Response(JSON.stringify({ access_token: 'a', id_token: `header.${idTokenPayload}.signature` }));
 
             const response = await app.handle(oidcCallbackRequest('code=disabled'));
@@ -2091,7 +2095,7 @@ describe('Auth Routes', () => {
             ).toString('base64url');
             const mockIdToken = `header.${idTokenPayload}.signature`;
 
-            globalThis.fetch = async () =>
+            fetchHost.fetch = async () =>
                 new Response(
                     JSON.stringify({
                         access_token: 'access-token-noemail',
@@ -2122,7 +2126,7 @@ describe('Auth Routes', () => {
             process.env.APP_AUTH_METHODS = 'password,openid';
             process.env.OIDC_TOKEN_ENDPOINT = 'https://oidc.example.com/token';
 
-            globalThis.fetch = async () => {
+            fetchHost.fetch = async () => {
                 throw new Error('Network error');
             };
 
@@ -2146,7 +2150,7 @@ describe('Auth Routes', () => {
             ).toString('base64url');
             const mockIdToken = `header.${idTokenPayload}.signature`;
 
-            globalThis.fetch = async () =>
+            fetchHost.fetch = async () =>
                 new Response(
                     JSON.stringify({
                         access_token: 'access-token-return',
@@ -2178,7 +2182,7 @@ describe('Auth Routes', () => {
             ).toString('base64url');
             const mockIdToken = `header.${idTokenPayload}.signature`;
 
-            globalThis.fetch = async () =>
+            fetchHost.fetch = async () =>
                 new Response(
                     JSON.stringify({
                         access_token: 'access-token-idtoken',
@@ -2477,7 +2481,7 @@ describe('Auth Routes', () => {
             const { SignJWT } = await import('jose');
             const secret = new TextEncoder().encode(getJwtSecret());
             const token = await new SignJWT({
-                sub: 1,
+                sub: '1',
                 email: 'oidclogout@example.com',
                 roles: ['ROLE_USER'],
                 authMethod: 'openid',
@@ -2831,7 +2835,7 @@ describe('Auth Routes', () => {
             process.env.CAS_URL = 'https://cas.example.com';
             process.env.DEFAULT_QUOTA = '2048';
 
-            globalThis.fetch = async () =>
+            fetchHost.fetch = async () =>
                 new Response(`
                     <cas:serviceResponse>
                         <cas:authenticationSuccess>
@@ -2875,7 +2879,7 @@ describe('Auth Routes', () => {
             ).toString('base64url');
             const mockIdToken = `header.${idTokenPayload}.signature`;
 
-            globalThis.fetch = async () =>
+            fetchHost.fetch = async () =>
                 new Response(
                     JSON.stringify({
                         access_token: 'access-token-quota',
@@ -2943,7 +2947,7 @@ describe('Auth Routes', () => {
             process.env.CAS_URL = 'https://cas.example.com';
             delete process.env.DEFAULT_QUOTA;
 
-            globalThis.fetch = async () =>
+            fetchHost.fetch = async () =>
                 new Response(`
                     <cas:serviceResponse>
                         <cas:authenticationSuccess>
@@ -2986,7 +2990,7 @@ describe('Auth Routes', () => {
             process.env.APP_AUTH_METHODS = 'password,cas';
             process.env.CAS_URL = 'https://cas.example.com';
 
-            globalThis.fetch = async () =>
+            fetchHost.fetch = async () =>
                 new Response(`
                     <cas:serviceResponse>
                         <cas:authenticationSuccess>
@@ -3029,7 +3033,7 @@ describe('Auth Routes', () => {
             ).toString('base64url');
             const mockIdToken = `header.${idTokenPayload}.signature`;
 
-            globalThis.fetch = async () =>
+            fetchHost.fetch = async () =>
                 new Response(
                     JSON.stringify({
                         access_token: 'access-token-tempdomain',
@@ -3089,7 +3093,7 @@ describe('Auth Routes', () => {
             ).toString('base64url');
             const mockIdToken = `header.${idTokenPayload}.signature`;
 
-            globalThis.fetch = async () =>
+            fetchHost.fetch = async () =>
                 new Response(
                     JSON.stringify({
                         access_token: 'access-token-nosub',
@@ -3194,7 +3198,7 @@ describe('Auth Routes', () => {
             process.env.APP_AUTH_METHODS = 'password,cas';
             process.env.CAS_URL = 'https://cas.example.com';
 
-            globalThis.fetch = async () =>
+            fetchHost.fetch = async () =>
                 new Response(`
                     <cas:serviceResponse>
                         <cas:authenticationSuccess>
@@ -3313,7 +3317,7 @@ describe('Auth Routes', () => {
             process.env.APP_AUTH_METHODS = 'password,openid';
             process.env.OIDC_TOKEN_ENDPOINT = 'https://oidc.example.com/token';
 
-            globalThis.fetch = async () =>
+            fetchHost.fetch = async () =>
                 new Response(
                     JSON.stringify({
                         access_token: 'access-token-gating',

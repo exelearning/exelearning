@@ -43,7 +43,7 @@ const mockSnapshot = {
 
 async function signToken(sub: number, roles: string[] = ['ROLE_USER']): Promise<string> {
     const secret = new TextEncoder().encode(TEST_SECRET);
-    return new SignJWT({ sub, email: `u${sub}@test.local`, roles })
+    return new SignJWT({ sub: String(sub), email: `u${sub}@test.local`, roles })
         .setProtectedHeader({ alg: 'HS256' })
         .setIssuedAt()
         .setExpirationTime('1h')
@@ -58,7 +58,7 @@ function authHeaders(token: string): Record<string, string> {
 }
 
 describe('Yjs Document Routes', () => {
-    let app: Elysia;
+    let app: Pick<Elysia, 'handle'>;
     let savedSnapshots: Map<number, any>;
     let projectSavedFlag: boolean;
     let replaceCalls: Array<{ projectId: number; expectedVersion: string }>;
@@ -110,13 +110,17 @@ describe('Yjs Document Routes', () => {
                     return { snapshot, updates } as any;
                 },
                 upsertSnapshot: async (_db: any, projectId: number, data: Uint8Array, version: string) => {
-                    savedSnapshots.set(projectId, {
+                    const row = {
                         id: savedSnapshots.size + 1,
                         project_id: projectId,
                         snapshot_data: data,
                         version,
                         snapshot_version: version,
-                    });
+                        created_at: Date.now(),
+                        updated_at: Date.now(),
+                    };
+                    savedSnapshots.set(projectId, row);
+                    return row;
                 },
                 replaceSnapshotIfVersion: async (
                     _db: any,
@@ -628,7 +632,11 @@ describe('Yjs Document Routes', () => {
 
         async function post(body: Uint8Array, extraHeaders: Record<string, string> = {}) {
             return app.handle(
-                new Request(URL, { method: 'POST', body, headers: { ...authHeaders(ownerToken), ...extraHeaders } }),
+                new Request(URL, {
+                    method: 'POST',
+                    body: body as Uint8Array<ArrayBuffer>,
+                    headers: { ...authHeaders(ownerToken), ...extraHeaders },
+                }),
             );
         }
 

@@ -21,6 +21,7 @@ import {
     resetBroadcaster,
     resetDocManager,
 } from '../../../yjs';
+import type { DocManagerDependencies } from '../../../yjs/doc-manager';
 import * as Y from 'yjs';
 
 let originalEnv: Record<string, string | undefined>;
@@ -91,7 +92,7 @@ describe('Blocks API v1', () => {
             },
             cache: {
                 getDocument: () => undefined,
-                createEntry: (uuid, projectId, ydoc) => ({
+                createEntry: (uuid: string, projectId: number, ydoc: Y.Doc) => ({
                     projectUuid: uuid,
                     projectId,
                     ydoc,
@@ -104,12 +105,12 @@ describe('Blocks API v1', () => {
                 removeDocument: () => false,
                 hasDocument: () => false,
                 getStats: () => ({ size: 0, maxSize: 50, entries: [] }),
-            },
+            } as unknown as DocManagerDependencies['cache'],
             lock: {
                 acquireLock: async () => () => {},
-                getStats: () => ({ activeLocks: 0, waitingCount: 0 }),
-            },
-            broadcaster: { broadcastUpdate: () => true },
+                getStats: () => ({ activeLocks: 0, locks: [] }),
+            } as unknown as DocManagerDependencies['lock'],
+            broadcaster: { broadcastUpdate: () => true } as unknown as DocManagerDependencies['broadcaster'],
         });
 
         configureBroadcaster({
@@ -357,7 +358,7 @@ describe('Blocks API v1', () => {
                     created_at: now(),
                 })
                 .execute();
-            const page = addPage(mockYDoc, { title: 'Page' });
+            const page = addPage(mockYDoc, { name: 'Page' });
             const block = createBlock(mockYDoc, { pageId: page.data!.id });
 
             const response = await app.handle(
