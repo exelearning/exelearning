@@ -38,7 +38,7 @@ const mockSnapshot = {
     id: 1,
     project_id: 1,
     snapshot_data: new Uint8Array([1, 2, 3, 4, 5]),
-    version: '1234567890',
+    snapshot_version: '1234567890',
 };
 
 async function signToken(sub: number, roles: string[] = ['ROLE_USER']): Promise<string> {
@@ -55,6 +55,11 @@ function authHeaders(token: string): Record<string, string> {
         'Content-Type': 'application/octet-stream',
         Authorization: `Bearer ${token}`,
     };
+}
+
+/** A client saving on top of the stored snapshot: the route takes the compare-and-set path. */
+function upToDateHeaders(token: string): Record<string, string> {
+    return { ...authHeaders(token), 'X-Base-Version': mockSnapshot.snapshot_version };
 }
 
 describe('Yjs Document Routes', () => {
@@ -91,21 +96,11 @@ describe('Yjs Document Routes', () => {
                     return undefined;
                 },
                 findSnapshotByProjectId: async (_db: any, projectId: number) => {
-                    if (savedSnapshots.has(projectId)) {
-                        return savedSnapshots.get(projectId);
-                    }
-                    if (projectId === 1) {
-                        return mockSnapshot;
-                    }
-                    return undefined;
+                    return savedSnapshots.get(projectId);
                 },
                 loadDocumentWithUpdates: async (_db: any, projectId: number) => {
-                    // Mirror the snapshot mock; project 3 has updates but no snapshot.
-                    const snapshot = savedSnapshots.has(projectId)
-                        ? savedSnapshots.get(projectId)
-                        : projectId === 1
-                          ? mockSnapshot
-                          : undefined;
+                    // Project 3 has updates but no snapshot.
+                    const snapshot = savedSnapshots.get(projectId);
                     const updates = projectId === 3 ? updatesOnlyRows : [];
                     return { snapshot, updates } as any;
                 },
@@ -162,7 +157,7 @@ describe('Yjs Document Routes', () => {
     }
 
     beforeEach(() => {
-        savedSnapshots = new Map();
+        savedSnapshots = new Map([[mockSnapshot.project_id, { ...mockSnapshot }]]);
         projectSavedFlag = false;
         replaceCalls = [];
         replaceFailuresLeft = 0;
@@ -220,7 +215,7 @@ describe('Yjs Document Routes', () => {
             );
             expect(res.status).toBe(403);
             // Snapshot must NOT have been overwritten
-            expect(savedSnapshots.has(1)).toBe(false);
+            expect(savedSnapshots.get(1).snapshot_data).toEqual(mockSnapshot.snapshot_data);
         });
 
         it('GET should allow any authenticated user on a public project', async () => {
@@ -245,7 +240,7 @@ describe('Yjs Document Routes', () => {
                 new Request('http://localhost/api/projects/uuid/test-uuid-123/yjs-document', {
                     method: 'POST',
                     body: new Uint8Array([1, 2, 3]),
-                    headers: authHeaders(strangerToken),
+                    headers: upToDateHeaders(strangerToken),
                 }),
             );
             expect(res.status).toBe(200);
@@ -267,7 +262,7 @@ describe('Yjs Document Routes', () => {
                 new Request('http://localhost/api/projects/uuid/test-uuid-123/yjs-document', {
                     method: 'POST',
                     body: new Uint8Array([1, 2, 3]),
-                    headers: authHeaders(strangerToken),
+                    headers: upToDateHeaders(strangerToken),
                 }),
             );
             expect(res.status).toBe(200);
@@ -353,7 +348,7 @@ describe('Yjs Document Routes', () => {
                 new Request('http://localhost/api/projects/uuid/non-existent-uuid/yjs-document', {
                     method: 'POST',
                     body: new Uint8Array([1, 2, 3]),
-                    headers: authHeaders(ownerToken),
+                    headers: upToDateHeaders(ownerToken),
                 }),
             );
 
@@ -369,7 +364,7 @@ describe('Yjs Document Routes', () => {
                 new Request('http://localhost/api/projects/uuid/test-uuid-123/yjs-document', {
                     method: 'POST',
                     body: testData,
-                    headers: authHeaders(ownerToken),
+                    headers: upToDateHeaders(ownerToken),
                 }),
             );
 
@@ -378,6 +373,8 @@ describe('Yjs Document Routes', () => {
             expect(body.success).toBe(true);
             expect(body.message).toBe('Document saved');
             expect(body.version).toBeDefined();
+            // One compare-and-set against the stored version, no merge fallback.
+            expect(replaceCalls).toEqual([{ projectId: 1, expectedVersion: mockSnapshot.snapshot_version }]);
         });
 
         it('should NOT mark project as saved without markSaved parameter (auto-persistence)', async () => {
@@ -387,7 +384,7 @@ describe('Yjs Document Routes', () => {
                 new Request('http://localhost/api/projects/uuid/test-uuid-123/yjs-document', {
                     method: 'POST',
                     body: testData,
-                    headers: authHeaders(ownerToken),
+                    headers: upToDateHeaders(ownerToken),
                 }),
             );
 
@@ -403,7 +400,7 @@ describe('Yjs Document Routes', () => {
                 new Request('http://localhost/api/projects/uuid/test-uuid-123/yjs-document?markSaved=true', {
                     method: 'POST',
                     body: testData,
-                    headers: authHeaders(ownerToken),
+                    headers: upToDateHeaders(ownerToken),
                 }),
             );
 
@@ -419,7 +416,7 @@ describe('Yjs Document Routes', () => {
                 new Request('http://localhost/api/projects/uuid/test-uuid-123/yjs-document', {
                     method: 'POST',
                     body: new Uint8Array([1]),
-                    headers: authHeaders(ownerToken),
+                    headers: upToDateHeaders(ownerToken),
                 }),
             );
 
@@ -436,7 +433,7 @@ describe('Yjs Document Routes', () => {
                 new Request('http://localhost/api/projects/uuid/test-uuid-123/yjs-document', {
                     method: 'POST',
                     body: new Uint8Array([]),
-                    headers: authHeaders(ownerToken),
+                    headers: upToDateHeaders(ownerToken),
                 }),
             );
 
@@ -460,7 +457,7 @@ describe('Yjs Document Routes', () => {
                     method: 'POST',
                     body: testData,
                     headers: {
-                        ...authHeaders(ownerToken),
+                        ...upToDateHeaders(ownerToken),
                         'X-Project-Title': 'My%20Custom%20Title',
                     },
                 }),
@@ -486,7 +483,7 @@ describe('Yjs Document Routes', () => {
                     method: 'POST',
                     body: testData,
                     headers: {
-                        ...authHeaders(ownerToken),
+                        ...upToDateHeaders(ownerToken),
                         'X-Project-Title': encodedTitle,
                     },
                 }),
@@ -511,7 +508,7 @@ describe('Yjs Document Routes', () => {
                     method: 'POST',
                     body: testData,
                     headers: {
-                        ...authHeaders(ownerToken),
+                        ...upToDateHeaders(ownerToken),
                         'X-Project-Title': '',
                     },
                 }),
@@ -535,7 +532,7 @@ describe('Yjs Document Routes', () => {
                 new Request('http://localhost/api/projects/uuid/test-uuid-123/yjs-document', {
                     method: 'POST',
                     body: testData,
-                    headers: authHeaders(ownerToken),
+                    headers: upToDateHeaders(ownerToken),
                 }),
             );
 
@@ -558,7 +555,7 @@ describe('Yjs Document Routes', () => {
                     method: 'POST',
                     body: testData,
                     headers: {
-                        ...authHeaders(ownerToken),
+                        ...upToDateHeaders(ownerToken),
                         'X-Project-Title': '%20%20Trimmed%20Title%20%20',
                     },
                 }),
@@ -575,7 +572,7 @@ describe('Yjs Document Routes', () => {
                 new Request('http://localhost/api/projects/uuid/test-uuid-123/yjs-document', {
                     method: 'POST',
                     body: testData,
-                    headers: authHeaders(ownerToken),
+                    headers: upToDateHeaders(ownerToken),
                 }),
             );
 

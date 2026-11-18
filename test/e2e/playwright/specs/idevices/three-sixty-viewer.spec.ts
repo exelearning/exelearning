@@ -182,6 +182,7 @@ test.describe('Three Sixty Viewer iDevice', () => {
         // Query the browser helper to confirm three.js + OrbitControls are registered
         const files = await page.evaluate(async () => {
             try {
+                // @ts-expect-error The dev server serves this path to the browser; tsc cannot resolve it.
                 const mod = await import('/src/shared/export/browser/idevice-config-browser.ts');
                 return mod.getIdeviceExportFiles('three-sixty-viewer', '.js');
             } catch {

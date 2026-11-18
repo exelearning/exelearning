@@ -56,10 +56,7 @@ export async function createUser(db: Kysely<Database>, data: NewUser): Promise<U
     const timestamp = now();
     const values = {
         ...data,
-        roles:
-            typeof data.roles === 'string'
-                ? data.roles
-                : stringifyRoles((data.roles as unknown as string[] | undefined) ?? []),
+        roles: data.roles ?? '[]',
         is_lopd_accepted: data.is_lopd_accepted ?? 0,
         is_active: data.is_active ?? 1,
         created_at: timestamp,

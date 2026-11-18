@@ -16,7 +16,7 @@ import { projectsRoutes } from './projects';
 import { createAuthRoutes } from '../../auth';
 import { findUserByEmail, findUserById, createUser } from '../../../db/queries';
 import { configureDocManager, resetDocManager, configureBroadcaster, resetBroadcaster } from '../../../yjs';
-import type { DocManagerDependencies } from '../../../yjs/doc-manager';
+import { noopDocManagerRuntime } from '../../../../test/helpers/doc-manager-fakes';
 import * as Y from 'yjs';
 import type { Kysely } from 'kysely';
 
@@ -118,29 +118,7 @@ describe('Projects API v1', () => {
                 saveFullState: async () => {},
                 loadDocument: async () => Y.encodeStateAsUpdate(mockYDoc),
             },
-            cache: {
-                getDocument: () => undefined,
-                createEntry: (uuid: string, projectId: number, ydoc: Y.Doc) => ({
-                    projectUuid: uuid,
-                    projectId,
-                    ydoc,
-                    isDirty: false,
-                    lastAccessedAt: Date.now(),
-                    loadedAt: Date.now(),
-                }),
-                markDirty: () => {},
-                markClean: () => {},
-                removeDocument: () => false,
-                hasDocument: () => false,
-                getStats: () => ({ size: 0, maxSize: 50, entries: [] }),
-            } as unknown as DocManagerDependencies['cache'],
-            lock: {
-                acquireLock: async () => () => {},
-                getStats: () => ({ activeLocks: 0, locks: [] }),
-            } as unknown as DocManagerDependencies['lock'],
-            broadcaster: {
-                broadcastUpdate: () => true,
-            } as unknown as DocManagerDependencies['broadcaster'],
+            ...noopDocManagerRuntime(),
         });
 
         // Configure broadcaster to use mock room manager

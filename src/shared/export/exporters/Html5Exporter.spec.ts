@@ -5,7 +5,7 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'bun:test';
 import { loadIdeviceConfigs, resetIdeviceConfigCache } from '../../../services/idevice-config';
 import { Html5Exporter } from './Html5Exporter';
-import { zipSync, unzipSync, strToU8 } from 'fflate';
+import { unzipSync } from 'fflate';
 import type {
     ExportDocument,
     ExportMetadata,
@@ -13,9 +13,9 @@ import type {
     ResourceProvider,
     AssetProvider,
     ZipProvider,
-    ZipArchive,
     ExportAsset,
 } from '../interfaces';
+import { MockAssetProvider, MockZipProvider } from '../../../../test/helpers/export-providers';
 
 function decodePreviewFile(content: ArrayBuffer | Uint8Array | string | undefined): string {
     if (typeof content === 'string') {
@@ -168,21 +168,6 @@ class MockResourceProvider implements ResourceProvider {
     }
 }
 
-// Mock asset provider
-class MockAssetProvider implements AssetProvider {
-    async getAsset(_id: string): Promise<ExportAsset | null> {
-        return null;
-    }
-
-    async getAllAssets(): Promise<ExportAsset[]> {
-        return [];
-    }
-
-    async getProjectAssets(): Promise<ExportAsset[]> {
-        return this.getAllAssets();
-    }
-}
-
 // Mock asset provider with forEachAsset support (for memory-efficient preview tests)
 class MockAssetProviderWithForEach extends MockAssetProvider {
     private assetList: ExportAsset[] = [];
@@ -223,41 +208,6 @@ class MockAssetProviderWithForEach extends MockAssetProvider {
             });
         }
         return assets.length;
-    }
-}
-
-// Mock zip provider
-class MockZipProvider implements ZipProvider {
-    files = new Map<string, string | Uint8Array>();
-
-    createZip(): ZipArchive {
-        throw new Error('createZip is not used by the exporters under test');
-    }
-
-    addFile(path: string, content: string | Buffer): void {
-        this.files.set(path, content);
-    }
-
-    hasFile(path: string): boolean {
-        return this.files.has(path);
-    }
-
-    getFilePaths(): string[] {
-        return Array.from(this.files.keys());
-    }
-
-    async generateAsync(): Promise<Buffer> {
-        // Create actual ZIP for realistic testing using fflate
-        const zipData: Record<string, Uint8Array> = {};
-        for (const [path, content] of this.files) {
-            if (typeof content === 'string') {
-                zipData[path] = strToU8(content);
-            } else {
-                zipData[path] = new Uint8Array(content);
-            }
-        }
-        const zipped = zipSync(zipData);
-        return Buffer.from(zipped);
     }
 }
 

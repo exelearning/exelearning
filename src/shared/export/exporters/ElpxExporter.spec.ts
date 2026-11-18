@@ -5,17 +5,9 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'bun:test';
 import { loadIdeviceConfigs, resetIdeviceConfigCache } from '../../../services/idevice-config';
 import { ElpxExporter } from './ElpxExporter';
-import { zipSync, unzipSync, strToU8 } from 'fflate';
-import type {
-    ExportDocument,
-    ExportMetadata,
-    ExportPage,
-    ResourceProvider,
-    AssetProvider,
-    ZipProvider,
-    ExportAsset,
-    ZipArchive,
-} from '../interfaces';
+import { unzipSync } from 'fflate';
+import type { ExportDocument, ExportMetadata, ExportPage, ResourceProvider, ZipProvider } from '../interfaces';
+import { MockAssetProvider, MockZipProvider } from '../../../../test/helpers/export-providers';
 
 // Mock document adapter
 class MockDocument implements ExportDocument {
@@ -108,56 +100,6 @@ class MockResourceProvider implements ResourceProvider {
             files.set('fonts/global/playwrite-es/OFL.txt', Buffer.from('SIL OFL License'));
         }
         return files;
-    }
-}
-
-// Mock asset provider
-class MockAssetProvider implements AssetProvider {
-    async getAsset(_path: string): Promise<ExportAsset | null> {
-        return null;
-    }
-
-    async getAllAssets(): Promise<ExportAsset[]> {
-        return [];
-    }
-
-    async getProjectAssets(): Promise<ExportAsset[]> {
-        return this.getAllAssets();
-    }
-}
-
-// Mock zip provider that tracks files added
-class MockZipProvider implements ZipProvider {
-    createZip(): ZipArchive {
-        throw new Error('createZip is not used by the exporters under test');
-    }
-
-    files = new Map<string, string | Uint8Array>();
-
-    addFile(path: string, content: string | Buffer): void {
-        this.files.set(path, content);
-    }
-
-    hasFile(path: string): boolean {
-        return this.files.has(path);
-    }
-
-    getFilePaths(): string[] {
-        return Array.from(this.files.keys());
-    }
-
-    async generateAsync(): Promise<Buffer> {
-        // Create actual ZIP for realistic testing using fflate
-        const zipData: Record<string, Uint8Array> = {};
-        for (const [path, content] of this.files) {
-            if (typeof content === 'string') {
-                zipData[path] = strToU8(content);
-            } else {
-                zipData[path] = new Uint8Array(content);
-            }
-        }
-        const zipped = zipSync(zipData);
-        return Buffer.from(zipped);
     }
 }
 

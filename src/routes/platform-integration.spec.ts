@@ -15,10 +15,9 @@ import {
     resetDependencies as resetServiceDependencies,
 } from '../services/platform-integration';
 import { getJwtSecret } from './auth';
+import { fetchHost } from '../../test/helpers/fetch-host';
 
 // Bun's `typeof fetch` also requires `preconnect`; the fakes below only replace the call itself.
-type FetchFn = (input: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) => Promise<Response>;
-const fetchHost = globalThis as unknown as { fetch: FetchFn };
 
 describe('Platform Integration Routes', () => {
     // Store original environment variables

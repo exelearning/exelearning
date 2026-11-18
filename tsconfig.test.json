@@ -15,7 +15,9 @@
         "scripts/**/*.spec.ts",
         "src/**/*.spec.ts",
         "test/helpers/**/*.ts",
-        "test/integration/**/*.ts"
+        "test/integration/**/*.ts",
+        "test/e2e/**/*.ts",
+        "playwright*.config.ts"
     ],
     "exclude": ["node_modules", "dist", "app/dist"]
 }

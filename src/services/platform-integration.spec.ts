@@ -15,10 +15,8 @@ import {
 } from './platform-integration';
 import type { PlatformJWTPayload } from '../utils/platform-jwt';
 import type { Project, YjsDocument } from '../db/types';
+import { fetchHost } from '../../test/helpers/fetch-host';
 
-type FetchFn = (input: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) => Promise<Response>;
-/** Lets tests install a plain async function as fetch, without Bun's fetch extras (preconnect). */
-const fetchHost = globalThis as unknown as { fetch: FetchFn };
 const testProject = { id: 1, uuid: 'test-uuid', title: 'Test Project' } as Project;
 
 describe('Platform Integration Service', () => {
@@ -129,7 +127,7 @@ describe('Platform Integration Service', () => {
             // IP, so the egress IP filter alone would NOT stop this exfiltration.
             let calls = 0;
             let attackerContacted = false;
-            fetchHost.fetch = (async (url: string | URL | Request) => {
+            fetchHost.fetch = async (url: string | URL | Request) => {
                 calls++;
                 if (String(url).includes('attacker.example')) {
                     attackerContacted = true;
@@ -139,7 +137,7 @@ describe('Platform Integration Service', () => {
                     status: 302,
                     headers: { location: 'https://attacker.example/collect' },
                 });
-            }) as unknown as typeof fetch;
+            };
 
             await expect(platformPetitionGet(mockPayload, 'jwt-token')).rejects.toThrow(
                 'Failed to fetch ELP from platform',

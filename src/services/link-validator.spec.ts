@@ -17,10 +17,7 @@ import {
     type IdeviceContent,
 } from './link-validator';
 import type { LookupFn } from '../utils/ssrf-guard';
-
-type FetchFn = (input: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) => Promise<Response>;
-/** Lets tests install a plain async function as fetch, without Bun's fetch extras (preconnect). */
-const fetchHost = globalThis as unknown as { fetch: FetchFn };
+import { fetchHost } from '../../test/helpers/fetch-host';
 
 // A DNS resolver that maps any host to a single public IP, so the SSRF guard
 // allows the request and control reaches the (mocked) fetch. Keeps tests

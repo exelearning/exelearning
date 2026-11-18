@@ -192,7 +192,8 @@ describe('BunPostgresDialect', () => {
                     return { rows: [] };
                 },
             } as unknown as Parameters<typeof driver.beginTransaction>[0];
-            const compileQuery = new PostgresQueryCompiler().compileQuery;
+            const compiler = new PostgresQueryCompiler();
+            const compileQuery = compiler.compileQuery.bind(compiler);
 
             await driver.beginTransaction(connection, { isolationLevel: 'repeatable read', accessMode: 'read only' });
             await driver.commitTransaction(connection);

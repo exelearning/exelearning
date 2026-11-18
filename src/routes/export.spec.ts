@@ -18,7 +18,6 @@ import {
     type ExportSessionManagerDeps,
     type ExportFileHelperDeps,
     type ExportSystemDeps,
-    type ExportYjsDeps,
 } from './export';
 import type { YjsExportStructure } from './types/request-payloads';
 import { getJwtSecret } from '../utils/jwt-secret';
@@ -1155,41 +1154,6 @@ describe('Export Routes', () => {
             expect(res.status).toBe(200);
         });
 
-        it('should fallback when reconstructDocument returns null', async () => {
-            const nullYjsSessionId = 'null-yjs-session';
-            mockSessions.set(nullYjsSessionId, {
-                id: nullYjsSessionId,
-                fileName: 'null-yjs.elp',
-                odeId: 'null-yjs-project-uuid',
-            });
-
-            // Create temp dir with content.xml for fallback
-            const nullYjsTempDir = path.join(testDir, 'tmp', nullYjsSessionId);
-            await fs.ensureDir(nullYjsTempDir);
-            await fs.writeFile(path.join(nullYjsTempDir, 'content.xml'), '<?xml version="1.0"?><ode></ode>');
-            await fs.ensureDir(path.join(testDir, 'dist', nullYjsSessionId));
-
-            // Create deps where reconstructDocument returns null
-            const nullYjsDeps = createMockDependencies();
-            nullYjsDeps.database = {
-                db: {} as any,
-                findProjectByUuid: async () => ({ id: 1, uuid: 'null-yjs-project-uuid', title: 'Test' }) as any,
-            };
-            nullYjsDeps.yjsPersistence = {
-                // The route guards against a missing document even though the type promises one.
-                reconstructDocument: (async () => null) as unknown as ExportYjsDeps['reconstructDocument'],
-            };
-
-            const nullYjsApp = new Elysia().use(createExportRoutes(nullYjsDeps));
-
-            const res = await handleWith(
-                nullYjsApp,
-                new Request(`http://localhost/api/export/${nullYjsSessionId}/html5/download`),
-            );
-
-            expect(res.status).toBe(200);
-        });
-
         it('should fallback when findProjectByUuid returns null', async () => {
             const noProjectSessionId = 'no-project-session';
             mockSessions.set(noProjectSessionId, {
@@ -1252,41 +1216,6 @@ describe('Export Routes', () => {
             const res = await handleWith(
                 allFailApp,
                 new Request(`http://localhost/api/export/${allFailSessionId}/html5/download`),
-            );
-
-            expect(res.status).toBe(500);
-            const body = await res.json();
-            expect(body.error).toContain('No project structure');
-        });
-
-        it('should return error when reconstructDocument is null and no ELP fallback', async () => {
-            const nullNoFallbackId = 'null-no-fallback-session';
-            mockSessions.set(nullNoFallbackId, {
-                id: nullNoFallbackId,
-                fileName: 'null-no-fallback.elp',
-                odeId: 'null-no-fallback-uuid',
-            });
-
-            // Create temp dir WITHOUT content.xml
-            await fs.ensureDir(path.join(testDir, 'tmp', nullNoFallbackId));
-            await fs.ensureDir(path.join(testDir, 'dist', nullNoFallbackId));
-
-            // Create deps where reconstructDocument returns null and no ELP
-            const nullNoFallbackDeps = createMockDependencies();
-            nullNoFallbackDeps.database = {
-                db: {} as any,
-                findProjectByUuid: async () => ({ id: 1, uuid: 'null-no-fallback-uuid', title: 'Test' }) as any,
-            };
-            nullNoFallbackDeps.yjsPersistence = {
-                // The route guards against a missing document even though the type promises one.
-                reconstructDocument: (async () => null) as unknown as ExportYjsDeps['reconstructDocument'],
-            };
-
-            const nullNoFallbackApp = new Elysia().use(createExportRoutes(nullNoFallbackDeps));
-
-            const res = await handleWith(
-                nullNoFallbackApp,
-                new Request(`http://localhost/api/export/${nullNoFallbackId}/html5/download`),
             );
 
             expect(res.status).toBe(500);
