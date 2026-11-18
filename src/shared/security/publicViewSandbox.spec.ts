@@ -9,6 +9,7 @@ import {
 describe('PUBLIC_VIEW_SANDBOX', () => {
     it('grants scripts but never allow-same-origin (opaque origin)', () => {
         expect(PUBLIC_VIEW_SANDBOX).toContain('allow-scripts');
+        expect(PUBLIC_VIEW_SANDBOX).toContain('allow-modals');
         expect(PUBLIC_VIEW_SANDBOX).not.toContain('allow-same-origin');
     });
 });

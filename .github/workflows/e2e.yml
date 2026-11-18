@@ -63,6 +63,7 @@ jobs:
             public/app/common/i18n/**
             public/app/common/mermaid/mermaid.min.js
             public/app/common/edicuatex/**
+            public/app/common/exe_print/**
             public/bundles/**
             public/libs/**
             public/style/workarea/main.css

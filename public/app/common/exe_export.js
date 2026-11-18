@@ -106,7 +106,18 @@ window.$exeExport = {
             }
         }, 100);
         setTimeout(() => { this.addClassJsExecutedToExeContent() }, this.delayLoadingPageTime);
+        // The standard button is already visible at DOM ready. Bind it before a reader can click it.
+        try {
+            this.initPrintButton();
+        } catch (err) {
+            console.error('Error: Failed to initialize print button');
+        }
         setTimeout(() => {
+            try {
+                this.initPrintButton();
+            } catch (err) {
+                console.error('Error: Failed to initialize print button');
+            }
             try {
                 this.triggerPrintIfRequested();
             } catch (err) {
@@ -695,6 +706,61 @@ window.$exeExport = {
         }
     },
 
+    /** Load the shared preview on demand, using the base path supplied by the renderer. */
+    initPrintButton: function () {
+        var btn = document.getElementById('exe-print-btn');
+        if (!btn) return;
+        document.body.classList.add('has-print-button');
+        if (btn.dataset.printBound) return;
+        btn.dataset.printBound = 'true';
+        // One notice however many attempts fail, removed once one succeeds.
+        var notice = null;
+        btn.addEventListener('click', async function (event) {
+            event.preventDefault();
+            btn.disabled = true;
+            var added = [];
+            try {
+                if (!window.ExePrintPreview) {
+                    var root = new URL(btn.dataset.printRoot || './', window.location.href).href;
+                    var style = document.createElement('link');
+                    style.rel = 'stylesheet';
+                    style.href = new URL('libs/exe_print/preview.css', root).href;
+                    document.head.appendChild(style);
+                    added.push(style);
+                    var load = function (path) {
+                        return new Promise(function (resolve, reject) {
+                            var script = document.createElement('script');
+                            script.src = new URL(path, root).href;
+                            script.dataset.printRoot = root;
+                            script.onload = resolve;
+                            script.onerror = function () { script.remove(); reject(new Error('Print preview not available')); };
+                            document.head.appendChild(script);
+                            added.push(script);
+                        });
+                    };
+                    await load('libs/exe_print/data.js');
+                    await load('libs/exe_print/runtime.js');
+                }
+                await window.ExePrintPreview.open(btn);
+                if (notice) {
+                    notice.remove();
+                    notice = null;
+                }
+            } catch (error) {
+                // Without the runtime the next attempt loads everything again: drop what this one added.
+                if (!window.ExePrintPreview) added.forEach(function (node) { node.remove(); });
+                if (!notice) {
+                    notice = document.createElement('p');
+                    notice.setAttribute('role', 'alert');
+                    btn.parentElement.appendChild(notice);
+                }
+                notice.textContent = getI18nText('printPreviewUnavailable', 'Print preview not available');
+            } finally {
+                btn.disabled = false;
+            }
+        });
+    },
+
     /**
      * Presentation mode
      *
@@ -949,6 +1015,11 @@ window.$exeExport = {
             {
                 name: 'MediaElement.js fullscreen video (Interactive Video iDevice)',
                 isActive: function () { return !!document.querySelector('.mejs-container-fullscreen'); }
+            },
+            {
+                name: 'Print preview (the print button of the export)',
+                // Created on first use and then kept; data-visible says whether it is open.
+                isActive: function () { return !!document.querySelector('#printPreviewOverlay[data-visible="true"]'); }
             },
             {
                 name: 'Fullscreen API (an iDevice that went fullscreen on its own)',

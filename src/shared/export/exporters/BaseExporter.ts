@@ -9,6 +9,7 @@
 import type {
     ExportDocument,
     ExportPage,
+    ExportComponent,
     ExportMetadata,
     ExportAsset,
     ResourceProvider,
@@ -21,6 +22,8 @@ import type {
 import { IdeviceRenderer } from '../renderers/IdeviceRenderer';
 import { PageRenderer } from '../renderers/PageRenderer';
 import { LibraryDetector } from '../utils/LibraryDetector';
+import { PRINT_RUNTIME_FILES, printPackagePages, serializePrintPackage, printPackageEntry } from '../printPackage';
+import { printMetadataHasLatex, printPagesHaveLatex } from '../printMath';
 import { JSON_PROPERTY_LIBRARY_EXCLUSIONS, iterateJsonPropertyStrings } from '../utils/jsonPropertyContent';
 import { generateOdeXml, generateOdeId } from '../generators/OdeXmlGenerator';
 import { ELPX_DOWNLOAD_ONCLICK, formatLicenseText } from '../constants';
@@ -143,6 +146,7 @@ export async function fetchNavLabels(
     licenseLabel: string;
     madeWith: string;
     newWindow: string;
+    print: string;
 }> {
     const translations = await resources.fetchI18nTranslations(language);
     let translatedLicense = license;
@@ -160,6 +164,7 @@ export async function fetchNavLabels(
         licenseLabel: translations.get('License') || 'License',
         madeWith: translations.get('Made with eXeLearning') || 'Made with eXeLearning',
         newWindow: translations.get('New window') || 'New window',
+        print: translations.get('Print') || 'Print',
     };
 }
 import { convertSrtToVtt } from '../../utils/srt-to-vtt';
@@ -289,6 +294,148 @@ export abstract class BaseExporter {
      */
     protected async generateI18nContent(language: string): Promise<string> {
         return this.resources.fetchI18nFile(language);
+    }
+
+    /**
+     * Package the same preview for every web format, including its manifest-visible dependencies.
+     *
+     * Neither library is packaged for it: Mermaid diagrams are pre-rendered here, like on the
+     * pages, and MathJax goes in only when the printed content can need it (see printMath).
+     */
+    protected async addPrintPreviewFiles(
+        pages: ExportPage[],
+        meta: ExportMetadata,
+        themeFiles: Map<string, unknown> | null,
+        addFile: (path: string, content: Uint8Array | string) => void,
+        options?: ExportOptions,
+    ): Promise<void> {
+        if (!meta.addPrintButton) return;
+        const resources = await this.resources.fetchLibraryFiles([...PRINT_RUNTIME_FILES, 'exe_print/strings.json']);
+        for (const name of PRINT_RUNTIME_FILES) {
+            const content = resources.get(name);
+            if (!content) throw new Error(`Print preview resource missing: ${name}. Run bundle:exporters.`);
+            addFile(`libs/${name}`, content);
+        }
+        const strings = resources.get('exe_print/strings.json');
+        if (!strings) throw new Error('Print preview translations missing. Run bundle:exporters.');
+        const printPages = await this.preRenderPrintMermaid(printPackagePages(pages), options);
+        const mathJax = meta.addMathJax === true || printMetadataHasLatex(meta) || printPagesHaveLatex(printPages);
+        if (mathJax) {
+            const mathFiles = await this.resources.fetchLibraryFiles(
+                ['exe_math/tex-mml-svg.js'],
+                [
+                    {
+                        name: 'print-math',
+                        type: 'class',
+                        pattern: '',
+                        files: ['exe_math/tex-mml-svg.js'],
+                        isDirectory: true,
+                    },
+                ],
+            );
+            for (const [name, content] of mathFiles) addFile(`libs/${name}`, content);
+        }
+        const keys: string[] = JSON.parse(new TextDecoder().decode(strings));
+        const language = meta.language || 'en';
+        const translations = await this.resources.fetchI18nTranslations(language);
+        const { dataUris } = await this.resolveMaterialIconDataUris(pages);
+        const {
+            title,
+            subtitle,
+            author,
+            description,
+            license,
+            licenseUrl,
+            customStyles,
+            footer,
+            globalFont,
+            addExeLink,
+            passScore,
+            passScoreEveryActivity,
+            exelearningVersion,
+        } = meta;
+        addFile(
+            'libs/exe_print/data.js',
+            serializePrintPackage({
+                metadata: {
+                    theme: meta.theme,
+                    title,
+                    subtitle,
+                    author,
+                    description,
+                    language,
+                    license,
+                    licenseUrl,
+                    customStyles,
+                    footer,
+                    globalFont,
+                    addExeLink,
+                    passScore,
+                    passScoreEveryActivity,
+                    exelearningVersion,
+                },
+                pages: printPages,
+                mathJax,
+                assetPaths: [...(await this.buildAssetExportPathMap())],
+                themeFiles: [...(themeFiles?.keys() || ['style.css', 'style.js'])],
+                materialIcons: [...dataUris],
+                translations: Object.fromEntries(keys.map(key => [key, translations.get(key) || key])),
+                i18n: await this.generateI18nContent(language),
+                navLabels: await this.fetchNavLabels(language, license),
+            }),
+        );
+        addFile('print.html', printPackageEntry(language));
+    }
+
+    /**
+     * Pre-render the Mermaid diagrams of the print package with the export's own hook, so the
+     * preview prints their SVG instead of loading the library. The pages stay as they were.
+     *
+     * @param pages - The pages of the print package
+     * @param options - The export's options, with the hook when one is available
+     */
+    private async preRenderPrintMermaid(pages: ExportPage[], options?: ExportOptions): Promise<ExportPage[]> {
+        const preRenderMermaid = options?.preRenderMermaid;
+        if (!preRenderMermaid) return pages;
+        const render = async (component: ExportComponent): Promise<ExportComponent> => {
+            // JSON iDevices rebuild their HTML from properties, including nested arrays. Render
+            // every string there as well, without changing the author's editing data.
+            const renderValue = async (value: unknown): Promise<unknown> => {
+                if (typeof value === 'string' && /class=["'][^"']*\bmermaid\b/i.test(value)) {
+                    try {
+                        const result = await preRenderMermaid(value);
+                        return result.mermaidRendered ? result.html : value;
+                    } catch (error) {
+                        console.warn(`[BaseExporter] Mermaid pre-render error for component ${component.id}:`, error);
+                    }
+                } else if (Array.isArray(value)) {
+                    const items = [];
+                    for (const item of value) items.push(await renderValue(item));
+                    return items;
+                } else if (value && typeof value === 'object') {
+                    const entries = [];
+                    for (const [key, item] of Object.entries(value)) entries.push([key, await renderValue(item)]);
+                    return Object.fromEntries(entries);
+                }
+                return value;
+            };
+            return {
+                ...component,
+                content: (await renderValue(component.content)) as ExportComponent['content'],
+                properties: (await renderValue(component.properties)) as ExportComponent['properties'],
+            };
+        };
+        const rendered: ExportPage[] = [];
+        for (const page of pages) {
+            const blocks = [];
+            for (const block of page.blocks || []) {
+                const components = [];
+                for (const component of block.components || []) components.push(await render(component));
+                blocks.push({ ...block, components });
+            }
+            rendered.push({ ...page, blocks });
+        }
+        return rendered;
     }
 
     /**

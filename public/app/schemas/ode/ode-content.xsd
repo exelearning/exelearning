@@ -272,6 +272,7 @@
             <xs:enumeration value="pp_addPagination"/>
             <xs:enumeration value="pp_addSearchBox"/>
             <xs:enumeration value="pp_addAccessibilityToolbar"/>
+            <xs:enumeration value="pp_addPrintButton"/>
             <xs:enumeration value="pp_extraHeadContent"/>
             <xs:enumeration value="pp_customStyles"/>
             <xs:enumeration value="footer"/>

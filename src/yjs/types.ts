@@ -230,6 +230,7 @@ export interface MetadataData {
     addPagination?: boolean;
     addSearchBox?: boolean;
     addAccessibilityToolbar?: boolean;
+    addPrintButton?: boolean;
     extraHeadContent?: string;
     exportSource?: string;
     exelearning_version?: string;
@@ -251,6 +252,7 @@ export interface UpdateMetadataInput {
     addPagination?: boolean;
     addSearchBox?: boolean;
     addAccessibilityToolbar?: boolean;
+    addPrintButton?: boolean;
     extraHeadContent?: string;
     [key: string]: unknown;
 }

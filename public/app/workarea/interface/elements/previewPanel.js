@@ -882,7 +882,9 @@ export default class PreviewPanelManager {
         }
 
         this._blobUrlCurrentPage = pagePath;
+        this._clearPrintPreviewResources();
         html = this._inlineResources(html, this._blobUrlFiles);
+        html = this._inlinePrintPreview(html, this._blobUrlFiles);
         html = this._replacePdfEmbedsForBlob(html, this._blobUrlFiles);
         html = this._injectBlobNavigationHandler(html, pagePath);
         this._loadBlobUrlInIframe(html);
@@ -1216,6 +1218,40 @@ export default class PreviewPanelManager {
         return html;
     }
 
+    /** Boot the shared print UI when a blob preview has no addressable package directory. */
+    _inlinePrintPreview(html, files) {
+        const data = this._decodeFileContent(files['libs/exe_print/data.js']);
+        const runtime = this._decodeFileContent(files['libs/exe_print/runtime.js']);
+        if (!data || !runtime) return html;
+
+        const urls = {};
+        this._printResourceBlobUrls = [];
+        for (const [path, bytes] of Object.entries(files)) {
+            if (!/^(content|libs|theme|idevices|fonts)\//.test(path) ||
+                /^libs\/exe_print\/(data|runtime)\.js$/.test(path)) continue;
+            const ext = path.split('.').pop().toLowerCase();
+            const content = ext === 'css'
+                ? this._inlineCssUrls(this._decodeFileContent(bytes), path, files) : bytes;
+            const type = ext === 'js' ? 'text/javascript' : ext === 'json' ? 'application/json'
+                : DATA_URI_MIME_TYPES[ext] || 'application/octet-stream';
+            urls[path] = URL.createObjectURL(new Blob([content], { type }));
+            this._printResourceBlobUrls.push(urls[path]);
+        }
+        const root = new URL('viewer/', document.baseURI).href;
+        const script = (content, attributes = '') => `<script${attributes}>${content.replace(/<\/script/gi, '<\\/script')}</script>`;
+        const bootstrap = `<link rel="stylesheet" href="${urls['libs/exe_print/preview.css']}">` +
+            script(data + '\nwindow.__exePrintResourceUrls=' + JSON.stringify(urls).replace(/</g, '\\u003c') + ';') +
+            script(runtime, ` data-print-root="${root}"`);
+        // Inlined libraries contain HTML templates, including literal closing body tags.
+        const end = html.toLowerCase().lastIndexOf('</body>');
+        return end < 0 ? html + bootstrap : html.slice(0, end) + bootstrap + html.slice(end);
+    }
+
+    _clearPrintPreviewResources() {
+        this._printResourceBlobUrls?.forEach(url => URL.revokeObjectURL(url));
+        this._printResourceBlobUrls = null;
+    }
+
     /**
      * Rewrite relative url(...) references in an inlined stylesheet to data URIs.
      * Once the CSS sits inside a blob: document, a reference such as the theme's
@@ -1360,6 +1396,7 @@ export default class PreviewPanelManager {
      * Sets iframe src to /viewer/index.html which is served by the SW
      */
     loadPreviewFromServiceWorker() {
+        this._clearPrintPreviewResources();
         const targetIframe = this.isPinned ? this.pinnedIframe : this.iframe;
 
         if (!targetIframe) {
@@ -1566,6 +1603,7 @@ export default class PreviewPanelManager {
      * Cleanup resources
      */
     destroy() {
+        this._clearPrintPreviewResources();
         // Unsubscribe from structure changes
         if (this._unsubscribeStructure) {
             this._unsubscribeStructure();

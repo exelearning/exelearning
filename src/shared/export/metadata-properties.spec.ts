@@ -53,6 +53,7 @@ describe('metadata-properties', () => {
             expect(exportKeys).toContain('addSearchBox');
             expect(exportKeys).toContain('addAccessibilityToolbar');
             expect(exportKeys).toContain('addMathJax');
+            expect(exportKeys).toContain('addPrintButton');
             expect(exportKeys).toContain('exportSource');
             expect(exportKeys).toContain('globalFont');
             expect(exportKeys).toContain('passScore');

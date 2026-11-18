@@ -38,6 +38,38 @@ describe('ElpxImporter', () => {
     });
 
     describe('importFromBuffer', () => {
+        it.each([true, false, undefined])('round-trips the print button setting (%s)', async enabled => {
+            const { zipSync, strToU8 } = await import('fflate');
+            const initial = new Y.Doc();
+            const restored = new Y.Doc();
+            try {
+                const property =
+                    enabled === undefined
+                        ? ''
+                        : `<odeProperty><key>pp_addPrintButton</key><value>${enabled}</value></odeProperty>`;
+                const xml = `<ode xmlns="http://www.intef.es/xsd/ode" version="2.0"><odeProperties>${property}</odeProperties><odeNavStructures /></ode>`;
+                // An absent field must reset an existing value to its default too.
+                initial.getMap('metadata').set('addPrintButton', true);
+                await new ElpxImporter(initial, null, silentLogger).importFromBuffer(
+                    zipSync({ 'content.xml': strToU8(xml) }),
+                );
+                expect(initial.getMap('metadata').get('addPrintButton')).toBe(enabled ?? false);
+                const adapter = new YjsDocumentAdapter({
+                    projectId: 'print-roundtrip',
+                    getMetadata: () => initial.getMap('metadata'),
+                    getNavigation: () => initial.getArray('navigation'),
+                });
+                const exported = generateOdeXml(adapter.getMetadata(), adapter.getNavigation());
+                await new ElpxImporter(restored, null, silentLogger).importFromBuffer(
+                    zipSync({ 'content.xml': strToU8(exported) }),
+                );
+                expect(restored.getMap('metadata').get('addPrintButton')).toBe(enabled ?? false);
+            } finally {
+                initial.destroy();
+                restored.destroy();
+            }
+        });
+
         it('should import a basic ELP file', async () => {
             const elpPath = path.join(process.cwd(), 'test/fixtures/basic-example.elp');
             const elpBuffer = await fs.readFile(elpPath);

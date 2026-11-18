@@ -102,6 +102,9 @@ class MockResourceProvider implements ResourceProvider {
 
     async fetchLibraryFiles(_files: string[]): Promise<Map<string, Buffer>> {
         const files = new Map<string, Buffer>();
+        for (const name of _files.filter(file => file.startsWith('exe_print/'))) {
+            files.set(name, Buffer.from(name.endsWith('strings.json') ? '["Print"]' : '// print resource'));
+        }
         if (_files.includes('material-icons/material-icons.svg')) {
             files.set(
                 'material-icons/material-icons.svg',
@@ -2015,6 +2018,57 @@ describe('Html5Exporter', () => {
 
             // Should NOT have search_index.js file
             expect(zip.files.has('search_index.js')).toBe(false);
+        });
+    });
+
+    describe('Print Button and print.html Support', () => {
+        it('should not include print.html or print button when addPrintButton is disabled (default)', async () => {
+            document = new MockDocument({ addPrintButton: false }, [
+                {
+                    id: 'page1',
+                    title: 'Page 1',
+                    parentId: null,
+                    order: 0,
+                    blocks: [],
+                },
+            ]);
+            exporter = new Html5Exporter(document, resources, assets, zip);
+
+            await exporter.export();
+
+            expect(zip.files.has('print.html')).toBe(false);
+            const indexHtml = zip.files.get('index.html') as string;
+            expect(indexHtml).not.toContain('id="exe-print-btn"');
+
+            const previewFiles = await exporter.generateForPreview();
+            expect(previewFiles.has('print.html')).toBe(false);
+        });
+
+        it('should include print.html and print button when addPrintButton is enabled', async () => {
+            document = new MockDocument({ addPrintButton: true }, [
+                {
+                    id: 'page1',
+                    title: 'Page 1',
+                    parentId: null,
+                    order: 0,
+                    blocks: [],
+                },
+            ]);
+            exporter = new Html5Exporter(document, resources, assets, zip);
+
+            const result = await exporter.export();
+            expect(result.success).toBe(true);
+
+            expect(zip.files.has('print.html')).toBe(true);
+            const indexHtml = zip.files.get('index.html') as string;
+            expect(indexHtml).toContain('id="exe-print-btn"');
+            const printHtml = zip.files.get('print.html') as string;
+            expect(printHtml).toContain('id="printPreviewMount"');
+            expect(printHtml).toContain('libs/exe_print/runtime.js');
+            expect(zip.files.has('libs/exe_print/data.js')).toBe(true);
+
+            const previewFiles = await exporter.generateForPreview();
+            expect(previewFiles.has('print.html')).toBe(true);
         });
     });
 

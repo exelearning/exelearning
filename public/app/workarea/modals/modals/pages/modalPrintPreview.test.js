@@ -251,6 +251,18 @@ describe('ModalPrintPreview', () => {
 
             expect(showErrorSpy).toHaveBeenCalledWith('Test error');
         });
+
+        it.each([
+            ['PRINT_RESOURCES_TIMEOUT', 'Print resources did not finish loading. Please try again.'],
+        ])('shows a translated resource error for %s and keeps printing disabled', async (code, message) => {
+            modal.translate = vi.fn(text => `Translated: ${text}`);
+            vi.spyOn(modal, 'generatePreview').mockRejectedValue(new Error(`Error: ${code}`));
+            await modal.show();
+            expect(modal.translate).toHaveBeenCalledWith(message);
+            expect(modal.loadingEl.textContent).toContain(`Translated: ${message}`);
+            expect(modal.overlay.querySelector('.print-preview-print-btn').disabled).toBe(true);
+            expect(modal.ready).toBe(false);
+        });
     });
 
     describe('close', () => {
@@ -388,6 +400,18 @@ describe('ModalPrintPreview', () => {
 
             expect(modal.loadingEl.innerHTML).toContain('Test error message');
             expect(modal.loadingEl.innerHTML).toContain('print-preview-error');
+        });
+
+        it('draws its icon without an icon font, so only the message is read or shown as text', () => {
+            modal.showError('Test error message');
+
+            const box = modal.loadingEl.querySelector('.print-preview-error');
+            const icon = box.querySelector('svg.print-preview-error-icon');
+            expect(icon.getAttribute('aria-hidden')).toBe('true');
+            expect(icon.getAttribute('focusable')).toBe('false');
+            expect(icon.querySelector('path').getAttribute('fill')).toBe('currentColor');
+            expect(box.querySelector('.exe-icon')).toBeNull();
+            expect(box.textContent.trim()).toBe('Test error message');
         });
 
         it('should hide iframe', () => {

@@ -43,9 +43,11 @@
  * external links opened with `target="_blank"`) load un-sandboxed so external
  * sites keep working; it does not let the content script the app origin, because
  * an escaped popup is a separate browsing context the opaque opener cannot read.
+ * `allow-modals` permits the print preview's own window.print(); it does not grant
+ * access to the application origin. Both the iframe and response CSP need it.
  */
 export const PUBLIC_VIEW_SANDBOX =
-    'allow-scripts allow-popups allow-forms allow-downloads allow-popups-to-escape-sandbox';
+    'allow-scripts allow-popups allow-forms allow-downloads allow-popups-to-escape-sandbox allow-modals';
 
 /**
  * CSP profile for public-view content responses.

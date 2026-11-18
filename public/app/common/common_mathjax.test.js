@@ -100,6 +100,64 @@ describe('MathJax startup.ready', () => {
   });
 });
 
+describe('MathJax startup.pageReady', () => {
+  let defaultPageReady;
+
+  beforeEach(() => {
+    defaultPageReady = vi.fn(() => Promise.resolve());
+    global.window.MathJax.startup.defaultPageReady = defaultPageReady;
+  });
+
+  afterEach(() => {
+    delete global.window.MathJax.startup.defaultPageReady;
+    document.body.innerHTML = '';
+  });
+
+  it('protects exported formulas, and only those, before the initial typeset', () => {
+    // The initial typeset covers the whole page, and MathJax's MathML input would
+    // replace the accessible MathML of an exported formula and add a second SVG.
+    document.body.innerHTML =
+      '<span class="exe-math-rendered"><svg></svg><math><mi>a</mi></math></span><p><math><mi>b</mi></math></p>';
+    const [exported, raw] = document.querySelectorAll('math');
+    let parentsAtTypeset;
+    defaultPageReady.mockImplementation(() => {
+      parentsAtTypeset = [exported.parentElement.localName, raw.parentElement.localName];
+      return Promise.resolve();
+    });
+
+    global.window.MathJax.startup.pageReady();
+
+    expect(parentsAtTypeset).toEqual(['mjx-assistive-mml', 'p']);
+    expect(document.querySelector('.exe-math-rendered math')).toBe(exported);
+  });
+
+  it('returns the initial typeset, so the startup promise waits for it', () => {
+    const typeset = Promise.resolve();
+    defaultPageReady.mockReturnValue(typeset);
+
+    expect(global.window.MathJax.startup.pageReady()).toBe(typeset);
+  });
+
+  it('still starts MathJax when the formulas cannot be protected', () => {
+    // A throw here would reject MathJax.startup.promise, and updateLatex waits for it
+    // before every typeset: no formula on the page would render.
+    const protect = vi
+      .spyOn(global.$exeDevices.iDevice.gamification.math, 'protectRenderedMath')
+      .mockImplementation(() => {
+        throw new Error('Unexpected markup');
+      });
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      expect(() => global.window.MathJax.startup.pageReady()).not.toThrow();
+      expect(defaultPageReady).toHaveBeenCalledTimes(1);
+      expect(warn).toHaveBeenCalledOnce();
+    } finally {
+      protect.mockRestore();
+      warn.mockRestore();
+    }
+  });
+});
+
 describe('MathJax font paths', () => {
   it('resolves the font glyph ranges next to the vendored bundle', () => {
     // The stock value is https://cdn.jsdelivr.net/npm/@mathjax, which would put an

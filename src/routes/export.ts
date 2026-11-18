@@ -64,6 +64,7 @@ import { findProjectByUuid as findProjectByUuidDefault } from '../db/queries';
 import { DatabaseAssetProvider as DatabaseAssetProviderDefault } from '../shared/export/providers/DatabaseAssetProvider';
 import { CombinedAssetProvider as CombinedAssetProviderDefault } from '../shared/export/providers/CombinedAssetProvider';
 import { getAppVersion } from '../utils/version';
+import { preRenderServerMermaid } from '../shared/export/prerender/preRenderServerMermaid';
 
 // ============================================================================
 // Types and Interfaces for Dependency Injection
@@ -583,8 +584,7 @@ export function createExportRoutes(deps: ExportDependencies = {}): Elysia {
                     return { success: false, error: `Unsupported export format: ${exportType}` };
             }
 
-            // Attach server-side LaTeX pre-render hooks so exports/previews render formulas
-            // even when addMathJax is disabled.
+            // Render formulas and diagrams on the server, including the portable print package.
             const latexRenderer = new ServerLatexPreRendererDefault();
             const exportOptionsWithHooks = {
                 // Stamp the SCORM 1.2 runtime with the release doing the exporting, so a
@@ -593,6 +593,7 @@ export function createExportRoutes(deps: ExportDependencies = {}): Elysia {
                 ...options,
                 preRenderLatex: async (html: string) => latexRenderer.preRender(html),
                 preRenderDataGameLatex: async (html: string) => latexRenderer.preRenderDataGameLatex(html),
+                preRenderMermaid: preRenderServerMermaid,
             };
 
             // Run export

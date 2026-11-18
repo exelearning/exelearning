@@ -1,0 +1,31 @@
+// Exported UI uses the exact panel rules imported by the workarea.
+@import 'components/print-preview';
+
+.print-preview-overlay {
+    // The build prepends the workarea variables, scoped to this overlay.
+    font: var(--body-fs)/1.5 "Catamaran", sans-serif;
+    text-align: left;
+    z-index: 2147483647;
+    box-sizing: border-box;
+
+    *, *::before, *::after { box-sizing: inherit; }
+    button, input { font: inherit; }
+    [hidden] { display: none !important; }
+
+    @import 'components/buttons';
+    .btn-secondary {
+        color: #5b6286;
+        font-size: 14px;
+        font-weight: 400;
+        border-radius: 6px;
+    }
+}
+
+@each $name, $weight in ('Regular': 400, 'SemiBold': 600, 'Bold': 700) {
+    @font-face {
+        font-family: 'Catamaran';
+        font-style: normal;
+        font-weight: $weight;
+        src: url('fonts/Catamaran-#{$name}.woff2') format('woff2');
+    }
+}

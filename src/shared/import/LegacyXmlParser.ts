@@ -41,6 +41,7 @@ export interface LegacyMetadata {
     pp_addSearchBox: boolean;
     pp_addExeLink: boolean;
     pp_addAccessibilityToolbar: boolean;
+    pp_addPrintButton: boolean;
 }
 
 /**
@@ -675,6 +676,7 @@ export class LegacyXmlParser {
             pp_addSearchBox: false,
             pp_addExeLink: true,
             pp_addAccessibilityToolbar: false,
+            pp_addPrintButton: false,
         };
 
         if (!this.xmlDoc) return meta;
@@ -723,6 +725,9 @@ export class LegacyXmlParser {
 
         const addAccessibilityToolbar = this.findDictValue(dict, '_addAccessibilityToolbar');
         if (addAccessibilityToolbar === true) meta.pp_addAccessibilityToolbar = true;
+
+        const addPrintButton = this.findDictValue(dict, '_addPrintButton');
+        if (addPrintButton === true) meta.pp_addPrintButton = true;
 
         const license = this.findDictValue(dict, 'license');
         if (license !== null && license !== undefined && typeof license === 'string') {

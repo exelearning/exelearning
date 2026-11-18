@@ -64,6 +64,9 @@ class MockResourceProvider implements ResourceProvider {
 
     async fetchLibraryFiles(_files: string[]): Promise<Map<string, Buffer>> {
         const files = new Map<string, Buffer>();
+        for (const name of _files.filter(file => file.startsWith('exe_print/'))) {
+            files.set(name, Buffer.from(name.endsWith('strings.json') ? '["Print"]' : '// print resource'));
+        }
         if (_files.includes('material-icons/material-icons.svg')) {
             files.set(
                 'material-icons/material-icons.svg',
@@ -480,6 +483,23 @@ describe('PageExporter', () => {
             const contentXml = zip.files.get('content.xml') as string;
             expect(contentXml).toContain('<?xml');
             expect(contentXml).toContain('<ode');
+        });
+
+        it('should NOT include print button when addPrintButton is false (default)', async () => {
+            await exporter.export();
+
+            const indexHtml = zip.files.get('index.html') as string;
+            expect(indexHtml).not.toContain('id="exe-print-btn"');
+        });
+
+        it('should include print button in index.html when addPrintButton is true', async () => {
+            document = new MockDocument({ addPrintButton: true }, samplePages);
+            exporter = new PageExporter(document, resources, assets, zip);
+            await exporter.export();
+
+            const indexHtml = zip.files.get('index.html') as string;
+            expect(indexHtml).toContain('id="exe-print-btn"');
+            expect(indexHtml).toContain('class="exe-print-action"');
         });
 
         it('should NOT include content.xml when exportSource is false', async () => {

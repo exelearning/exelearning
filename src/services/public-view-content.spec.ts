@@ -335,14 +335,28 @@ describe('buildHtml5PreviewExport (real exporter)', () => {
             page.set('pageId', 'page-1');
             page.set('pageName', 'Welcome page');
             page.set('children', new Y.Array());
-            page.set('blocks', new Y.Array());
+            const blocks = new Y.Array();
+            const block = new Y.Map();
+            const components = new Y.Array();
+            const component = new Y.Map();
+            component.set('id', 'diagram');
+            component.set('type', 'casestudy');
+            const diagram = '<pre class="mermaid">graph LR; Start-->Finish</pre>';
+            component.set('content', diagram);
+            component.set('jsonProperties', JSON.stringify({ history: diagram, activities: [] }));
+            components.push([component]);
+            block.set('components', components);
+            blocks.push([block]);
+            page.set('blocks', blocks);
             ydoc.getArray('navigation').push([page]);
             const metadata = ydoc.getMap('metadata');
             metadata.set('title', 'Public view export');
             metadata.set('language', 'en');
             metadata.set('theme', 'base');
+            metadata.set('addPrintButton', true);
         });
         await saveFullState(db, projectId, Y.encodeStateAsUpdate(ydoc));
+        ydoc.destroy();
     });
 
     afterAll(async () => {
@@ -357,5 +371,13 @@ describe('buildHtml5PreviewExport (real exporter)', () => {
         expect(result.success).toBe(true);
         const files = unzipSync(result.data!);
         expect(strFromU8(files['index.html'])).toContain('Welcome page');
-    });
+        expect(strFromU8(files['index.html'])).toContain('exe-mermaid-rendered');
+        const script = strFromU8(files['libs/exe_print/data.js']);
+        const data = JSON.parse(script.slice('window.__exePrintPackage='.length, -1));
+        const component = data.pages[0].blocks[0].components[0];
+        expect(component.content).toContain('<svg');
+        expect(component.properties.history).toContain('<svg');
+        expect(component.properties.history).not.toContain('<pre class="mermaid"');
+        expect(Object.keys(files).some(name => /mermaid\.min\.js/.test(name))).toBe(false);
+    }, 60_000);
 });
