@@ -2608,7 +2608,7 @@ describe('common_idevices_edition.js', () => {
         checkbox().dispatchEvent(new Event('change', { bubbles: true }));
 
         expect(feedback().getValues()).toBe(false);
-        expect(globalThis.eXe.app.alert).toHaveBeenCalledWith('Write the message to display when passing the game');
+        expect(globalThis.eXe.app.alert).toHaveBeenCalledWith('Write the message to be displayed when passing the game');
       });
 
       it('stays on when a message is loaded afterwards, as the author chose', () => {
@@ -2647,7 +2647,7 @@ describe('common_idevices_edition.js', () => {
         checkbox().checked = true;
 
         expect(feedback().getValues()).toBe(false);
-        expect(globalThis.eXe.app.alert).toHaveBeenCalledWith('Write the message to display when passing the game');
+        expect(globalThis.eXe.app.alert).toHaveBeenCalledWith('Write the message to be displayed when passing the game');
       });
 
       it('refuses a message of empty paragraphs while the feedback is on', () => {
@@ -2656,7 +2656,7 @@ describe('common_idevices_edition.js', () => {
         feedback().setText('<p>&nbsp;</p>');
 
         expect(feedback().getValues()).toBe(false);
-        expect(globalThis.eXe.app.alert).toHaveBeenCalledWith('Write the message to display when passing the game');
+        expect(globalThis.eXe.app.alert).toHaveBeenCalledWith('Write the message to be displayed when passing the game');
       });
 
       it('opens the Feedback tab behind the warning, where the message is written', () => {
@@ -2674,7 +2674,7 @@ describe('common_idevices_edition.js', () => {
         expect(feedback().getValues()).toBe(false);
         expect(feedbackTab().getAttribute('aria-selected')).toBe('true');
         expect(document.getElementById('testForm-panel-feedback').classList.contains('active')).toBe(true);
-        expect(globalThis.eXe.app.alert).toHaveBeenCalledWith('Write the message to display when passing the game');
+        expect(globalThis.eXe.app.alert).toHaveBeenCalledWith('Write the message to be displayed when passing the game');
       });
 
       it('accepts an empty message while the feedback is off', () => {
@@ -2799,7 +2799,7 @@ describe('common_idevices_edition.js', () => {
         feedback().setRequired(true);
 
         expect(feedback().getValues()).toBe(false);
-        expect(globalThis.eXe.app.alert).toHaveBeenCalledWith('Write the message to display when passing the game');
+        expect(globalThis.eXe.app.alert).toHaveBeenCalledWith('Write the message to be displayed when passing the game');
 
         feedback().setValues({ textFeedBack: 'Well done' });
         expect(feedback().getValues()).toEqual({ feedBack: false, percentajeFB: 100, textFeedBack: 'Well done' });

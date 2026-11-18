@@ -470,7 +470,7 @@ describe('complete edition: shared form tabs and feedback', () => {
             $('#eXeGameHasFeedBack').prop('checked', true).trigger('change');
 
             expect(device.validateData()).toBe(false);
-            expect(eXe.app.getLastAlert()).toBe('Write the message to display when passing the game');
+            expect(eXe.app.getLastAlert()).toBe('Write the message to be displayed when passing the game');
         });
     });
 });

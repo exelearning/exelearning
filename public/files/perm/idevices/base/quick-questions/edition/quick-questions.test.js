@@ -729,7 +729,7 @@ describe('quick-questions edition: shared form tabs and feedback', () => {
       device.updateFieldGame(game({ questionsGame: device.questionsGame, gameMode: 2 }));
 
       expect(device.validateData()).toBe(false);
-      expect(global.eXe.app.alert).toHaveBeenCalledWith('Write the message to display when passing the game');
+      expect(global.eXe.app.alert).toHaveBeenCalledWith('Write the message to be displayed when passing the game');
     });
   });
 

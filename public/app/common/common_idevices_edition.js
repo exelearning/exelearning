@@ -938,7 +938,9 @@ var $exeIDevicesEdition = {
                     if ((feedBack || required) && !feedback.hasMessage(textFeedBack)) {
                         // Behind the warning, the tab where the message is written.
                         $exeIDevicesEdition.iDevice.tabs.showTabOf('eXeGameFeedBackEditor');
-                        eXe.app.alert(_('Write the message to display when passing the game'));
+                        // Worded as quick-questions-video's own warning was before this
+                        // check was shared, so that it keeps its translations.
+                        eXe.app.alert(_('Write the message to be displayed when passing the game'));
                         return false;
                     }
                     return {

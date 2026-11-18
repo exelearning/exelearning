@@ -923,7 +923,7 @@ describe('select-media-files edition: shared form tabs and feedback', () => {
             $('#eXeGameHasFeedBack').prop('checked', true).trigger('change');
 
             expect(device.save()).toBe(false);
-            expect(eXe.app.getLastAlert()).toBe('Write the message to display when passing the game');
+            expect(eXe.app.getLastAlert()).toBe('Write the message to be displayed when passing the game');
         });
 
         it('loads with the feedback off an activity saved with it on and no message, and saves it', () => {

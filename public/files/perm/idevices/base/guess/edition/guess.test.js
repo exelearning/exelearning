@@ -911,7 +911,7 @@ describe('guess edition: shared form tabs and feedback', () => {
       device.updateFieldGame(game({ wordsGame: device.wordsGame, gameMode: 2 }));
 
       expect(device.validateData()).toBe(false);
-      expect(global.eXe.app.alert).toHaveBeenCalledWith('Write the message to display when passing the game');
+      expect(global.eXe.app.alert).toHaveBeenCalledWith('Write the message to be displayed when passing the game');
     });
 
     // Two errors in two tabs: the access code is missing and the report identifier is too short.

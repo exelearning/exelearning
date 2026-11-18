@@ -1048,7 +1048,7 @@ describe('classify edition: shared form tabs and feedback', () => {
 
         it('asks for an image or a sound when an iDevice just added is saved', () => {
             expect(device.save()).toBe(false);
-            expect(eXe.app.getLastAlert()).toBe('Add an image or a sound to the card');
+            expect(eXe.app.getLastAlert()).toBe('You must link an image or sound to this card');
         });
 
         it('keeps the author of the activity apart from the author of each card', () => {
