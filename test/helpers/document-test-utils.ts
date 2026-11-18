@@ -22,7 +22,11 @@ import * as path from 'path';
 import { ElpxImporter, FileSystemAssetHandler } from '../../src/shared/import';
 import { ServerYjsDocumentWrapper, YjsDocumentAdapter } from '../../src/shared/export';
 import type { ExportDocument } from '../../src/shared/export';
-import type { ParsedOdeStructure } from '../../src/services/xml/xml-parser';
+import type { NormalizedComponent, OdeXmlMeta, ParsedOdeStructure } from '../../src/services/xml/interfaces';
+
+// Fields hand-built structures may carry beyond the parser's declared types
+type MetaWithCustomStyles = OdeXmlMeta & { customStyles?: string };
+type ComponentWithJsonProperties = NormalizedComponent & { jsonProperties?: string | Record<string, unknown> };
 
 /**
  * Result from createDocumentFromElpFile
@@ -99,7 +103,7 @@ export function createDocumentFromStructure(structure: ParsedOdeStructure, extra
  * @param structure - Parsed structure data
  */
 export function populateYDocFromStructure(ydoc: Y.Doc, structure: ParsedOdeStructure): void {
-    const meta = structure.meta;
+    const meta: MetaWithCustomStyles = structure.meta;
 
     // Populate metadata
     const metadata = ydoc.getMap('metadata');
@@ -157,7 +161,8 @@ export function populateYDocFromStructure(ydoc: Y.Doc, structure: ParsedOdeStruc
             blockMap.set('order', 0);
 
             const componentsArray = new Y.Array();
-            for (const comp of page.components) {
+            const components: ComponentWithJsonProperties[] = page.components;
+            for (const comp of components) {
                 const compMap = new Y.Map();
                 compMap.set('id', comp.id);
                 compMap.set('type', comp.type);
