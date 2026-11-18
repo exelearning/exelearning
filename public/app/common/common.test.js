@@ -1978,6 +1978,43 @@ describe('common.js $exeDevices', () => {
       expect(helpers.isJsonString('{invalid}')).toBe(false);
     });
 
+    it('decodeStoredText decodes a text stored escaped', () => {
+      const helpers = getHelpers();
+      expect(helpers.decodeStoredText(escape('<p>Le%C3%B3n y León</p>'))).toBe('<p>Le%C3%B3n y León</p>');
+    });
+
+    it('decodeStoredText leaves a text stored as written, percent-encoded links included', () => {
+      const helpers = getHelpers();
+      const text = '<p>Mira el <a href="https://es.wikipedia.org/wiki/An%C3%A9lido">anélido</a></p>';
+      expect(helpers.decodeStoredText(text)).toBe(text);
+    });
+
+    it('decodeStoredText decodes a text without tags stored escaped', () => {
+      const helpers = getHelpers();
+      for (const text of ['Hola mundo', 'Canción de León', 'Cuesta 5 €', '100%']) {
+        expect(helpers.decodeStoredText(escape(text))).toBe(text);
+      }
+    });
+
+    it('decodeStoredText leaves a text without tags that escape() could not have written', () => {
+      const helpers = getHelpers();
+      for (const text of [
+        'Ver https://es.wikipedia.org/wiki/An%C3%A9lido',
+        '50%20 del total',
+        'An%C3%A9lido',
+        '100%',
+        'Sube un 5%zz',
+      ]) {
+        expect(helpers.decodeStoredText(text)).toBe(text);
+      }
+    });
+
+    it('decodeStoredText returns an empty string for anything but a string', () => {
+      const helpers = getHelpers();
+      expect(helpers.decodeStoredText(undefined)).toBe('');
+      expect(helpers.decodeStoredText(null)).toBe('');
+    });
+
     it('shuffleAds returns shuffled array', () => {
       const helpers = getHelpers();
       const arr = [1, 2, 3, 4, 5];

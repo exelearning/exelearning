@@ -68,16 +68,11 @@ window.abcjsLoad = () => {
     abc = [];
     is_n_audio_ok = false;
     var audioDivs = window.document.querySelectorAll(".abcjs-audio");
-    var htmlSource = parent.document.querySelector("#htmlSource");
-    if (htmlSource !== null) {
-        htmlSource = htmlSource.value;
-        abc.push(htmlSource);
-    } else {
-        htmlSource = window.document.querySelectorAll("pre.abc-music");
-        htmlSource.forEach(element => {
-            abc.push(element.textContent);
-        });
-    }
+    // One tune per pre.abc-music of this page (the TinyMCE preview dialog builds it too).
+    // Never read parent.document: it throws in sandboxed or cross-origin frames (public view, LMS, EPUB).
+    window.document.querySelectorAll("pre.abc-music").forEach(element => {
+        abc.push(element.textContent);
+    });
     multipleLoads(audioDivs, 0);
 }
 

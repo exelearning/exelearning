@@ -168,6 +168,31 @@ describe('Asset Queries', () => {
             expect(found?.project.title).toBeDefined();
         });
 
+        it('should return the asset metadata along with the project', async () => {
+            const asset = await createAsset(db, {
+                project_id: testProjectId,
+                filename: 'with-metadata.png',
+                storage_path: '/path',
+                description: 'A sunset',
+                title: 'Sunset',
+                license: 'CC BY 4.0',
+                author: 'Ada',
+                author_url: 'https://ada.example',
+                source_url: 'https://example.com/sunset.png',
+            });
+
+            const found = await findAssetByIdWithProject(db, asset.id);
+
+            expect(found).toMatchObject({
+                description: 'A sunset',
+                title: 'Sunset',
+                license: 'CC BY 4.0',
+                author: 'Ada',
+                author_url: 'https://ada.example',
+                source_url: 'https://example.com/sunset.png',
+            });
+        });
+
         it('should return undefined for non-existent asset', async () => {
             const found = await findAssetByIdWithProject(db, 99999);
             expect(found).toBeUndefined();

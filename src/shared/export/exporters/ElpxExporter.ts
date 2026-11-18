@@ -27,7 +27,7 @@
  *     - odeComponents (iDevices)
  */
 
-import type { ExportOptions, ExportResult, ElpxExportOptions } from '../interfaces';
+import { type ExportOptions, type ExportResult, type ElpxExportOptions } from '../interfaces';
 import { Html5Exporter } from './Html5Exporter';
 import { validateXml, formatValidationErrors } from '../../../services/xml/xml-parser';
 import { ODE_DTD_FILENAME, ODE_DTD_CONTENT } from '../constants';
@@ -305,7 +305,7 @@ export class ElpxExporter extends Html5Exporter {
                 addFile('theme/style.js', this.getFallbackThemeJs());
             }
 
-            // 1.6 Fetch base libraries (always included - jQuery, Bootstrap, exe_lightbox, etc.)
+            // 1.6 Fetch base libraries (always included - jQuery, Bootstrap, common.js, etc.)
             try {
                 this.logElpxExportDebugPhase('exporter:base-libs:start');
                 const baseLibs = await this.resources.fetchBaseLibraries();

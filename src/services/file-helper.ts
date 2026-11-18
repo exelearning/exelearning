@@ -28,7 +28,7 @@ import {
     resolveAssetStoragePath as resolveAssetStoragePathPure,
     tryResolveAssetStoragePath as tryResolveAssetStoragePathPure,
 } from '../utils/asset-paths';
-import { UnsafePathError } from '../utils/safe-path';
+import { isSafePathSegment, UnsafePathError } from '../utils/safe-path';
 
 // ============================================================================
 // Types and Interfaces
@@ -121,7 +121,17 @@ export function createFileHelper(deps: FileHelperDeps = {}): FileHelper {
         return subPath ? path.join(tempBase, subPath) : tempBase;
     };
 
+    // Session IDs reach rm -rf in cleanup paths and are not format-validated at
+    // every creation site (projects.uuid), so anything that is not a single
+    // safe segment is rejected instead of being joined onto FILES_DIR.
+    const assertSessionId = (odeSessionId: string): void => {
+        if (!isSafePathSegment(odeSessionId, { allowDots: true })) {
+            throw new UnsafePathError('Invalid session identifier');
+        }
+    };
+
     const getOdeSessionTempDir = (odeSessionId: string): string => {
+        assertSessionId(odeSessionId);
         const filesDir = getFilesDir();
         const sessionPath = getOdeSessionPath(odeSessionId, filesDir);
 
@@ -139,6 +149,7 @@ export function createFileHelper(deps: FileHelperDeps = {}): FileHelper {
     };
 
     const getOdeSessionDistDir = (odeSessionId: string): string => {
+        assertSessionId(odeSessionId);
         const dateComponents = getSessionDateComponents(odeSessionId);
         const filesDir = getFilesDir();
 

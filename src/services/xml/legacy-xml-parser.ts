@@ -9,6 +9,7 @@ import {
     LegacyInstanceXmlDocument,
     LegacyInstanceNode,
     RealOdeNavStructure,
+    RealOdeXmlDocument,
 } from './interfaces';
 import { generateId } from '../../utils/id-generator.util';
 
@@ -50,22 +51,22 @@ export function parse(
 
     // Convert to raw structure
     const navStructures = convertPagesToRealOdeNavStructures(pages);
-    const raw = {
+    const raw: RealOdeXmlDocument = {
         ode: {
             odeNavStructures: {
                 odeNavStructure: navStructures,
             },
             odeProperties: {
                 odeProperty: [
-                    { propertyKey: 'pp_title', propertyValue: meta.title },
-                    { propertyKey: 'pp_author', propertyValue: meta.author },
-                    { propertyKey: 'pp_description', propertyValue: meta.description },
+                    { key: 'pp_title', value: meta.title },
+                    { key: 'pp_author', value: meta.author },
+                    { key: 'pp_description', value: meta.description ?? '' },
                 ],
             },
         },
     };
 
-    const navigation = { page: pages };
+    const navigation = { page: pages } as unknown as import('./interfaces').OdeXmlNavigation;
 
     if (DEBUG) console.log(`[LegacyParser] Collected ${srcRoutes.length} resource paths`);
 
@@ -284,7 +285,7 @@ function flattenRootChildren(pages: NormalizedPage[], rootRef: string): Normaliz
         // For other nodes, count parent chain depth
         // but stop at direct children (which are now level 0)
         let level = 0;
-        let currentParentId = page.parent_id;
+        let currentParentId: string | null = page.parent_id;
         while (currentParentId && level < 10) {
             if (directChildIds.has(currentParentId) || currentParentId === rootRef) {
                 // Parent is now a top-level page
@@ -404,11 +405,11 @@ function extractIdeviceTitle(inst: LegacyInstanceNode): string {
         const unicodes = Array.isArray(dict.unicode) ? dict.unicode : [dict.unicode];
 
         for (let i = 0; i < strings.length; i++) {
-            const strItem = strings[i] as Record<string, unknown> | string;
+            const strItem = strings[i] as unknown as Record<string, unknown> | string;
             const strValue = typeof strItem === 'object' && strItem !== null ? strItem['@_value'] : strItem;
 
             if ((strValue === '_title' || strValue === 'title') && unicodes[i]) {
-                const unicodeItem = unicodes[i] as Record<string, unknown>;
+                const unicodeItem = unicodes[i] as unknown as Record<string, unknown>;
                 const title =
                     typeof unicodeItem === 'object' && unicodeItem !== null
                         ? (unicodeItem['@_value'] as string)
@@ -803,5 +804,5 @@ function convertPagesToRealOdeNavStructures(pages: NormalizedPage[]): RealOdeNav
                           },
                       ],
         },
-    }));
+    })) as unknown as RealOdeNavStructure[];
 }

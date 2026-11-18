@@ -30,6 +30,7 @@ if (isRunningOnlyStatic) {
 
 // Shared environment for dynamic server (chromium/firefox)
 const dynamicServerEnv = {
+    NODE_ENV: 'test',
     DB_PATH: ':memory:',
     // FIX: '/tmp/' usually does not exist on Windows.
     // We use the OS temporary folder dynamically.
@@ -99,7 +100,9 @@ function getWebServerConfig() {
         return dynamicWebServer;
     }
     // Mixed or all projects - start both servers
-    return [dynamicWebServer, staticWebServer].filter(Boolean);
+    return [dynamicWebServer, staticWebServer].filter((server): server is NonNullable<typeof server> =>
+        Boolean(server),
+    );
 }
 
 export default defineConfig({
@@ -190,7 +193,8 @@ export default defineConfig({
                 baseURL: process.env.E2E_BASE_URL || 'http://localhost:3001',
                 serviceWorkers: 'allow',
             },
-            testIgnore: /.*-static\.spec\.ts/,
+            // project-properties-tabs needs forcedColors emulation, which Playwright only supports in Chromium
+            testIgnore: [/.*-static\.spec\.ts/, /project-properties-tabs\.spec\.ts/],
         },
         // {
         //     name: 'webkit',

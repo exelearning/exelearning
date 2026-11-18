@@ -56,14 +56,6 @@ export default class MenuEngine {
 
         // Initialize mobile button handlers
         this.initMobileButtonHandlers();
-
-        // Initialize mobile layout based on screen size
-        this.initMobileLayout();
-
-        // Handle resize events
-        window.addEventListener('resize', () => {
-            this.handleResponsiveLayout();
-        });
     }
 
     /**
@@ -100,29 +92,6 @@ export default class MenuEngine {
                 }
             });
         });
-    }
-
-    /**
-     * Initialize mobile layout - collapse left panel by default on mobile
-     */
-    initMobileLayout() {
-        const isMobile = window.innerWidth < 768;
-        if (isMobile) {
-            document.body.classList.add('left-column-hidden');
-        }
-    }
-
-    /**
-     * Handle responsive layout changes
-     */
-    handleResponsiveLayout() {
-        const isMobile = window.innerWidth < 768;
-        if (isMobile && !this._wasResizedToMobile) {
-            document.body.classList.add('left-column-hidden');
-            this._wasResizedToMobile = true;
-        } else if (!isMobile) {
-            this._wasResizedToMobile = false;
-        }
     }
 
     closeMenusEvent() {

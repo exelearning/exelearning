@@ -7,16 +7,29 @@
     gap: 0;
     width: 100%;
     margin-bottom: 0;
-    border-bottom: 2px solid var(--gray-200, #e5e7eb);
+    // One row that scrolls when the tabs do not fit; the thin scrollbar keeps every tab reachable with a mouse
+    overflow-x: auto;
+    scrollbar-width: thin;
+    // Underlines are inset shadows so the scroll box does not clip them
+    box-shadow: inset 0 -2px 0 var(--gray-200, #e5e7eb);
+
+    &::-webkit-scrollbar {
+        height: 6px;
+    }
+
+    &::-webkit-scrollbar-thumb {
+        background: var(--gray-300, #d1d5db);
+        border-radius: 3px;
+    }
 
     .project-properties-tab {
-        padding: 10px 20px;
+        flex: 0 0 auto;
+        padding: 10px 14px;
         font-weight: 500;
+        white-space: nowrap;
         color: var(--gray-500, #6b7280);
         background: transparent;
         border: none;
-        border-bottom: 2px solid transparent;
-        margin-bottom: -2px;
         cursor: pointer;
         transition: all 0.2s ease;
         display: flex;
@@ -30,16 +43,30 @@
 
         &.active {
             color: var(--brand-primary, #0BA1A1);
-            border-bottom-color: var(--brand-primary, #0BA1A1);
+            box-shadow: inset 0 -2px 0 var(--brand-primary, #0BA1A1);
         }
 
-        &:focus {
-            outline: 2px solid var(--brand-primary, #0BA1A1);
-            outline-offset: -2px;
+        // Inset ring: the scroll box would clip the global outer one, which also hides the underline
+        &:focus-visible {
+            box-shadow: inset 0 0 0 2px var(--brand-primary-300) !important;
         }
 
-        &:focus:not(:focus-visible) {
-            outline: none;
+        &.active:focus-visible {
+            // The underline goes first so it is painted over the ring
+            box-shadow: inset 0 -2px 0 var(--brand-primary, #0BA1A1), inset 0 0 0 2px var(--brand-primary-300) !important;
+        }
+
+        // Forced colors drop box-shadow, so the active and focused tabs need a real border and outline
+        @media (forced-colors: active) {
+            &.active {
+                padding-bottom: 8px;
+                border-bottom: 2px solid Highlight;
+            }
+
+            &:focus-visible {
+                outline: 2px solid Highlight !important;
+                outline-offset: -2px;
+            }
         }
     }
 }
@@ -264,25 +291,28 @@
                 }
             }
         }
-        @media (min-width: 1400px) {
-            #props-pane-export .form-properties {
-                overflow: auto;
+        // Up to two columns of switches, sized by the pane rather than the window; the font select takes its own row
+        #props-pane-export .form-properties {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(max(min(100%, 22rem), calc((100% - 2rem) / 2)), 1fr));
+            column-gap: 2rem;
+            .toggle-item {
+                flex-wrap: nowrap;
             }
-            #props-pane-export .form-properties .property-row{
-                max-width: 45%;
-                float: left;
-            }
-            // The two fields that spell out a label above their control read as a
-            // pair, so each one opens its own line in the left column instead of
-            // being pulled up beside the checkbox that happens to precede it.
-            #props-pane-export .form-properties .property-row[property="pp_globalFont"],
-            #props-pane-export .form-properties .property-row[property="pp_passScore"] {
-                clear: left;
+            .property-row[property="pp_globalFont"] {
+                grid-column: 1 / -1;
+                margin-top: 1rem;
+                padding-top: 1.25rem;
+                border-top: 1px solid var(--gray-200, #e5e7eb);
             }
         }
-        .property-row[property="pp_globalFont"],
-        .property-row[property="pp_passScore"] {
-            margin-top:1em;
+        .property-row[property="pp_globalFont"] .form-select {
+            max-width: 24rem;
+        }
+        .properties-note {
+            margin: 0 0 1rem;
+            max-width: 80ch;
+            color: var(--gray-600, #4b5563);
         }
     }
     .footer {

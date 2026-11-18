@@ -41,6 +41,9 @@
     font-weight: 500;
     padding: 0 12px;
     background: var(--brand-primary);
+    // Bootstrap's hover and focus states read these; unset, focus shows white text on white
+    --bs-btn-hover-bg: var(--brand-primary-dark);
+    --bs-btn-hover-color: var(--white);
 
     &:hover,
     &:active {
@@ -57,6 +60,8 @@
         background: transparent;
         border: 1.5px solid var(--brand-primary);
         color: var(--brand-primary);
+        --bs-btn-hover-bg: var(--brand-primary-50);
+        --bs-btn-hover-color: var(--brand-primary-dark);
 
         &:hover {
             background: var(--brand-primary-50) !important;

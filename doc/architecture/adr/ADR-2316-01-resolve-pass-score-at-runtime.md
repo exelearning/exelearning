@@ -461,9 +461,9 @@ only when the value is `true`.
 
 - A new `number` field type in the project properties form, with `min`/`max`/`step`
   declared in the property definition.
-- A checkbox under the minimum score in Export options, "Each SCORM activity
-  must reach its minimum score", whose help text explains the
-  weighted mean that applies while it is unchecked.
+- A checkbox under the minimum score in the Grading tab of the project
+  properties, "Each SCORM activity must reach its minimum score", whose help
+  text explains the weighted mean that applies while it is unchecked.
 - In SCORM exports, a label before the page's score shows the minimum score to
   pass the page, on the same 0-100 scale ("Minimum score to pass: 60/100"), or
   says that each activity must reach its own when that rule decides the page.

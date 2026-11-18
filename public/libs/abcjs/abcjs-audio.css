@@ -241,3 +241,10 @@ pre.abc-music{
 .abcjs-download-midi {
     margin-top: .5em;
 }
+/* Playback: highlighted notes and cursor (CursorControl in exe_abc_music.js) */
+.abcjs-highlight {
+    fill: #0a9ecc;
+}
+.abcjs-cursor {
+    stroke: red;
+}

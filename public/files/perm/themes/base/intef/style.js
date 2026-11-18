@@ -384,11 +384,11 @@ var eXeIntefStyle = {
     setTitleLinks: function () {
         var href = $('#siteNav a').first().attr('href');
         if (!href) return;
-        var nav = $('body').hasClass('siteNav-off') ? 'false' : null;
-        $('.package-title-link').attr(
-            'href',
-            $exeExport.setUrlParam(href, 'nav', nav)
-        );
+        // Keep the nav=true that presentation mode adds to the menu links
+        if ($('body').hasClass('siteNav-off')) {
+            href = $exeExport.setUrlParam(href, 'nav', 'false');
+        }
+        $('.package-title-link').attr('href', href);
     },
     dropdownMenus: function () {
         if (!this.dropdownNavigation) return;

@@ -5,8 +5,6 @@
  * Changes are automatically broadcast to WebSocket clients.
  */
 import { Elysia } from 'elysia';
-import { db } from '../../../db/client';
-import { findProjectByUuid } from '../../../db/queries';
 import {
     withDocument,
     readDocument,
@@ -17,40 +15,21 @@ import {
     setComponentHtml,
     deleteComponent,
 } from '../../../yjs';
+import { castRequestBody } from '../../types/request-payloads';
 import {
     authenticateRequest,
     errorResponse,
     successResponse,
-    isAdmin,
     CreateComponentBody,
     UpdateComponentBody,
     SetHtmlBody,
+    type CreateComponentInput,
+    type UpdateComponentInput,
+    type SetHtmlInput,
     BlockIdParam,
     ComponentIdParam,
-    type AuthenticatedUser,
-    type ApiErrorResponse,
+    checkProjectAccess,
 } from './types';
-
-// ============================================================================
-// HELPERS
-// ============================================================================
-
-async function checkProjectAccess(
-    uuid: string,
-    auth: AuthenticatedUser,
-): Promise<{ project: Awaited<ReturnType<typeof findProjectByUuid>>; error?: ApiErrorResponse }> {
-    const project = await findProjectByUuid(db, uuid);
-
-    if (!project) {
-        return { project: null, error: errorResponse('NOT_FOUND', `Project not found: ${uuid}`) };
-    }
-
-    if (project.owner_id !== auth.userId && !isAdmin(auth)) {
-        return { project: null, error: errorResponse('FORBIDDEN', 'You do not have access to this project') };
-    }
-
-    return { project };
-}
 
 // ============================================================================
 // ROUTES
@@ -62,7 +41,7 @@ export const componentsRoutes = new Elysia({ prefix: '/projects' })
         '/:uuid/blocks/:blockId/components',
         async ({ headers, params, set }) => {
             const authResult = await authenticateRequest(headers);
-            if (!authResult.success) {
+            if (authResult.success === false) {
                 set.status = authResult.status;
                 return authResult.response;
             }
@@ -93,7 +72,7 @@ export const componentsRoutes = new Elysia({ prefix: '/projects' })
         '/:uuid/blocks/:blockId/components',
         async ({ headers, params, body, set }) => {
             const authResult = await authenticateRequest(headers);
-            if (!authResult.success) {
+            if (authResult.success === false) {
                 set.status = authResult.status;
                 return authResult.response;
             }
@@ -105,16 +84,17 @@ export const componentsRoutes = new Elysia({ prefix: '/projects' })
                 return error;
             }
 
+            const input = castRequestBody<CreateComponentInput>(body);
             const { result } = await withDocument(params.uuid, { source: 'rest-api', userId: auth.userId }, ydoc =>
                 createComponent(ydoc, {
                     blockId: params.blockId,
-                    ideviceType: body.ideviceType,
-                    initialData: body.initialData,
-                    order: body.order,
+                    ideviceType: input.ideviceType,
+                    initialData: input.initialData,
+                    order: input.order,
                 }),
             );
 
-            if (!result.success) {
+            if (result.success === false) {
                 set.status = result.error?.includes('not found') ? 404 : 400;
                 return errorResponse('CREATE_FAILED', result.error || 'Failed to create component');
             }
@@ -138,7 +118,7 @@ export const componentsRoutes = new Elysia({ prefix: '/projects' })
         '/:uuid/components/:componentId',
         async ({ headers, params, set }) => {
             const authResult = await authenticateRequest(headers);
-            if (!authResult.success) {
+            if (authResult.success === false) {
                 set.status = authResult.status;
                 return authResult.response;
             }
@@ -174,7 +154,7 @@ export const componentsRoutes = new Elysia({ prefix: '/projects' })
         '/:uuid/components/:componentId',
         async ({ headers, params, body, set }) => {
             const authResult = await authenticateRequest(headers);
-            if (!authResult.success) {
+            if (authResult.success === false) {
                 set.status = authResult.status;
                 return authResult.response;
             }
@@ -186,20 +166,21 @@ export const componentsRoutes = new Elysia({ prefix: '/projects' })
                 return error;
             }
 
+            const input = castRequestBody<UpdateComponentInput>(body);
             const { result } = await withDocument(params.uuid, { source: 'rest-api', userId: auth.userId }, ydoc =>
                 updateComponent(ydoc, params.componentId, {
-                    htmlContent: body.htmlContent,
-                    htmlView: body.htmlView,
-                    properties: body.properties,
-                    jsonProperties: body.jsonProperties,
-                    title: body.title,
-                    subtitle: body.subtitle,
-                    instructions: body.instructions,
-                    feedback: body.feedback,
+                    htmlContent: input.htmlContent,
+                    htmlView: input.htmlView,
+                    properties: input.properties,
+                    jsonProperties: input.jsonProperties,
+                    title: input.title,
+                    subtitle: input.subtitle,
+                    instructions: input.instructions,
+                    feedback: input.feedback,
                 }),
             );
 
-            if (!result.success) {
+            if (result.success === false) {
                 set.status = result.error?.includes('not found') ? 404 : 400;
                 return errorResponse('UPDATE_FAILED', result.error || 'Failed to update component');
             }
@@ -222,7 +203,7 @@ export const componentsRoutes = new Elysia({ prefix: '/projects' })
         '/:uuid/components/:componentId/html',
         async ({ headers, params, body, set }) => {
             const authResult = await authenticateRequest(headers);
-            if (!authResult.success) {
+            if (authResult.success === false) {
                 set.status = authResult.status;
                 return authResult.response;
             }
@@ -234,11 +215,12 @@ export const componentsRoutes = new Elysia({ prefix: '/projects' })
                 return error;
             }
 
+            const input = castRequestBody<SetHtmlInput>(body);
             const { result } = await withDocument(params.uuid, { source: 'rest-api', userId: auth.userId }, ydoc =>
-                setComponentHtml(ydoc, params.componentId, body.html),
+                setComponentHtml(ydoc, params.componentId, input.html),
             );
 
-            if (!result.success) {
+            if (result.success === false) {
                 set.status = result.error?.includes('not found') ? 404 : 400;
                 return errorResponse('UPDATE_FAILED', result.error || 'Failed to update HTML');
             }
@@ -261,7 +243,7 @@ export const componentsRoutes = new Elysia({ prefix: '/projects' })
         '/:uuid/components/:componentId',
         async ({ headers, params, set }) => {
             const authResult = await authenticateRequest(headers);
-            if (!authResult.success) {
+            if (authResult.success === false) {
                 set.status = authResult.status;
                 return authResult.response;
             }
@@ -277,7 +259,7 @@ export const componentsRoutes = new Elysia({ prefix: '/projects' })
                 deleteComponent(ydoc, params.componentId),
             );
 
-            if (!result.success) {
+            if (result.success === false) {
                 set.status = result.error?.includes('not found') ? 404 : 400;
                 return errorResponse('DELETE_FAILED', result.error || 'Failed to delete component');
             }

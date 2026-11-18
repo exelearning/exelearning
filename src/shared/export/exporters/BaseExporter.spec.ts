@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect, beforeEach } from 'bun:test';
-import { BaseExporter, resolveMaterialIconDataUris } from './BaseExporter';
+import { BaseExporter, fetchNavLabels, resolveMaterialIconDataUris } from './BaseExporter';
 import type {
     ExportDocument,
     ExportMetadata,
@@ -201,6 +201,10 @@ class TestExporter extends BaseExporter {
     }
 
     // Expose protected methods for testing
+    testFetchNavLabels(language: string, license?: string): ReturnType<typeof fetchNavLabels> {
+        return this.fetchNavLabels(language, license);
+    }
+
     testGenerateElpxManifestFile(fileList: string[]): string {
         return this.generateElpxManifestFile(fileList);
     }
@@ -242,6 +246,26 @@ describe('BaseExporter', () => {
         assets = new MockAssetProvider();
         zip = new MockZipProvider();
         exporter = new TestExporter(document, resources, assets, zip);
+    });
+
+    it('fetches navigation and license labels through its injected resource provider', async () => {
+        const license = 'creative commons: attribution - share alike 4.0';
+        const requestedLanguages: string[] = [];
+        resources.fetchI18nTranslations = async language => {
+            requestedLanguages.push(language);
+            return new Map([
+                [license, 'Creative Commons: Reconocimiento - compartir igual 4.0'],
+                ['License', 'Licencia'],
+                ['Previous', 'Anterior'],
+            ]);
+        };
+
+        const labels = await exporter.testFetchNavLabels('es', license);
+
+        expect(requestedLanguages).toEqual(['es']);
+        expect(labels.license).toBe('Creative Commons: Reconocimiento - compartir igual 4.0');
+        expect(labels.licenseLabel).toBe('Licencia');
+        expect(labels.previous).toBe('Anterior');
     });
 
     describe('Structure Access', () => {
@@ -2160,5 +2184,48 @@ describe('resolveMaterialIconDataUris', () => {
         const { files, dataUris } = await resolveMaterialIconDataUris(resources, pageWithMaterialIcons('mi-lightbulb'));
         expect(dataUris.size).toBe(0);
         expect(files.size).toBe(0);
+    });
+});
+
+describe('fetchNavLabels', () => {
+    const translatedResources = (translations: Record<string, string>): ResourceProvider => {
+        const resources = new MockResourceProvider();
+        resources.fetchI18nTranslations = async () => new Map(Object.entries(translations));
+        return resources;
+    };
+
+    it("translates a license through its key, and the footer's other labels", async () => {
+        const labels = await fetchNavLabels(
+            translatedResources({
+                'creative commons: attribution - share alike 4.0':
+                    'Creative Commons: Reconocimiento - compartir igual 4.0',
+                License: 'Licencia',
+                Previous: 'Anterior',
+                'Made with eXeLearning': 'Creado con eXeLearning',
+            }),
+            'es',
+            'creative commons: attribution - share alike 4.0',
+        );
+
+        expect(labels.license).toBe('Creative Commons: Reconocimiento - compartir igual 4.0');
+        expect(labels.licenseLabel).toBe('Licencia');
+        expect(labels.previous).toBe('Anterior');
+        expect(labels.madeWith).toBe('Creado con eXeLearning');
+    });
+
+    it('falls back to the English source of each label it has no translation for', async () => {
+        const labels = await fetchNavLabels(new MockResourceProvider(), 'xx', 'propietary license');
+
+        // Not a Creative Commons key: its translation key is the display name
+        expect(labels.license).toBe('Proprietary license');
+        expect(labels.licenseLabel).toBe('License');
+        expect(labels.next).toBe('Next');
+        expect(labels.page).toBe('Page');
+        expect(labels.newWindow).toBe('New window');
+    });
+
+    it('leaves the license out when the project has none', async () => {
+        const labels = await fetchNavLabels(new MockResourceProvider(), 'en', '');
+        expect(labels.license).toBe('');
     });
 });

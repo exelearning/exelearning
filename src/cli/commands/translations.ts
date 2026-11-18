@@ -32,6 +32,8 @@ export interface TranslationsResult {
         extracted: number;
         cleaned: number;
         removed: number;
+        /** Keys with more than one trans-unit in at least one locale. */
+        duplicates: number;
         locales: string[];
     };
 }
@@ -187,6 +189,7 @@ const EXCLUDE_FILE_PATTERNS = [
     /\.spec\.ts$/, // Backend test files
     /\.test\.ts$/, // Backend test files
     /\.test\.js$/, // Frontend test files
+    /\.d\.ts$/, // Type declarations of vendored libraries
     /[\\/]+exe_math[\\/]+/, // MathJax directory (has its own t() calls)
     /[\\/]+node_modules[\\/]+/, // Dependencies
     /[\\/]+cli[\\/]+commands[\\/]+translations\.ts$/, // This file (TRANS_PREFIX pattern matches its own source)
@@ -197,7 +200,9 @@ const EXCLUDE_FILE_PATTERNS = [
     /[\\/]+shared[\\/]+export[\\/]+generators[\\/]+I18nGenerator\.ts$/, // Has translation strings in comments only
     /[\\/]+tinymce_5[\\/]+js[\\/]+tinymce[\\/]+plugins[\\/]+lists[\\/]+plugin\.min\.js$/, // TinyMCE lists plugin (minified, not translatable)
     /[\\/]+jquery-ui[\\/]+jquery-ui\.min\.js$/, // jQuery UI (minified, not translatable)
+    /[\\/]+libs[\\/]+pdfjs[\\/]+/, // pdf.js (minified, its embedded binary data contains `_(`-like sequences)
     /[\\/]+app\.bundle\.js$/, // Compiled bundle (stale; sources are scanned directly)
+    /[\\/]+mindmap-editor\.bundle\.js$/, // Mind map editor bundle (its src/*.ts are scanned)
 ];
 
 /**
@@ -217,6 +222,10 @@ const INVALID_KEY_PATTERNS = [
     /^new\.key\./, // new.key.from.source
     /^existing\.key$/, // existing.key
     /^key$/, // just "key"
+    // Characters outside the XML 1.0 Char production (control characters, lone surrogates,
+    // U+FFFE/U+FFFF). Minified or binary sources can produce them, and writing one would make
+    // every XLF file unparseable.
+    /[^\t\n\r\u0020-\uD7FF\uE000-\uFFFD\u{10000}-\u{10FFFF}]/u,
 ];
 
 /**
@@ -227,7 +236,7 @@ function shouldExcludeFile(filePath: string): boolean {
 }
 
 /**
- * Check if a key looks like a test pattern or is explicitly excluded
+ * Check if a key looks like a test pattern, is explicitly excluded or cannot be written to XML
  */
 function isInvalidKey(key: string): boolean {
     return EXCLUDE_EXACT_KEYS.has(key) || INVALID_KEY_PATTERNS.some(pattern => pattern.test(key));
@@ -273,6 +282,8 @@ export async function extractTranslationKeys(): Promise<Set<string>> {
         new Glob('views/**/*.njk'),
         new Glob('public/app/**/*.js'),
         new Glob('public/libs/**/*.js'),
+        // TypeScript built into a bundle, such as the exemindmap editor
+        new Glob('public/libs/**/*.ts'),
         new Glob('public/files/perm/idevices/**/*.js'),
     ];
 
@@ -475,6 +486,24 @@ function removeObsoleteTransUnits(content: string, validKeys: Set<string>): { co
 }
 
 /**
+ * Return the keys that have more than one trans-unit, in file order.
+ * The catalogue keeps only the last unit it reads, so the others never reach the UI.
+ * Choosing which target to keep is a translation decision, so they are reported, not removed.
+ */
+export function findDuplicateResnames(content: string): string[] {
+    const seen = new Set<string>();
+    const duplicates = new Set<string>();
+    for (const match of content.matchAll(/<trans-unit\b[^>]*\bresname="([^"]*)"/g)) {
+        const key = unescapeXml(match[1]);
+        if (seen.has(key)) {
+            duplicates.add(key);
+        }
+        seen.add(key);
+    }
+    return [...duplicates];
+}
+
+/**
  * Process a single locale
  */
 async function processLocale(
@@ -483,12 +512,12 @@ async function processLocale(
     extractOnly: boolean,
     cleanOnly: boolean,
     removeObsolete: boolean,
-): Promise<{ extracted: number; cleaned: boolean; removed: number }> {
+): Promise<{ extracted: number; cleaned: boolean; removed: number; duplicates: string[] }> {
     const xlfPath = path.join(getTranslationsDir(), `messages.${locale}.xlf`);
 
     if (!fs.existsSync(xlfPath)) {
         warning(`XLF file not found: ${xlfPath}`);
-        return { extracted: 0, cleaned: false, removed: 0 };
+        return { extracted: 0, cleaned: false, removed: 0, duplicates: [] };
     }
 
     let content = fs.readFileSync(xlfPath, 'utf-8');
@@ -536,7 +565,15 @@ async function processLocale(
     // Write back
     fs.writeFileSync(xlfPath, content, 'utf-8');
 
-    return { extracted, cleaned, removed };
+    const duplicates = findDuplicateResnames(content);
+    if (duplicates.length > 0) {
+        warning(
+            `${locale}: ${duplicates.length} key(s) have more than one trans-unit and only the last one is used. ` +
+                `Keep one unit for each: ${duplicates.map(key => JSON.stringify(key)).join(', ')}`,
+        );
+    }
+
+    return { extracted, cleaned, removed, duplicates };
 }
 
 export async function execute(
@@ -600,6 +637,7 @@ export async function execute(
     let totalExtracted = 0;
     let totalCleaned = 0;
     let totalRemoved = 0;
+    const duplicateKeys = new Set<string>();
 
     for (const locale of locales) {
         info(`Processing locale: ${locale}`);
@@ -607,6 +645,7 @@ export async function execute(
         totalExtracted += result.extracted;
         totalRemoved += result.removed;
         if (result.cleaned) totalCleaned++;
+        for (const key of result.duplicates) duplicateKeys.add(key);
     }
 
     const messages: string[] = [];
@@ -619,6 +658,9 @@ export async function execute(
             messages.push(`Removed ${totalRemoved} obsolete trans-units across ${locales.length} locales`);
         }
     }
+    if (duplicateKeys.size > 0) {
+        messages.push(`${duplicateKeys.size} keys have duplicate trans-units (see warnings)`);
+    }
 
     return {
         success: true,
@@ -627,6 +669,7 @@ export async function execute(
             extracted: totalExtracted,
             cleaned: totalCleaned,
             removed: totalRemoved,
+            duplicates: duplicateKeys.size,
             locales,
         },
     };
@@ -669,6 +712,7 @@ ${colors.cyan('Extraction:')}
   - views/**/*.njk
   - public/app/**/*.js
   - public/libs/**/*.js
+  - public/libs/**/*.ts
   - public/files/perm/idevices/**/*.js
 
 ${colors.cyan('Generated sources:')}

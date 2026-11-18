@@ -364,13 +364,14 @@ var $eXeListaCotejo = {
                     localStorage.removeItem(mOptions.storageKey);
                 }
                 mOptions.points = 0;
-                mOptions.totalPoints = 0;
                 $('#ctjUserName-' + instance).val('');
                 $('#ctjUserDate-' + instance).val('');
-                $('#ctjItems-' + instance).empty();
-                $('#ctjItems-' + instance).append(
-                    $eXeListaCotejo.createItems(instance)
-                );
+                // Clear the items where they stand: rebuilding them dropped the
+                // handlers bound to them and any formula typeset in them.
+                const $items = $('#ctjItems-' + instance);
+                $items.find("input[type='checkbox']").prop('checked', false);
+                $items.find("input[type='text']").val('');
+                $items.find('select').val('0');
                 $eXeListaCotejo.counter(instance);
             }
         });
@@ -727,7 +728,7 @@ var $eXeListaCotejo = {
             } else if (level.type === '1') {
                 const cid = `ctjToggle-${instance}-${i}`;
                 html += `<div class="CTJP-Item d-flex align-item-center flex-nowrap gap-1"  style="margin-left: ${marginLeft}em">
-                        <div class="toggle-control"
+                        <div class="toggle-control">
                             <input type="checkbox" id="${cid}" class="toggle-input" />
                             <span class="toggle-visual"></span>
                         </div>

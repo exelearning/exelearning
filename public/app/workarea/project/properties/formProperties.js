@@ -134,6 +134,13 @@ export default class FormProperties {
         const tabConfig = [
             { key: 'properties_package', title: _('Content metadata') },
             { key: 'export', title: _('Export options') },
+            {
+                key: 'grading',
+                title: _('Grading'),
+                note: _(
+                    'Gradable activities use the minimum score in every export format. The SCORM option only applies to SCORM-compatible exports.'
+                ),
+            },
             { key: 'custom_code', title: _('Custom code') },
             { key: 'screenshot', title: _('Screenshot'), custom: true },
         ];
@@ -188,7 +195,7 @@ export default class FormProperties {
                 this.buildScreenshotPane(tabPane);
             } else {
                 const groupProperties = groupedProperties.get(tab.key) || [];
-                this.addPropertiesToPane(groupProperties, tabPane);
+                this.addPropertiesToPane(groupProperties, tabPane, tab.note);
             }
 
             tabContent.appendChild(tabPane);
@@ -248,8 +255,11 @@ export default class FormProperties {
 
     /**
      * Add properties to a tab pane
+     * @param {Array} propertiesArray - [key, property] pairs
+     * @param {HTMLElement} pane
+     * @param {string} [note] - Translated text shown above the properties, describing the whole pane
      */
-    addPropertiesToPane(propertiesArray, pane) {
+    addPropertiesToPane(propertiesArray, pane, note) {
         const container = document.createElement('div');
         container.classList.add(
             'properties-group',
@@ -257,12 +267,37 @@ export default class FormProperties {
             'form-properties'
         );
 
+        if (note) {
+            const noteElement = document.createElement('p');
+            noteElement.classList.add('properties-note');
+            noteElement.id = `${pane.id}-note`;
+            noteElement.textContent = note;
+            container.appendChild(noteElement);
+            pane.setAttribute('aria-describedby', noteElement.id);
+        }
+
         for (const [key, property] of propertiesArray) {
             const propertyRow = this.makeRowElement(key, property);
             if (propertyRow) container.appendChild(propertyRow);
         }
 
         pane.appendChild(container);
+    }
+
+    /**
+     * Scroll the tab row, when it is narrower than the tabs, so the tab and part of
+     * its neighbour show. Only the row scrolls: scrollIntoView would also scroll the
+     * page and a host page embedding eXe.
+     */
+    revealTab(tabsNav, tab) {
+        const peek = 48;
+        const row = tabsNav.getBoundingClientRect();
+        const box = tab.getBoundingClientRect();
+        if (box.left < row.left + peek) {
+            tabsNav.scrollLeft -= row.left + peek - box.left;
+        } else if (box.right > row.right - peek) {
+            tabsNav.scrollLeft += box.right - (row.right - peek);
+        }
     }
 
     /**
@@ -283,6 +318,7 @@ export default class FormProperties {
         // Activate selected tab
         activeButton.classList.add('active');
         activeButton.setAttribute('aria-selected', 'true');
+        this.revealTab(tabsNav, activeButton);
 
         // Activate selected pane
         const activePane = tabContent.querySelector(`#${activePaneId}`);
@@ -1148,12 +1184,13 @@ export default class FormProperties {
         infoAlert.setAttribute('role', 'note');
         infoAlert.innerHTML = `
             <div>
-                <h5 class="alert-heading lead mb-3">${_('Recommendations')}</h5>
-                <p class="mb-2 small">
-                    ${_('Use a 16:9 image (1280×720 px recommended) that clearly represents the main content of the learning resource. Avoid clutter and small text, and ensure good contrast for readability at small sizes.')}
+                <p class="mb-3 small fw-bold d-flex align-items-start gap-2">
+                    <span class="small-icon info-icon-green flex-shrink-0 mt-1" aria-hidden="true"></span>
+                    <span>${_('The image will be used as a preview of this educational resource across different platforms.')}</span>
                 </p>
-                <p class="mb-0 small text-muted">
-                    ${_('The image will be used as a preview of this educational resource across different platforms.')}
+                <h5 class="alert-heading lead mb-3">${_('Recommendations')}</h5>
+                <p class="mb-0 small">
+                    ${_('Use a 16:9 image (1280×720 px recommended) that clearly represents the main content of the learning resource. Avoid clutter and small text, and ensure good contrast for readability at small sizes.')}
                 </p>
             </div>
         `;

@@ -105,14 +105,17 @@ like to print?* offers four mutually exclusive choices, each named by what it pr
 
 | Choice | Result |
 |---|---|
-| Content without activities | The document without them |
-| Content with activities | Each activity printed as an exercise where the author put it |
-| **Content with activities in an appendix** (default) | Title plus a cross-reference in place; the exercises numbered at the back |
+| **Content with activities** (default) | Each activity printed as an exercise where the author put it |
+| Content with activities in an appendix | Title plus a cross-reference in place; the exercises numbered at the back |
 | Activities only (no other content) | The worksheet alone — what *Print iDevices* used to produce |
+| Content without activities | The document without them |
 
-**The appendix is the default because both the text and the activities print better that way.** The
-text runs on as the author wrote it, without exercises breaking it up, and in the appendix each
-exercise starts on a page of its own. A pointer marks where each one was.
+**Printing each activity where the author put it is the default**, and the choices are offered in
+that order, from the whole document to less of it. The document keeps the order the author gave it,
+with each activity now an exercise instead of a game board. The appendix is one choice away for a
+handout whose text should run on without exercises breaking it up; there each exercise starts on a
+page of its own, and a pointer marks where each one was. (Until review, the appendix was the
+default.)
 
 **Which activities print is chosen in the same panel.** While a choice prints activities, the panel
 lists them all under *Activities*: those with a printed form ticked, and those that can never be
@@ -133,15 +136,16 @@ a row draws it once, and Print is disabled while the preview is being drawn.
 worksheet adapter turns into an exercise, or one listed as never printable (see below), each entry
 with its reason. Everything else prints as it always has: content iDevices, and any type the code
 does not know, such as one an administrator installed. How an iDevice stores its data plays no
-part: the form stores JSON and is an activity, the checklist is HTML and is not.
+part: the form stores JSON and is an activity, the UDL content is HTML and is not.
 
 The first cut derived the rule from the storage format instead: every `html` iDevice counted unless
 a list said otherwise, so that a new one was classified the day it was added. Review showed the
 cost. An administrator's own content iDevice is HTML like the games, so it counted too, and the
-default appendix replaced its content with a pointer to a note saying it could not be printed. With
+appendix replaced its content with a pointer to a note saying it could not be printed. With
 the allow-list, a new game added without an adapter prints as its HTML until it gets one, which is
-how everything printed before this decision and loses nothing. For the 52 iDevices shipped today the
-two rules give the same 40 activities.
+how everything printed before this decision and loses nothing. For the 52 iDevices shipped when this
+was decided the two rules gave the same 40 activities. The checklist became the 41st when it was
+given an adapter (#2633): it had printed as its HTML, switches, drop-downs and buttons included.
 
 **Everything that asks "is this an activity?" asks the same code.** The panel's list, the
 document's modes and the worksheet's own list of what it could not print all go through the
@@ -164,7 +168,7 @@ document should not be the quieter way to lose content.
 
 **An activity without a printed form still prints.** A line stands in for it — in place, or in the
 appendix where it also takes a number. An exercise that could not be built must never turn into a
-silent hole in the handout. Every activity has either an adapter (29) or a settled answer (11), so
+silent hole in the handout. Every activity has either an adapter (30) or a settled answer (11), so
 the line is left for data an adapter cannot read.
 
 **No line says "not yet".** An activity with no printed form either has data its adapter could not
@@ -324,8 +328,8 @@ for the piece under it, which a block does not need.
 
 ### Negative
 
-- For a project with interactive activities, what prints by default has changed: the activities no
-  longer print where they are, as the browser draws them, but as exercises in an appendix.
+- For a project with interactive activities, what prints by default has changed: the activities
+  still print where they are, but as exercises instead of as the browser draws them.
 - The preview is drawn again on every change, and a large project makes the user wait each time.
 - Four choices to keep working, and each needs E2E coverage.
 - The appendix introduces numbering that has to agree between the body's cross-references and the
@@ -365,10 +369,10 @@ for the piece under it, which a block does not need.
 
 - Unit tests for the four modes over synthetic pages, with no browser.
 - E2E for the panel: only the document options when the project has no interactive activity; the
-  choices, with the appendix preselected, when it has some; the preview drawn again without closing
-  when a choice changes; Print disabled while the preview is being drawn; one case per choice,
-  including the appendix cross-reference matching its exercise; and the worksheet reached from the
-  preview alone, with no File menu entry of its own.
+  choices, in their order and with printing in place preselected, when it has some; the preview
+  drawn again without closing when a choice changes; Print disabled while the preview is being
+  drawn; one case per choice, including the appendix cross-reference matching its exercise; and the
+  worksheet reached from the preview alone, with no File menu entry of its own.
 - E2E for the selection: every activity listed only while activities are to be printed, those with
   a printed form ticked; no printing with none ticked, unless none is to be printed; an unticked
   activity left out of the document and off the worksheet.

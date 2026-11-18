@@ -188,4 +188,44 @@ describe('blockIconRuntime', () => {
     expect(applied[0][1]).toContain('data:image/svg+xml;utf8,');
     expect(removed).toContain('data-exe-material-icon');
   });
+
+  describe('renderIconImage', () => {
+    const parseImg = (html) => {
+      const host = document.createElement('div');
+      host.innerHTML = html;
+      expect(host.children).toHaveLength(1);
+      const img = host.querySelector('img');
+      for (const attr of Array.from(img.attributes)) {
+        expect(['src', 'alt']).toContain(attr.name);
+      }
+      return img;
+    };
+
+    it('renders a plain icon image', () => {
+      const runtime = require('./blockIconRuntime.js');
+      expect(runtime.renderIconImage('/icons/a.png', 'Info')).toBe('<img src="/icons/a.png" alt="Info">');
+    });
+
+    it.each([
+      ['double-quote breakout', 'x" onerror="window.__xss=1'],
+      ['single-quote breakout', "x' onerror='window.__xss=1"],
+      ['tag injection', '"><script>window.__xss=1</script>'],
+      ['ampersand entities', 'a&quot; onerror=&quot;1'],
+    ])('keeps a %s inside the attributes', (_label, value) => {
+      const runtime = require('./blockIconRuntime.js');
+      const img = parseImg(runtime.renderIconImage(value, value));
+      expect(img.getAttribute('src')).toBe(value);
+      expect(img.getAttribute('alt')).toBe(value);
+    });
+
+    it.each([
+      [null, ''],
+      [undefined, ''],
+      [42, '42'],
+    ])('stringifies %s', (value, expected) => {
+      const runtime = require('./blockIconRuntime.js');
+      const img = parseImg(runtime.renderIconImage(value, value));
+      expect(img.getAttribute('alt')).toBe(expected);
+    });
+  });
 });

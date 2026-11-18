@@ -9,13 +9,15 @@
  *   --audience <string> Audience claim
  *   -c, --claim <k=v>  Additional claims
  *   --no-iat           Omit iat/nbf claims
- *   --raw-sub          Use email as sub instead of user ID (legacy mode)
+ *   --raw-sub          Use the argument verbatim as sub (must be a numeric user ID to authenticate)
  */
 import { parseArgs, getString, getNumber, getBoolean, getArray, hasHelp } from '../utils/args';
 import { error, colors, EXIT_CODES } from '../utils/output';
 import * as jose from 'jose';
+import { userIdFromJwt } from '../../auth/types';
 import { db } from '../../db/client';
 import { findUserByEmail } from '../../db/queries';
+import { getConfiguredJwtSecret } from '../../utils/jwt-secret';
 
 export interface GenerateJwtResult {
     success: boolean;
@@ -31,10 +33,6 @@ export interface GenerateJwtDependencies {
 const defaultDependencies: GenerateJwtDependencies = {
     findUserByEmail,
 };
-
-function getJwtSecret(): string {
-    return process.env.API_JWT_SECRET || process.env.JWT_SECRET || process.env.APP_SECRET || '';
-}
 
 /**
  * Parse a claim value, attempting type conversion
@@ -66,11 +64,11 @@ export async function execute(
     }
 
     // Get JWT secret
-    const secret = getJwtSecret();
+    const secret = getConfiguredJwtSecret();
     if (!secret) {
         return {
             success: false,
-            message: 'JWT secret not configured. Set API_JWT_SECRET, JWT_SECRET, or APP_SECRET environment variable.',
+            message: 'JWT secret not configured. Set API_JWT_SECRET or JWT_SECRET environment variable.',
         };
     }
 
@@ -88,8 +86,15 @@ export async function execute(
 
     // Determine sub and additional claims
     if (rawSub) {
-        // Legacy mode: use provided value directly as sub
+        // Use provided value directly as sub; the server only accepts numeric user IDs
         payload.sub = emailOrSub;
+        if (userIdFromJwt(payload) === null) {
+            console.error(
+                colors.yellow(
+                    `WARNING: sub "${emailOrSub}" is not a numeric user ID; the server will reject this token`,
+                ),
+            );
+        }
     } else {
         // Modern mode: look up user by email, use numeric ID as sub
         const user = await deps.findUserByEmail(db, emailOrSub);
@@ -182,11 +187,11 @@ ${colors.cyan('Options:')}
   --audience <string> Audience claim (aud)
   -c, --claim <k=v>   Additional claim (can be used multiple times)
   --no-iat            Omit automatic iat/nbf timestamps
-  --raw-sub           Use email as sub instead of looking up user ID (legacy mode)
+  --raw-sub           Use the argument verbatim as sub, skipping the lookup (must be a numeric user ID)
   -h, --help          Show this help message
 
 ${colors.cyan('Environment:')}
-  API_JWT_SECRET, JWT_SECRET, or APP_SECRET must be set
+  API_JWT_SECRET or JWT_SECRET must be set
 
 ${colors.cyan('JWT Payload:')}
   The generated token includes:
@@ -199,7 +204,7 @@ ${colors.cyan('Examples:')}
   bun cli jwt:generate user@exelearning.net
   bun cli jwt:generate user@exelearning.net --ttl=86400
   bun cli jwt:generate admin@example.com --issuer=exelearning --audience=api
-  bun cli jwt:generate legacy@example.com --raw-sub  # Use email as sub directly
+  bun cli jwt:generate 42 --raw-sub  # Token for user ID 42 without a database lookup
 
 ${colors.cyan('Output:')}
   The raw JWT token is printed to stdout for easy piping:

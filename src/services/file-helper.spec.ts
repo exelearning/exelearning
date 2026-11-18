@@ -6,6 +6,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
 import * as fs from 'fs-extra';
 import * as path from 'path';
 import { createFileHelper, type FileHelper } from './file-helper';
+import { UnsafePathError } from '../utils/safe-path';
 
 describe('File Helper Service', () => {
     const testDir = path.join(process.cwd(), 'test', 'temp', 'file-helper-test');
@@ -102,6 +103,15 @@ describe('File Helper Service', () => {
             expect(result).toContain('dist');
             expect(result).toContain('invalid-session');
         });
+    });
+
+    describe('session directories reject unsafe identifiers', () => {
+        for (const id of ['../.', '..', '../../../etc', '20250101000000/../../..', 'a\\..\\b', '']) {
+            it(`throws UnsafePathError for ${JSON.stringify(id)}`, () => {
+                expect(() => fileHelper.getOdeSessionTempDir(id)).toThrow(UnsafePathError);
+                expect(() => fileHelper.getOdeSessionDistDir(id)).toThrow(UnsafePathError);
+            });
+        }
     });
 
     describe('getOdeSessionTempDir', () => {

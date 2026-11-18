@@ -536,6 +536,14 @@ export default class ModalProperties extends Modal {
             property
         );
         let helpContainer = this.makeRowElementHelp(property);
+        // Without the mode select, the row label names the checkbox group, which a label's `for` cannot target
+        if (property.type === 'multiselect' && !propertyValue.querySelector('.multiselect-mode')) {
+            propertyTitle.removeAttribute('for');
+            propertyTitle.id = `${propertyIdGenerated}-label`;
+            const list = propertyValue.querySelector('.multiselect-options');
+            list.removeAttribute('aria-label');
+            list.setAttribute('aria-labelledby', propertyTitle.id);
+        }
         if (property.type === 'checkbox') {
             propertyRow.classList.add('is-toggle-row');
             propertyTitle.classList.add('toggle-label');
@@ -668,10 +676,10 @@ export default class ModalProperties extends Modal {
                 valueElement.value = property.value;
                 break;
             case 'select':
-                valueElement = this.makeSelectElement(property, false);
+                valueElement = this.makeSelectElement(property);
                 break;
             case 'multiselect':
-                valueElement = this.makeSelectElement(property, true);
+                valueElement = this.makeMultiSelectElement(id, name, property);
                 break;
             default:
                 valueElement = document.createElement('div');
@@ -679,7 +687,7 @@ export default class ModalProperties extends Modal {
         }
 
         // Value element id
-        if (property.type !== 'checkbox') {
+        if (property.type !== 'checkbox' && property.type !== 'multiselect') {
             // Value element id
             valueElement.id = id;
             // Value element attributes
@@ -702,32 +710,120 @@ export default class ModalProperties extends Modal {
         return valueElement;
     }
 
-    makeSelectElement(property, multiple) {
+    makeSelectElement(property) {
         const select = document.createElement('select');
-        select.multiple = multiple;
-        const selectedValues = multiple ? property.value : [property.value];
         for (const [value, text] of Object.entries(property.options)) {
             const option = document.createElement('option');
             option.value = value;
             option.textContent = text;
-            option.selected = Array.isArray(selectedValues) && selectedValues.includes(value);
+            option.selected = value === property.value;
             select.append(option);
         }
-        if (multiple && Object.hasOwn(property.options, SYSTEM_DEFAULT)) {
-            select.addEventListener('change', event => {
-                const changed = event.target;
-                const systemDefault = Array.from(changed.options).find(
-                    option => option.value === SYSTEM_DEFAULT
-                );
-                const concrete = Array.from(changed.selectedOptions).filter(
-                    option => option.value !== SYSTEM_DEFAULT
-                );
-                if (systemDefault?.selected && concrete.length > 0) {
-                    systemDefault.selected = false;
-                }
-            });
-        }
         return select;
+    }
+
+    /**
+     * Checkbox list for a multiselect property. When its options include
+     * SYSTEM_DEFAULT, a select chooses between that default and the list,
+     * which is only shown for the custom choice.
+     * @param {string} id - Id for the labelled control
+     * @param {string} name - Property key
+     * @param {Object} property
+     * @returns {HTMLElement}
+     */
+    makeMultiSelectElement(id, name, property) {
+        const selectedValues = Array.isArray(property.value) ? property.value : [];
+        const hasSystemDefault = Object.hasOwn(property.options, SYSTEM_DEFAULT);
+
+        const wrapper = document.createElement('div');
+        wrapper.classList.add('property-value', 'property-multiselect');
+        wrapper.setAttribute('property', name);
+        wrapper.setAttribute('data-type', 'multiselect');
+
+        const list = document.createElement('div');
+        list.classList.add('multiselect-options');
+        list.id = hasSystemDefault ? `${id}-options` : id;
+        list.setAttribute('role', 'group');
+        list.setAttribute('aria-label', _(property.title));
+
+        let index = 0;
+        for (const [value, text] of Object.entries(property.options)) {
+            if (value === SYSTEM_DEFAULT) continue;
+            const optionId = `${id}-option-${index++}`;
+            const item = document.createElement('div');
+            item.classList.add('form-check');
+            const input = document.createElement('input');
+            input.type = 'checkbox';
+            input.id = optionId;
+            input.value = value;
+            input.classList.add('form-check-input', 'multiselect-option');
+            input.checked = selectedValues.includes(value);
+            input.addEventListener('focus', () => {
+                this.hideHelpContentAll();
+            });
+            const label = document.createElement('label');
+            label.classList.add('form-check-label');
+            label.setAttribute('for', optionId);
+            label.textContent = text;
+            item.append(input, label);
+            list.append(item);
+        }
+
+        if (hasSystemDefault) {
+            const mode = document.createElement('select');
+            mode.id = id;
+            mode.setAttribute('name', id);
+            mode.classList.add('multiselect-mode');
+            mode.setAttribute('aria-controls', list.id);
+            const systemOption = document.createElement('option');
+            systemOption.value = SYSTEM_DEFAULT;
+            systemOption.textContent = property.options[SYSTEM_DEFAULT];
+            const customOption = document.createElement('option');
+            customOption.value = 'custom';
+            customOption.textContent = property.customLabel || _('Choose');
+            // Without options to check (e.g. no dictionaries installed) only the default is offered
+            mode.append(systemOption);
+            if (index > 0) mode.append(customOption);
+
+            const useSystemDefault =
+                index === 0 || selectedValues.length === 0 || selectedValues.includes(SYSTEM_DEFAULT);
+            mode.value = useSystemDefault ? SYSTEM_DEFAULT : 'custom';
+            list.hidden = useSystemDefault;
+            mode.addEventListener('change', () => {
+                list.hidden = mode.value === SYSTEM_DEFAULT;
+            });
+            mode.addEventListener('focus', () => {
+                this.hideHelpContentAll();
+            });
+            wrapper.append(mode);
+        }
+
+        // Until the user changes the field, keep the saved value: options that are no longer listed are not dropped
+        if (selectedValues.length > 0) {
+            wrapper.dataset.savedValue = JSON.stringify(selectedValues);
+            wrapper.addEventListener('change', () => delete wrapper.dataset.savedValue);
+        }
+
+        wrapper.append(list);
+        return wrapper;
+    }
+
+    /**
+     * Value of a multiselect property: the saved value while the user has not
+     * changed the field, otherwise the checked options, or SYSTEM_DEFAULT
+     * when that default is chosen or no option is checked
+     * @param {HTMLElement} wrapper - Element built by makeMultiSelectElement
+     * @returns {string[]}
+     */
+    getMultiSelectValue(wrapper) {
+        if (wrapper.dataset.savedValue) return JSON.parse(wrapper.dataset.savedValue);
+        const mode = wrapper.querySelector('.multiselect-mode');
+        if (mode?.value === SYSTEM_DEFAULT) return [SYSTEM_DEFAULT];
+        const checked = Array.from(
+            wrapper.querySelectorAll('.multiselect-option:checked'),
+            (input) => input.value
+        );
+        return mode && checked.length === 0 ? [SYSTEM_DEFAULT] : checked;
     }
 
     /**
@@ -793,9 +889,7 @@ export default class ModalProperties extends Modal {
                     value = property.selectedOptions[0].value.trim();
                     break;
                 case 'multiselect':
-                    value = Array.from(property.selectedOptions, (option) =>
-                        option.value.trim()
-                    );
+                    value = this.getMultiSelectValue(property);
                     break;
                 case 'text':
                 case 'date':

@@ -2,7 +2,7 @@
  * Minify first-party editor JavaScript inside the static distribution.
  *
  * Scope is deliberately narrow:
- *  - only our own code (never vendored trees like exe_math/mermaid/mindmaps/
+ *  - only our own code (never vendored trees like exe_math/mermaid/
  *    edicuatex/exe_tooltips/exe_media, and never app/common/scorm, whose two
  *    vendored pipwerks files carry a byte-identity contract);
  *  - only editor-side files that are NOT copied into exported packages
@@ -38,6 +38,7 @@ export const MINIFY_DIRS = ['app/core', 'app/editor', 'app/workarea', 'app/yjs']
 export const MINIFY_FILES = [
     'app/common/app_common.js',
     'app/common/app_date_conversion.js',
+    'app/common/app_tooltip.js',
     'app/common/asset_url_resolver.js',
     'app/common/common_edition.js',
     'app/common/connectionMonitor.js',

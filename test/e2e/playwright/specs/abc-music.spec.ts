@@ -94,4 +94,58 @@ test.describe('ABC music notation', () => {
         await expect(audio).toHaveCSS('display', 'flex');
         await expect(iframe.locator('.abcjs-midi a').first()).toHaveAttribute('href', /^data:audio\/midi,/);
     });
+
+    test('previews the tune from the TinyMCE dialog like the exported content', async ({
+        authenticatedPage,
+        createProject,
+    }) => {
+        const page = authenticatedPage;
+
+        const projectUuid = await createProject(page, 'ABC Music Dialog Test');
+        await gotoWorkarea(page, projectUuid);
+        await waitForAppReady(page);
+
+        await selectFirstPage(page);
+        await addTextIdevice(page);
+        await waitForTinyMCEReady(page);
+        await page.waitForFunction(() =>
+            (window as any).tinymce?.get().some((e: any) => e.id.endsWith('textTextarea') && e.initialized),
+        );
+
+        // Same as clicking the toolbar button of the main text editor.
+        await page.evaluate(() => {
+            const editor = (window as any).tinymce.get().find((e: any) => e.id.endsWith('textTextarea'));
+            editor.ui.registry.getAll().buttons.abcmusic.onAction();
+        });
+        const form = page.locator('.tox-dialog').filter({ has: page.locator('#htmlSource') });
+        await form.locator('#htmlSource').fill(ABC_TUNE);
+        await form.locator('label.tox-checkbox', { hasText: 'MIDI' }).click();
+        await expect(form.locator('#midi')).toBeChecked();
+        await form.getByRole('button', { name: 'Preview' }).click();
+
+        // abcmusic.html (opened with #midi=1) builds the exported markup and exe_abc_music.js renders it.
+        const dialog = page.frameLocator('.tox-dialog__body-iframe iframe');
+        await expect(dialog.locator('.abcjs-paper svg').first()).toBeVisible({ timeout: 20000 });
+        await expect(dialog.locator('.abcjs-paper .abcjs-note')).toHaveCount(8);
+        // ABC source hidden behind its toggle, as in the export.
+        await expect(dialog.locator('pre.abc-music')).toBeHidden();
+        await dialog.locator('.abc-tooglebutton').click();
+        await expect(dialog.locator('pre.abc-music')).toBeVisible();
+
+        await dialog.locator('.abc-audio-tooglebutton').click();
+        await expect(dialog.locator('.abcjs-audio .abcjs-inline-audio')).toBeVisible({ timeout: 10000 });
+        // Download label comes from the editor's $exe_i18n.
+        await expect(dialog.locator('.abcjs-midi a')).toHaveAttribute('href', /^data:audio\/midi,/);
+        await expect(dialog.locator('.abcjs-midi a')).toHaveText('Download');
+        // abcjs-audio.css styles the playback highlight.
+        await expect
+            .poll(() =>
+                dialog.locator('body').evaluate(() => {
+                    const note = document.querySelector('.abcjs-paper .abcjs-note') as Element;
+                    note.classList.add('abcjs-highlight');
+                    return getComputedStyle(note).fill;
+                }),
+            )
+            .toBe('rgb(10, 158, 204)');
+    });
 });
