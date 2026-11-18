@@ -22,6 +22,8 @@ export interface JwtPayload {
     isImpersonated?: boolean;
     impersonatedBy?: number;
     impersonationSessionId?: string;
+    /** Fingerprint of the password hash at sign time (see passwordFingerprint in routes/auth). */
+    pwh?: string;
     iat?: number;
     exp?: number;
 }
@@ -39,6 +41,11 @@ export interface AuthenticatedIdentity {
     isImpersonated?: boolean;
     impersonatedBy?: number;
     impersonationSessionId?: string;
+    /** Password-hash fingerprint the token was signed with; session revocation compares it. */
+    pwh?: string;
+    /** Issued-at and expiry (seconds), so derived tokens never outlive the caller's. */
+    iat?: number;
+    exp?: number;
 }
 
 /**
@@ -80,5 +87,8 @@ export function toAuthenticatedIdentity(payload: JwtPayload | null | undefined):
         isImpersonated: payload.isImpersonated,
         impersonatedBy: payload.impersonatedBy,
         impersonationSessionId: payload.impersonationSessionId,
+        pwh: payload.pwh,
+        iat: payload.iat,
+        exp: payload.exp,
     };
 }

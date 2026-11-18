@@ -25,7 +25,8 @@
 import { Elysia } from 'elysia';
 import { ClientMeta, WebSocketServerInfo, type YjsSocket } from './types';
 import * as assetCoordinatorDefault from './asset-coordinator';
-import { verifyToken as verifyTokenDefault } from '../routes/auth';
+import type { verifyToken as verifyTokenDefault } from '../routes/auth';
+import { verifySessionToken } from '../services/session-revocation';
 import {
     findProjectByUuid as findProjectByUuidDefault,
     checkProjectAccess as checkProjectAccessDefault,
@@ -103,7 +104,8 @@ const defaultDependencies: YjsWebSocketDependencies = {
         getSession: getSessionDefault,
     },
     auth: {
-        verifyToken: verifyTokenDefault,
+        // Also rejects tokens of deleted, deactivated or demoted accounts.
+        verifyToken: token => verifySessionToken(token),
     },
     assetCoordinator: {
         registerClient: assetCoordinatorDefault.registerClient,
