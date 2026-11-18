@@ -1585,6 +1585,10 @@ var $exeIDevicesEdition = {
                     return tab.replace(/[ \t]+/g, ' ').trim();
                 },
 
+                /**
+                 * The form of the hidden Generate tab of the AI window, which
+                 * PR #1998 (configurable AI providers) is to enable.
+                 */
                 createIAButtonsHtml: function () {
                     return `<div id="eXeFormIAContainer">
                         <div class="dd-flex gap-2 mt-3 mb-3">
@@ -2115,6 +2119,8 @@ var $exeIDevicesEdition = {
                         textarea.selectionStart = textarea.selectionEnd = start + text.length;
                     });
 
+                    // Create, in the hidden Generate tab: unreachable until
+                    // PR #1998 (configurable AI providers) shows it.
                     $('#eXeIAButton').on('click', function () {
                         $('#eXeIAMessage').text(_('Generating questions. Please wait...')).show();
                         $exeIDevicesEdition.iDevice.gamification.share.genarateIAQuestons(type, saveQuestions, resolveOptions());
