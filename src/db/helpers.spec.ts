@@ -17,6 +17,7 @@ import {
     getAutoIncrementType,
     addAutoIncrement,
     getBinaryType,
+    createIndexIfNotExists,
     insertIgnore,
     insertAndReturn,
     insertManyAndReturn,
@@ -265,6 +266,76 @@ describe('Database Helpers', () => {
                 expect(result).toBe(colBuilder);
                 expect(called).toBe(false);
             });
+        });
+    });
+
+    describe('createIndexIfNotExists', () => {
+        /** A Kysely with the MySQL compiler that records the SQL it runs; SHOW INDEX answers `indexRows`. */
+        async function recordingMysqlDb(indexRows: unknown[]) {
+            const { Kysely, MysqlAdapter, MysqlIntrospector, MysqlQueryCompiler } = await import('kysely');
+            const executed: string[] = [];
+            const mysqlDb = new Kysely<Database>({
+                dialect: {
+                    createAdapter: () => new MysqlAdapter(),
+                    createDriver: () => ({
+                        init: async () => {},
+                        acquireConnection: async () => ({
+                            executeQuery: async <R>(cq: { sql: string }) => {
+                                executed.push(cq.sql);
+                                return { rows: (cq.sql.startsWith('SHOW INDEX') ? indexRows : []) as R[] };
+                            },
+                            streamQuery: () => {
+                                throw new Error('not used');
+                            },
+                        }),
+                        beginTransaction: async () => {},
+                        commitTransaction: async () => {},
+                        rollbackTransaction: async () => {},
+                        releaseConnection: async () => {},
+                        destroy: async () => {},
+                    }),
+                    createIntrospector: d => new MysqlIntrospector(d),
+                    createQueryCompiler: () => new MysqlQueryCompiler(),
+                },
+            });
+            return { mysqlDb, executed };
+        }
+
+        it('creates the index once and is a no-op the second time', async () => {
+            const create = () =>
+                createIndexIfNotExists(db, 'idx_test_users_email', 'users', index => index.column('email'));
+            await create();
+            await create();
+
+            const { sql } = await import('kysely');
+            const result = await sql<{ name: string }>`
+                SELECT name FROM sqlite_master WHERE type = 'index' AND name = 'idx_test_users_email'
+            `.execute(db);
+            expect(result.rows).toHaveLength(1);
+            await db.schema.dropIndex('idx_test_users_email').execute();
+        });
+
+        it('on mysql, looks the index up and creates it without IF NOT EXISTS', async () => {
+            const { mysqlDb, executed } = await recordingMysqlDb([]);
+
+            await withDbDriver('mysql', () =>
+                createIndexIfNotExists(mysqlDb, 'idx_x', 'projects', index => index.columns(['a', 'b']).unique()),
+            );
+
+            expect(executed).toEqual([
+                'SHOW INDEX FROM `projects` WHERE Key_name = ?',
+                'create unique index `idx_x` on `projects` (`a`, `b`)',
+            ]);
+        });
+
+        it('on mysql, skips an index that already exists', async () => {
+            const { mysqlDb, executed } = await recordingMysqlDb([{ Key_name: 'idx_x' }]);
+
+            await withDbDriver('mysql', () =>
+                createIndexIfNotExists(mysqlDb, 'idx_x', 'projects', index => index.column('a')),
+            );
+
+            expect(executed).toEqual(['SHOW INDEX FROM `projects` WHERE Key_name = ?']);
         });
     });
 
