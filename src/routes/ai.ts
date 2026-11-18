@@ -44,8 +44,8 @@ export function createAiRoutes(deps: AiRoutesDeps = defaultDeps) {
     return (
         new Elysia({ name: 'ai-routes' })
             .use(withJwtAuth())
-            .onBeforeHandle(({ jwtPayload, set }) => {
-                const err = requireAuth(jwtPayload);
+            .onBeforeHandle(({ identity, set }) => {
+                const err = requireAuth(identity);
                 if (err) {
                     set.status = err.status;
                     return { error: err.error, message: err.message };
@@ -71,8 +71,8 @@ export function createAiRoutes(deps: AiRoutesDeps = defaultDeps) {
                 { body: generateTextSchema },
             )
             // Admin-only diagnostic: verify the configured managed provider responds.
-            .post('/api/ai/test-connection', async ({ jwtPayload, set }) => {
-                const adminErr = requireAdmin(jwtPayload);
+            .post('/api/ai/test-connection', async ({ identity, set }) => {
+                const adminErr = requireAdmin(identity);
                 if (adminErr) {
                     set.status = adminErr.status;
                     return { ok: false, error: adminErr.error, message: adminErr.message };
