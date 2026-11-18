@@ -15,6 +15,7 @@ import {
 } from './admin';
 import * as Y from 'yjs';
 import type { Kysely } from 'kysely';
+import { passwordFingerprint, verifyToken } from './auth';
 import type { Database, User, Project } from '../db/types';
 import type { FileHelper } from '../services/file-helper';
 import {
@@ -1433,6 +1434,13 @@ describe('Admin Routes', () => {
 
             const setCookie = response.headers.get('set-cookie') || '';
             expect(setCookie).toContain('auth=');
+
+            // The impersonation token is bound to the target's password and the
+            // administrator, so session revocation can check both.
+            const token = setCookie.match(/(?:^|[\s,])auth=([^;]+)/)?.[1];
+            const payload = await verifyToken(token!);
+            expect(payload?.pwh).toBe(passwordFingerprint('hashed_password'));
+            expect(payload?.impersonatedBy).toBe(1);
         });
 
         it('should prevent self impersonation', async () => {
