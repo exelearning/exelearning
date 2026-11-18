@@ -43,7 +43,7 @@ import { migrateAssetStorage } from './services/asset-storage-migration';
 import { findUserByEmail, createUser, updateUser } from './db/queries/users';
 import { upsertBaseTheme, removeOrphanedBaseThemes } from './db/queries/themes';
 import { renderTemplate, setRenderLocale } from './services/template';
-import { getSettingNumber } from './services/app-settings';
+import { getDefaultQuotaMb } from './services/app-settings';
 import { isMaintenanceMode, shouldBypassMaintenance, isAdminRequest } from './services/maintenance';
 import { sessionRevocationGuard } from './services/session-revocation';
 import { getBasePath } from './utils/basepath.util';
@@ -87,21 +87,10 @@ const exemindmapEditorHandler = ({
     }
 
     if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
-        let content = fs.readFileSync(filePath);
+        // The editor page only references files next to it, so it is served as is
+        const content = fs.readFileSync(filePath);
         const ext = path.extname(filePath).toLowerCase();
         const contentType = MIME_TYPES[ext] || 'application/octet-stream';
-
-        // For HTML files, rewrite relative paths to absolute paths
-        if (ext === '.html' || ext === '.htm') {
-            let html = content.toString('utf-8');
-            // Fix relative paths like ../../../../../../../app/ -> /app/
-            html = html.replace(/href="\.\.\/\.\.\/\.\.\/\.\.\/\.\.\/\.\.\/\.\.\/app\//g, 'href="/app/');
-            html = html.replace(/src="\.\.\/\.\.\/\.\.\/\.\.\/\.\.\/\.\.\/\.\.\/app\//g, 'src="/app/');
-            // Fix local paths like css/ and js/ -> /api/exemindmap-editor/css/ etc
-            html = html.replace(/href="css\//g, 'href="/api/exemindmap-editor/css/');
-            html = html.replace(/src="js\//g, 'src="/api/exemindmap-editor/js/');
-            content = Buffer.from(html, 'utf-8');
-        }
 
         set.headers['Content-Type'] = contentType;
         set.headers['Content-Length'] = content.length.toString();
@@ -735,11 +724,7 @@ async function bootstrap() {
         if (!existingUser) {
             console.log('[DB] Creating test user...');
             const hashedPassword = await Bun.password.hash(testPassword, { algorithm: 'bcrypt' });
-            const defaultQuota = await getSettingNumber(
-                db,
-                'DEFAULT_QUOTA',
-                parseInt(process.env.DEFAULT_QUOTA || '4096', 10),
-            );
+            const defaultQuota = await getDefaultQuotaMb(db);
             await createUser(db, {
                 email: testEmail,
                 // user_id: not set for local users (null)
@@ -764,11 +749,7 @@ async function bootstrap() {
 
         if (!existingAdmin) {
             console.log('[DB] Creating admin user...');
-            const defaultQuota = await getSettingNumber(
-                db,
-                'DEFAULT_QUOTA',
-                parseInt(process.env.DEFAULT_QUOTA || '4096', 10),
-            );
+            const defaultQuota = await getDefaultQuotaMb(db);
             await createUser(db, {
                 email: adminEmail,
                 // user_id: not set for local users (null)
