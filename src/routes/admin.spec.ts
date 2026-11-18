@@ -13,6 +13,7 @@ import {
     type AdminDependencies,
     type AdminQueries,
 } from './admin';
+import * as Y from 'yjs';
 import type { Kysely } from 'kysely';
 import type { Database, User, Project } from '../db/types';
 import type { FileHelper } from '../services/file-helper';
@@ -2662,6 +2663,46 @@ describe('Admin Routes', () => {
             expect(response.status).toBe(404);
             const body = await response.json();
             expect(body.error).toBe('NOT_FOUND');
+        });
+
+        it('should stream a successful export with a binary content-length', async () => {
+            const token = await generateAdminToken();
+            const deps = createMockDeps({
+                findProjectById: async () => mockProject({ id: 1, visibility: 'public', title: 'Public Course' }),
+            });
+            deps.reconstructDocument = async () => {
+                const doc = new Y.Doc();
+                const metadata = doc.getMap('metadata');
+                metadata.set('title', 'Public Course');
+                metadata.set('author', 'Test');
+                metadata.set('language', 'en');
+                metadata.set('theme', 'base');
+                const navigation = doc.getArray('navigation');
+                const rootPage = new Y.Map();
+                rootPage.set('id', 'root');
+                rootPage.set('pageName', 'Home');
+                rootPage.set('parentId', null);
+                rootPage.set('order', 0);
+                rootPage.set('blocks', new Y.Array());
+                navigation.push([rootPage]);
+                return doc;
+            };
+            const app = new Elysia().use(createAdminRoutes(deps));
+
+            const response = await app.handle(
+                new Request('http://localhost/api/admin/projects/1/download', {
+                    method: 'GET',
+                    headers: { Authorization: `Bearer ${token}` },
+                }),
+            );
+
+            expect(response.status).toBe(200);
+            expect(response.headers.get('content-type')).toBe('application/zip');
+            const contentLength = Number(response.headers.get('content-length'));
+            expect(contentLength).toBeGreaterThan(0);
+            expect(response.headers.get('content-disposition')).toContain('.elpx');
+            const body = new Uint8Array(await response.arrayBuffer());
+            expect(body.byteLength).toBe(contentLength);
         });
 
         it('should return 403 for private project', async () => {

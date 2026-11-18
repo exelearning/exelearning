@@ -22,10 +22,8 @@
  * Clients connect using y-websocket's WebsocketProvider:
  * ws://localhost:3002/yjs/project-<uuid>?token=<jwt>
  */
-import type { ServerWebSocket } from 'bun';
-import type { WebSocket as WsWebSocket } from 'ws';
 import { Elysia } from 'elysia';
-import { ClientMeta, WebSocketServerInfo } from './types';
+import { ClientMeta, WebSocketServerInfo, type YjsSocket } from './types';
 import * as assetCoordinatorDefault from './asset-coordinator';
 import { verifyToken as verifyTokenDefault } from '../routes/auth';
 import {
@@ -36,10 +34,10 @@ import {
 import { db as defaultDb } from '../db/client';
 import { getSession as getSessionDefault } from '../services/session-manager';
 import type { Kysely } from 'kysely';
-import type { Database } from '../db/schema';
+import type { Database } from '../db/types';
 
 // Import new modules
-import { DEBUG } from './config';
+import { DEBUG, isDebugEnabled } from './config';
 import { startHeartbeat, stopHeartbeat, onPong, stopAllHeartbeats, getHeartbeatStats } from './heartbeat';
 import * as roomManager from './room-manager';
 import { parseMessage } from './message-parser';
@@ -187,24 +185,6 @@ export function generateClientId(): string {
 }
 
 /**
- * WebSocket data stored per connection
- */
-export interface WsData {
-    clientId: string;
-    userId: number;
-    projectUuid: string;
-    docName: string;
-}
-
-/**
- * Elysia WebSocket raw data structure (before we populate WsData)
- */
-interface ElysiaWsRawData {
-    params?: { docName?: string };
-    query?: { token?: string };
-}
-
-/**
  * Check if user has access to project via WebSocket
  * Uses the centralized checkProjectAccess from db/queries
  * but first checks for in-memory sessions (unsaved projects)
@@ -256,7 +236,7 @@ export async function checkWebSocketProjectAccess(
  * Extracted for testability
  */
 export async function handleWebSocketOpen(
-    ws: ServerWebSocket<WsData>,
+    ws: YjsSocket,
     docName: string,
     token: string | undefined,
 ): Promise<{ success: boolean; error?: { code: number; reason: string } }> {
@@ -283,7 +263,7 @@ export async function handleWebSocketOpen(
     }
 
     // Check project access
-    const access = await checkWebSocketProjectAccess(projectUuid, user.sub);
+    const access = await checkWebSocketProjectAccess(projectUuid, user.userId);
     if (!access.hasAccess) {
         console.error(`[YjsWebSocket] Access denied: ${access.reason}`);
         return { success: false, error: { code: 4003, reason: access.reason || 'Access denied' } };
@@ -303,7 +283,7 @@ export async function handleWebSocketOpen(
         return { success: false };
     }
 
-    const userId = user.sub;
+    const userId = user.userId;
     const clientId = generateClientId();
 
     // Store metadata
@@ -316,10 +296,10 @@ export async function handleWebSocketOpen(
     clientMetaMap.set(clientId, meta);
 
     // Update ws data
-    (ws.data as WsData).clientId = clientId;
-    (ws.data as WsData).userId = userId;
-    (ws.data as WsData).projectUuid = projectUuid;
-    (ws.data as WsData).docName = docName;
+    ws.data.clientId = clientId;
+    ws.data.userId = userId;
+    ws.data.projectUuid = projectUuid;
+    ws.data.docName = docName;
 
     // Add connection to room (uses room-manager)
     const room = roomManager.addConnection(docName, ws, projectUuid);
@@ -328,7 +308,7 @@ export async function handleWebSocketOpen(
     startHeartbeat(clientId, ws);
 
     // Register with asset coordinator
-    deps.assetCoordinator.registerClient(projectUuid, clientId, ws as unknown as WsWebSocket);
+    deps.assetCoordinator.registerClient(projectUuid, clientId, ws);
 
     const clientCount = room.conns.size;
     console.log(`[YjsWebSocket] Client ${clientId} (user ${userId}) connected to ${docName} (${clientCount} total)`);
@@ -395,7 +375,7 @@ export async function handleWebSocketOpen(
  * Handle WebSocket pong response
  * Extracted for testability
  */
-export function handleWebSocketPong(data: WsData | undefined): void {
+export function handleWebSocketPong(data: YjsSocket['data'] | undefined): void {
     if (data?.clientId) {
         onPong(data.clientId);
     }
@@ -405,8 +385,13 @@ export function handleWebSocketPong(data: WsData | undefined): void {
  * Handle WebSocket message
  * Extracted for testability
  */
-export function handleWebSocketMessage(ws: ServerWebSocket<WsData>, data: WsData, message: Buffer | string): void {
-    const room = roomManager.getRoom(data.docName);
+export function handleWebSocketMessage(ws: YjsSocket, data: YjsSocket['data'], message: Buffer | string): void {
+    const docName = data.docName;
+    const clientId = data.clientId;
+    const projectUuid = data.projectUuid;
+    if (!docName || !clientId || !projectUuid) return;
+
+    const room = roomManager.getRoom(docName);
     if (!room) return;
 
     // Use robust message parser
@@ -415,16 +400,16 @@ export function handleWebSocketMessage(ws: ServerWebSocket<WsData>, data: WsData
     switch (parsed.kind) {
         case 'asset':
             // Handle asset coordination message
-            deps.assetCoordinator.handleMessage(data.projectUuid, data.clientId, parsed.message).catch(err => {
+            deps.assetCoordinator.handleMessage(projectUuid, clientId, parsed.message).catch(err => {
                 console.error('[YjsWebSocket] Error handling asset message:', err);
             });
 
             // Relay asset message to other instances via Redis
             roomManager
-                .relayToOtherInstances(data.docName, message, {
+                .relayToOtherInstances(docName, message, {
                     isAsset: true,
-                    clientId: data.clientId,
-                    projectUuid: data.projectUuid,
+                    clientId,
+                    projectUuid,
                 })
                 .catch(() => {
                     // Ignore relay errors (Redis may be down)
@@ -434,11 +419,11 @@ export function handleWebSocketMessage(ws: ServerWebSocket<WsData>, data: WsData
         case 'yjs': {
             // Relay Yjs message to other clients in the room
             const yjsBuffer = Buffer.from(parsed.data);
-            roomManager.relayMessage(ws, data.docName, yjsBuffer);
+            roomManager.relayMessage(ws, docName, yjsBuffer);
 
             // Relay to other instances via Redis
             roomManager
-                .relayToOtherInstances(data.docName, yjsBuffer, {
+                .relayToOtherInstances(docName, yjsBuffer, {
                     isAsset: false,
                 })
                 .catch(() => {
@@ -449,8 +434,8 @@ export function handleWebSocketMessage(ws: ServerWebSocket<WsData>, data: WsData
 
         case 'unknown':
             // Unknown message type - log and ignore
-            if (DEBUG) {
-                console.log(`[YjsWebSocket] Unknown message type from ${data.clientId}`);
+            if (isDebugEnabled()) {
+                console.log(`[YjsWebSocket] Unknown message type from ${clientId}`);
             }
             break;
     }
@@ -460,7 +445,7 @@ export function handleWebSocketMessage(ws: ServerWebSocket<WsData>, data: WsData
  * Handle WebSocket connection close
  * Extracted for testability
  */
-export function handleWebSocketClose(ws: ServerWebSocket<WsData>, data: WsData | undefined): void {
+export function handleWebSocketClose(ws: YjsSocket, data: YjsSocket['data'] | undefined): void {
     // Use safe values for logging (data may be undefined if connection was rejected early)
     const clientId = data?.clientId || 'unknown';
     const docName = data?.docName || 'unknown';
@@ -509,11 +494,10 @@ export function createWebSocketRoutes() {
 
                 // Connection opened - validate token here since beforeHandle doesn't pass data to open
                 async open(ws) {
-                    const rawData = ws.data as ElysiaWsRawData;
-                    const docName = rawData.params?.docName;
-                    const token = rawData.query?.token as string;
-
-                    const result = await handleWebSocketOpen(ws as ServerWebSocket<WsData>, docName, token);
+                    // Elysia may hand us non-string query values; only a real
+                    // string token can ever verify.
+                    const token = typeof ws.data.query?.token === 'string' ? ws.data.query.token : undefined;
+                    const result = await handleWebSocketOpen(ws, ws.data.params?.docName || '', token);
                     if (!result.success && result.error) {
                         ws.close(result.error.code, result.error.reason);
                     }
@@ -521,21 +505,17 @@ export function createWebSocketRoutes() {
 
                 // Handle pong response (Bun WebSocket native support)
                 pong(ws) {
-                    handleWebSocketPong(ws.data as WsData);
+                    handleWebSocketPong(ws.data);
                 },
 
                 // Message received
                 message(ws, message) {
-                    handleWebSocketMessage(
-                        ws as ServerWebSocket<WsData>,
-                        ws.data as WsData,
-                        message as Buffer | string,
-                    );
+                    handleWebSocketMessage(ws, ws.data, message as Buffer | string);
                 },
 
                 // Connection closed
                 close(ws) {
-                    handleWebSocketClose(ws as ServerWebSocket<WsData>, ws.data as WsData | undefined);
+                    handleWebSocketClose(ws, ws.data);
                 },
             })
     );

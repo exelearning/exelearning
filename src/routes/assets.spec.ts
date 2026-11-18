@@ -16,6 +16,7 @@ import {
     CHUNK_UPLOAD_TTL_MS,
     MAX_TOTAL_CHUNKS,
     MAX_CHUNK_BYTES,
+    resolveChunkBuffer,
     type AssetsDependencies,
     type AssetsFileHelperDeps,
     type AssetsSessionManagerDeps,
@@ -96,8 +97,10 @@ function createMockPriorityQueue(): AssetsPriorityQueueDeps {
         shouldPreempt: (_projectId: string, _clientId: string) => ({ shouldPreempt: false }),
         getStats: (_projectId: string) => ({
             queueLength: 0,
-            processingCount: 0,
-            completedCount: 0,
+            activeSlots: 0,
+            maxSlots: 3,
+            highestPriority: 0,
+            lowestActivePriority: 0,
         }),
     };
 }
@@ -1320,6 +1323,34 @@ describe('Assets Routes', () => {
             expect(body.data).toBeDefined();
             expect(body.data.queueLength).toBeDefined();
         });
+
+        it('maps the default priority-queue stats onto the API shape', async () => {
+            const mockDeps = createMockDependencies();
+            delete mockDeps.priorityQueue;
+            const defaultQueueApp = new Elysia().use(createAssetsRoutes(mockDeps));
+
+            const res = await defaultQueueApp.handle(
+                new Request(`http://localhost/api/projects/1/assets/priority-stats`, {
+                    headers: { Authorization: `Bearer ${ownerToken}` },
+                }),
+            );
+
+            expect(res.status).toBe(200);
+            const body = (await res.json()) as {
+                success: boolean;
+                data: Record<string, number>;
+            };
+            expect(body.success).toBe(true);
+            expect(Object.keys(body.data).sort()).toEqual([
+                'activeSlots',
+                'highestPriority',
+                'lowestActivePriority',
+                'maxSlots',
+                'queueLength',
+            ]);
+            expect(body.data.queueLength).toBe(0);
+            expect(body.data.activeSlots).toBe(0);
+        });
     });
 
     describe('POST /api/projects/:projectId/assets/upload-chunk/finalize', () => {
@@ -1519,7 +1550,13 @@ describe('Assets Routes', () => {
             const mockDeps = createMockDependencies();
             mockDeps.priorityQueue = {
                 shouldPreempt: () => ({ shouldPreempt: true, reason: 'Higher priority upload in progress' }),
-                getStats: () => ({ queueLength: 5, processingCount: 2, completedCount: 10 }),
+                getStats: () => ({
+                    queueLength: 5,
+                    activeSlots: 2,
+                    maxSlots: 3,
+                    highestPriority: 5,
+                    lowestActivePriority: 1,
+                }),
             };
 
             const routes = createAssetsRoutes(mockDeps);
@@ -2051,6 +2088,21 @@ describe('Chunked upload size caps (BUG H9)', () => {
         expect(res.status).toBe(400);
         const json = await res.json();
         expect(json.error).toContain('Invalid resumableTotalChunks');
+    });
+
+    it('resolveChunkBuffer accepts Blob, Buffer, ArrayBuffer, and Uint8Array', async () => {
+        const blobBuf = await resolveChunkBuffer(new Blob(['blob-chunk']));
+        expect(blobBuf.toString()).toBe('blob-chunk');
+
+        const fromBuffer = await resolveChunkBuffer(Buffer.from('buffer-chunk'));
+        expect(fromBuffer.toString()).toBe('buffer-chunk');
+
+        const bytes = new Uint8Array([65, 66, 67]);
+        const fromArrayBuffer = await resolveChunkBuffer(bytes.buffer);
+        expect(fromArrayBuffer.toString()).toBe('ABC');
+
+        const fromUint8 = await resolveChunkBuffer(new Uint8Array([68, 69, 70]));
+        expect(fromUint8.toString()).toBe('DEF');
     });
 
     it('accepts a normal small chunk within the caps', async () => {

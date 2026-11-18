@@ -115,8 +115,9 @@ The project provides a Makefile for common tasks:
 
 | Command | Description |
 |---------|-------------|
-| `make lint` | Run Biome linter |
-| `make fix` | Auto-fix linting issues |
+| `make lint` | Run Biome linter and TypeScript typecheck |
+| `make typecheck` | Typecheck TypeScript with `tsc --noEmit` |
+| `make fix` | Auto-fix linting issues, then typecheck |
 
 ### CLI Commands
 

@@ -365,6 +365,6 @@ describe('worksheet review regressions', () => {
         await resolver.build(image);
         expect(resolver.resolve(image)).toContain('blob:');
         resolver.dispose();
-        expect(resolver.getExportPathMap()).toBeUndefined();
+        expect(resolver.resolve(image)).toBe(image);
     });
 });

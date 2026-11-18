@@ -10,7 +10,7 @@ import { getJwtSecret } from './auth';
 import { jwt } from '@elysiajs/jwt';
 import { randomBytes } from 'crypto';
 import type { Kysely } from 'kysely';
-import type { Database } from '../db/schema';
+import type { Database } from '../db/types';
 
 import { renderTemplate as renderTemplateDefault, setRenderLocale } from '../services/template';
 import {
@@ -73,7 +73,7 @@ import {
 import * as pathModule from 'path';
 import { detectLocaleFromHeader, trans, DEFAULT_LOCALE } from '../services/translation';
 import { decodePlatformJWT } from '../utils/platform-jwt';
-import type { JwtPayload } from './types/request-payloads';
+import { toAuthenticatedIdentity, type JwtPayload } from '../auth/types';
 import { getDefaultTheme as getDefaultThemeDefault } from '../db/queries/themes';
 
 const CUSTOMIZATION_MIME_TYPES: Record<string, string> = {
@@ -157,6 +157,13 @@ export interface PagesFileHelperDeps {
 export interface PagesTemplateDeps {
     renderTemplate: typeof renderTemplateDefault;
     setRenderLocale: typeof setRenderLocale;
+}
+
+/**
+ * Utility functions used while building the page view model.
+ */
+export interface PagesUtilsDeps {
+    createGravatarUrl: typeof createGravatarUrlDefault;
 }
 
 /**
@@ -300,8 +307,9 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
      */
     async function getUserLocalePreference(userId: number | string): Promise<string | null> {
         try {
-            const userIdStr = String(userId);
-            const pref = await findPreference(db, userIdStr, 'locale');
+            const userIdNumber = typeof userId === 'number' ? userId : Number(userId);
+            if (!Number.isFinite(userIdNumber)) return null;
+            const pref = await findPreference(db, userIdNumber, 'locale');
 
             if (pref?.value) {
                 // Value might be JSON or plain string
@@ -352,7 +360,7 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
 
             // Derive user from JWT token
             .derive(async ({ jwt, cookie }) => {
-                const token = cookie.auth?.value;
+                const token = cookie.auth?.value as string | undefined;
                 if (!token) {
                     if (cookie.impersonator_auth?.value) {
                         cookie.impersonator_auth.remove();
@@ -373,17 +381,20 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                     impersonatorEmail: string;
                 } | null = null;
 
-                const impersonatorToken = cookie.impersonator_auth?.value;
+                const impersonatorToken = cookie.impersonator_auth?.value as string | undefined;
                 if (impersonatorToken) {
                     try {
-                        const originalPayload = (await jwt.verify(impersonatorToken)) as JwtPayload | false;
-                        if (originalPayload?.sub) {
-                            const impersonatorUser = await findUserById(db, Number(originalPayload.sub));
+                        const originalPayload = (await jwt.verify(impersonatorToken)) as unknown as JwtPayload | false;
+                        const impersonatorIdentity = originalPayload ? toAuthenticatedIdentity(originalPayload) : null;
+                        if (impersonatorIdentity) {
+                            const impersonatorUser = await findUserById(db, impersonatorIdentity.userId);
                             impersonationBase = {
-                                sessionId: cookie.impersonation_session?.value || null,
-                                impersonatorId: Number(originalPayload.sub),
+                                sessionId: (cookie.impersonation_session?.value as string | undefined) || null,
+                                impersonatorId: impersonatorIdentity.userId,
                                 impersonatorEmail:
-                                    impersonatorUser?.email || originalPayload.email || `user-${originalPayload.sub}`,
+                                    impersonatorUser?.email ||
+                                    impersonatorIdentity.email ||
+                                    `user-${impersonatorIdentity.userId}`,
                             };
                         }
                     } catch {
@@ -393,8 +404,8 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                 }
 
                 try {
-                    const payload = (await jwt.verify(token)) as JwtPayload | false;
-                    if (!payload) {
+                    const payload = (await jwt.verify(token)) as unknown as JwtPayload | false;
+                    if (payload === false) {
                         return {
                             currentUser: null,
                             isGuest: false,
@@ -409,12 +420,21 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                     const authMethod = payload.authMethod;
                     const isImpersonated = payload.isImpersonated || false;
 
-                    const isGuest = payload.isGuest || false;
-                    if (isGuest) {
+                    const identity = toAuthenticatedIdentity(payload);
+                    if (!identity) {
+                        return {
+                            currentUser: null,
+                            isGuest: false,
+                            impersonation: null,
+                            authMethod,
+                            isImpersonated,
+                        };
+                    }
+                    if (identity.isGuest) {
                         return {
                             currentUser: {
-                                id: payload.sub,
-                                email: payload.email || 'guest@guest.local',
+                                id: identity.userId,
+                                email: identity.email || 'guest@guest.local',
                                 roles: JSON.stringify(['ROLE_GUEST']),
                             },
                             isGuest: true,
@@ -424,7 +444,7 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                         };
                     }
 
-                    const user = await findUserById(db, payload.sub);
+                    const user = await findUserById(db, identity.userId);
                     const impersonation: ImpersonationContext | null =
                         impersonationBase && user
                             ? {
@@ -433,7 +453,7 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                                   impersonatorId: impersonationBase.impersonatorId,
                                   impersonatorEmail: impersonationBase.impersonatorEmail,
                                   impersonatedId: Number(user.id),
-                                  impersonatedEmail: user.email || payload.email || `user-${user.id}`,
+                                  impersonatedEmail: user.email || identity.email || `user-${identity.userId}`,
                               }
                             : null;
 
@@ -533,6 +553,7 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                                 email: defaultEmail,
                                 password: '', // No password needed for offline
                                 roles: JSON.stringify(['ROLE_USER']),
+                                is_lopd_accepted: 1,
                                 is_active: 1,
                             });
                         }
@@ -540,7 +561,7 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                         if (user) {
                             // Generate JWT token
                             const token = await jwt.sign({
-                                sub: user.id,
+                                sub: String(user.id),
                                 email: user.email,
                                 roles: JSON.parse(user.roles || '["ROLE_USER"]'),
                                 isGuest: false,
@@ -571,7 +592,12 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                     });
                 }
 
-                let user = null;
+                let user: {
+                    id: number;
+                    username: string;
+                    usernameFirsLetter: string;
+                    gravatarUrl: string;
+                } | null = null;
                 if (currentUser) {
                     const email = currentUser.email || 'user@exelearning.net';
                     user = {
@@ -730,7 +756,7 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                     return 'Not found';
                 }
 
-                return new Response(file.content, {
+                return new Response(file.content as BodyInit, {
                     headers: {
                         'Content-Type': file.contentType,
                         'Content-Security-Policy': publicViewCspHeader(resolvePublicViewCspProfile()),
@@ -1107,7 +1133,7 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
 
                 // Generate auth token for WebSocket
                 const authToken = await jwt.sign({
-                    sub: userId,
+                    sub: String(userId),
                     email: email,
                     isGuest: isGuest,
                 });
@@ -1355,9 +1381,10 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                     if (['0', 'false', 'no', 'off'].includes(normalized)) return false;
                     return fallback;
                 };
-                const parseNumber = (value: string | undefined, fallback: number): number => {
+                const parseNumber = (value: string | number | null | undefined, fallback: number): number => {
+                    if (typeof value === 'number') return value;
                     if (value === undefined) return fallback;
-                    const parsed = parseInt(value, 10);
+                    const parsed = parseInt(String(value), 10);
                     return Number.isNaN(parsed) ? fallback : parsed;
                 };
                 const adminSettings = {

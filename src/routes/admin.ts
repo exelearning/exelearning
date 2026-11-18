@@ -3,7 +3,7 @@
  * Protected endpoints for system administration
  * Requires ROLE_ADMIN for all routes
  */
-import { Elysia, t } from 'elysia';
+import { Elysia, t, type Static } from 'elysia';
 import { isProductionEnv } from '../utils/env';
 import { jwt } from '@elysiajs/jwt';
 import * as bcrypt from 'bcryptjs';
@@ -13,7 +13,8 @@ import { invalidateMaintenanceCache } from '../services/maintenance';
 import type { Kysely } from 'kysely';
 import type { Database, User } from '../db/types';
 import { parseRoles } from '../db/types';
-import { getJwtSecret, type JwtPayload } from './auth';
+import { getJwtSecret } from './auth';
+import { toAuthenticatedIdentity, type AuthenticatedIdentity, type JwtPayload } from '../auth/types';
 import {
     findUserById as findUserByIdDefault,
     findUsersByIds as findUsersByIdsDefault,
@@ -67,6 +68,7 @@ import {
     ServerYjsDocumentWrapper,
 } from '../shared/export';
 import { reconstructDocument } from '../websocket/yjs-persistence';
+import { castRequestBody } from './types/request-payloads';
 
 type AppSettingsTable = {
     key: string;
@@ -121,6 +123,7 @@ export interface AdminDependencies {
     queries: AdminQueries;
     fileHelper?: FileHelper;
     getConnectedClientsDetail?: typeof getConnectedClientsDetail;
+    reconstructDocument?: typeof reconstructDocument;
 }
 
 // ============================================================================
@@ -418,7 +421,7 @@ export function buildAdminTranslations(locale: string): Record<string, string> {
  */
 function parseAndValidateId(
     paramsId: string,
-    set: { status: number },
+    set: { status?: number | string },
 ): { id: number } | { error: string; message: string } {
     const id = parseInt(paramsId, 10);
     if (isNaN(id)) {
@@ -571,7 +574,7 @@ export const ALLOWED_ASSET_MIME_TYPES = new Set([
  * whether to offer "Reset password". The password hash itself is never exposed,
  * and the reset endpoint re-checks eligibility regardless of this field.
  */
-function sanitizeUser(user: User): Omit<User, 'password'> & { roles: string[]; can_reset_password: boolean } {
+function sanitizeUser(user: User): Omit<User, 'password' | 'roles'> & { roles: string[]; can_reset_password: boolean } {
     const { password: _password, ...rest } = user;
     return {
         ...rest,
@@ -627,6 +630,15 @@ const updateSettingsSchema = t.Object({
         }),
     ),
 });
+
+type UpdateSettingsInput = Static<typeof updateSettingsSchema>;
+type StartImpersonationInput = Static<typeof startImpersonationSchema>;
+type CreateUserInput = Static<typeof createUserSchema>;
+type UpdateRolesInput = Static<typeof updateRolesSchema>;
+type UpdateStatusInput = Static<typeof updateStatusSchema>;
+type UpdateQuotaInput = Static<typeof updateQuotaSchema>;
+type ResetPasswordInput = Static<typeof resetPasswordSchema>;
+type UpdateProjectStatusInput = Static<typeof updateProjectStatusSchema>;
 
 const ADMIN_SETTINGS_DEFAULTS: Record<
     string,
@@ -687,6 +699,7 @@ const ADMIN_SETTINGS_DEFAULTS: Record<
 export function createAdminRoutes(deps: AdminDependencies = defaultDependencies) {
     const { db, queries, fileHelper = createFileHelper() } = deps;
     const connectedClientsDetail = deps.getConnectedClientsDetail ?? getConnectedClientsDetail;
+    const reconstructProjectDocument = deps.reconstructDocument ?? reconstructDocument;
 
     return (
         new Elysia({ name: 'admin-routes' })
@@ -698,7 +711,7 @@ export function createAdminRoutes(deps: AdminDependencies = defaultDependencies)
                 }),
             )
 
-            // Derive JWT payload from request
+            // Derive authenticated identity from request
             .derive(async ({ jwt: jwtPlugin, cookie, request }) => {
                 let token: string | undefined;
 
@@ -707,24 +720,24 @@ export function createAdminRoutes(deps: AdminDependencies = defaultDependencies)
                 if (authHeader?.startsWith('Bearer ')) {
                     token = authHeader.slice(7);
                 } else if (cookie.auth?.value) {
-                    token = cookie.auth.value;
+                    token = cookie.auth.value as string;
                 }
 
                 if (!token) {
-                    return { jwtPayload: null as JwtPayload | null };
+                    return { identity: null as AuthenticatedIdentity | null };
                 }
 
                 try {
-                    const payload = (await jwtPlugin.verify(token)) as JwtPayload | false;
-                    return { jwtPayload: payload || null };
+                    const payload = (await jwtPlugin.verify(token)) as unknown as JwtPayload | false;
+                    return { identity: payload ? toAuthenticatedIdentity(payload) : null };
                 } catch {
-                    return { jwtPayload: null as JwtPayload | null };
+                    return { identity: null as AuthenticatedIdentity | null };
                 }
             })
 
             // Global guard: Require ROLE_ADMIN for all routes in this group
-            .onBeforeHandle(({ set, jwtPayload }) => {
-                const authError = requireAdmin(jwtPayload);
+            .onBeforeHandle(({ set, identity }) => {
+                const authError = requireAdmin(identity);
                 if (authError) {
                     set.status = authError.status;
                     return {
@@ -825,8 +838,10 @@ export function createAdminRoutes(deps: AdminDependencies = defaultDependencies)
             // PUT /api/admin/settings - Update admin settings
             .put(
                 '/api/admin/settings',
-                async ({ body, set, jwtPayload }) => {
-                    const data = body as { settings: Array<{ key: string; value: string; type: string }> };
+                async ({ body, set, identity }) => {
+                    const data = castRequestBody<{ settings: Array<{ key: string; value: string; type: string }> }>(
+                        body,
+                    );
                     const sanitizedValues: Record<string, string> = {};
 
                     for (const setting of data.settings) {
@@ -870,7 +885,7 @@ export function createAdminRoutes(deps: AdminDependencies = defaultDependencies)
                                 setting.key,
                                 setting.value,
                                 setting.type as 'string' | 'number' | 'boolean' | 'json',
-                                jwtPayload?.sub ? Number(jwtPayload.sub) : undefined,
+                                identity?.userId ?? undefined,
                             );
                         } catch (error) {
                             set.status = 500;
@@ -899,9 +914,9 @@ export function createAdminRoutes(deps: AdminDependencies = defaultDependencies)
             // POST /api/admin/impersonation/start - Start impersonating a user
             .post(
                 '/api/admin/impersonation/start',
-                async ({ body, set, jwtPayload, cookie, request, jwt: jwtPlugin }) => {
-                    const adminUserId = Number(jwtPayload!.sub);
-                    const targetUserId = Number(body.user_id);
+                async ({ body, set, identity, cookie, request, jwt: jwtPlugin }) => {
+                    const adminUserId = identity!.userId;
+                    const targetUserId = Number(castRequestBody<StartImpersonationInput>(body).user_id);
 
                     if (!Number.isInteger(adminUserId) || !Number.isInteger(targetUserId)) {
                         set.status = 400;
@@ -961,11 +976,11 @@ export function createAdminRoutes(deps: AdminDependencies = defaultDependencies)
                     });
 
                     const impersonatedPayload: Omit<JwtPayload, 'iat' | 'exp'> = {
-                        sub: targetUser.id,
+                        sub: String(targetUser.id),
                         email: targetUser.email,
                         roles: targetRoles,
                         isGuest: false,
-                        authMethod: jwtPayload?.authMethod || 'local',
+                        authMethod: identity?.authMethod || 'local',
                         isImpersonated: true,
                         impersonatedBy: adminUserId,
                         impersonationSessionId: sessionId,
@@ -1071,24 +1086,25 @@ export function createAdminRoutes(deps: AdminDependencies = defaultDependencies)
                 '/api/admin/users',
                 async ({ body, set }) => {
                     // Check if email already exists
-                    const existing = await queries.findUserByEmail(db, body.email);
+                    const input = castRequestBody<CreateUserInput>(body);
+                    const existing = await queries.findUserByEmail(db, input.email);
                     if (existing) {
                         set.status = 409;
                         return { error: 'CONFLICT', message: 'Email already registered' };
                     }
 
                     // Hash password
-                    const hashedPassword = await bcrypt.hash(body.password, 10);
+                    const hashedPassword = await bcrypt.hash(input.password, 10);
 
                     // Default roles if not provided
-                    const roles = body.roles || [ROLES.USER];
+                    const roles = input.roles || [ROLES.USER];
 
                     // user_id: not set for admin-created users (null) - they're not SSO
                     const user = await queries.createUserAsAdmin(db, {
-                        email: body.email,
+                        email: input.email,
                         password: hashedPassword,
                         roles,
-                        quotaMb: body.quota_mb === undefined ? await queries.getDefaultQuotaMb(db) : body.quota_mb,
+                        quotaMb: input.quota_mb === undefined ? await queries.getDefaultQuotaMb(db) : input.quota_mb,
                     });
 
                     set.status = 201;
@@ -1100,7 +1116,7 @@ export function createAdminRoutes(deps: AdminDependencies = defaultDependencies)
             // PATCH /api/admin/users/:id/roles - Update user roles
             .patch(
                 '/api/admin/users/:id/roles',
-                async ({ params, body, set, jwtPayload }) => {
+                async ({ params, body, set, identity }) => {
                     const parsed = parseAndValidateId(params.id, set);
                     if ('error' in parsed) return parsed;
                     const userId = parsed.id;
@@ -1112,7 +1128,7 @@ export function createAdminRoutes(deps: AdminDependencies = defaultDependencies)
                         return { error: 'NOT_FOUND', message: 'User not found' };
                     }
 
-                    let newRoles = body.roles;
+                    let newRoles = castRequestBody<UpdateRolesInput>(body).roles;
 
                     // Ensure ROLE_USER is always present
                     if (!newRoles.includes(PROTECTED_ROLE)) {
@@ -1120,10 +1136,10 @@ export function createAdminRoutes(deps: AdminDependencies = defaultDependencies)
                     }
 
                     // Check for self-degradation (removing own admin role)
-                    const currentUserId = jwtPayload!.sub;
+                    const currentUserId = identity!.userId;
                     const isRemovingOwnAdminRole =
                         currentUserId === userId &&
-                        hasRole(jwtPayload!.roles, ROLES.ADMIN) &&
+                        hasRole(identity!.roles, ROLES.ADMIN) &&
                         !newRoles.includes(ROLES.ADMIN);
 
                     if (isRemovingOwnAdminRole) {
@@ -1152,18 +1168,19 @@ export function createAdminRoutes(deps: AdminDependencies = defaultDependencies)
             // PATCH /api/admin/users/:id/status - Activate/deactivate user
             .patch(
                 '/api/admin/users/:id/status',
-                async ({ params, body, set, jwtPayload }) => {
+                async ({ params, body, set, identity }) => {
                     const parsed = parseAndValidateId(params.id, set);
                     if ('error' in parsed) return parsed;
                     const userId = parsed.id;
 
                     // Prevent deactivating yourself
-                    if (jwtPayload!.sub === userId && !body.is_active) {
+                    const input = castRequestBody<UpdateStatusInput>(body);
+                    if (identity!.userId === userId && !input.is_active) {
                         set.status = 400;
                         return { error: 'CANNOT_DEACTIVATE_SELF', message: 'Cannot deactivate your own account' };
                     }
 
-                    const updatedUser = await queries.updateUserStatus(db, userId, body.is_active);
+                    const updatedUser = await queries.updateUserStatus(db, userId, input.is_active);
                     if (!updatedUser) {
                         set.status = 404;
                         return { error: 'NOT_FOUND', message: 'User not found' };
@@ -1181,7 +1198,11 @@ export function createAdminRoutes(deps: AdminDependencies = defaultDependencies)
                     const parsed = parseAndValidateId(params.id, set);
                     if ('error' in parsed) return parsed;
 
-                    const updatedUser = await queries.updateUserQuota(db, parsed.id, body.quota_mb);
+                    const updatedUser = await queries.updateUserQuota(
+                        db,
+                        parsed.id,
+                        castRequestBody<UpdateQuotaInput>(body).quota_mb,
+                    );
                     if (!updatedUser) {
                         set.status = 404;
                         return { error: 'NOT_FOUND', message: 'User not found' };
@@ -1214,13 +1235,14 @@ export function createAdminRoutes(deps: AdminDependencies = defaultDependencies)
                         return { error: 'FORBIDDEN', message: EXTERNAL_ACCOUNT_MESSAGE };
                     }
 
-                    const validation = validateNewPassword(body.newPassword);
+                    const input = castRequestBody<ResetPasswordInput>(body);
+                    const validation = validateNewPassword(input.newPassword);
                     if (!validation.valid) {
                         set.status = 422;
                         return { error: 'INVALID_PASSWORD', message: validation.message! };
                     }
 
-                    const hashedPassword = await hashPassword(body.newPassword);
+                    const hashedPassword = await hashPassword(input.newPassword);
                     const updatedUser = await queries.updateUserPassword(db, parsed.id, hashedPassword);
 
                     if (!updatedUser) {
@@ -1285,7 +1307,7 @@ export function createAdminRoutes(deps: AdminDependencies = defaultDependencies)
                     if ('error' in parsed) return parsed;
 
                     const updated = await queries.updateProject(db, parsed.id, {
-                        status: body.status,
+                        status: castRequestBody<UpdateProjectStatusInput>(body).status,
                     });
 
                     if (!updated) {
@@ -1329,7 +1351,7 @@ export function createAdminRoutes(deps: AdminDependencies = defaultDependencies)
                     return { error: 'FORBIDDEN', message: 'Only public projects can be downloaded' };
                 }
 
-                const yjsDoc = await reconstructDocument(project.id);
+                const yjsDoc = await reconstructProjectDocument(project.id);
                 const publicDir = pathModule.resolve(__dirname, '../../public');
                 // Sharded directory first, legacy unsharded directory second, so
                 // filename-addressed files without database rows still export
@@ -1363,18 +1385,18 @@ export function createAdminRoutes(deps: AdminDependencies = defaultDependencies)
 
                 set.headers['content-type'] = 'application/zip';
                 set.headers['content-disposition'] = buildContentDisposition(safeFilename);
-                set.headers['content-length'] = result.data.length.toString();
+                set.headers['content-length'] = result.data.byteLength.toString();
                 return result.data;
             })
 
             // DELETE /api/admin/users/:id - Delete user
-            .delete('/api/admin/users/:id', async ({ params, set, jwtPayload }) => {
+            .delete('/api/admin/users/:id', async ({ params, set, identity }) => {
                 const parsed = parseAndValidateId(params.id, set);
                 if ('error' in parsed) return parsed;
                 const userId = parsed.id;
 
                 // Prevent deleting yourself
-                if (jwtPayload!.sub === userId) {
+                if (identity!.userId === userId) {
                     set.status = 400;
                     return { error: 'CANNOT_DELETE_SELF', message: 'Cannot delete your own account' };
                 }
@@ -1446,7 +1468,7 @@ export function createAdminRoutes(deps: AdminDependencies = defaultDependencies)
             // POST /api/admin/customization/favicon — upload custom favicon
             .post(
                 '/api/admin/customization/favicon',
-                async ({ body, set, jwtPayload }) => {
+                async ({ body, set, identity }) => {
                     const FAVICON_ALLOWED_TYPES = [
                         'image/x-icon',
                         'image/png',
@@ -1455,7 +1477,7 @@ export function createAdminRoutes(deps: AdminDependencies = defaultDependencies)
                         'image/jpeg',
                         'image/webp',
                     ];
-                    const file = (body as { file: File }).file;
+                    const file = castRequestBody<{ file: File }>(body).file;
                     if (!file || !FAVICON_ALLOWED_TYPES.includes(file.type)) {
                         set.status = 400;
                         return {
@@ -1482,7 +1504,7 @@ export function createAdminRoutes(deps: AdminDependencies = defaultDependencies)
                         'APP_FAVICON_PATH',
                         originalName,
                         'string',
-                        jwtPayload?.sub ? Number(jwtPayload.sub) : undefined,
+                        identity?.userId ?? undefined,
                     );
                     return { success: true, filename: originalName };
                 },
@@ -1490,7 +1512,7 @@ export function createAdminRoutes(deps: AdminDependencies = defaultDependencies)
             )
 
             // DELETE /api/admin/customization/favicon — remove custom favicon
-            .delete('/api/admin/customization/favicon', async ({ jwtPayload }) => {
+            .delete('/api/admin/customization/favicon', async ({ identity }) => {
                 const faviconDir = pathModule.join(fileHelper.getFilesDir(), 'customization', 'favicon');
                 for (const f of await fileHelper.listFiles(faviconDir).catch(() => [])) {
                     await fileHelper.remove(pathModule.join(faviconDir, f)).catch(() => {});
@@ -1500,7 +1522,7 @@ export function createAdminRoutes(deps: AdminDependencies = defaultDependencies)
                     'APP_FAVICON_PATH',
                     '',
                     'string',
-                    jwtPayload?.sub ? Number(jwtPayload.sub) : undefined,
+                    identity?.userId ?? undefined,
                 );
                 return { success: true };
             })
@@ -1531,7 +1553,7 @@ export function createAdminRoutes(deps: AdminDependencies = defaultDependencies)
             .post(
                 '/api/admin/customization/assets',
                 async ({ body, set }) => {
-                    const file = (body as { file: File }).file;
+                    const file = castRequestBody<{ file: File }>(body).file;
                     if (!file) {
                         set.status = 400;
                         return { error: 'Bad Request', message: 'No file uploaded' };

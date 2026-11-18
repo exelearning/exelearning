@@ -867,7 +867,9 @@ describe('Pages Routes', () => {
 
             const tempApp = new Elysia().use(jwtInstance);
             const token = await tempApp.decorator.jwt.sign({
-                sub: 'guest-123',
+                // Real guest tokens always carry a numeric `sub`: guests are
+                // backed by a real (ephemeral) user row.
+                sub: '77',
                 email: 'guest@guest.local',
                 isGuest: true,
             });

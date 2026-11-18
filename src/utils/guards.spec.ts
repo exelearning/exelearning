@@ -14,14 +14,15 @@ import {
     ROLES,
     PROTECTED_ROLE,
 } from './guards';
-import type { JwtPayload } from '../routes/auth';
+import { toAuthenticatedIdentity } from '../auth/types';
+import type { AuthenticatedIdentity } from '../auth/types';
 
 // ============================================================================
 // TEST DATA
 // ============================================================================
 
-const createPayload = (overrides: Partial<JwtPayload> = {}): JwtPayload => ({
-    sub: 1,
+const createIdentity = (overrides: Partial<AuthenticatedIdentity> = {}): AuthenticatedIdentity => ({
+    userId: 1,
     email: 'test@example.com',
     roles: ['ROLE_USER'],
     isGuest: false,
@@ -29,10 +30,10 @@ const createPayload = (overrides: Partial<JwtPayload> = {}): JwtPayload => ({
     ...overrides,
 });
 
-const adminPayload = createPayload({ roles: ['ROLE_USER', 'ROLE_ADMIN'] });
-const userPayload = createPayload({ roles: ['ROLE_USER'] });
-const guestPayload = createPayload({ roles: ['ROLE_GUEST'], isGuest: true });
-const multiRolePayload = createPayload({ roles: ['ROLE_USER', 'ROLE_ADMIN', 'ROLE_EDITOR'] });
+const adminIdentity = createIdentity({ roles: ['ROLE_USER', 'ROLE_ADMIN'] });
+const userIdentity = createIdentity({ roles: ['ROLE_USER'] });
+const guestIdentity = createIdentity({ roles: ['ROLE_GUEST'], isGuest: true });
+const multiRoleIdentity = createIdentity({ roles: ['ROLE_USER', 'ROLE_ADMIN', 'ROLE_EDITOR'] });
 
 // ============================================================================
 // hasRole TESTS
@@ -118,27 +119,29 @@ describe('hasAllRoles', () => {
 
 describe('requireAuth', () => {
     it('should return null for authenticated user', () => {
-        expect(requireAuth(userPayload)).toBeNull();
+        expect(requireAuth(userIdentity)).toBeNull();
     });
 
-    it('should return 401 error for null payload', () => {
+    it('should return 401 error for null identity', () => {
         const result = requireAuth(null);
         expect(result).not.toBeNull();
         expect(result?.status).toBe(401);
         expect(result?.error).toBe('UNAUTHORIZED');
     });
 
-    it('should return 401 error for undefined payload', () => {
+    it('should return 401 error for undefined identity', () => {
         const result = requireAuth(undefined);
         expect(result).not.toBeNull();
         expect(result?.status).toBe(401);
     });
 
-    it('should return 401 error for payload without sub', () => {
-        const invalidPayload = { ...userPayload, sub: undefined as unknown as number };
-        const result = requireAuth(invalidPayload);
-        expect(result).not.toBeNull();
-        expect(result?.status).toBe(401);
+    it('returns 401 when the token sub could not be parsed at the boundary', () => {
+        // `sub: 'not-a-user-id'` never becomes an identity — that check lives
+        // in `toAuthenticatedIdentity` (see src/auth/types.spec.ts). Guards
+        // only ever see a null identity in that case.
+        const payload = { sub: 'not-a-user-id', email: 'x@y.z', roles: ['ROLE_USER'] };
+        expect(toAuthenticatedIdentity(payload as never)).toBeNull();
+        expect(requireAuth(toAuthenticatedIdentity(payload as never))).not.toBeNull();
     });
 });
 
@@ -148,31 +151,31 @@ describe('requireAuth', () => {
 
 describe('requireAdmin', () => {
     it('should return null for admin user', () => {
-        expect(requireAdmin(adminPayload)).toBeNull();
+        expect(requireAdmin(adminIdentity)).toBeNull();
     });
 
     it('should return 403 error for non-admin user', () => {
-        const result = requireAdmin(userPayload);
+        const result = requireAdmin(userIdentity);
         expect(result).not.toBeNull();
         expect(result?.status).toBe(403);
         expect(result?.error).toBe('FORBIDDEN');
     });
 
-    it('should return 401 error for null payload', () => {
+    it('should return 401 error for null identity', () => {
         const result = requireAdmin(null);
         expect(result).not.toBeNull();
         expect(result?.status).toBe(401);
         expect(result?.error).toBe('UNAUTHORIZED');
     });
 
-    it('should return 401 error for undefined payload', () => {
+    it('should return 401 error for undefined identity', () => {
         const result = requireAdmin(undefined);
         expect(result).not.toBeNull();
         expect(result?.status).toBe(401);
     });
 
     it('should return 403 error for guest user', () => {
-        const result = requireAdmin(guestPayload);
+        const result = requireAdmin(guestIdentity);
         expect(result).not.toBeNull();
         expect(result?.status).toBe(403);
     });
@@ -184,23 +187,23 @@ describe('requireAdmin', () => {
 
 describe('requireAnyRole', () => {
     it('should return null when user has one of the required roles', () => {
-        expect(requireAnyRole(adminPayload, ['ROLE_ADMIN', 'ROLE_SUPER'])).toBeNull();
+        expect(requireAnyRole(adminIdentity, ['ROLE_ADMIN', 'ROLE_SUPER'])).toBeNull();
     });
 
     it('should return 403 when user has none of the required roles', () => {
-        const result = requireAnyRole(userPayload, ['ROLE_ADMIN', 'ROLE_SUPER']);
+        const result = requireAnyRole(userIdentity, ['ROLE_ADMIN', 'ROLE_SUPER']);
         expect(result).not.toBeNull();
         expect(result?.status).toBe(403);
     });
 
-    it('should return 401 for null payload', () => {
+    it('should return 401 for null identity', () => {
         const result = requireAnyRole(null, ['ROLE_ADMIN']);
         expect(result).not.toBeNull();
         expect(result?.status).toBe(401);
     });
 
     it('should include required roles in error message', () => {
-        const result = requireAnyRole(userPayload, ['ROLE_ADMIN', 'ROLE_SUPER']);
+        const result = requireAnyRole(userIdentity, ['ROLE_ADMIN', 'ROLE_SUPER']);
         expect(result?.message).toContain('ROLE_ADMIN');
         expect(result?.message).toContain('ROLE_SUPER');
     });
@@ -212,20 +215,20 @@ describe('requireAnyRole', () => {
 
 describe('isSelfModification', () => {
     it('should return true when user ID matches target', () => {
-        const payload = createPayload({ sub: 5 });
-        expect(isSelfModification(payload, 5)).toBe(true);
+        const identity = createIdentity({ userId: 5 });
+        expect(isSelfModification(identity, 5)).toBe(true);
     });
 
     it('should return false when user ID does not match target', () => {
-        const payload = createPayload({ sub: 5 });
-        expect(isSelfModification(payload, 10)).toBe(false);
+        const identity = createIdentity({ userId: 5 });
+        expect(isSelfModification(identity, 10)).toBe(false);
     });
 
-    it('should return false for null payload', () => {
+    it('should return false for null identity', () => {
         expect(isSelfModification(null, 5)).toBe(false);
     });
 
-    it('should return false for undefined payload', () => {
+    it('should return false for undefined identity', () => {
         expect(isSelfModification(undefined, 5)).toBe(false);
     });
 });
@@ -264,16 +267,16 @@ describe('PROTECTED_ROLE constant', () => {
 
 describe('Integration scenarios', () => {
     it('should allow admin to access admin-only resources', () => {
-        const authError = requireAuth(adminPayload);
-        const adminError = requireAdmin(adminPayload);
+        const authError = requireAuth(adminIdentity);
+        const adminError = requireAdmin(adminIdentity);
 
         expect(authError).toBeNull();
         expect(adminError).toBeNull();
     });
 
     it('should allow user to access authenticated resources but not admin', () => {
-        const authError = requireAuth(userPayload);
-        const adminError = requireAdmin(userPayload);
+        const authError = requireAuth(userIdentity);
+        const adminError = requireAdmin(userIdentity);
 
         expect(authError).toBeNull();
         expect(adminError).not.toBeNull();
@@ -281,20 +284,20 @@ describe('Integration scenarios', () => {
     });
 
     it('should detect self-modification for admin removing own role', () => {
-        const payload = createPayload({ sub: 10, roles: ['ROLE_USER', 'ROLE_ADMIN'] });
-        const isself = isSelfModification(payload, 10);
-        const isAdmin = hasRole(payload.roles, ROLES.ADMIN);
+        const identity = createIdentity({ userId: 10, roles: ['ROLE_USER', 'ROLE_ADMIN'] });
+        const isself = isSelfModification(identity, 10);
+        const isAdmin = hasRole(identity.roles, ROLES.ADMIN);
 
         expect(isself).toBe(true);
         expect(isAdmin).toBe(true);
     });
 
     it('should handle multi-role user correctly', () => {
-        expect(hasRole(multiRolePayload.roles, ROLES.USER)).toBe(true);
-        expect(hasRole(multiRolePayload.roles, ROLES.ADMIN)).toBe(true);
-        expect(hasRole(multiRolePayload.roles, ROLES.EDITOR)).toBe(true);
-        expect(hasRole(multiRolePayload.roles, 'ROLE_SUPER')).toBe(false);
+        expect(hasRole(multiRoleIdentity.roles, ROLES.USER)).toBe(true);
+        expect(hasRole(multiRoleIdentity.roles, ROLES.ADMIN)).toBe(true);
+        expect(hasRole(multiRoleIdentity.roles, ROLES.EDITOR)).toBe(true);
+        expect(hasRole(multiRoleIdentity.roles, 'ROLE_SUPER')).toBe(false);
 
-        expect(requireAdmin(multiRolePayload)).toBeNull();
+        expect(requireAdmin(multiRoleIdentity)).toBeNull();
     });
 });

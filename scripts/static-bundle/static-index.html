@@ -173,7 +173,7 @@
             <div class="content-info">
                 <div id="exe-title" class="title-not-editing">
                     <h2 class="exe-title content" id="change_title">...</h2>
-                    <button class="btn button-square button-tertiary tertiary-green title-menu-button exe-app-tooltip"
+                    <button type="button" class="btn button-square button-tertiary tertiary-green title-menu-button exe-app-tooltip"
                             data-bs-toggle="tooltip" data-bs-placement="bottom" title="Edit title" data-i18n-title="Edit title" aria-label="Edit title" data-i18n-aria-label="Edit title">
                         <span class="exe-icon small-icon edit-icon-green"></span>
                     </button>
@@ -206,16 +206,16 @@
                     <div class="preview-pinned-header">
                         <h2 class="preview-pinned-title" data-i18n="Preview">Preview</h2>
                         <div class="preview-pinned-actions">
-                            <button id="preview-pinned-extract-button" class="btn button-square button-tertiary" title="Open in new tab" data-i18n-title="Open in new tab">
+                            <button type="button" id="preview-pinned-extract-button" class="btn button-square button-tertiary" title="Open in new tab" data-i18n-title="Open in new tab">
                                 <span class="small-icon external-link-icon"></span>
                             </button>
-                            <button id="preview-unpin-button" class="btn button-square button-tertiary" title="Unpin preview" data-i18n-title="Unpin preview">
+                            <button type="button" id="preview-unpin-button" class="btn button-square button-tertiary" title="Unpin preview" data-i18n-title="Unpin preview">
                                 <span class="small-icon unpin-icon"></span>
                             </button>
-                            <button id="preview-pinned-mobile-button" class="btn button-square button-tertiary" aria-pressed="false" title="Toggle mobile preview" data-i18n-title="Toggle mobile preview" data-i18n-aria-label="Toggle mobile preview" aria-label="Toggle mobile preview">
+                            <button type="button" id="preview-pinned-mobile-button" class="btn button-square button-tertiary" aria-pressed="false" title="Toggle mobile preview" data-i18n-title="Toggle mobile preview" data-i18n-aria-label="Toggle mobile preview" aria-label="Toggle mobile preview">
                                 <span class="small-icon mobile-icon"></span>
                             </button>
-                            <button id="preview-pinned-refresh-button" class="btn button-square button-tertiary" title="Refresh preview" data-i18n-title="Refresh preview">
+                            <button type="button" id="preview-pinned-refresh-button" class="btn button-square button-tertiary" title="Refresh preview" data-i18n-title="Refresh preview">
                                 <span class="small-icon refresh-icon"></span>
                             </button>
                         </div>
@@ -238,16 +238,16 @@
             <div class="preview-panel-header">
                 <h1 class="preview-title" data-i18n="Preview">Preview</h1>
                 <div class="preview-header-actions">
-                    <button id="preview-extract-button" class="btn button-square button-tertiary" title="Open in new tab" data-i18n-title="Open in new tab">
+                    <button type="button" id="preview-extract-button" class="btn button-square button-tertiary" title="Open in new tab" data-i18n-title="Open in new tab">
                         <span class="small-icon external-link-icon"></span>
                     </button>
-                    <button id="preview-pin-button" class="btn button-square button-tertiary" title="Pin preview" data-i18n-title="Pin preview">
+                    <button type="button" id="preview-pin-button" class="btn button-square button-tertiary" title="Pin preview" data-i18n-title="Pin preview">
                         <span class="small-icon pin-icon"></span>
                     </button>
-                    <button id="preview-mobile-button" class="btn button-square button-tertiary" aria-pressed="false" title="Toggle mobile preview" data-i18n-title="Toggle mobile preview" data-i18n-aria-label="Toggle mobile preview" aria-label="Toggle mobile preview">
+                    <button type="button" id="preview-mobile-button" class="btn button-square button-tertiary" aria-pressed="false" title="Toggle mobile preview" data-i18n-title="Toggle mobile preview" data-i18n-aria-label="Toggle mobile preview" aria-label="Toggle mobile preview">
                         <span class="small-icon mobile-icon"></span>
                     </button>
-                    <button id="preview-refresh-button" class="btn button-square button-tertiary" title="Refresh preview" data-i18n-title="Refresh preview">
+                    <button type="button" id="preview-refresh-button" class="btn button-square button-tertiary" title="Refresh preview" data-i18n-title="Refresh preview">
                         <span class="small-icon refresh-icon"></span>
                     </button>
                     <div id="previewsidenavclose" class="navbar-close" role="button" tabindex="0" aria-label="Close" data-i18n-aria-label="Close">
@@ -440,7 +440,7 @@
         function parseContentDispositionFilename(header) {
             if (!header) return '';
             const star = header.match(/filename\*\s*=\s*(?:[^']*'[^']*')?([^;]+)/i);
-            if (star && star[1]) {
+            if (star?.[1]) {
                 try { return decodeURIComponent(star[1].trim().replace(/^"|"$/g, '')); } catch (e) {}
             }
             const plain = header.match(/filename\s*=\s*("([^"]*)"|([^;]+))/i);
@@ -504,7 +504,7 @@
                 // the console; we surface a hint so users know where to look.
                 const message = (e && e.name === 'TypeError')
                     ? 'Could not download file: the remote server blocked the request (network error or CORS policy). Check the browser console for details.'
-                    : 'Could not download file: ' + (e && e.message ? e.message : e);
+                    : 'Could not download file: ' + (e?.message ? e.message : e);
                 showUrlError(message);
                 return;
             }
@@ -630,7 +630,7 @@
         }
 
         // Create new blank project
-        window.newProject = function() {
+        window.newProject = () => {
             const uuid = generateUUID();
             window.eXeLearning.projectId = uuid;
             // Reload the page to start fresh
@@ -638,14 +638,14 @@
         };
 
         // Open existing project from recent list
-        window.openProject = async function(uuid) {
+        window.openProject = async (uuid) => {
             window.eXeLearning.projectId = uuid;
             // Reload the page with the new project ID
             location.reload();
         };
 
         // Delete project
-        window.deleteProject = async function(uuid) {
+        window.deleteProject = async (uuid) => {
             if (confirm(typeof _ === 'function' ? _('Delete this project?') + ' ' + _('This action cannot be undone.') : 'Delete this project?')) {
                 try {
                     await new Promise((resolve, reject) => {

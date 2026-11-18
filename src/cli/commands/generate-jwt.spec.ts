@@ -1,7 +1,7 @@
 /**
  * Tests for Generate JWT Command
  */
-import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
+import { describe, it, expect, beforeEach, afterEach, spyOn } from 'bun:test';
 import { execute, printHelp, runCli, type GenerateJwtDependencies } from './generate-jwt';
 import * as jose from 'jose';
 import type { Kysely } from 'kysely';
@@ -45,6 +45,18 @@ describe('Generate JWT Command', () => {
     });
 
     describe('execute with --raw-sub (legacy mode)', () => {
+        it('warns when the sub is not a numeric user ID, and stays quiet when it is', async () => {
+            const errSpy = spyOn(console, 'error').mockImplementation(() => {});
+            try {
+                await execute(['42'], { 'raw-sub': true });
+                expect(errSpy).not.toHaveBeenCalled();
+                await execute(['admin@example.com'], { 'raw-sub': true });
+                expect(String(errSpy.mock.calls[0]?.[0])).toContain('not a numeric user ID');
+            } finally {
+                errSpy.mockRestore();
+            }
+        });
+
         it('should generate a valid JWT with subject', async () => {
             const result = await execute(['admin@example.com'], { 'raw-sub': true });
 
