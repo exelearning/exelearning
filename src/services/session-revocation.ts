@@ -124,7 +124,16 @@ export function sessionRevocationGuard(deps: SessionRevocationDeps = defaultDeps
 
         const payload = await deps.verifyToken(token);
         if (!payload) return false;
-        const revoked = (await getSessionRevocationReason(payload, deps)) !== null;
+        let revoked: boolean;
+        try {
+            revoked = (await getSessionRevocationReason(payload, deps)) !== null;
+        } catch (error) {
+            // The account could not be checked (e.g. the database is down). Drop the
+            // token for this request so it continues as anonymous instead of failing,
+            // and don't cache it: the session works again once the lookup succeeds.
+            console.error('[SessionRevocation] Could not check the session, treating it as revoked:', error);
+            return true;
+        }
 
         if (cache.size >= CACHE_MAX_ENTRIES) cache.clear();
         cache.set(token, { revoked, expiresAt: now + CACHE_TTL_MS });
