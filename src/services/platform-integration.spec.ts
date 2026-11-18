@@ -14,6 +14,12 @@ import {
     resetDependencies,
 } from './platform-integration';
 import type { PlatformJWTPayload } from '../utils/platform-jwt';
+import type { Project, YjsDocument } from '../db/types';
+
+type FetchFn = (input: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) => Promise<Response>;
+/** Lets tests install a plain async function as fetch, without Bun's fetch extras (preconnect). */
+const fetchHost = globalThis as unknown as { fetch: FetchFn };
+const testProject = { id: 1, uuid: 'test-uuid', title: 'Test Project' } as Project;
 
 describe('Platform Integration Service', () => {
     // Store original fetch
@@ -108,7 +114,7 @@ describe('Platform Integration Service', () => {
         });
 
         it('should throw error when platform returns non-OK status', async () => {
-            globalThis.fetch = async () => new Response(null, { status: 500, statusText: 'Internal Server Error' });
+            fetchHost.fetch = async () => new Response(null, { status: 500, statusText: 'Internal Server Error' });
 
             await expect(platformPetitionGet(mockPayload, 'jwt-token')).rejects.toThrow(
                 'Platform responded with status 500',
@@ -123,7 +129,7 @@ describe('Platform Integration Service', () => {
             // IP, so the egress IP filter alone would NOT stop this exfiltration.
             let calls = 0;
             let attackerContacted = false;
-            globalThis.fetch = (async (url: string | URL | Request) => {
+            fetchHost.fetch = (async (url: string | URL | Request) => {
                 calls++;
                 if (String(url).includes('attacker.example')) {
                     attackerContacted = true;
@@ -143,7 +149,7 @@ describe('Platform Integration Service', () => {
         });
 
         it('should throw error when platform returns error status in JSON', async () => {
-            globalThis.fetch = async () =>
+            fetchHost.fetch = async () =>
                 new Response(
                     JSON.stringify({
                         status: '1',
@@ -156,7 +162,7 @@ describe('Platform Integration Service', () => {
         });
 
         it('should throw error with default message when platform error has no description', async () => {
-            globalThis.fetch = async () =>
+            fetchHost.fetch = async () =>
                 new Response(
                     JSON.stringify({
                         status: '1',
@@ -174,7 +180,7 @@ describe('Platform Integration Service', () => {
                 status: '0',
             };
 
-            globalThis.fetch = async () =>
+            fetchHost.fetch = async () =>
                 new Response(JSON.stringify(mockResponse), {
                     status: 200,
                     headers: { 'Content-Type': 'application/json' },
@@ -187,10 +193,10 @@ describe('Platform Integration Service', () => {
         });
 
         it('should send correct form data to platform', async () => {
-            let capturedBody: FormData | null = null;
-            let capturedUrl: string | null = null;
+            let capturedBody = null as FormData | null;
+            let capturedUrl = null as string | null;
 
-            globalThis.fetch = async (url, init) => {
+            fetchHost.fetch = async (url, init) => {
                 capturedUrl = url as string;
                 capturedBody = init?.body as FormData;
                 return new Response(
@@ -216,7 +222,7 @@ describe('Platform Integration Service', () => {
         });
 
         it('should handle network errors gracefully', async () => {
-            globalThis.fetch = async () => {
+            fetchHost.fetch = async () => {
                 throw new Error('Network error');
             };
 
@@ -230,7 +236,7 @@ describe('Platform Integration Service', () => {
             // reject BEFORE any outbound request is made. Proves the fetch is wired
             // through the SSRF guard (a revert to raw fetch() would fail this).
             let fetchCalls = 0;
-            globalThis.fetch = async () => {
+            fetchHost.fetch = async () => {
                 fetchCalls++;
                 return new Response('{}');
             };
@@ -268,7 +274,7 @@ describe('Platform Integration Service', () => {
 
             it('is blocked by default', async () => {
                 let fetchCalls = 0;
-                globalThis.fetch = async () => {
+                fetchHost.fetch = async () => {
                     fetchCalls++;
                     return okResponse();
                 };
@@ -279,7 +285,7 @@ describe('Platform Integration Service', () => {
 
             it('is reached once PROVIDER_ALLOW_PRIVATE_NETWORK is enabled', async () => {
                 process.env.PROVIDER_ALLOW_PRIVATE_NETWORK = 'true';
-                globalThis.fetch = async () => okResponse();
+                fetchHost.fetch = async () => okResponse();
 
                 const result = await platformPetitionGet(mockPayload, 'jwt-token');
                 expect(result.ode_filename).toBe('project.elpx');
@@ -289,7 +295,7 @@ describe('Platform Integration Service', () => {
                 process.env.PROVIDER_ALLOW_PRIVATE_NETWORK = 'true';
                 process.env.PROVIDER_URLS = 'https://other.example.com';
                 let fetchCalls = 0;
-                globalThis.fetch = async () => {
+                fetchHost.fetch = async () => {
                     fetchCalls++;
                     return okResponse();
                 };
@@ -327,7 +333,7 @@ describe('Platform Integration Service', () => {
 
         it('should return error when project not found', async () => {
             // Configure with mock that returns null
-            configure({ lookupFn: publicLookup, findProjectByUuid: async () => null });
+            configure({ lookupFn: publicLookup, findProjectByUuid: async () => undefined });
 
             const result = await platformPetitionSet(mockPayload, 'jwt-token', 'non-existent-uuid');
 
@@ -339,13 +345,7 @@ describe('Platform Integration Service', () => {
             // Configure with mock project but no snapshot
             configure({
                 lookupFn: publicLookup,
-                findProjectByUuid: async () => ({
-                    id: 1,
-                    uuid: 'test-uuid',
-                    title: 'Test Project',
-                    createdAt: new Date(),
-                    updatedAt: new Date(),
-                }),
+                findProjectByUuid: async () => testProject,
                 findSnapshotByProjectId: async () => undefined,
             });
 
@@ -361,17 +361,11 @@ describe('Platform Integration Service', () => {
 
             configure({
                 lookupFn: publicLookup,
-                findProjectByUuid: async () => ({
-                    id: 1,
-                    uuid: 'test-uuid',
-                    title: 'Test Project',
-                    createdAt: new Date(),
-                    updatedAt: new Date(),
-                }),
+                findProjectByUuid: async () => testProject,
                 findSnapshotByProjectId: async () => mockSnapshot,
             });
 
-            globalThis.fetch = async () => new Response(null, { status: 500 });
+            fetchHost.fetch = async () => new Response(null, { status: 500 });
 
             const result = await platformPetitionSet(mockPayload, 'jwt-token', 'test-uuid');
 
@@ -382,19 +376,13 @@ describe('Platform Integration Service', () => {
         it('refuses to upload when the platform URL resolves to an internal address (SSRF)', async () => {
             const mockSnapshot = createMockSnapshot();
             let fetchCalls = 0;
-            globalThis.fetch = async () => {
+            fetchHost.fetch = async () => {
                 fetchCalls++;
                 return new Response('{}');
             };
             configure({
                 lookupFn: async () => [{ address: '169.254.169.254' }],
-                findProjectByUuid: async () => ({
-                    id: 1,
-                    uuid: 'test-uuid',
-                    title: 'Test Project',
-                    createdAt: new Date(),
-                    updatedAt: new Date(),
-                }),
+                findProjectByUuid: async () => testProject,
                 findSnapshotByProjectId: async () => mockSnapshot,
             });
 
@@ -410,17 +398,11 @@ describe('Platform Integration Service', () => {
 
             configure({
                 lookupFn: publicLookup,
-                findProjectByUuid: async () => ({
-                    id: 1,
-                    uuid: 'test-uuid',
-                    title: 'Test Project',
-                    createdAt: new Date(),
-                    updatedAt: new Date(),
-                }),
+                findProjectByUuid: async () => testProject,
                 findSnapshotByProjectId: async () => mockSnapshot,
             });
 
-            globalThis.fetch = async () =>
+            fetchHost.fetch = async () =>
                 new Response(
                     JSON.stringify({
                         status: '1',
@@ -440,17 +422,11 @@ describe('Platform Integration Service', () => {
 
             configure({
                 lookupFn: publicLookup,
-                findProjectByUuid: async () => ({
-                    id: 1,
-                    uuid: 'test-uuid',
-                    title: 'Test Project',
-                    createdAt: new Date(),
-                    updatedAt: new Date(),
-                }),
+                findProjectByUuid: async () => testProject,
                 findSnapshotByProjectId: async () => mockSnapshot,
             });
 
-            globalThis.fetch = async () =>
+            fetchHost.fetch = async () =>
                 new Response(
                     JSON.stringify({
                         error: 'Permission denied',
@@ -469,19 +445,13 @@ describe('Platform Integration Service', () => {
 
             configure({
                 lookupFn: publicLookup,
-                findProjectByUuid: async () => ({
-                    id: 1,
-                    uuid: 'test-uuid',
-                    title: 'Test Project',
-                    createdAt: new Date(),
-                    updatedAt: new Date(),
-                }),
+                findProjectByUuid: async () => testProject,
                 findSnapshotByProjectId: async () => mockSnapshot,
                 updateProjectByUuid: async () => undefined,
             });
 
             const platformResponse = { success: true, message: 'Upload complete' };
-            globalThis.fetch = async () =>
+            fetchHost.fetch = async () =>
                 new Response(JSON.stringify(platformResponse), {
                     status: 200,
                     headers: { 'Content-Type': 'application/json' },
@@ -499,19 +469,13 @@ describe('Platform Integration Service', () => {
 
             configure({
                 lookupFn: publicLookup,
-                findProjectByUuid: async () => ({
-                    id: 1,
-                    uuid: 'test-uuid',
-                    title: 'Test Project',
-                    createdAt: new Date(),
-                    updatedAt: new Date(),
-                }),
+                findProjectByUuid: async () => testProject,
                 findSnapshotByProjectId: async () => mockSnapshot,
                 updateProjectByUuid: async () => undefined,
             });
 
-            let capturedBody: FormData | null = null;
-            globalThis.fetch = async (_url, init) => {
+            let capturedBody = null as FormData | null;
+            fetchHost.fetch = async (_url, init) => {
                 capturedBody = init?.body as FormData;
                 return new Response(JSON.stringify({ success: true }), {
                     status: 200,
@@ -529,13 +493,7 @@ describe('Platform Integration Service', () => {
         it('should handle exceptions during snapshot loading gracefully', async () => {
             configure({
                 lookupFn: publicLookup,
-                findProjectByUuid: async () => ({
-                    id: 1,
-                    uuid: 'test-uuid',
-                    title: 'Test Project',
-                    createdAt: new Date(),
-                    updatedAt: new Date(),
-                }),
+                findProjectByUuid: async () => testProject,
                 findSnapshotByProjectId: async () => {
                     throw new Error('Database error');
                 },
@@ -553,17 +511,11 @@ describe('Platform Integration Service', () => {
 
             configure({
                 lookupFn: publicLookup,
-                findProjectByUuid: async () => ({
-                    id: 1,
-                    uuid: 'test-uuid',
-                    title: 'Test Project',
-                    createdAt: new Date(),
-                    updatedAt: new Date(),
-                }),
+                findProjectByUuid: async () => testProject,
                 findSnapshotByProjectId: async () => mockSnapshot,
             });
 
-            globalThis.fetch = async () => {
+            fetchHost.fetch = async () => {
                 throw new Error('Connection refused');
             };
 
@@ -578,19 +530,13 @@ describe('Platform Integration Service', () => {
 
             configure({
                 lookupFn: publicLookup,
-                findProjectByUuid: async () => ({
-                    id: 1,
-                    uuid: 'test-uuid',
-                    title: 'Test Project',
-                    createdAt: new Date(),
-                    updatedAt: new Date(),
-                }),
+                findProjectByUuid: async () => testProject,
                 findSnapshotByProjectId: async () => mockSnapshot,
                 updateProjectByUuid: async () => undefined,
             });
 
-            let capturedBody: FormData | null = null;
-            globalThis.fetch = async (_url, init) => {
+            let capturedBody = null as FormData | null;
+            fetchHost.fetch = async (_url, init) => {
                 capturedBody = init?.body as FormData;
                 return new Response(JSON.stringify({ success: true }), {
                     status: 200,
@@ -610,18 +556,12 @@ describe('Platform Integration Service', () => {
 
         it('should store platform_id after successful upload', async () => {
             const mockSnapshot = createMockSnapshot();
-            let storedPlatformId: string | null = null;
-            let storedProjectUuid: string | null = null;
+            let storedPlatformId = null as string | null;
+            let storedProjectUuid = null as string | null;
 
             configure({
                 lookupFn: publicLookup,
-                findProjectByUuid: async () => ({
-                    id: 1,
-                    uuid: 'test-uuid',
-                    title: 'Test Project',
-                    createdAt: new Date(),
-                    updatedAt: new Date(),
-                }),
+                findProjectByUuid: async () => testProject,
                 findSnapshotByProjectId: async () => mockSnapshot,
                 updateProjectByUuid: async (_db, uuid, data) => {
                     storedProjectUuid = uuid;
@@ -630,7 +570,7 @@ describe('Platform Integration Service', () => {
                 },
             });
 
-            globalThis.fetch = async () =>
+            fetchHost.fetch = async () =>
                 new Response(JSON.stringify({ success: true }), {
                     status: 200,
                     headers: { 'Content-Type': 'application/json' },
@@ -656,7 +596,7 @@ describe('Platform Integration Service', () => {
                     return undefined;
                 },
             });
-            globalThis.fetch = async (_url, init) => {
+            fetchHost.fetch = async (_url, init) => {
                 const body = init?.body as FormData;
                 postedFile = JSON.parse(body.get('ode_data') as string).ode_file;
                 return new Response(JSON.stringify({ success: true }), { status: 200 });
@@ -674,13 +614,7 @@ describe('Platform Integration Service', () => {
 
             configure({
                 lookupFn: publicLookup,
-                findProjectByUuid: async () => ({
-                    id: 1,
-                    uuid: 'test-uuid',
-                    title: 'Test Project',
-                    createdAt: new Date(),
-                    updatedAt: new Date(),
-                }),
+                findProjectByUuid: async () => testProject,
                 findSnapshotByProjectId: async () => mockSnapshot,
                 updateProjectByUuid: async () => {
                     updateCalled = true;
@@ -689,7 +623,7 @@ describe('Platform Integration Service', () => {
             });
 
             // Platform returns error
-            globalThis.fetch = async () =>
+            fetchHost.fetch = async () =>
                 new Response(JSON.stringify({ status: '1', error: 'Upload failed' }), {
                     status: 200,
                     headers: { 'Content-Type': 'application/json' },
@@ -746,7 +680,7 @@ describe('Platform Integration Service', () => {
 
         it('refuses to forward when the platform URL resolves to an internal address (SSRF)', async () => {
             let fetchCalls = 0;
-            globalThis.fetch = async () => {
+            fetchHost.fetch = async () => {
                 fetchCalls++;
                 return new Response('{}');
             };
@@ -766,10 +700,10 @@ describe('Platform Integration Service', () => {
         });
 
         it('forwards a base64-encoded ode_data payload to the platform set_ode URL', async () => {
-            let capturedUrl: string | null = null;
-            let capturedBody: FormData | null = null;
+            let capturedUrl = null as string | null;
+            let capturedBody = null as FormData | null;
 
-            globalThis.fetch = async (url, init) => {
+            fetchHost.fetch = async (url, init) => {
                 capturedUrl = url as string;
                 capturedBody = init?.body as FormData;
                 return new Response(JSON.stringify({ status: '0' }), {
@@ -780,7 +714,7 @@ describe('Platform Integration Service', () => {
 
             // Spy on updateProjectByUuid via configure() so we can assert the
             // platform_id linkage is performed only when the upload succeeds.
-            let linkedCmid: string | null = null;
+            let linkedCmid = null as string | null;
             configure({
                 lookupFn: publicLookup,
                 findProjectByUuid: async () => ({ uuid: 'project-uuid', platform_id: null }) as never,
@@ -815,8 +749,8 @@ describe('Platform Integration Service', () => {
         });
 
         it('encodes a Uint8Array package that is not a Buffer', async () => {
-            let capturedBody: FormData | null = null;
-            globalThis.fetch = async (_url, init) => {
+            let capturedBody = null as FormData | null;
+            fetchHost.fetch = async (_url, init) => {
                 capturedBody = init?.body as FormData;
                 return new Response(JSON.stringify({ status: '0' }), {
                     status: 200,
@@ -833,8 +767,8 @@ describe('Platform Integration Service', () => {
         });
 
         it('encodes an ArrayBuffer package payload', async () => {
-            let capturedBody: FormData | null = null;
-            globalThis.fetch = async (_url, init) => {
+            let capturedBody = null as FormData | null;
+            fetchHost.fetch = async (_url, init) => {
                 capturedBody = init?.body as FormData;
                 return new Response(JSON.stringify({ status: '0' }), {
                     status: 200,
@@ -857,9 +791,9 @@ describe('Platform Integration Service', () => {
         });
 
         it('falls back to a default filename when none is provided', async () => {
-            let capturedBody: FormData | null = null;
+            let capturedBody = null as FormData | null;
 
-            globalThis.fetch = async (_url, init) => {
+            fetchHost.fetch = async (_url, init) => {
                 capturedBody = init?.body as FormData;
                 return new Response(JSON.stringify({ status: '0' }), {
                     status: 200,
@@ -877,7 +811,7 @@ describe('Platform Integration Service', () => {
         });
 
         it('returns the platform error description when the platform replies with status 1', async () => {
-            globalThis.fetch = async () =>
+            fetchHost.fetch = async () =>
                 new Response(JSON.stringify({ status: '1', description: 'Quota exceeded' }), {
                     status: 200,
                     headers: { 'Content-Type': 'application/json' },
@@ -896,7 +830,7 @@ describe('Platform Integration Service', () => {
         });
 
         it('returns error when the HTTP response is not OK', async () => {
-            globalThis.fetch = async () => new Response(null, { status: 503 });
+            fetchHost.fetch = async () => new Response(null, { status: 503 });
 
             const result = await platformPetitionSetForward(
                 forwardPayload,
@@ -920,7 +854,7 @@ describe('Platform Integration Service', () => {
                     return undefined;
                 },
             });
-            globalThis.fetch = async () => new Response(JSON.stringify({ status: '0' }), { status: 200 });
+            fetchHost.fetch = async () => new Response(JSON.stringify({ status: '0' }), { status: 200 });
 
             // Moodle signs cmid as a JSON number.
             const payload = { ...forwardPayload, cmid: 42 as unknown as string };
@@ -949,7 +883,7 @@ describe('Platform Integration Service', () => {
                     return undefined;
                 },
             });
-            globalThis.fetch = async () => new Response(JSON.stringify({ status: '0' }), { status: 200 });
+            fetchHost.fetch = async () => new Response(JSON.stringify({ status: '0' }), { status: 200 });
 
             await platformPetitionSetForward(forwardPayload, 'jwt', 'project-uuid', samplePackage, 'p.zip');
 
@@ -971,7 +905,7 @@ describe('Platform Integration Service', () => {
                     return undefined;
                 },
             });
-            globalThis.fetch = async () => new Response(JSON.stringify({ status: '0' }), { status: 200 });
+            fetchHost.fetch = async () => new Response(JSON.stringify({ status: '0' }), { status: 200 });
 
             await platformPetitionSetForward(forwardPayload, 'jwt', 'project-uuid', samplePackage, 'p.zip');
 
@@ -989,7 +923,7 @@ describe('Platform Integration Service', () => {
                     return undefined;
                 },
             });
-            globalThis.fetch = async () => new Response(JSON.stringify({ status: '0' }), { status: 200 });
+            fetchHost.fetch = async () => new Response(JSON.stringify({ status: '0' }), { status: 200 });
 
             const result = await platformPetitionSetForward(
                 forwardPayload,
@@ -1013,7 +947,7 @@ describe('Platform Integration Service', () => {
                 },
             });
 
-            globalThis.fetch = async () =>
+            fetchHost.fetch = async () =>
                 new Response(JSON.stringify({ status: '0' }), {
                     status: 200,
                     headers: { 'Content-Type': 'application/json' },
@@ -1118,7 +1052,7 @@ function createMockYjsDocument() {
  * Create a mock YjsDocument snapshot record
  * This simulates what would be returned from findSnapshotByProjectId()
  */
-function createMockSnapshot() {
+function createMockSnapshot(): YjsDocument {
     const Y = require('yjs');
     const doc = createMockYjsDocument();
     const snapshotData = Y.encodeStateAsUpdate(doc);
@@ -1128,7 +1062,7 @@ function createMockSnapshot() {
         project_id: 1,
         snapshot_data: snapshotData,
         snapshot_version: '1',
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
+        created_at: Date.now(),
+        updated_at: Date.now(),
     };
 }
