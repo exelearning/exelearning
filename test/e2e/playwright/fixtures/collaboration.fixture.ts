@@ -1,5 +1,5 @@
 import { Page, BrowserContext } from '@playwright/test';
-import { AuthFixtures, test as authTest, isStaticProject, skipInStaticMode } from './auth.fixture';
+import { AuthFixtures, test as authTest, isStaticProject, scrollInstantly, skipInStaticMode } from './auth.fixture';
 import { ShareModalPage } from '../pages/share-modal.page';
 import { waitForLoadingScreenHidden } from './auth.fixture';
 import { promises as fs } from 'fs';
@@ -117,6 +117,7 @@ export const test = authTest.extend<CollaborationFixtures, CollaborationWorkerFi
                 ? contextOptions.storageState
                 : (secondGuestStorageStatePath ?? undefined),
         });
+        await scrollInstantly(context);
         await use(context);
         await context.close();
     },
