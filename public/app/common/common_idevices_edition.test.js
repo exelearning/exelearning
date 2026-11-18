@@ -3748,11 +3748,6 @@ describe('common_idevices_edition.js', () => {
       });
     });
 
-    it('cleanText removes extra spaces and trims', () => {
-      const result = globalThis.$exeIDevicesEdition.iDevice.gamification.share.cleanText('  line1  \n  line2  ');
-      expect(result).toBe('line1\nline2');
-    });
-
     it('checkQuestions returns array when valid array', () => {
       const result = globalThis.$exeIDevicesEdition.iDevice.gamification.share.checkQuestions(['q1', 'q2']);
       expect(result).toEqual(['q1', 'q2']);
@@ -4285,120 +4280,6 @@ describe('common_idevices_edition.js', () => {
         'https://claude.ai/new?q=Test%20prompt',
         '_blank'
       );
-    });
-  });
-
-  describe('filePicker', () => {
-    it('init creates buttons for file pickers', () => {
-      document.body.innerHTML = `
-        <input type="text" id="testPicker" class="exe-file-picker" />
-        <input type="text" id="imagePicker" class="exe-image-picker" />
-      `;
-
-      globalThis.$exeIDevicesEdition.iDevice.filePicker.init();
-
-      const fileBtn = document.querySelector('.exe-pick-any-file');
-      const imageBtn = document.querySelector('.exe-pick-image');
-      expect(fileBtn).toBeTruthy();
-      expect(imageBtn).toBeTruthy();
-    });
-
-    it('init skips inputs that already have buttons', () => {
-      document.body.innerHTML = `
-        <input type="text" id="testPicker" class="exe-file-picker" />
-        <input type="button" class="exe-pick-any-file" />
-      `;
-
-      globalThis.$exeIDevicesEdition.iDevice.filePicker.init();
-
-      const buttons = document.querySelectorAll('.exe-pick-any-file');
-      expect(buttons.length).toBe(1);
-    });
-
-    it('init click handler shows filemanager for image', () => {
-      document.body.innerHTML = `
-        <input type="text" id="imagePicker" class="exe-image-picker" />
-      `;
-
-      globalThis.$exeIDevicesEdition.iDevice.filePicker.init();
-
-      const btn = document.querySelector('.exe-pick-image');
-      btn.click();
-
-      expect(globalThis.eXeLearning.app.modals.filemanager.show).toHaveBeenCalledWith(
-        expect.objectContaining({ accept: 'image' })
-      );
-    });
-
-    it('init click handler detects audio from input id', () => {
-      document.body.innerHTML = `
-        <input type="text" id="myAudioPicker" class="exe-file-picker" />
-      `;
-
-      globalThis.$exeIDevicesEdition.iDevice.filePicker.init();
-
-      const btn = document.querySelector('.exe-pick-any-file');
-      btn.click();
-
-      expect(globalThis.eXeLearning.app.modals.filemanager.show).toHaveBeenCalledWith(
-        expect.objectContaining({ accept: 'audio' })
-      );
-    });
-
-    it('init click handler detects video from input id', () => {
-      document.body.innerHTML = `
-        <input type="text" id="myVideoPicker" class="exe-file-picker" />
-      `;
-
-      globalThis.$exeIDevicesEdition.iDevice.filePicker.init();
-
-      const btn = document.querySelector('.exe-pick-any-file');
-      btn.click();
-
-      expect(globalThis.eXeLearning.app.modals.filemanager.show).toHaveBeenCalledWith(
-        expect.objectContaining({ accept: 'video' })
-      );
-    });
-
-    it('openFilePicker calls exe_tinymce.chooseImage for image', () => {
-      globalThis.exe_tinymce = { chooseImage: vi.fn() };
-
-      // Create a real DOM element since the code uses jQuery hasClass
-      const mockElement = document.createElement('button');
-      mockElement.id = 'test_browseFor';
-      mockElement.className = 'exe-pick-image';
-      document.body.appendChild(mockElement);
-
-      globalThis.$exeIDevicesEdition.iDevice.filePicker.openFilePicker(mockElement);
-      expect(globalThis.exe_tinymce.chooseImage).toHaveBeenCalledWith('test', '', 'image', window);
-    });
-
-    it('openFilePicker calls exe_tinymce.chooseImage for media', () => {
-      globalThis.exe_tinymce = { chooseImage: vi.fn() };
-
-      // Create a real DOM element since the code uses jQuery hasClass
-      const mockElement = document.createElement('button');
-      mockElement.id = 'test_browseFor';
-      mockElement.className = 'exe-pick-any-file';
-      document.body.appendChild(mockElement);
-
-      globalThis.$exeIDevicesEdition.iDevice.filePicker.openFilePicker(mockElement);
-      expect(globalThis.exe_tinymce.chooseImage).toHaveBeenCalledWith('test', '', 'media', window);
-    });
-
-    it('openFilePicker handles error', () => {
-      globalThis.exe_tinymce = {
-        chooseImage: vi.fn(() => { throw new Error('test error'); })
-      };
-
-      const mockElement = document.createElement('button');
-      mockElement.id = 'test_browseFor';
-      mockElement.className = '';
-      document.body.appendChild(mockElement);
-
-      globalThis.$exeIDevicesEdition.iDevice.filePicker.openFilePicker(mockElement);
-
-      expect(globalThis.eXe.app.alert).toHaveBeenCalled();
     });
   });
 
@@ -5240,23 +5121,6 @@ describe('common_idevices_edition.js', () => {
           expect(drag('drop', zone, [words()]).defaultPrevented).toBe(false);
           expect(chosen).not.toHaveBeenCalled();
         });
-      });
-
-      it('drops the file-manager button handler', () => {
-        document.body.innerHTML = '<input type="text" id="lifecyclePicker" class="exe-image-picker" />';
-        const show = globalThis.eXeLearning.app.modals.filemanager.show;
-        show.mockClear();
-
-        openEdition();
-        iDevice().filePicker.init();
-
-        document.querySelector('.exe-pick-image').click();
-        expect(show).toHaveBeenCalledTimes(1);
-
-        lifecycle.destroy();
-        document.querySelector('.exe-pick-image').click();
-
-        expect(show).toHaveBeenCalledTimes(1);
       });
     });
 

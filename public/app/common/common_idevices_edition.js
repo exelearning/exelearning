@@ -2210,15 +2210,6 @@ var $exeIDevicesEdition = {
                     }
                 },
 
-                cleanText: function (input) {
-                    const lines = input.split(/\r?\n/);
-                    const cleanedLines = lines.map(line => {
-                        line = line.trim();
-                        line = line.replace(/\s+/g, ' ');
-                        return line;
-                    });
-                    return cleanedLines.join('\n');
-                },
                 checkQuestions: function (lines) {
                     if (Array.isArray(lines) && lines.length > 0) {
                         return lines;
@@ -2538,92 +2529,6 @@ var $exeIDevicesEdition = {
             }
         },
         // / Gamification
-        filePicker: {
-            init: function () {
-                var filemanager = window.eXeLearning?.app?.modals?.filemanager;
-
-                // Create buttons for inputs that don't have one
-                $(".exe-file-picker,.exe-image-picker").each(function () {
-                    var $input = $(this);
-
-                    // Skip if there's already a button after
-                    if ($input.next('input[type="button"].exe-pick-image, input[type="button"].exe-pick-any-file').length) {
-                        return;
-                    }
-
-                    var id = this.id;
-                    var isImage = $input.hasClass("exe-image-picker");
-                    var css = isImage ? 'exe-pick-image' : 'exe-pick-any-file';
-
-                    var $button = $('<input>', {
-                        type: 'button',
-                        class: css,
-                        value: _("Select a file"),
-                        'data-filepicker': id
-                    });
-                    $input.after($button);
-                });
-
-                // EVENT DELEGATION - A single handler for ALL buttons
-                var openFileManager = function (e) {
-                    e.preventDefault();
-                    e.stopImmediatePropagation();
-
-                    if (!filemanager) return;
-
-                    var $button = $(e.currentTarget);
-                    var inputId = $button.attr('data-filepicker') || $button.prev('input[type="text"]').attr('id');
-                    var $input = inputId ? $('#' + inputId) : $button.prev('input[type="text"]');
-
-                    if (!$input.length) return;
-
-                    var isImage = $input.hasClass("exe-image-picker") || $button.hasClass("exe-pick-image");
-                    var accept = null;
-
-                    if (isImage) {
-                        accept = 'image';
-                    } else if (inputId && inputId.toLowerCase().indexOf('audio') !== -1) {
-                        accept = 'audio';
-                    } else if (inputId && inputId.toLowerCase().indexOf('video') !== -1) {
-                        accept = 'video';
-                    }
-
-                    filemanager.show({
-                        accept: accept,
-                        onSelect: function(result) {
-                            $input.val(result.assetUrl);
-                            $input.data('blobUrl', result.blobUrl);
-                            $input.trigger('change');
-                        }
-                    });
-                };
-
-                // Delegated on `document`, so it outlives the edition form: the
-                // edition owns it when one is open, and the legacy namespace
-                // keeps de-duplicating repeated calls.
-                $(document).off('click.filepicker');
-                var lifecycle = $exeIDevicesEdition.iDevice.getLifecycle();
-                if (lifecycle) {
-                    lifecycle.on(document, 'click.filepicker', '.exe-pick-image, .exe-pick-any-file', openFileManager);
-                } else {
-                    $(document).on('click.filepicker', '.exe-pick-image, .exe-pick-any-file', openFileManager);
-                }
-
-                // Initialize recorder controls for fields marked with data-voice-recorder.
-                $exeIDevicesEdition.iDevice.voiceRecorder.initVoiceRecorders(document);
-            },
-            openFilePicker: function (e) {
-                // Legacy fallback - should not be called anymore
-                var id = e.id.replace("_browseFor", "");
-                var type = 'media';
-                if ($(e).hasClass("exe-pick-image")) type = 'image';
-                try {
-                    exe_tinymce.chooseImage(id, "", type, window);
-                } catch (e) {
-                    eXe.app.alert(e);
-                }
-            }
-        },
         voiceRecorder: {
             maxDurationMs: 120000,
             startDelayMs: 80,
