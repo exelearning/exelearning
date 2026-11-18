@@ -946,4 +946,27 @@ describe('map edition: shared form tabs', () => {
             expect(placeholder.slides[0].id).toBe(`s${suffix}`);
         });
     });
+
+    it('empties, in the points of a submap, the fields of the other types', () => {
+        const filled = (type) => ({
+            ...device.getDefaultPoint(),
+            type,
+            url: 'image.png',
+            video: 'https://www.youtube.com/watch?v=x',
+            eText: 'Text',
+        });
+        const submap = { ...device.getDefaultPoint(), type: 5 };
+        submap.map.pts = [0, 1, 2, 3, 4].map(filled);
+        device.activeMap.pts = [submap];
+
+        const [{ map }] = device.clearSavePoints();
+
+        expect(map.pts.map(({ type, url, video, eText }) => ({ type, url, video, eText }))).toEqual([
+            { type: 0, url: 'image.png', video: '', eText: '' },
+            { type: 1, url: '', video: 'https://www.youtube.com/watch?v=x', eText: '' },
+            { type: 2, url: '', video: '', eText: 'Text' },
+            { type: 3, url: '', video: '', eText: '' },
+            { type: 4, url: '', video: '', eText: '' },
+        ]);
+    });
 });

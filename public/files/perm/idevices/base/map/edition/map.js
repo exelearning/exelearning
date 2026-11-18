@@ -2246,7 +2246,7 @@ var $exeDevice = {
                 p.fVideo = 0;
                 p.url = p.map.url;
                 for (let j = 0; j < p.map.pts.length; j++) {
-                    let q = $exeDevice.activeMap.pts[i];
+                    const q = p.map.pts[j];
                     if (q.type == 0) {
                         q.eText = '';
                         q.video = '';
