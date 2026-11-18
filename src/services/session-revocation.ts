@@ -22,7 +22,8 @@ import type { Kysely } from 'kysely';
 import { db as defaultDb } from '../db/client';
 import { findUserById as findUserByIdDefault } from '../db/queries';
 import { parseRoles, type Database } from '../db/types';
-import { passwordFingerprint, verifyToken as verifyTokenDefault, type JwtPayload } from '../routes/auth';
+import type { AuthenticatedIdentity } from '../auth/types';
+import { passwordFingerprint, verifyToken as verifyTokenDefault } from '../routes/auth';
 import { ROLES } from '../utils/guards';
 
 export interface SessionRevocationDeps {
@@ -53,10 +54,10 @@ function rolesOf(rawRoles: string): string[] {
  * still valid.
  */
 export async function getSessionRevocationReason(
-    payload: JwtPayload,
+    payload: AuthenticatedIdentity,
     deps: Pick<SessionRevocationDeps, 'db' | 'findUserById'> = defaultDeps,
 ): Promise<string | null> {
-    const userId = Number(payload.sub);
+    const userId = Number(payload.userId);
     if (!Number.isSafeInteger(userId) || userId <= 0) return 'invalid-subject';
 
     const user = await deps.findUserById(deps.db, userId);
@@ -84,7 +85,7 @@ export async function getSessionRevocationReason(
 export async function verifySessionToken(
     token: string,
     deps: SessionRevocationDeps = defaultDeps,
-): Promise<JwtPayload | null> {
+): Promise<AuthenticatedIdentity | null> {
     const payload = await deps.verifyToken(token);
     if (!payload) return null;
     return (await getSessionRevocationReason(payload, deps)) ? null : payload;

@@ -9,6 +9,8 @@ import { Elysia } from 'elysia';
 import * as bcrypt from 'bcryptjs';
 import { db, resetClientCacheForTesting } from '../../../db/client';
 import { up } from '../../../db/migrations/001_initial';
+import { up as up008 } from '../../../db/migrations/008_project_public_view_id';
+import { up as up009 } from '../../../db/migrations/009_project_public_view_enabled';
 import { now } from '../../../db/types';
 import { projectsRoutes } from './projects';
 import { createAuthRoutes } from '../../auth';
@@ -82,8 +84,11 @@ describe('Projects API v1', () => {
         // Reset the global db client cache so it uses the test DB_PATH
         await resetClientCacheForTesting();
 
-        // Run migrations on the global db
+        // Run migrations on the global db. createProject writes public_view_enabled,
+        // which the initial schema does not have.
         await up(db);
+        await up008(db);
+        await up009(db);
 
         // Mock Y.Doc for ensureDocument
         mockYDoc = new Y.Doc();

@@ -191,7 +191,7 @@ export function convertLegacyMindmapToMindElixir(doc: LegacyDocument): MindElixi
 
         const caption = isObject(node.text) && typeof node.text.caption === 'string' ? node.text.caption : '';
         const result: NodeObj = { id, topic: caption, expanded: node.foldChildren !== true };
-        const style = legacyFontToStyle(isObject(node.text) ? node.text.font : undefined, isRoot);
+        const style = legacyFontToStyle(isObject(node.text) ? (node.text.font as LegacyFont | undefined) : undefined, isRoot);
         if (style) result.style = style;
         if (!isRoot && typeof node.branchColor === 'string' && node.branchColor) result.branchColor = node.branchColor;
 

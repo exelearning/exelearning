@@ -14,6 +14,7 @@ import {
     updateUser,
     deleteUser,
 } from '../../../db/queries/users';
+import { castRequestBody } from '../../types/request-payloads';
 import {
     authenticateRequest,
     errorResponse,
@@ -21,6 +22,8 @@ import {
     isAdmin,
     CreateUserBody,
     UpdateUserBody,
+    type CreateUserInput,
+    type UpdateUserInput,
     UserIdParam,
 } from './types';
 import { getDefaultQuotaMb } from '../../../services/app-settings';
@@ -49,7 +52,7 @@ export const usersRoutes = new Elysia({ prefix: '/users' })
         '/',
         async ({ headers, set }) => {
             const authResult = await authenticateRequest(headers);
-            if (!authResult.success) {
+            if (authResult.success === false) {
                 set.status = authResult.status;
                 return authResult.response;
             }
@@ -86,7 +89,7 @@ export const usersRoutes = new Elysia({ prefix: '/users' })
         '/',
         async ({ headers, body, set }) => {
             const authResult = await authenticateRequest(headers);
-            if (!authResult.success) {
+            if (authResult.success === false) {
                 set.status = authResult.status;
                 return authResult.response;
             }
@@ -98,20 +101,21 @@ export const usersRoutes = new Elysia({ prefix: '/users' })
             }
 
             // Check if email already exists
-            const existing = await findUserByEmail(db, body.email);
+            const createInput = castRequestBody<CreateUserInput>(body);
+            const existing = await findUserByEmail(db, createInput.email);
             if (existing) {
                 set.status = 409;
                 return errorResponse('CONFLICT', 'User with this email already exists');
             }
 
             // Hash password
-            const hashedPassword = await Bun.password.hash(body.password, { algorithm: 'bcrypt' });
+            const hashedPassword = await Bun.password.hash(createInput.password, { algorithm: 'bcrypt' });
 
             // Create user
             // user_id: not set for API-created users (null) - they're not SSO
-            const roles = body.roles || ['ROLE_USER'];
+            const roles = createInput.roles || ['ROLE_USER'];
             const newUser = await createUser(db, {
-                email: body.email,
+                email: createInput.email,
                 password: hashedPassword,
                 roles: JSON.stringify(roles),
                 is_lopd_accepted: 1,
@@ -143,7 +147,7 @@ export const usersRoutes = new Elysia({ prefix: '/users' })
         '/:id',
         async ({ headers, params, set }) => {
             const authResult = await authenticateRequest(headers);
-            if (!authResult.success) {
+            if (authResult.success === false) {
                 set.status = authResult.status;
                 return authResult.response;
             }
@@ -154,7 +158,7 @@ export const usersRoutes = new Elysia({ prefix: '/users' })
                 return errorResponse('FORBIDDEN', 'Admin access required');
             }
 
-            const user = await findUserById(db, params.id);
+            const user = await findUserById(db, Number(params.id));
 
             if (!user) {
                 set.status = 404;
@@ -184,7 +188,7 @@ export const usersRoutes = new Elysia({ prefix: '/users' })
         '/:id',
         async ({ headers, params, body, set }) => {
             const authResult = await authenticateRequest(headers);
-            if (!authResult.success) {
+            if (authResult.success === false) {
                 set.status = authResult.status;
                 return authResult.response;
             }
@@ -195,7 +199,7 @@ export const usersRoutes = new Elysia({ prefix: '/users' })
                 return errorResponse('FORBIDDEN', 'Admin access required');
             }
 
-            const user = await findUserById(db, params.id);
+            const user = await findUserById(db, Number(params.id));
 
             if (!user) {
                 set.status = 404;
@@ -204,30 +208,31 @@ export const usersRoutes = new Elysia({ prefix: '/users' })
 
             // Build updates
             const updates: Record<string, unknown> = {};
+            const updateInput = castRequestBody<UpdateUserInput>(body);
 
-            if (body.email !== undefined) {
+            if (updateInput.email !== undefined) {
                 // Check for email conflict
-                const existing = await findUserByEmail(db, body.email);
-                if (existing && existing.id !== params.id) {
+                const existing = await findUserByEmail(db, updateInput.email);
+                if (existing && existing.id !== Number(params.id)) {
                     set.status = 409;
                     return errorResponse('CONFLICT', 'Email already in use');
                 }
-                updates.email = body.email;
+                updates.email = updateInput.email;
             }
 
-            if (body.password !== undefined) {
-                updates.password = await Bun.password.hash(body.password, { algorithm: 'bcrypt' });
+            if (updateInput.password !== undefined) {
+                updates.password = await Bun.password.hash(updateInput.password, { algorithm: 'bcrypt' });
             }
 
-            if (body.roles !== undefined) {
-                updates.roles = JSON.stringify(body.roles);
+            if (updateInput.roles !== undefined) {
+                updates.roles = JSON.stringify(updateInput.roles);
             }
 
             if (Object.keys(updates).length > 0) {
-                await updateUser(db, params.id, updates);
+                await updateUser(db, Number(params.id), updates);
             }
 
-            const updatedUser = await findUserById(db, params.id);
+            const updatedUser = await findUserById(db, Number(params.id));
 
             return successResponse({
                 id: updatedUser!.id,
@@ -253,7 +258,7 @@ export const usersRoutes = new Elysia({ prefix: '/users' })
         '/:id',
         async ({ headers, params, set }) => {
             const authResult = await authenticateRequest(headers);
-            if (!authResult.success) {
+            if (authResult.success === false) {
                 set.status = authResult.status;
                 return authResult.response;
             }
@@ -264,7 +269,7 @@ export const usersRoutes = new Elysia({ prefix: '/users' })
                 return errorResponse('FORBIDDEN', 'Admin access required');
             }
 
-            const user = await findUserById(db, params.id);
+            const user = await findUserById(db, Number(params.id));
 
             if (!user) {
                 set.status = 404;
@@ -277,7 +282,7 @@ export const usersRoutes = new Elysia({ prefix: '/users' })
                 return errorResponse('BAD_REQUEST', 'Cannot delete your own account');
             }
 
-            await deleteUser(db, params.id);
+            await deleteUser(db, Number(params.id));
 
             return successResponse({ deleted: true, id: params.id });
         },

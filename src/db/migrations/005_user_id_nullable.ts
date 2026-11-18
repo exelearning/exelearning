@@ -10,14 +10,15 @@
  * Note: SQLite doesn't support ALTER COLUMN, so we need to recreate the table.
  * PostgreSQL and MySQL support altering column nullability directly.
  */
-import { Kysely, sql } from 'kysely';
-import { getDialect as getDialectHelper, columnExists as columnExistsHelper } from '../helpers';
+
+import { sql } from 'kysely';
+import { type UntypedKysely, getDialect as getDialectHelper, columnExists as columnExistsHelper } from '../helpers';
 import type { DbDialect } from '../dialect';
 
 // Dependency injection for testing
 interface MigrationDeps {
     getDialect: () => DbDialect;
-    columnExists: (db: Kysely<unknown>, tableName: string, columnName: string) => Promise<boolean>;
+    columnExists: (db: UntypedKysely, tableName: string, columnName: string) => Promise<boolean>;
 }
 
 const defaultDeps: MigrationDeps = {
@@ -35,7 +36,7 @@ export function resetDependencies(): void {
     deps = defaultDeps;
 }
 
-export async function up(db: Kysely<unknown>): Promise<void> {
+export async function up(db: UntypedKysely): Promise<void> {
     const dialect = deps.getDialect();
 
     // Check if user_id column exists (it might not exist if this is a legacy migration path
@@ -88,7 +89,7 @@ export async function up(db: Kysely<unknown>): Promise<void> {
     }
 }
 
-export async function down(db: Kysely<unknown>): Promise<void> {
+export async function down(db: UntypedKysely): Promise<void> {
     const dialect = deps.getDialect();
 
     // Check if user_id column exists

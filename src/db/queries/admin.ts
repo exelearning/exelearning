@@ -309,17 +309,14 @@ export async function getSystemStats(db: Kysely<Database>): Promise<{
  * Get all app settings
  * Note: Requires app_settings table to be created via migration
  */
-export async function getAllSettings(db: Kysely<Database & { app_settings: AppSettingsTable }>): Promise<AppSetting[]> {
+export async function getAllSettings(db: Kysely<Database>): Promise<AppSetting[]> {
     return db.selectFrom('app_settings').selectAll().execute();
 }
 
 /**
  * Get setting by key
  */
-export async function getSetting(
-    db: Kysely<Database & { app_settings: AppSettingsTable }>,
-    key: string,
-): Promise<AppSetting | undefined> {
+export async function getSetting(db: Kysely<Database>, key: string): Promise<AppSetting | undefined> {
     return db.selectFrom('app_settings').selectAll().where('key', '=', key).executeTakeFirst();
 }
 
@@ -327,7 +324,7 @@ export async function getSetting(
  * Set or update a setting
  */
 export async function setSetting(
-    db: Kysely<Database & { app_settings: AppSettingsTable }>,
+    db: Kysely<Database>,
     key: string,
     value: string,
     type: 'string' | 'number' | 'boolean' | 'json' = 'string',
@@ -367,18 +364,4 @@ export async function setSetting(
 // TYPES
 // ============================================================================
 
-interface AppSettingsTable {
-    key: string;
-    value: string;
-    type: string;
-    updated_at: string | null;
-    updated_by: number | null;
-}
-
-export type AppSetting = {
-    key: string;
-    value: string;
-    type: string;
-    updated_at: string | null;
-    updated_by: number | null;
-};
+export type AppSetting = Database['app_settings'];

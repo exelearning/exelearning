@@ -991,7 +991,7 @@ describe('User Routes', () => {
                 expect(token).toBeDefined();
                 const payload = await verifyToken(token!);
                 expect(payload?.pwh).toBe(passwordFingerprint(passwordUpdates[0].password));
-                expect(payload?.sub).toBe(1);
+                expect(payload?.userId).toBe(1);
                 expect(payload?.authMethod).toBe('local');
             });
 
@@ -1001,7 +1001,7 @@ describe('User Routes', () => {
                 expect(status).toBe(200);
                 const payload = await verifyToken(body.token);
                 expect(payload?.pwh).toBe(passwordFingerprint(passwordUpdates[0].password));
-                expect(payload?.sub).toBe(1);
+                expect(payload?.userId).toBe(1);
                 expect(payload?.isGuest).toBe(false);
             });
 

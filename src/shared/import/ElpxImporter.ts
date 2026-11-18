@@ -442,7 +442,10 @@ export class ElpxImporter {
         }
 
         // Extract and import structure (modern format)
-        const stats = await this.importStructure(xmlDoc, workingZip, { clearExisting, parentId });
+        const stats = await this.importStructure(xmlDoc as unknown as Document, workingZip, {
+            clearExisting,
+            parentId,
+        });
 
         // Note: detailed stats already logged in importStructure
         return stats;
@@ -538,7 +541,10 @@ export class ElpxImporter {
         }
 
         // Extract and import structure (modern format)
-        const stats = await this.importStructure(xmlDoc, zipContents, { clearExisting, parentId });
+        const stats = await this.importStructure(xmlDoc as unknown as Document, zipContents, {
+            clearExisting,
+            parentId,
+        });
 
         // Note: detailed stats already logged in importStructure
         return stats;
@@ -1115,10 +1121,10 @@ export class ElpxImporter {
     }
 
     private extractScrambledListProperties(htmlView: string): Record<string, unknown> | null {
-        if (!htmlView || !htmlView.includes('exe-sortableList')) return null;
+        if (!htmlView?.includes('exe-sortableList')) return null;
 
         const doc = new DOMParser().parseFromString(`<div>${htmlView}</div>`, 'text/html');
-        const activity = this.getFirstElementByClass(doc, 'exe-sortableList');
+        const activity = this.getFirstElementByClass(doc as unknown as Document, 'exe-sortableList');
         if (!activity) return null;
 
         const optionsList =
@@ -1191,7 +1197,11 @@ export class ElpxImporter {
 
         const serializer = new XMLSerializer();
         const html = Array.from(element.childNodes || [])
-            .map(child => serializer.serializeToString(child))
+            .map(child => {
+                // Runtime type is @xmldom/xmldom's Node; DOM lib types don't model it.
+                const xmlNode = child as unknown as import('@xmldom/xmldom').Node;
+                return serializer.serializeToString(xmlNode);
+            })
             .join('');
         return this.stripXhtmlNamespaceAttributes(html).trim();
     }

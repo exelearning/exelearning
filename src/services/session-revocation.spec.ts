@@ -80,16 +80,16 @@ function protectedApp(d = deps()) {
     return new Elysia()
         .use(sessionRevocationGuard(d))
         .use(withJwtAuth())
-        .get('/me', ({ jwtPayload, set }) => {
-            const err = requireAuth(jwtPayload);
+        .get('/me', ({ identity, set }) => {
+            const err = requireAuth(identity);
             if (err) {
                 set.status = err.status;
                 return err;
             }
-            return { sub: jwtPayload!.sub };
+            return { userId: identity!.userId };
         })
-        .get('/admin', ({ jwtPayload, set }) => {
-            const err = requireAdmin(jwtPayload);
+        .get('/admin', ({ identity, set }) => {
+            const err = requireAdmin(identity);
             if (err) {
                 set.status = err.status;
                 return err;
@@ -134,7 +134,7 @@ describe('session revocation', () => {
 
     describe('getSessionRevocationReason', () => {
         const base = (sub: unknown, extra: Record<string, unknown> = {}) =>
-            ({ sub, email: 'x', roles: ['ROLE_USER'], ...extra }) as never;
+            ({ userId: sub, email: 'x', roles: ['ROLE_USER'], isGuest: false, ...extra }) as never;
 
         it('accepts a token that matches the account', async () => {
             const user = users.get(1)!;
@@ -215,7 +215,7 @@ describe('session revocation', () => {
     describe('verifySessionToken', () => {
         it('returns the payload of a valid session', async () => {
             const payload = await verifySessionToken(await tokenFor(users.get(1)!), deps());
-            expect(payload?.sub).toBe(1);
+            expect(payload?.userId).toBe(1);
         });
 
         it('rejects a forged token without looking up the account', async () => {
