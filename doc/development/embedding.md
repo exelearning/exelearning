@@ -74,7 +74,7 @@ Set `window.__EXE_EMBEDDING_CONFIG__` on the **iframe's** `contentWindow` before
 | `basePath` | `string` | `'.'` | Base URL for static files. Overrides auto-detection. |
 | `parentOrigin` | `string` | `null` | Origin of the parent window (used for initial response). |
 | `trustedOrigins` | `string[]` | `[]` | Allowed message origins. Empty = accept all. |
-| `locale` | `string` | auto | Override locale (e.g., `'es'`, `'en'`). |
+| `locale` | `string` | auto | Override locale (e.g., `'es'`, `'en'`). Takes precedence over the user's saved language preference on every load, so a language change made in the editor is not kept across reloads while the host keeps passing `locale`. |
 | `hideUI` | `object` | `{}` | UI elements to hide (see below). |
 
 ### `hideUI` Options

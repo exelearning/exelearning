@@ -99,6 +99,7 @@ export {
     createSnapshot,
     updateSnapshot,
     upsertSnapshot,
+    replaceSnapshotIfVersion,
     deleteSnapshot,
     snapshotExists,
     findUpdatesByProjectId,
@@ -155,6 +156,7 @@ export {
     updateUserStatus,
     createUserAsAdmin,
     updateUserQuota,
+    updateAllUsersQuota,
     getSystemStats,
 } from './admin';
 export type { AppSetting } from './admin';

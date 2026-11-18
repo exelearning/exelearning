@@ -72,13 +72,6 @@ export function getDialect(): DbDialect {
     return _dialect;
 }
 
-// Legacy export for backwards compatibility
-export const dialect: DbDialect = new Proxy({} as DbDialect, {
-    get(_, prop) {
-        return getDialect()[prop as keyof DbDialect];
-    },
-}) as DbDialect;
-
 export { getDbConfig, getDialectFromEnv };
 export type { Database, DbDialect };
 

@@ -106,6 +106,37 @@ export async function upsertSnapshot(
     return db.selectFrom('yjs_documents').selectAll().where('project_id', '=', projectId).executeTakeFirstOrThrow();
 }
 
+/**
+ * Replace a project's snapshot only if it still carries `expectedVersion`
+ * (compare-and-set). Used by the save endpoint so two clients that saved from
+ * the same base cannot silently overwrite each other: the loser of the race
+ * sees `false`, reloads the stored state, merges and tries again (#2615).
+ * Portable across SQLite, PostgreSQL and MySQL/MariaDB: a single conditional
+ * UPDATE, no row locks or RETURNING.
+ *
+ * @returns true when exactly one row was replaced, false when the stored
+ *   version had moved on (or no snapshot row exists).
+ */
+export async function replaceSnapshotIfVersion(
+    db: Kysely<Database>,
+    projectId: number,
+    snapshotData: Uint8Array,
+    snapshotVersion: string,
+    expectedVersion: string,
+): Promise<boolean> {
+    const result = await db
+        .updateTable('yjs_documents')
+        .set({
+            snapshot_data: toBinaryData(snapshotData),
+            snapshot_version: snapshotVersion,
+            updated_at: now(),
+        })
+        .where('project_id', '=', projectId)
+        .where('snapshot_version', '=', expectedVersion)
+        .executeTakeFirst();
+    return Number(result.numUpdatedRows ?? 0) === 1;
+}
+
 export async function deleteSnapshot(db: Kysely<Database>, projectId: number): Promise<void> {
     await db.deleteFrom('yjs_documents').where('project_id', '=', projectId).execute();
 }

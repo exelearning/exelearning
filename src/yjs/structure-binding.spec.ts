@@ -868,6 +868,15 @@ describe('structure-binding', () => {
         });
 
         describe('createComponent', () => {
+            it('names the page in the not-found error only when one was given', () => {
+                expect(createComponent(ydoc, { blockId: 'missing', ideviceType: 'text' }).error).toBe(
+                    'Block missing not found',
+                );
+                expect(createComponent(ydoc, { pageId, blockId: 'missing', ideviceType: 'text' }).error).toBe(
+                    `Block missing not found in page ${pageId}`,
+                );
+            });
+
             it('should create a component', () => {
                 const result = createComponent(ydoc, {
                     pageId,

@@ -209,7 +209,7 @@ var eXeUniversalStyle = {
         // Page titles are text: build nodes, never markup
         function link(a){
             var text = a.text();
-            return $("<a></a>").attr("href",a.attr("href")).attr("title",text).append($("<span></span>").text(eXeUniversalStyle.truncate(text)));
+            return $("<a></a>").attr("href",a.attr("href")).attr("title",text).data("src",a[0]).append($("<span></span>").text(eXeUniversalStyle.truncate(text)));
         }
         function getNodeLinks(){
             var res = $("<li></li>").append($("<strong></strong>").append($("<span></span>").text(eXeUniversalStyle.truncate($(".page-header .page-title").text()))));
@@ -223,11 +223,13 @@ var eXeUniversalStyle = {
                 loc = loc[0];
             var mainTit = "";
             var mainLnk = "";
+            var mainSrc = null;
             $("#siteNav a").each(function(x){
                 var e = $(this);
                 if (x==0) {
                     mainTit = e.text();
                     mainLnk = e.attr("href");
+                    mainSrc = this;
                 }
                 var ref = e.attr("href");
                 if (ref==loc || ref.endsWith("/" + loc)) {
@@ -244,7 +246,7 @@ var eXeUniversalStyle = {
             }
             var img = 'theme/img/home.png';
             if ($('html').attr('id')!='exe-index') img = '../' + img;
-            var home = $('<a id="siteBreadcrumbsHome"></a>').attr("href",mainLnk).attr("title",mainTit);
+            var home = $('<a id="siteBreadcrumbsHome"></a>').attr("href",mainLnk).attr("title",mainTit).data("src",mainSrc);
             home.append($('<img width="19" height="19">').attr("src",img).attr("alt",mainTit));
             home.append($('<span class="sr-av"></span>').text(mainTit));
             return [$("<li></li>").append(home)].concat(extra,res);
@@ -252,6 +254,11 @@ var eXeUniversalStyle = {
         var breadcrumb = $('<div id="siteBreadcrumbs"><ul></ul></div>');
         breadcrumb.find("ul").append(getNodeLinks());
         $(".package-header").prepend(breadcrumb).addClass("width-breadcrumbs");
+        // Hrefs read at click time: mode params (exe-teacher, exe-presentation) are added to the menu after init
+        breadcrumb.on("mousedown click", "a", function(){
+            var src = $(this).data("src");
+            if (src) this.setAttribute("href", src.getAttribute("href"));
+        });
     },
     dropdownMenus: function(){
         if (!this.dropdownNavigation) {

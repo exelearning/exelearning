@@ -8,8 +8,9 @@ import { describe, it, expect, beforeAll, beforeEach } from 'bun:test';
 import { Elysia } from 'elysia';
 import { SignJWT } from 'jose';
 import { idevicesRoutes } from './idevices';
+import { getJwtSecret } from '../utils/jwt-secret';
 
-const TEST_JWT_SECRET = 'dev_secret_change_me';
+const TEST_JWT_SECRET = getJwtSecret();
 
 async function signTestToken(sub: number, roles: string[] = ['ROLE_USER']): Promise<string> {
     const secret = new TextEncoder().encode(TEST_JWT_SECRET);
@@ -469,6 +470,25 @@ describe('iDevices Routes', () => {
             expect(body.odeSessionId).toBe('test-session-upload');
             expect(body.savedFilename).toBeDefined();
             expect(body.savedPath).toContain('test-session-upload');
+        });
+
+        it('should reject a data URL with an empty payload instead of writing an empty file', async () => {
+            const res = await handle(
+                new Request('http://localhost/api/idevices/upload/file/resources', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        odeIdeviceId: 'test-idevice-empty',
+                        file: 'data:image/png;base64,',
+                        filename: 'empty.png',
+                        odeSessionId: 'test-session-empty',
+                    }),
+                }),
+            );
+
+            expect(res.status).toBe(400);
+            const body = await res.json();
+            expect(body.code).toBe('error: invalid data');
         });
 
         it('should clean special characters from filename', async () => {

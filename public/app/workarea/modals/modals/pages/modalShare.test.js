@@ -150,6 +150,21 @@ describe('ModalShare', () => {
       vi.useRealTimers();
     });
 
+    it('should render the project title in the modal title as text, not HTML', async () => {
+      const title = '<img src=x onerror="alert(1)">';
+      window.eXeLearning.app.api.getProject.mockResolvedValueOnce({
+        responseMessage: 'OK',
+        project: { id: 'proj-123', title, visibility: 'private', collaborators: [] },
+      });
+      vi.useFakeTimers();
+      await modal.show();
+      vi.advanceTimersByTime(500);
+      vi.useRealTimers();
+
+      expect(modal.modalElementTitle.querySelector('img')).toBeNull();
+      expect(modal.modalElementTitle.textContent).toBe(`Share "${title}"`);
+    });
+
     it('should show error if no project ID', async () => {
       window.eXeLearning.app.project = null;
       await modal.show();

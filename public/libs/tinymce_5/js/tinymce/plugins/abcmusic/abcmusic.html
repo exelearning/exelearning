@@ -6,28 +6,38 @@
     <meta charset="UTF-8">
     <meta http-equiv="x-ua-compatible" content="ie=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <script>
-        let abcmusicPath = window.location.pathname.replace("abcmusic.html", "");
-        let libsPath = window.location.pathname.replace("tinymce_5/js/tinymce/plugins/abcmusic/abcmusic.html", "");
-        document.write(`<script class="abcjs-basic-js" type="text/javascript" src="${libsPath}abcjs/abcjs-basic-min.js"><\/script>`);
-        document.write(`<link class="abcjs-basic-css" href="${libsPath}abcjs/abcjs-audio.css" rel="stylesheet" type="text/css" \/>`);
-        document.write(`<link href="${abcmusicPath}css/content.css" media="all" rel="stylesheet" type="text/css" \/>`);
-        document.write(`<script class="exe-abcjs" type="text/javascript" src="${libsPath}jquery/jquery.min.js"><\/script>`);
-        document.write(`<script class="exe-abcjs" type="text/javascript" src="${libsPath}abcjs/exe_abc_music.js"><\/script>`);
-        window.onload = function(){
-                abcjsLoad();
-        }
-    </script>
+    <!-- Relative URLs: some hosts (Cloudflare Pages) serve this page without its .html extension (#2624) -->
+    <script class="abcjs-basic-js" type="text/javascript" src="../../../../../abcjs/abcjs-basic-min.js"></script>
+    <link class="abcjs-basic-css" href="../../../../../abcjs/abcjs-audio.css" rel="stylesheet" type="text/css" />
+    <style>
+        /* Look of the exported content with the default style (base theme) */
+        body { margin: 1em; font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif; color: #333; line-height: 1.5; }
+        .abcjs-download-midi a { color: #555; }
+        .abcjs-download-midi a:hover, .abcjs-download-midi a:focus { color: #222; }
+        input, pre.abc-music { font: inherit; }
+        pre.abc-music { white-space: pre-wrap; }
+    </style>
+    <script class="exe-abcjs" type="text/javascript" src="../../../../../jquery/jquery.min.js"></script>
+    <script class="exe-abcjs" type="text/javascript" src="../../../../../abcjs/exe_abc_music.js"></script>
 </head>
 
 <body>
     <div class="container">
-        <main>
-            <div class="abcjs-paper"></div>
-            <div class="abcjs-audio"></div>
-            <div class="abcjs-midi"></div>
-        </main>
+        <main></main>
     </div>
+    <script>
+        // Build the same markup as the exported content, so exe_abc_music.js renders the preview
+        // (ABC/MIDI buttons, player and download link) when it runs on DOM ready.
+        (function () {
+            var source = parent.document.querySelector('#htmlSource');
+            // The editor loads common_i18n.js, which defines $exe_i18n.download with c_()
+            if (typeof window.$exe_i18n === 'undefined') window.$exe_i18n = parent.$exe_i18n || {};
+            var pre = document.createElement('pre');
+            pre.className = 'abc-music' + (location.hash === '#midi=1' ? ' abc-music-midi' : '');
+            pre.textContent = source ? source.value : '';
+            document.querySelector('main').appendChild(pre);
+        })();
+    </script>
 </body>
 
 </html>

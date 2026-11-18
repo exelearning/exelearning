@@ -1157,7 +1157,7 @@ var $guess = {
             $guess.showImage(q.url, instance);
             $('#adivinaPAuthor-' + instance).text(q.author);
         } else if (q.type === 3) {
-            let text = unescape(q.eText);
+            let text = $exeDevices.iDevice.gamification.helpers.decodeStoredText(q.eText);
             $('#adivinaEText-' + instance).html(text);
             $('#adivinaCover-' + instance).hide();
             $('#adivinaEText-' + instance).show();

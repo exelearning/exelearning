@@ -367,6 +367,50 @@ describe('Database Helpers', () => {
                 }
             });
         });
+
+        it('should generate parameterized query with bound values on mysql', async () => {
+            let capturedSql = '';
+            let capturedParams: readonly unknown[] = [];
+
+            const mockDb = new (await import('kysely')).Kysely<Database>({
+                dialect: {
+                    createAdapter: () => ({
+                        supportsReturning: false,
+                        supportsTransactionalDdl: false,
+                        acquireMigrationLock: async () => {},
+                        releaseMigrationLock: async () => {},
+                    }),
+                    createDriver: () => ({
+                        init: async () => {},
+                        acquireConnection: async () => ({
+                            executeQuery: async (cq: { sql: string; parameters: readonly unknown[] }) => {
+                                capturedSql = cq.sql;
+                                capturedParams = cq.parameters;
+                                return { rows: [] };
+                            },
+                        }),
+                        beginTransaction: async () => {},
+                        commitTransaction: async () => {},
+                        rollbackTransaction: async () => {},
+                        releaseConnection: async () => {},
+                        destroy: async () => {},
+                    }),
+                    createIntrospector: d => new (require('kysely').SqliteIntrospector)(d),
+                    createQueryCompiler: () => new (require('kysely').MysqlQueryCompiler)(),
+                },
+            });
+
+            await withDbDriver('mysql', async () => {
+                await insertIgnore(mockDb, 'project_collaborators', {
+                    project_id: 123,
+                    user_id: 456,
+                });
+            });
+
+            expect(capturedSql).toContain('INSERT IGNORE INTO `project_collaborators`');
+            expect(capturedSql).toContain('VALUES (?, ?)');
+            expect(capturedParams).toEqual([123, 456]);
+        });
     });
 
     describe('insertAndReturn', () => {

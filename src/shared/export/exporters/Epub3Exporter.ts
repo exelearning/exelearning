@@ -1094,13 +1094,6 @@ td, th {
                 'console.warn("Error loading abcjs", error); console.warn("window.ABCJS is:", typeof window.ABCJS);',
             );
 
-            // EPUB Security Fix: Accessing parent.document throws SecurityError in sandboxed readers
-            // We wrap it in try-catch to allow falling back to the local document selector
-            originalCode = originalCode.replace(
-                'var htmlSource = parent.document.querySelector("#htmlSource");',
-                'var htmlSource = null; try { htmlSource = parent.document.querySelector("#htmlSource"); } catch(e) { console.warn("EPUB: Cannot access parent.document, using fallback"); }',
-            );
-
             // Simple guard pattern: if already loaded, skip entire script
             // We don't use IIFE to preserve the original global variable behavior
             // Instead, we wrap just the class declaration that causes redeclaration errors

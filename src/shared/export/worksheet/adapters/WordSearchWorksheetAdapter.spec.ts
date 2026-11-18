@@ -168,7 +168,7 @@ describe('WordSearchWorksheetAdapter', () => {
             );
 
             expect(activity?.items).toHaveLength(1);
-            expect(activity?.items[0].prompt).toBeUndefined();
+            expect(activity?.items[0].prompt).toBe('');
             expect(activity?.items[0].media?.src).toBe('blob:http://localhost/house');
         });
 

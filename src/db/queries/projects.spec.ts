@@ -47,6 +47,7 @@ import {
     findGuestProjectsOlderThan,
 } from './projects';
 import { createUser } from './users';
+import { UnsafePathError } from '../../utils/safe-path';
 
 describe('Project Queries', () => {
     let db: Kysely<Database>;
@@ -124,6 +125,14 @@ describe('Project Queries', () => {
             });
 
             expect(project.uuid).toBe(customUuid);
+        });
+
+        it('should refuse a UUID that is not a single safe path segment', async () => {
+            for (const uuid of ['../.', '20250101000000/../..', 'a\\b', '..']) {
+                await expect(createProjectWithUuid(db, uuid, { title: 'Bad', owner_id: testUser.id })).rejects.toThrow(
+                    UnsafePathError,
+                );
+            }
         });
 
         it('should enforce unique UUID constraint', async () => {

@@ -14,6 +14,7 @@ const {
     windowHasUnsavedChanges,
 } = require('./editor-window-close-guard');
 const { checkLink } = require('./link-check');
+const { extractZipEntries } = require('./zip-extract');
 const { createFileReadGrants } = require('./file-read-grants');
 const { guardIpcMain } = require('./ipc-sender-guard');
 const { createPreviewSnapshotStore, SCHEME: PREVIEW_SCHEME } = require('./preview-snapshot-scheme');
@@ -1246,16 +1247,7 @@ ipc.handle('app:exportToFolder', async (e, { downloadUrl, projectKey, suggestedD
             const uint8Data = new Uint8Array(zipData);
             const unzipped = fflate.unzipSync(uint8Data);
 
-            for (const [relativePath, content] of Object.entries(unzipped)) {
-                const fullPath = path.join(destDir, relativePath);
-                // Skip directories (they end with /)
-                if (relativePath.endsWith('/')) {
-                    fs.mkdirSync(fullPath, { recursive: true });
-                } else {
-                    fs.mkdirSync(path.dirname(fullPath), { recursive: true });
-                    fs.writeFileSync(fullPath, Buffer.from(content));
-                }
-            }
+            extractZipEntries(unzipped, destDir);
         } finally {
             try {
                 fs.unlinkSync(tmpZip);
@@ -1294,15 +1286,7 @@ ipc.handle('app:exportBufferToFolder', async (e, { base64Data, suggestedDirName 
         const uint8Data = new Uint8Array(buffer);
         const unzipped = fflate.unzipSync(uint8Data);
 
-        for (const [relativePath, content] of Object.entries(unzipped)) {
-            const fullPath = path.join(destDir, relativePath);
-            if (relativePath.endsWith('/')) {
-                fs.mkdirSync(fullPath, { recursive: true });
-            } else {
-                fs.mkdirSync(path.dirname(fullPath), { recursive: true });
-                fs.writeFileSync(fullPath, Buffer.from(content));
-            }
-        }
+        extractZipEntries(unzipped, destDir);
 
         // Notify renderer with final destination
         const wc = e?.sender ? e.sender : mainWindow ? mainWindow.webContents : null;
