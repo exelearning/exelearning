@@ -1326,9 +1326,8 @@ var $exeDevice = {
         return Math.floor(Math.random() * Date.now());
     },
 
-    getDefaultPoint: function () {
-        const id = $exeDevice.getID();
-
+    // The ids of the point, of its submap and of its slide all end in `id`.
+    getDefaultPoint: function (id = $exeDevice.getID()) {
         return {
             id: 'p' + id,
             title: '',
@@ -2146,10 +2145,22 @@ var $exeDevice = {
         return message;
     },
 
+    /**
+     * A point that is not a submap keeps an empty one, with a single point, in
+     * case its type changes. That point keeps the id it already had, so a save
+     * without changes stores the same; only a point without one gets a new id.
+     */
+    getPlaceholderId: function (p) {
+        const previous = p.map && Array.isArray(p.map.pts) ? p.map.pts[0] : null;
+        const id = previous && typeof previous.id == 'string' ? previous.id.substring(1) : '';
+        return id || $exeDevice.getID();
+    },
+
     clearSavePoints: function () {
         for (let i = 0; i < $exeDevice.activeMap.pts.length; i++) {
             const p = $exeDevice.activeMap.pts[i];
             let id = p.id.substring(1);
+            const placeholderId = $exeDevice.getPlaceholderId(p);
             if (p.type == 0) {
                 p.video = '';
                 p.eText = '';
@@ -2158,7 +2169,7 @@ var $exeDevice = {
                 p.map = {};
                 p.map.id = 'a' + id;
                 p.map.pts = [];
-                p.map.pts.push($exeDevice.getDefaultPoint());
+                p.map.pts.push($exeDevice.getDefaultPoint(placeholderId));
                 p.map.url = '';
                 p.map.alt = '';
                 p.map.author = '';
@@ -2172,7 +2183,7 @@ var $exeDevice = {
                 p.map = {};
                 p.map.id = 'a' + id;
                 p.map.pts = [];
-                p.map.pts.push($exeDevice.getDefaultPoint());
+                p.map.pts.push($exeDevice.getDefaultPoint(placeholderId));
                 p.map.url = '';
                 p.map.alt = '';
                 p.map.author = '';
@@ -2187,7 +2198,7 @@ var $exeDevice = {
                 p.map = {};
                 p.map.id = 'a' + id;
                 p.map.pts = [];
-                p.map.pts.push($exeDevice.getDefaultPoint());
+                p.map.pts.push($exeDevice.getDefaultPoint(placeholderId));
                 p.map.url = '';
                 p.map.alt = '';
                 p.map.author = '';
@@ -2203,7 +2214,7 @@ var $exeDevice = {
                 p.map = {};
                 p.map.id = 'a' + id;
                 p.map.pts = [];
-                p.map.pts.push($exeDevice.getDefaultPoint());
+                p.map.pts.push($exeDevice.getDefaultPoint(placeholderId));
                 p.map.url = '';
                 p.map.alt = '';
                 p.map.author = '';
@@ -2220,7 +2231,7 @@ var $exeDevice = {
                 p.map = {};
                 p.map.id = 'a' + id;
                 p.map.pts = [];
-                p.map.pts.push($exeDevice.getDefaultPoint());
+                p.map.pts.push($exeDevice.getDefaultPoint(placeholderId));
                 p.map.url = '';
                 p.map.alt = '';
                 p.map.author = '';
@@ -2266,7 +2277,7 @@ var $exeDevice = {
                 p.map = {};
                 p.map.id = 'a' + id;
                 p.map.pts = [];
-                p.map.pts.push($exeDevice.getDefaultPoint());
+                p.map.pts.push($exeDevice.getDefaultPoint(placeholderId));
                 p.map.url = '';
                 p.map.alt = '';
                 p.map.author = '';
@@ -2281,7 +2292,7 @@ var $exeDevice = {
                 p.map = {};
                 p.map.id = 'a' + id;
                 p.map.pts = [];
-                p.map.pts.push($exeDevice.getDefaultPoint());
+                p.map.pts.push($exeDevice.getDefaultPoint(placeholderId));
                 p.map.url = '';
                 p.map.alt = '';
                 p.map.author = '';
@@ -2297,7 +2308,7 @@ var $exeDevice = {
                 p.map = {};
                 p.map.id = 'a' + id;
                 p.map.pts = [];
-                p.map.pts.push($exeDevice.getDefaultPoint());
+                p.map.pts.push($exeDevice.getDefaultPoint(placeholderId));
                 p.map.url = '';
                 p.map.alt = '';
                 p.map.author = '';

@@ -919,4 +919,31 @@ describe('map edition: shared form tabs', () => {
         expect(device.activeTest).toBe(2);
         expect(input.val()).toBe('3');
     });
+
+    describe('the empty submap of a point that is not one', () => {
+        // Every point type except 5, the submap.
+        const types = [0, 1, 2, 3, 4, 6, 7, 8];
+
+        it.each(types)('keeps its ids from one save to the next (type %i)', (type) => {
+            device.activeMap.pts = [{ ...device.getDefaultPoint(), type }];
+            const saved = JSON.stringify(device.clearSavePoints());
+
+            device.activeMap.pts = JSON.parse(saved);
+
+            expect(JSON.stringify(device.clearSavePoints())).toBe(saved);
+        });
+
+        it('gives a new point one with ids of its own', () => {
+            device.activeMap.pts = [{ ...device.getDefaultPoint(), type: 0 }];
+
+            const [point] = device.clearSavePoints();
+            const [placeholder] = point.map.pts;
+            const suffix = placeholder.id.substring(1);
+
+            expect(point.map.pts).toHaveLength(1);
+            expect(placeholder.id).not.toBe(point.id);
+            expect(placeholder.map.id).toBe(`a${suffix}`);
+            expect(placeholder.slides[0].id).toBe(`s${suffix}`);
+        });
+    });
 });
