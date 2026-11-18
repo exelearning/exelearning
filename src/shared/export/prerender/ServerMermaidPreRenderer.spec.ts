@@ -216,6 +216,9 @@ describe('ServerMermaidPreRenderer', () => {
         // Bun has a navigator of its own, and its node:os reads it (availableParallelism; cpus too
         // before Bun 1.4). Deleting it broke every later os call in the process.
         it('restores the runtime globals it replaced instead of deleting them', async () => {
+            // Compare with what was there before: an earlier spec in the same process may have
+            // left a window behind, and restoring it is exactly what destroy() must do.
+            const windowBefore = Object.getOwnPropertyDescriptor(globalThis, 'window');
             const localRenderer = new ServerMermaidPreRenderer();
             await localRenderer.initialize();
             expect(globalThis.navigator).not.toBe(runtimeNavigator);
@@ -224,7 +227,7 @@ describe('ServerMermaidPreRenderer', () => {
 
             expect(globalThis.navigator).toBe(runtimeNavigator);
             expect(os.availableParallelism()).toBeGreaterThan(0);
-            expect('window' in globalThis).toBe(false);
+            expect(Object.getOwnPropertyDescriptor(globalThis, 'window')).toEqual(windowBefore);
         });
     });
 
