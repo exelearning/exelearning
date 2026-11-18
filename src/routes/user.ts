@@ -2,7 +2,7 @@
  * User Routes for Elysia
  * Handles user preferences and settings
  */
-import { Elysia, t } from 'elysia';
+import { Elysia, t, type Static } from 'elysia';
 import { getJwtSecret } from './auth';
 import { jwt } from '@elysiajs/jwt';
 import { db } from '../db/client';
@@ -25,7 +25,7 @@ import {
 import { isOfflineMode } from '../utils/offline.util';
 import type { Kysely } from 'kysely';
 import type { Database } from '../db/types';
-import { castRequestBody, type UserPreferencesRequest } from './types/request-payloads';
+import { castRequestBody } from './types/request-payloads';
 import { toAuthenticatedIdentity, type JwtPayload } from '../auth/types';
 
 /**
@@ -97,6 +97,13 @@ const defaultDependencies: UserDependencies = {
 };
 
 /**
+ * Preferences are an open key/value store: the workarea sends them form-encoded
+ * (strings and string arrays), and non-string values are stored as JSON. The
+ * schema only guarantees an object, so a missing body is a 400, not a 500.
+ */
+const PreferencesBody = t.Record(t.String(), t.Unknown());
+
+/**
  * Factory function to create user routes with injected dependencies
  */
 export function createUserRoutes(deps: UserDependencies = defaultDependencies) {
@@ -166,7 +173,7 @@ export function createUserRoutes(deps: UserDependencies = defaultDependencies) {
      * Both endpoints have identical behavior for Symfony compatibility.
      */
     async function handleSavePreferences(
-        body: unknown,
+        preferences: Static<typeof PreferencesBody>,
         set: { status?: number | string },
         currentUser: { id: number; email: string; isGuest: boolean } | null,
         saveFn: (ownerId: number, key: string, value: unknown) => Promise<void>,
@@ -179,8 +186,6 @@ export function createUserRoutes(deps: UserDependencies = defaultDependencies) {
         const ownerId = currentUser.id;
 
         try {
-            const preferences = castRequestBody<UserPreferencesRequest>(body);
-
             for (const [key, value] of Object.entries(preferences)) {
                 await saveFn(ownerId, key, value);
             }
@@ -275,24 +280,30 @@ export function createUserRoutes(deps: UserDependencies = defaultDependencies) {
             })
 
             // POST /api/user/preferences - Save user preferences
-            .post('/api/user/preferences', async ({ body, set, currentUser }) => {
-                return handleSavePreferences(
-                    castRequestBody<UserPreferencesRequest>(body),
-                    set,
-                    currentUser,
-                    saveUserPreference,
-                );
-            })
+            .post(
+                '/api/user/preferences',
+                async ({ body, set, currentUser }) =>
+                    handleSavePreferences(
+                        castRequestBody<Static<typeof PreferencesBody>>(body),
+                        set,
+                        currentUser,
+                        saveUserPreference,
+                    ),
+                { body: PreferencesBody },
+            )
 
             // PUT /api/user/preferences - Save user preferences (Symfony compatibility)
-            .put('/api/user/preferences', async ({ body, set, currentUser }) => {
-                return handleSavePreferences(
-                    castRequestBody<UserPreferencesRequest>(body),
-                    set,
-                    currentUser,
-                    saveUserPreference,
-                );
-            })
+            .put(
+                '/api/user/preferences',
+                async ({ body, set, currentUser }) =>
+                    handleSavePreferences(
+                        castRequestBody<Static<typeof PreferencesBody>>(body),
+                        set,
+                        currentUser,
+                        saveUserPreference,
+                    ),
+                { body: PreferencesBody },
+            )
 
             // POST /api/user/lopd-accepted - Accept LOPD terms
             .post('/api/user/lopd-accepted', async ({ set, currentUser }) => {

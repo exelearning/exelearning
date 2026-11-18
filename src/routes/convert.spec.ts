@@ -236,6 +236,24 @@ describe('Convert Routes', () => {
             expect(body.code).toBe('MISSING_FILE');
         });
 
+        it('should reject a file field that is not a file, on both convert routes', async () => {
+            for (const url of ['/api/convert/elp', '/api/convert/export/html5']) {
+                const formData = new FormData();
+                formData.append('file', 'not a file');
+
+                const res = await app.handle(
+                    new Request(`http://localhost${url}`, {
+                        method: 'POST',
+                        headers: { Authorization: `Bearer ${authToken}` },
+                        body: formData,
+                    }),
+                );
+
+                // The body schema rejects it; the app's global onError answers 400.
+                expect(res.status).toBe(422);
+            }
+        });
+
         it('should convert ELP file and return metadata', async () => {
             const elpBuffer = await createTestElpBuffer();
             const formData = new FormData();

@@ -306,6 +306,34 @@ describe('User Routes', () => {
             expect(res.status).toBe(401);
         });
 
+        it('should reject a request without a body instead of failing with 500', async () => {
+            const authCookie = await generateAuthCookie(1);
+            const res = await app.handle(
+                new Request('http://localhost/api/user/preferences', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', Cookie: authCookie },
+                }),
+            );
+
+            // The body schema rejects it; the app's global onError answers 400.
+            expect(res.status).toBe(422);
+        });
+
+        it('should save form-encoded preferences the way the workarea sends them', async () => {
+            const authCookie = await generateAuthCookie(1);
+            const res = await app.handle(
+                new Request('http://localhost/api/user/preferences', {
+                    method: 'POST',
+                    body: 'theme=dark&advancedMode=true',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8', Cookie: authCookie },
+                }),
+            );
+
+            expect(res.status).toBe(200);
+            expect(savedPreferences.get('1')?.get('theme')).toBe('dark');
+            expect(savedPreferences.get('1')?.get('advancedMode')).toBe('true');
+        });
+
         it('should save single preference for authenticated user', async () => {
             const authCookie = await generateAuthCookie(1);
             const res = await app.handle(

@@ -841,6 +841,38 @@ describe('Auth Routes', () => {
     // Guest login
     // =========================================================================
 
+    describe('POST /login_check body types', () => {
+        it('rejects non-string credentials instead of handing them to the password check', async () => {
+            const response = await app.handle(
+                new Request('http://localhost/login_check', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: 'x@example.com', password: { $gt: '' } }),
+                }),
+            );
+            // The body schema rejects it; the app's global onError answers 400.
+            expect(response.status).toBe(422);
+        });
+
+        it('still redirects a form post that carries the extra login-page fields', async () => {
+            const response = await app.handle(
+                new Request('http://localhost/login_check', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: '_csrf_token=abc&returnUrl=%2Fworkarea&email=nobody%40example.com&password=irrelevant',
+                }),
+            );
+            expect(response.status).toBe(302);
+            expect(response.headers.get('location') || '').toContain('Invalid%20credentials');
+        });
+
+        it('still redirects a post without a body to the missing-credentials error', async () => {
+            const response = await app.handle(new Request('http://localhost/login_check', { method: 'POST' }));
+            expect(response.status).toBe(302);
+            expect(response.headers.get('location') || '').toContain('Email%20and%20password%20required');
+        });
+    });
+
     describe('POST /login/guest', () => {
         it('should redirect to workarea on guest login', async () => {
             const response = await app.handle(
