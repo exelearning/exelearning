@@ -1304,7 +1304,7 @@ describe('ComponentExporter - preprocessBlockForExport()', () => {
             const result = await exporter.testPreprocessBlockForExport(block, null);
 
             // Should not throw, content should remain undefined
-            expect(result).toBeDefined();
+            expect(result.components![0].content).toBeUndefined();
         });
 
         it('should handle empty properties', async () => {
@@ -1340,14 +1340,14 @@ describe('ComponentExporter - preprocessBlockForExport()', () => {
                         type: 'FreeTextIdevice',
                         order: 0,
                         content: '<p>Hello</p>',
-                    } as import('../interfaces').ExportComponent,
+                    } as ExportComponent,
                 ],
             };
 
             const result = await exporter.testPreprocessBlockForExport(block, null);
 
             // Should not throw, properties should remain undefined
-            expect(result).toBeDefined();
+            expect(result.components![0].properties).toBeUndefined();
         });
     });
 });

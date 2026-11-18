@@ -148,6 +148,17 @@ describe('integration-app helpers', () => {
             expect(typeof token).toBe('string');
             expect(token.split('.').length).toBe(3); // JWT has 3 parts
         });
+
+        it('signs the stored roles JSON as a list and the id as a string sub, like the real logins', async () => {
+            testDb = await createTestDb();
+            const user = await createTestUser(testDb, { roles: '["ROLE_USER","ROLE_ADMIN"]' });
+
+            const token = await generateTestToken(user);
+            const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64url').toString('utf-8'));
+
+            expect(payload.roles).toEqual(['ROLE_USER', 'ROLE_ADMIN']);
+            expect(payload.sub).toBe(String(user.id));
+        });
     });
 
     describe('generateGuestToken', () => {

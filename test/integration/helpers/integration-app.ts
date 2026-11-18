@@ -11,6 +11,7 @@ import * as fs from 'fs-extra';
 import * as path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 import type { Database, User, NewUser } from '../../../src/db/types';
+import { parseRoles } from '../../../src/db/types';
 import { migrateToLatest } from '../../../src/db/migrations';
 
 // ============================================================================
@@ -129,12 +130,12 @@ export interface TestJwtPayload {
     authMethod?: 'local' | 'cas' | 'openid' | 'saml' | 'guest';
 }
 
-/**
- * Generate a JWT token for a test user
- */
 /** What the test tokens carry; `roles` may be the stored JSON text or an already parsed list. */
 type TokenUser = Pick<User, 'id' | 'email'> & { roles: string | string[] };
 
+/**
+ * Generate a JWT token for a test user. Like the real logins, it signs `roles` as a list.
+ */
 export async function generateTestToken(user: TokenUser): Promise<string> {
     const { SignJWT } = await import('jose');
     const secret = new TextEncoder().encode(TEST_JWT_SECRET);
@@ -142,7 +143,7 @@ export async function generateTestToken(user: TokenUser): Promise<string> {
     const token = await new SignJWT({
         sub: String(user.id),
         email: user.email,
-        roles: user.roles,
+        roles: typeof user.roles === 'string' ? parseRoles(user.roles) : user.roles,
         isGuest: false,
         authMethod: 'local',
     })

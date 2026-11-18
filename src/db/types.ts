@@ -282,7 +282,9 @@ export type ProjectVisibility = 'public' | 'private';
 // Helper to parse JSON roles from string
 export function parseRoles(roles: string): string[] {
     try {
-        return JSON.parse(roles);
+        const parsed: unknown = JSON.parse(roles);
+        // Anything but a list grants no roles, instead of leaking a string or null to callers.
+        return Array.isArray(parsed) ? parsed : [];
     } catch {
         return [];
     }

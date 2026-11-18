@@ -36,11 +36,11 @@ describe('db types helpers', () => {
             expect(result).toEqual([]);
         });
 
-        it('should handle non-array JSON by returning parsed value', () => {
-            // Note: JSON.parse of a string returns the string, not an array
-            // The declared string[] does not hold here: the parsed string comes back as is.
-            const result: unknown = parseRoles('"ROLE_USER"');
-            expect(result).toBe('ROLE_USER');
+        it('should return empty array for JSON that is not a list', () => {
+            // A bare string would make callers' roles.includes() a substring match; null would throw.
+            expect(parseRoles('"ROLE_USER"')).toEqual([]);
+            expect(parseRoles('null')).toEqual([]);
+            expect(parseRoles('{"0":"ROLE_ADMIN"}')).toEqual([]);
         });
     });
 
