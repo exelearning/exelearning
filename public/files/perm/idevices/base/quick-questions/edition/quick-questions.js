@@ -1961,7 +1961,6 @@ var $exeDevice = {
         $exeDevice.showQuestion($exeDevice.active);
         $exeDevice.deleteEmptyQuestion();
         $exeDevice.updateQuestionsNumber();
-        //$('.exe-form-tabs li:first-child a').click();
     },
 
     importCuestionaryXML: function (xmlText) {
@@ -2110,7 +2109,6 @@ var $exeDevice = {
         $exeDevice.showQuestion($exeDevice.active);
         $exeDevice.deleteEmptyQuestion();
         $exeDevice.updateQuestionsNumber();
-        //$('.exe-form-tabs li:first-child a').click();
     },
 
     getIdeviceID: function () {
