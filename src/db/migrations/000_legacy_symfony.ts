@@ -12,10 +12,11 @@
  * Note: is_active column is kept on users and users_preferences tables
  * (same as Symfony schema).
  */
-import { Kysely, sql } from 'kysely';
-import { columnExists, tableExists } from '../helpers';
 
-export async function up(db: Kysely<unknown>): Promise<void> {
+import { sql } from 'kysely';
+import { type UntypedKysely, columnExists, tableExists } from '../helpers';
+
+export async function up(db: UntypedKysely): Promise<void> {
     // ========================================================================
     // DETECT SYMFONY LEGACY DATABASE
     // ========================================================================
@@ -88,7 +89,7 @@ export async function up(db: Kysely<unknown>): Promise<void> {
     }
 }
 
-export async function down(db: Kysely<unknown>): Promise<void> {
+export async function down(db: UntypedKysely): Promise<void> {
     // This migration cannot be fully reversed because:
     // 1. Dropped ode_* tables had data that is lost
     // 2. Column renames could be reversed but datetime conversion cannot

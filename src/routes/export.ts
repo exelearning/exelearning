@@ -7,7 +7,7 @@
  *
  * Uses Dependency Injection pattern for testability
  */
-import { Elysia } from 'elysia';
+import { Elysia, t } from 'elysia';
 import * as fsExtra from 'fs-extra';
 import * as pathModule from 'path';
 
@@ -15,8 +15,9 @@ import { buildContentDisposition } from '../shared/http/headers';
 import { deriveBlockIcon } from '../shared/block-icon';
 import { isSafePathSegment } from '../utils/safe-path';
 import { getSession as getSessionDefault, type ProjectSession } from '../services/session-manager';
-import type { ExportOptionsRequest, YjsExportStructure } from './types/request-payloads';
+import { castRequestBody, type ExportOptionsRequest, type YjsExportStructure } from './types/request-payloads';
 import { withJwtAuth } from '../utils/route-auth';
+import type { AuthenticatedIdentity } from '../auth/types';
 import { hasRole, ROLES, requireAuth } from '../utils/guards';
 import {
     getOdeSessionTempDir as getOdeSessionTempDirDefault,
@@ -201,6 +202,22 @@ const EXPORT_FORMATS = [
 // ============================================================================
 
 /**
+ * Body of POST /:odeSessionId/:exportType/download. Every other option is passed
+ * through to the exporter (`...options`), so unknown keys must be kept. Elysia
+ * fills a missing `meta` with {} and rejects a `structure` that is not an object.
+ */
+const LooseObject = t.Object({}, { additionalProperties: true });
+const ExportDownloadBody = t.Object(
+    {
+        structure: t.Optional(
+            t.Object({ meta: LooseObject, pages: t.Array(LooseObject) }, { additionalProperties: true }),
+        ),
+        rootPageId: t.Optional(t.String()),
+    },
+    { additionalProperties: true },
+);
+
+/**
  * Populate a Y.Doc from YjsExportStructure
  * This allows us to use YjsDocumentAdapter for exports from client-sent structures
  *
@@ -301,7 +318,7 @@ export function populateYDocFromStructure(ydoc: Y.Doc, structure: YjsExportStruc
 /**
  * Create export routes with injected dependencies
  */
-export function createExportRoutes(deps: ExportDependencies = {}): Elysia {
+export function createExportRoutes(deps: ExportDependencies = {}) {
     // Shadow imports with injected dependencies
     const fs = deps.fs ?? fsExtra;
     const path = deps.path ?? pathModule;
@@ -635,12 +652,12 @@ export function createExportRoutes(deps: ExportDependencies = {}): Elysia {
      */
     function authorizeExport(
         session: ProjectSession | undefined,
-        jwtPayload: { sub?: number; roles?: string[] } | null | undefined,
+        identity: AuthenticatedIdentity | null | undefined,
     ): { ok: true } | { ok: false; status: 401 | 403; message: string } {
-        const authErr = requireAuth(jwtPayload);
+        const authErr = requireAuth(identity);
         if (authErr) return { ok: false, status: authErr.status, message: authErr.message };
-        if (hasRole(jwtPayload!.roles, ROLES.ADMIN)) return { ok: true };
-        if (session && session.userId !== undefined && session.userId !== Number(jwtPayload!.sub)) {
+        if (hasRole(identity!.roles, ROLES.ADMIN)) return { ok: true };
+        if (session && session.userId !== undefined && session.userId !== identity!.userId) {
             return { ok: false, status: 403, message: 'Access denied' };
         }
         return { ok: true };
@@ -668,7 +685,7 @@ export function createExportRoutes(deps: ExportDependencies = {}): Elysia {
             // =====================================================
 
             // GET /api/export/:odeSessionId/:exportType/download - Download export
-            .get('/:odeSessionId/:exportType/download', async ({ params, set, jwtPayload }) => {
+            .get('/:odeSessionId/:exportType/download', async ({ params, set, identity }) => {
                 const { odeSessionId, exportType } = params;
 
                 // Reject path-traversal session ids before any filesystem path is built.
@@ -679,8 +696,8 @@ export function createExportRoutes(deps: ExportDependencies = {}): Elysia {
                 }
 
                 const session = getSession(odeSessionId);
-                const authz = authorizeExport(session, jwtPayload);
-                if (!authz.ok) {
+                const authz = authorizeExport(session, identity);
+                if (authz.ok === false) {
                     set.status = authz.status;
                     return { success: false, error: authz.message };
                 }
@@ -733,81 +750,85 @@ export function createExportRoutes(deps: ExportDependencies = {}): Elysia {
             // =====================================================
 
             // POST /api/export/:odeSessionId/:exportType/download - Download export with options
-            .post('/:odeSessionId/:exportType/download', async ({ params, body, set, jwtPayload }) => {
-                const { odeSessionId, exportType } = params;
-                const options = body as ExportOptionsRequest;
+            .post(
+                '/:odeSessionId/:exportType/download',
+                async ({ params, body, set, identity }) => {
+                    const { odeSessionId, exportType } = params;
+                    const options = castRequestBody<ExportOptionsRequest>(body);
 
-                // Reject path-traversal session ids before any filesystem path is built.
-                // Real ids are UUIDs or YYYYMMDDHHmmss + alphanumerics, all of which pass.
-                if (!isSafePathSegment(odeSessionId, { allowDots: true })) {
-                    set.status = 400;
-                    return { success: false, error: 'Invalid session id' };
-                }
-
-                let session = getSession(odeSessionId);
-                const authz = authorizeExport(session, jwtPayload);
-                if (!authz.ok) {
-                    set.status = authz.status;
-                    return { success: false, error: authz.message };
-                }
-
-                // For Yjs-only sessions (yjs-*), create a virtual session if structure is provided
-                if (!session && options.structure) {
-                    console.log('[Export] Yjs-only session detected, using structure from request body');
-                    const projectTitle = options.structure.meta?.title || 'Untitled';
-                    session = {
-                        sessionId: odeSessionId,
-                        fileName: `${projectTitle}.elp`,
-                        createdAt: new Date(),
-                        updatedAt: new Date(),
-                    } as ProjectSession;
-                }
-
-                if (!session) {
-                    set.status = 404;
-                    return {
-                        success: false,
-                        error: 'Session not found. For Yjs sessions, include structure in request body.',
-                    };
-                }
-
-                // Validate export type
-                const format = EXPORT_FORMATS.find(f => f.id === exportType);
-                if (!format) {
-                    set.status = 400;
-                    return {
-                        success: false,
-                        error: `Invalid export type: ${exportType}`,
-                        validTypes: EXPORT_FORMATS.map(f => f.id),
-                    };
-                }
-
-                try {
-                    // Prepare export with options (pass virtual session for Yjs-only exports)
-                    const exportResult = await prepareExport(odeSessionId, exportType, options, session);
-
-                    if (!exportResult.success) {
-                        set.status = 500;
-                        return { success: false, error: exportResult.error };
+                    // Reject path-traversal session ids before any filesystem path is built.
+                    // Real ids are UUIDs or YYYYMMDDHHmmss + alphanumerics, all of which pass.
+                    if (!isSafePathSegment(odeSessionId, { allowDots: true })) {
+                        set.status = 400;
+                        return { success: false, error: 'Invalid session id' };
                     }
 
-                    // Read the zip file
-                    const zipBuffer = await readFile(exportResult.zipPath!);
+                    let session = getSession(odeSessionId);
+                    const authz = authorizeExport(session, identity);
+                    if (authz.ok === false) {
+                        set.status = authz.status;
+                        return { success: false, error: authz.message };
+                    }
 
-                    // Set headers for download
-                    const rawFilename = `${session.fileName?.replace(/\.elp$/, '') || 'export'}_${exportType}.${format.extension}`;
+                    // For Yjs-only sessions (yjs-*), create a virtual session if structure is provided
+                    if (!session && options.structure) {
+                        console.log('[Export] Yjs-only session detected, using structure from request body');
+                        const projectTitle = options.structure.meta?.title || 'Untitled';
+                        session = {
+                            sessionId: odeSessionId,
+                            fileName: `${projectTitle}.elp`,
+                            createdAt: new Date(),
+                            updatedAt: new Date(),
+                        } as ProjectSession;
+                    }
 
-                    set.headers['content-type'] = format.mimeType;
-                    set.headers['content-disposition'] = buildContentDisposition(rawFilename);
-                    set.headers['content-length'] = zipBuffer.length.toString();
+                    if (!session) {
+                        set.status = 404;
+                        return {
+                            success: false,
+                            error: 'Session not found. For Yjs sessions, include structure in request body.',
+                        };
+                    }
 
-                    return zipBuffer;
-                } catch (error: unknown) {
-                    const errorMessage = error instanceof Error ? error.message : String(error);
-                    set.status = 500;
-                    return { success: false, error: errorMessage };
-                }
-            })
+                    // Validate export type
+                    const format = EXPORT_FORMATS.find(f => f.id === exportType);
+                    if (!format) {
+                        set.status = 400;
+                        return {
+                            success: false,
+                            error: `Invalid export type: ${exportType}`,
+                            validTypes: EXPORT_FORMATS.map(f => f.id),
+                        };
+                    }
+
+                    try {
+                        // Prepare export with options (pass virtual session for Yjs-only exports)
+                        const exportResult = await prepareExport(odeSessionId, exportType, options, session);
+
+                        if (!exportResult.success) {
+                            set.status = 500;
+                            return { success: false, error: exportResult.error };
+                        }
+
+                        // Read the zip file
+                        const zipBuffer = await readFile(exportResult.zipPath!);
+
+                        // Set headers for download
+                        const rawFilename = `${session.fileName?.replace(/\.elp$/, '') || 'export'}_${exportType}.${format.extension}`;
+
+                        set.headers['content-type'] = format.mimeType;
+                        set.headers['content-disposition'] = buildContentDisposition(rawFilename);
+                        set.headers['content-length'] = zipBuffer.length.toString();
+
+                        return zipBuffer;
+                    } catch (error: unknown) {
+                        const errorMessage = error instanceof Error ? error.message : String(error);
+                        set.status = 500;
+                        return { success: false, error: errorMessage };
+                    }
+                },
+                { body: ExportDownloadBody },
+            )
     );
 }
 

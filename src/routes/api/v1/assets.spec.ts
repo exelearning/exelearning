@@ -67,7 +67,15 @@ describe('Assets API v1', () => {
         await fs.ensureDir(TEST_FILES_DIR);
         await resetClientCacheForTesting();
         await up(db);
-        await up002(db);
+        // 002 adds a column and is not idempotent when run against an
+        // already-migrated database (e.g. the shared dev DB); skip it when
+        // the column is already there.
+        const tables = await db.introspection.getTables();
+        const assetsTable = tables.find(table => table.name === 'assets');
+        const hasFolderPath = !!assetsTable?.columns.some(column => column.name === 'folder_path');
+        if (!hasFolderPath) {
+            await up002(db);
+        }
 
         mockYDoc = new Y.Doc();
         mockYDoc.getArray('navigation');
@@ -280,6 +288,30 @@ describe('Assets API v1', () => {
                 }),
             );
             expect(response.status).toBe(401);
+        });
+
+        it('should reject a file field that is not a file', async () => {
+            await db
+                .insertInto('projects')
+                .values({
+                    uuid: 'user-project-upload-text',
+                    title: 'User Project',
+                    owner_id: userId,
+                    created_at: now(),
+                })
+                .execute();
+
+            const formData = new FormData();
+            formData.append('file', 'not a file');
+
+            const response = await app.handle(
+                new Request('http://localhost/projects/user-project-upload-text/assets', {
+                    method: 'POST',
+                    headers: { Authorization: `Bearer ${userToken}` },
+                    body: formData,
+                }),
+            );
+            expect(response.status).toBe(422);
         });
 
         it('should return 400 without file', async () => {

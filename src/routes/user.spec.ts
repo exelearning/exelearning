@@ -7,6 +7,7 @@ import { Elysia } from 'elysia';
 import { jwt } from '@elysiajs/jwt';
 import * as bcrypt from 'bcryptjs';
 import { createUserRoutes, type UserDependencies } from './user';
+import { passwordFingerprint, verifyToken } from './auth';
 
 // Test JWT secret (must match what user.ts verifies with).
 const TEST_JWT_SECRET = 'test-secret-for-user-routes-testing';
@@ -304,6 +305,34 @@ describe('User Routes', () => {
             );
 
             expect(res.status).toBe(401);
+        });
+
+        it('should reject a request without a body instead of failing with 500', async () => {
+            const authCookie = await generateAuthCookie(1);
+            const res = await app.handle(
+                new Request('http://localhost/api/user/preferences', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', Cookie: authCookie },
+                }),
+            );
+
+            // The body schema rejects it; the app's global onError answers 400.
+            expect(res.status).toBe(422);
+        });
+
+        it('should save form-encoded preferences the way the workarea sends them', async () => {
+            const authCookie = await generateAuthCookie(1);
+            const res = await app.handle(
+                new Request('http://localhost/api/user/preferences', {
+                    method: 'POST',
+                    body: 'theme=dark&advancedMode=true',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8', Cookie: authCookie },
+                }),
+            );
+
+            expect(res.status).toBe(200);
+            expect(savedPreferences.get('1')?.get('theme')).toBe('dark');
+            expect(savedPreferences.get('1')?.get('advancedMode')).toBe('true');
         });
 
         it('should save single preference for authenticated user', async () => {
@@ -970,6 +999,38 @@ describe('User Routes', () => {
                 const stored = passwordUpdates[0].password;
                 expect(await bcrypt.compare('brand-new-secret', stored)).toBe(true);
                 expect(await bcrypt.compare(CURRENT_PASSWORD, stored)).toBe(false);
+            });
+
+            it('re-signs the current session with the new password fingerprint', async () => {
+                const res = await app.handle(
+                    new Request('http://localhost/api/user/password', {
+                        method: 'PATCH',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            Cookie: await generateSessionCookie({ pwh: passwordFingerprint('old-hash') }),
+                        },
+                        body: JSON.stringify(validBody),
+                    }),
+                );
+
+                expect(res.status).toBe(200);
+                const setCookie = res.headers.get('set-cookie') ?? '';
+                const token = setCookie.match(/auth=([^;]+)/)?.[1];
+                expect(token).toBeDefined();
+                const payload = await verifyToken(token!);
+                expect(payload?.pwh).toBe(passwordFingerprint(passwordUpdates[0].password));
+                expect(payload?.userId).toBe(1);
+                expect(payload?.authMethod).toBe('local');
+            });
+
+            it('returns a fresh editor token bound to the new password', async () => {
+                const { status, body } = await changePassword(await localSession(), validBody);
+
+                expect(status).toBe(200);
+                const payload = await verifyToken(body.token);
+                expect(payload?.pwh).toBe(passwordFingerprint(passwordUpdates[0].password));
+                expect(payload?.userId).toBe(1);
+                expect(payload?.isGuest).toBe(false);
             });
 
             it('updates only the caller, taken from the session', async () => {

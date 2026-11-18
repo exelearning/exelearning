@@ -22,6 +22,7 @@ import {
     verifyUserPassword,
     getJwtSecret,
     shouldAutoCreateUsers,
+    passwordFingerprint,
     type AuthDependencies,
 } from './auth';
 import { findUserByEmail, findUserById, createUser } from '../db/queries';
@@ -199,6 +200,35 @@ describe('Auth Routes', () => {
             const data = (await response.json()) as { access_token: string; user: { email: string } };
             expect(data.access_token).toBeDefined();
             expect(data.user.email).toBe('valid@example.com');
+        });
+
+        it('signs the current password fingerprint into the session token', async () => {
+            const hashedPw = await hashPassword('secret123');
+            await testDb
+                .insertInto('users')
+                .values({
+                    email: 'pwh@example.com',
+                    user_id: 'pwh-user',
+                    password: hashedPw,
+                    roles: '["ROLE_USER"]',
+                    is_lopd_accepted: 1,
+                    is_active: 1,
+                    created_at: now(),
+                    updated_at: now(),
+                })
+                .execute();
+
+            const response = await app.handle(
+                new Request('http://localhost/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: 'pwh@example.com', password: 'secret123' }),
+                }),
+            );
+
+            const data = (await response.json()) as { access_token: string };
+            const payload = await verifyToken(data.access_token);
+            expect(payload?.pwh).toBe(passwordFingerprint(hashedPw));
         });
 
         it('should set auth cookie on successful login', async () => {
@@ -840,6 +870,38 @@ describe('Auth Routes', () => {
     // =========================================================================
     // Guest login
     // =========================================================================
+
+    describe('POST /login_check body types', () => {
+        it('rejects non-string credentials instead of handing them to the password check', async () => {
+            const response = await app.handle(
+                new Request('http://localhost/login_check', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: 'x@example.com', password: { $gt: '' } }),
+                }),
+            );
+            // The body schema rejects it; the app's global onError answers 400.
+            expect(response.status).toBe(422);
+        });
+
+        it('still redirects a form post that carries the extra login-page fields', async () => {
+            const response = await app.handle(
+                new Request('http://localhost/login_check', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: '_csrf_token=abc&returnUrl=%2Fworkarea&email=nobody%40example.com&password=irrelevant',
+                }),
+            );
+            expect(response.status).toBe(302);
+            expect(response.headers.get('location') || '').toContain('Invalid%20credentials');
+        });
+
+        it('still redirects a post without a body to the missing-credentials error', async () => {
+            const response = await app.handle(new Request('http://localhost/login_check', { method: 'POST' }));
+            expect(response.status).toBe(302);
+            expect(response.headers.get('location') || '').toContain('Email%20and%20password%20required');
+        });
+    });
 
     describe('POST /login/guest', () => {
         it('should redirect to workarea on guest login', async () => {
@@ -1680,6 +1742,44 @@ describe('Auth Routes', () => {
                 .execute();
             expect(users.length).toBe(1);
         });
+
+        it('refuses a deactivated account', async () => {
+            const prevMethods = process.env.APP_AUTH_METHODS;
+            const prevCasUrl = process.env.CAS_URL;
+            process.env.APP_AUTH_METHODS = 'password,cas';
+            process.env.CAS_URL = 'https://cas.example.com';
+
+            await testDb
+                .insertInto('users')
+                .values({
+                    email: `disabled@${DEFAULT_TEMP_EMAIL_DOMAIN}`,
+                    user_id: 'cas:disabled',
+                    password: await hashPassword('x'),
+                    roles: '["ROLE_USER"]',
+                    is_lopd_accepted: 1,
+                    is_active: 0,
+                    created_at: now(),
+                    updated_at: now(),
+                })
+                .execute();
+
+            globalThis.fetch = async () =>
+                new Response(`
+                    <cas:serviceResponse>
+                        <cas:authenticationSuccess>
+                            <cas:user>disabled</cas:user>
+                        </cas:authenticationSuccess>
+                    </cas:serviceResponse>
+                `);
+
+            const response = await app.handle(new Request('http://localhost/login/cas/callback?ticket=ST-disabled'));
+
+            process.env.APP_AUTH_METHODS = prevMethods;
+            process.env.CAS_URL = prevCasUrl;
+
+            expect(response.status).toBe(403);
+            expect(response.headers.get('set-cookie') ?? '').not.toContain('auth=');
+        });
     });
 
     // =========================================================================
@@ -1936,6 +2036,46 @@ describe('Auth Routes', () => {
                 .selectAll()
                 .executeTakeFirst();
             expect(user).toBeDefined();
+        });
+
+        it('refuses a deactivated account', async () => {
+            const prevMethods = process.env.APP_AUTH_METHODS;
+            const prevTokenEndpoint = process.env.OIDC_TOKEN_ENDPOINT;
+            process.env.APP_AUTH_METHODS = 'password,openid';
+            process.env.OIDC_TOKEN_ENDPOINT = 'https://oidc.example.com/token';
+
+            await testDb
+                .insertInto('users')
+                .values({
+                    email: 'disabled-oidc@example.com',
+                    user_id: 'oidc:disabled-oidc@example.com',
+                    password: await hashPassword('x'),
+                    roles: '["ROLE_USER"]',
+                    is_lopd_accepted: 1,
+                    is_active: 0,
+                    created_at: now(),
+                    updated_at: now(),
+                })
+                .execute();
+
+            const idTokenPayload = Buffer.from(
+                JSON.stringify({
+                    nonce: OIDC_TEST_NONCE,
+                    sub: 'disabled-oidc@example.com',
+                    iat: Math.floor(Date.now() / 1000),
+                }),
+            ).toString('base64url');
+            globalThis.fetch = async () =>
+                new Response(JSON.stringify({ access_token: 'a', id_token: `header.${idTokenPayload}.signature` }));
+
+            const response = await app.handle(oidcCallbackRequest('code=disabled'));
+
+            process.env.APP_AUTH_METHODS = prevMethods;
+            if (prevTokenEndpoint) process.env.OIDC_TOKEN_ENDPOINT = prevTokenEndpoint;
+            else delete process.env.OIDC_TOKEN_ENDPOINT;
+
+            expect(response.status).toBe(403);
+            expect(response.headers.get('set-cookie') ?? '').not.toContain('auth=');
         });
 
         it('should generate temp email domain email when no email available', async () => {

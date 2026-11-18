@@ -3,22 +3,21 @@
  *
  * Used for request validation and Swagger documentation.
  */
-import { t } from 'elysia';
+import { t, type Static } from 'elysia';
 import { verifyToken } from '../../auth';
+import type { AuthenticatedIdentity } from '../../../auth/types';
+import { db } from '../../../db/client';
+import { findProjectByUuid } from '../../../db/queries';
 
 // ============================================================================
 // AUTH TYPES AND HELPERS
 // ============================================================================
 
 /**
- * Authenticated user info extracted from JWT
+ * Authenticated user info extracted from the JWT. This is the same identity
+ * the rest of the backend uses — `sub` is parsed exactly once, in `verifyToken`.
  */
-export interface AuthenticatedUser {
-    userId: number;
-    email: string;
-    roles: string[];
-    isGuest: boolean;
-}
+export type AuthenticatedUser = AuthenticatedIdentity;
 
 /**
  * Auth result - either success with user or error with response
@@ -104,9 +103,9 @@ export async function authenticateRequest(headers: Record<string, string | undef
     return {
         success: true,
         user: {
-            userId: payload.sub,
+            userId: payload.userId,
             email: payload.email,
-            roles: payload.roles || [],
+            roles: payload.roles,
             isGuest: false,
         },
     };
@@ -117,6 +116,26 @@ export async function authenticateRequest(headers: Record<string, string | undef
  */
 export function isAdmin(user: AuthenticatedUser): boolean {
     return user.roles.includes('ROLE_ADMIN');
+}
+
+/**
+ * Verify user has access to the project (owner or admin)
+ */
+export async function checkProjectAccess(
+    uuid: string,
+    auth: AuthenticatedUser,
+): Promise<{ project?: Awaited<ReturnType<typeof findProjectByUuid>>; error?: ApiErrorResponse }> {
+    const project = await findProjectByUuid(db, uuid);
+
+    if (!project) {
+        return { project: undefined, error: errorResponse('NOT_FOUND', `Project not found: ${uuid}`) };
+    }
+
+    if (project.owner_id !== auth.userId && !isAdmin(auth)) {
+        return { project: undefined, error: errorResponse('FORBIDDEN', 'You do not have access to this project') };
+    }
+
+    return { project };
 }
 
 // ============================================================================
@@ -414,8 +433,8 @@ export const AssetData = t.Object({
     mimeType: t.Union([t.String(), t.Null()]),
     size: t.Number(),
     folderPath: t.String(),
-    createdAt: t.String(),
-    updatedAt: t.String(),
+    createdAt: t.Union([t.Number(), t.Null()]),
+    updatedAt: t.Union([t.Number(), t.Null()]),
 });
 
 export const AssetIdParam = t.Object({
@@ -426,3 +445,21 @@ export const AssetIdParam = t.Object({
 export const BulkDeleteAssetsBody = t.Object({
     clientIds: t.Array(t.String()),
 });
+
+// Explicit aliases: composed plugins can drop the inferred handler types.
+export type CreatePageInput = Static<typeof CreatePageBody>;
+export type UpdatePageInput = Static<typeof UpdatePageBody>;
+export type MovePageInput = Static<typeof MovePageBody>;
+export type CreateBlockInput = Static<typeof CreateBlockBody>;
+export type UpdateBlockInput = Static<typeof UpdateBlockBody>;
+export type MoveBlockInput = Static<typeof MoveBlockBody>;
+export type CreateComponentInput = Static<typeof CreateComponentBody>;
+export type UpdateComponentInput = Static<typeof UpdateComponentBody>;
+export type SetHtmlInput = Static<typeof SetHtmlBody>;
+export type MoveComponentInput = Static<typeof MoveComponentBody>;
+export type UpdateMetadataInput = Static<typeof UpdateMetadataBody>;
+export type CreateProjectInput = Static<typeof CreateProjectBody>;
+export type UpdateProjectInput = Static<typeof UpdateProjectBody>;
+export type CreateUserInput = Static<typeof CreateUserBody>;
+export type UpdateUserInput = Static<typeof UpdateUserBody>;
+export type BulkDeleteAssetsInput = Static<typeof BulkDeleteAssetsBody>;

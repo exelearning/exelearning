@@ -472,6 +472,25 @@ describe('iDevices Routes', () => {
             expect(body.savedPath).toContain('test-session-upload');
         });
 
+        it('should reject a data URL with an empty payload instead of writing an empty file', async () => {
+            const res = await handle(
+                new Request('http://localhost/api/idevices/upload/file/resources', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        odeIdeviceId: 'test-idevice-empty',
+                        file: 'data:image/png;base64,',
+                        filename: 'empty.png',
+                        odeSessionId: 'test-session-empty',
+                    }),
+                }),
+            );
+
+            expect(res.status).toBe(400);
+            const body = await res.json();
+            expect(body.code).toBe('error: invalid data');
+        });
+
         it('should clean special characters from filename', async () => {
             const res = await handle(
                 new Request('http://localhost/api/idevices/upload/file/resources', {
@@ -718,6 +737,39 @@ describe('iDevices Routes', () => {
 
             // Should be either 403 (path traversal blocked) or 404 (file not found)
             expect([403, 404]).toContain(res.status);
+        });
+
+        it('should reject wrong-typed fields before they reach the filesystem code', async () => {
+            const cases: Array<[string, Record<string, unknown>]> = [
+                [
+                    '/api/idevices/upload/file/resources',
+                    { odeIdeviceId: 'typed', file: 'data:text/plain;base64,SGVsbG8=', filename: { name: 'x.txt' } },
+                ],
+                [
+                    '/api/idevices/upload/file/resources',
+                    { odeIdeviceId: ['a'], base64String: 'SGVsbG8=', filename: 'x.txt' },
+                ],
+                ['/api/idevices/upload/file/resources', { odeIdeviceId: 'typed', base64String: 42, filename: 'x.txt' }],
+                [
+                    '/api/idevices/upload/large/file/resources',
+                    { odeIdeviceId: { a: 1 }, file: 'content', filename: 'x.txt' },
+                ],
+                [
+                    '/api/idevices/upload/large/file/resources',
+                    { odeIdeviceId: 'typed', file: 'content', filename: [1] },
+                ],
+            ];
+            for (const [url, body] of cases) {
+                const res = await handle(
+                    new Request(`http://localhost${url}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(body),
+                    }),
+                );
+                // The body schema rejects it; the app's global onError answers 400.
+                expect(res.status).toBe(422);
+            }
         });
 
         it('should reject traversal in odeIdeviceId on base64 upload', async () => {
