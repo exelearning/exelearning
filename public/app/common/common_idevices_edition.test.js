@@ -2112,6 +2112,109 @@ describe('common_idevices_edition.js', () => {
       expect(focusLink).toHaveBeenCalledOnce();
     });
 
+    describe('an alert of the application that opens after a window or Export', () => {
+      let alertModal;
+      let alertButton;
+      // As the application opens and closes its alert: its button takes the
+      // focus, and closing it blurs that button, which leaves it on the page.
+      const showAlert = () => {
+        alertModal.dispatchEvent(new Event('show.bs.modal', { bubbles: true }));
+        alertButton.focus();
+      };
+      const closeAlert = () => {
+        alertButton.blur();
+        alertModal.dispatchEvent(new Event('hidden.bs.modal'));
+      };
+
+      beforeEach(() => {
+        render({ contents: '' });
+        alertModal = document.createElement('div');
+        alertModal.className = 'modal';
+        alertModal.innerHTML = '<button type="button">OK</button>';
+        alertButton = alertModal.querySelector('button');
+        document.body.appendChild(alertModal);
+      });
+
+      it('gives the focus back to the link of a window that closed before it opened', () => {
+        // Create with AI saves its questions: the window closes, and the
+        // alert that says so opens a moment later.
+        link('ai').click();
+        share().close('ai');
+        expect(document.activeElement).toBe(link('ai'));
+
+        showAlert();
+        closeAlert();
+
+        expect(document.activeElement).toBe(link('ai'));
+      });
+
+      it('gives the focus back to Export, which opens no window', () => {
+        exportButton().focus();
+
+        showAlert();
+        closeAlert();
+
+        expect(document.activeElement).toBe(exportButton());
+      });
+
+      it('leaves the focus where something else has put it meanwhile', () => {
+        const field = document.createElement('input');
+        document.body.appendChild(field);
+        exportButton().focus();
+
+        showAlert();
+        alertButton.blur();
+        field.focus();
+        alertModal.dispatchEvent(new Event('hidden.bs.modal'));
+
+        expect(document.activeElement).toBe(field);
+      });
+
+      it('takes the focus back from the alert when it is still on it', () => {
+        // Closed with Escape: Bootstrap hides it with its button focused.
+        exportButton().focus();
+
+        showAlert();
+        alertModal.dispatchEvent(new Event('hidden.bs.modal'));
+
+        expect(document.activeElement).toBe(exportButton());
+      });
+
+      it('leaves the focus alone when a modal opens while no button of the tab has it', () => {
+        const field = document.createElement('input');
+        document.body.appendChild(field);
+        field.focus();
+
+        showAlert();
+        closeAlert();
+
+        expect(document.activeElement).not.toBe(exportButton());
+        expect(document.activeElement).not.toBe(link('ai'));
+      });
+
+      it('gives nothing back to a button that is gone', () => {
+        exportButton().focus();
+        const button = exportButton();
+
+        showAlert();
+        button.remove();
+        expect(() => closeAlert()).not.toThrow();
+
+        expect(document.activeElement).not.toBe(button);
+      });
+
+      it('leaves the focus alone for its own windows', () => {
+        link('ai').focus();
+        const focusLink = vi.spyOn(link('ai'), 'focus');
+
+        share().refocusAfter(modal('import'));
+        modal('import').dispatchEvent(new Event('hidden.bs.modal'));
+        share().refocusAfter(null);
+
+        expect(focusLink).not.toHaveBeenCalled();
+      });
+    });
+
     it('listens for the application modals once, however many forms are mounted', () => {
       const yieldTo = vi.spyOn(share(), 'yieldTo');
       try {

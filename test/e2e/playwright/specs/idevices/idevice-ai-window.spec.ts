@@ -1,7 +1,18 @@
-import type { Locator } from '@playwright/test';
+import type { Locator, Page } from '@playwright/test';
 import { test, expect } from '../../fixtures/auth.fixture';
 import { addIdevice, gotoWorkarea, selectFirstPage, waitForAppReady } from '../../helpers/workarea-helpers';
 import { waitForEditor } from '../../helpers/editor-helpers';
+import { addWithAi, closeAlert } from '../../helpers/idevice-share-helpers';
+
+/** Opens the form of a new Guess iDevice on the first page of a new project. */
+async function addGuess(page: Page, createProject: (page: Page, title?: string) => Promise<string>, title: string) {
+    const uuid = await createProject(page, title);
+    await gotoWorkarea(page, uuid);
+    await waitForAppReady(page);
+    await selectFirstPage(page);
+    await addIdevice(page, 'guess');
+    await waitForEditor(page, 'adivinaEText');
+}
 
 /**
  * The share windows of the iDevice forms (gamification.share). The buttons that open Import, Export and Create with
@@ -13,12 +24,7 @@ test('The Import, Export and Create with AI buttons are each reached with Tab', 
     authenticatedPage: page,
     createProject,
 }) => {
-    const uuid = await createProject(page, 'Share buttons');
-    await gotoWorkarea(page, uuid);
-    await waitForAppReady(page);
-    await selectFirstPage(page);
-    await addIdevice(page, 'guess');
-    await waitForEditor(page, 'adivinaEText');
+    await addGuess(page, createProject, 'Share buttons');
 
     const tools = page.locator('.exe-share-tools');
     await expect(tools).toBeVisible();
@@ -52,12 +58,7 @@ test('The tabs of the Create with AI window are accessible and work with the key
     authenticatedPage: page,
     createProject,
 }) => {
-    const uuid = await createProject(page, 'Create with AI tabs');
-    await gotoWorkarea(page, uuid);
-    await waitForAppReady(page);
-    await selectFirstPage(page);
-    await addIdevice(page, 'guess');
-    await waitForEditor(page, 'adivinaEText');
+    await addGuess(page, createProject, 'Create with AI tabs');
 
     await page.locator('[data-exe-share="ai"]').click();
     const ai = page.locator('#eXeShareModal-ai');
@@ -110,4 +111,18 @@ test('The tabs of the Create with AI window are accessible and work with the key
     await page.keyboard.press('ArrowRight');
     await expect(prompt).toBeFocused();
     await expect(prompt).toHaveAttribute('aria-selected', 'true');
+});
+
+test('Closing the alert after Create with AI adds the questions gives the focus back to its button', async ({
+    authenticatedPage: page,
+    createProject,
+}) => {
+    await addGuess(page, createProject, 'Create with AI focus');
+
+    // The window closes once the questions are in, and the alert that says so opens a moment later.
+    await addWithAi(page, 'Heart#A muscular organ that pumps blood through the body');
+    await expect(page.locator('#eXeShareModal-ai')).toBeHidden();
+    await closeAlert(page, 'The questions have been added successfully');
+
+    await expect(page.locator('[data-exe-share="ai"]')).toBeFocused();
 });

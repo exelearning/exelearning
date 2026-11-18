@@ -1389,6 +1389,7 @@ var $exeIDevicesEdition = {
                     const lifecycle = $exeIDevicesEdition.iDevice.getLifecycle();
                     if (share.onModalShow) document.removeEventListener('show.bs.modal', share.onModalShow);
                     share.onModalShow = function (event) {
+                        share.refocusAfter(event.target);
                         share.yieldTo(event.target);
                     };
                     if (lifecycle) {
@@ -1454,6 +1455,33 @@ var $exeIDevicesEdition = {
                             { once: true }
                         );
                     });
+                },
+
+                /**
+                 * The windows give the focus back to their links when they
+                 * close; the application's own modals do not, and leave it on
+                 * the page. One of them opens just after a window closes --
+                 * the alert with the result of Create with AI or of an import
+                 * -- or after Export, which has no window. So when one opens
+                 * while a button of the Activities tab has the focus, the
+                 * focus goes back to that button once it closes, unless
+                 * something else has taken it meanwhile.
+                 *
+                 * @param {HTMLElement} other The modal being shown.
+                 */
+                refocusAfter: function (other) {
+                    if (!other || !other.classList || other.classList.contains('exe-share-modal')) return;
+                    const button = document.activeElement;
+                    if (!button || typeof button.closest !== 'function' || !button.closest('.exe-share-tools')) return;
+                    other.addEventListener(
+                        'hidden.bs.modal',
+                        function () {
+                            const focus = document.activeElement;
+                            const lost = !focus || focus === document.body || other.contains(focus);
+                            if (lost && document.body.contains(button)) button.focus();
+                        },
+                        { once: true }
+                    );
                 },
 
                 /**
