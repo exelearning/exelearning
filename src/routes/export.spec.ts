@@ -448,6 +448,31 @@ describe('Export Routes', () => {
             expect(res.status).toBe(200);
         });
 
+        it('exports a Yjs-only session whose structure omits meta instead of failing with 500', async () => {
+            const res = await handle(
+                new Request('http://localhost/api/export/yjs-no-meta/html5/download', {
+                    method: 'POST',
+                    body: JSON.stringify({ structure: { pages: [], navigation: [] } }),
+                    headers: { 'Content-Type': 'application/json' },
+                }),
+            );
+
+            expect(res.status).toBe(200);
+        });
+
+        it('rejects a structure that is not an object', async () => {
+            const res = await handle(
+                new Request('http://localhost/api/export/yjs-bad/html5/download', {
+                    method: 'POST',
+                    body: JSON.stringify({ structure: 'not-a-structure' }),
+                    headers: { 'Content-Type': 'application/json' },
+                }),
+            );
+
+            // The body schema rejects it; the app's global onError answers 400.
+            expect(res.status).toBe(422);
+        });
+
         it('should return same format as GET', async () => {
             const getRes = await handle(new Request(`http://localhost/api/export/${testSessionId}/scorm12/download`));
 
