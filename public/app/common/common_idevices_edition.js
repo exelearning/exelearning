@@ -1186,6 +1186,10 @@ var $exeIDevicesEdition = {
                  * the file: it binds `change` on #eXeGameImportGame, which a
                  * dropped file goes through too (see addEvents).
                  *
+                 * The button says what it does on its own, and the text after
+                 * it follows a file button, as in the box that uploads a
+                 * style: both strings are translated already.
+                 *
                  * @param {string[]} [formats=['txt', 'xml']] The extensions of
                  * the files the iDevice reads; xml is a Moodle xml file.
                  * @returns {string}
@@ -1198,9 +1202,9 @@ var $exeIDevicesEdition = {
                             <form method="POST">
                                 <div class="exe-file-upload exe-file-drop" data-exe-upload data-exe-file-drop>
                                     <span class="auto-icon exe-file-drop-icon" aria-hidden="true">upload_file</span>
-                                    <span>${_('Drag a file here or')}</span>
                                     <input type="file" name="eXeGameImportGame" id="eXeGameImportGame" accept="${escape(accept)}" class="exe-file-input d-none" />
-                                    <button type="button" class="btn btn-primary exe-file-btn" data-exe-file-trigger aria-describedby="eXeGameImportFileName eXeGameImportFormats">${_('Choose')}</button>
+                                    <button type="button" class="btn btn-primary exe-file-btn" data-exe-file-trigger aria-describedby="eXeGameImportFileName eXeGameImportFormats">${_('Choose a file')}</button>
+                                    <span>${_('or drag it here')}</span>
                                     <span class="exe-file-name" id="eXeGameImportFileName" data-exe-file-name>${_('No file selected')}</span>
                                     <span class="exe-field-instructions" id="eXeGameImportFormats">${_('Supported formats')}: ${escape(names)}</span>
                                 </div>

@@ -3223,7 +3223,10 @@ describe('common_idevices_edition.js', () => {
         .split(' ')
         .map((id) => document.getElementById(id).textContent);
       expect(described).toEqual(['No file selected', 'Supported formats: txt']);
-      expect(zone.textContent).toContain('Drag a file here or');
+      // The button says what it does, and the text after it goes on from it:
+      // no string ends where the button begins.
+      expect(button.textContent).toBe('Choose a file');
+      expect(button.nextElementSibling.textContent).toBe('or drag it here');
     });
 
     it('getImportContents hides the native file input so only the btn-primary trigger is shown', () => {
