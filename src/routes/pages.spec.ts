@@ -3,6 +3,7 @@
  * Uses Dependency Injection pattern - no mock.module needed
  */
 import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
+import * as pathModule from 'path';
 import { Elysia } from 'elysia';
 import type { Kysely } from 'kysely';
 import type { Database } from '../db/schema';
@@ -2806,10 +2807,25 @@ describe('Pages Routes', () => {
             expect(res.headers.get('content-type')).toBe('image/png');
         });
 
-        it('should return 400 for path traversal attempt', async () => {
-            const res = await app.handle(new Request('http://localhost/customization/assets/..%2Fetc%2Fpasswd'));
+        it('should not serve a file outside the assets directory on path traversal', async () => {
+            // Only the traversal target "exists", so a missing containment check would serve it
+            // instead of falling through to the handler's 404.
+            const insideAssets = `${pathModule.sep}customization${pathModule.sep}assets${pathModule.sep}`;
+            const customDeps = {
+                ...mockDeps,
+                fileHelper: {
+                    ...createMockFileHelper(),
+                    fileExists: async (p: string) => !p.includes(insideAssets),
+                    readFile: async (_p: string) => Buffer.from('root:x:0:0'),
+                },
+            };
+            const customApp = new Elysia().use(createPagesRoutes(customDeps));
+            const res = await customApp.handle(new Request('http://localhost/customization/assets/..%2Fetc%2Fpasswd'));
 
-            expect(res.status).toBe(400);
+            // Elysia < 1.4.31 decodes %2F, so the handler's guard answers 400. From 1.4.31 the
+            // param keeps %2F, resolves inside the assets directory and is a plain 404.
+            expect([400, 404]).toContain(res.status);
+            expect(await res.text()).toBe('');
         });
     });
 
