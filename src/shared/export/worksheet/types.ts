@@ -160,6 +160,13 @@ export type PrintableBoard =
      */
     | { kind: 'rubricTable'; table: PrintableRubric }
     /**
+     * A checklist: its heading and fields, then one row per item, marked as the activity marks it.
+     *
+     * Like a rubric it is one thing the learner fills in rather than questions to answer, so the
+     * whole list is the board. Nothing is hidden: the items are what is being ticked off.
+     */
+    | { kind: 'checklist'; list: PrintableChecklist }
+    /**
      * Element cards, one per question, laid across the sheet and wrapping.
      *
      * The activity asks the same thing of every element it draws, so there are no questions beside
@@ -227,6 +234,44 @@ export interface PrintableRubricRow {
     criterion: string;
     /** One descriptor per level, as sanitised HTML. Short rows are padded so columns line up. */
     cells: string[];
+}
+
+/** A checklist as it is printed. */
+export interface PrintableChecklist {
+    /** The checklist's own name and the line under it, as sanitised HTML. */
+    title?: string;
+    subtitle?: string;
+    /**
+     * Labels for the blank fields above the list, in the activity's own words. Empty when it does
+     * not ask for the learner's details, or the containing sheet already does.
+     */
+    fields: string[];
+    /** The score to write in, out of what the items add up to, when the activity scores them. */
+    score?: { label: string; total: number };
+    /**
+     * The activity's words for the states an item marked by state can be in, in its own order:
+     * done, in progress, not completed.
+     */
+    states: string[];
+    items: PrintableChecklistItem[];
+    /** The activity's closing line, credits included, as sanitised HTML. */
+    footer?: string;
+}
+
+/** One item of a checklist. */
+export interface PrintableChecklistItem {
+    /** What is being ticked off, as sanitised HTML. */
+    text: string;
+    /** How deep the item sits under the ones above it: 0 at the left margin, up to 3. */
+    level: number;
+    /**
+     * How the item is marked, one value per kind the editor offers: a box to tick (Box), a box
+     * and a line to write on (Text), a dotted blank before each state (Selection), or nothing, for
+     * an item that heads the ones under it (Do not mark).
+     */
+    marker: 'box' | 'boxAndLine' | 'states' | 'none';
+    /** What the item is worth, in the activity's words, e.g. '(10 points)'. */
+    points?: string;
 }
 
 /**

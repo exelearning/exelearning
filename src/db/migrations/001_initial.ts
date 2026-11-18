@@ -8,10 +8,11 @@
  * - Settings: app_settings
  * - Themes: themes, templates
  */
-import { Kysely, sql } from 'kysely';
-import { getAutoIncrementType, addAutoIncrement, getBinaryType } from '../helpers';
 
-export async function up(db: Kysely<unknown>): Promise<void> {
+import { sql } from 'kysely';
+import { type UntypedKysely, getAutoIncrementType, addAutoIncrement, getBinaryType } from '../helpers';
+
+export async function up(db: UntypedKysely): Promise<void> {
     // Get the correct types for the current database
     const idType = getAutoIncrementType();
     const binaryType = getBinaryType();
@@ -290,7 +291,7 @@ export async function up(db: Kysely<unknown>): Promise<void> {
         });
 }
 
-export async function down(db: Kysely<unknown>): Promise<void> {
+export async function down(db: UntypedKysely): Promise<void> {
     // Drop tables in reverse order (respecting foreign keys)
     await db.schema.dropTable('templates').ifExists().execute();
     await db.schema.dropTable('themes').ifExists().execute();

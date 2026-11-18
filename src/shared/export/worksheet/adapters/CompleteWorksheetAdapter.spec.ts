@@ -109,6 +109,35 @@ describe('CompleteWorksheetAdapter', () => {
         expect(activity?.items[0].prompt).toContain('</span></b>');
     });
 
+    it('takes off a link round a gap, whose address would give the hidden word away', () => {
+        const activity = CompleteWorksheetAdapter.build(
+            completeHtml({ textText: '<p>Es <a href="https://es.wikipedia.org/wiki/Toledo">@@Toledo@@</a>.</p>' }),
+            {},
+        );
+
+        expect(activity?.items[0].prompt).toMatch(/^<p>Es <span class="worksheet-gap"[^>]*><\/span>\.<\/p>$/);
+    });
+
+    it.each([
+        '<iframe src="https://example.org/map"></iframe>',
+        '<embed src="https://example.org/map">',
+        '<object data="https://example.org/map"></object>',
+    ])('hides the linked answer even when an embed precedes the gap: %s', embed => {
+        const activity = CompleteWorksheetAdapter.build(
+            completeHtml({
+                textText: `<p>Capital: <a href="https://es.wikipedia.org/wiki/Toledo">${embed}@@Toledo@@</a>.</p>`,
+            }),
+            {},
+        );
+
+        expect(activity?.items[0].prompt).toContain(
+            '<span class="worksheet-embed-address">https://example.org/map</span>',
+        );
+        expect(gapCount(activity)).toBe(1);
+        expect(activity?.items[0].prompt).not.toContain('Toledo');
+        expect(activity?.items[0].prompt).not.toContain('<a');
+    });
+
     it('uses the supplied title and falls back to the default', () => {
         expect(CompleteWorksheetAdapter.build(completeHtml(), { title: 'Completa' })?.title).toBe('Completa');
         expect(CompleteWorksheetAdapter.build(completeHtml(), {})?.title).toBe('Complete');

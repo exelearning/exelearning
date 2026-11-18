@@ -51,6 +51,8 @@ export default class PrintOptionsPanel {
         this.onChange = onChange;
         this.activitiesEl = root?.querySelector('.print-options-activities') ?? null;
         this.linkUrlsInput = root?.querySelector(`#${PRINT_LINK_URLS_FIELD}`) ?? null;
+        /** The document's choice of link URLs, kept aside while the worksheet ticks the box. */
+        this.documentLinkUrls = undefined;
         this.unfoldBlocksInput = root?.querySelector(`#${PRINT_UNFOLD_BLOCKS_FIELD}`) ?? null;
         this.teacherOnlyInput = root?.querySelector(`#${PRINT_TEACHER_ONLY_FIELD}`) ?? null;
         this.teacherOnlyRow = root?.querySelector('.print-options-teacher-only') ?? null;
@@ -383,7 +385,8 @@ export default class PrintOptionsPanel {
      */
     getState() {
         const documentState = {
-            showLinkUrls: this.linkUrlsInput ? this.linkUrlsInput.checked : true,
+            // While the worksheet ticks the box, the document's choice is the one kept aside.
+            showLinkUrls: this.linkUrlsInput ? (this.documentLinkUrls ?? this.linkUrlsInput.checked) : true,
             unfoldBlocks: this.unfoldBlocksInput ? this.unfoldBlocksInput.checked : true,
             teacherOnly: Boolean(this.teacherOnlyInput?.checked && !this.teacherOnlyRow?.hidden),
         };
@@ -416,15 +419,28 @@ export default class PrintOptionsPanel {
     }
 
     /**
-     * Allow the document options, or not: links and folded blocks mean nothing to a preview that
-     * is not the document. Teacher-only content stays allowed, since it also decides which
-     * activities go on the worksheet.
+     * Allow the document options, or not: they mean nothing to a preview that is not the document.
+     * The worksheet has no folded blocks, and always writes out the addresses of its links.
+     * Teacher-only content stays allowed, since it also decides which activities go on the
+     * worksheet.
      *
      * @param {boolean} enabled - true while the document is being previewed
      */
     setDocumentOptionsEnabled(enabled) {
         for (const input of [this.linkUrlsInput, this.unfoldBlocksInput]) {
             if (input) input.disabled = !enabled;
+        }
+
+        // The worksheet writes the addresses out, so the box shows it ticked while it cannot be
+        // changed; the document's own choice is kept aside and comes back with the document.
+        const linkUrls = this.linkUrlsInput;
+        if (!linkUrls) return;
+        if (!enabled && this.documentLinkUrls === undefined) {
+            this.documentLinkUrls = linkUrls.checked;
+            linkUrls.checked = true;
+        } else if (enabled && this.documentLinkUrls !== undefined) {
+            linkUrls.checked = this.documentLinkUrls;
+            this.documentLinkUrls = undefined;
         }
     }
 

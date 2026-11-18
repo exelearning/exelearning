@@ -22,7 +22,7 @@
  *   `msgs`. The sheet uses those, so a Spanish project offers 'Verdadero' and 'Falso'.
  */
 
-import { renderInlineGap } from '../WorksheetRenderer';
+import { renderInlineGap, unlinkGaps } from '../WorksheetRenderer';
 import { selectQuestions, shuffleWith, type RandomSource } from '../questionSelection';
 import { escapeText, htmlToText, sanitizeHtml } from '../sanitizeHtml';
 import type { PrintableActivity, PrintableItem, WorksheetAdapter, WorksheetAdapterOptions } from '../types';
@@ -76,11 +76,13 @@ function blanksIn(baseText: string): string[] {
  * means the gap markup never has to pass through a filter that would strip it.
  */
 function withGaps(baseText: string, choices?: string[]): string {
-    return sanitizeHtml(baseText).replace(BLANK, (_, answer: string) => {
+    const gapped = sanitizeHtml(baseText).replace(BLANK, (_, answer: string) => {
         const width = htmlToText(answer).trim().length || DEFAULT_GAP;
 
         return renderInlineGap(width, choices);
     });
+    // A link round a blank would print the address of the answer it hides.
+    return unlinkGaps(gapped);
 }
 
 /** One statement to mark true or false, with the activity's own words for the two. */

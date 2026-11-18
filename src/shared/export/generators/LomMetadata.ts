@@ -46,7 +46,7 @@ export class LomMetadataGenerator {
      * @param projectId - Unique project identifier
      * @param metadata - Project metadata
      */
-    constructor(projectId: string, metadata: LomMetadataOptions = {}) {
+    constructor(projectId: string, metadata: LomMetadataOptions = {} as LomMetadataOptions) {
         this.projectId = projectId || this.generateId();
         this.metadata = metadata;
     }

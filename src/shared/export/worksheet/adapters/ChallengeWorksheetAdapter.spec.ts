@@ -228,10 +228,31 @@ describe('ChallengeWorksheetAdapter', () => {
         expect(main.prompt).toBe(titled('Hola'));
     });
 
-    it('drops a video an author embedded in a description, a sheet having nothing to play it with', () => {
-        const [main] = itemsOf({ desafioDescription: '<p>Mira<iframe src="https://v/1"></iframe></p>' });
+    it('prints where to find what an author embedded from the web, a sheet having nothing to play it with', () => {
+        // Issue #2634: each challenge pointed at a Genially, and the sheet printed a blank instead.
+        const genially = 'https://view.genial.ly/5bb353835b64ad591a0c0924';
+        const [, smaller] = itemsOf({
+            challengeDivs: [
+                `<p>Revisa la siguiente información:</p><div><div><iframe src="${genially}"></iframe></div></div>`,
+            ],
+        });
+
+        expect(smaller.extraText).toBe(
+            '<p>Revisa la siguiente información:</p>' +
+                `<div><div><span class="worksheet-embed-address"><a href="${genially}">${genially}</a></span></div></div>`,
+        );
+    });
+
+    it('drops a video embedded from the project itself, which leaves nothing a reader could follow', () => {
+        const [main] = itemsOf({ desafioDescription: '<p>Mira<iframe src="video.html"></iframe></p>' });
 
         expect(main.extraText).toBe('<p>Mira</p>');
+    });
+
+    it('keeps a link in a description, for the sheet to print its address', () => {
+        const [main] = itemsOf({ desafioDescription: '<p>Lee <a href="https://x/doc" target="_blank">esto</a></p>' });
+
+        expect(main.extraText).toBe('<p>Lee <a href="https://x/doc">esto</a></p>');
     });
 
     describe('what cannot be printed', () => {

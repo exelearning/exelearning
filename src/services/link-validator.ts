@@ -404,7 +404,9 @@ export async function* validateLinksStream(
             if (!first && !hostDown && hostDelayMs > 0) await sleep(hostDelayMs);
             first = false;
             if (cancelled) return;
-            const error = hostDown ? 'Timeout' : await checkUrl(url);
+            // Annotated: `error` and `hostDown` depend on each other, so strict
+            // inference would treat `error` as a circular `any` (TS7022).
+            const error: string | null = hostDown ? 'Timeout' : await checkUrl(url);
             hostDown = error === 'Timeout';
             emit(sameUrl.map(link => toResult(link, error)));
         }

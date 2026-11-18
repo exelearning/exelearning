@@ -274,6 +274,16 @@ describe('QuickQuestionsWorksheetAdapter', () => {
 
             expect(activity?.items[0].extraText).toBe('<p>Read <b>this</b></p>');
         });
+
+        it('keeps the percent-encoding of a link in rich text saved as written', () => {
+            const eText = '<p>Mira el <a href="https://es.wikipedia.org/wiki/An%C3%A9lido">anélido</a></p>';
+            const activity = QuickQuestionsWorksheetAdapter.build(
+                quextHtml({ questionsGame: [question({ type: 3, eText })] }),
+                {},
+            );
+
+            expect(activity?.items[0].extraText).toBe(eText);
+        });
     });
 
     describe('robustness', () => {

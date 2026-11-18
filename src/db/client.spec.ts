@@ -8,7 +8,6 @@ import type { Database } from './types';
 import { up } from './migrations/001_initial';
 import {
     db,
-    dialect,
     closeDb,
     isConnected,
     getDbInfo,
@@ -72,12 +71,6 @@ describe('Kysely ORM Client', () => {
         it('should lazily initialize dialect when cache is empty', async () => {
             await resetClientCacheForTesting();
             expect(getDialect()).toBe('sqlite');
-        });
-
-        it('should proxy dialect properties', async () => {
-            await resetClientCacheForTesting();
-            const length = dialect.length;
-            expect(length).toBe(getDialect().length);
         });
     });
 

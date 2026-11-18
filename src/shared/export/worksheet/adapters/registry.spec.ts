@@ -31,6 +31,7 @@ describe('worksheet adapter registry', () => {
             'az-quiz-game',
             'beforeafter',
             'challenge',
+            'checklist',
             'classify',
             'complete',
             'crossword',

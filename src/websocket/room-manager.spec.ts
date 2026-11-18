@@ -167,6 +167,14 @@ describe('Room Manager', () => {
             const room = getRoom('test-room');
             expect(room!.conns.size).toBe(1);
         });
+
+        it('should refuse to add a connection without clientId', () => {
+            const ws = createMockWebSocket();
+            ws.data.clientId = undefined;
+
+            expect(() => addConnection('test-room', ws)).toThrow(/clientId/);
+            expect(getRoom('test-room')).toBeUndefined();
+        });
     });
 
     describe('removeConnection', () => {
@@ -182,6 +190,17 @@ describe('Room Manager', () => {
         it('should handle removing from non-existent room', () => {
             const ws = createMockWebSocket();
             expect(() => removeConnection('non-existent', ws)).not.toThrow();
+        });
+
+        it('should no-op when removing a connection without clientId', () => {
+            const ws = createMockWebSocket('client-1');
+            addConnection('test-room', ws);
+
+            const orphan = createMockWebSocket();
+            orphan.data.clientId = undefined;
+            removeConnection('test-room', orphan);
+
+            expect(getRoom('test-room')!.conns.size).toBe(1);
         });
 
         it('removes the connection even when close() receives a different wrapper object than open() did', () => {

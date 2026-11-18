@@ -30,6 +30,7 @@ if (isRunningOnlyStatic) {
 
 // Shared environment for dynamic server (chromium/firefox)
 const dynamicServerEnv = {
+    NODE_ENV: 'test',
     DB_PATH: ':memory:',
     // FIX: '/tmp/' usually does not exist on Windows.
     // We use the OS temporary folder dynamically.
@@ -99,7 +100,9 @@ function getWebServerConfig() {
         return dynamicWebServer;
     }
     // Mixed or all projects - start both servers
-    return [dynamicWebServer, staticWebServer].filter(Boolean);
+    return [dynamicWebServer, staticWebServer].filter((server): server is NonNullable<typeof server> =>
+        Boolean(server),
+    );
 }
 
 export default defineConfig({
