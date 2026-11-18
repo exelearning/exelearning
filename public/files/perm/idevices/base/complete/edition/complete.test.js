@@ -318,6 +318,25 @@ describe('complete edition: shared form tabs and feedback', () => {
         expect(panel('texts').querySelector('#ci18n_msgReply')).not.toBeNull();
     });
 
+    // The Galician catalog writes the % of this message as &percnt;, which the
+    // learner read as such: complete does not replace it, unlike other iDevices.
+    it('shows and saves the per cent sign of the Galician try-again message', () => {
+        vi.stubGlobal('c_', (text) =>
+            text === 'You need at least %s% of correct answers to get the information. Please try again.'
+                ? 'Precisas polo menos %s&percnt; de respostas correctas para obter a información. Téntao de novo.'
+                : text
+        );
+        device.$lifecycle?.destroy();
+        device = loadIdevice(readFileSync(join(__dirname, 'complete.js'), 'utf-8'));
+        document.body.innerHTML = '<div id="completeBody"></div>';
+        device.init(document.getElementById('completeBody'), {}, PATH);
+        device.updateFieldGame(game());
+
+        const shown = 'Precisas polo menos %s% de respostas correctas para obter a información. Téntao de novo.';
+        expect(panel('texts').querySelector('#ci18n_msgTryAgain').value).toBe(shown);
+        expect(device.save()).toContain(`"msgTryAgain":"${shown}"`);
+    });
+
     it('provides accessible help tooltips for option rows', () => {
         const optionHelps = [...panel('options').querySelectorAll('#cmptEOptions .exe-idevice-help')];
         expect(optionHelps.length).toBe(11);

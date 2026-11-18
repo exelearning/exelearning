@@ -518,6 +518,24 @@ describe('common_idevices_edition.js', () => {
       });
     });
 
+    describe('decodeEntities', () => {
+      const decodeEntities = (value) => globalThis.$exeIDevicesEdition.iDevice.common.decodeEntities(value);
+
+      it('decodes named, decimal and hexadecimal references', () => {
+        expect(decodeEntities('%s&percnt; &amp; &quot;&#37;&#x25;')).toBe('%s% & "%%');
+      });
+
+      it('leaves tags, an unknown reference and a lone ampersand as they are', () => {
+        expect(decodeEntities('<b>Tom</b> & &unknown; &percnt')).toBe('<b>Tom</b> & &unknown; &percnt');
+      });
+
+      it('turns null and undefined into an empty string and other values into text', () => {
+        expect(decodeEntities(null)).toBe('');
+        expect(decodeEntities(undefined)).toBe('');
+        expect(decodeEntities(42)).toBe('42');
+      });
+    });
+
     describe('removeTags', () => {
       const removeTags = (html) => globalThis.$exeIDevicesEdition.iDevice.common.removeTags(html);
 
@@ -2299,6 +2317,18 @@ describe('common_idevices_edition.js', () => {
         expect(document.querySelector('label b')).toBeNull();
         expect(label('ci18n_msgQuote')).toBe('<b>Say</b>');
         expect(document.getElementById('ci18n_msgQuote').value).toBe('He said "hi" & left');
+      });
+
+      // The Galician and Romanian catalogs write the % of this message as &percnt;.
+      it('shows the per cent sign of a translation that writes it as a reference', () => {
+        const galician = 'Precisas polo menos %s&percnt; de respostas correctas para obter a información. Téntao de novo.';
+        render({ msgTryAgain: galician, msgLabel: ['&percnt; right', galician] });
+
+        const shown = 'Precisas polo menos %s% de respostas correctas para obter a información. Téntao de novo.';
+        expect(document.getElementById('ci18n_msgTryAgain').value).toBe(shown);
+        expect(label('ci18n_msgTryAgain')).toBe(shown);
+        expect(label('ci18n_msgLabel')).toBe('% right');
+        expect(document.getElementById('ci18n_msgLabel').value).toBe(shown);
       });
 
       it('lays the fields out in two columns of the Bootstrap grid, and nothing else', () => {

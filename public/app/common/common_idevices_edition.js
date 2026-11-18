@@ -45,6 +45,21 @@ var $exeIDevicesEdition = {
                     .replace(/'/g, '&#39;');
             },
             /**
+             * A text with its character references decoded, as an HTML
+             * attribute reads them: some translations write % as &percnt;.
+             * Only the references are parsed, so a tag stays as written.
+             *
+             * @param {*} value
+             * @returns {string}
+             */
+            decodeEntities: function (value) {
+                const template = document.createElement('template');
+                return String(value ?? '').replace(/&(?:#\d+|#x[\da-f]+|[a-z][a-z\d]*);/gi, (reference) => {
+                    template.innerHTML = reference;
+                    return template.content.textContent;
+                });
+            },
+            /**
              * The text of an HTML fragment, without its tags. The fragment is
              * read in a template, which runs nothing: it can come from an
              * imported file, and parsed in the page its images would load and
@@ -418,22 +433,25 @@ var $exeIDevicesEdition = {
                  * The custom texts for the Texts tab, in two columns of
                  * Bootstrap's grid. A field is either a string, used as both
                  * label and default value, or [label, value]. Each input is
-                 * `ci18n_<key>`, the id setLanguageTabValues fills.
+                 * `ci18n_<key>`, the id setLanguageTabValues fills. The texts
+                 * are decoded before they are escaped, so a translation that
+                 * writes % as &percnt; shows, and saves, a %.
                  *
                  * @param {Object|Array} fields The iDevice's ci18n texts.
                  * @returns {string}
                  */
                 getLanguageContents: function (fields) {
-                    const escape = $exeIDevicesEdition.iDevice.common.escapeHtml;
+                    const { escapeHtml, decodeEntities } = $exeIDevicesEdition.iDevice.common;
+                    const show = (value) => escapeHtml(decodeEntities(value));
                     let html = '';
                     for (const key in fields) {
                         const field = fields[key];
                         const label = typeof field === 'string' ? field : field[0];
                         const text = typeof field === 'string' || field.length !== 2 ? label : field[1];
-                        const id = escape('ci18n_' + key);
+                        const id = escapeHtml('ci18n_' + key);
                         html += `<div class="col ci18n">
-                                <label for="${id}" class="form-label">${escape(label)}</label>
-                                <input type="text" class="form-control" name="${id}" id="${id}" value="${escape(text)}" />
+                                <label for="${id}" class="form-label">${show(label)}</label>
+                                <input type="text" class="form-control" name="${id}" id="${id}" value="${show(text)}" />
                             </div>`;
                     }
                     return `<div class="row row-cols-1 row-cols-md-2 g-3">${html}</div>`;
