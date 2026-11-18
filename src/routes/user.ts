@@ -385,7 +385,16 @@ export function createUserRoutes(deps: UserDependencies = defaultDependencies) {
                             });
                         }
 
-                        return { success: true, message: 'Password changed successfully' };
+                        // The editor's WebSocket token carries the old fingerprint
+                        // too; hand back a replacement so open editors keep syncing.
+                        const token = await jwt.sign({
+                            sub: userId,
+                            email: user.email,
+                            isGuest: false,
+                            pwh: passwordFingerprint(hashedPassword),
+                        });
+
+                        return { success: true, message: 'Password changed successfully', token };
                     } catch (error) {
                         // Log the failure, never the credentials.
                         console.error('[User] Failed to change password:', error);

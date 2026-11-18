@@ -995,6 +995,16 @@ describe('User Routes', () => {
                 expect(payload?.authMethod).toBe('local');
             });
 
+            it('returns a fresh editor token bound to the new password', async () => {
+                const { status, body } = await changePassword(await localSession(), validBody);
+
+                expect(status).toBe(200);
+                const payload = await verifyToken(body.token);
+                expect(payload?.pwh).toBe(passwordFingerprint(passwordUpdates[0].password));
+                expect(payload?.sub).toBe(1);
+                expect(payload?.isGuest).toBe(false);
+            });
+
             it('updates only the caller, taken from the session', async () => {
                 await changePassword(await localSession(), validBody);
 

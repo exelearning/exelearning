@@ -22,6 +22,7 @@ import { zipSync, strToU8 } from 'fflate';
 import { SignJWT } from 'jose';
 import { configurePublicViewContent, resetPublicViewContent, type ExportResult } from '../services/public-view-content';
 import { PUBLIC_VIEW_SANDBOX } from '../shared/security/publicViewSandbox';
+import { passwordFingerprint, verifyToken } from './auth';
 
 // Mock data stores
 let mockUsers: Map<number, any>;
@@ -1993,6 +1994,48 @@ describe('Pages Routes', () => {
 
             expect(templateData.user).not.toBeNull();
             expect(templateData.user.id).toBe(1);
+        });
+    });
+
+    describe('session tokens match the revocation check', () => {
+        it('signs the offline login with the roles the revocation check reads', async () => {
+            process.env.APP_ONLINE_MODE = '0';
+            process.env.DEFAULT_USER_EMAIL = 'test@test.com';
+            mockUsers.set(1, { id: 1, email: 'test@test.com', roles: '', password: 'stored-hash' });
+
+            const res = await app.handle(new Request('http://localhost/login'));
+
+            const token = res.headers.get('set-cookie')?.match(/auth=([^;]+)/)?.[1];
+            const payload = await verifyToken(token!);
+            expect(payload?.roles).toEqual([]);
+        });
+
+        it('binds the workarea token to the current password', async () => {
+            let templateData: any = null;
+            const customApp = new Elysia().use(
+                createPagesRoutes({
+                    ...mockDeps,
+                    template: {
+                        renderTemplate: (_template: string, data: any) => {
+                            templateData = data;
+                            return '<html></html>';
+                        },
+                        setRenderLocale: () => {},
+                    },
+                }),
+            );
+            mockUsers.set(1, { id: 1, email: 'test@test.com', roles: '["ROLE_USER"]', password: 'stored-hash' });
+            mockSessions.set('pwh-test', { sessionId: 'pwh-test', fileName: 'Test.elp' });
+            const cookie = await new SignJWT({ sub: 1, email: 'test@test.com', roles: ['ROLE_USER'] } as any)
+                .setProtectedHeader({ alg: 'HS256' })
+                .sign(new TextEncoder().encode('test-secret-for-testing-only'));
+
+            await customApp.handle(
+                new Request('http://localhost/workarea?project=pwh-test', { headers: { Cookie: `auth=${cookie}` } }),
+            );
+
+            const payload = await verifyToken(templateData.config.token);
+            expect(payload?.pwh).toBe(passwordFingerprint('stored-hash'));
         });
     });
 

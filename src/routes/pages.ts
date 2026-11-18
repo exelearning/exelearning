@@ -7,6 +7,7 @@
 import { Elysia } from 'elysia';
 import { isProductionEnv } from '../utils/env';
 import { getJwtSecret, passwordFingerprint } from './auth';
+import { parseRoles } from '../db/types';
 import { jwt } from '@elysiajs/jwt';
 import { randomBytes } from 'crypto';
 import type { Kysely } from 'kysely';
@@ -542,7 +543,7 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                             const token = await jwt.sign({
                                 sub: user.id,
                                 email: user.email,
-                                roles: JSON.parse(user.roles || '["ROLE_USER"]'),
+                                roles: parseRoles(user.roles),
                                 isGuest: false,
                                 pwh: passwordFingerprint(user.password),
                             });
@@ -1107,10 +1108,13 @@ export function createPagesRoutes(deps: PagesDependencies = defaultDependencies)
                 const basePath = getBasePath();
 
                 // Generate auth token for WebSocket
+                // `pwh` revokes this token with the session when the password
+                // changes; guests have no stored password to bind to.
                 const authToken = await jwt.sign({
                     sub: userId,
                     email: email,
                     isGuest: isGuest,
+                    ...(isGuest ? {} : { pwh: passwordFingerprint(currentUser.password) }),
                 });
 
                 // Get default theme from database
