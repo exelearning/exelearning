@@ -1286,7 +1286,6 @@ ${userFooterHtml}</div></footer>`;
                 madeWith?: string;
                 newWindow?: string;
             };
-            assetExportPathMap?: Map<string, string>;
             materialIconDataUris?: Map<string, string>;
             printContext?: PrintContext;
             /** The style's root .js and .css files; style.js and style.css when not given. */
@@ -1313,7 +1312,6 @@ ${userFooterHtml}</div></footer>`;
             passScore,
             passScoreEveryActivity = false,
             navLabels,
-            assetExportPathMap,
             materialIconDataUris,
             themeFiles = [],
         } = options;
@@ -1337,7 +1335,7 @@ ${userFooterHtml}</div></footer>`;
                 page,
                 '',
                 projectTitle,
-                assetExportPathMap,
+                undefined,
                 {
                     author: options.author,
                     description: options.description,
