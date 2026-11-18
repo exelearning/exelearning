@@ -4,7 +4,7 @@
 
 import { describe, it, expect, beforeEach } from 'bun:test';
 import { Scorm2004ManifestGenerator } from './Scorm2004Manifest';
-import type { ExportPage } from '../interfaces';
+import type { ExportPage, ScormManifestOptions } from '../interfaces';
 
 describe('Scorm2004ManifestGenerator', () => {
     let generator: Scorm2004ManifestGenerator;
@@ -20,7 +20,7 @@ describe('Scorm2004ManifestGenerator', () => {
             title: 'Test Course',
             author: 'Test Author',
             language: 'en',
-        });
+        } as ScormManifestOptions);
     });
 
     describe('generate', () => {
@@ -82,7 +82,9 @@ describe('Scorm2004ManifestGenerator', () => {
             // would make the package schema-invalid.
             const pages = createTestPages();
             pages.push({ id: 'page-2', title: 'Chapter 1 again', parentId: null, order: 3, blocks: [] });
-            const duplicated = new Scorm2004ManifestGenerator('test-project-123', pages, { title: 'Test Course' });
+            const duplicated = new Scorm2004ManifestGenerator('test-project-123', pages, {
+                title: 'Test Course',
+            } as ScormManifestOptions);
 
             const originalWarn = console.warn;
             console.warn = () => {};
@@ -151,7 +153,7 @@ describe('Scorm2004ManifestGenerator', () => {
         it('should escape XML special characters', () => {
             const generatorWithSpecialChars = new Scorm2004ManifestGenerator('test', [], {
                 title: 'Test & Course <1>',
-            });
+            } as ScormManifestOptions);
             const xml = generatorWithSpecialChars.generate();
 
             expect(xml).toContain('Test &amp; Course &lt;1&gt;');
@@ -170,7 +172,9 @@ describe('Scorm2004ManifestGenerator', () => {
 
     describe('empty project', () => {
         it('should handle empty pages array', () => {
-            const emptyGenerator = new Scorm2004ManifestGenerator('empty', [], { title: 'Empty' });
+            const emptyGenerator = new Scorm2004ManifestGenerator('empty', [], {
+                title: 'Empty',
+            } as ScormManifestOptions);
             const xml = emptyGenerator.generate();
 
             expect(xml).toContain('<organizations');
