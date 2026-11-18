@@ -1184,12 +1184,13 @@ export default class FormProperties {
         infoAlert.setAttribute('role', 'note');
         infoAlert.innerHTML = `
             <div>
-                <h5 class="alert-heading lead mb-3">${_('Recommendations')}</h5>
-                <p class="mb-2 small">
-                    ${_('Use a 16:9 image (1280×720 px recommended) that clearly represents the main content of the learning resource. Avoid clutter and small text, and ensure good contrast for readability at small sizes.')}
+                <p class="mb-3 small fw-bold d-flex align-items-start gap-2">
+                    <span class="small-icon info-icon-green flex-shrink-0 mt-1" aria-hidden="true"></span>
+                    <span>${_('The image will be used as a preview of this educational resource across different platforms.')}</span>
                 </p>
-                <p class="mb-0 small text-muted">
-                    ${_('The image will be used as a preview of this educational resource across different platforms.')}
+                <h5 class="alert-heading lead mb-3">${_('Recommendations')}</h5>
+                <p class="mb-0 small">
+                    ${_('Use a 16:9 image (1280×720 px recommended) that clearly represents the main content of the learning resource. Avoid clutter and small text, and ensure good contrast for readability at small sizes.')}
                 </p>
             </div>
         `;

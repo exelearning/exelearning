@@ -14,6 +14,7 @@
  */
 import { SignJWT, jwtVerify, type JWTPayload } from 'jose';
 import { serverPriorityQueue } from './asset-priority-queue';
+import { getJwtSecret as getApplicationJwtSecret } from '../utils/jwt-secret';
 
 /**
  * Upload session JWT payload
@@ -75,7 +76,7 @@ export type BatchCompleteCallback = (result: {
  * Returns both the encoded secret (for jose) and length (for diagnostics).
  */
 const getJwtSecret = (): { encoded: Uint8Array; length: number } => {
-    const secret = process.env.API_JWT_SECRET || process.env.JWT_SECRET || 'dev_secret_change_me';
+    const secret = getApplicationJwtSecret();
     return {
         encoded: new TextEncoder().encode(secret),
         length: secret.length,

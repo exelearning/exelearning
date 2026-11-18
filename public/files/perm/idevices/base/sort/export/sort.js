@@ -133,15 +133,25 @@ var $eXeOrdena = {
         mOptions.playerAudio = '';
 
         for (let i = 0; i < mOptions.phrasesGame.length; i++) {
+            if (!Array.isArray(mOptions.phrasesGame[i].cards)) {
+                mOptions.phrasesGame[i].cards = [];
+            }
             const $imagesLink = $('.ordena-LinkImages-' + i, sthis),
                 $audiosLink = $('.ordena-LinkAudios-' + i, sthis),
                 cards = mOptions.phrasesGame[i].cards;
 
+            // Older or edited data can lack some card fields (#2627).
+            for (const card of cards) {
+                card.url = typeof card.url === 'string' ? card.url : '';
+                card.eText = typeof card.eText === 'string' ? card.eText : '';
+                card.audio = typeof card.audio === 'string' ? card.audio : '';
+            }
+
             $imagesLink.each(function () {
                 const iq = parseInt($(this).text());
                 if (!isNaN(iq) && iq < cards.length) {
-                    cards[iq].url = $(this).attr('href');
-                    if (cards[iq].url < 4) {
+                    cards[iq].url = $(this).attr('href') || '';
+                    if (cards[iq].url.length < 4) {
                         cards[iq].url = '';
                     }
                 }
@@ -149,7 +159,7 @@ var $eXeOrdena = {
             $audiosLink.each(function () {
                 const iqa = parseInt($(this).text());
                 if (!isNaN(iqa) && iqa < cards.length) {
-                    cards[iqa].audio = $(this).attr('href');
+                    cards[iqa].audio = $(this).attr('href') || '';
                     if (cards[iqa].audio.length < 4) {
                         cards[iqa].audio = '';
                     }

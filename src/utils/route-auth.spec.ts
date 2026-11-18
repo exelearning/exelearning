@@ -12,8 +12,9 @@ import { describe, it, expect, beforeAll } from 'bun:test';
 import { Elysia } from 'elysia';
 import { SignJWT } from 'jose';
 import { withJwtAuth } from './route-auth';
+import { getJwtSecret } from './jwt-secret';
 
-const TEST_JWT_SECRET = 'dev_secret_change_me';
+const TEST_JWT_SECRET = getJwtSecret();
 
 async function signToken(sub: number, roles: string[] = ['ROLE_USER']): Promise<string> {
     const secret = new TextEncoder().encode(TEST_JWT_SECRET);

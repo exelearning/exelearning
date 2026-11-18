@@ -55,7 +55,7 @@ export function hasAllRoles(roles: string[] | undefined | null, requiredRoles: s
  * @param jwtPayload - JWT payload from route context
  * @returns null if OK, AuthorizationError if unauthorized
  */
-export function requireAuth(jwtPayload: JwtPayload | null | undefined): AuthorizationError | null {
+export function requireAuth(jwtPayload: { sub?: number } | null | undefined): AuthorizationError | null {
     if (!jwtPayload || !jwtPayload.sub) {
         return {
             status: 401,

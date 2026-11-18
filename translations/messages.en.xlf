@@ -16006,6 +16006,30 @@
         <source>System default uses the operating system language. It is also used when no language is checked.</source>
         <target></target>
       </trans-unit>
+      <trans-unit id="fl5t8zm" resname="Presentation mode">
+        <source>Presentation mode</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="mi5s07i" resname="Activate presentation mode">
+        <source>Activate presentation mode</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="9m0ej3c" resname="Deactivate presentation mode">
+        <source>Deactivate presentation mode</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="9bmptld" resname="Keys: Left/Right change page, M menu, T teacher mode, F11 full screen">
+        <source>Keys: Left/Right change page, M menu, T teacher mode, F11 full screen</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="pj1eobo" resname="Autonomous Communities">
+        <source>Autonomous Communities</source>
+        <target></target>
+      </trans-unit>
+      <trans-unit id="suoqtul" resname="Ministry-managed territory (MEFPD)">
+        <source>Ministry-managed territory (MEFPD)</source>
+        <target></target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

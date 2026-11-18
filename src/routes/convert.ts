@@ -47,6 +47,7 @@ import {
 import { ElpxImporter, FileSystemAssetHandler } from '../shared/import';
 import * as Y from 'yjs';
 import { getAppVersion } from '../utils/version';
+import { getJwtSecret } from '../utils/jwt-secret';
 
 // =============================================================================
 // Types and Interfaces
@@ -124,11 +125,6 @@ const defaultDeps: ConvertDependencies = {
     publicDir: path.resolve(__dirname, '../../public'),
     tempDir: process.env.FILES_DIR ? path.join(process.env.FILES_DIR, 'tmp') : '/tmp/exelearning-convert',
     fs: fs,
-};
-
-// Get JWT secret from environment
-const getJwtSecret = (): string => {
-    return process.env.API_JWT_SECRET || process.env.JWT_SECRET || 'dev_secret_change_me';
 };
 
 // =============================================================================

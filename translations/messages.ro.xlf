@@ -16006,6 +16006,30 @@
         <source>System default uses the operating system language. It is also used when no language is checked.</source>
         <target>~Opțiunea implicită folosește limba sistemului de operare. Este folosită și când nu este bifată nicio limbă.</target>
       </trans-unit>
+      <trans-unit id="79vwgq5" resname="Presentation mode">
+        <source>Presentation mode</source>
+        <target>~Mod prezentare</target>
+      </trans-unit>
+      <trans-unit id="456crjh" resname="Activate presentation mode">
+        <source>Activate presentation mode</source>
+        <target>~Activează modul prezentare</target>
+      </trans-unit>
+      <trans-unit id="kub55pw" resname="Deactivate presentation mode">
+        <source>Deactivate presentation mode</source>
+        <target>~Dezactivează modul prezentare</target>
+      </trans-unit>
+      <trans-unit id="wf34mua" resname="Keys: Left/Right change page, M menu, T teacher mode, F11 full screen">
+        <source>Keys: Left/Right change page, M menu, T teacher mode, F11 full screen</source>
+        <target>~Taste: Stânga/Dreapta schimbă pagina, M meniu, T mod profesor, F11 ecran complet</target>
+      </trans-unit>
+      <trans-unit id="eb6lhqu" resname="Autonomous Communities">
+        <source>Autonomous Communities</source>
+        <target>~Comunități autonome</target>
+      </trans-unit>
+      <trans-unit id="cnbc3sp" resname="Ministry-managed territory (MEFPD)">
+        <source>Ministry-managed territory (MEFPD)</source>
+        <target>~Teritoriu administrat de minister (MEFPD)</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

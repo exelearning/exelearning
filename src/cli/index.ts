@@ -21,6 +21,7 @@ import * as migrate from './commands/migrate';
 import * as elpConvert from './commands/elp-convert';
 import * as elpExport from './commands/elp-export';
 import * as checkQuota from './commands/check-quota';
+import * as setQuota from './commands/set-quota';
 import * as projectsPurge from './commands/projects-purge';
 import * as projectsCleanup from './commands/projects-cleanup';
 import * as assetsConflicts from './commands/assets-conflicts';
@@ -49,6 +50,7 @@ const COMMANDS: Record<string, CommandModule> = {
     'elp:convert': elpConvert,
     'elp:export': elpExport,
     'check-quota': checkQuota,
+    'set-quota': setQuota,
     'projects:purge': projectsPurge,
     'projects:cleanup': projectsCleanup,
     'assets:conflicts': assetsConflicts,
@@ -183,6 +185,7 @@ ${colors.cyan('User Management:')}
   user:role <email> [--add|--remove|--list]  Manage user roles
   user:password <email>                       Change a local account password
   check-quota <email>                         Check storage usage and quota
+  set-quota (<email>|--all) <MB|unlimited|default>  Set storage quota
   promote-admin <email>                       Grant ROLE_ADMIN to user
   demote-admin <email>                        Remove ROLE_ADMIN from user
   grant-role <email> <role>                   Add role to user
@@ -224,6 +227,7 @@ ${colors.cyan('Examples:')}
   bun cli user:role admin@example.com --add=ROLE_ADMIN --add=ROLE_EDITOR
   bun cli user:password user@example.com
   bun cli check-quota admin@example.com
+  bun cli set-quota --all default
   bun cli promote-admin admin@example.com
   bun cli jwt:generate admin@example.com --ttl=86400
   bun cli tmp:cleanup --max-age=3600 --dry-run

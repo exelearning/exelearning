@@ -43,7 +43,9 @@ body {
     }
     main {
         transition: width var(--sidebar);
-        min-width: 67%;
+        // Fill what the sidebar leaves; a 67% minimum pushed it off narrow viewports (#2638)
+        flex: 1 1 auto;
+        min-width: 0;
         width: calc(100% - 400px);
         position: relative;
         #node-content-container {
