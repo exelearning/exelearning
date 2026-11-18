@@ -13,6 +13,7 @@ function providerOf(assets: ExportAsset[], streaming = true): AssetProvider {
     if (streaming) {
         provider.forEachAsset = async (callback: (asset: ExportAsset) => Promise<void>) => {
             for (const asset of assets) await callback(asset);
+            return assets.length;
         };
     }
 
@@ -127,7 +128,7 @@ describe('AssetUrlResolver', () => {
             const walk = provider.forEachAsset!;
             provider.forEachAsset = async callback => {
                 walks++;
-                await walk(callback);
+                return walk(callback);
             };
             return provider;
         };

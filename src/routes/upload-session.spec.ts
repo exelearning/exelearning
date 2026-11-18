@@ -53,7 +53,7 @@ const createMockQueries = () => ({
 });
 
 describe('Upload Session Routes', () => {
-    let app: Elysia;
+    let app: Pick<Elysia, 'handle'>;
     let mockQueries: ReturnType<typeof createMockQueries>;
     let sessionToken: string;
 
@@ -262,7 +262,7 @@ describe('Upload Session Routes - Factory', () => {
 });
 
 describe('Upload Session Routes - Integration', () => {
-    let app: Elysia;
+    let app: Pick<Elysia, 'handle'>;
     let sessionToken: string;
     const projectUuid = 'integration-test-project';
 
@@ -568,7 +568,7 @@ describe('Upload Session Routes - Integration', () => {
 });
 
 describe('Upload Session Routes - Edge Cases', () => {
-    let app: Elysia;
+    let app: Pick<Elysia, 'handle'>;
     let sessionToken: string;
     const projectUuid = 'edge-case-project';
 
@@ -816,7 +816,7 @@ describe('Upload Session Routes - Edge Cases', () => {
 });
 
 describe('Upload Session Routes - Path Traversal Security (C1)', () => {
-    let app: Elysia;
+    let app: Pick<Elysia, 'handle'>;
     let sessionToken: string;
     let mockQueries: ReturnType<typeof createMockQueries>;
     const projectUuid = 'traversal-security-project';
@@ -972,7 +972,7 @@ describe('Upload Session Routes - Path Traversal Security (C1)', () => {
 });
 
 describe('Upload Session Routes - Batch Size Limit (L1, memory DoS)', () => {
-    let app: Elysia;
+    let app: Pick<Elysia, 'handle'>;
     let sessionToken: string;
     let mockQueries: ReturnType<typeof createMockQueries>;
     const projectUuid = 'batch-size-limit-project';
@@ -1133,7 +1133,7 @@ describe('Upload Session Exports', () => {
 });
 
 describe('Upload Session Routes - Error Handling', () => {
-    let app: Elysia;
+    let app: Pick<Elysia, 'handle'>;
     let sessionToken: string;
     const projectUuid = 'error-handling-project';
 
