@@ -1176,13 +1176,6 @@ var $exeDevice = {
         );
     },
 
-    updateGameMode: function (gamemode) {
-        gamemode = parseInt(gamemode, 10);
-        $exeIDevicesEdition.iDevice.gamification.feedback.setRequired(
-            gamemode === 2
-        );
-    },
-
     clearQuestion: function () {
         $exeDevice.changeTypeQuestion();
 

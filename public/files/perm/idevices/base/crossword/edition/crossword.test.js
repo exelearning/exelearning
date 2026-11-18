@@ -517,16 +517,6 @@ describe('crossword edition: shared form tabs and feedback', () => {
     expect(panel('contents').classList.contains('active')).toBe(false);
   });
 
-  it('makes the feedback compulsory in "No score" mode only', () => {
-    device.updateGameMode(2);
-    expect(feedback().isRequired()).toBe(true);
-    expect(document.getElementById('eXeGameHasFeedBack').disabled).toBe(true);
-
-    device.updateGameMode(0);
-    expect(feedback().isRequired()).toBe(false);
-    expect(document.getElementById('eXeGameHasFeedBack').disabled).toBe(false);
-  });
-
   it('restores the feedback with the game', () => {
     // Saved with its message: without one, the feedback loads off.
     $exeIDevicesEdition.iDevice.gamification.feedback.setText('<p>Well done</p>');
