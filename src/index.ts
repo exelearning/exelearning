@@ -45,6 +45,7 @@ import { upsertBaseTheme, removeOrphanedBaseThemes } from './db/queries/themes';
 import { renderTemplate, setRenderLocale } from './services/template';
 import { getDefaultQuotaMb } from './services/app-settings';
 import { isMaintenanceMode, shouldBypassMaintenance, isAdminRequest } from './services/maintenance';
+import { sessionRevocationGuard } from './services/session-revocation';
 import { getBasePath } from './utils/basepath.util';
 import { serveSiteThemeFile } from './utils/site-theme-file';
 import { rewriteCodemagicAssetPaths } from './utils/editor-html.util';
@@ -86,21 +87,10 @@ const exemindmapEditorHandler = ({
     }
 
     if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
-        let content = fs.readFileSync(filePath);
+        // The editor page only references files next to it, so it is served as is
+        const content = fs.readFileSync(filePath);
         const ext = path.extname(filePath).toLowerCase();
         const contentType = MIME_TYPES[ext] || 'application/octet-stream';
-
-        // For HTML files, rewrite relative paths to absolute paths
-        if (ext === '.html' || ext === '.htm') {
-            let html = content.toString('utf-8');
-            // Fix relative paths like ../../../../../../../app/ -> /app/
-            html = html.replace(/href="\.\.\/\.\.\/\.\.\/\.\.\/\.\.\/\.\.\/\.\.\/app\//g, 'href="/app/');
-            html = html.replace(/src="\.\.\/\.\.\/\.\.\/\.\.\/\.\.\/\.\.\/\.\.\/app\//g, 'src="/app/');
-            // Fix local paths like css/ and js/ -> /api/exemindmap-editor/css/ etc
-            html = html.replace(/href="css\//g, 'href="/api/exemindmap-editor/css/');
-            html = html.replace(/src="js\//g, 'src="/api/exemindmap-editor/js/');
-            content = Buffer.from(html, 'utf-8');
-        }
 
         set.headers['Content-Type'] = contentType;
         set.headers['Content-Length'] = content.length.toString();
@@ -450,6 +440,9 @@ const app = new Elysia()
             },
         });
     })
+    // Drop session tokens whose account was deleted, deactivated, demoted or had
+    // its password changed, before any route (or the maintenance check) reads them.
+    .use(sessionRevocationGuard())
     // Maintenance mode check — runs after static file serving
     .onRequest(async ({ request }) => {
         if (!(await isMaintenanceMode(db))) return;
