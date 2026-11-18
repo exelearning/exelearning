@@ -148,5 +148,16 @@ describe('WebSocket info routes', () => {
             const data = (await res.json()) as { rooms: Array<{ projectUuid: string; myConnections: number }> };
             expect(data.rooms).toEqual([{ projectUuid: 'uuid-a', myConnections: 1 }]);
         });
+
+        it('accepts the auth token from a cookie', async () => {
+            const res = await app.handle(
+                new Request('http://localhost/api/websocket/my-rooms', {
+                    headers: { Cookie: `auth=${userToken}` },
+                }),
+            );
+            expect(res.status).toBe(200);
+            const data = (await res.json()) as { rooms: Array<{ projectUuid: string; myConnections: number }> };
+            expect(data.rooms).toEqual([{ projectUuid: 'uuid-a', myConnections: 1 }]);
+        });
     });
 });

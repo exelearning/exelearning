@@ -8,8 +8,8 @@
  * - Cancel cleanup if client reconnects
  * - No memory leaks from orphan timers
  */
-import type { ServerWebSocket } from 'bun';
 import { getConfig, DEBUG } from './config';
+import type { YjsSocket } from './types';
 import * as assetCoordinatorDefault from './asset-coordinator';
 import * as pubSubDefault from '../redis/pubsub-manager';
 
@@ -88,16 +88,6 @@ export function resetDependencies(): void {
 }
 
 /**
- * WebSocket data interface (must match yjs-websocket.ts)
- */
-interface WsData {
-    clientId: string;
-    userId: number;
-    projectUuid: string;
-    docName: string;
-}
-
-/**
  * Room with connections and cleanup state
  *
  * `conns` is keyed by `ws.data.clientId`, not by the `ws` object itself.
@@ -113,7 +103,7 @@ interface WsData {
  */
 interface Room {
     name: string;
-    conns: Map<string, ServerWebSocket<WsData>>;
+    conns: Map<string, YjsSocket>;
     projectUuid: string;
     /** Controller to cancel pending cleanup */
     cleanupController?: AbortController;
@@ -172,10 +162,14 @@ export function getRoom(docName: string): Room | undefined {
 /**
  * Add connection to room
  */
-export function addConnection(docName: string, ws: ServerWebSocket<WsData>, projectUuid?: string): Room {
+export function addConnection(docName: string, ws: YjsSocket, projectUuid?: string): Room {
+    const clientId = ws.data.clientId;
+    if (!clientId) {
+        throw new Error('[RoomManager] Cannot add a connection without clientId');
+    }
     const room = getOrCreateRoom(docName, projectUuid);
     const wasEmpty = room.conns.size === 0;
-    room.conns.set(ws.data.clientId, ws);
+    room.conns.set(clientId, ws);
 
     // Cancel any pending cleanup
     cancelCleanup(docName);
@@ -198,11 +192,13 @@ export function addConnection(docName: string, ws: ServerWebSocket<WsData>, proj
  * Remove connection from room
  * Schedules cleanup if room becomes empty
  */
-export function removeConnection(docName: string, ws: ServerWebSocket<WsData>): void {
+export function removeConnection(docName: string, ws: YjsSocket): void {
     const room = rooms.get(docName);
     if (!room) return;
 
-    room.conns.delete(ws.data.clientId);
+    const clientId = ws.data.clientId;
+    if (!clientId) return;
+    room.conns.delete(clientId);
 
     if (DEBUG) {
         console.log(`[RoomManager] Removed connection from ${docName} (${room.conns.size} remaining)`);
@@ -294,7 +290,7 @@ export function cancelCleanup(docName: string): void {
 /**
  * Relay message to all other clients in the room
  */
-export function relayMessage(sender: ServerWebSocket<WsData>, docName: string, message: Buffer | string): void {
+export function relayMessage(sender: YjsSocket, docName: string, message: Buffer | string): void {
     const room = rooms.get(docName);
     if (!room) return;
 
@@ -348,11 +344,11 @@ export function getActiveRooms(): string[] {
  * Get all connections for a specific user in a room
  * A user may have multiple connections (multiple tabs/devices)
  */
-export function getConnectionsByUserId(docName: string, userId: number): ServerWebSocket<WsData>[] {
+export function getConnectionsByUserId(docName: string, userId: number): YjsSocket[] {
     const room = rooms.get(docName);
     if (!room) return [];
 
-    const connections: ServerWebSocket<WsData>[] = [];
+    const connections: YjsSocket[] = [];
     for (const conn of room.conns.values()) {
         if (conn.data?.userId === userId) {
             connections.push(conn);

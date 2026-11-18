@@ -398,7 +398,7 @@ export class ServerMermaidPreRenderer implements ServerMermaidPreRendererInterfa
         if (this.initializationFailed || !this.mermaid) {
             return {
                 html,
-                hasMermaid: hasMermaidInHtml || hasMermaidInJson,
+                hasMermaid: Boolean(hasMermaidInHtml || hasMermaidInJson),
                 mermaidRendered: false,
                 count: 0,
             };
@@ -517,7 +517,7 @@ export class ServerMermaidPreRenderer implements ServerMermaidPreRendererInterfa
 
         return {
             html: result,
-            hasMermaid: hasMermaidInHtml || hasMermaidInJson,
+            hasMermaid: Boolean(hasMermaidInHtml || hasMermaidInJson),
             mermaidRendered: renderedCount > 0,
             count: renderedCount,
         };

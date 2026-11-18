@@ -97,20 +97,37 @@ export function extractDataGame<T = Record<string, unknown>>(html: string, prefi
     return null;
 }
 
+/** All `escape()` writes: the characters it leaves as they are, and `%XX` or `%uXXXX` for the rest. */
+const ESCAPED = /^(?:[\w@*+\-./]|%[\dA-F]{2}|%u[\dA-F]{4})*$/i;
+/** A byte above 127 written as `%XX`. */
+const HIGH_BYTE = /%[89A-F][\dA-F]/i;
+
 /**
  * Read back a text a game keeps in its data, the way its runtime does (`decodeStoredText` in
  * `common.js`).
  *
- * Older projects keep it escaped, and the editors now save it as written. `escape()` never leaves a
- * `<` and the editors' HTML always has one, so only the escaped kind is decoded: `unescape()` on the
- * other would turn the `%C3%B3` of a link into `Ã³`.
+ * Older projects keep it escaped, and the editors now save it as written. Only a text `escape()`
+ * could have written is decoded: `unescape()` on any other would turn the `%C3%B3` of a link into
+ * `Ã³`. That leaves out the editors' HTML, which always has a `<`, and any text with a space or
+ * other character `escape()` encodes. It also leaves out the UTF-8 bytes a link percent-encodes,
+ * since `escape()` writes "é" as the single `%E9`. A word made only of what `escape()` writes cannot
+ * be told apart, and is read the older way.
  *
  * @param text - The stored text
  * @returns The text the activity shows
  */
 export function decodeStoredText(text: string | null | undefined): string {
     if (typeof text !== 'string') return '';
-    return text.includes('<') ? text : unescape(text);
+    if (!ESCAPED.test(text)) return text;
+    if (HIGH_BYTE.test(text)) {
+        try {
+            decodeURIComponent(text);
+            return text;
+        } catch {
+            // Not UTF-8: the Latin-1 bytes escape() writes.
+        }
+    }
+    return unescape(text);
 }
 
 export function extractLinkHref(html: string, className: string): string {

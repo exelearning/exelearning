@@ -63,7 +63,10 @@ env.addFilter('asset', (assetPath: string) => {
 
 // Trans filter - uses translation service with current render locale
 env.addFilter('trans', (key: string, params?: Record<string, string | number>) => {
-    return translateFn(key, params, currentRenderLocale);
+    const stringParams = params
+        ? Object.fromEntries(Object.entries(params).map(([name, value]) => [name, String(value)]))
+        : undefined;
+    return translateFn(key, stringParams, currentRenderLocale);
 });
 
 // Path filter - prefix paths for routing

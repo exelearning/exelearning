@@ -3,10 +3,10 @@
  *
  * Activity log for dashboard analytics: auth events, project creation, impersonation.
  */
-import { Kysely } from 'kysely';
-import { addAutoIncrement, getAutoIncrementType } from '../helpers';
 
-export async function up(db: Kysely<unknown>): Promise<void> {
+import { type UntypedKysely, addAutoIncrement, getAutoIncrementType } from '../helpers';
+
+export async function up(db: UntypedKysely): Promise<void> {
     const idType = getAutoIncrementType();
 
     await db.schema
@@ -40,7 +40,7 @@ export async function up(db: Kysely<unknown>): Promise<void> {
         .execute();
 }
 
-export async function down(db: Kysely<unknown>): Promise<void> {
+export async function down(db: UntypedKysely): Promise<void> {
     console.warn('[Migration 007] Dropping activity_log table — all audit data will be lost.');
     await db.schema.dropTable('activity_log').ifExists().execute();
 }

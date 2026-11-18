@@ -814,6 +814,48 @@ describe('Platform Integration Service', () => {
             expect(linkedCmid).toBe('42');
         });
 
+        it('encodes a Uint8Array package that is not a Buffer', async () => {
+            let capturedBody: FormData | null = null;
+            globalThis.fetch = async (_url, init) => {
+                capturedBody = init?.body as FormData;
+                return new Response(JSON.stringify({ status: '0' }), {
+                    status: 200,
+                    headers: { 'Content-Type': 'application/json' },
+                });
+            };
+
+            const bytes = new Uint8Array([1, 2, 3, 4]);
+            const result = await platformPetitionSetForward(forwardPayload, 'jwt-token', '', bytes, 'bytes.zip');
+
+            expect(result.success).toBe(true);
+            const odeData = JSON.parse((capturedBody as FormData).get('ode_data') as string);
+            expect(odeData.ode_file).toBe(Buffer.from(bytes).toString('base64'));
+        });
+
+        it('encodes an ArrayBuffer package payload', async () => {
+            let capturedBody: FormData | null = null;
+            globalThis.fetch = async (_url, init) => {
+                capturedBody = init?.body as FormData;
+                return new Response(JSON.stringify({ status: '0' }), {
+                    status: 200,
+                    headers: { 'Content-Type': 'application/json' },
+                });
+            };
+
+            const bytes = new Uint8Array([9, 8, 7]);
+            const result = await platformPetitionSetForward(
+                forwardPayload,
+                'jwt-token',
+                '',
+                bytes.buffer,
+                'arraybuffer.zip',
+            );
+
+            expect(result.success).toBe(true);
+            const odeData = JSON.parse((capturedBody as FormData).get('ode_data') as string);
+            expect(odeData.ode_file).toBe(Buffer.from(bytes).toString('base64'));
+        });
+
         it('falls back to a default filename when none is provided', async () => {
             let capturedBody: FormData | null = null;
 

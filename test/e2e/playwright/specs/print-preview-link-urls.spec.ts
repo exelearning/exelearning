@@ -56,8 +56,10 @@ test.describe('Print preview', () => {
         const link = page.frameLocator('.print-preview-iframe').locator('a[href="https://cedec.intef.es/"]');
         // A changed option draws the preview again, which can replace the document mid-read: that
         // read counts as not there yet, and the poll tries again.
-        const afterContent = () => link.evaluate(a => getComputedStyle(a, '::after').content).catch(() => null);
-        // Chromium resolves attr(href); Firefox reports the declared value unresolved.
+        const afterContent = () =>
+            link.evaluate(a => getComputedStyle(a, '::after').content.replace(/"\s+"/g, '')).catch(() => null);
+        // Chromium resolves attr(href) into one string; Firefox before 159 reports it unresolved, and
+        // Firefox 159 resolves it but keeps the strings apart. Joining adjacent strings covers all three.
         const showsUrl = /\[(https:\/\/cedec\.intef\.es\/|" attr\(href\) ")\]/;
 
         await expect(link).toBeVisible({ timeout: 30000 });
@@ -151,8 +153,10 @@ test.describe('Print preview', () => {
         await expect(reconstructed).toHaveCount(1);
         await expect(copies).toHaveCount(2);
 
-        const textAfter = (link: typeof named) => link.evaluate(a => getComputedStyle(a, '::after').content);
-        // Chromium resolves attr(href); Firefox reports the declared value unresolved.
+        const textAfter = (link: typeof named) =>
+            link.evaluate(a => getComputedStyle(a, '::after').content.replace(/"\s+"/g, ''));
+        // Chromium resolves attr(href) into one string; Firefox before 159 reports it unresolved, and
+        // Firefox 159 resolves it but keeps the strings apart. Joining adjacent strings covers all three.
         const showsUrl = /\[(https:\/\/cedec\.intef\.es\/|" attr\(href\) ")\]/;
         for (const media of ['screen', 'print'] as const) {
             await page.emulateMedia({ media });
@@ -164,11 +168,92 @@ test.describe('Print preview', () => {
                 /\[(https:\/\/example\.org\/split|" attr\(href\) ")\]/,
             );
             expect(
-                await copies.evaluateAll(links => links.map(a => getComputedStyle(a, '::after').content)),
+                await copies.evaluateAll(links =>
+                    links.map(a => getComputedStyle(a, '::after').content.replace(/"\s+"/g, '')),
+                ),
                 media,
             ).toEqual(['none', 'none']);
         }
         await page.emulateMedia({ media: null });
+    });
+
+    test('writes the address after a link with words beside its picture, and not after one holding only a picture', async ({
+        authenticatedPage: page,
+        createProject,
+    }) => {
+        test.setTimeout(120000);
+
+        const projectUuid = await createProject(page, 'Print link URLs of pictures');
+        await gotoWorkarea(page, projectUuid);
+        await waitForAppReady(page);
+        await page.evaluate(() => {
+            const pixel = 'data:image/gif;base64,R0lGODlhAQABAAAAACw=';
+            const binding = (window as any).eXeLearning.app.project._yjsBridge.structureBinding;
+            const parent = binding.createPage('Links');
+            binding.createComponent(parent.id, binding.createBlock(parent.id, 'Links'), 'text', {
+                htmlContent:
+                    `<p><a class="picture-only" href="https://creativecommons.org/"><img src="${pixel}" alt="CC"></a></p>` +
+                    `<p><a class="picture-words" href="https://mapa.es/">Consulta el mapa <img src="${pixel}" alt=""></a></p>`,
+            });
+        });
+
+        await page.evaluate(() => (window as any).eXeLearning.app.modals.printpreview.show());
+        const overlay = page.locator('#printPreviewOverlay');
+        await expect(overlay).toHaveAttribute('data-busy', 'false', { timeout: 30000 });
+        const frame = page.frameLocator('.print-preview-iframe');
+        const pictureWords = frame.locator('a.picture-words');
+        await expect(pictureWords).toBeVisible({ timeout: 30000 });
+
+        const textAfter = (selector: string) =>
+            frame.locator(selector).evaluate(a => getComputedStyle(a, '::after').content.replace(/"\s+"/g, ''));
+        for (const media of ['screen', 'print'] as const) {
+            await page.emulateMedia({ media });
+            expect(await textAfter('a.picture-only'), media).toBe('none');
+            // Chromium resolves attr(href) into one string; Firefox before 159 reports it unresolved, and
+            // Firefox 159 resolves it but keeps the strings apart. Joining adjacent strings covers all three.
+            expect(await textAfter('a.picture-words'), media).toMatch(/\[(https:\/\/mapa\.es\/|" attr\(href\) ")\]/);
+        }
+        await page.emulateMedia({ media: null });
+    });
+
+    test('keeps the preview in its frame when one of its links is followed, opening the web in a tab of its own', async ({
+        authenticatedPage: page,
+        createProject,
+    }) => {
+        test.setTimeout(120000);
+
+        const projectUuid = await createProject(page, 'Print preview links followed');
+        await gotoWorkarea(page, projectUuid);
+        await waitForAppReady(page);
+        await page.evaluate(() => {
+            const binding = (window as any).eXeLearning.app.project._yjsBridge.structureBinding;
+            const parent = binding.createPage('Links');
+            binding.createComponent(parent.id, binding.createBlock(parent.id, 'Links'), 'text', {
+                htmlContent: '<p>Visit <a class="web" href="https://cedec.intef.es/">Cedec</a>.</p>',
+            });
+        });
+
+        await page.evaluate(() => (window as any).eXeLearning.app.modals.printpreview.show());
+        const overlay = page.locator('#printPreviewOverlay');
+        await expect(overlay).toHaveAttribute('data-busy', 'false', { timeout: 30000 });
+        const frame = page.frameLocator('.print-preview-iframe');
+        await expect(frame.locator('a.web')).toBeVisible({ timeout: 30000 });
+        const previewUrl = page.frame({ name: 'exe-print-preview' })?.url();
+        expect(previewUrl).toMatch(/^blob:/);
+
+        await page.evaluate(() => {
+            (window as any).__opened = [];
+            window.open = (url?: string | URL) => {
+                (window as any).__opened.push(String(url));
+                return null;
+            };
+        });
+        await frame.locator('a.web').click();
+
+        await expect.poll(() => page.evaluate(() => (window as any).__opened)).toEqual(['https://cedec.intef.es/']);
+        expect(page.frame({ name: 'exe-print-preview' })?.url()).toBe(previewUrl);
+        await expect(frame.locator('a.web')).toBeVisible();
+        await expect(page.locator('.print-preview-print-btn')).toBeEnabled();
     });
 
     test('underlines external links in the colour of their text, and leaves controls built from links alone', async ({
@@ -253,11 +338,12 @@ test.describe('Print preview', () => {
         const measure = async (media: 'screen' | 'print') => {
             await page.emulateMedia({ media });
             return {
-                after: await link.evaluate(a => getComputedStyle(a, '::after').content),
+                after: await link.evaluate(a => getComputedStyle(a, '::after').content.replace(/"\s+"/g, '')),
                 iframeSource: await iframeSource.evaluate(span => getComputedStyle(span).display),
             };
         };
-        // Chromium resolves attr(href); Firefox reports the declared value unresolved.
+        // Chromium resolves attr(href) into one string; Firefox before 159 reports it unresolved, and
+        // Firefox 159 resolves it but keeps the strings apart. Joining adjacent strings covers all three.
         const showsUrl = /\[(https:\/\/cedec\.intef\.es\/|" attr\(href\) ")\]/;
 
         // On: the URL and the iframe address on both media, in the preview's own wording.
@@ -273,9 +359,13 @@ test.describe('Print preview', () => {
         // The preview is drawn again, which can replace the document mid-read: that read counts as
         // not there yet, and the poll tries again.
         await expect
-            .poll(() => link.evaluate(a => getComputedStyle(a, '::after').content).catch(() => null), {
-                timeout: 30000,
-            })
+            .poll(
+                () =>
+                    link.evaluate(a => getComputedStyle(a, '::after').content.replace(/"\s+"/g, '')).catch(() => null),
+                {
+                    timeout: 30000,
+                },
+            )
             .toBe('none');
         await expect(overlay).toHaveAttribute('data-busy', 'false', { timeout: 30000 });
         await expect(iframeSource).toHaveCount(1);
@@ -311,8 +401,9 @@ test.describe('Print preview', () => {
         await expect(link).toHaveAttribute('href', 'https://creativecommons.org/licenses/by-sa/4.0/');
         await expect(link).toHaveText('Creative Commons: Reconocimiento - compartir igual 4.0');
         // Its address prints after it as any other link's does, with "Show link URLs" on.
-        // Chromium resolves attr(href); Firefox reports the declared value unresolved.
-        expect(await link.evaluate(a => getComputedStyle(a, '::after').content)).toMatch(
+        // Chromium resolves attr(href) into one string; Firefox before 159 reports it unresolved, and
+        // Firefox 159 resolves it but keeps the strings apart. Joining adjacent strings covers all three.
+        expect(await link.evaluate(a => getComputedStyle(a, '::after').content.replace(/"\s+"/g, ''))).toMatch(
             /\[(https:\/\/creativecommons\.org\/licenses\/by-sa\/4\.0\/|" attr\(href\) ")\]/,
         );
     });

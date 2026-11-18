@@ -579,7 +579,7 @@ ${this.renderPassScoreEveryActivityMeta(passScoreEveryActivity)}${licenseUrl ? `
      */
     isAncestorOf(ancestorId: string, childId: string, allPages: ExportPage[]): boolean {
         const child = allPages.find(p => p.id === childId);
-        if (!child || !child.parentId) return false;
+        if (!child?.parentId) return false;
         if (child.parentId === ancestorId) return true;
         return this.isAncestorOf(ancestorId, child.parentId, allPages);
     }
@@ -895,7 +895,7 @@ ${this.renderPassScoreEveryActivityMeta(passScoreEveryActivity)}${licenseUrl ? `
      * @returns Content with exe-package:elp replaced with onclick handler
      */
     replaceElpxProtocol(content: string, projectTitle: string): string {
-        if (!content || !content.includes('exe-package:elp')) {
+        if (!content?.includes('exe-package:elp')) {
             return content;
         }
 
@@ -933,7 +933,7 @@ ${this.renderPassScoreEveryActivityMeta(passScoreEveryActivity)}${licenseUrl ? `
         basePath: string,
         pageFilenameMap?: Map<string, string>,
     ): string {
-        if (!content || !content.includes('exe-node:')) {
+        if (!content?.includes('exe-node:')) {
             return content;
         }
 
@@ -982,7 +982,7 @@ ${this.renderPassScoreEveryActivityMeta(passScoreEveryActivity)}${licenseUrl ? `
      * @returns HTML with exe-node: links replaced by in-page anchors
      */
     replaceSinglePageInternalLinks(content: string, allPages: ExportPage[]): string {
-        if (!content || !content.includes('exe-node:')) {
+        if (!content?.includes('exe-node:')) {
             return content;
         }
 
@@ -1270,6 +1270,7 @@ ${userFooterHtml}</div></footer>`;
             faviconType?: string;
             detectedLibraries?: string[];
             addMathJax?: boolean;
+            linkToElp?: boolean;
             addAccessibilityToolbar?: boolean;
             passScore?: number;
             passScoreEveryActivity?: boolean;
@@ -1427,7 +1428,7 @@ ${contentHtml}
 </main>
 ${this.renderFooterSection({ license, licenseUrl, userFooterContent, language, navLabels })}
 </div>
-${addExeLink ? this.renderMadeWithEXe(language, navLabels) : ''}
+${addExeLink ? this.renderMadeWithEXe(language, { madeWith: navLabels?.madeWith, newWindow: navLabels?.newWindow }) : ''}
 </body>
 </html>`;
     }
