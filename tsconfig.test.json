@@ -19,7 +19,8 @@
         "src/utils/**/*.spec.ts",
         "src/websocket/**/*.spec.ts",
         "src/yjs/**/*.spec.ts",
-        "test/helpers/**/*.ts"
+        "test/helpers/**/*.ts",
+        "test/integration/**/*.ts"
     ],
     "exclude": ["node_modules", "dist", "app/dist"]
 }

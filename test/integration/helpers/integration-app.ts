@@ -122,7 +122,7 @@ export async function findTestUser(db: Kysely<Database>, email: string): Promise
 const TEST_JWT_SECRET = 'test_secret_for_integration_tests';
 
 export interface TestJwtPayload {
-    sub: number;
+    sub: string;
     email: string;
     roles: string[];
     isGuest?: boolean;
@@ -132,12 +132,15 @@ export interface TestJwtPayload {
 /**
  * Generate a JWT token for a test user
  */
-export async function generateTestToken(user: User): Promise<string> {
+/** What the test tokens carry; `roles` may be the stored JSON text or an already parsed list. */
+type TokenUser = Pick<User, 'id' | 'email'> & { roles: string | string[] };
+
+export async function generateTestToken(user: TokenUser): Promise<string> {
     const { SignJWT } = await import('jose');
     const secret = new TextEncoder().encode(TEST_JWT_SECRET);
 
     const token = await new SignJWT({
-        sub: user.id,
+        sub: String(user.id),
         email: user.email,
         roles: user.roles,
         isGuest: false,
@@ -154,12 +157,12 @@ export async function generateTestToken(user: User): Promise<string> {
 /**
  * Generate a guest JWT token
  */
-export async function generateGuestToken(user: User): Promise<string> {
+export async function generateGuestToken(user: TokenUser): Promise<string> {
     const { SignJWT } = await import('jose');
     const secret = new TextEncoder().encode(TEST_JWT_SECRET);
 
     const token = await new SignJWT({
-        sub: user.id,
+        sub: String(user.id),
         email: user.email,
         roles: ['ROLE_GUEST'],
         isGuest: true,
@@ -177,8 +180,11 @@ export async function generateGuestToken(user: User): Promise<string> {
 // TEST APP CREATION
 // ============================================================================
 
+/** Any Elysia app, whatever it derives: the helpers below only call `handle`. */
+export type TestApp = Pick<Elysia, 'handle'>;
+
 export interface TestAppContext {
-    app: Elysia;
+    app: TestApp;
     db: Kysely<Database>;
     filesDir: string;
     cleanup: () => Promise<void>;
@@ -188,7 +194,7 @@ export interface TestAppContext {
  * Create a minimal test app with auth derive context
  * This is useful for testing routes that need authentication
  */
-export function createMinimalTestApp(db: Kysely<Database>): Elysia {
+export function createMinimalTestApp(db: Kysely<Database>) {
     return new Elysia({ name: 'test-app' })
         .use(
             jwt({
@@ -204,7 +210,7 @@ export function createMinimalTestApp(db: Kysely<Database>): Elysia {
             const authHeader = request.headers.get('authorization');
             if (authHeader?.startsWith('Bearer ')) {
                 token = authHeader.slice(7);
-            } else if (cookie.auth?.value) {
+            } else if (typeof cookie.auth?.value === 'string' && cookie.auth.value) {
                 token = cookie.auth.value;
             }
 
@@ -225,7 +231,11 @@ export function createMinimalTestApp(db: Kysely<Database>): Elysia {
                     };
                 }
 
-                const user = await db.selectFrom('users').selectAll().where('id', '=', payload.sub).executeTakeFirst();
+                const user = await db
+                    .selectFrom('users')
+                    .selectAll()
+                    .where('id', '=', Number(payload.sub))
+                    .executeTakeFirst();
 
                 if (!user) {
                     return {
@@ -263,7 +273,7 @@ export function createMinimalTestApp(db: Kysely<Database>): Elysia {
 /**
  * Make a test request to the app
  */
-export async function testRequest(app: Elysia, path: string, options: RequestInit = {}): Promise<Response> {
+export async function testRequest(app: TestApp, path: string, options: RequestInit = {}): Promise<Response> {
     return app.handle(new Request(`http://localhost${path}`, options));
 }
 
@@ -271,7 +281,7 @@ export async function testRequest(app: Elysia, path: string, options: RequestIni
  * Make an authenticated test request
  */
 export async function authenticatedRequest(
-    app: Elysia,
+    app: TestApp,
     path: string,
     token: string,
     options: RequestInit = {},
@@ -289,7 +299,7 @@ export async function authenticatedRequest(
  * Make a JSON POST request
  */
 export async function jsonPost(
-    app: Elysia,
+    app: TestApp,
     path: string,
     body: unknown,
     options: { token?: string } = {},
