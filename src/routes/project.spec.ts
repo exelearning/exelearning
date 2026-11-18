@@ -857,6 +857,72 @@ describe('Project Routes', () => {
         });
     });
 
+    describe('body schemas', () => {
+        const O = { a: 1 };
+        async function send(method: string, url: string, body: unknown) {
+            const token = await createAuthToken(1);
+            return app.handle(
+                new Request(`http://localhost${url}`, {
+                    method,
+                    headers: { 'Content-Type': 'application/json', Cookie: `auth=${token}` },
+                    body: JSON.stringify(body),
+                }),
+            );
+        }
+
+        // Measured before the schemas: each of these answered 500, crashed the SSE stream, stored a
+        // non-string title, or answered 200 with an internal error. The schema rejects them first;
+        // the app's global onError answers 400.
+        it.each([
+            ['POST', '/api/project/upload-chunk', { odeFilePart: 'x', odeFileName: O, odeSessionId: 's' }],
+            ['POST', '/api/project/upload-chunk', { odeFilePart: O, odeFileName: 'a.elp', odeSessionId: 's' }],
+            ['POST', '/api/project/create-quick', { title: O }],
+            ['PATCH', '/api/projects/uuid/probe-uuid/metadata', { title: O }],
+            ['POST', '/api/odes/current-users', { odeSessionId: O }],
+            ['POST', '/api/odes/check-before-leave', { odeSessionId: O }],
+            ['POST', '/api/odes/session/close', { odeSessionId: O }],
+            ['POST', '/api/ode-management/odes/session/brokenlinks', { idevices: O }],
+            ['POST', '/api/ode-management/odes/session/brokenlinks/extract', { idevices: [{ html: O }] }],
+            ['POST', '/api/ode-management/odes/session/brokenlinks/validate-stream', { links: O }],
+            ['POST', '/api/ode-management/odes/session/brokenlinks/validate-stream', { links: [{ url: O }] }],
+            ['POST', '/api/ode-management/odes/session/usedfiles', { idevices: [{ html: O }] }],
+            ['POST', '/api/nav-structure-management/nav-structures/duplicate', { navStructureId: O }],
+            ['PUT', '/api/nav-structure-management/nav-structures/reorder/save', { odeSessionId: O }],
+            ['PUT', '/api/pag-structure-management/pag-structures/reorder/save', { pageId: O }],
+            ['PUT', '/api/idevice-management/idevices/reorder/save', { blockId: O }],
+        ])('rejects a wrong-typed body on %s %s', async (method, url, body) => {
+            expect((await send(method, url, body)).status).toBe(422);
+        });
+
+        it('still accepts the link-check payloads the workarea sends', async () => {
+            const idevices = [
+                {
+                    html: '<a href="https://example.com">x</a>',
+                    pageName: 'P',
+                    blockName: 'B',
+                    ideviceType: 'text',
+                    order: 0,
+                },
+            ];
+            const assetMetadata = { 'abc-123': { filename: null, size: 0, mime: 'image/png' } };
+            const common = { csv: false, odeSessionId: 's1' };
+            const extract = await send('POST', '/api/ode-management/odes/session/brokenlinks/extract', {
+                ...common,
+                idevices,
+            });
+            expect(extract.status).toBe(200);
+            const { links } = await extract.json();
+            expect(links).toHaveLength(1);
+            const used = await send('POST', '/api/ode-management/odes/session/usedfiles', {
+                ...common,
+                resourceReport: true,
+                idevices,
+                assetMetadata,
+            });
+            expect(used.status).toBe(200);
+        });
+    });
+
     describe('POST /api/project/create-quick', () => {
         it('should require authentication', async () => {
             const res = await app.handle(
@@ -1128,7 +1194,8 @@ describe('Project Routes', () => {
                     }),
                 );
 
-                expect(res.status).toBe(400);
+                // The body schema rejects it before the handler; the app's global onError answers 400.
+                expect(res.status).toBe(422);
             });
 
             it('should return 404 for non-existent project', async () => {
@@ -1393,7 +1460,8 @@ describe('Project Routes', () => {
                             'Content-Type': 'application/json',
                             'Cookie': `auth=${token}`,
                         },
-                        body: JSON.stringify({ email: 'collaborator@test.com' }),
+                        // The share modal sends `role` too; the schema must not reject it.
+                        body: JSON.stringify({ email: 'collaborator@test.com', role: 'editor' }),
                     }),
                 );
 
@@ -1455,7 +1523,22 @@ describe('Project Routes', () => {
                     }),
                 );
 
-                expect(res.status).toBe(400);
+                // The body schema rejects it before the handler; the app's global onError answers 400.
+                expect(res.status).toBe(422);
+            });
+
+            it('should reject a non-string email before it reaches the user lookup', async () => {
+                createTestProject(207, 1);
+                const token = await createAuthToken(1);
+
+                const res = await app.handle(
+                    new Request('http://localhost/api/projects/207/collaborators', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'Cookie': `auth=${token}` },
+                        body: JSON.stringify({ email: { $ne: '' } }),
+                    }),
+                );
+                expect(res.status).toBe(422);
             });
 
             it('should not add owner as collaborator', async () => {
@@ -1665,7 +1748,25 @@ describe('Project Routes', () => {
                     }),
                 );
 
-                expect(res.status).toBe(400);
+                // The body schema rejects it before the handler; the app's global onError answers 400.
+                expect(res.status).toBe(422);
+            });
+
+            it('should reject a newOwnerId that is not a positive integer', async () => {
+                createTestProject(406, 1);
+                const token = await createAuthToken(1);
+
+                // Numeric strings such as '2' are coerced by Elysia and reach the handler as numbers.
+                for (const newOwnerId of ['abc', 0, -1, 1.5]) {
+                    const res = await app.handle(
+                        new Request('http://localhost/api/projects/406/owner', {
+                            method: 'PATCH',
+                            headers: { 'Content-Type': 'application/json', 'Cookie': `auth=${token}` },
+                            body: JSON.stringify({ newOwnerId }),
+                        }),
+                    );
+                    expect(res.status).toBe(422);
+                }
             });
         });
     });
@@ -1735,7 +1836,8 @@ describe('Project Routes', () => {
                     }),
                 );
 
-                expect(res.status).toBe(400);
+                // The body schema rejects it before the handler; the app's global onError answers 400.
+                expect(res.status).toBe(422);
             });
 
             it('should only update the specified project (regression test for stale UUID bug)', async () => {
@@ -1807,7 +1909,8 @@ describe('Project Routes', () => {
                     }),
                 );
 
-                expect(res.status).toBe(400);
+                // The body schema rejects it before the handler; the app's global onError answers 400.
+                expect(res.status).toBe(422);
             });
         });
 
@@ -1899,7 +2002,8 @@ describe('Project Routes', () => {
                     }),
                 );
 
-                expect(res.status).toBe(400);
+                // The body schema rejects it before the handler; the app's global onError answers 400.
+                expect(res.status).toBe(422);
             });
         });
 
@@ -1938,6 +2042,22 @@ describe('Project Routes', () => {
                 expect(res.status).toBe(200);
                 const body = await res.json();
                 expect(body.publicViewEnabled).toBe(false);
+            });
+
+            it('should answer 400, not 500, when the body is missing', async () => {
+                createTestProject(903, 'uuid-903', 1);
+                const token = await createAuthToken(1);
+
+                for (const url of ['/api/projects/903/public-view', '/api/projects/uuid/uuid-903/public-view']) {
+                    const res = await app.handle(
+                        new Request(`http://localhost${url}`, {
+                            method: 'PATCH',
+                            headers: { Cookie: `auth=${token}` },
+                        }),
+                    );
+                    expect(res.status).toBe(400);
+                    expect((await res.json()).responseMessage).toBe('INVALID_PAYLOAD');
+                }
             });
 
             it('should reject a non-boolean enabled value', async () => {
@@ -4261,7 +4381,7 @@ describe('Project Routes', () => {
             expect(res.status).toBe(400);
         });
 
-        it('should return 400 for invalid visibility value', async () => {
+        it('should reject an invalid visibility value', async () => {
             const token = await createAuthToken(1);
             const project = {
                 id: 1900,
@@ -4285,7 +4405,8 @@ describe('Project Routes', () => {
                 }),
             );
 
-            expect(res.status).toBe(400);
+            // The body schema rejects it before the handler; the app's global onError answers 400.
+            expect(res.status).toBe(422);
         });
     });
 
