@@ -14,6 +14,7 @@
         "app/**/*.spec.ts",
         "scripts/**/*.spec.ts",
         "src/cli/**/*.spec.ts",
+        "src/db/**/*.spec.ts",
         "src/utils/**/*.spec.ts",
         "src/websocket/**/*.spec.ts",
         "src/yjs/**/*.spec.ts",

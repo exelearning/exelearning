@@ -38,7 +38,8 @@ describe('db types helpers', () => {
 
         it('should handle non-array JSON by returning parsed value', () => {
             // Note: JSON.parse of a string returns the string, not an array
-            const result = parseRoles('"ROLE_USER"');
+            // The declared string[] does not hold here: the parsed string comes back as is.
+            const result: unknown = parseRoles('"ROLE_USER"');
             expect(result).toBe('ROLE_USER');
         });
     });
