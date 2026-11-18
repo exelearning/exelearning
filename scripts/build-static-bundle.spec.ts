@@ -618,10 +618,11 @@ describe('buildApiParameters', () => {
     });
 
     it('should include defaultAI without altering existing preferences', () => {
-        expect(params.userPreferencesConfig.defaultAI).toBeDefined();
-        expect(params.userPreferencesConfig.defaultAI.type).toBe('select');
-        expect(params.userPreferencesConfig.defaultAI.value).toBe('https://chatgpt.com/?q=');
-        expect(params.userPreferencesConfig.defaultAI.options).toBeDefined();
+        expect(params.userPreferencesConfig.defaultAI).toMatchObject({
+            type: 'select',
+            value: 'https://chatgpt.com/?q=',
+            options: expect.anything(),
+        });
 
         // Ensure existing keys remain intact
         expect(params.userPreferencesConfig.locale).toBeDefined();
@@ -642,8 +643,7 @@ describe('buildApiParameters', () => {
         process.env.AI_FEATURES_ENABLED = 'false';
         try {
             const disabled = buildApiParameters();
-            expect(disabled.ai.enabled).toBe(false);
-            expect(disabled.ai.mode).toBe('external');
+            expect(disabled.ai).toMatchObject({ enabled: false, mode: 'external' });
             expect(disabled.userPreferencesConfig.defaultAI).toBeUndefined();
         } finally {
             if (prev === undefined) {
