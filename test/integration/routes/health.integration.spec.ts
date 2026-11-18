@@ -10,7 +10,7 @@ import type { Database } from '../../../src/db/types';
 
 describe('Health Routes Integration', () => {
     let db: Kysely<Database>;
-    let app: Elysia;
+    let app: Pick<Elysia, 'handle'>;
 
     beforeAll(async () => {
         // Create test database

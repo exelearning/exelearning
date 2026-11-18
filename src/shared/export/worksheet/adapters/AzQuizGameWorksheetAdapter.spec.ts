@@ -71,6 +71,7 @@ describe('AzQuizGameWorksheetAdapter', () => {
     it('marks omitted clues inactive while keeping the printable clues in the ring', () => {
         const activity = AzQuizGameWorksheetAdapter.build(
             roscoHtml({ letters: 'DC', wordsGame: [word({ definition: '' }), word({ word: 'CAT' })] }),
+            {},
         );
 
         expect(ringOf(activity)).toEqual([
@@ -84,6 +85,7 @@ describe('AzQuizGameWorksheetAdapter', () => {
     it('keeps a clue whose only printable content is an inline illustration', () => {
         const activity = AzQuizGameWorksheetAdapter.build(
             roscoHtml({ wordsGame: [word({ definition: '<img src="dog.png" />' })] }),
+            {},
         );
 
         expect(activity?.items).toHaveLength(1);
@@ -94,6 +96,7 @@ describe('AzQuizGameWorksheetAdapter', () => {
     it('keeps a clue whose only printable content is a sidecar illustration', () => {
         const activity = AzQuizGameWorksheetAdapter.build(
             roscoHtml({ wordsGame: [word({ definition: '' })], imageLinks: { 0: 'asset://dog' } }),
+            {},
         );
 
         expect(activity?.items[0].media?.src).toBe('asset://dog');

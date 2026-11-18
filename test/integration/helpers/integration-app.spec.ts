@@ -58,8 +58,8 @@ describe('integration-app helpers', () => {
                     is_lopd_accepted: 1,
                     quota_mb: 1024,
                     is_active: 1,
-                    created_at: new Date().toISOString(),
-                    updated_at: new Date().toISOString(),
+                    created_at: Date.now(),
+                    updated_at: Date.now(),
                 })
                 .returning(['id'])
                 .executeTakeFirst();

@@ -18,6 +18,7 @@ import {
     type ExportSessionManagerDeps,
     type ExportFileHelperDeps,
     type ExportSystemDeps,
+    type ExportYjsDeps,
 } from './export';
 import type { YjsExportStructure } from './types/request-payloads';
 import { getJwtSecret } from '../utils/jwt-secret';
@@ -29,7 +30,7 @@ const TEST_JWT_SECRET = getJwtSecret();
 
 async function signTestToken(sub: number, roles: string[] = ['ROLE_USER']): Promise<string> {
     const secret = new TextEncoder().encode(TEST_JWT_SECRET);
-    return new SignJWT({ sub, email: `u${sub}@test.local`, roles })
+    return new SignJWT({ sub: String(sub), email: `u${sub}@test.local`, roles })
         .setProtectedHeader({ alg: 'HS256' })
         .setIssuedAt()
         .setExpirationTime('1h')
@@ -157,7 +158,11 @@ function createMockExportSystem(): ExportSystemDeps {
 }
 
 // Create mock dependencies
-function createMockDependencies(): ExportDependencies {
+/** The dependencies every spec here builds; `database` and `yjsPersistence` stay per test. */
+type MockExportDependencies = ExportDependencies &
+    Required<Pick<ExportDependencies, 'fs' | 'path' | 'sessionManager' | 'fileHelper' | 'exportSystem' | 'publicDir'>>;
+
+function createMockDependencies(): MockExportDependencies {
     return {
         fs: fs,
         path: path,
@@ -229,7 +234,7 @@ describe('populateYDocFromStructure block icons', () => {
 });
 
 describe('Export Routes', () => {
-    let app: Elysia;
+    let app: Pick<Elysia, 'handle'>;
     let mockDeps: ExportDependencies;
     let ownerToken: string;
 
@@ -238,7 +243,7 @@ describe('Export Routes', () => {
      * one (used by negative-auth tests). Mirrors the wrapper used in
      * assets.spec.ts.
      */
-    async function handleWith(target: Elysia, req: Request): Promise<Response> {
+    async function handleWith(target: Pick<Elysia, 'handle'>, req: Request): Promise<Response> {
         if (req.headers.has('authorization')) {
             return target.handle(req);
         }
@@ -1171,7 +1176,8 @@ describe('Export Routes', () => {
                 findProjectByUuid: async () => ({ id: 1, uuid: 'null-yjs-project-uuid', title: 'Test' }) as any,
             };
             nullYjsDeps.yjsPersistence = {
-                reconstructDocument: async () => null,
+                // The route guards against a missing document even though the type promises one.
+                reconstructDocument: (async () => null) as unknown as ExportYjsDeps['reconstructDocument'],
             };
 
             const nullYjsApp = new Elysia().use(createExportRoutes(nullYjsDeps));
@@ -1202,7 +1208,7 @@ describe('Export Routes', () => {
             const noProjectDeps = createMockDependencies();
             noProjectDeps.database = {
                 db: {} as any,
-                findProjectByUuid: async () => null,
+                findProjectByUuid: async () => undefined,
             };
 
             const noProjectApp = new Elysia().use(createExportRoutes(noProjectDeps));
@@ -1272,7 +1278,8 @@ describe('Export Routes', () => {
                 findProjectByUuid: async () => ({ id: 1, uuid: 'null-no-fallback-uuid', title: 'Test' }) as any,
             };
             nullNoFallbackDeps.yjsPersistence = {
-                reconstructDocument: async () => null,
+                // The route guards against a missing document even though the type promises one.
+                reconstructDocument: (async () => null) as unknown as ExportYjsDeps['reconstructDocument'],
             };
 
             const nullNoFallbackApp = new Elysia().use(createExportRoutes(nullNoFallbackDeps));
@@ -1303,7 +1310,7 @@ describe('Export Routes', () => {
             const noProjectNoFallbackDeps = createMockDependencies();
             noProjectNoFallbackDeps.database = {
                 db: {} as any,
-                findProjectByUuid: async () => null,
+                findProjectByUuid: async () => undefined,
             };
 
             const noProjectNoFallbackApp = new Elysia().use(createExportRoutes(noProjectNoFallbackDeps));
