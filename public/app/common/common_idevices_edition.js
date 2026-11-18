@@ -5,9 +5,9 @@
     This code is required to edit the iDevices
 
     The edition library of the iDevices: new code and fixes go here.
-    common_edition.js ($exeDevicesEdition) is a transitional copy of its
+    common_edition.js ($exeDevicesEdition) is a deprecated copy of its
     predecessor, kept only for the iDevices still in development that use
-    it, and will be removed once they are adapted to this one.
+    it, and removed in eXeLearning v4.0.8 (ADR-2700-01).
 */
 var $exeIDevicesEdition = {
     iDevice: {

@@ -4,11 +4,11 @@
     Include here the code that should not be exported
     This code is required to edit the iDevices
 
-    Transitional: the iDevices use $exeIDevicesEdition
+    Deprecated: the iDevices use $exeIDevicesEdition
     (common_idevices_edition.js), and new code and fixes go there. This
     copy, duplicated in that file, is kept only for the iDevices still in
-    development that use it, such as the new interactive video. It will be
-    removed once they are adapted to common_idevices_edition.js.
+    development that use it, such as the new interactive video, and goes in
+    eXeLearning v4.0.8 (ADR-2700-01; the warning is at the end of the file).
 */
 var $exeDevicesEdition = {
     iDevice: {
@@ -2827,7 +2827,44 @@ var $exeDevicesEdition = {
             }
         }
     }
-}
+};
+
+/*
+    Deprecated: this file goes in eXeLearning v4.0.8 (ADR-2700-01). The first
+    call an iDevice makes to $exeDevicesEdition on a page says so in the
+    console, once, with what to use instead. The application stops the sound
+    of this object on every save, whether an iDevice uses it or not, so that
+    call does not count.
+*/
+(function () {
+    var warned = false;
+    var warn = function () {
+        if (warned) return;
+        warned = true;
+        if (typeof console !== 'undefined' && typeof console.warn === 'function') {
+            console.warn(
+                '$exeDevicesEdition (common_edition.js) is deprecated and will be removed in eXeLearning v4.0.8. ' +
+                    'Use $exeIDevicesEdition (common_idevices_edition.js) instead.'
+            );
+        }
+    };
+    var exempt = $exeDevicesEdition.iDevice.gamification.helpers.stopSound;
+    var wrap = function (object) {
+        Object.keys(object).forEach(function (key) {
+            var value = object[key];
+            if (typeof value === 'function') {
+                if (value === exempt) return;
+                object[key] = function () {
+                    warn();
+                    return value.apply(this, arguments);
+                };
+            } else if (value && typeof value === 'object' && !Array.isArray(value)) {
+                wrap(value);
+            }
+        });
+    };
+    wrap($exeDevicesEdition.iDevice);
+})();
 
 // Export for Node.js/CommonJS (tests)
 if (typeof module !== 'undefined' && module.exports) {

@@ -3673,3 +3673,62 @@ describe('common_edition.js', () => {
     });
   });
 });
+
+/*
+ * The file goes in v4.0.8 (ADR-2700-01). Each test loads a fresh copy, as a
+ * page does, since the warning is given once per load.
+ */
+describe('common_edition.js deprecation', () => {
+  const load = () => {
+    delete require.cache[require.resolve('./common_edition.js')];
+    return require('./common_edition.js');
+  };
+  let warn;
+
+  beforeEach(() => {
+    warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    warn.mockRestore();
+  });
+
+  it('says nothing while no iDevice uses it', () => {
+    load();
+
+    expect(warn).not.toHaveBeenCalled();
+  });
+
+  it('says once, on the first call an iDevice makes, when it goes and what to use instead', () => {
+    const edition = load();
+
+    edition.iDevice.gamification.scorm.getTab();
+    edition.iDevice.common.getTextFieldset('after');
+
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(warn.mock.calls[0][0]).toBe(
+      '$exeDevicesEdition (common_edition.js) is deprecated and will be removed in eXeLearning v4.0.8. ' +
+        'Use $exeIDevicesEdition (common_idevices_edition.js) instead.'
+    );
+  });
+
+  it('does not count the application stopping its sound on saving', () => {
+    const edition = load();
+
+    edition.iDevice.gamification.helpers.stopSound();
+
+    expect(warn).not.toHaveBeenCalled();
+  });
+
+  it('leaves each function its object and its result', () => {
+    const edition = load();
+    const recorder = edition.iDevice.voiceRecorder;
+    recorder._cleanupBound = true;
+
+    // On its object, it finds its handlers bound already, and stops there.
+    recorder.bindCleanupHandlers();
+    expect(globalThis._cleanupBound).toBeUndefined();
+    expect(edition.iDevice.gamification.scorm.getTab()).toContain('eXeGameSCORM');
+    expect(warn).toHaveBeenCalledTimes(1);
+  });
+});
