@@ -4,7 +4,7 @@
  */
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'bun:test';
 import { createTestDb, cleanTestDb, destroyTestDb, seedTestUser, seedTestProject } from '../../test/helpers/test-db';
-import type { Kysely } from 'kysely';
+import type { ColumnDefinitionBuilder, Kysely } from 'kysely';
 import type { Database } from './types';
 import {
     getDialect,
@@ -248,8 +248,8 @@ describe('Database Helpers', () => {
             // but we can verify the function exists and doesn't throw
             const colBuilder = {
                 autoIncrement: () => colBuilder,
-            };
-            const result = addAutoIncrement(colBuilder as any);
+            } as unknown as ColumnDefinitionBuilder;
+            const result = addAutoIncrement(colBuilder);
             expect(result).toBe(colBuilder);
         });
 
@@ -261,8 +261,8 @@ describe('Database Helpers', () => {
                         called = true;
                         return colBuilder;
                     },
-                };
-                const result = addAutoIncrement(colBuilder as any);
+                } as unknown as ColumnDefinitionBuilder;
+                const result = addAutoIncrement(colBuilder);
                 expect(result).toBe(colBuilder);
                 expect(called).toBe(false);
             });
@@ -454,11 +454,12 @@ describe('Database Helpers', () => {
                     createDriver: () => ({
                         init: async () => {},
                         acquireConnection: async () => ({
-                            executeQuery: async (cq: { sql: string; parameters: readonly unknown[] }) => {
+                            executeQuery: async <R>(cq: { sql: string; parameters: readonly unknown[] }) => {
                                 capturedSql = cq.sql;
                                 capturedParams = cq.parameters;
-                                return { rows: [] };
+                                return { rows: [] as R[] };
                             },
+                            async *streamQuery() {},
                         }),
                         beginTransaction: async () => {},
                         commitTransaction: async () => {},

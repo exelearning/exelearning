@@ -24,6 +24,9 @@ import { ServerYjsDocumentWrapper, YjsDocumentAdapter } from '../../src/shared/e
 import type { ExportDocument } from '../../src/shared/export';
 import type { NormalizedComponent, OdeXmlMeta, ParsedOdeStructure } from '../../src/services/xml/interfaces';
 
+/** The part of a parsed .elp these helpers read; fixtures need not carry `navigation` or `raw`. */
+export type DocumentStructure = Pick<ParsedOdeStructure, 'meta' | 'pages'>;
+
 // Fields hand-built structures may carry beyond the parser's declared types
 type MetaWithCustomStyles = OdeXmlMeta & { customStyles?: string };
 type ComponentWithJsonProperties = NormalizedComponent & { jsonProperties?: string | Record<string, unknown> };
@@ -85,7 +88,7 @@ export async function createDocumentFromElpFile(elpPath: string): Promise<Docume
  * @param extractedPath - Path to extracted content (for asset resolution)
  * @returns ExportDocument adapter
  */
-export function createDocumentFromStructure(structure: ParsedOdeStructure, extractedPath: string): ExportDocument {
+export function createDocumentFromStructure(structure: DocumentStructure, extractedPath: string): ExportDocument {
     const ydoc = new Y.Doc();
     populateYDocFromStructure(ydoc, structure);
 
@@ -102,7 +105,7 @@ export function createDocumentFromStructure(structure: ParsedOdeStructure, extra
  * @param ydoc - Y.Doc to populate
  * @param structure - Parsed structure data
  */
-export function populateYDocFromStructure(ydoc: Y.Doc, structure: ParsedOdeStructure): void {
+export function populateYDocFromStructure(ydoc: Y.Doc, structure: DocumentStructure): void {
     const meta: MetaWithCustomStyles = structure.meta;
 
     // Populate metadata
@@ -223,7 +226,7 @@ export interface ExportDocumentWithPath extends ExportDocument {
 /**
  * Create document with extractedPath property for legacy test compatibility
  */
-export function createDocumentWithPath(structure: ParsedOdeStructure, extractedPath: string): ExportDocumentWithPath {
+export function createDocumentWithPath(structure: DocumentStructure, extractedPath: string): ExportDocumentWithPath {
     const document = createDocumentFromStructure(structure, extractedPath);
     return Object.assign(document, { extractedPath });
 }
