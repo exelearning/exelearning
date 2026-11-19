@@ -74,18 +74,13 @@ async function fillCard(page: Page, ideviceId: string, text: string): Promise<vo
 /**
  * Switch the activity to the mode that shows one card at a time.
  *
- * The mode lives in the Options fieldset, which the editor renders closed, and
- * a closed fieldset hides its contents.
+ * The mode lives in the Options tab; the cards are back in the Questions tab.
  *
  * @param page - The workarea.
  * @param ideviceId - Article holding the editor.
  */
 async function selectNavigationMode(page: Page, ideviceId: string): Promise<void> {
-    const fieldset = page
-        .locator(`#${ideviceId} fieldset.exe-fieldset`)
-        .filter({ has: page.locator('#flipcardsETypeNavigation') })
-        .first();
-    await fieldset.locator('legend a').click();
+    await page.locator('#flipcardsQEIdeviceForm-tab-options').click();
     await page.waitForFunction(
         id => {
             const radio = document.querySelector(`#${id} #flipcardsETypeNavigation`) as HTMLElement | null;
@@ -95,6 +90,7 @@ async function selectNavigationMode(page: Page, ideviceId: string): Promise<void
         { timeout: 5000 },
     );
     await page.locator(`#${ideviceId} label[for="flipcardsETypeNavigation"]`).click();
+    await page.locator('#flipcardsQEIdeviceForm-tab-contents').click();
 }
 
 /**

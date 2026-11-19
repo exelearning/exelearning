@@ -13,16 +13,15 @@ var $exeDevice = {
         name: _('Progress report'),
     },
     msgs: {},
-    id: '',
     number: 0,
     sessionIdevices: null,
-    typeshow: 0,
     ci18n: {},
     init: function (element, previousData, path) {
         this.ideviceBody = element;
         this.idevicePreviousData = previousData;
         this.idevicePath = path;
         this.refreshTranslations();
+        this.setMessagesInfo();
         this.createForm();
         this.addEvents();
         this.getIdevicesBySessionId();
@@ -459,7 +458,7 @@ var $exeDevice = {
 
     generateHtmlFromPagesEdition: function (pages) {
         const idEvaluation = $('#informeEEvaluationID').val() || '';
-        const showTypeGame = $('#informeEShowTypeGame').val() || false;
+        const showTypeGame = $('#informeEShowTypeGame').is(':checked');
         let html = '<ul id="informeEPagesContainer">';
         pages.forEach((page) => {
             let pageHtml = `<li class="IFPE-PageItem" data-page-id="${page.id}">`;
@@ -487,7 +486,7 @@ var $exeDevice = {
                             </div>`
                         : '';
                     const typeIdevice = showTypeGame
-                        ? `<div id="informeEType">(${component.odeIdeviceTypeName})</div>`
+                        ? `<div class="IFPE-ComponentType">(${component.odeIdeviceTypeName})</div>`
                         : '';
                     const showLinks = `<div class="IFPE-PageTitleDiv">
                                 <div class="IFPE-Icon ${iconClass}"></div>
@@ -583,56 +582,44 @@ var $exeDevice = {
 
     setMessagesInfo: function () {
         var msgs = this.msgs;
-        msgs.msgEProvideID = _('Please provide the ID of this progress report');
+        msgs.msgNoSuportBrowser = _(
+            'Your browser is not compatible with this tool.'
+        );
     },
     createForm: function () {
-        const html = `
-        <div id="reportQEIdeviceForm">
-            ${$exeDevicesEdition.iDevice.common.getIdeviceDescription(
-                _('It shows the result of the pupils in the activities linked to their average score.'),
-                'https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe40/html/informe-de-progreso.html',
-            )}
-            <div class="exe-form-tab" title="${_('General settings')}">
-                <fieldset class="exe-fieldset">
-                    <legend><a href="#">${_('Options')}</a></legend>
-                    <div>
-                        <p class="exe-block-info mb-3">
-                            ${_('The ID can be a number or word of more than five characters. You must use the same ID in all the activities you will assess in this progress report.')}
-                        </p>
-                        <div class="d-flex flex-nowrap align-items-center gap-2 mb-3">
-                            <label for="informeEEvaluationID" class="mb-0">${_('Identifier')}:</label>
-                            <input type="text" id="informeEEvaluationID" value="${eXeLearning.app.project.odeId || ''}" style="max-width:250px;" class="form-control" />
-                            <button id="informeERefresh" class="btn btn-primary" type="button">${_('Refresh pages')}</button>
-                        </div>
-                        <div class="toggle-item mb-3">
+        const edition = $exeIDevicesEdition.iDevice,
+            toggle = (id, label, help) => `
+                    <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
+                        <span class="toggle-item">
                             <span class="toggle-control">
-                                <input type="checkbox" id="informeEShowDate" class="toggle-input" checked />
-                                <span class="toggle-visual"></span>
+                                <input type="checkbox" id="${id}" class="toggle-input" checked />
+                                <span class="toggle-visual" aria-hidden="true"></span>
                             </span>
-                            <label class="toggle-label mb-0" for="informeEShowDate">${_('Show date and time')}.</label>
+                            <label class="toggle-label mb-0" for="${id}">${label}.</label>
+                        </span>
+                        ${edition.common.getHelpTooltip(help)}
+                    </div>`,
+            options = `
+                <div id="informeEOptions">
+                    <div class="d-flex flex-nowrap align-items-center gap-2 mb-3">
+                        <label for="informeEEvaluationID" class="mb-0">${_('Identifier')}:</label>
+                        <input type="text" id="informeEEvaluationID" value="${eXeLearning.app.project.odeId || ''}" style="max-width:250px;" class="form-control" />
+                        ${edition.common.getHelpTooltip(_('The ID can be a number or word of more than five characters. You must use the same ID in all the activities you will assess in this progress report.'))}
+                    </div>
+                    ${toggle('informeEShowDate', _('Show date and time'), _('Show the date and time each activity was completed.'))}
+                    ${toggle('informeEShowTypeGame', _('Show type of iDevice'), _('Show the type of each iDevice next to its title.'))}
+                    ${toggle('informeEActiveLinks', _('Link report activities'), _('Make each assessed activity a link to its page. Links only work in websites, not in SCORM packages or local files.'))}
+                    ${toggle('informeEUserData', _('User data'), _('Ask the learners for their name and the date, at the top of the report.'))}
+                </div>`,
+            // "Show" goes first, right above the list it filters, so the
+            // author sees the list change as they pick an option.
+            contents = `
+                <div id="informeEContents">
+                    <div role="radiogroup" aria-labelledby="informeEShowLabel">
+                        <div class="d-flex align-items-center gap-2 flex-nowrap mb-1">
+                            <span id="informeEShowLabel">${_('Show')}:</span>
+                            ${edition.common.getHelpTooltip(_('Choose which pages and iDevices the report lists.'))}
                         </div>
-                        <div class="toggle-item mb-3">
-                            <span class="toggle-control">
-                                <input type="checkbox" id="informeEShowTypeGame" class="toggle-input" checked />
-                                <span class="toggle-visual"></span>
-                            </span>
-                            <label class="toggle-label mb-0" for="informeEShowTypeGame">${_('Show type of iDevice')}.</label>
-                        </div>
-                        <div class="toggle-item mb-3">
-                            <span class="toggle-control">
-                                <input type="checkbox" id="informeEActiveLinks" class="toggle-input" checked />
-                                <span class="toggle-visual"></span>
-                            </span>
-                            <label class="toggle-label mb-0" for="informeEActiveLinks">${_('Link report activities')}.</label>
-                        </div>
-                        <div class="toggle-item mb-3">
-                            <span class="toggle-control">
-                                <input type="checkbox" id="informeEUserData" class="toggle-input" checked />
-                                <span class="toggle-visual"></span>
-                            </span>
-                            <label class="toggle-label mb-0" for="informeEUserData">${_('User data')}.</label>
-                        </div>
-                        <span class="mb-1">${_('Show')}:</span>
                         <div class="d-flex align-items-center flex-wrap gap-2 mb-3">
                             <div class="form-check form-check-inline d-inline-flex align-items-center">
                                 <input type="radio" id="showtype0" name="showtype" class="form-check-input" value="0" checked>
@@ -647,22 +634,36 @@ var $exeDevice = {
                                 <label class="form-check-label mb-0 ms-1" for="showtype2">${_('Only pages with evaluable activities')}</label>
                             </div>
                         </div>
-                        <div class="mb-3">
-                            <span><strong>${_('Available iDevices')}:</strong></span>
-                            <p id="informeEPages" class="mb-0"></p>
-                        </div>
-                        <p class="exe-block-info mb-0">
-                            ${_('This iDevice is compatible with all game iDevices and all interactive activities.')}
-                        </p>
                     </div>
-                </fieldset>
+                    <div class="d-flex align-items-center gap-2 mb-3">
+                        <strong>${_('Available iDevices')}:</strong>
+                        <button id="informeERefresh" class="btn btn-primary btn-sm" type="button">${_('Refresh pages')}</button>
+                    </div>
+                    <p id="informeEPages" class="mb-3"></p>
+                    <p class="mb-0">${_('This iDevice is compatible with all game iDevices and all interactive activities.')}</p>
+                </div>`,
+            html = `
+            <div id="reportQEIdeviceForm">
+                ${edition.common.getIdeviceDescription(
+                    _('It shows the result of the pupils in the activities linked to their average score.'),
+                    'https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe40/html/informe-de-progreso.html',
+                )}
+                ${edition.tabs.getHtml('reportQEIdeviceForm', {
+                    path: this.idevicePath,
+                    options: options,
+                    contents: contents,
+                    texts: this.ci18n,
+                    share: false,
+                    titles: { contents: _('Progress report') },
+                    info: {
+                        contents: _('The pages and iDevices of this resource. The ones assessed with the identifier of this report are marked.'),
+                    },
+                })}
             </div>
-            ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
-        </div>
-    `;
+        `;
         this.ideviceBody.innerHTML = html;
+        edition.tabs.bind('reportQEIdeviceForm');
         $exeDevice.loadPreviousValues();
-        $exeDevicesEdition.iDevice.tabs.init('reportQEIdeviceForm');
     },
 
     normalizeFileName: function (fileName) {
@@ -856,19 +857,10 @@ var $exeDevice = {
             const dataGame =
                 $exeDevices.iDevice.gamification.helpers.isJsonString(json);
             $exeDevice.updateFieldGame(dataGame);
-            $exeDevicesEdition.iDevice.gamification.common.setLanguageTabValues(
+            $exeIDevicesEdition.iDevice.gamification.common.setLanguageTabValues(
                 dataGame.msgs
             );
         }
-    },
-
-    escapeHtml: function (string) {
-        return String(string)
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;')
-            .replace(/'/g, '&#39;');
     },
 
     save: function () {
@@ -890,10 +882,6 @@ var $exeDevice = {
                 </div>`;
     },
 
-    showMessage: function (msg) {
-        eXe.app.alert(msg);
-    },
-
     validateData: function () {
         const evaluationID = $('#informeEEvaluationID').val(),
             showDate = $('#informeEShowDate').is(':checked'),
@@ -903,13 +891,11 @@ var $exeDevice = {
             typeshow = parseInt($('input[name="showtype"]:checked').val());
 
         if (!evaluationID || evaluationID.length < 5) {
-            $exeDevice.showMessage(
+            $exeIDevicesEdition.iDevice.common.showMessage(
                 _('The report identifier must have at least 5 characters')
             );
             return false;
         }
-
-        $exeDevice.typeshow = typeshow;
 
         return {
             typeGame: 'Progress Report',
@@ -925,11 +911,6 @@ var $exeDevice = {
     },
 
     addEvents: function () {
-        $('.exe-block-dismissible .exe-block-close').on('click', function () {
-            $(this).parent().fadeOut();
-            return false;
-        });
-
         $('#informeERefresh').on('click', function () {
             $exeDevice.getIdevicesBySessionId();
         });
@@ -942,8 +923,9 @@ var $exeDevice = {
     updateFieldGame: function (game) {
         game.evaluationID =
             typeof game.evaluationID !== 'undefined' ? game.evaluationID : '';
+        // A report saved before the option existed always showed the date.
         game.showDate =
-            typeof game.showDate !== 'undefined' ? game.showDate : false;
+            typeof game.showDate !== 'undefined' ? game.showDate : true;
         game.showTypeGame =
             typeof game.showTypeGame !== 'undefined'
                 ? game.showTypeGame
@@ -961,7 +943,6 @@ var $exeDevice = {
         $('#informeEShowTypeGame').prop('checked', game.showTypeGame);
         $('#informeEActiveLinks').prop('checked', game.activeLinks);
         $('#informeEUserData').prop('checked', game.userData);
-        $exeDevice.typeshow = game.typeshow;
         $exeDevice.showPages();
     },
 };

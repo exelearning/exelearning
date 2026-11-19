@@ -47,65 +47,16 @@
     display: block;
 }
 
-.HIE-Cursor {
-    display: none;
-    left: 0;
-    position: absolute;
-}
-
-.HIE-Flex {
-    align-items: center;
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: flex-start;
-    width: 100%;
-}
-
 .HIE-OptionsGame {
     min-height: 300px;
     width: 50%;
-}
-
-.HIE-inlineOption,
-.HIE-TypeGame,
-.HIE-TypeOrder {
-    margin-left: .5em
 }
 
 #hiQEIdeviceForm .HIE-OptionsMedia .exe-pick-any-file {
     margin-right: 0;
 }
 
-.Games-Reportdiv {
-    display: flex;
-    justify-content: flex-start;
-    align-items: center;
-    gap: 2px;
-}
-
 /* Opciones imagen */
-.HIE-InputImage {
-    align-items: center;
-    display: flex;
-    flex-wrap: nowrap;
-    justify-content: flex-start;
-    min-width: 100px;
-    width: 100%;
-}
-
-#hiQEIdeviceForm .HIE-InputImage input[type=text] {
-    flex-flow: 1;
-    margin-right: 0.2em;
-    min-width: 100px;
-    width: 100%;
-}
-
-.HIE-ButtonLink {
-    display: block;
-    height: 1.6em;
-    width: 1.6em;
-}
-
 /*Preguntas*/
 .HIE-QuestionDiv {
     margin-bottom: .3em;
@@ -203,23 +154,6 @@
     width: 2em;
 }
 
-.HIE-CustomMessage {
-    align-items: center;
-    display: flex;
-    justify-content: flex-start;
-    margin-top: 1em;
-    width: 100%;
-}
-
-.HIE-CustomMessage input[type=text] {
-    width: 100%;
-    margin-right: 0.1em;
-}
-
-.HIE-CustomMessage label {
-    margin: 0 0.1em;
-}
-
 /* barra edición */
 .HIE-NavigationButtons {
     align-items: center;
@@ -252,97 +186,8 @@
     width: 3em;
 }
 
-/* Video introdución */
-.HIE-VIDiv {
-    background-color: #f9f9f9;
-    display: none;
-    height: 100%;
-    left: 0;
-    position: absolute;
-    top: 0;
-    width: 100%;
-    z-index: 20;
-}
-
-/* Video introdución */
-.HIE-VIV {
-    width: 100%;
-}
-
-.HIE-MVI {
-    height: 315px;
-    margin: 70px auto;
-    position: relative;
-    width: 560px;
-}
-
-.HIE-VI,
-.HIE-NoVI {
-    height: 100%;
-    left: 0;
-    position: absolute;
-    top: 0;
-    width: 100%;
-}
-
-.HIE-VIOptions {
-    align-items: center;
-    display: flex;
-    flex-wrap: wrap;
-    height: 50px;
-    justify-content: center;
-    position: absolute;
-    width: 100%;
-}
-
-.HIE-VIOptions * {
-    margin-left: 0.3em;
-}
-
-.HIE-VIOptions input[type=text] {
-    text-align: left;
-    width: 5em;
-}
-
-.HIE-VIOptions input[type=text]:first-of-type {
-    width: 15em;
-}
-
-.HIE-VideoIntroDiv {
-    border-radius: 10px;
-    height: 100%;
-    left: 0;
-    position: absolute;
-    top: 0;
-    width: 98%;
-    z-index: 20;
-}
-
-.HIE-VIClose {
-    position: absolute;
-    right: 0.3em;
-    top: 0.3em;
-}
-
-.HIE-VIOptionsVQ {
-    margin-bottom: 0.6em;
-}
-
-.HIE-VIOptionsVQ input[type=text] {
-    text-align: left;
-    width: 5em;
-    margin-right: .2em;
-}
-
-/* Ocutar elementos */
-.HIE-InputOptionsVideo,
-.HIE-DP,
-.HIE-VIDiv,
-.HIE-ScoreQuestionDiv,
-.HIE-Coord,
-.HIE-FeedbackP,
-.HIE-TitleVideo,
-.HIE-InputVideo {
+/* Ocultar elementos */
+.HIE-ScoreQuestionDiv {
     display: none;
 }
 
@@ -366,141 +211,7 @@
     margin-right: 0.2em;
 }
 
-label[for=gameQEScoreQuestion],
-input#gameQEScoreQuestion {
-    display: none;
-}
-
-/* To review */
-#hiQEIdeviceForm .exe-block-info img {
-    margin-left: .2em;
-    vertical-align: middle;
-}
-
-.exe-block-close {
-    position: absolute;
-    top: 6px;
-    right: 5px;
-}
-
-#hiQEIdeviceFormTab3 p:first-child {
-    margin-top: 0;
-}
-
-#hiQEIdeviceFormTab3 {
-    overflow: auto;
-}
-
-#hiQEIdeviceFormTab3 .ci18n {
-    float: left;
-    width: 50%;
-}
-
-@media screen and (max-width:720px) {
-    #hiQEIdeviceForm #hiQEIdeviceFormTab3 .ci18n {
-        float: none;
-        width: 100%;
-    }
-}
-
-#hiQEIdeviceForm #hiQEIdeviceFormTab3 label {
-    display: block;
-    margin-bottom: .2em;
-    color: #0BA1A1;
-    font-weight: 500;
-}
-
-#hiQEIdeviceForm #hiQEIdeviceFormTab3 input {
-    width: 95%;
-}
-
-/* Tabs (this should be common) */
-.exe-form-tabs {
-    list-style: none;
-    margin: 0 0 1.5em 0;
-    padding: 0;
-}
-
-#main .exe-form-tabs li {
-    display: inline;
-    list-style: none;
-    list-style-image: none;
-    margin: 0;
-    padding: 0;
-}
-
-.exe-form-tabs li:first-child a {
-    border-bottom-left-radius: 4px;
-    border-top-left-radius: 4px;
-}
-
-.exe-form-tabs li:last-child a {
-    border-bottom-right-radius: 4px;
-    border-top-right-radius: 4px;
-}
-
-.exe-form-tabs a {
-    background: #F9F9F9;
-    border: 1px solid #CCC;
-    color: #666;
-    display: inline-block;
-    padding: .5em 1em;
-}
-
-.exe-form-tabs li:not(:last-child) a {
-    border-right: none;
-}
-
-.exe-form-tabs .exe-form-active-tab {
-    background: #FFF;
-    color: #000;
-    font-weight: 500;
-}
-
-#gameQESCORMoptions {
-    margin-left: 1.5em;
-    visibility: hidden;
-}
-
-label[for=gameQEActivitySCORM] {
-    font-weight: bold;
-}
-
-#gameQESCORMinstructionsButton {
-    color: #777;
-    display: none;
-    margin: 10px 0 0 25px;
-}
-
-#gameQESCORMinstructionsButton ul {
-    list-style: none;
-    margin: 1.5em 0 .7em 0;
-    padding: 0;
-}
-
-#gameQESCORMinstructionsButton ul li {
-    list-style-image: none;
-    margin: 0 0 .5em 0;
-    padding: 0;
-}
-
-#gameQESCORMinstructionsAuto {
-    color: #777;
-    display: none;
-    margin: 10px 0 0 25px;
-}
-
-#gameQESCORMinstructionsAuto ul {
-    list-style: none;
-    margin: 1.5em 0 .7em 0;
-    padding: 0;
-}
-
-.GameModeHelpLink {
-    margin: 0 2px;
-    vertical-align: middle;
-}
-
-.GameModeLabel {
-    font-weight: normal
+#hiEOptions > div,
+#hiEOptions .toggle-item {
+    flex-wrap: nowrap;
 }

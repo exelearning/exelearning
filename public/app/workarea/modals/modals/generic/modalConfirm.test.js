@@ -69,6 +69,19 @@ describe('ModalConfirm', () => {
   });
 
   describe('show', () => {
+    // IdeviceNode.save() counts the requests to know that a refusal was explained.
+    it('counts each request, as Modal.show() does', () => {
+      vi.useFakeTimers();
+      const before = modalConfirm.showRequests;
+
+      modalConfirm.show({ body: 'first' });
+      modalConfirm.show({ body: 'second' });
+      vi.advanceTimersByTime(50);
+
+      expect(modalConfirm.showRequests).toBe(before + 2);
+      vi.useRealTimers();
+    });
+
     it('should set content and show modal', () => {
       vi.useFakeTimers();
       const mockConfirmExec = vi.fn();

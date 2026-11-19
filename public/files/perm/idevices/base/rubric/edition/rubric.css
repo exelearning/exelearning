@@ -27,19 +27,6 @@
   margin: 0 auto;
 }
 
-#ri_IdeviceForm .exe-block-close {
-    position: absolute;
-    top: 6px;
-    right: 5px;
-  width: 0.6rem;
-  height: 0.6rem;
-  background-size: 0.6rem;
-}
-
-#ri_CsvTools .exe-block-info {
-  margin-bottom: 0.85em;
-}
-
 #ri_CsvFile {
   position: absolute;
   width: 1px;
@@ -56,16 +43,10 @@
   margin-bottom: 0.5em;
 }
 
-#ri_CsvTools .ri-csv-import-actions,
 #ri_CsvTools .ri-csv-export-actions {
   padding-left: 0.2em;
 }
 
-#ri_CsvText {
-  width: 100%;
-  font-family: Consolas, Monaco, "Courier New", monospace;
-  font-size: 13px;
-}
 #ri_Table input {
   box-sizing: border-box;
   padding: 2px;
@@ -362,9 +343,7 @@
 #ri_RowEditModal .modal-content {
   width: 100%;
 }
-#ri_RowEditModal .ri-row-edit-nav {
-  display: none;
-}
+
 #ri_RowEditModal .ri-row-edit-position {
   font-size: 0.9em;
   opacity: 0.8;
@@ -447,28 +426,6 @@
   border: 1px solid #900;
 }
 
-/* To review (Should this code be common?) */
-#ri_TableEditorTab1 {
-  overflow: auto;
-  margin-bottom: 1.5em;
-}
-#ri_TableEditorTab1 .ci18n {
-  width: 50%;
-  float: left;
-}
-@media screen and (max-width: 720px) {
-  #ri_TableEditorTab1 .ci18n {
-    width: 100%;
-    float: none;
-  }
-}
-#ri_TableEditorTab1 .ci18n label {
-  display: block;
-  margin-bottom: 5px;
-}
-#ri_TableEditorTab1 .ci18n input {
-  width: 95%;
-}
 #ri_RubricsEditor > p {
   display: flex;
 }

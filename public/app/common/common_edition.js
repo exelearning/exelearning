@@ -3,6 +3,12 @@
     This is where $exeDevicesEdition or a similar object should be
     Include here the code that should not be exported
     This code is required to edit the iDevices
+
+    Deprecated: the iDevices use $exeIDevicesEdition
+    (common_idevices_edition.js), and new code and fixes go there. This
+    copy, duplicated in that file, is kept only for the iDevices still in
+    development that use it, such as the new interactive video, and goes in
+    eXeLearning v4.0.8 (ADR-2700-01; the warning is at the end of the file).
 */
 var $exeDevicesEdition = {
     iDevice: {
@@ -703,6 +709,13 @@ var $exeDevicesEdition = {
                     $("#eXeGameSCORgame,#eXeGameSCORgameAuto,#eXeGameSCORMPercentaje,#eXeGameSCORMinstructionsButton,#eXeGameSCORMinstructionsAuto,#eXeGameSCORMWeightHelp").addClass('d-none');
 
                     $('#eXeGameSCORMWeight').val(weighted);
+                    // getValues reads the button text in every mode, so every mode loads the stored
+                    // one: otherwise a save without changes stores "Save score" in the language of
+                    // the interface. Without a stored text, the field keeps that default.
+                    // Same fix as in common_idevices_edition.js, for the iDevices still on this file.
+                    if (isScorm == 2 || textButtonScorm) {
+                        $('#eXeGameSCORMbuttonText').val(textButtonScorm);
+                    }
 
                     if (isScorm == 0) {
                         $('#eXeGameSCORMNoSave').prop('checked', true);
@@ -713,7 +726,6 @@ var $exeDevicesEdition = {
                         $('#eXeGameSCORMPercentaje').removeClass('d-none');
                     } else if (isScorm == 2) {
                         $('#eXeGameSCORMButtonSave').prop('checked', true);
-                        $('#eXeGameSCORMbuttonText').val(textButtonScorm);
                         $('#eXeGameSCORgame').removeClass('d-none');
                         $('#eXeGameSCORMinstructionsButton').removeClass('d-none');
                         $('#eXeGameSCORMPercentaje').removeClass('d-none');
@@ -2815,7 +2827,44 @@ var $exeDevicesEdition = {
             }
         }
     }
-}
+};
+
+/*
+    Deprecated: this file goes in eXeLearning v4.0.8 (ADR-2700-01). The first
+    call an iDevice makes to $exeDevicesEdition on a page says so in the
+    console, once, with what to use instead. The application stops the sound
+    of this object on every save, whether an iDevice uses it or not, so that
+    call does not count.
+*/
+(function () {
+    var warned = false;
+    var warn = function () {
+        if (warned) return;
+        warned = true;
+        if (typeof console !== 'undefined' && typeof console.warn === 'function') {
+            console.warn(
+                '$exeDevicesEdition (common_edition.js) is deprecated and will be removed in eXeLearning v4.0.8. ' +
+                    'Use $exeIDevicesEdition (common_idevices_edition.js) instead.'
+            );
+        }
+    };
+    var exempt = $exeDevicesEdition.iDevice.gamification.helpers.stopSound;
+    var wrap = function (object) {
+        Object.keys(object).forEach(function (key) {
+            var value = object[key];
+            if (typeof value === 'function') {
+                if (value === exempt) return;
+                object[key] = function () {
+                    warn();
+                    return value.apply(this, arguments);
+                };
+            } else if (value && typeof value === 'object' && !Array.isArray(value)) {
+                wrap(value);
+            }
+        });
+    };
+    wrap($exeDevicesEdition.iDevice);
+})();
 
 // Export for Node.js/CommonJS (tests)
 if (typeof module !== 'undefined' && module.exports) {

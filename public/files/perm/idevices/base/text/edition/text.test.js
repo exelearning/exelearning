@@ -886,6 +886,14 @@ describe('text iDevice', () => {
       expect($exeDevice.escapeHtml('a & b')).toBe('a &amp; b');
     });
 
+    // In text content quotes need no escaping, and escaping them changed the
+    // stored HTML of a task saved without changes.
+    it('leaves quotes as they are', () => {
+      $exeDevice.init(mockElement, {});
+
+      expect($exeDevice.escapeHtml(`2 "groups" of 3's`)).toBe(`2 "groups" of 3's`);
+    });
+
     it('returns empty string for falsy input', () => {
       $exeDevice.init(mockElement, {});
 

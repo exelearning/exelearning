@@ -10,13 +10,13 @@
  * - startContains: Check if word starts with or contains letter
  * - placeImageWindows: Image dimension calculations (with mocked jQuery)
  * - rearrangeAlphabet: Alphabet rearrangement
- * - escapeHtml: HTML character escaping
- * - removeTags: HTML tag removal
  */
 /* eslint-disable no-undef */
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
+import { runInThisContext } from 'node:vm';
+import { openingHelps } from '../../../../../../../test/helpers/help-buttons.ts';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -31,6 +31,8 @@ const realEnvironment = {
     jQuery: global.jQuery,
     document: global.document,
     translate: global._,
+    edition: global.$exeIDevicesEdition,
+    tinymce: global.tinymce,
 };
 
 /**
@@ -150,20 +152,6 @@ function loadIdevice(code) {
             }
           },
         },
-      },
-    },
-  };
-
-  // Mock $exeDevicesEdition
-  global.$exeDevicesEdition = {
-    iDevice: {
-      gamification: {
-        common: {
-          getLanguageTab: () => '',
-        },
-      },
-      tabs: {
-        init: () => {},
       },
     },
   };
@@ -456,60 +444,6 @@ describe('az-quiz-game iDevice', () => {
     });
   });
 
-  describe('escapeHtml', () => {
-    it('escapes ampersand', () => {
-      expect($exeDevice.escapeHtml('foo & bar')).toBe('foo &amp; bar');
-    });
-
-    it('escapes less than', () => {
-      expect($exeDevice.escapeHtml('a < b')).toBe('a &lt; b');
-    });
-
-    it('escapes greater than', () => {
-      expect($exeDevice.escapeHtml('a > b')).toBe('a &gt; b');
-    });
-
-    it('escapes double quotes', () => {
-      expect($exeDevice.escapeHtml('say "hello"')).toBe('say &quot;hello&quot;');
-    });
-
-    it('escapes single quotes', () => {
-      expect($exeDevice.escapeHtml("it's")).toBe('it&#39;s');
-    });
-
-    it('escapes multiple special characters', () => {
-      const input = '<script>alert("xss")</script>';
-      const expected = '&lt;script&gt;alert(&quot;xss&quot;)&lt;/script&gt;';
-      expect($exeDevice.escapeHtml(input)).toBe(expected);
-    });
-
-    it('returns empty string for empty input', () => {
-      expect($exeDevice.escapeHtml('')).toBe('');
-    });
-  });
-
-  describe('removeTags', () => {
-    it('removes simple HTML tags', () => {
-      const result = $exeDevice.removeTags('<p>Hello</p>');
-      expect(result).toBe('Hello');
-    });
-
-    it('removes nested HTML tags', () => {
-      const result = $exeDevice.removeTags('<div><p><strong>Text</strong></p></div>');
-      expect(result).toBe('Text');
-    });
-
-    it('handles text without tags', () => {
-      const result = $exeDevice.removeTags('Plain text');
-      expect(result).toBe('Plain text');
-    });
-
-    it('handles empty string', () => {
-      const result = $exeDevice.removeTags('');
-      expect(result).toBe('');
-    });
-  });
-
   describe('i18n', () => {
     it('is defined', () => {
       expect($exeDevice.i18n).toBeUndefined(); // Note: i18n is defined in refreshTranslations
@@ -558,7 +492,7 @@ describe('az-quiz-game iDevice', () => {
         // so rendering them again would show each control twice.
         expect(source).not.toContain('passScore.getContents(');
         expect(source).not.toContain('progressBar.getContents(');
-        expect(source).toContain('gamification.scorm.getTab(');
+        expect(source).toMatch(/tabs\.getHtml\([\s\S]*grading: true/);
     });
 
     it('restores the control when the iDevice is reopened', () => {
@@ -602,7 +536,9 @@ describe('az-quiz-game edition lifecycle', () => {
                 },
             },
         };
-        global.$exeDevicesEdition = {
+        // The shared blocks have their own tests: here they are stand-ins, and
+        // afterEach puts the real object back.
+        global.$exeIDevicesEdition = {
             iDevice: {
                 gamification: {
                     progressBar: { addEvents: vi.fn() },
@@ -610,9 +546,7 @@ describe('az-quiz-game edition lifecycle', () => {
                     itinerary: { addEvents: vi.fn() },
                     share: { addEvents: vi.fn(), downloadBlob: vi.fn(() => true) },
                     helpers: { stopSound: vi.fn(), playSound: vi.fn() },
-                    common: { getLanguageTab: () => '' },
                 },
-                tabs: { init: () => {} },
             },
         };
 
@@ -658,6 +592,7 @@ describe('az-quiz-game edition lifecycle', () => {
         // into the next one.
         $exeDevice.$lifecycle.destroy();
         $.fx.off = savedAnimationsOff;
+        global.$exeIDevicesEdition = realEnvironment.edition;
         document.body.innerHTML = '';
     });
 
@@ -666,6 +601,14 @@ describe('az-quiz-game edition lifecycle', () => {
             $('.toggle-item').trigger('click');
 
             expect($('#tglInput').is(':checked')).toBe(true);
+        });
+
+        it('leaves a locked switch alone', () => {
+            $('#tglInput').prop('disabled', true);
+
+            $('.toggle-item').trigger('click');
+
+            expect($('#tglInput').is(':checked')).toBe(false);
         });
 
         it('stops toggling once the edition is closed', () => {
@@ -894,7 +837,7 @@ describe('az-quiz-game minimum score text', () => {
         global.$exeDevices = {
             iDevice: { gamification: { helpers: { encrypt: json => json } } },
         };
-        global.tinymce = { editors: [{}, { getContent: () => '' }] };
+        global.tinymce = { get: () => ({ getContent: () => '' }) };
         global.$exeDevice = undefined;
         $exeDevice = global.loadIdevice(join(__dirname, 'az-quiz-game.js'));
         $exeDevice.refreshTranslations();
@@ -903,7 +846,7 @@ describe('az-quiz-game minimum score text', () => {
 
     afterEach(() => {
         vi.restoreAllMocks();
-        delete global.tinymce;
+        global.tinymce = realEnvironment.tinymce;
         document.body.innerHTML = '';
     });
 
@@ -921,5 +864,242 @@ describe('az-quiz-game minimum score text', () => {
         renderCustomTexts({ msgPassScore: 'Nota mínima para superar la actividad: %s' });
 
         expect(saveAndReadMsgs().msgPassScore).toBe('Nota mínima para superar la actividad: %s');
+    });
+});
+
+/**
+ * The edition on $exeIDevicesEdition: the form in the shared tabs, opened for
+ * real with the shared object the setup loads.
+ */
+describe('az-quiz-game edition: shared form tabs', () => {
+    const PATH = '/files/perm/idevices/base/az-quiz-game/edition/';
+    const panel = (name) => document.getElementById(`roscoIdeviceForm-panel-${name}`);
+    const tabNames = () =>
+        [...document.querySelectorAll('#roscoIdeviceForm-tabs [data-exe-tab]')].map((tab) =>
+            tab.getAttribute('data-exe-tab')
+        );
+    const fakeEditors = (contents) =>
+        vi.spyOn(global.tinymce, 'get').mockImplementation((id) =>
+            id in contents
+                ? {
+                      initialized: true,
+                      getContent: () => contents[id],
+                      setContent: (html) => {
+                          contents[id] = html;
+                      },
+                  }
+                : null
+        );
+    let device;
+    let previousDevices;
+    let previousApp;
+
+    beforeEach(() => {
+        global.$ = realEnvironment.$;
+        global.jQuery = realEnvironment.jQuery;
+        global.document = realEnvironment.document;
+        global._ = realEnvironment.translate;
+        global.$exeIDevicesEdition = realEnvironment.edition;
+        global.tinymce = realEnvironment.tinymce;
+        previousDevices = global.$exeDevices;
+        previousApp = global.eXeLearning.app;
+        global.eXeLearning.app = {
+            ...previousApp,
+            common: {
+                initTooltips: vi.fn(),
+            },
+        };
+        // Export-side helpers (common.js) that loading and saving go through.
+        global.$exeDevices = {
+            iDevice: {
+                gamification: {
+                    media: { extractURLGD: (url) => url },
+                    helpers: {
+                        supportedBrowser: () => true,
+                        isJsonString: (text) => {
+                            try {
+                                return JSON.parse(text);
+                            } catch {
+                                return false;
+                            }
+                        },
+                        decrypt: (text) => text,
+                        encrypt: (text) => text,
+                    },
+                },
+            },
+        };
+        document.body.innerHTML = '<div id="azBody"></div>';
+        global.$exeDevice = undefined;
+        // Keep the source filename so coverage includes the real form and its help text.
+        const filename = join(__dirname, 'az-quiz-game.js');
+        runInThisContext(readFileSync(filename, 'utf8'), { filename });
+        device = global.$exeDevice;
+        global.attachEditionLifecycle(device);
+        device.init(document.getElementById('azBody'), {}, PATH);
+    });
+
+    afterEach(() => {
+        device.$lifecycle?.destroy();
+        vi.restoreAllMocks();
+        vi.unstubAllGlobals();
+        global.eXeLearning.app = previousApp;
+        global.$exeDevices = previousDevices;
+        global.$exeDevice = undefined;
+        document.body.innerHTML = '';
+    });
+
+    it('lays the form out in the shared tabs, with no feedback, and opens on its words', () => {
+        // No feedback: the A-Z quiz neither saves nor plays one yet.
+        expect(tabNames()).toEqual(['instructions', 'options', 'contents', 'grading', 'passwords', 'texts', 'after']);
+        expect(document.getElementById('roscoIdeviceForm-tab-contents').textContent.trim()).toBe('Words');
+        expect(panel('contents').classList.contains('active')).toBe(true);
+    });
+
+    it('puts each part of the form in its tab', () => {
+        expect(panel('instructions').querySelector('#eXeGameInstructions').value).toBe(
+            'Observe the letters, identify and fill in the missing words.'
+        );
+        expect(panel('options').querySelector('#roscoOptions #roscoShowMinimize')).not.toBeNull();
+        expect(panel('contents').querySelectorAll('#roscoDataWord .roscoFileWordEdition')).toHaveLength(
+            device.letters.length
+        );
+        expect(panel('passwords').querySelector('#eXeGameShowClue')).not.toBeNull();
+        expect(panel('after').querySelector('#eXeIdeviceTextAfter')).not.toBeNull();
+        expect(panel('grading').querySelector('.exe-progress-report-wrapper')).not.toBeNull();
+        expect(panel('texts').querySelector('#ci18n_msgReady').value).toBe('Ready?');
+    });
+
+    it('explains how its words are written in the message of the Questions tab', () => {
+        const info = panel('contents').querySelector('.exe-share-tools + p');
+
+        expect(info.tagName).toBe('P');
+        expect(info.textContent).toContain('Provide a word and its definition');
+        expect(info.querySelector(`img[src="${PATH}roscoIcoStart.png"]`)).not.toBeNull();
+        expect(document.querySelector('.exe-idevice-info')).toBeNull();
+    });
+
+    it('does not switch an option when its help or open explanation is clicked', () => {
+        const helps = [...document.querySelectorAll('.toggle-item .exe-idevice-help')];
+        const states = () => [...document.querySelectorAll('.toggle-input')].map((input) => input.checked);
+        const before = states();
+
+        expect(helps.length).toBeGreaterThan(0);
+        for (const help of helps) {
+            help.click();
+            help.querySelector('span').click();
+            document.getElementById(help.getAttribute('aria-controls')).click();
+        }
+
+        expect(states()).toEqual(before);
+    });
+
+    it('adds one accessible help button after the last control of each options row without changing its values', () => {
+        const rows = [...document.querySelector('#roscoOptions').children];
+        expect(rows).toHaveLength(6);
+        for (const row of rows) {
+            const buttons = row.querySelectorAll('.exe-idevice-help');
+            expect(buttons).toHaveLength(1);
+            const button = buttons[0];
+            expect(row.lastElementChild.contains(button)).toBe(true);
+            expect(button.type).toBe('button');
+            expect(button.title).toBe(button.getAttribute('aria-label'));
+            expect(button.getAttribute('aria-label')).toMatch(/^Information about \S/);
+            const content = document.getElementById(button.getAttribute('aria-controls'));
+            expect(content.textContent.length).toBeGreaterThan(30);
+            const controls = [...row.querySelectorAll('input')];
+            const values = () => controls.map((control) => [control.value, control.checked, control.disabled]);
+            const previousValues = values();
+            button.click();
+            expect(values()).toEqual(previousValues);
+            expect(button.getAttribute('aria-expanded')).toBe('true');
+            expect(content.classList.contains('help-hidden')).toBe(false);
+        }
+        // The browser shows its title on hover: no tooltip of the application.
+        expect(global.eXeLearning.app.common.initTooltips).not.toHaveBeenCalled();
+    });
+
+    it('explains both solution controls and the unlimited rounds setting', () => {
+        const solution = document.querySelector('.roscoShowSolutionRow');
+        const text = solution.querySelector('.help-content').textContent;
+        expect(solution.querySelectorAll('.exe-idevice-help')).toHaveLength(1);
+        expect(text).toContain('Show solutions:');
+        expect(text).toContain('Show solution in:');
+        expect(text).toContain('from 1 to 9');
+        expect(text.split('\n\n')).toHaveLength(2);
+        const rounds = document.getElementById('roscoNumberTurns').parentElement;
+        expect(rounds.querySelector('.help-content').textContent).toContain('Set 0 for unlimited rounds');
+        document.getElementById('roscoShowSolution').click();
+        expect(document.getElementById('roscoTimeShowSolution').disabled).toBe(true);
+        solution.querySelector('.exe-idevice-help').click();
+        expect(document.getElementById('roscoTimeShowSolution').disabled).toBe(true);
+    });
+
+    it('starts every help once and releases them when the edition closes', () => {
+        const helps = document.querySelectorAll('.exe-idevice-help');
+        expect(helps.length).toBe(12);
+        expect(openingHelps()).toHaveLength(helps.length);
+        device.$lifecycle.destroy();
+        expect(openingHelps()).toHaveLength(0);
+    });
+
+    it('offers Import, Export and Create with AI, with the prompt of the A-Z quiz', () => {
+        const build = vi.spyOn(global.$exeIDevicesEdition.iDevice.gamification.share, 'buildIAPromptText');
+        device.createForm();
+
+        const links = [...panel('contents').querySelectorAll('[data-exe-share]')];
+        expect(links.map((link) => link.getAttribute('data-exe-share'))).toEqual(['import', 'ai']);
+        // Export has no window: it saves the file at once.
+        expect(panel('contents').querySelector('.exe-share-tools #eXeGameExportQuestions')).not.toBeNull();
+        expect(build).toHaveBeenCalledWith(1, {});
+    });
+
+    it('keeps its broad rules out of the shared tabs', () => {
+        const css = readFileSync(join(__dirname, 'az-quiz-game.css'), 'utf-8');
+
+        expect(css).not.toMatch(/#roscoIdeviceForm\s+label\s*[,{]/);
+        expect(css).not.toMatch(/#roscoIdeviceForm\s+div\s*>/);
+        expect(css).toContain('#roscoOptions div>input.form-control');
+        expect(css).not.toContain('exe-form-tab');
+    });
+
+    it('reads its editors by id, whatever their order', () => {
+        const editors = { eXeIdeviceTextAfter: '<p>After</p>', eXeGameInstructions: '<p>Instructions</p>' };
+        fakeEditors(editors);
+        $('.roscoWordEdition').first().val('Abeja');
+        $('.roscoDefinitionEdition').first().val('Insecto que hace miel');
+
+        const data = device.validateData();
+
+        expect(data.instructions).toBe('<p>Instructions</p>');
+        expect(unescape(data.textAfter)).toBe('<p>After</p>');
+        expect(device.save()).toContain('<div class="rosco-extra-content"><p>After</p></div>');
+    });
+
+    it('imports a game into its editors by id', () => {
+        const editors = { eXeIdeviceTextAfter: '', eXeGameInstructions: '' };
+        fakeEditors(editors);
+        const game = {
+            typeGame: 'Rosco',
+            instructions: '<p>Imported instructions</p>',
+            textAfter: escape('<p>Imported after</p>'),
+            letters: device.letters,
+            wordsGame: [],
+            itinerary: {
+                showClue: false,
+                clueGame: '',
+                percentageClue: 40,
+                showCodeAccess: false,
+                codeAccess: '',
+                messageCodeAccess: '',
+            },
+            isScorm: 0,
+            textButtonScorm: 'Save score',
+        };
+
+        device.importGame(JSON.stringify(game), 'application/json');
+
+        expect(editors.eXeGameInstructions).toBe('<p>Imported instructions</p>');
+        expect(editors.eXeIdeviceTextAfter).toBe('<p>Imported after</p>');
     });
 });

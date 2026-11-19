@@ -243,7 +243,7 @@ export async function getBlockCount(page: Page): Promise<number> {
  */
 export async function getIdeviceCount(page: Page, ideviceType?: string): Promise<number> {
     if (ideviceType) {
-        return await page.locator(`#node-content article .idevice_node.${ideviceType}`).count();
+        return await page.locator(`#node-content article .idevice_node[class~="${ideviceType}"]`).count();
     }
     return await page.locator('#node-content article .idevice_node').count();
 }
@@ -258,7 +258,7 @@ export async function getIdeviceCount(page: Page, ideviceType?: string): Promise
  */
 export function getIdeviceByIndex(page: Page, index: number, ideviceType?: string): Locator {
     if (ideviceType) {
-        return page.locator(`#node-content article .idevice_node.${ideviceType}`).nth(index);
+        return page.locator(`#node-content article .idevice_node[class~="${ideviceType}"]`).nth(index);
     }
     return page.locator('#node-content article .idevice_node').nth(index);
 }

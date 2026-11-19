@@ -2149,6 +2149,26 @@ export default class IdeviceNode {
     }
 
     /**
+     * The iDevice's own save(). An iDevice that refuses to save says why in an
+     * alert or confirm window, and then save() shows no database error, even
+     * once the author has closed it. Only the windows requested during this
+     * call count: a window something else asks for while the save goes on
+     * says nothing about it.
+     *
+     * @returns {*} What the iDevice's save() returns.
+     */
+    saveEditionContent() {
+        const modals = eXeLearning.app.modals;
+        const windowRequests = () =>
+            (modals.alert.showRequests || 0) + (modals.confirm.showRequests || 0);
+        const before = windowRequests();
+        const content = $exeDevice.save();
+        const refused = !content || content === 'undefined';
+        this.saveRefusalExplained = refused && windowRequests() !== before;
+        return content;
+    }
+
+    /**
      * Save htmlView in database
      *
      * @returns {String}
@@ -2157,7 +2177,7 @@ export default class IdeviceNode {
         let params = ['odeComponentsSyncId', 'htmlView'];
         // Get idevice html
         if (saveIdevice && typeof $exeDevice !== 'undefined' && $exeDevice) {
-            this.htmlView = $exeDevice.save();
+            this.htmlView = this.saveEditionContent();
             // Add class error to idevice
             if (this.htmlView == false) {
                 this.ideviceBody.classList.add('save-error');
@@ -2186,7 +2206,7 @@ export default class IdeviceNode {
 
         let params = ['odeComponentsSyncId', 'jsonProperties'];
         if (saveIdevice && typeof $exeDevice !== 'undefined' && $exeDevice) {
-            this.jsonProperties = $exeDevice.save();
+            this.jsonProperties = this.saveEditionContent();
             // Add class error to idevice
             if (this.jsonProperties == false) {
                 this.ideviceBody.classList.add('save-error');
@@ -3096,10 +3116,15 @@ export default class IdeviceNode {
      */
     async save(loadPage) {
         clearInterval(this.checkDeviceLoadInterval);
-        // Stop any playing audio when exiting edition mode
-        if (typeof $exeDevicesEdition !== 'undefined' && $exeDevicesEdition.iDevice?.gamification?.helpers?.stopSound) {
-            $exeDevicesEdition.iDevice.gamification.helpers.stopSound();
+        // Stop any playing audio when exiting edition mode. Refactored iDevices
+        // use $exeIDevicesEdition, the rest $exeDevicesEdition, and each object
+        // keeps its own player, so both are stopped.
+        for (const edition of [globalThis.$exeDevicesEdition, globalThis.$exeIDevicesEdition]) {
+            edition?.iDevice?.gamification?.helpers?.stopSound?.();
         }
+        const modals = eXeLearning.app.modals;
+        // Set by saveEditionContent when the iDevice refused and said why.
+        this.saveRefusalExplained = false;
         // Save data of idevice in database
         let saveOk = await this.saveIdeviceProcess();
         // Desactivate user flags
@@ -3134,12 +3159,14 @@ export default class IdeviceNode {
             this.goWindowToIdevice(0);
         } else {
             this.toogleIdeviceButtonsState(false);
+            const explained = this.saveRefusalExplained;
             setTimeout(() => {
                 if (
-                    !eXeLearning.app.modals.alert.modal._isShown &&
-                    !eXeLearning.app.modals.confirm.modal._isShown
+                    !explained &&
+                    !modals.alert.modal._isShown &&
+                    !modals.confirm.modal._isShown
                 ) {
-                    eXeLearning.app.modals.alert.show({
+                    modals.alert.show({
                         title: _('Error saving the iDevice'),
                         body: _('Failed to save the iDevice to database'),
                         contentId: 'error',

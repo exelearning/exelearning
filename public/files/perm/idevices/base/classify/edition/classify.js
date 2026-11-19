@@ -29,6 +29,11 @@ var $exeDevice = {
     ],
     numberGroups: 2,
     maxGroups: 9,
+    // How many group names a save stores: as many as the activity was loaded
+    // with (updateFieldGame), so a save without changes keeps the list as it
+    // was, or as many as the author showed while editing (showGroups), even if
+    // some were hidden again. A new activity stores all nine.
+    savedGroups: 9,
     typeEdit: -1,
     numberCutCuestion: -1,
     clipBoard: '',
@@ -45,7 +50,7 @@ var $exeDevice = {
     ci18n: {},
 
     init: function (element, previousData, path) {
-        $exeDevicesEdition.iDevice.gamification.helpers.stopSound();
+        $exeIDevicesEdition.iDevice.gamification.helpers.stopSound();
 
         this.ideviceBody = element;
         this.idevicePreviousData = previousData;
@@ -59,7 +64,7 @@ var $exeDevice = {
         this.createForm();
 
         const root = document.getElementById('clasificaQEIdeviceForm') || document;
-        $exeDevicesEdition.iDevice.voiceRecorder.initVoiceRecorders(root);
+        $exeIDevicesEdition.iDevice.voiceRecorder.initVoiceRecorders(root);
     },
 
     refreshTranslations: function () {
@@ -169,7 +174,6 @@ var $exeDevice = {
             'The selected file does not contain a valid game'
         );
         msgs.msgEOneQuestion = _('Please provide at least one question');
-        msgs.msgProvideFB = _('Message to display when passing the game');
         msgs.msgNoSuportBrowser = _(
             'Your browser is not compatible with this tool.'
         );
@@ -193,195 +197,210 @@ var $exeDevice = {
     },
 
     createForm: function () {
-        const path = this.idevicePath,
-            html = `
-        <div id="clasificaQEIdeviceForm">
-            ${$exeDevicesEdition.iDevice.common.getIdeviceDescription(
-                _('Create interactive activities in which players have to classify cards with images, texts and/or sounds.'),
-                'https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe40/html/clasifica.html',
-            )}
-            <div class="exe-form-tab" title="${_('General settings')}">
-                ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset(c_('Drag each card to its container.'))}
-                <fieldset class="exe-fieldset exe-fieldset-closed">
-                    <legend><a href="#">${_('Options')}</a></legend>
-                    <div>
-                        <div class="d-flex align-items-center flex-wrap gap-2 mb-3">
-                            <span>${_('Difficulty level')}:</span>
-                            <div class="form-check form-check-inline m-0">
-                                <input class="form-check-input CQE-ELevel" id="clasificaL1" type="radio" name="qtxgamelevel" value="0" />
-                                <label class="form-check-label" for="clasificaL1">${_('Essential')}</label>
-                            </div>
-                            <div class="form-check form-check-inline m-0">
-                                <input class="form-check-input CQE-ELevel" id="clasificaL2" type="radio" name="qtxgamelevel" value="1" />
-                                <label class="form-check-label" for="clasificaL2">${_('Medium')}</label>
-                            </div>
-                            <div class="form-check form-check-inline m-0">
-                                <input class="form-check-input CQE-ELevel" id="clasificaL3" type="radio" name="qtxgamelevel" value="2" checked />
-                                <label class="form-check-label" for="clasificaL3">${_('Advanced')}</label>
-                            </div>
-                        </div>
-                        <div id="clasificaECustomMessagesDiv" class="mb-3">
-                            <span class="toggle-item" role="switch" aria-checked="false">
-                                <span class="toggle-control">
-                                    <input type="checkbox" class="toggle-input" id="clasificaECustomMessages" />
-                                    <span class="toggle-visual"></span>
-                                </span>
-                                <label class="toggle-label" for="clasificaECustomMessages">${_('Custom messages')}.</label>
-                            </span>
-                        </div>
-                        <div class="d-flex align-items-center flex-wrap gap-2 mb-3">
-                            <label for="clasificaENumGroups" class="mb-0">${_('Number of categories')}:</label>
-                            <select id="clasificaENumGroups" class="form-select form-select-sm" style="width:8ch">
-                                <option value="2">2</option>
-                                <option value="3">3</option>
-                                <option value="4">4</option>
-                                <option value="5">5</option>
-                                <option value="6">6</option>
-                                <option value="7">7</option>
-                                <option value="8">8</option>
-                                <option value="9">9</option>
-                            </select>
-                        </div>
-                        <div class="mb-3 align-items-center gap-2 flex-wrap">
-                            <label for="clasificaTitle0" class="mb-0">${_('Category')} 1:</label>
-                            <input type="text" id="clasificaTitle0" class="CQE-EGroup form-control" value="${_('Group')} 1"/>
-                        </div>
-                        <div class="mb-3 align-items-center gap-2 flex-wrap">
-                            <label for="clasificaTitle1" class="mb-0">${_('Category')} 2:</label>
-                            <input type="text" id="clasificaTitle1" class="CQE-EGroup form-control" value="${_('Group')} 2"/>
-                        </div>
-                        <div class="mb-3 align-items-center gap-2 flex-wrap">
-                            <label for="clasificaTitle2" class="mb-0">${_('Category')} 3:</label>
-                            <input type="text" id="clasificaTitle2" class="CQE-EGroup form-control" value="${_('Group')} 3"/>
-                        </div>
-                        <div class="mb-3 align-items-center gap-2 flex-wrap">
-                            <label for="clasificaTitle3" class="mb-0">${_('Category')} 4:</label>
-                            <input type="text" id="clasificaTitle3" class="CQE-EGroup form-control" value="${_('Group')} 4"/>
-                        </div>
-                        <div class="mb-3 align-items-center gap-2 flex-wrap">
-                            <label for="clasificaTitle4" class="mb-0">${_('Category')} 5:</label>
-                            <input type="text" id="clasificaTitle4" class="CQE-EGroup form-control" value="${_('Group')} 5"/>
-                        </div>
-                        <div class="mb-3 align-items-center gap-2 flex-wrap">
-                            <label for="clasificaTitle5" class="mb-0">${_('Category')} 6:</label>
-                            <input type="text" id="clasificaTitle5" class="CQE-EGroup form-control" value="${_('Group')} 6"/>
-                        </div>
-                        <div class="mb-3 align-items-center gap-2 flex-wrap">
-                            <label for="clasificaTitle6" class="mb-0">${_('Category')} 7:</label>
-                            <input type="text" id="clasificaTitle6" class="CQE-EGroup form-control" value="${_('Group')} 7"/>
-                        </div>
-                        <div class="mb-3 align-items-center gap-2 flex-wrap">
-                            <label for="clasificaTitle7" class="mb-0">${_('Category')} 8:</label>
-                            <input type="text" id="clasificaTitle7" class="CQE-EGroup form-control" value="${_('Group')} 8"/>
-                        </div>
-                        <div class="mb-3 align-items-center gap-2 flex-wrap">
-                            <label for="clasificaTitle8" class="mb-0">${_('Category')} 9:</label>
-                            <input type="text" id="clasificaTitle8" class="CQE-EGroup form-control" value="${_('Group')} 9"/>
-                        </div>
-                        <div class="mb-3">
-                            <span class="toggle-item" role="switch" aria-checked="false">
-                                <span class="toggle-control">
-                                    <input type="checkbox" class="toggle-input" id="clasificaEShowMinimize" />
-                                    <span class="toggle-visual"></span>
-                                </span>
-                                <label class="toggle-label" for="clasificaEShowMinimize">${_('Show minimized.')}</label>
-                            </span>
-                        </div>
-                        <div class="d-flex align-items-center gap-2 mb-3 flex-wrap">
-                            <label for="clasificaETime" class="mb-0">${_('Time (minutes)')}</label>
-                            <input type="number" name="clasificaETime" id="clasificaETime" value="0" min="0" max="120" step="1" class="form-control" style="width:6ch" />
-                        </div>
-                        <div class="d-flex align-items-center gap-2 mb-3 flex-nowrap">
-                            <span class="toggle-item" role="switch" aria-checked="false">
-                                <span class="toggle-control">
-                                    <input type="checkbox" class="toggle-input" id="clasificaEHasFeedBack" />
-                                    <span class="toggle-visual"></span>
-                                </span>
-                                <label class="toggle-label" for="clasificaEHasFeedBack">${_('Feedback')}.</label>
-                            </span>                              
-                            <label for="clasificaEPercentajeFB" class="mb-0">${_('Percent')}</label>
-                            <input type="number" name="clasificaEPercentajeFB" id="clasificaEPercentajeFB" value="100" min="5" max="100" step="5" disabled class="form-control" style="width:6ch" />
-                            <span>${_('% right to see the feedback')}</span>
-                        </div>
-                        <p id="clasificaEFeedbackP" class="CQE-EFeedbackP">
-                            <textarea id="clasificaEFeedBackEditor" class="exe-html-editor form-control" rows="4"></textarea>
-                        </p>
-                        <div class="d-flex align-items-center gap-2 mb-3 flex-wrap">
-                            <label for="clasificaEPercentajeQuestions" class="mb-0">%${_('Questions')}</label>
-                            <input type="number" name="clasificaEPercentajeQuestions" id="clasificaEPercentajeQuestions" value="100" min="1" max="100" class="form-control" style="width:6ch" />
-                            <span id="clasificaENumeroPercentaje">1/1</span>
-                        </div>
-                       <div class="d-none align-items-center gap-2 mb-3 flex-wrap">
-                            <label for="clasificaEAuthor" class="mb-0">${_('Authorship')}:</label>
-                            <input id="clasificaEAuthor" type="text" class="form-control" />
-                        </div>                       
-                        <div id="clasificaEBackDiv">
-                            <div class="CQE-EInputImageBack d-flex align-items-center gap-2 mb-3">
-                                <label for="clasificaEURLImgCard" class="mb-0">${_('Image back')}: </label>
-                                <input type="text" class="exe-file-picker CQE-EURLImage form-control me-0" id="clasificaEURLImgCard"/>
-                                <a href="#" id="clasificaEPlayCard" class="clasificaE-ENavigationButton clasificaEEPlayVideo" title="${_('Show')}">
-                                     <img src="${path}quextIEPlay.png" alt="${_('Show')}" class="CQE-EButtonImage " />
-                                </a>
-                            </div>
-                            <div id="clasificaEbackground" class="CQE-Back mb-3">
-                                <img class="CQE-EImageBack" src="" id="clasificaECard" alt="${_('Image')}" style="display:none" />
-                                <img class="CQE-EImageBack" src="${path}clsfHome.png" id="clasificaENoCard" alt="${_('No image')}" />
-                            </div>
-                        </div>
-                        <div class="Games-Reportdiv d-flex align-items-center gap-2 mb-3 flex-wrap">
-                        </div>
+        const path = this.idevicePath;
+        const edition = $exeIDevicesEdition.iDevice;
+        const optionsHtml = `
+            <div id="clasificaEOptions">
+                <div class="d-flex align-items-center flex-wrap gap-2 mb-3" role="radiogroup" aria-labelledby="clasificaLevelLabel">
+                    <span id="clasificaLevelLabel">${_('Difficulty level')}:</span>
+                    <div class="form-check form-check-inline m-0">
+                        <input class="form-check-input CQE-ELevel" id="clasificaL1" type="radio" name="qtxgamelevel" value="0" />
+                        <label class="form-check-label" for="clasificaL1">${_('Essential')}</label>
                     </div>
-                </fieldset>
-                <fieldset class="exe-fieldset">
-                    <legend><a href="#">${_('Cards')}</a></legend>
-                    <div class="CQE-EPanel">
-                        <div class="CQE-Data">
-                            ${$exeDevice.createCards(1)}
-                            <div class="CQE-EOrders CQE-Hide" id="clasificaEOrder">
-                                <div class="CQE-ECustomMessage">
-                                    <span class="sr-av">${_('Hit')}</span><span class="CQE-EHit"></span>
-                                    <label for="clasificaEMessageOK">${_('Message')}</label>
-                                    <input type="text" id="clasificaEMessageOK" class="form-control" />
-                                </div>
-                                <div class="CQE-ECustomMessage">
-                                    <span class="sr-av">${_('Error')}</span><span class="CQE-EError"></span>
-                                    <label for="clasificaEMessageKO">${_('Message')}</label>
-                                    <input type="text" id="clasificaEMessageKO" class="form-control" />
-                                </div>
-                            </div>
-                            <div class="CQE-ENumQuestionDiv" id="clasificaENumQuestionDiv">
-                                <div class="CQE-ENumQ"><span class="sr-av">${_('Question')}</span></div>
-                                <span class="CQE-ENumQuestions" id="clasificaENumQuestions">0</span>
-                            </div>
-                        </div>
-                        <div class="CQE-EContents">
-                            <div class="CQE-ENavigationButtons gap-2">
-                                <a href="#" id="clasificaEAdd" class="CQE-ENavigationButton" title="${_('Add question')}"><img src="${path}quextIEAdd.png" alt="${_('Add question')}" class="CQE-EButtonImage b-add" /></a>
-                                <a href="#" id="clasificaEFirst" class="CQE-ENavigationButton" title="${_('First question')}"><img src="${path}quextIEFirst.png" alt="${_('First question')}" class="CQE-EButtonImage b-first" /></a>
-                                <a href="#" id="clasificaEPrevious" class="CQE-ENavigationButton" title="${_('Previous question')}"><img src="${path}quextIEPrev.png" alt="${_('Previous question')}" class="CQE-EButtonImage b-prev" /></a>
-                                <label class="sr-av" for="clasificaENumberQuestion">${_('Question number:')}</label><input type="text" class="CQE-NumberQuestion form-control" id="clasificaENumberQuestion" value="1"/>
-                                <a href="#" id="clasificaENext" class="CQE-ENavigationButton" title="${_('Next question')}"><img src="${path}quextIENext.png" alt="${_('Next question')}" class="CQE-EButtonImage b-next" /></a>
-                                <a href="#" id="clasificaELast" class="CQE-ENavigationButton" title="${_('Last question')}"><img src="${path}quextIELast.png" alt="${_('Last question')}" class="CQE-EButtonImage b-last" /></a>
-                                <a href="#" id="clasificaEDelete" class="CQE-ENavigationButton" title="${_('Delete question')}"><img src="${path}quextIEDelete.png" alt="${_('Delete question')}" class="CQE-EButtonImage b-delete" /></a>
-                                <a href="#" id="clasificaECopy" class="CQE-ENavigationButton" title="${_('Copy question')}"><img src="${path}quextIECopy.png" alt="${_('Copy question')}" class="CQE-EButtonImage b-copy" /></a>
-                                <a href="#" id="clasificaECut" class="CQE-ENavigationButton" title="${_('Cut question')}"><img src="${path}quextIECut.png" alt="${_('Cut question')}" class="CQE-EButtonImage b-cut" /></a>
-                                <a href="#" id="clasificaEPaste" class="CQE-ENavigationButton" title="${_('Paste question')}"><img src="${path}quextIEPaste.png" alt="${_('Paste question')}" class="CQE-EButtonImage b-paste" /></a>
-                            </div>
-                        </div>
+                    <div class="form-check form-check-inline m-0">
+                        <input class="form-check-input CQE-ELevel" id="clasificaL2" type="radio" name="qtxgamelevel" value="1" />
+                        <label class="form-check-label" for="clasificaL2">${_('Medium')}</label>
                     </div>
-                </fieldset>
-                ${$exeDevicesEdition.iDevice.common.getTextFieldset('after')}
+                    <div class="form-check form-check-inline m-0">
+                        <input class="form-check-input CQE-ELevel" id="clasificaL3" type="radio" name="qtxgamelevel" value="2" checked />
+                        <label class="form-check-label" for="clasificaL3">${_('Advanced')}</label>
+                    </div>
+                    ${edition.common.getHelpTooltip(
+                        _('Level of difficulty of the game. Essential, Medium or Advanced.')
+                    )}
                 </div>
-            ${$exeDevicesEdition.iDevice.gamification.itinerary.getTab()}
-            ${$exeDevicesEdition.iDevice.gamification.scorm.getTab(path)}
-            ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
-            ${$exeDevicesEdition.iDevice.gamification.share.getTab(true, 5)}
-            ${$exeDevicesEdition.iDevice.gamification.share.getTabIA(5)}
-        </div>
-    `;
+                <div id="clasificaECustomMessagesDiv" class="d-flex align-items-center mb-3">
+                    <span class="toggle-item">
+                        <span class="toggle-control">
+                            <input type="checkbox" class="toggle-input" id="clasificaECustomMessages" />
+                            <span class="toggle-visual"></span>
+                        </span>
+                        <label class="toggle-label" for="clasificaECustomMessages">${_('Custom messages')}.</label>
+                    </span>
+                    ${edition.common.getHelpTooltip(
+                        _('Show custom hit and error messages for each card.')
+                    )}
+                </div>
+                <div class="d-flex align-items-center gap-2 mb-3">
+                    <label for="clasificaENumGroups" class="mb-0">${_('Number of categories')}:</label>
+                    <select id="clasificaENumGroups" class="form-select form-select-sm" style="width:8ch">
+                        <option value="2">2</option>
+                        <option value="3">3</option>
+                        <option value="4">4</option>
+                        <option value="5">5</option>
+                        <option value="6">6</option>
+                        <option value="7">7</option>
+                        <option value="8">8</option>
+                        <option value="9">9</option>
+                    </select>
+                    ${edition.common.getHelpTooltip(
+                        _('Number of categories or groups into which cards will be classified (2 to 9).')
+                    )}
+                </div>
+                <div class="mb-3 align-items-center gap-2 flex-wrap">
+                    <label for="clasificaTitle0" class="mb-0">${_('Category')} 1:</label>
+                    <input type="text" id="clasificaTitle0" class="CQE-EGroup form-control" value="${_('Group')} 1"/>
+                </div>
+                <div class="mb-3 align-items-center gap-2 flex-wrap">
+                    <label for="clasificaTitle1" class="mb-0">${_('Category')} 2:</label>
+                    <input type="text" id="clasificaTitle1" class="CQE-EGroup form-control" value="${_('Group')} 2"/>
+                </div>
+                <div class="mb-3 align-items-center gap-2 flex-wrap">
+                    <label for="clasificaTitle2" class="mb-0">${_('Category')} 3:</label>
+                    <input type="text" id="clasificaTitle2" class="CQE-EGroup form-control" value="${_('Group')} 3"/>
+                </div>
+                <div class="mb-3 align-items-center gap-2 flex-wrap">
+                    <label for="clasificaTitle3" class="mb-0">${_('Category')} 4:</label>
+                    <input type="text" id="clasificaTitle3" class="CQE-EGroup form-control" value="${_('Group')} 4"/>
+                </div>
+                <div class="mb-3 align-items-center gap-2 flex-wrap">
+                    <label for="clasificaTitle4" class="mb-0">${_('Category')} 5:</label>
+                    <input type="text" id="clasificaTitle4" class="CQE-EGroup form-control" value="${_('Group')} 5"/>
+                </div>
+                <div class="mb-3 align-items-center gap-2 flex-wrap">
+                    <label for="clasificaTitle5" class="mb-0">${_('Category')} 6:</label>
+                    <input type="text" id="clasificaTitle5" class="CQE-EGroup form-control" value="${_('Group')} 6"/>
+                </div>
+                <div class="mb-3 align-items-center gap-2 flex-wrap">
+                    <label for="clasificaTitle6" class="mb-0">${_('Category')} 7:</label>
+                    <input type="text" id="clasificaTitle6" class="CQE-EGroup form-control" value="${_('Group')} 7"/>
+                </div>
+                <div class="mb-3 align-items-center gap-2 flex-wrap">
+                    <label for="clasificaTitle7" class="mb-0">${_('Category')} 8:</label>
+                    <input type="text" id="clasificaTitle7" class="CQE-EGroup form-control" value="${_('Group')} 8"/>
+                </div>
+                <div class="mb-3 align-items-center gap-2 flex-wrap">
+                    <label for="clasificaTitle8" class="mb-0">${_('Category')} 9:</label>
+                    <input type="text" id="clasificaTitle8" class="CQE-EGroup form-control" value="${_('Group')} 9"/>
+                </div>
+                <div class="d-flex align-items-center mb-3">
+                    <span class="toggle-item">
+                        <span class="toggle-control">
+                            <input type="checkbox" class="toggle-input" id="clasificaEShowMinimize" />
+                            <span class="toggle-visual"></span>
+                        </span>
+                        <label class="toggle-label" for="clasificaEShowMinimize">${_('Show minimized.')}</label>
+                    </span>
+                    ${edition.common.getHelpTooltip(
+                        _('The activity will show collapsed on startup until the user clicks to start.')
+                    )}
+                </div>
+                <div class="d-flex align-items-center gap-2 mb-3">
+                    <label for="clasificaETime" class="mb-0">${_('Time (minutes)')}</label>
+                    <input type="number" name="clasificaETime" id="clasificaETime" value="0" min="0" max="120" step="1" class="form-control" style="width:6ch" />
+                    ${edition.common.getHelpTooltip(
+                        _('Maximum time allowed to complete the game. 0 for unlimited time.')
+                    )}
+                </div>
+                <div class="d-flex align-items-center gap-2 mb-3">
+                    <label for="clasificaEPercentajeQuestions" class="mb-0">%${_('Questions')}</label>
+                    <input type="number" name="clasificaEPercentajeQuestions" id="clasificaEPercentajeQuestions" value="100" min="1" max="100" class="form-control" style="width:6ch" />
+                    <span id="clasificaENumeroPercentaje">1/1</span>
+                    ${edition.common.getHelpTooltip(
+                        _('Percentage of total questions/cards to show in the activity.')
+                    )}
+                </div>
+                <div class="d-none align-items-center gap-2 mb-3 flex-wrap">
+                    <label for="clasificaEGameAuthor" class="mb-0">${_('Authorship')}:</label>
+                    <input id="clasificaEGameAuthor" type="text" class="form-control" />
+                </div>
+                <div id="clasificaEBackDiv">
+                    <div class="CQE-EInputImageBack d-flex align-items-center gap-2 mb-3">
+                        <label for="clasificaEURLImgCard" class="mb-0">${_('Image back')}: </label>
+                        <input type="text" class="exe-file-picker CQE-EURLImage form-control me-0" id="clasificaEURLImgCard"/>
+                        <a href="#" id="clasificaEPlayCard" class="clasificaE-ENavigationButton clasificaEEPlayVideo" title="${_('Show')}">
+                             <img src="${path}quextIEPlay.png" alt="${_('Show')}" class="CQE-EButtonImage " />
+                        </a>
+                        ${edition.common.getHelpTooltip(
+                            _('Image shown on the back of cards.')
+                        )}
+                    </div>
+                    <div id="clasificaEbackground" class="CQE-Back mb-3">
+                        <img class="CQE-EImageBack" src="" id="clasificaECard" alt="${_('Image')}" style="display:none" />
+                        <img class="CQE-EImageBack" src="${path}clsfHome.png" id="clasificaENoCard" alt="${_('No image')}" />
+                    </div>
+                </div>
+            </div>
+        `;
+        const cardsHtml = `
+            <div class="CQE-EPanel">
+                <div class="CQE-Data">
+                    ${$exeDevice.createCards(1)}
+                    <div class="CQE-EOrders CQE-Hide" id="clasificaEOrder">
+                        <div class="CQE-ECustomMessage">
+                            <span class="sr-av">${_('Hit')}</span><span class="CQE-EHit"></span>
+                            <label for="clasificaEMessageOK">${_('Message')}</label>
+                            <input type="text" id="clasificaEMessageOK" class="form-control" />
+                        </div>
+                        <div class="CQE-ECustomMessage">
+                            <span class="sr-av">${_('Error')}</span><span class="CQE-EError"></span>
+                            <label for="clasificaEMessageKO">${_('Message')}</label>
+                            <input type="text" id="clasificaEMessageKO" class="form-control" />
+                        </div>
+                    </div>
+                    <div class="CQE-ENumQuestionDiv" id="clasificaENumQuestionDiv">
+                        <div class="CQE-ENumQ"><span class="sr-av">${_('Question')}</span></div>
+                        <span class="CQE-ENumQuestions" id="clasificaENumQuestions">0</span>
+                    </div>
+                </div>
+                <div class="CQE-EContents">
+                    <div class="CQE-ENavigationButtons gap-2">
+                        <a href="#" id="clasificaEAdd" class="CQE-ENavigationButton" title="${_('Add question')}"><img src="${path}quextIEAdd.png" alt="${_('Add question')}" class="CQE-EButtonImage b-add" /></a>
+                        <a href="#" id="clasificaEFirst" class="CQE-ENavigationButton" title="${_('First question')}"><img src="${path}quextIEFirst.png" alt="${_('First question')}" class="CQE-EButtonImage b-first" /></a>
+                        <a href="#" id="clasificaEPrevious" class="CQE-ENavigationButton" title="${_('Previous question')}"><img src="${path}quextIEPrev.png" alt="${_('Previous question')}" class="CQE-EButtonImage b-prev" /></a>
+                        <label class="sr-av" for="clasificaENumberQuestion">${_('Question number:')}</label><input type="text" class="CQE-NumberQuestion form-control" id="clasificaENumberQuestion" value="1"/>
+                        <a href="#" id="clasificaENext" class="CQE-ENavigationButton" title="${_('Next question')}"><img src="${path}quextIENext.png" alt="${_('Next question')}" class="CQE-EButtonImage b-next" /></a>
+                        <a href="#" id="clasificaELast" class="CQE-ENavigationButton" title="${_('Last question')}"><img src="${path}quextIELast.png" alt="${_('Last question')}" class="CQE-EButtonImage b-last" /></a>
+                        <a href="#" id="clasificaEDelete" class="CQE-ENavigationButton" title="${_('Delete question')}"><img src="${path}quextIEDelete.png" alt="${_('Delete question')}" class="CQE-EButtonImage b-delete" /></a>
+                        <a href="#" id="clasificaECopy" class="CQE-ENavigationButton" title="${_('Copy question')}"><img src="${path}quextIECopy.png" alt="${_('Copy question')}" class="CQE-EButtonImage b-copy" /></a>
+                        <a href="#" id="clasificaECut" class="CQE-ENavigationButton" title="${_('Cut question')}"><img src="${path}quextIECut.png" alt="${_('Cut question')}" class="CQE-EButtonImage b-cut" /></a>
+                        <a href="#" id="clasificaEPaste" class="CQE-ENavigationButton" title="${_('Paste question')}"><img src="${path}quextIEPaste.png" alt="${_('Paste question')}" class="CQE-EButtonImage b-paste" /></a>
+                    </div>
+                </div>
+            </div>
+        `;
+        const html = `
+            <div id="clasificaQEIdeviceForm">
+                ${edition.common.getIdeviceDescription(
+                    _('Create interactive activities in which players have to classify cards with images, texts and/or sounds.'),
+                    'https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe40/html/clasifica.html'
+                )}
+                ${edition.tabs.getHtml('clasificaQEIdeviceForm', {
+                    titles: { contents: _('Cards') },
+                    path: path,
+                    instructions: c_('Drag each card to its container.'),
+                    options: optionsHtml,
+                    contents: cardsHtml,
+                    passwords: true,
+                    feedback: true,
+                    after: true,
+                    grading: true,
+                    texts: this.ci18n,
+                    share: {
+                        importQuestions: true,
+                        formats: ['txt'],
+                        exportQuestions: true,
+                        type: 5,
+                    },
+                    info: {
+                        contents: _('Add the cards and choose the group each one belongs to. The groups are named in Options.'),
+                    },
+                })}
+            </div>
+        `;
         this.ideviceBody.innerHTML = html;
-        $exeDevicesEdition.iDevice.tabs.init('clasificaQEIdeviceForm');
-        $exeDevicesEdition.iDevice.gamification.scorm.init();
+        edition.tabs.bind('clasificaQEIdeviceForm');
+        edition.gamification.scorm.init();
         this.enableForm();
     },
 
@@ -481,7 +500,7 @@ var $exeDevice = {
 
     updateQuestionsNumber: function () {
         const percentInput = parseInt(
-            $exeDevice.removeTags($('#clasificaEPercentajeQuestions').val())
+            $exeIDevicesEdition.iDevice.common.removeTags($('#clasificaEPercentajeQuestions').val())
         );
         if (isNaN(percentInput)) return;
         const percentaje = Math.min(Math.max(percentInput, 1), 100),
@@ -495,8 +514,8 @@ var $exeDevice = {
         const num = Math.min(Math.max(i, 0), $exeDevice.wordsGame.length - 1),
             p = $exeDevice.wordsGame[num];
 
-        $('#clasificaEColor').val(p.color);
-        $('#clasificaEBackColor').val(p.backcolor);
+        $('#clasificaEColor').val($exeDevice.toColorInput(p.color, '#000000'));
+        $('#clasificaEBackColor').val($exeDevice.toColorInput(p.backcolor, '#ffffff'));
 
         $exeDevice.changeTypeQuestion(p.type);
 
@@ -528,7 +547,49 @@ var $exeDevice = {
         $('#clasificaEMessageKO').val(p.msgError);
         $('#clasificaENumberQuestion').val(i + 1);
 
-        $exeDevicesEdition.iDevice.gamification.helpers.stopSound();
+        $exeIDevicesEdition.iDevice.gamification.helpers.stopSound();
+    },
+
+    /**
+     * What an <input type="color"> can show for a stored colour. The input
+     * only takes #rrggbb and turns anything else black, and older versions
+     * stored the background of some cards as rgba().
+     *
+     * @param {string} color - The stored colour.
+     * @param {string} fallback - The #rrggbb to show when it cannot be read.
+     * @returns {string} A #rrggbb colour.
+     */
+    toColorInput: function (color, fallback) {
+        const raw = typeof color === 'string' ? color.trim() : '';
+        if (/^#[0-9a-f]{6}$/i.test(raw)) return raw.toLowerCase();
+        const short = raw.match(/^#([0-9a-f])([0-9a-f])([0-9a-f])$/i);
+        if (short) {
+            return `#${short[1]}${short[1]}${short[2]}${short[2]}${short[3]}${short[3]}`.toLowerCase();
+        }
+        const rgb = raw.match(/^rgba?\(\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(\d{1,3})\s*[,)]/i);
+        if (rgb) {
+            return `#${rgb
+                .slice(1, 4)
+                .map((n) => Math.min(255, parseInt(n, 10)).toString(16).padStart(2, '0'))
+                .join('')}`;
+        }
+        return fallback;
+    },
+
+    /**
+     * The colour a card saves: the stored one while its input still shows
+     * what toColorInput made of it, so a save without changes keeps it as it
+     * was, and the input's once the author picks another.
+     *
+     * @param {string} stored - The colour the card was loaded with.
+     * @param {string} shown - The value of the input.
+     * @param {string} fallback - The fallback the input was given.
+     * @returns {string}
+     */
+    keepColor: function (stored, shown, fallback) {
+        return typeof stored === 'string' && $exeDevice.toColorInput(stored, fallback) === shown
+            ? stored
+            : shown;
     },
 
     hexToRgba: function (hex, alpha = 1) {
@@ -631,8 +692,8 @@ var $exeDevice = {
                 $('#clasificaEAuthorAlt')
                     .removeClass('d-flex')
                     .addClass('d-none');
-                $('#clasificaEColor').val(currentColor).trigger('input');
-                $('#clasificaEBackColor').val(currentBg).trigger('input');
+                $('#clasificaEColor').val($exeDevice.toColorInput(currentColor, '#000000')).trigger('input');
+                $('#clasificaEBackColor').val($exeDevice.toColorInput(currentBg, '#ffffff')).trigger('input');
                 $('#clasificaETextDiv').css({
                     color: currentColor,
                     'background-color': currentBg,
@@ -648,8 +709,8 @@ var $exeDevice = {
                 $(elementsToHide).show();
                 $colorInputs.show();
                 $labelsColor.show();
-                $('#clasificaEColor').val(currentColor).trigger('input');
-                $('#clasificaEBackColor').val(currentBg).trigger('input');
+                $('#clasificaEColor').val($exeDevice.toColorInput(currentColor, '#000000')).trigger('input');
+                $('#clasificaEBackColor').val($exeDevice.toColorInput(currentBg, '#ffffff')).trigger('input');
                 $('#clasificaETextDiv').css({
                     color: currentColor,
                     'background-color': $exeDevice.hexToRgba(currentBg, 0.7),
@@ -715,35 +776,36 @@ var $exeDevice = {
 
             const instructions = $('.clasifica-instructions', wrapper);
             if (instructions.length === 1) {
-                $('#eXeGameInstructions').val(instructions.html());
+                const instructionsHtml = instructions.html();
+                $('#eXeGameInstructions').val(instructionsHtml);
+                tinyMCE.get('eXeGameInstructions')?.setContent(instructionsHtml);
             }
 
             const textAfter = $('.clasifica-extra-content', wrapper);
             if (textAfter.length === 1) {
-                $('#eXeIdeviceTextAfter').val(textAfter.html());
+                const textAfterHtml = textAfter.html();
+                $('#eXeIdeviceTextAfter').val(textAfterHtml);
+                tinyMCE.get('eXeIdeviceTextAfter')?.setContent(textAfterHtml);
             }
 
             const textFeedBack = $('.clasifica-feedback-game', wrapper);
             if (textFeedBack.length === 1) {
-                $('#clasificaEFeedBackEditor').val(textFeedBack.html());
+                $exeIDevicesEdition.iDevice.gamification.feedback.setText(
+                    textFeedBack.html() || ''
+                );
+            } else if (dataGame.textFeedBack) {
+                $exeIDevicesEdition.iDevice.gamification.feedback.setText(
+                    unescape(dataGame.textFeedBack)
+                );
             }
 
             $exeDevice.updateFieldGame(dataGame);
 
-            $exeDevicesEdition.iDevice.gamification.common.setLanguageTabValues(
+            $exeIDevicesEdition.iDevice.gamification.common.setLanguageTabValues(
                 dataGame.msgs
             );
             $exeDevice.showQuestion(0);
         }
-    },
-
-    escapeHtml: function (string) {
-        return String(string)
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;')
-            .replace(/'/g, '&#39;');
     },
 
     save: function () {
@@ -765,9 +827,8 @@ var $exeDevice = {
         let json = JSON.stringify(dataGame);
         json = $exeDevices.iDevice.gamification.helpers.encrypt(json);
 
-        const textFeedBack = tinyMCE
-            .get('clasificaEFeedBackEditor')
-            .getContent();
+        const textFeedBack =
+            $exeIDevicesEdition.iDevice.gamification.feedback.getText();
         let divContent = '';
         if (dataGame.instructions !== '') {
             divContent = `<div class="clasifica-instructions">${dataGame.instructions}</div>`;
@@ -791,7 +852,10 @@ var $exeDevice = {
         html += linksAudios;
         html += imgCard;
 
-        const textAfter = tinyMCE.get('eXeIdeviceTextAfter').getContent();
+        const textAfter =
+            $exeIDevicesEdition.iDevice.common.getEditorContent(
+                'eXeIdeviceTextAfter'
+            );
         if (textAfter !== '') {
             html += `<div class="clasifica-extra-content">${textAfter}</div>`;
         }
@@ -831,12 +895,12 @@ var $exeDevice = {
         return html;
     },
 
-    validateQuestion: function () {
+    validateQuestion: function (options = {}) {
         let message = '',
             msgs = $exeDevice.msgs,
             p = {};
 
-        $exeDevicesEdition.iDevice.gamification.helpers.stopSound();
+        $exeIDevicesEdition.iDevice.gamification.helpers.stopSound();
 
         p.type = parseInt($('input[name=qxtmediatype]:checked').val());
         p.x = parseFloat($('#clasificaEXImage').val());
@@ -846,8 +910,10 @@ var $exeDevice = {
         p.url = $('#clasificaEURLImage').val().trim();
         p.audio = $('#clasificaEURLAudio').val().trim();
         p.eText = $('#clasificaEText').val();
-        p.color = $('#clasificaEColor').val();
-        p.backcolor = $('#clasificaEBackColor').val();
+        // The inputs may show the stored colours converted (toColorInput).
+        const loaded = $exeDevice.wordsGame[$exeDevice.active] || {};
+        p.color = $exeDevice.keepColor(loaded.color, $('#clasificaEColor').val(), '#000000');
+        p.backcolor = $exeDevice.keepColor(loaded.backcolor, $('#clasificaEBackColor').val(), '#ffffff');
         p.group = parseInt($('#clasificaEGroupSelect option:selected').val());
         p.msgHit = $('#clasificaEMessageOK').val();
         p.msgError = $('#clasificaEMessageKO').val();
@@ -868,13 +934,9 @@ var $exeDevice = {
             $exeDevice.wordsGame[$exeDevice.active] = p;
             return true;
         } else {
-            $exeDevice.showMessage(message);
+            if (!options.silent) $exeIDevicesEdition.iDevice.common.showMessage(message);
             return false;
         }
-    },
-
-    showMessage: function (msg) {
-        eXe.app.alert(msg);
     },
 
     getIdeviceID: function () {
@@ -886,38 +948,65 @@ var $exeDevice = {
         return ideviceid;
     },
 
+    /**
+     * The cards of the activity, checked. Saving asks for more than
+     * this; Export, which only writes the cards, for nothing else.
+     *
+     * @returns {Array|false} The cards, or false after telling the
+     * author what one of them is missing.
+     */
+    validateQuestions: function () {
+        if ($exeDevice.wordsGame.length === 0) {
+            $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgEOneQuestion);
+            return false;
+        }
+        for (let i = 0; i < $exeDevice.wordsGame.length; i++) {
+            const mquestion = $exeDevice.normalizeQuestionByType(
+                $exeDevice.wordsGame[i]
+            );
+            $exeDevice.wordsGame[i] = mquestion;
+            if (!$exeDevice.isQuestionComplete(mquestion)) {
+                // Bring the offending card up so the message points at something.
+                $exeDevice.active = i;
+                $exeDevice.showQuestion(i);
+                $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgCompleteData);
+                return false;
+            }
+        }
+        return $exeDevice.wordsGame;
+    },
+
     validateData: function () {
-        const clear = $exeDevice.removeTags,
-            instructions = tinyMCE.get('eXeGameInstructions').getContent(),
-            textFeedBack = tinyMCE.get('clasificaEFeedBackEditor').getContent(),
-            textAfter = tinyMCE.get('eXeIdeviceTextAfter').getContent(),
+        const clear = $exeIDevicesEdition.iDevice.common.removeTags,
+            instructions = $exeIDevicesEdition.iDevice.common.getEditorContent(
+                'eXeGameInstructions'
+            ),
+            textAfter = $exeIDevicesEdition.iDevice.common.getEditorContent(
+                'eXeIdeviceTextAfter'
+            ),
             showMinimize = $('#clasificaEShowMinimize').is(':checked'),
-            itinerary =
-                $exeDevicesEdition.iDevice.gamification.itinerary.getValues(),
-            feedBack = $('#clasificaEHasFeedBack').is(':checked'),
-            percentajeFB = parseInt(clear($('#clasificaEPercentajeFB').val())),
             customMessages = $('#clasificaECustomMessages').is(':checked'),
             percentajeQuestions = parseInt(
                 clear($('#clasificaEPercentajeQuestions').val())
             ),
             time = parseInt(clear($('#clasificaETime').val())),
-            author = $('#clasificaEAuthor').val(),
+            author = $('#clasificaEGameAuthor').val(),
             numberGroups = parseInt($('#clasificaENumGroups').val()),
             gameLevel = parseInt($('input[name=qtxgamelevel]:checked').val()),
-            progressBar =
-                $exeDevicesEdition.iDevice.gamification.progressBar.getValues(),
             passScore =
-                $exeDevicesEdition.iDevice.gamification.passScore.getValues(),
+                $exeIDevicesEdition.iDevice.gamification.passScore.getValues(),
             imgCard = $('#clasificaEURLImgCard').val(),
             id = $exeDevice.getIdeviceID();
 
+        const itinerary =
+            $exeIDevicesEdition.iDevice.gamification.itinerary.getValues();
         if (!itinerary) return;
+        const progressBar =
+            $exeIDevicesEdition.iDevice.gamification.progressBar.getValues();
         if (!progressBar) return false;
-
-        if ($exeDevice.wordsGame.length === 0) {
-            $exeDevice.showMessage($exeDevice.msgs.msgEOneQuestion);
-            return false;
-        }
+        const feedback =
+            $exeIDevicesEdition.iDevice.gamification.feedback.getValues();
+        if (!feedback) return false;
 
         let nogroups = false;
         $('.CQE-EGroup').each(function (i) {
@@ -931,27 +1020,13 @@ var $exeDevice = {
         });
 
         if (nogroups) {
-            $exeDevice.showMessage(
-                'Debes indicar un nombre para todos los grupos seleccionados'
-            );
+            $exeIDevicesEdition.iDevice.common.showMessage(_('Give each group a name in Options'));
             return false;
         }
 
-        for (let i = 0; i < $exeDevice.wordsGame.length; i++) {
-            const mquestion = $exeDevice.normalizeQuestionByType(
-                $exeDevice.wordsGame[i]
-            );
-            $exeDevice.wordsGame[i] = mquestion;
-            if (!$exeDevice.isQuestionComplete(mquestion)) {
-                // Bring the offending card up so the message points at something.
-                $exeDevice.active = i;
-                $exeDevice.showQuestion(i);
-                $exeDevice.showMessage($exeDevice.msgs.msgCompleteData);
-                return false;
-            }
-        }
+        if (!$exeDevice.validateQuestions()) return false;
 
-        const scorm = $exeDevicesEdition.iDevice.gamification.scorm.getValues();
+        const scorm = $exeIDevicesEdition.iDevice.gamification.scorm.getValues();
 
         return {
             typeGame: 'Clasifica',
@@ -964,15 +1039,15 @@ var $exeDevice = {
             textButtonScorm: scorm.textButtonScorm,
             repeatActivity: true,
             weighted: scorm.weighted || 100,
-            textFeedBack: escape(textFeedBack),
+            textFeedBack: escape(feedback.textFeedBack),
             textAfter: escape(textAfter),
-            feedBack,
-            percentajeFB,
+            feedBack: feedback.feedBack,
+            percentajeFB: feedback.percentajeFB,
             customMessages,
             percentajeQuestions,
             time,
             version: $exeDevice.version,
-            groups: $exeDevice.groups,
+            groups: $exeDevice.groups.slice(0, Math.max($exeDevice.savedGroups, numberGroups)),
             numberGroups,
             gameLevel,
             evaluation: progressBar.evaluation,
@@ -1072,7 +1147,7 @@ var $exeDevice = {
                         this.naturalWidth,
                         this.naturalHeight
                     );
-                    $exeDevice.drawImage(this, mData);
+                    $exeIDevicesEdition.iDevice.common.drawImage(this, mData);
                     $image.show();
                     $nimage.hide();
                     $exeDevice.paintMouse(this, $cursor, x, y);
@@ -1116,15 +1191,6 @@ var $exeDevice = {
                 })
                 .show();
         }
-    },
-
-    drawImage: function (image, mData) {
-        $(image).css({
-            left: `${mData.x}px`,
-            top: `${mData.y}px`,
-            width: `${mData.w}px`,
-            height: `${mData.h}px`,
-        });
     },
 
     addEvents: function () {
@@ -1190,7 +1256,7 @@ var $exeDevice = {
             e.preventDefault();
             const selectedFile = $('#clasificaEURLAudio').val().trim();
             if (selectedFile.length > 4) {
-                $exeDevicesEdition.iDevice.gamification.helpers.playSound(selectedFile);
+                $exeIDevicesEdition.iDevice.gamification.helpers.playSound(selectedFile);
             }
         });
 
@@ -1199,7 +1265,7 @@ var $exeDevice = {
             const selectedFile = this.value.trim();
             const ext = selectedFile.split('.').pop().toLowerCase();
             if (selectedFile.startsWith('files') && !validExt.includes(ext)) {
-                $exeDevice.showMessage(
+                $exeIDevicesEdition.iDevice.common.showMessage(
                     `${_('Supported formats')}: jpg, jpeg, gif, png, svg, webp`
                 );
                 return false;
@@ -1224,7 +1290,7 @@ var $exeDevice = {
             const selectedFile = $('#clasificaEURLImage').val();
             const ext = selectedFile.split('.').pop().toLowerCase();
             if (selectedFile.startsWith('files') && !validExt.includes(ext)) {
-                $exeDevice.showMessage(
+                $exeIDevicesEdition.iDevice.common.showMessage(
                     `${_('Supported formats')}: jpg, jpeg, gif, png, svg, webp`
                 );
                 return false;
@@ -1327,15 +1393,11 @@ var $exeDevice = {
                 $exeDevice.wordsGame[$exeDevice.active].audio = selectedFile;
             }
             if (selectedFile.length > 4) {
-                  $exeDevicesEdition.iDevice.gamification.helpers.playSound(selectedFile);
+                $exeIDevicesEdition.iDevice.gamification.helpers.playSound(selectedFile);
             }
         });
 
-        $('#clasificaEHasFeedBack').on('change', function () {
-            const marcado = $(this).is(':checked');
-            $('#clasificaEFeedbackP').slideToggle(marcado);
-            $('#clasificaEPercentajeFB').prop('disabled', !marcado);
-        });
+        $exeIDevicesEdition.iDevice.gamification.feedback.addEvents();
 
         $('#clasificaECustomMessages').on('change', function () {
             const messages = $(this).is(':checked');
@@ -1396,19 +1458,15 @@ var $exeDevice = {
             }
         });
 
-        $exeDevicesEdition.iDevice.gamification.progressBar.addEvents();
-        $exeDevicesEdition.iDevice.gamification.passScore.addEvents();
+        $exeIDevicesEdition.iDevice.gamification.progressBar.addEvents();
+        $exeIDevicesEdition.iDevice.gamification.passScore.addEvents();
         if (
             window.File &&
             window.FileReader &&
             window.FileList &&
             window.Blob
         ) {
-            $('#eXeGameExportImport .exe-field-instructions')
-                .eq(0)
-                .text(`${_('Supported formats')}: txt)`);
             $('#eXeGameExportImport').show();
-            $('#eXeGameImportGame').attr('accept', '.txt, .xml');
             $('#eXeGameImportGame').on('change', (e) => {
                 const file = e.target.files[0];
                 if (!file) {
@@ -1419,9 +1477,7 @@ var $exeDevice = {
                     !file.type ||
                     !(
                         file.type.match('text/plain') ||
-                        file.type.match('application/json') ||
-                        file.type.match('application/xml') ||
-                        file.type.match('text/xml')
+                        file.type.match('application/json')
                     )
                 ) {
                     eXe.app.alert(_('Please select a text file (.txt)'));
@@ -1436,12 +1492,15 @@ var $exeDevice = {
                 });
                 reader.readAsText(file);
             });
+            $('#eXeGameExportQuestions').on('click', () => {
+                $exeDevice.exportQuestions();
+            });
         } else {
             $('#eXeGameExportImport').hide();
         }
 
-        $exeDevicesEdition.iDevice.gamification.itinerary.addEvents();
-        $exeDevicesEdition.iDevice.gamification.share.addEvents(
+        $exeIDevicesEdition.iDevice.gamification.itinerary.addEvents();
+        $exeIDevicesEdition.iDevice.gamification.share.addEvents(
             5,
             $exeDevice.insertWords
         );
@@ -1454,11 +1513,6 @@ var $exeDevice = {
             e.preventDefault();
             $exeDevice.loadImageCard();
         });
-
-        $('.exe-block-dismissible .exe-block-close').click(function () {
-            $(this).parent().fadeOut();
-            return false;
-        });
     },
 
     loadImageCard: function () {
@@ -1467,7 +1521,7 @@ var $exeDevice = {
             ext = url.split('.').pop().toLowerCase();
 
         if (url.indexOf('files') == 0 && validExt.indexOf(ext) == -1) {
-            $exeDevice.showMessage(
+            $exeIDevicesEdition.iDevice.common.showMessage(
                 _('Supported formats') + ': jpg, jpeg, gif, png, svg, webp'
             );
             return false;
@@ -1502,6 +1556,9 @@ var $exeDevice = {
     },
 
     showGroups: function (number) {
+        // A group shown once is saved even if it is hidden again, so its name
+        // comes back when the author raises the number.
+        $exeDevice.savedGroups = Math.max($exeDevice.savedGroups, number);
         $('.CQE-EGroup').closest('div').hide();
         $('.CQE-EGroup').each(function (i) {
             const id = $(this).attr('id');
@@ -1524,13 +1581,6 @@ var $exeDevice = {
         messages ? $('.CQE-EOrders').slideDown() : $('.CQE-EOrders').slideUp();
     },
 
-    updateGameMode: function (feedback) {
-        $('#clasificaEHasFeedBack').prop('checked', feedback);
-        feedback
-            ? $('#clasificaEFeedbackP').slideDown()
-            : $('#clasificaEFeedbackP').slideUp();
-    },
-
     clearQuestion: function () {
         $('.CQE-Type')[0].checked = true;
         $(
@@ -1543,7 +1593,7 @@ var $exeDevice = {
 
     addQuestion: function () {
         if ($exeDevice.wordsGame.length >= 25) {
-            $exeDevice.showMessage($exeDevice.msgs.msgPairsMax);
+            $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgPairsMax);
             return;
         }
         if ($exeDevice.validateQuestion()) {
@@ -1563,7 +1613,7 @@ var $exeDevice = {
 
     removeQuestion: function () {
         if ($exeDevice.wordsGame.length < 2) {
-            $exeDevice.showMessage($exeDevice.msgs.msgEOneQuestion);
+            $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgEOneQuestion);
         } else {
             $exeDevice.wordsGame.splice($exeDevice.active, 1);
             $exeDevice.active = Math.min(
@@ -1598,8 +1648,11 @@ var $exeDevice = {
     },
 
     pasteQuestion: function () {
+        $exeIDevicesEdition.iDevice.gamification.share.keepQuestionOnScreen(
+            (options) => $exeDevice.validateQuestion(options)
+        );
         if ($exeDevice.wordsGame.length >= 25) {
-            $exeDevice.showMessage($exeDevice.msgs.msgPairsMax);
+            $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgPairsMax);
             return;
         }
         if ($exeDevice.typeEdit === 0) {
@@ -1658,7 +1711,7 @@ var $exeDevice = {
 
     updateFieldGame: function (game) {
         $exeDevice.active = 0;
-        $exeDevicesEdition.iDevice.gamification.itinerary.setValues(
+        $exeIDevicesEdition.iDevice.gamification.itinerary.setValues(
             game.itinerary
         );
 
@@ -1693,27 +1746,27 @@ var $exeDevice = {
         }
 
         $('#clasificaEShowMinimize').prop('checked', game.showMinimize);
-        $('#clasificaEHasFeedBack').prop('checked', game.feedBack);
-        $('#clasificaEPercentajeFB').val(game.percentajeFB);
+        $exeIDevicesEdition.iDevice.gamification.feedback.setValues({
+            feedBack: game.feedBack,
+            percentajeFB: game.percentajeFB,
+        });
         $('#clasificaEPercentajeQuestions').val(game.percentajeQuestions);
         $('#clasificaETime').val(game.time);
-        $('#clasificaEAuthor').val(game.author);
+        $('#clasificaEGameAuthor').val(game.author);
 
         $('#clasificaENumGroups').val(game.numberGroups);
         $('#clasificaECustomMessages').prop('checked', game.customMessages);
-        $exeDevicesEdition.iDevice.gamification.progressBar.setValues({
+        $exeIDevicesEdition.iDevice.gamification.progressBar.setValues({
             evaluation: game.evaluation,
             evaluationID: game.evaluationID,
         });
-        $exeDevicesEdition.iDevice.gamification.passScore.setValues({
+        $exeIDevicesEdition.iDevice.gamification.passScore.setValues({
             passScoreMode: game.passScoreMode,
             passScoreCustom: game.passScoreCustom,
         });
 
         $exeDevice.wordsGame = game.wordsGame;
-        $exeDevice.updateGameMode(game.feedBack);
         $('#clasificaENumQuestions').text($exeDevice.wordsGame.length);
-        $('#clasificaEPercentajeFB').prop('disabled', !game.feedBack);
 
         $(
             `input.CQE-ELevel[name='qtxgamelevel'][value='${game.gameLevel}']`
@@ -1727,6 +1780,7 @@ var $exeDevice = {
 
         // Retrocompatibilidad: versiones antiguas solo guardaban 4 grupos
         $exeDevice.groups = game.groups.slice();
+        $exeDevice.savedGroups = $exeDevice.groups.length;
         while ($exeDevice.groups.length < $exeDevice.maxGroups) {
             const i = $exeDevice.groups.length;
             $exeDevice.groups.push(_('Group') + ' ' + (i + 1));
@@ -1735,7 +1789,7 @@ var $exeDevice = {
 
         $exeDevice.showGroups($exeDevice.numberGroups);
 
-        $exeDevicesEdition.iDevice.gamification.scorm.setValues(
+        $exeIDevicesEdition.iDevice.gamification.scorm.setValues(
             game.isScorm,
             game.textButtonScorm,
             game.repeatActivity,
@@ -1746,6 +1800,31 @@ var $exeDevice = {
     importText: function (content) {
         const lines = content.split('\n');
         $exeDevice.insertWords(lines);
+    },
+
+    /**
+     * Download the items that have a text as "group#text" lines, the format
+     * the Import window and the AI read back. Items that are only an image
+     * have no text form, so they are left out.
+     */
+    exportQuestions: function () {
+        if (!$exeDevice.validateQuestion()) return false;
+        // Only the cards are checked: they are all that Export writes.
+        const wordsGame = $exeDevice.validateQuestions();
+        if (!wordsGame) return false;
+
+        const lines = wordsGame
+            .filter((word) => word.type !== 0 && (word.eText || '').trim())
+            .map((word) => `${word.group}#${word.eText.replace(/[#\s]+/g, ' ').trim()}`);
+        if (lines.length === 0) {
+            eXe.app.alert(_('Sorry, there are no questions for this type of activity.'));
+            return false;
+        }
+        return $exeIDevicesEdition.iDevice.gamification.share.downloadBlob(
+            new Blob([lines.join('\n')], { type: 'text/plain' }),
+            `${_('Classify')}.txt`,
+            'clasificaQEIdeviceForm'
+        );
     },
 
     insertWords: function (lines) {
@@ -1767,13 +1846,19 @@ var $exeDevice = {
             }
         });
 
-        const numgroups = $exeDevice.validateGroups(valids);
+        // The lines join the groups the activity already has: a file may add
+        // groups after the last one, but never takes any away.
+        const current = parseInt($('#clasificaENumGroups').val(), 10) || 2,
+            numgroups = $exeDevice.validateGroups([
+                ...Array.from({ length: current }, (empty, group) => `${group}#`),
+                ...valids,
+            ]);
         if (numgroups) {
             $exeDevice.numberGroups = numgroups;
             $('#clasificaENumGroups').val(numgroups);
             $exeDevice.showGroups(numgroups);
         } else {
-            $exeDevice.showMessage(_('Incorrect group number'));
+            $exeIDevicesEdition.iDevice.common.showMessage(_('Incorrect group number'));
             return;
         }
         $exeDevice.addWords(questions);
@@ -1797,12 +1882,14 @@ var $exeDevice = {
                 wordsGame.push(p);
             }
         }
+        $exeIDevicesEdition.iDevice.gamification.share.keepQuestionOnScreen(
+            (options) => $exeDevice.validateQuestion(options)
+        );
         $exeDevice.wordsGame = wordsGame;
         $exeDevice.active = 0;
         $exeDevice.showQuestion($exeDevice.active);
         $exeDevice.deleteEmptyQuestion();
         $exeDevice.updateQuestionsNumber();
-        //$('.exe-form-tabs li:first-child a').click();
     },
 
     validateGroups: function (elements) {
@@ -1849,22 +1936,21 @@ var $exeDevice = {
 
             tinyMCE
                 .get('eXeGameInstructions')
-                .setContent(
+                ?.setContent(
                     unescape(game.instructionsExe || game.instructions)
                 );
             tinyMCE
                 .get('eXeIdeviceTextAfter')
-                .setContent(unescape(game.textAfter || ''));
-            tinyMCE
-                .get('clasificaEFeedBackEditor')
-                .setContent(unescape(game.textFeedBack || ''));
+                ?.setContent(unescape(game.textAfter || ''));
+            $exeIDevicesEdition.iDevice.gamification.feedback.setText(
+                unescape(game.textFeedBack || '')
+            );
         }
 
         $exeDevice.active = 0;
         $exeDevice.showQuestion($exeDevice.active);
         $exeDevice.deleteEmptyQuestion();
         $exeDevice.updateQuestionsNumber();
-        //$('.exe-form-tabs li:first-child a').click();
     },
 
     deleteEmptyQuestion: function () {
@@ -1931,10 +2017,5 @@ var $exeDevice = {
                 'z-index': 31,
             })
             .show();
-    },
-
-    removeTags: (str) => {
-        const wrapper = $('<div></div>').html(str);
-        return wrapper.text();
     },
 };

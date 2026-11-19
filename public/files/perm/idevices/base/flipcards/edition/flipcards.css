@@ -43,7 +43,8 @@
     align-items: flex-start;
     display: flex;
     justify-content: center;
-    flex-wrap: nowrap;
+    /* The back goes below the front when both do not fit. */
+    flex-wrap: wrap;
     width: 100%;
 }
 
@@ -96,9 +97,8 @@
 }
 
 .FLCRDS-EDatosCarta {
-    width: 50%;
+    flex: 1 1 360px;
     max-width: 450px;
-    min-width: 400px;
     border-radius: 0.3em;
     padding: 0.7em;
     padding-bottom: 1.3em;
@@ -156,18 +156,13 @@
 
 .FLCRDS-EInputAudio,
 
-.FLCRDS-EInputText,
-.FLCRDS-EInputImageBack {
+.FLCRDS-EInputText {
     align-items: center;
     display: flex;
     justify-content: flex-start;
     flex-wrap: nowrap;
     min-width: 100px;
     width: 100%;
-}
-
-.FLCRDS-EInputImageBack label {
-    white-space: nowrap;
 }
 
 
@@ -397,108 +392,17 @@
     font-weight: 500;
 }
 
-#flipcardsQEIdeviceForm #flipcardsQEIdeviceFormTab3 input {
-    width: 100%;
+#flipcardsEOptions > div,
+#flipcardsEOptions .toggle-item,
+#flipcardsEOptions .form-check-inline {
+    flex-wrap: nowrap;
 }
 
-
-/* Tabs (this should be common) */
-.exe-form-tabs {
-    list-style: none;
-    margin: 0 0 1.5em 0;
-    padding: 0;
+#flipcardsEOptions .form-check-inline {
+    white-space: nowrap;
 }
 
-#main .exe-form-tabs li {
-    display: inline;
-    list-style: none;
-    list-style-image: none;
-    margin: 0;
-    padding: 0;
-}
-
-.exe-form-tabs li:first-child a {
-    border-bottom-left-radius: 4px;
-    border-top-left-radius: 4px;
-}
-
-.exe-form-tabs li:last-child a {
-    border-bottom-right-radius: 4px;
-    border-top-right-radius: 4px;
-}
-
-.exe-form-tabs a {
-    background: #F9F9F9;
-    border: 1px solid #CCC;
-    color: #666;
-    display: inline-block;
-    padding: .5em 1em;
-}
-
-.exe-form-tabs li:not(:last-child) a {
-    border-right: none;
-}
-
-.exe-form-tabs .exe-form-active-tab {
-    background: #FFF;
-    color: #000;
-    font-weight: 500;
-}
-
-#gameQESCORMoptions {
-    margin-left: 1.5em;
-    visibility: hidden;
-}
-
-label[for=gameQEActivitySCORM] {
-    font-weight: bold;
-}
-
-#gameQESCORMinstructionsButton {
-    color: #777;
-    display: none;
-    margin: 10px 0 0 25px;
-}
-
-#gameQESCORMinstructionsButton ul {
-    list-style: none;
-    margin: 1.5em 0 .7em 0;
-    padding: 0;
-}
-
-#gameQESCORMinstructionsButton ul li {
-    list-style-image: none;
-    margin: 0 0 .5em 0;
-    padding: 0;
-}
-
-#gameQESCORMinstructionsAuto {
-    color: #777;
-    display: none;
-    margin: 10px 0 0 25px;
-}
-
-#gameQESCORMinstructionsAuto ul {
-    list-style: none;
-    margin: 1.5em 0 .7em 0;
-    padding: 0;
-}
-
-.GameModeHelpLink {
-    margin: 0 2px;
-    vertical-align: middle;
-}
-
-
-.GameModeLabel {
-    font-weight: normal
-}
-
-
-
-.Games-Reportdiv {
-    display: flex;
-    justify-content: flex-start;
-    align-items: center;
-    gap: 2px;
+#flipcardsEOptions #flipcardsEURLImgCard {
+    width: 250px;
+    flex: 0 1 auto;
 }

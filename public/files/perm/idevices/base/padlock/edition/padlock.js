@@ -14,11 +14,6 @@ var $exeDevice = {
     idevicePath: '',
     msgs: {},
     classIdevice: 'padlock',
-    active: 0,
-    typeActive: 0,
-    challengesGame: [],
-    candadoInstructions: '',
-    candadoRetro: '',
     candadoTime: 40,
     candadoSolution: '',
     candadoShowMinimize: false,
@@ -82,13 +77,11 @@ var $exeDevice = {
     },
     setMessagesInfo: function () {
         const msgs = this.msgs;
-        msgs.msgEGeneralSettings = _('General settings');
         msgs.msgEIntrucctions = _('Please write the instructions.');
         msgs.msgTime = _('Max time');
         msgs.msgERetro = _('Please write the feedback.');
         msgs.msgCodeAccess = _('Access code');
         msgs.msgEnterCodeAccess = _('Enter the access code');
-        msgs.msgEInstructions = _('Instructions');
         msgs.msgEREtroalimatacion = _('Feedback');
         msgs.msgEShowMinimize = _('Show minimized.');
         msgs.msgERebootActivity = _('Repeat activity');
@@ -102,111 +95,109 @@ var $exeDevice = {
         );
     },
 
-    showMessage: function (msg) {
-        eXe.app.alert(msg);
-    },
-
     createForm: function () {
         const msgs = this.msgs,
-            path = $exeDevice.idevicePath,
+            edition = $exeIDevicesEdition.iDevice,
+            help = edition.common.getHelpTooltip,
+            toggle = (id, label, checked = false) => `
+                            <span class="toggle-item">
+                                <span class="toggle-control">
+                                    <input type="checkbox" id="${id}" class="toggle-input"${checked ? ' checked' : ''} />
+                                    <span class="toggle-visual" aria-hidden="true"></span>
+                                </span>
+                                <label for="${id}" class="toggle-label">${label}</label>
+                            </span>`,
+            options = `
+                <div id="candadoEOptions">
+                    <div class="mb-3 d-flex align-items-center gap-2 flex-nowrap">
+                        ${toggle('candadoEShowMinimize', msgs.msgEShowMinimize)}
+                        ${help(_('Start with the game collapsed. Learners can expand it when they are ready to play.'))}
+                    </div>
+                    <div class="mb-3 d-flex align-items-center gap-2 flex-nowrap">
+                        <label id="candadolblEDTime" for="candadoEDTime" class="mb-0">${msgs.msgTime}:</label>
+                        <select id="candadoEDTime" class="form-select form-select-sm">
+                            <option value="0"></option>
+                            <option value="1">1m</option>
+                            <option value="3">3m</option>
+                            <option value="5">5m</option>
+                            <option value="10" selected>10m</option>
+                            <option value="15">15m</option>
+                            <option value="20">20m</option>
+                            <option value="25">25m</option>
+                            <option value="30">30m</option>
+                            <option value="35">35m</option>
+                            <option value="40">40m</option>
+                            <option value="45">45m</option>
+                            <option value="50">50m</option>
+                            <option value="55">55m</option>
+                            <option value="60">60m</option>
+                        </select>
+                        ${help(_('Time learners have to find the access code. Leave it blank for no time limit.'))}
+                    </div>
+                    <div class="mb-3 d-flex align-items-center gap-2 flex-nowrap">
+                        ${toggle('candadoEReboot', msgs.msgERebootActivity, true)}
+                        ${help(_('Start again each time the page is opened, even once solved. Otherwise a solved padlock keeps showing its feedback.'))}
+                    </div>
+                    <div class="mb-3 d-flex align-items-center gap-2 flex-nowrap">
+                        <label for="candadoEAttemps" class="mb-0">${msgs.msgNumFaildedAttemps}:</label>
+                        <input type="number" name="candadoEAttemps" id="candadoEAttemps" value="0" min="0" max="9" step="1" required class="form-control" />
+                        ${help(_('After this number of wrong codes, learners see the error message. Set 0 to never show it.'))}
+                    </div>
+                    <div class="mb-3 d-flex align-items-center gap-2 flex-nowrap">
+                        <label for="candadoEErrorMessage" class="mb-0">${msgs.msgCustomMessage}:</label>
+                        <input type="text" disabled id="candadoEErrorMessage" class="form-control" style="max-width:30ch" />
+                        ${help(_('The message learners see after the wrong codes above, for example a clue.'))}
+                    </div>
+                </div>`,
+            // Instructions, feedback and access code share one tab, with one
+            // editor shown at a time, as before the shared tabs.
+            contents = `
+                <div id="candadoEPanel">
+                    <p class="candadoToggle" role="radiogroup" aria-label="${_('Choose the content to edit:')}">
+                        <input checked id="candadoECandado" type="radio" name="dsfDesRet" value="0" />
+                        <label for="candadoECandado">${_('Instructions')}</label>
+                        <input id="candadoERetro" type="radio" name="dsfDesRet" value="1" />
+                        <label for="candadoERetro">${msgs.msgEREtroalimatacion}</label>
+                    </p>
+                    <div id="divCandadoInstructions" class="mb-3">
+                        <label for="candadoEDescription" class="sr-av">${_('Instructions')}:</label>
+                        <textarea id="candadoEDescription" class="exe-html-editor form-control" rows="6"></textarea>
+                    </div>
+                    <div id="divCandadoFeebBack" class="mb-3">
+                        <label for="candadoEFeedBack" class="sr-av">${msgs.msgEREtroalimatacion}:</label>
+                        <textarea id="candadoEFeedBack" class="exe-html-editor form-control" rows="6"></textarea>
+                    </div>
+                    <div class="mb-3 d-flex align-items-center gap-2 flex-nowrap">
+                        <label for="candadoEDSolution" class="mb-0">${msgs.msgCodeAccess}:</label>
+                        <input type="text" id="candadoEDSolution" class="form-control" style="max-width:20ch" />
+                        ${help(_('The code learners have to type to see the feedback.'))}
+                    </div>
+                </div>`,
             html = `
             <div id="candadoIdeviceForm">
-                ${$exeDevicesEdition.iDevice.common.getIdeviceDescription(
+                ${edition.common.getIdeviceDescription(
                     _('Create activities with a password protected feedback.'),
                     'https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe40/html/candado.html',
                 )}
-                <div class="exe-form-tab" title="${msgs.msgEGeneralSettings}">
-                    <div class="candado-EPanel" id="candadoEPanel">
-                        <p class="candadoToggle">
-                            <input checked id="candadoECandado" type="radio" name="dsfDesRet" value="0" />
-                            <label for="candadoECandado">${msgs.msgEInstructions}</label>
-                            <input id="candadoERetro" type="radio" name="dsfDesRet" value="1" />
-                            <label for="candadoERetro">${msgs.msgEREtroalimatacion}</label>
-                        </p>
-                        <div id="divCandadoInstructions" class="mb-3">
-                            <label for="candadoEDescription" class="sr-av">${_('Instructions')}:</label>
-                            <textarea id="candadoEDescription" class="exe-html-editor form-control" rows="6"></textarea>
-                        </div>
-                        <div id="divCandadoFeebBack" class="mb-3">
-                            <label for="candadoEFeedBack" class="sr-av">${_('Feedback')}:</label>
-                            <textarea id="candadoEFeedBack" class="exe-html-editor form-control" rows="6"></textarea>
-                        </div>
-                        <div class="candado-EDataAccess mb-3 d-flex flex-wrap align-items-center gap-3">
-                            <div class="d-flex align-items-center gap-2 flex-nowrap">
-                                <label for="candadoEDSolution" class="mb-0">${msgs.msgCodeAccess}:</label>
-                                <input type="text" id="candadoEDSolution" class="form-control" />
-                            </div>
-                            <div class="d-flex align-items-center gap-2 flex-nowrap">
-                                <label id="candadolblEDTime" for="candadoEDTime">${msgs.msgTime}:</label>
-                                <select id="candadoEDTime" class="form-select form-select-sm">
-                                    <option value="0"></option>
-                                    <option value="1">1m</option>
-                                    <option value="3">3m</option>
-                                    <option value="5">5m</option>
-                                    <option value="10" selected>10m</option>
-                                    <option value="15">15m</option>
-                                    <option value="20">20m</option>
-                                    <option value="25">25m</option>
-                                    <option value="30">30m</option>
-                                    <option value="35">35m</option>
-                                    <option value="40">40m</option>
-                                    <option value="45">45m</option>
-                                    <option value="50">50m</option>
-                                    <option value="55">55m</option>
-                                    <option value="60">60m</option>
-                                </select>
-                            </div>
-                            <div class="d-flex flex-wrap align-items-center gap-2">
-                                <span class="toggle-item" role="switch" aria-checked="false">
-                                    <span class="toggle-control">
-                                        <input type="checkbox" id="candadoEShowMinimize" class="toggle-input" />
-                                        <span class="toggle-visual" aria-hidden="true"></span>
-                                    </span>
-                                    <label for="candadoEShowMinimize" class="toggle-label mb-0">${msgs.msgEShowMinimize}</label>
-                                </span>
-                                <span class="toggle-item" role="switch" aria-checked="true">
-                                    <span class="toggle-control">
-                                        <input type="checkbox" id="candadoEReboot" class="toggle-input" checked />
-                                        <span class="toggle-visual" aria-hidden="true"></span>
-                                    </span>
-                                    <label for="candadoEReboot" class="toggle-label mb-0">${msgs.msgERebootActivity}</label>
-                                </span>
-                            </div>
-                        </div>
-                        <div class="candado-EDataAccess mb-3 d-flex flex-wrap align-items-center gap-2">
-                            <div class="d-flex align-items-center gap-2 flex-nowrap">
-                                <label for="candadoEAttemps" class="mb-0">${msgs.msgNumFaildedAttemps}:</label>
-                                <input type="number" name="candadoEAttemps" id="candadoEAttemps" value="0" min="0" max="10" step="1" required class="form-control" style="width:7ch" />
-                            </div>
-                            <div class="d-flex align-items-center gap-2 flex-nowrap" style="flex:1 1 auto; min-width:250px;">
-                                <label for="candadoEErrorMessage" class="mb-0">${msgs.msgCustomMessage}:</label>
-                                <input type="text" disabled id="candadoEErrorMessage" class="form-control" />
-                            </div>
-                        </div>
-                        <div class="Games-Reportdiv d-flex flex-wrap align-items-center gap-2 mb-3">
-                        </div>
-                    </div>
-                </div>
-                ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
-                ${$exeDevicesEdition.iDevice.gamification.scorm.getTab(path)}
+                ${edition.tabs.getHtml('candadoIdeviceForm', {
+                    titles: { contents: _('Padlock') },
+                    path: $exeDevice.idevicePath,
+                    options: options,
+                    contents: contents,
+                    grading: true,
+                    texts: this.ci18n,
+                    share: false,
+                    info: {
+                        contents: _('Write the instructions, the feedback learners unlock and the access code that opens it.'),
+                    },
+                })}
             </div>
         `;
 
         this.ideviceBody.innerHTML = html;
         $('#divCandadoFeebBack').hide();
-
-        $exeDevicesEdition.iDevice.tabs.init('candadoIdeviceForm');
-        $exeDevicesEdition.iDevice.gamification.scorm.init();
-
-        // Inicializar toggles accesibles
-        $('.toggle-input').each(function () {
-            const $i = $(this),
-                $item = $i.closest('.toggle-item');
-            $item.attr('aria-checked', $i.is(':checked'));
-            $i.on('change.padlockToggle', function () {
-                $item.attr('aria-checked', $i.is(':checked'));
-            });
-        });
+        edition.tabs.bind('candadoIdeviceForm');
+        edition.gamification.scorm.init();
 
         $exeDevice.loadPreviousValues();
         $exeDevice.addEvents();
@@ -238,10 +229,9 @@ var $exeDevice = {
                 .eq(0)
                 .html();
             candadoRetro = $('.candado-retro', wrapper).eq(0).html();
-            $exeDevicesEdition.iDevice.gamification.common.setLanguageTabValues(
+            $exeIDevicesEdition.iDevice.gamification.common.setLanguageTabValues(
                 dataGame.msgs
             );
-            $exeDevice.typeActive = 0;
             $exeDevice.evaluation =
                 typeof dataGame.evaluation !== 'undefined'
                     ? dataGame.evaluation
@@ -263,13 +253,13 @@ var $exeDevice = {
             $('#candadoEErrorMessage').val(dataGame.candadoErrorMessage);
             $('#candadoEErrorMessage').prop(
                 'disabled',
-                dataGame.candadoAttemps === 0
+                !(Number(dataGame.candadoAttemps) > 0)
             );
-            $exeDevicesEdition.iDevice.gamification.progressBar.setValues({
+            $exeIDevicesEdition.iDevice.gamification.progressBar.setValues({
                 evaluation: dataGame.evaluation,
                 evaluationID: dataGame.evaluationID,
             });
-            $exeDevicesEdition.iDevice.gamification.passScore.setValues({
+            $exeIDevicesEdition.iDevice.gamification.passScore.setValues({
                 passScoreMode: dataGame.passScoreMode,
                 passScoreCustom: dataGame.passScoreCustom,
             });
@@ -280,22 +270,13 @@ var $exeDevice = {
             if (candadoRetro.length > 0) {
                 $('#candadoEFeedBack').val(candadoRetro);
             }
-            $exeDevicesEdition.iDevice.gamification.scorm.setValues(
+            $exeIDevicesEdition.iDevice.gamification.scorm.setValues(
                 dataGame.isScorm,
                 dataGame.textButtonScorm,
                 dataGame.repeatActivity,
                 dataGame.weighted
             );
         }
-    },
-
-    escapeHtml: function (string) {
-        return String(string)
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;')
-            .replace(/'/g, '&#39;');
     },
 
     save: function () {
@@ -322,11 +303,11 @@ var $exeDevice = {
             '</div>';
         html +=
             '<div class="candado-instructions js-hidden">' +
-            tinymce.editors[0].getContent() +
+            tinyMCE.get('candadoEDescription').getContent() +
             '</div>';
         html +=
             '<div class="candado-retro js-hidden">' +
-            tinymce.editors[1].getContent() +
+            tinyMCE.get('candadoEFeedBack').getContent() +
             '</div>';
         html += '<div class="candado-DataGame js-hidden">' + json + '</div>';
         html +=
@@ -337,8 +318,32 @@ var $exeDevice = {
         return html;
     },
 
+    revealValidationField: function (tab, fieldId) {
+        $exeIDevicesEdition.iDevice.tabs.show('candadoIdeviceForm', tab);
+        if (fieldId === 'candadoEDescription') $('#candadoECandado').trigger('click');
+        else if (fieldId === 'candadoEFeedBack') $('#candadoERetro').trigger('click');
+
+        const field = document.getElementById(fieldId);
+        const editor = tinyMCE.get(fieldId);
+        const focus = function () {
+            if (!field.isConnected) return;
+            if (editor) editor.focus();
+            else field.focus();
+        };
+        focus();
+        // The alert traps focus while open. Restore it after dismissal, and
+        // let the edition lifecycle remove the listener if the form closes.
+        const modal = document.getElementById('modalAlert');
+        if (this.releaseValidationFocus) this.releaseValidationFocus();
+        if (modal) {
+            this.releaseValidationFocus = this.$lifecycle.addEventListener(modal, 'hidden.bs.modal', focus, { once: true });
+        }
+    },
+
     validateCandado: function () {
         let message = '',
+            tab = 'contents',
+            fieldId = '',
             candadoInstructions = tinyMCE
                 .get('candadoEDescription')
                 .getContent(),
@@ -354,12 +359,15 @@ var $exeDevice = {
         $exeDevice.candadoAttemps = $('#candadoEAttemps').val();
         $exeDevice.candadoErrorMessage = $('#candadoEErrorMessage').val();
         const progressBar =
-            $exeDevicesEdition.iDevice.gamification.progressBar.getValues();
-        if (!progressBar) return false;
+            $exeIDevicesEdition.iDevice.gamification.progressBar.getValues();
+        if (!progressBar) {
+            this.revealValidationField('grading', 'eXeProgressReportID');
+            return false;
+        }
         $exeDevice.evaluation = progressBar.evaluation;
         $exeDevice.evaluationID = progressBar.evaluationID;
         const passScore =
-            $exeDevicesEdition.iDevice.gamification.passScore.getValues();
+            $exeIDevicesEdition.iDevice.gamification.passScore.getValues();
         $exeDevice.passScoreMode = passScore.passScoreMode;
         $exeDevice.passScoreCustom = passScore.passScoreCustom;
         $exeDevice.id = $exeDevice.id
@@ -368,19 +376,25 @@ var $exeDevice = {
 
         if (candadoInstructions.length === 0) {
             message = $exeDevice.msgs.msgEIntrucctions;
+            fieldId = 'candadoEDescription';
         } else if (candadoRetro.length === 0) {
             message = $exeDevice.msgs.msgERetro;
+            fieldId = 'candadoEFeedBack';
         } else if ($exeDevice.candadoSolution.length === 0) {
             message = $exeDevice.msgs.msgEnterCodeAccess;
+            fieldId = 'candadoEDSolution';
         } else if (
             $exeDevice.candadoAttemps > 0 &&
             $exeDevice.candadoErrorMessage.length === 0
         ) {
             message = $exeDevice.msgs.msgEnterCustomMessage;
+            tab = 'options';
+            fieldId = 'candadoEErrorMessage';
         }
 
         if (message.length !== 0) {
-            $exeDevice.showMessage(message);
+            this.revealValidationField(tab, fieldId);
+            $exeIDevicesEdition.iDevice.common.showMessage(message);
             message = false;
         } else {
             message = true;
@@ -398,7 +412,7 @@ var $exeDevice = {
     },
 
     validateData: function () {
-        const scorm = $exeDevicesEdition.iDevice.gamification.scorm.getValues();
+        const scorm = $exeIDevicesEdition.iDevice.gamification.scorm.getValues();
         return {
             candadoTime: $exeDevice.candadoTime,
             candadoSolution: $exeDevice.candadoSolution,
@@ -418,12 +432,6 @@ var $exeDevice = {
             passScoreCustom: $exeDevice.passScoreCustom,
             id: $exeDevice.getIdeviceID(),
         };
-    },
-
-    removeTags: function (str) {
-        const wrapper = $('<div></div>');
-        wrapper.html(str);
-        return wrapper.text();
     },
 
     addEvents: function () {
@@ -450,8 +458,8 @@ var $exeDevice = {
             $('#candadoEErrorMessage').prop('disabled', d);
         });
 
-        $exeDevicesEdition.iDevice.gamification.progressBar.addEvents();
+        $exeIDevicesEdition.iDevice.gamification.progressBar.addEvents();
 
-        $exeDevicesEdition.iDevice.gamification.passScore.addEvents();
+        $exeIDevicesEdition.iDevice.gamification.passScore.addEvents();
     },
 };

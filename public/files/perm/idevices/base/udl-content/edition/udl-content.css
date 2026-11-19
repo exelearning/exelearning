@@ -11,21 +11,6 @@
  *
  * License: http://creativecommons.org/licenses/by-sa/4.0/
  */
-#udlContentEditorWrapperTabs {
-    margin-top: 10px;
-}
-
-#udlContentEditorWrapperTab1 {
-    min-height: 180px;
-}
-
-#udlContentTypeInfo img {
-    vertical-align: middle;
-    margin: 0 2px;
-    position: relative;
-    top: -2px;
-}
-
 #udlContentTypeOptions label {
     padding: 0.3em 0.5em;
     margin-left: 0.5em;
@@ -305,28 +290,4 @@ body.mce-fullscreen .udlContentFormTabs ul {
     margin: 0 auto;
     width: 300px;
     height: auto;
-}
-
-/* To review (Should this code be common?) */
-#udlContentEditorWrapper .ci18n {
-    width: 50%;
-    float: left;
-}
-
-@media screen and (max-width: 720px) {
-    #udlContentEditorWrapper .ci18n {
-        width: 100%;
-        float: none;
-    }
-}
-
-#udlContentEditorWrapper .ci18n label {
-    display: block;
-    margin-bottom: .2em;
-    color: #5b810b;
-    font-weight: 500;
-}
-
-#udlContentEditorWrapper .ci18n input {
-    width: 95%;
 }
