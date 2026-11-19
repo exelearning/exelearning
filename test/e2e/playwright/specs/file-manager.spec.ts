@@ -226,6 +226,14 @@ async function selectFirstFile(page: Page): Promise<void> {
 }
 
 /**
+ * Activate the "Details" tab in the sidebar. Filename, type, size, dimensions,
+ * date, location and URL live here; the Metadata tab is active by default.
+ */
+async function openDetailsSection(page: Page): Promise<void> {
+    await page.locator('#modalFileManager .media-library-tab[data-media-tab="details"]').click();
+}
+
+/**
  * Helper to duplicate selected file and wait for new file to appear.
  * Confirms the suggested name in the custom rename dialog.
  */
@@ -647,6 +655,8 @@ test.describe('File Manager', () => {
 
             // Select the file
             await selectFirstFile(page);
+            // Filename lives in the collapsible Details section (collapsed by default).
+            await openDetailsSection(page);
 
             // Get original filename from sidebar
             const filenameSpan = page.locator('#modalFileManager .media-library-filename');
@@ -1386,6 +1396,8 @@ test.describe('File Manager', () => {
             // Search and select file
             await searchFiles(page, 'sample');
             await selectFirstFile(page);
+            // Location lives in the collapsible Details section (collapsed by default).
+            await openDetailsSection(page);
 
             // Verify location row in sidebar
             const locationRow = page.locator('#modalFileManager .media-library-location-row');

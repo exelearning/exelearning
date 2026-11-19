@@ -610,9 +610,7 @@ describe('TinyMCE 5 Settings', () => {
       await new Promise((resolve) => setTimeout(resolve, 0));
 
       expect(cb).toHaveBeenCalledWith('asset://abc123/file.png', {
-        title: 'file.png',
         text: 'file.png',
-        alt: '',
         'data-asset-id': 'abc123',
       });
     });
@@ -641,9 +639,7 @@ describe('TinyMCE 5 Settings', () => {
       await new Promise((resolve) => setTimeout(resolve, 0));
 
       expect(cb).toHaveBeenCalledWith('asset://file.png', {
-        title: 'file.png',
         text: 'file.png',
-        alt: '',
         'data-asset-id': 'abc123',
       });
     });
@@ -670,9 +666,7 @@ describe('TinyMCE 5 Settings', () => {
       await new Promise((resolve) => setTimeout(resolve, 0));
 
       expect(cb).toHaveBeenCalledWith(`asset://${assetUUID}/image.jpg`, {
-        title: 'image.jpg',
         text: 'image.jpg',
-        alt: '',
         'data-asset-id': assetUUID,
       });
     });
@@ -707,9 +701,7 @@ describe('TinyMCE 5 Settings', () => {
       await new Promise((resolve) => setTimeout(resolve, 0));
 
       expect(cb).toHaveBeenCalledWith(`asset://${assetUUID}/video.mp4`, {
-        title: 'video.mp4',
         text: 'video.mp4',
-        alt: '',
         'data-asset-id': assetUUID,
       });
     });
@@ -2663,6 +2655,28 @@ describe('TinyMCE 5 Settings', () => {
       // No links in DOM → getHelpLink returns '' → else branch (comment-only, no-op)
       expect(() => globalThis.$exeTinyMCEToggler.createEditorLink(wrapper, 'editor')).not.toThrow();
       expect(document.getElementById('editor-toggler')).toBeNull();
+    });
+  });
+
+  describe('buildImagePickerMeta', () => {
+    const buildImagePickerMeta = tinyMCEModule.buildImagePickerMeta;
+
+    it('carries only the filename and asset id (no seeded caption/alt)', () => {
+      const meta = buildImagePickerMeta({
+        id: 'a1',
+        filename: 'photo.jpg',
+        // Centralized metadata is intentionally NOT pre-filled — it is auto-derived from
+        // the asset id at submit time, and alt text is per-instance.
+        title: 'Sunset',
+        author: 'Ada Lovelace',
+        license: 'Creative Commons BY-SA',
+        description: 'A sunset',
+      });
+      expect(meta).toEqual({ text: 'photo.jpg', 'data-asset-id': 'a1' });
+    });
+
+    it('is null-safe', () => {
+      expect(buildImagePickerMeta(undefined)).toEqual({ text: '', 'data-asset-id': undefined });
     });
   });
 });

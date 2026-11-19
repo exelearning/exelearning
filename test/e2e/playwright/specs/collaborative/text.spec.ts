@@ -84,7 +84,7 @@ async function insertImageViaTinyMCE(page: Page, fixturePath: string): Promise<v
 
     // Fill in alt text to avoid accessibility warning dialog
     // The dialog "Are you sure you want to continue without including an Image Description?" appears if alt is empty
-    const altTextInput = page.getByLabel(/Alternative description|Descripción alternativa/i);
+    const altTextInput = page.getByLabel(/alternativ/i);
     if ((await altTextInput.count()) > 0) {
         const currentAlt = await altTextInput.inputValue().catch(() => '');
         if (!currentAlt) {

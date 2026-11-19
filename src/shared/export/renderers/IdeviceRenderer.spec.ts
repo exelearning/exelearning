@@ -48,6 +48,43 @@ describe('IdeviceRenderer', () => {
             expect(html).toContain('<p>Hello World</p>');
         });
 
+        it('bakes the image caption from the centralized metadata set via setAssetCaptionMetadataMap', () => {
+            renderer.setAssetCaptionMetadataMap(
+                new Map([['u1', { title: 'Sunset', author: 'Ada', license: 'Creative Commons BY' }]]),
+            );
+            const component: ExportComponent = {
+                id: 'text-cap',
+                type: 'text',
+                order: 0,
+                content:
+                    '<figure class="exe-figure" data-asset-id="u1"><img src="asset://u1.jpg" alt="a cat"><figcaption class="figcaption">STALE</figcaption></figure>',
+                properties: {},
+            };
+
+            const html = renderer.render(component, { basePath: '', includeDataAttributes: true });
+
+            expect(html).not.toContain('STALE');
+            expect(html).toContain('<span class="title"><em>Sunset</em></span>');
+            expect(html).toContain('<span class="author">Ada</span>');
+            expect(html).toContain('rel="license noopener"');
+            // Per-instance alt on the image is preserved.
+            expect(html).toContain('alt="a cat"');
+        });
+
+        it('leaves figure captions untouched when no caption metadata map is configured', () => {
+            const component: ExportComponent = {
+                id: 'text-nocap',
+                type: 'text',
+                order: 0,
+                content:
+                    '<figure class="exe-figure" data-asset-id="u1"><img src="asset://u1.jpg"><figcaption class="figcaption">KEEP</figcaption></figure>',
+                properties: {},
+            };
+
+            const html = renderer.render(component, { basePath: '', includeDataAttributes: true });
+            expect(html).toContain('KEEP');
+        });
+
         it('should render with correct data attributes', () => {
             // Use 'form' iDevice which exists in config.xml and is a JSON type
             const component: ExportComponent = {

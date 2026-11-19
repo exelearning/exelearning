@@ -232,6 +232,8 @@ test.describe('Collaborative File Manager', () => {
 
             // Client A selects the file and renames it
             await selectFirstFile(pageA);
+            // Filename lives in the Details tab (Metadata is active by default).
+            await pageA.locator('#modalFileManager .media-library-tab[data-media-tab="details"]').click();
 
             const filenameSpanA = pageA.locator('#modalFileManager .media-library-filename');
             await expect(filenameSpanA).toBeVisible({ timeout: 5000 });
@@ -301,6 +303,8 @@ test.describe('Collaborative File Manager', () => {
 
             // Client B selects the file
             await selectFirstFile(pageB);
+            // Filename lives in the Details tab (Metadata is active by default).
+            await pageB.locator('#modalFileManager .media-library-tab[data-media-tab="details"]').click();
 
             // Verify the filename on Client B matches the renamed file
             const filenameSpanB = pageB.locator('#modalFileManager .media-library-filename');
@@ -390,6 +394,8 @@ test.describe('Collaborative File Manager', () => {
 
             // Client B selects the file to view its current name
             await selectFirstFile(pageB);
+            // Filename lives in the Details tab (Metadata is active by default).
+            await pageB.locator('#modalFileManager .media-library-tab[data-media-tab="details"]').click();
 
             // Verify the filename on Client B has been updated in real-time
             const filenameSpanB = pageB.locator('#modalFileManager .media-library-filename');
