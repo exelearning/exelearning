@@ -304,15 +304,18 @@ describe('Database Helpers', () => {
         it('creates the index once and is a no-op the second time', async () => {
             const create = () =>
                 createIndexIfNotExists(db, 'idx_test_users_email', 'users', index => index.column('email'));
-            await create();
-            await create();
+            try {
+                await create();
+                await create();
 
-            const { sql } = await import('kysely');
-            const result = await sql<{ name: string }>`
-                SELECT name FROM sqlite_master WHERE type = 'index' AND name = 'idx_test_users_email'
-            `.execute(db);
-            expect(result.rows).toHaveLength(1);
-            await db.schema.dropIndex('idx_test_users_email').execute();
+                const { sql } = await import('kysely');
+                const result = await sql<{ name: string }>`
+                    SELECT name FROM sqlite_master WHERE type = 'index' AND name = 'idx_test_users_email'
+                `.execute(db);
+                expect(result.rows).toHaveLength(1);
+            } finally {
+                await db.schema.dropIndex('idx_test_users_email').ifExists().execute();
+            }
         });
 
         it('on mysql, looks the index up and creates it without IF NOT EXISTS', async () => {
