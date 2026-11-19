@@ -3,9 +3,12 @@ import { encryptDataGame } from '../../utils/dataGameCipher';
 import { CrosswordWorksheetAdapter } from './CrosswordWorksheetAdapter';
 import type { CrosswordBoard, PrintableActivity } from '../types';
 
-/** The crossword grid of an activity, when its board is one. */
-function gridOf(activity: PrintableActivity | null | undefined): CrosswordBoard | undefined {
-    return activity?.board?.kind === 'crosswordGrid' ? activity.board : undefined;
+/** The crossword grid of an activity; throws when the board is not one, so absence checks stay meaningful. */
+function gridOf(activity: PrintableActivity | null | undefined): CrosswordBoard {
+    if (activity?.board?.kind !== 'crosswordGrid') {
+        throw new Error(`Expected a crosswordGrid board, got ${activity?.board?.kind}`);
+    }
+    return activity.board;
 }
 
 interface CrosswordFixtureOptions {
@@ -202,7 +205,7 @@ describe('CrosswordWorksheetAdapter', () => {
         it('takes the picture from the sidecar link', () => {
             const activity = CrosswordWorksheetAdapter.build(withBackground('blob:http://localhost/animals'), {});
 
-            expect(gridOf(activity)?.background?.src).toBe('blob:http://localhost/animals');
+            expect(gridOf(activity).background?.src).toBe('blob:http://localhost/animals');
         });
 
         it('keeps the board uncropped so the cells stay over the picture', () => {
@@ -210,10 +213,10 @@ describe('CrosswordWorksheetAdapter', () => {
             const plain = CrosswordWorksheetAdapter.build(crosswordHtml(), {});
 
             // The activity solves in a 16x16 board, which a backed grid must keep whole.
-            expect(gridOf(backed)?.rows).toHaveLength(16);
-            expect(gridOf(backed)?.rows[0]).toHaveLength(16);
+            expect(gridOf(backed).rows).toHaveLength(16);
+            expect(gridOf(backed).rows[0]).toHaveLength(16);
             // Without a picture the empty margin is trimmed, so the grid fits the page.
-            expect(gridOf(plain)?.rows.length ?? 99).toBeLessThan(16);
+            expect(gridOf(plain).rows.length).toBeLessThan(16);
         });
 
         it('credits the picture when the activity names an author', () => {
@@ -222,11 +225,11 @@ describe('CrosswordWorksheetAdapter', () => {
                 {},
             );
 
-            expect(gridOf(activity)?.background?.author).toBe('INTEF');
+            expect(gridOf(activity).background?.author).toBe('INTEF');
         });
 
         it('goes without a picture when the activity has none', () => {
-            expect(gridOf(CrosswordWorksheetAdapter.build(crosswordHtml(), {}))?.background).toBeUndefined();
+            expect(gridOf(CrosswordWorksheetAdapter.build(crosswordHtml(), {})).background).toBeUndefined();
         });
 
         it('goes without a picture when the activity disabled it', () => {
@@ -236,7 +239,7 @@ describe('CrosswordWorksheetAdapter', () => {
             );
 
             // hasBack is false, so the stored reference is ignored.
-            expect(gridOf(CrosswordWorksheetAdapter.build(html, {}))?.background).toBeUndefined();
+            expect(gridOf(CrosswordWorksheetAdapter.build(html, {})).background).toBeUndefined();
         });
 
         it('falls back to the picture shipped with the iDevice', () => {
@@ -246,7 +249,7 @@ describe('CrosswordWorksheetAdapter', () => {
                 ideviceBasePath: 'http://localhost:8080/files/perm/idevices/base/',
             });
 
-            expect(gridOf(activity)?.background?.src).toBe(
+            expect(gridOf(activity).background?.src).toBe(
                 'http://localhost:8080/files/perm/idevices/base/crossword/export/ccgmbackground.jpg',
             );
         });
@@ -256,12 +259,12 @@ describe('CrosswordWorksheetAdapter', () => {
                 ideviceBasePath: 'http://localhost:8080/files/perm/idevices/base/',
             });
 
-            expect(gridOf(activity)?.background?.src).toBe('blob:http://localhost/animals');
+            expect(gridOf(activity).background?.src).toBe('blob:http://localhost/animals');
         });
 
         it('goes without a picture when the caller gave no iDevice base path', () => {
             // The CLI has no server to serve those files from, so there is nothing to point at.
-            expect(gridOf(CrosswordWorksheetAdapter.build(withBackground('#'), {}))?.background).toBeUndefined();
+            expect(gridOf(CrosswordWorksheetAdapter.build(withBackground('#'), {})).background).toBeUndefined();
         });
     });
 
