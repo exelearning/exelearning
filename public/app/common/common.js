@@ -660,159 +660,78 @@ var $exe = {
             }
         }
     },
-    // Mermaid options
+    // Mermaid diagrams, rendered in the editor with Pele (https://pele.run).
+    // Exports carry pre-rendered SVG (src/shared/export/prerender/MermaidPreRenderer.ts),
+    // so this only loads Pele in the editor; elsewhere a <pre class="mermaid"> keeps its source.
     mermaid: {
-        // Mermaid script path - computed dynamically to handle static mode
-        engine: (function() {
+        // Same value as MERMAID_FONT_FAMILY in MermaidPreRenderer.ts (Mermaid's default font stack)
+        fontFamily: '"trebuchet ms", verdana, arial, sans-serif',
+        loading: null,
+        // Path of Pele's browser build, or null outside the editor
+        enginePath: function () {
             var config = window.eXeLearning?.config;
             if (typeof config === 'string') {
-                try { config = JSON.parse(config); } catch(e) { config = null; }
+                try { config = JSON.parse(config); } catch (e) { config = null; }
             }
-            // Static mode: use relative path without version prefix
             if (config?.isStaticMode || config?.isOfflineInstallation) {
-                return './app/common/mermaid/mermaid.min.js';
+                return './app/common/pele/pele.global.js';
             }
-            // Server mode: use versioned path
             if (config?.baseURL !== undefined) {
-                return config.baseURL + (config.basePath || '') + '/' + window.eXeLearning.version + '/app/common/mermaid/mermaid.min.js';
+                return config.baseURL + (config.basePath || '') + '/' + window.eXeLearning.version + '/app/common/pele/pele.global.js';
             }
-            // Export mode
-            var isIndex = $("html").prop("id") === "exe-index";
-            // Double check with script src if ID check fails (robustness)
-            if (!isIndex) {
-                 var scripts = document.getElementsByTagName('script');
-                 for (var i = 0; i < scripts.length; i++) {
-                     var src = scripts[i].getAttribute('src');
-                     if (src && (src === 'libs/common.js' || src === './libs/common.js')) {
-                         isIndex = true;
-                         break;
-                     }
-                 }
-            }
-            return (isIndex ? "libs/mermaid/mermaid.min.js" : "../libs/mermaid/mermaid.min.js");
-        })(),
-        reload_pending: false,
-        initialized: false,
-        loading: false,
-        loadMermaid: function () {
-            // Dynamic path resolution
-            var enginePath = this.engine;
-            var config = window.eXeLearning?.config;
-            if (typeof config === 'string') {
-                try { config = JSON.parse(config); } catch(e) { config = null; }
-            }
-            // Static mode: use relative path without version prefix
-            if (config?.isStaticMode || config?.isOfflineInstallation) {
-                enginePath = './app/common/mermaid/mermaid.min.js';
-            } else if (config?.baseURL !== undefined) {
-                // Server mode: use versioned path
-                enginePath = config.baseURL + (config.basePath || '') + '/' + window.eXeLearning.version + '/app/common/mermaid/mermaid.min.js';
-            }
-
-            if (typeof window.mermaid === 'undefined') {
-                // Already being fetched: do not inject the script twice
-                if (this.loading) return;
-                this.loading = true;
-                const script = document.createElement("script");
-                script.src = enginePath;
+            return null;
+        },
+        // Resolves with window.pele, loading it once
+        load: function () {
+            if (window.pele) return Promise.resolve(window.pele);
+            if (this.loading) return this.loading;
+            var src = this.enginePath();
+            if (!src) return Promise.reject(new Error('Mermaid diagrams can only be rendered in the editor'));
+            this.loading = new Promise(function (resolve, reject) {
+                var script = document.createElement('script');
+                script.src = src;
                 script.async = true;
-                script.onerror = function () {
-                    $exe.mermaid.loading = false;
-                };
                 script.onload = function () {
-                    $exe.mermaid.loading = false;
-                    mermaid = window.mermaid;
-                    mermaid.initialize({
-                        startOnLoad: false,
-                        suppressErrorRendering: true,
-                        logLevel: 'fatal',
-                        // Gantt configuration to prevent negative width errors
-                        gantt: {
-                            useMaxWidth: true,
-                            useWidth: undefined
-                        },
-                        flowchart: {
-                            useMaxWidth: true
-                        }
-                    });
-                    $exe.mermaid.initialized = true;
-                    $exe.mermaid.renderDiagrams();
+                    if (window.pele) resolve(window.pele);
+                    else reject(new Error('Pele did not load from ' + src));
+                };
+                script.onerror = function () {
+                    $exe.mermaid.loading = null;
+                    reject(new Error('Could not load ' + src));
                 };
                 document.head.appendChild(script);
-            } else if (this.initialized) {
-                // debounce reloading to avoid multiple calls
-                if (!this.reload_pending) {
-                    this.reload_pending = true;
-                    setTimeout(function () {
-                        $exe.mermaid.reload_pending = false;
-                        $exe.mermaid.renderDiagrams();
-                    }, 100);
-                }
-            }
+            });
+            return this.loading;
         },
-        renderDiagrams: function (retryCount) {
-            retryCount = retryCount || 0;
-            var maxRetries = 10;
-            // Include elements without data-processed OR with data-processed="pending" (failed previous render)
-            var mermaidNodes = $(".mermaid:not([data-processed]), .mermaid[data-processed='pending']");
-
-            if (mermaidNodes.length === 0) return;
-
-            // Check if elements have valid dimensions
-            var readyNodes = [];
-            var pendingNodes = [];
-
-            mermaidNodes.each(function () {
-                var $el = $(this);
-                // Element needs to be visible AND have width > 0
-                if ($el.is(':visible') && $el.width() > 0) {
-                    readyNodes.push(this);
-                    // Remove pending status so mermaid.run() will process it
-                    $el.removeAttr('data-processed');
-                } else {
-                    pendingNodes.push(this);
-                }
-            });
-
-            // Only call mermaid.run() if there are ready nodes
-            // IMPORTANT: Pass the specific nodes to render, not all .mermaid elements
-            // This prevents Mermaid from rendering hidden elements with 0 width
-            if (readyNodes.length > 0) {
+        renderDiagrams: function () {
+            var nodes = document.querySelectorAll('pre.mermaid:not([data-processed])');
+            for (var i = 0; i < nodes.length; i++) {
+                var node = nodes[i];
+                // TinyMCE may store line breaks inside the <pre> as <br>
+                var inert = document.createElement('template');
+                inert.innerHTML = node.innerHTML.replace(/<br\s*\/?>/gi, '\n');
+                var source = inert.content.textContent.trim();
+                if (!source) continue;
                 try {
-                    // Pass only the ready nodes to mermaid.run()
-                    mermaid.run({ nodes: readyNodes });
-                } catch (e) {
-                    // Silently handle rendering errors
+                    node.innerHTML = window.pele.render(source, { fontFamily: this.fontFamily }).svg;
+                    node.setAttribute('data-processed', 'true');
+                } catch (error) {
+                    // Keep the source visible and say why it is not a diagram
+                    node.setAttribute('data-processed', 'error');
+                    var message = document.createElement('p');
+                    message.className = 'exe-mermaid-error';
+                    message.setAttribute('role', 'alert');
+                    message.textContent = error && error.message ? error.message : String(error);
+                    node.after(message);
                 }
-            }
-
-            // Mark pending nodes so we know they need retry later
-            // (when the page containing them becomes visible)
-            pendingNodes.forEach(function(node) {
-                if (!node.hasAttribute('data-processed')) {
-                    node.setAttribute('data-processed', 'pending');
-                }
-            });
-
-            // Retry for pending nodes that don't have dimensions yet
-            if (pendingNodes.length > 0 && retryCount < maxRetries) {
-                setTimeout(function () {
-                    $exe.mermaid.renderDiagrams(retryCount + 1);
-                }, 200);
             }
         },
         init: function () {
-            // Check for mermaid elements that need rendering
-            // Pre-rendered diagrams have class exe-mermaid-rendered (not .mermaid)
-            // so they won't be matched by this selector.
-            // Include ALL .mermaid elements (even data-processed="pending" which means
-            // a previous render failed) so Mermaid library gets loaded and they can retry.
-            var mermaidNodes = $(".mermaid");
-
-            // Load Mermaid if there are any mermaid elements
-            if (mermaidNodes.length > 0) {
-                this.loadMermaid();
-            }
+            if (!document.querySelector('pre.mermaid:not([data-processed])')) return;
+            this.load().then(
+                function () { $exe.mermaid.renderDiagrams(); },
+                function (error) { console.warn('[$exe.mermaid]', error.message); }
+            );
         }
     },
     // Modal Window: Height problem in some browsers #328

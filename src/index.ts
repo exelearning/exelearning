@@ -145,34 +145,6 @@ const codemagicEditorHandler = ({ params }: { params: { '*': string } }) => {
 // Base route handler for codemagic editor (when no path is provided)
 const codemagicEditorBaseHandler = () => codemagicEditorHandler({ params: { '*': '' } });
 
-// Reusable handler for mermaid library (alias /libs/mermaid/* to /app/common/mermaid/*)
-const mermaidLibHandler = ({ params }: { params: { '*': string } }) => {
-    const relativePath = params['*'] || 'mermaid.min.js';
-    const mermaidBase = 'public/app/common/mermaid';
-    const filePath = path.join(process.cwd(), mermaidBase, relativePath);
-
-    // Security: ensure path is within the mermaid directory
-    const resolvedPath = path.resolve(filePath);
-    const resolvedBase = path.resolve(path.join(process.cwd(), mermaidBase));
-    if (!resolvedPath.startsWith(resolvedBase)) {
-        return new Response('Forbidden', { status: 403 });
-    }
-
-    if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
-        const content = fs.readFileSync(filePath);
-        const ext = path.extname(filePath).toLowerCase();
-        const contentType = MIME_TYPES[ext] || 'application/octet-stream';
-
-        // Mermaid is immutable library code: cache it for a year
-        return binaryFileResponse(content, contentType, 'public, max-age=31536000');
-    }
-
-    return new Response('Not Found', { status: 404 });
-};
-
-// Base route handler for mermaid (when no path is provided)
-const mermaidLibBaseHandler = () => mermaidLibHandler({ params: { '*': '' } });
-
 const app = new Elysia()
     // === GLOBAL ERROR HANDLER ===
     .onError(({ code, error, request, set }) => {
@@ -385,10 +357,6 @@ const app = new Elysia()
     // This uses /api/codemagic-editor/* which Bun won't intercept
     .get('/api/codemagic-editor', codemagicEditorBaseHandler) // Base route (no path)
     .get('/api/codemagic-editor/*', codemagicEditorHandler) // Wildcard (with subpath)
-    // Serve mermaid library from /libs/mermaid/* (aliased to /app/common/mermaid/*)
-    // MermaidPreRenderer.js expects mermaid at /libs/mermaid/mermaid.min.js
-    .get('/libs/mermaid', mermaidLibBaseHandler) // Base route (no path)
-    .get('/libs/mermaid/*', mermaidLibHandler) // Wildcard (with subpath)
     // Serve site theme files from FILES_DIR/themes/site/
     // URL pattern: /site-files/themes/{dirName}/* or /{version}/site-files/themes/{dirName}/*
     .get('/site-files/themes/*', ({ params, set }) => {
@@ -571,10 +539,7 @@ if (routePrefix) {
             .get('/api/exemindmap-editor', exemindmapEditorBaseHandler)
             .get('/api/exemindmap-editor/*', exemindmapEditorHandler)
             .get('/api/codemagic-editor', codemagicEditorBaseHandler)
-            .get('/api/codemagic-editor/*', codemagicEditorHandler)
-            // Mermaid library alias for BASE_PATH
-            .get('/libs/mermaid', mermaidLibBaseHandler)
-            .get('/libs/mermaid/*', mermaidLibHandler),
+            .get('/api/codemagic-editor/*', codemagicEditorHandler),
     );
 }
 

@@ -110,7 +110,6 @@ export class ImsExporter extends Html5Exporter {
             // 1. Generate HTML pages (with optional LaTeX/Mermaid pre-rendering)
             const pageHtmlMap = new Map<string, string>();
             let latexWasRendered = false;
-            let mermaidWasRendered = false;
 
             for (let i = 0; i < pages.length; i++) {
                 const page = pages[i];
@@ -168,7 +167,6 @@ export class ImsExporter extends Html5Exporter {
                         const result = await options.preRenderMermaid(html);
                         if (result.mermaidRendered) {
                             html = result.html;
-                            mermaidWasRendered = true;
                             console.log(
                                 `[ImsExporter] Pre-rendered ${result.count} Mermaid diagram(s) on page: ${page.title}`,
                             );
@@ -192,21 +190,18 @@ export class ImsExporter extends Html5Exporter {
             // Note: IMS exports do NOT include search_index.js
             // The LMS handles navigation, so client-side search is not needed
 
-            // 2. Add base CSS (fetch from content/css) and pre-rendered LaTeX/Mermaid CSS
+            // 2. Add base CSS (fetch from content/css) and pre-rendered LaTeX CSS
             const contentCssFiles = await this.resources.fetchContentCss();
             let baseCss = contentCssFiles.get('content/css/base.css');
             if (!baseCss) {
                 throw new Error('Failed to fetch content/css/base.css');
             }
-            // Append pre-rendered CSS if LaTeX or Mermaid was rendered
-            if (latexWasRendered || mermaidWasRendered) {
+            // Append pre-rendered CSS if LaTeX was rendered (Mermaid styles are in base.css)
+            if (latexWasRendered) {
                 const decoder = new TextDecoder();
                 let baseCssText = decoder.decode(baseCss);
                 if (latexWasRendered) {
                     baseCssText += '\n' + this.getPreRenderedLatexCss();
-                }
-                if (mermaidWasRendered) {
-                    baseCssText += '\n' + this.getPreRenderedMermaidCss();
                 }
                 const encoder = new TextEncoder();
                 baseCss = encoder.encode(baseCssText);
