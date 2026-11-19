@@ -1248,7 +1248,7 @@ test.describe('File Manager', () => {
         test('rejects a file above FILE_UPLOAD_MAX_SIZE with a clear message', async ({
             authenticatedPage,
             createProject,
-        }) => {
+        }, testInfo) => {
             const page = authenticatedPage;
             // A 10 KB limit stands in for the configured maximum, so a small fixture exceeds it.
             await page.route('**/api/config/upload-limits', route =>
@@ -1264,8 +1264,17 @@ test.describe('File Manager', () => {
                 .locator('#modalFileManager .media-library-upload-input')
                 .setInputFiles('test/fixtures/sample-2.jpg');
 
-            // The message is a toast inside the media library, which stays open.
             const toast = page.locator('#modalFileManager .modal-toasts-container .toast').last();
+
+            // Static mode has no server, so there is no FILE_UPLOAD_MAX_SIZE to enforce:
+            // the file is added and no size toast appears.
+            if (testInfo.project.name === 'static') {
+                await expect.poll(() => getFileCount(page), { timeout: 15000 }).toBe(1);
+                await expect(page.locator('#modalFileManager .modal-toasts-container .toast')).toHaveCount(0);
+                return;
+            }
+
+            // The message is a toast inside the media library, which stays open.
             await expect(toast).toContainText('sample-2.jpg', { timeout: 10000 });
             await expect(toast).toContainText('10.00 KB');
             await expect(page.locator('#modalFileManager')).toHaveAttribute('data-open', 'true');
