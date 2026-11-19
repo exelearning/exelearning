@@ -2,7 +2,7 @@
  * Assets Routes for Elysia
  * Handles file upload, download, and management for project assets
  */
-import { Elysia } from 'elysia';
+import { Elysia, t, type Static } from 'elysia';
 import * as fs from 'fs-extra';
 import * as path from 'path';
 import { v4 as uuidv4 } from 'uuid';
@@ -43,17 +43,49 @@ import {
 } from '../services/file-helper';
 
 import { getSession as getSessionDefault } from '../services/session-manager';
-import { serverPriorityQueue as serverPriorityQueueDefault } from '../services/asset-priority-queue';
-import type { AssetUploadRequest } from './types/request-payloads';
+import { type QueueStats, serverPriorityQueue as serverPriorityQueueDefault } from '../services/asset-priority-queue';
+import { castRequestBody } from './types/request-payloads';
 import { isSafePathSegment, safeJoin, sanitizeFileExtension } from '../utils/safe-path';
 import { buildAssetStoragePath } from '../utils/asset-paths';
 
-/**
- * File with optional name property (for Blob/File uploads)
- */
-interface FileWithName extends Blob {
-    name?: string;
-}
+// Upload bodies. Fields stay optional so a missing one keeps the handlers' own
+// 400 responses; the schemas make a present field the type the handler assumes.
+// The workarea sends files as multipart, so `file`/`files` must be real files.
+const SimpleUploadBody = t.Object({
+    file: t.Optional(t.File()),
+    componentId: t.Optional(t.String()),
+    clientId: t.Optional(t.String()),
+    folderPath: t.Optional(t.String()),
+});
+/** Resumable.js chunk; multipart numbers arrive as strings and are parsed by the handler. */
+const ChunkUploadBody = t.Object({
+    file: t.Optional(t.File()),
+    resumableIdentifier: t.Optional(t.String()),
+    resumableChunkNumber: t.Optional(t.Union([t.String(), t.Number()])),
+    resumableTotalChunks: t.Optional(t.Union([t.String(), t.Number()])),
+    resumableFilename: t.Optional(t.String()),
+});
+const FinalizeUploadBody = t.Object({
+    resumableIdentifier: t.Optional(t.String()),
+    identifier: t.Optional(t.String()),
+    componentId: t.Optional(t.String()),
+    clientId: t.Optional(t.String()),
+    folderPath: t.Optional(t.String()),
+});
+const SyncMetadataEntry = t.Object({
+    clientId: t.String(),
+    filename: t.Optional(t.String()),
+    mimeType: t.Optional(t.String()),
+    contentHash: t.Optional(t.String()),
+    folderPath: t.Optional(t.String()),
+});
+/** DELETE /bulk: the asset client IDs to delete (an empty or missing body deletes nothing). */
+const BulkDeleteBody = t.Optional(t.Object({ clientIds: t.Optional(t.Array(t.String())) }));
+/** `metadata` is a JSON string from multipart clients, or an array from JSON ones. */
+const SyncUploadBody = t.Object({
+    files: t.Optional(t.Files()),
+    metadata: t.Optional(t.Union([t.String(), t.Array(SyncMetadataEntry)])),
+});
 
 /**
  * Query dependencies for assets routes
@@ -102,7 +134,7 @@ export interface AssetsSessionManagerDeps {
  */
 export interface AssetsPriorityQueueDeps {
     shouldPreempt: (projectId: string, clientId: string) => { shouldPreempt: boolean; reason?: string };
-    getStats: (projectId: string) => { queueLength: number; processingCount: number; completedCount: number };
+    getStats: (projectId: string) => QueueStats;
 }
 
 /**
@@ -197,6 +229,24 @@ const chunkUploads = new Map<string, ChunkUploadEntry>();
  * Prevents an attacker from writing arbitrarily large files via one chunk.
  */
 export const MAX_CHUNK_BYTES = 20 * 1024 * 1024;
+
+/**
+ * Normalise an uploaded chunk to a Buffer.
+ * Multipart uploads arrive as Blob; tests and some clients send Buffer,
+ * ArrayBuffer, or Uint8Array.
+ */
+export async function resolveChunkBuffer(chunk: unknown): Promise<Buffer> {
+    if (chunk instanceof Blob) {
+        return Buffer.from(await chunk.arrayBuffer());
+    }
+    if (Buffer.isBuffer(chunk)) {
+        return chunk;
+    }
+    if (chunk instanceof ArrayBuffer) {
+        return Buffer.from(new Uint8Array(chunk));
+    }
+    return Buffer.from(chunk as Uint8Array);
+}
 
 /**
  * Maximum number of chunks a single upload may declare (10000).
@@ -366,9 +416,9 @@ export function createAssetsRoutes(deps: AssetsDependencies = defaultDependencie
             // authenticated user on public projects — same semantics as the
             // Yjs WebSocket via checkProjectAccess).
             .use(withJwtAuth())
-            .onBeforeHandle(async ({ jwtPayload, params, set }) => {
+            .onBeforeHandle(async ({ identity, params, set }) => {
                 const projectIdParam = (params as Record<string, string>).projectId;
-                const result = await enforceProjectAccess(jwtPayload, projectIdParam, {
+                const result = await enforceProjectAccess(identity, projectIdParam, {
                     db: database,
                     queries: {
                         findProjectByUuid: queries.findProjectByUuid,
@@ -387,113 +437,102 @@ export function createAssetsRoutes(deps: AssetsDependencies = defaultDependencie
             // =====================================================
 
             // POST /api/projects/:projectId/assets - Upload asset
-            .post('/', async ({ params, body, query, set }) => {
-                try {
-                    const { projectId } = params;
-                    const data = body as AssetUploadRequest;
+            .post(
+                '/',
+                async ({ params, body, query, set }) => {
+                    try {
+                        const { projectId } = params;
+                        const data = castRequestBody<Static<typeof SimpleUploadBody>>(body);
 
-                    // Resolve the project row (handles both UUID and numeric strings)
-                    const project = await resolveProject(projectId);
-                    if (!project) {
-                        set.status = 404;
-                        return { success: false, error: 'Project not found' };
-                    }
-                    const projectIdNum = project.id;
+                        // Resolve the project row (handles both UUID and numeric strings)
+                        const project = await resolveProject(projectId);
+                        if (!project) {
+                            set.status = 404;
+                            return { success: false, error: 'Project not found' };
+                        }
+                        const projectIdNum = project.id;
 
-                    if (!data.file) {
-                        set.status = 400;
-                        return { success: false, error: 'No file uploaded' };
-                    }
+                        if (!data.file) {
+                            set.status = 400;
+                            return { success: false, error: 'No file uploaded' };
+                        }
 
-                    const file = data.file;
-                    const componentId = data.componentId;
-                    // Support clientId from form body OR query parameter (bulk upload uses query param)
-                    const clientId = data.clientId || (query as { clientId?: string }).clientId || uuidv4();
-                    // clientId becomes the on-disk filename; reject traversal/separators.
-                    if (!isSafePathSegment(clientId)) {
-                        set.status = 400;
-                        return { success: false, error: 'Invalid clientId' };
-                    }
-                    const folderPath = sanitizeFolderPath(data.folderPath);
+                        const file = data.file;
+                        const componentId = data.componentId;
+                        // Support clientId from form body OR query parameter (bulk upload uses query param)
+                        const clientId = data.clientId || (query as { clientId?: string }).clientId || uuidv4();
+                        // clientId becomes the on-disk filename; reject traversal/separators.
+                        if (!isSafePathSegment(clientId)) {
+                            set.status = 400;
+                            return { success: false, error: 'Invalid clientId' };
+                        }
+                        const folderPath = sanitizeFolderPath(data.folderPath);
 
-                    // Get file data
-                    let fileBuffer: Buffer;
-                    let filename: string;
-                    let mimetype: string;
+                        const fileBuffer = Buffer.from(await file.arrayBuffer());
+                        const filename = file.name || 'uploaded_file';
+                        const mimetype = file.type || 'application/octet-stream';
 
-                    if (file instanceof Blob) {
-                        fileBuffer = Buffer.from(await file.arrayBuffer());
-                        filename = (file as FileWithName).name || 'uploaded_file';
-                        mimetype = file.type || 'application/octet-stream';
-                    } else if (Buffer.isBuffer(file)) {
-                        fileBuffer = file;
-                        filename = data.filename || 'uploaded_file';
-                        mimetype = data.mimetype || 'application/octet-stream';
-                    } else {
-                        fileBuffer = Buffer.from(file);
-                        filename = data.filename || 'uploaded_file';
-                        mimetype = data.mimetype || 'application/octet-stream';
-                    }
+                        // Sharded storage: assets/<shard>/<projectUuid>/<clientId>.<ext>
+                        // The database stores the FILES_DIR-relative path; the physical
+                        // path is derived from it through the shared resolver. No folder
+                        // hierarchy on disk - folderPath is only stored for UI/export.
+                        const ext = sanitizeFileExtension(filename);
+                        const storagePath = buildAssetStoragePath(project.uuid, `${clientId}${ext}`);
+                        const filePath = resolveAssetStoragePath(storagePath);
+                        await fs.ensureDir(path.dirname(filePath));
 
-                    // Sharded storage: assets/<shard>/<projectUuid>/<clientId>.<ext>
-                    // The database stores the FILES_DIR-relative path; the physical
-                    // path is derived from it through the shared resolver. No folder
-                    // hierarchy on disk - folderPath is only stored for UI/export.
-                    const ext = sanitizeFileExtension(filename);
-                    const storagePath = buildAssetStoragePath(project.uuid, `${clientId}${ext}`);
-                    const filePath = resolveAssetStoragePath(storagePath);
-                    await fs.ensureDir(path.dirname(filePath));
+                        // Write file using Bun.write for optimal performance
+                        if (typeof Bun !== 'undefined' && Bun.write) {
+                            await Bun.write(filePath, fileBuffer);
+                        } else {
+                            await writeFile(filePath, fileBuffer);
+                        }
 
-                    // Write file using Bun.write for optimal performance
-                    if (typeof Bun !== 'undefined' && Bun.write) {
-                        await Bun.write(filePath, fileBuffer);
-                    } else {
-                        await writeFile(filePath, fileBuffer);
-                    }
+                        // Check for existing asset with same clientId + projectId (idempotent upload)
+                        // This can happen during bulk upload when 2nd client joins collaborative session
+                        const existingAsset = await queries.findAssetByClientId(database, clientId, projectIdNum);
 
-                    // Check for existing asset with same clientId + projectId (idempotent upload)
-                    // This can happen during bulk upload when 2nd client joins collaborative session
-                    const existingAsset = await queries.findAssetByClientId(database, clientId, projectIdNum);
+                        if (existingAsset) {
+                            // Asset already exists - update it (idempotent)
+                            await removeSupersededAssetFile(existingAsset, storagePath);
+                            const updatedAsset = await queries.updateAsset(database, existingAsset.id, {
+                                filename: filename,
+                                storage_path: storagePath,
+                                mime_type: mimetype,
+                                file_size: String(fileBuffer.length),
+                                folder_path: folderPath,
+                            });
 
-                    if (existingAsset) {
-                        // Asset already exists - update it (idempotent)
-                        await removeSupersededAssetFile(existingAsset, storagePath);
-                        const updatedAsset = await queries.updateAsset(database, existingAsset.id, {
+                            return {
+                                success: true,
+                                data: serializeAsset(updatedAsset!),
+                            };
+                        }
+
+                        // Create new asset record
+                        const asset = await queries.createAsset(database, {
+                            project_id: projectIdNum,
                             filename: filename,
                             storage_path: storagePath,
                             mime_type: mimetype,
                             file_size: String(fileBuffer.length),
+                            component_id: componentId || null,
+                            client_id: clientId,
                             folder_path: folderPath,
                         });
 
                         return {
                             success: true,
-                            data: serializeAsset(updatedAsset!),
+                            data: serializeAsset(asset),
                         };
+                    } catch (error: unknown) {
+                        set.status = 500;
+                        const errorMessage = error instanceof Error ? error.message : String(error);
+                        return { success: false, error: errorMessage };
                     }
-
-                    // Create new asset record
-                    const asset = await queries.createAsset(database, {
-                        project_id: projectIdNum,
-                        filename: filename,
-                        storage_path: storagePath,
-                        mime_type: mimetype,
-                        file_size: String(fileBuffer.length),
-                        component_id: componentId || null,
-                        client_id: clientId,
-                        folder_path: folderPath,
-                    });
-
-                    return {
-                        success: true,
-                        data: serializeAsset(asset),
-                    };
-                } catch (error: unknown) {
-                    set.status = 500;
-                    const errorMessage = error instanceof Error ? error.message : String(error);
-                    return { success: false, error: errorMessage };
-                }
-            })
+                },
+                { body: SimpleUploadBody },
+            )
 
             // =====================================================
             // Chunked Upload (Resumable.js compatible)
@@ -523,248 +562,250 @@ export function createAssetsRoutes(deps: AssetsDependencies = defaultDependencie
             })
 
             // POST /upload-chunk - Upload a chunk
-            .post('/upload-chunk', async ({ params, body, set }) => {
-                try {
-                    const { projectId } = params;
-                    const data = body as AssetUploadRequest;
+            .post(
+                '/upload-chunk',
+                async ({ params, body, set }) => {
+                    try {
+                        const { projectId } = params;
+                        const data = castRequestBody<Static<typeof ChunkUploadBody>>(body);
 
-                    const identifier = data.resumableIdentifier;
-                    const chunkNumber = parseInt(data.resumableChunkNumber, 10);
-                    const totalChunks = parseInt(data.resumableTotalChunks, 10);
-                    const filename = data.resumableFilename;
-                    const chunk = data.file;
+                        const identifier = String(data.resumableIdentifier || '');
+                        const chunkNumber = parseInt(String(data.resumableChunkNumber || ''), 10);
+                        const totalChunks = parseInt(String(data.resumableTotalChunks || ''), 10);
+                        const filename = String(data.resumableFilename || '');
+                        const chunk = data.file;
 
-                    if (!identifier || !chunkNumber || !chunk) {
-                        set.status = 400;
-                        return { success: false, error: 'Missing required parameters' };
+                        if (!identifier || !chunkNumber || !chunk) {
+                            set.status = 400;
+                            return { success: false, error: 'Missing required parameters' };
+                        }
+
+                        // identifier is used to build the on-disk chunk directory; reject traversal.
+                        if (!isSafePathSegment(identifier)) {
+                            set.status = 400;
+                            return { success: false, error: 'Invalid identifier' };
+                        }
+
+                        // Reject an absurd / non-numeric declared chunk count up front. An attacker
+                        // could otherwise declare an enormous totalChunks so the upload can never be
+                        // finalized, leaving the Map entry and on-disk chunks around indefinitely.
+                        if (!Number.isInteger(totalChunks) || totalChunks < 1 || totalChunks > MAX_TOTAL_CHUNKS) {
+                            set.status = 400;
+                            return { success: false, error: 'Invalid resumableTotalChunks' };
+                        }
+
+                        // Resolve the chunk buffer early so we can enforce the per-chunk size cap
+                        // BEFORE creating any tracking state or touching disk.
+                        const chunkBuffer = await resolveChunkBuffer(chunk);
+
+                        // Cap the size of an individual chunk to bound disk/memory usage.
+                        if (chunkBuffer.length > MAX_CHUNK_BYTES) {
+                            set.status = 413;
+                            return { success: false, error: 'Chunk exceeds maximum allowed size' };
+                        }
+
+                        const uploadKey = `${projectId}:${identifier}`;
+
+                        // Initialize upload tracking SYNCHRONOUSLY to prevent race condition
+                        // When multiple chunks arrive concurrently, we must set the Map entry
+                        // BEFORE any async operation, otherwise multiple chunks enter the if block
+                        // and overwrite each other's uploadedChunks Set
+                        if (!chunkUploads.has(uploadKey)) {
+                            // Chunks are staged under the configured files directory so they
+                            // stay on the persistent data volume (#2283).
+                            const chunksRoot = path.join(getFilesDir(), 'chunks');
+                            const chunkDir = safeJoin(chunksRoot, projectId, identifier);
+                            chunkUploads.set(uploadKey, {
+                                projectId,
+                                filename,
+                                totalChunks,
+                                uploadedChunks: new Set(),
+                                chunkDir,
+                                createdAt: new Date(),
+                                initialized: false, // Directory not created yet
+                            });
+                        }
+
+                        const upload = chunkUploads.get(uploadKey)!;
+
+                        // Ensure directory exists (only once per upload)
+                        if (!upload.initialized) {
+                            await fs.ensureDir(upload.chunkDir);
+                            upload.initialized = true;
+                        }
+
+                        // Write chunk to disk using Bun.write for optimal performance
+                        const chunkPath = path.join(upload.chunkDir, `chunk_${chunkNumber}`);
+                        if (typeof Bun !== 'undefined' && Bun.write) {
+                            await Bun.write(chunkPath, chunkBuffer);
+                        } else {
+                            await writeFile(chunkPath, chunkBuffer);
+                        }
+
+                        // Mark chunk as uploaded
+                        upload.uploadedChunks.add(chunkNumber);
+
+                        // Check if all chunks uploaded
+                        const allUploaded = upload.uploadedChunks.size === upload.totalChunks;
+
+                        return {
+                            success: true,
+                            chunkNumber,
+                            allUploaded,
+                            uploadedChunks: upload.uploadedChunks.size,
+                            totalChunks: upload.totalChunks,
+                        };
+                    } catch (error: unknown) {
+                        set.status = 500;
+                        const errorMessage = error instanceof Error ? error.message : String(error);
+                        return { success: false, error: errorMessage };
                     }
-
-                    // identifier is used to build the on-disk chunk directory; reject traversal.
-                    if (!isSafePathSegment(identifier)) {
-                        set.status = 400;
-                        return { success: false, error: 'Invalid identifier' };
-                    }
-
-                    // Reject an absurd / non-numeric declared chunk count up front. An attacker
-                    // could otherwise declare an enormous totalChunks so the upload can never be
-                    // finalized, leaving the Map entry and on-disk chunks around indefinitely.
-                    if (!Number.isInteger(totalChunks) || totalChunks < 1 || totalChunks > MAX_TOTAL_CHUNKS) {
-                        set.status = 400;
-                        return { success: false, error: 'Invalid resumableTotalChunks' };
-                    }
-
-                    // Resolve the chunk buffer early so we can enforce the per-chunk size cap
-                    // BEFORE creating any tracking state or touching disk.
-                    let chunkBuffer: Buffer;
-                    if (chunk instanceof Blob) {
-                        chunkBuffer = Buffer.from(await chunk.arrayBuffer());
-                    } else if (Buffer.isBuffer(chunk)) {
-                        chunkBuffer = chunk;
-                    } else {
-                        chunkBuffer = Buffer.from(chunk as ArrayBuffer | Uint8Array);
-                    }
-
-                    // Cap the size of an individual chunk to bound disk/memory usage.
-                    if (chunkBuffer.length > MAX_CHUNK_BYTES) {
-                        set.status = 413;
-                        return { success: false, error: 'Chunk exceeds maximum allowed size' };
-                    }
-
-                    const uploadKey = `${projectId}:${identifier}`;
-
-                    // Initialize upload tracking SYNCHRONOUSLY to prevent race condition
-                    // When multiple chunks arrive concurrently, we must set the Map entry
-                    // BEFORE any async operation, otherwise multiple chunks enter the if block
-                    // and overwrite each other's uploadedChunks Set
-                    if (!chunkUploads.has(uploadKey)) {
-                        // Chunks are staged under the configured files directory so they
-                        // stay on the persistent data volume (#2283).
-                        const chunksRoot = path.join(getFilesDir(), 'chunks');
-                        const chunkDir = safeJoin(chunksRoot, projectId, identifier);
-                        chunkUploads.set(uploadKey, {
-                            projectId,
-                            filename,
-                            totalChunks,
-                            uploadedChunks: new Set(),
-                            chunkDir,
-                            createdAt: new Date(),
-                            initialized: false, // Directory not created yet
-                        });
-                    }
-
-                    const upload = chunkUploads.get(uploadKey)!;
-
-                    // Ensure directory exists (only once per upload)
-                    if (!upload.initialized) {
-                        await fs.ensureDir(upload.chunkDir);
-                        upload.initialized = true;
-                    }
-
-                    // Write chunk to disk using Bun.write for optimal performance
-                    const chunkPath = path.join(upload.chunkDir, `chunk_${chunkNumber}`);
-                    if (typeof Bun !== 'undefined' && Bun.write) {
-                        await Bun.write(chunkPath, chunkBuffer);
-                    } else {
-                        await writeFile(chunkPath, chunkBuffer);
-                    }
-
-                    // Mark chunk as uploaded
-                    upload.uploadedChunks.add(chunkNumber);
-
-                    // Check if all chunks uploaded
-                    const allUploaded = upload.uploadedChunks.size === upload.totalChunks;
-
-                    return {
-                        success: true,
-                        chunkNumber,
-                        allUploaded,
-                        uploadedChunks: upload.uploadedChunks.size,
-                        totalChunks: upload.totalChunks,
-                    };
-                } catch (error: unknown) {
-                    set.status = 500;
-                    const errorMessage = error instanceof Error ? error.message : String(error);
-                    return { success: false, error: errorMessage };
-                }
-            })
+                },
+                { body: ChunkUploadBody },
+            )
 
             // POST /upload-chunk/finalize - Finalize chunked upload
-            .post('/upload-chunk/finalize', async ({ params, body, set }) => {
-                try {
-                    const { projectId } = params;
-                    const data = body as AssetUploadRequest;
-                    const identifier = data.resumableIdentifier || data.identifier;
-                    const componentId = data.componentId;
-                    const clientId = data.clientId || uuidv4();
+            .post(
+                '/upload-chunk/finalize',
+                async ({ params, body, set }) => {
+                    try {
+                        const { projectId } = params;
+                        const data = castRequestBody<Static<typeof FinalizeUploadBody>>(body);
+                        const identifier = data.resumableIdentifier || data.identifier;
+                        const componentId = data.componentId;
+                        const clientId = data.clientId || uuidv4();
 
-                    // clientId becomes the on-disk filename; reject traversal/separators.
-                    if (!isSafePathSegment(clientId)) {
-                        set.status = 400;
-                        return { success: false, error: 'Invalid clientId' };
-                    }
-
-                    const uploadKey = `${projectId}:${identifier}`;
-                    const upload = chunkUploads.get(uploadKey);
-
-                    if (!upload) {
-                        set.status = 404;
-                        return { success: false, error: 'Upload not found' };
-                    }
-
-                    // Verify all chunks present
-                    if (upload.uploadedChunks.size !== upload.totalChunks) {
-                        set.status = 400;
-                        return {
-                            success: false,
-                            error: `Missing chunks: ${upload.uploadedChunks.size}/${upload.totalChunks}`,
-                        };
-                    }
-
-                    // Resolve the project row (handles both UUID and numeric strings)
-                    const project = await resolveProject(projectId);
-                    if (!project) {
-                        set.status = 404;
-                        return { success: false, error: 'Project not found' };
-                    }
-                    const projectIdNum = project.id;
-
-                    // Sharded storage: assets/<shard>/<projectUuid>/<clientId>.<ext>
-                    const ext = sanitizeFileExtension(upload.filename);
-                    const storagePath = buildAssetStoragePath(project.uuid, `${clientId}${ext}`);
-                    const finalPath = resolveAssetStoragePath(storagePath);
-                    await fs.ensureDir(path.dirname(finalPath));
-
-                    // Write combined file with parallel chunk reads
-                    const writeStream = fs.createWriteStream(finalPath);
-                    const PARALLEL_CHUNK_READS = 8; // Read 8 chunks in parallel
-
-                    for (let batchStart = 1; batchStart <= upload.totalChunks; batchStart += PARALLEL_CHUNK_READS) {
-                        const batchEnd = Math.min(batchStart + PARALLEL_CHUNK_READS - 1, upload.totalChunks);
-
-                        // Read batch of chunks in parallel using Bun.file for optimal performance
-                        const chunkPromises: Promise<{ index: number; data: Buffer }>[] = [];
-                        for (let i = batchStart; i <= batchEnd; i++) {
-                            const chunkPath = path.join(upload.chunkDir, `chunk_${i}`);
-                            chunkPromises.push(
-                                (typeof Bun !== 'undefined'
-                                    ? Bun.file(chunkPath)
-                                          .arrayBuffer()
-                                          .then(ab => Buffer.from(ab))
-                                    : readFile(chunkPath)
-                                ).then(data => ({ index: i, data })),
-                            );
+                        // clientId becomes the on-disk filename; reject traversal/separators.
+                        if (!isSafePathSegment(clientId)) {
+                            set.status = 400;
+                            return { success: false, error: 'Invalid clientId' };
                         }
 
-                        const chunks = await Promise.all(chunkPromises);
+                        const uploadKey = `${projectId}:${identifier}`;
+                        const upload = chunkUploads.get(uploadKey);
 
-                        // Write chunks in order (they may have resolved out of order)
-                        chunks.sort((a, b) => a.index - b.index);
-                        for (const chunk of chunks) {
-                            writeStream.write(chunk.data);
+                        if (!upload) {
+                            set.status = 404;
+                            return { success: false, error: 'Upload not found' };
                         }
-                    }
-                    writeStream.end();
 
-                    // Wait for write to complete
-                    await new Promise((resolve, reject) => {
-                        writeStream.on('finish', resolve);
-                        writeStream.on('error', reject);
-                    });
-
-                    // Get file stats
-                    const stats = await getStats(finalPath);
-                    const mimetype = mimeTypes.lookup(upload.filename) || 'application/octet-stream';
-
-                    // Check if asset already exists (for retries/re-uploads)
-                    const existingAsset = await queries.findAssetByClientId(database, clientId, projectIdNum);
-
-                    let asset: Asset | undefined;
-                    if (existingAsset) {
-                        // Update existing asset
-                        await removeSupersededAssetFile(existingAsset, storagePath);
-                        asset = await queries.updateAsset(database, existingAsset.id, {
-                            filename: upload.filename,
-                            storage_path: storagePath,
-                            mime_type: mimetype as string,
-                            file_size: String(stats?.size || 0),
-                            component_id: componentId || null,
-                        });
-                        // Fallback to existing asset if update doesn't return the record
-                        if (!asset) {
-                            asset = {
-                                ...existingAsset,
-                                storage_path: storagePath,
-                                file_size: String(stats?.size || 0),
+                        // Verify all chunks present
+                        if (upload.uploadedChunks.size !== upload.totalChunks) {
+                            set.status = 400;
+                            return {
+                                success: false,
+                                error: `Missing chunks: ${upload.uploadedChunks.size}/${upload.totalChunks}`,
                             };
                         }
-                    } else {
-                        // Create new asset record
-                        asset = await queries.createAsset(database, {
-                            project_id: projectIdNum,
-                            filename: upload.filename,
-                            storage_path: storagePath,
-                            mime_type: mimetype as string,
-                            file_size: String(stats?.size || 0),
-                            component_id: componentId || null,
-                            client_id: clientId,
+
+                        // Resolve the project row (handles both UUID and numeric strings)
+                        const project = await resolveProject(projectId);
+                        if (!project) {
+                            set.status = 404;
+                            return { success: false, error: 'Project not found' };
+                        }
+                        const projectIdNum = project.id;
+
+                        // Sharded storage: assets/<shard>/<projectUuid>/<clientId>.<ext>
+                        const ext = sanitizeFileExtension(upload.filename);
+                        const storagePath = buildAssetStoragePath(project.uuid, `${clientId}${ext}`);
+                        const finalPath = resolveAssetStoragePath(storagePath);
+                        await fs.ensureDir(path.dirname(finalPath));
+
+                        // Write combined file with parallel chunk reads
+                        const writeStream = fs.createWriteStream(finalPath);
+                        const PARALLEL_CHUNK_READS = 8; // Read 8 chunks in parallel
+
+                        for (let batchStart = 1; batchStart <= upload.totalChunks; batchStart += PARALLEL_CHUNK_READS) {
+                            const batchEnd = Math.min(batchStart + PARALLEL_CHUNK_READS - 1, upload.totalChunks);
+
+                            // Read batch of chunks in parallel using Bun.file for optimal performance
+                            const chunkPromises: Promise<{ index: number; data: Buffer }>[] = [];
+                            for (let i = batchStart; i <= batchEnd; i++) {
+                                const chunkPath = path.join(upload.chunkDir, `chunk_${i}`);
+                                chunkPromises.push(
+                                    (typeof Bun !== 'undefined'
+                                        ? Bun.file(chunkPath)
+                                              .arrayBuffer()
+                                              .then(ab => Buffer.from(ab))
+                                        : readFile(chunkPath)
+                                    ).then(data => ({ index: i, data })),
+                                );
+                            }
+
+                            const chunks = await Promise.all(chunkPromises);
+
+                            // Write chunks in order (they may have resolved out of order)
+                            chunks.sort((a, b) => a.index - b.index);
+                            for (const chunk of chunks) {
+                                writeStream.write(chunk.data);
+                            }
+                        }
+                        writeStream.end();
+
+                        // Wait for write to complete
+                        await new Promise((resolve, reject) => {
+                            writeStream.on('finish', resolve);
+                            writeStream.on('error', reject);
                         });
+
+                        // Get file stats
+                        const stats = await getStats(finalPath);
+                        const mimetype = mimeTypes.lookup(upload.filename) || 'application/octet-stream';
+
+                        // Check if asset already exists (for retries/re-uploads)
+                        const existingAsset = await queries.findAssetByClientId(database, clientId, projectIdNum);
+
+                        let asset: Asset | undefined;
+                        if (existingAsset) {
+                            // Update existing asset
+                            await removeSupersededAssetFile(existingAsset, storagePath);
+                            asset = await queries.updateAsset(database, existingAsset.id, {
+                                filename: upload.filename,
+                                storage_path: storagePath,
+                                mime_type: mimetype as string,
+                                file_size: String(stats?.size || 0),
+                                component_id: componentId || null,
+                            });
+                            // Fallback to existing asset if update doesn't return the record
+                            if (!asset) {
+                                asset = {
+                                    ...existingAsset,
+                                    storage_path: storagePath,
+                                    file_size: String(stats?.size || 0),
+                                };
+                            }
+                        } else {
+                            // Create new asset record
+                            asset = await queries.createAsset(database, {
+                                project_id: projectIdNum,
+                                filename: upload.filename,
+                                storage_path: storagePath,
+                                mime_type: mimetype as string,
+                                file_size: String(stats?.size || 0),
+                                component_id: componentId || null,
+                                client_id: clientId,
+                                folder_path: sanitizeFolderPath(data.folderPath),
+                            });
+                        }
+
+                        // Cleanup chunks
+                        await fs.remove(upload.chunkDir);
+                        chunkUploads.delete(uploadKey);
+
+                        return {
+                            success: true,
+                            complete: true,
+                            data: asset ? serializeAsset(asset) : { clientId, filename: upload.filename },
+                        };
+                    } catch (error: unknown) {
+                        set.status = 500;
+                        const errorMessage = error instanceof Error ? error.message : String(error);
+                        return { success: false, error: errorMessage };
                     }
-
-                    // Cleanup chunks
-                    await fs.remove(upload.chunkDir);
-                    chunkUploads.delete(uploadKey);
-
-                    return {
-                        success: true,
-                        complete: true,
-                        data: asset ? serializeAsset(asset) : { clientId, filename: upload.filename },
-                    };
-                } catch (error: unknown) {
-                    set.status = 500;
-                    const errorMessage = error instanceof Error ? error.message : String(error);
-                    return { success: false, error: errorMessage };
-                }
-            })
+                },
+                { body: FinalizeUploadBody },
+            )
 
             // DELETE /upload-chunk/:identifier - Cancel chunked upload
             .delete('/upload-chunk/:identifier', async ({ params }) => {
@@ -949,33 +990,37 @@ export function createAssetsRoutes(deps: AssetsDependencies = defaultDependencie
 
             // DELETE /bulk - Delete multiple assets by client IDs
             // Used for efficient folder deletion (single HTTP request instead of N)
-            .delete('/bulk', async ({ params, body, set }) => {
-                const { projectId } = params;
-                const { clientIds } = (body || {}) as { clientIds?: string[] };
+            .delete(
+                '/bulk',
+                async ({ params, body, set }) => {
+                    const { projectId } = params;
+                    const { clientIds } = castRequestBody<Static<typeof BulkDeleteBody>>(body) ?? {};
 
-                if (!clientIds || clientIds.length === 0) {
-                    return { success: true, deleted: 0 };
-                }
-
-                const project = await resolveProject(projectId);
-                if (!project) {
-                    set.status = 404;
-                    return { success: false, error: 'Project not found' };
-                }
-
-                const assets = await queries.findAssetsByClientIds(database, clientIds, project.id);
-
-                // Delete files and database records
-                for (const asset of assets) {
-                    const absPath = resolveAssetFile(asset);
-                    if (absPath) {
-                        await remove(absPath).catch(() => {});
+                    if (!clientIds || clientIds.length === 0) {
+                        return { success: true, deleted: 0 };
                     }
-                    await queries.deleteAsset(database, asset.id);
-                }
 
-                return { success: true, deleted: assets.length };
-            })
+                    const project = await resolveProject(projectId);
+                    if (!project) {
+                        set.status = 404;
+                        return { success: false, error: 'Project not found' };
+                    }
+
+                    const assets = await queries.findAssetsByClientIds(database, clientIds, project.id);
+
+                    // Delete files and database records
+                    for (const asset of assets) {
+                        const absPath = resolveAssetFile(asset);
+                        if (absPath) {
+                            await remove(absPath).catch(() => {});
+                        }
+                        await queries.deleteAsset(database, asset.id);
+                    }
+
+                    return { success: true, deleted: assets.length };
+                },
+                { body: BulkDeleteBody },
+            )
 
             // DELETE /:assetId - Delete asset by numeric ID (legacy)
             .delete('/:assetId', async ({ params, set }) => {
@@ -1047,240 +1092,234 @@ export function createAssetsRoutes(deps: AssetsDependencies = defaultDependencie
             // =====================================================
 
             // POST /sync - Upload batch of assets with metadata
-            .post('/sync', async ({ params, body, set }) => {
-                try {
-                    const { projectId } = params;
-                    const data = body as AssetUploadRequest;
+            .post(
+                '/sync',
+                async ({ params, body, set }) => {
+                    try {
+                        const { projectId } = params;
+                        const data = castRequestBody<Static<typeof SyncUploadBody>>(body);
 
-                    // Resolve the project row (handles both UUID and numeric strings)
-                    const project = await resolveProject(projectId);
-                    if (!project) {
-                        set.status = 404;
-                        return { success: false, error: 'Project not found' };
-                    }
-                    const projectIdNum = project.id;
+                        // Resolve the project row (handles both UUID and numeric strings)
+                        const project = await resolveProject(projectId);
+                        if (!project) {
+                            set.status = 404;
+                            return { success: false, error: 'Project not found' };
+                        }
+                        const projectIdNum = project.id;
 
-                    // Parse metadata from JSON string
-                    let metadata: Array<{
-                        clientId: string;
-                        filename: string;
-                        mimeType: string;
-                        contentHash?: string;
-                        folderPath?: string;
-                    }> = [];
+                        // Parse metadata from JSON string
+                        let metadata: Static<typeof SyncMetadataEntry>[] = [];
 
-                    if (typeof data.metadata === 'string') {
-                        try {
-                            metadata = JSON.parse(data.metadata);
-                        } catch {
+                        if (typeof data.metadata === 'string') {
+                            try {
+                                metadata = JSON.parse(data.metadata);
+                            } catch {
+                                set.status = 400;
+                                return { success: false, error: 'Invalid metadata JSON' };
+                            }
+                        } else if (Array.isArray(data.metadata)) {
+                            metadata = data.metadata;
+                        }
+
+                        // Each clientId becomes an on-disk filename; reject traversal/separators up front.
+                        if (!Array.isArray(metadata)) {
                             set.status = 400;
-                            return { success: false, error: 'Invalid metadata JSON' };
+                            return { success: false, error: 'Invalid metadata: expected an array' };
                         }
-                    } else if (Array.isArray(data.metadata)) {
-                        metadata = data.metadata;
-                    }
-
-                    // Each clientId becomes an on-disk filename; reject traversal/separators up front.
-                    for (const meta of metadata) {
-                        if (!isSafePathSegment(meta?.clientId)) {
-                            set.status = 400;
-                            return { success: false, error: 'Invalid clientId in metadata' };
-                        }
-                    }
-
-                    // Get files from FormData
-                    let files: (Blob | Buffer)[] = [];
-                    if (data.files) {
-                        files = Array.isArray(data.files) ? data.files : [data.files];
-                    }
-
-                    // =====================================================
-                    // PHASE 1: Convert all files to buffers in parallel
-                    // =====================================================
-                    const fileDataPromises = files.map(async (file, i) => {
-                        const fileMeta = metadata[i] || { clientId: `file-${i}`, filename: 'unknown' };
-                        let fileBuffer: Buffer;
-                        let filename = fileMeta.filename || 'uploaded_file';
-                        let mimeType = fileMeta.mimeType || 'application/octet-stream';
-                        const folderPath = sanitizeFolderPath(fileMeta.folderPath);
-
-                        if (file instanceof Blob) {
-                            fileBuffer = Buffer.from(await file.arrayBuffer());
-                            if ((file as FileWithName).name) filename = (file as FileWithName).name;
-                            if (file.type) mimeType = file.type;
-                        } else if (Buffer.isBuffer(file)) {
-                            fileBuffer = file;
-                        } else {
-                            fileBuffer = Buffer.from(file);
+                        for (const meta of metadata) {
+                            if (!isSafePathSegment(meta?.clientId)) {
+                                set.status = 400;
+                                return { success: false, error: 'Invalid clientId in metadata' };
+                            }
                         }
 
-                        // Sharded storage: assets/<shard>/<projectUuid>/<clientId>.<ext>
-                        // folderPath is only stored in database for UI/export, not on disk
+                        const files = data.files ?? [];
 
-                        // Use clientId as filename with original extension
-                        const ext = sanitizeFileExtension(filename);
-                        const flatFilename = `${fileMeta.clientId}${ext}`;
-                        const storagePath = buildAssetStoragePath(project.uuid, flatFilename);
-                        const filePath = resolveAssetStoragePath(storagePath);
-
-                        return {
-                            clientId: fileMeta.clientId,
-                            filename,
-                            mimeType,
-                            folderPath,
-                            fileBuffer,
-                            filePath,
-                            storagePath,
-                            flatFilename,
-                        };
-                    });
-
-                    const fileData = await Promise.all(fileDataPromises);
-
-                    // =====================================================
-                    // PHASE 2: Write all files to disk in parallel (Bun.write)
-                    // =====================================================
-                    // Lazy directory creation: the project shard directory is
-                    // created only when there is something to write.
-                    const targetDirs = new Set(fileData.map(f => path.dirname(f.filePath)));
-                    for (const dir of targetDirs) {
-                        await fs.ensureDir(dir);
-                    }
-                    const writeResults = await Promise.allSettled(
-                        fileData.map(({ filePath, fileBuffer }) =>
-                            typeof Bun !== 'undefined' && Bun.write
-                                ? Bun.write(filePath, fileBuffer)
-                                : fs.writeFile(filePath, fileBuffer),
-                        ),
-                    );
-
-                    // Track which files failed to write
-                    const failedWrites = new Set<number>();
-                    writeResults.forEach((result, idx) => {
-                        if (result.status === 'rejected') {
-                            failedWrites.add(idx);
-                        }
-                    });
-
-                    // =====================================================
-                    // PHASE 3: Bulk lookup existing assets (1 query)
-                    // =====================================================
-                    const clientIds = fileData.filter((_, idx) => !failedWrites.has(idx)).map(f => f.clientId);
-
-                    const existingAssets = await queries.findAssetsByClientIds(database, clientIds, projectIdNum);
-                    const existingMap = new Map(existingAssets.map(a => [a.client_id, a]));
-
-                    // =====================================================
-                    // PHASE 4: Separate new vs existing assets
-                    // =====================================================
-                    const toCreate: Array<{
-                        project_id: number;
-                        filename: string;
-                        storage_path: string;
-                        mime_type: string;
-                        file_size: string;
-                        component_id: null;
-                        client_id: string;
-                        folder_path: string;
-                    }> = [];
-                    const toUpdate: Array<{
-                        id: number;
-                        data: { storage_path: string; file_size: string; folder_path: string };
-                    }> = [];
-                    const results: Array<{
-                        clientId: string;
-                        success: boolean;
-                        serverId?: number;
-                        error?: string;
-                    }> = [];
-
-                    for (let i = 0; i < fileData.length; i++) {
-                        const data = fileData[i];
-
-                        // Check if file write failed
-                        if (failedWrites.has(i)) {
-                            const writeError = writeResults[i] as PromiseRejectedResult;
-                            results.push({
-                                clientId: data.clientId,
-                                success: false,
-                                error: writeError.reason?.message || 'File write failed',
-                            });
-                            continue;
-                        }
-
-                        const existing = existingMap.get(data.clientId);
-                        if (existing) {
-                            await removeSupersededAssetFile(existing, data.storagePath);
-                            toUpdate.push({
-                                id: existing.id,
-                                data: {
-                                    storage_path: data.storagePath,
-                                    file_size: String(data.fileBuffer.length),
-                                    folder_path: data.folderPath,
-                                },
-                            });
-                            results.push({
-                                clientId: data.clientId,
-                                success: true,
-                                serverId: existing.id,
-                            });
-                        } else {
-                            toCreate.push({
-                                project_id: projectIdNum,
-                                filename: data.filename,
-                                storage_path: data.storagePath,
-                                mime_type: data.mimeType,
-                                file_size: String(data.fileBuffer.length),
-                                component_id: null,
-                                client_id: data.clientId,
-                                folder_path: data.folderPath,
-                            });
-                        }
-                    }
-
-                    // =====================================================
-                    // PHASE 5: Bulk database operations
-                    // =====================================================
-                    // Bulk insert new assets
-                    if (toCreate.length > 0) {
-                        const created = await queries.createAssets(database, toCreate);
-                        // Map created assets to results
-                        const createdMap = new Map(created.map(a => [a.client_id, a.id]));
-                        for (const asset of toCreate) {
-                            const serverId = createdMap.get(asset.client_id);
-                            const resultIdx = results.findIndex(
-                                r => r.clientId === asset.client_id && r.serverId === undefined,
+                        // =====================================================
+                        // PHASE 1: Convert all files to buffers in parallel
+                        // =====================================================
+                        const fileDataPromises = files.map(async (file, i) => {
+                            const fileMeta = metadata[i] || { clientId: `file-${i}`, filename: 'unknown' };
+                            let filename = fileMeta.filename || 'uploaded_file';
+                            let mimeType =
+                                ('mimeType' in fileMeta ? fileMeta.mimeType : undefined) || 'application/octet-stream';
+                            const folderPath = sanitizeFolderPath(
+                                'folderPath' in fileMeta ? fileMeta.folderPath : undefined,
                             );
-                            if (resultIdx === -1) {
+
+                            const fileBuffer = Buffer.from(await file.arrayBuffer());
+                            if (file.name) filename = file.name;
+                            if (file.type) mimeType = file.type;
+
+                            // Sharded storage: assets/<shard>/<projectUuid>/<clientId>.<ext>
+                            // folderPath is only stored in database for UI/export, not on disk
+
+                            // Use clientId as filename with original extension
+                            const ext = sanitizeFileExtension(filename);
+                            const flatFilename = `${fileMeta.clientId}${ext}`;
+                            const storagePath = buildAssetStoragePath(project.uuid, flatFilename);
+                            const filePath = resolveAssetStoragePath(storagePath);
+
+                            return {
+                                clientId: fileMeta.clientId,
+                                filename,
+                                mimeType,
+                                folderPath,
+                                fileBuffer,
+                                filePath,
+                                storagePath,
+                                flatFilename,
+                            };
+                        });
+
+                        const fileData = await Promise.all(fileDataPromises);
+
+                        // =====================================================
+                        // PHASE 2: Write all files to disk in parallel (Bun.write)
+                        // =====================================================
+                        // Lazy directory creation: the project shard directory is
+                        // created only when there is something to write.
+                        const targetDirs = new Set(fileData.map(f => path.dirname(f.filePath)));
+                        for (const dir of targetDirs) {
+                            await fs.ensureDir(dir);
+                        }
+                        const writeResults = await Promise.allSettled(
+                            fileData.map(({ filePath, fileBuffer }) =>
+                                typeof Bun !== 'undefined' && Bun.write
+                                    ? Bun.write(filePath, fileBuffer)
+                                    : fs.writeFile(filePath, fileBuffer),
+                            ),
+                        );
+
+                        // Track which files failed to write
+                        const failedWrites = new Set<number>();
+                        writeResults.forEach((result, idx) => {
+                            if (result.status === 'rejected') {
+                                failedWrites.add(idx);
+                            }
+                        });
+
+                        // =====================================================
+                        // PHASE 3: Bulk lookup existing assets (1 query)
+                        // =====================================================
+                        const clientIds = fileData.filter((_, idx) => !failedWrites.has(idx)).map(f => f.clientId);
+
+                        const existingAssets = await queries.findAssetsByClientIds(database, clientIds, projectIdNum);
+                        const existingMap = new Map(existingAssets.map(a => [a.client_id, a]));
+
+                        // =====================================================
+                        // PHASE 4: Separate new vs existing assets
+                        // =====================================================
+                        const toCreate: Array<{
+                            project_id: number;
+                            filename: string;
+                            storage_path: string;
+                            mime_type: string;
+                            file_size: string;
+                            component_id: null;
+                            client_id: string;
+                            folder_path: string;
+                        }> = [];
+                        const toUpdate: Array<{
+                            id: number;
+                            data: { storage_path: string; file_size: string; folder_path: string };
+                        }> = [];
+                        const results: Array<{
+                            clientId: string;
+                            success: boolean;
+                            serverId?: number;
+                            error?: string;
+                        }> = [];
+
+                        for (let i = 0; i < fileData.length; i++) {
+                            const data = fileData[i];
+
+                            // Check if file write failed
+                            if (failedWrites.has(i)) {
+                                const writeError = writeResults[i] as PromiseRejectedResult;
                                 results.push({
-                                    clientId: asset.client_id,
+                                    clientId: data.clientId,
+                                    success: false,
+                                    error: writeError.reason?.message || 'File write failed',
+                                });
+                                continue;
+                            }
+
+                            const existing = existingMap.get(data.clientId);
+                            if (existing) {
+                                await removeSupersededAssetFile(existing, data.storagePath);
+                                toUpdate.push({
+                                    id: existing.id,
+                                    data: {
+                                        storage_path: data.storagePath,
+                                        file_size: String(data.fileBuffer.length),
+                                        folder_path: data.folderPath,
+                                    },
+                                });
+                                results.push({
+                                    clientId: data.clientId,
                                     success: true,
-                                    serverId,
+                                    serverId: existing.id,
+                                });
+                            } else {
+                                toCreate.push({
+                                    project_id: projectIdNum,
+                                    filename: data.filename,
+                                    storage_path: data.storagePath,
+                                    mime_type: data.mimeType,
+                                    file_size: String(data.fileBuffer.length),
+                                    component_id: null,
+                                    client_id: data.clientId,
+                                    folder_path: data.folderPath,
                                 });
                             }
                         }
+
+                        // =====================================================
+                        // PHASE 5: Bulk database operations
+                        // =====================================================
+                        // Bulk insert new assets
+                        if (toCreate.length > 0) {
+                            const created = await queries.createAssets(database, toCreate);
+                            // Map created assets to results
+                            const createdMap = new Map(created.map(a => [a.client_id, a.id]));
+                            for (const asset of toCreate) {
+                                const serverId = createdMap.get(asset.client_id);
+                                const resultIdx = results.findIndex(
+                                    r => r.clientId === asset.client_id && r.serverId === undefined,
+                                );
+                                if (resultIdx === -1) {
+                                    results.push({
+                                        clientId: asset.client_id,
+                                        success: true,
+                                        serverId,
+                                    });
+                                }
+                            }
+                        }
+
+                        // Bulk update existing assets (parallel)
+                        if (toUpdate.length > 0) {
+                            await queries.bulkUpdateAssets(database, toUpdate);
+                        }
+
+                        const successCount = results.filter(r => r.success).length;
+                        const failCount = results.filter(r => !r.success).length;
+
+                        return {
+                            success: failCount === 0,
+                            uploaded: successCount,
+                            failed: failCount,
+                            results,
+                        };
+                    } catch (error: unknown) {
+                        set.status = 500;
+                        const errorMessage = error instanceof Error ? error.message : String(error);
+                        return { success: false, error: errorMessage };
                     }
-
-                    // Bulk update existing assets (parallel)
-                    if (toUpdate.length > 0) {
-                        await queries.bulkUpdateAssets(database, toUpdate);
-                    }
-
-                    const successCount = results.filter(r => r.success).length;
-                    const failCount = results.filter(r => !r.success).length;
-
-                    return {
-                        success: failCount === 0,
-                        uploaded: successCount,
-                        failed: failCount,
-                        results,
-                    };
-                } catch (error: unknown) {
-                    set.status = 500;
-                    const errorMessage = error instanceof Error ? error.message : String(error);
-                    return { success: false, error: errorMessage };
-                }
-            })
+                },
+                { body: SyncUploadBody },
+            )
 
             // =====================================================
             // Streaming Upload (Bun-optimized)
@@ -1340,7 +1379,7 @@ export function createAssetsRoutes(deps: AssetsDependencies = defaultDependencie
 
                     // Use Bun's native streaming for optimal performance
                     if (typeof Bun !== 'undefined' && Bun.write) {
-                        await Bun.write(filePath, body);
+                        await Bun.write(filePath, new Response(body));
                     } else {
                         // Fallback for non-Bun environments
                         const chunks: Buffer[] = [];
@@ -1418,8 +1457,8 @@ interface SerializedAsset {
     componentId: string | null;
     clientId: string | null;
     folderPath: string;
-    createdAt: string;
-    updatedAt: string;
+    createdAt: number | null;
+    updatedAt: number | null;
 }
 
 /**

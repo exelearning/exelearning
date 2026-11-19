@@ -5,7 +5,7 @@
  *
  * Usage: bun cli <command> [arguments] [options]
  */
-import { parseArgs, hasHelp, getArray } from './utils/args';
+import { parseArgs, hasHelp, getArray, type ParsedArgs } from './utils/args';
 import { colors, error, success, EXIT_CODES } from './utils/output';
 
 // Import commands

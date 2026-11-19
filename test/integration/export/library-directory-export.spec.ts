@@ -17,7 +17,6 @@ import * as path from 'path';
 import * as fs from 'fs-extra';
 import { FileSystemResourceProvider } from '../../../src/shared/export/providers/FileSystemResourceProvider';
 import { LibraryDetector } from '../../../src/shared/export/utils/LibraryDetector';
-import { LIBRARY_PATTERNS } from '../../../src/shared/export/constants';
 
 const PUBLIC_DIR = path.join(__dirname, '../../../public');
 
@@ -30,7 +29,7 @@ describe('Library Directory Export (Issue #904)', () => {
             const html = '<div class="exe-atools">Accessibility toolbar enabled</div>';
 
             // Detect libraries
-            const detector = new LibraryDetector(LIBRARY_PATTERNS);
+            const detector = new LibraryDetector();
             const detection = detector.detectLibraries(html);
 
             // Should detect exe_atools with isDirectory flag
@@ -59,7 +58,7 @@ describe('Library Directory Export (Issue #904)', () => {
 
             // Get detection for exe_atools
             const html = '<div class="exe-atools">Content</div>';
-            const detector = new LibraryDetector(LIBRARY_PATTERNS);
+            const detector = new LibraryDetector();
             const detection = detector.detectLibraries(html);
 
             // Fetch with patterns
@@ -97,7 +96,7 @@ describe('Library Directory Export (Issue #904)', () => {
             ],
         ])('exports exactly Tobii and the adapter for %s', async (_label, html, name) => {
             const provider = new FileSystemResourceProvider(PUBLIC_DIR);
-            const detector = new LibraryDetector(LIBRARY_PATTERNS);
+            const detector = new LibraryDetector();
             const detection = detector.detectLibraries(html);
 
             const pattern = detection.patterns.find(p => p.name === name);
@@ -121,7 +120,7 @@ describe('Library Directory Export (Issue #904)', () => {
             const html = '<div class="exe-fx-none">Content with effect</div>';
 
             // Detect libraries
-            const detector = new LibraryDetector(LIBRARY_PATTERNS);
+            const detector = new LibraryDetector();
             const detection = detector.detectLibraries(html);
 
             // Should detect exe_effects without isDirectory flag
@@ -150,7 +149,7 @@ describe('Library Directory Export (Issue #904)', () => {
             const html = '<span class="exe-math">\\(x^2\\)</span>';
 
             // Detect libraries
-            const detector = new LibraryDetector(LIBRARY_PATTERNS);
+            const detector = new LibraryDetector();
             const detection = detector.detectLibraries(html);
 
             // Should detect exe_math with isDirectory flag
@@ -181,7 +180,7 @@ describe('Library Directory Export (Issue #904)', () => {
             `;
 
             // Detect libraries
-            const detector = new LibraryDetector(LIBRARY_PATTERNS);
+            const detector = new LibraryDetector();
             const detection = detector.detectLibraries(html, { includeAccessibilityToolbar: true });
 
             // Both should be detected with isDirectory
@@ -214,7 +213,7 @@ describe('Library Directory Export (Issue #904)', () => {
             const html = '<div class="exe-atools">Toolbar</div><a rel="lightbox" href="test.jpg">Image</a>';
 
             // Detect libraries
-            const detector = new LibraryDetector(LIBRARY_PATTERNS);
+            const detector = new LibraryDetector();
             const detection = detector.detectLibraries(html, { includeAccessibilityToolbar: true });
 
             // Fetch library files

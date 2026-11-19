@@ -2,8 +2,9 @@
  * User Routes for Elysia
  * Handles user preferences and settings
  */
-import { Elysia, t } from 'elysia';
-import { getJwtSecret } from './auth';
+import { Elysia, t, type Static } from 'elysia';
+import { getJwtSecret, passwordFingerprint } from './auth';
+import { isProductionEnv } from '../utils/env';
 import { jwt } from '@elysiajs/jwt';
 import { db } from '../db/client';
 import {
@@ -25,7 +26,8 @@ import {
 import { isOfflineMode } from '../utils/offline.util';
 import type { Kysely } from 'kysely';
 import type { Database } from '../db/types';
-import type { JwtPayload, UserPreferencesRequest } from './types/request-payloads';
+import { castRequestBody } from './types/request-payloads';
+import { toAuthenticatedIdentity, type JwtPayload } from '../auth/types';
 
 /**
  * Preference value wrapper type expected by frontend
@@ -33,6 +35,8 @@ import type { JwtPayload, UserPreferencesRequest } from './types/request-payload
 interface PreferenceValue {
     value: string | number | boolean;
 }
+
+type ChangePasswordBody = { currentPassword: string; newPassword: string };
 
 /**
  * Default user preferences with structure expected by frontend
@@ -92,6 +96,13 @@ const defaultDependencies: UserDependencies = {
         getAuthMethods,
     },
 };
+
+/**
+ * Preferences are an open key/value store: the workarea sends them form-encoded
+ * (strings and string arrays), and non-string values are stored as JSON. The
+ * schema only guarantees an object, so a missing body is a 400, not a 500.
+ */
+const PreferencesBody = t.Record(t.String(), t.Unknown());
 
 /**
  * Factory function to create user routes with injected dependencies
@@ -163,8 +174,8 @@ export function createUserRoutes(deps: UserDependencies = defaultDependencies) {
      * Both endpoints have identical behavior for Symfony compatibility.
      */
     async function handleSavePreferences(
-        body: unknown,
-        set: { status: number },
+        preferences: Static<typeof PreferencesBody>,
+        set: { status?: number | string },
         currentUser: { id: number; email: string; isGuest: boolean } | null,
         saveFn: (ownerId: number, key: string, value: unknown) => Promise<void>,
     ): Promise<{ responseMessage: string } | { error: string; message: string }> {
@@ -176,8 +187,6 @@ export function createUserRoutes(deps: UserDependencies = defaultDependencies) {
         const ownerId = currentUser.id;
 
         try {
-            const preferences = body as UserPreferencesRequest;
-
             for (const [key, value] of Object.entries(preferences)) {
                 await saveFn(ownerId, key, value);
             }
@@ -202,22 +211,23 @@ export function createUserRoutes(deps: UserDependencies = defaultDependencies) {
 
             // Derive user from JWT token
             .derive(async ({ jwt, cookie }) => {
-                const token = cookie.auth?.value;
+                const token = cookie.auth?.value as string | undefined;
                 if (!token) return { currentUser: null };
 
                 try {
-                    const payload = (await jwt.verify(token)) as JwtPayload | false;
-                    if (!payload) return { currentUser: null };
+                    const payload = (await jwt.verify(token)) as unknown as JwtPayload | false;
+                    const identity = payload ? toAuthenticatedIdentity(payload) : null;
+                    if (!identity) return { currentUser: null };
 
                     return {
                         currentUser: {
-                            id: payload.sub,
-                            email: payload.email,
-                            isGuest: payload.isGuest || false,
-                            authMethod: payload.authMethod,
+                            id: identity.userId,
+                            email: identity.email,
+                            isGuest: identity.isGuest,
+                            authMethod: identity.authMethod,
                             // An impersonated token inherits the administrator's
                             // authMethod, so this flag must travel with it.
-                            isImpersonated: payload.isImpersonated || false,
+                            isImpersonated: identity.isImpersonated || false,
                         },
                     };
                 } catch {
@@ -271,14 +281,30 @@ export function createUserRoutes(deps: UserDependencies = defaultDependencies) {
             })
 
             // POST /api/user/preferences - Save user preferences
-            .post('/api/user/preferences', async ({ body, set, currentUser }) => {
-                return handleSavePreferences(body, set, currentUser, saveUserPreference);
-            })
+            .post(
+                '/api/user/preferences',
+                async ({ body, set, currentUser }) =>
+                    handleSavePreferences(
+                        castRequestBody<Static<typeof PreferencesBody>>(body),
+                        set,
+                        currentUser,
+                        saveUserPreference,
+                    ),
+                { body: PreferencesBody },
+            )
 
             // PUT /api/user/preferences - Save user preferences (Symfony compatibility)
-            .put('/api/user/preferences', async ({ body, set, currentUser }) => {
-                return handleSavePreferences(body, set, currentUser, saveUserPreference);
-            })
+            .put(
+                '/api/user/preferences',
+                async ({ body, set, currentUser }) =>
+                    handleSavePreferences(
+                        castRequestBody<Static<typeof PreferencesBody>>(body),
+                        set,
+                        currentUser,
+                        saveUserPreference,
+                    ),
+                { body: PreferencesBody },
+            )
 
             // POST /api/user/lopd-accepted - Accept LOPD terms
             .post('/api/user/lopd-accepted', async ({ set, currentUser }) => {
@@ -309,7 +335,7 @@ export function createUserRoutes(deps: UserDependencies = defaultDependencies) {
             // boundary.
             .patch(
                 '/api/user/password',
-                async ({ body, set, currentUser }) => {
+                async ({ body, set, currentUser, jwt, cookie }) => {
                     if (!currentUser) {
                         set.status = 401;
                         return { error: 'Unauthorized', message: 'Authentication required' };
@@ -348,20 +374,21 @@ export function createUserRoutes(deps: UserDependencies = defaultDependencies) {
                         return { error: 'Forbidden', message: PASSWORD_CHANGE_UNAVAILABLE_MESSAGE };
                     }
 
-                    const currentPasswordMatches = await verifyPassword(body.currentPassword, user.password);
+                    const input = castRequestBody<ChangePasswordBody>(body);
+                    const currentPasswordMatches = await verifyPassword(input.currentPassword, user.password);
                     if (!currentPasswordMatches) {
                         set.status = 401;
                         return { error: 'INVALID_CURRENT_PASSWORD', message: 'Current password is incorrect' };
                     }
 
-                    const validation = validateNewPassword(body.newPassword);
+                    const validation = validateNewPassword(input.newPassword);
                     if (!validation.valid) {
                         set.status = 422;
                         return { error: 'INVALID_PASSWORD', message: validation.message! };
                     }
 
                     try {
-                        const hashedPassword = await hashPassword(body.newPassword);
+                        const hashedPassword = await hashPassword(input.newPassword);
                         const updated = await queries.updateUserPassword(database, userId, hashedPassword);
 
                         if (!updated) {
@@ -369,7 +396,31 @@ export function createUserRoutes(deps: UserDependencies = defaultDependencies) {
                             return { error: 'Internal Error', message: 'Failed to change the password' };
                         }
 
-                        return { success: true, message: 'Password changed successfully' };
+                        // The change revokes every session signed with the old
+                        // password fingerprint; keep this one by re-signing it.
+                        const session = (await jwt.verify(cookie.auth.value as string)) as JwtPayload | false;
+                        if (session) {
+                            const { iat: _iat, exp: _exp, ...claims } = session;
+                            cookie.auth.set({
+                                value: await jwt.sign({ ...claims, pwh: passwordFingerprint(hashedPassword) }),
+                                httpOnly: true,
+                                secure: isProductionEnv(),
+                                sameSite: 'lax',
+                                maxAge: 7 * 24 * 60 * 60,
+                                path: '/',
+                            });
+                        }
+
+                        // The editor's WebSocket token carries the old fingerprint
+                        // too; hand back a replacement so open editors keep syncing.
+                        const token = await jwt.sign({
+                            sub: String(userId),
+                            email: user.email,
+                            isGuest: false,
+                            pwh: passwordFingerprint(hashedPassword),
+                        });
+
+                        return { success: true, message: 'Password changed successfully', token };
                     } catch (error) {
                         // Log the failure, never the credentials.
                         console.error('[User] Failed to change password:', error);

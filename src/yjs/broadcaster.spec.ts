@@ -11,11 +11,14 @@ import {
     broadcastUpdate,
     hasActiveConnections,
     getConnectionCount,
+    type BroadcasterDependencies,
 } from './broadcaster';
+
+type RoomManagerMock = BroadcasterDependencies['roomManager'];
 
 describe('broadcaster', () => {
     // Track broadcasts for testing
-    let broadcasts: Array<{ docName: string; message: Buffer }> = [];
+    let broadcasts: Array<{ docName: string; message: Buffer | string }> = [];
     let mockRooms: Map<string, { conns: Map<unknown, unknown> }> = new Map();
 
     beforeEach(() => {
@@ -25,15 +28,16 @@ describe('broadcaster', () => {
         // Configure with mock room manager
         configure({
             roomManager: {
-                broadcastToRoom: (docName: string, message: Buffer) => {
+                broadcastToRoom: (docName: string, message: Buffer | string) => {
                     broadcasts.push({ docName, message });
                 },
-                getRoomByProjectUuid: (uuid: string) => {
+                // Mock rooms only carry `conns`, the one field the broadcaster reads
+                getRoomByProjectUuid: ((uuid: string) => {
                     return mockRooms.get(`project-${uuid}`);
-                },
-                getRoom: (docName: string) => {
+                }) as unknown as RoomManagerMock['getRoomByProjectUuid'],
+                getRoom: ((docName: string) => {
                     return mockRooms.get(docName);
-                },
+                }) as unknown as RoomManagerMock['getRoom'],
             },
         });
     });

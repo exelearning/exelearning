@@ -21,9 +21,10 @@ import {
     ImsExporter,
     Epub3Exporter,
     ElpxExporter,
-    type ParsedOdeStructure,
 } from '../../../src/shared/export';
+import type { ParsedOdeStructure } from '../../../src/services/xml/interfaces';
 import { createDocumentFromStructure } from '../../helpers/document-test-utils';
+import type { DocumentStructure } from '../../helpers/document-test-utils';
 
 const publicDir = path.join(process.cwd(), 'public');
 const testDir = path.join(process.cwd(), 'test', 'temp', 'idevice-resource-links');
@@ -52,7 +53,7 @@ function moleculePage(id: string, title: string, position: number): ParsedOdeStr
 }
 
 // The home page links from the package root and the subpage from html/: both relative forms are checked
-const structure: ParsedOdeStructure = {
+const structure: DocumentStructure = {
     meta: { title: 'Molecules', author: 'Test', language: 'en', theme: 'base' },
     pages: [moleculePage('home', 'Home', 0), moleculePage('sub', 'Subpage', 1)],
 };

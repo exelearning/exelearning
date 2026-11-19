@@ -15,6 +15,7 @@ import { now } from '../../../db/types';
 import { exportRoutes } from './export';
 import { createAuthRoutes } from '../../auth';
 import { findUserByEmail, findUserById, createUser, saveFullState } from '../../../db/queries';
+import type { Kysely } from 'kysely';
 
 /**
  * Helper to create a minimal Yjs document for export testing
@@ -101,14 +102,19 @@ describe('Export API v1', () => {
         originalEnv = {
             APP_AUTH_METHODS: process.env.APP_AUTH_METHODS,
             JWT_SECRET: process.env.JWT_SECRET,
+            DB_DRIVER: process.env.DB_DRIVER,
+            DB_PATH: process.env.DB_PATH,
         };
         process.env.APP_AUTH_METHODS = 'password';
         process.env.JWT_SECRET = 'test-secret-for-export-tests';
+        // Users and projects are wiped below: never let that reach a .env-configured database.
+        process.env.DB_DRIVER = 'pdo_sqlite';
+        process.env.DB_PATH = ':memory:';
 
         await resetClientCacheForTesting();
         await up(db);
-        await up008(db);
-        await up009(db);
+        await up008(db as unknown as Kysely<unknown>);
+        await up009(db as unknown as Kysely<unknown>);
         await db.deleteFrom('projects').execute();
         await db.deleteFrom('users').execute();
 
