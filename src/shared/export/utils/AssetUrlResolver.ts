@@ -8,6 +8,7 @@
  * same way — previously this logic lived inside PrintPreviewExporter and had no second home.
  */
 
+import { blobFromBytes } from '../../utils/blob';
 import type { AssetProvider, ExportAsset } from '../interfaces';
 
 /** Matches both reference styles, stopping before quotes, whitespace and JSON escapes. */
@@ -89,15 +90,6 @@ export class AssetUrlResolver {
         }
     }
 
-    /**
-     * The id-to-blob-URL map, for renderers that resolve paths themselves.
-     *
-     * @returns The map, or undefined when there are no assets
-     */
-    getExportPathMap(): Map<string, string> | undefined {
-        return this.byId ?? undefined;
-    }
-
     /** Idempotent cleanup; only URLs created by this resolver belong to it. */
     dispose(): void {
         for (const url of this.ownedUrls) URL.revokeObjectURL(url);
@@ -149,11 +141,7 @@ export class AssetUrlResolver {
         }
 
         try {
-            const blob =
-                asset.data instanceof Blob
-                    ? asset.data
-                    : // biome-ignore lint/suspicious/noExplicitAny: legacy asset data types
-                      new Blob([asset.data as any], { type: asset.mime });
+            const blob = blobFromBytes(asset.data, asset.mime);
             const url = URL.createObjectURL(blob);
             this.ownedUrls.add(url);
             return url;

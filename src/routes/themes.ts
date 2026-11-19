@@ -11,6 +11,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { db } from '../db/client';
 import { getEnabledSiteThemes, getDefaultTheme, getBaseThemes } from '../db/queries/themes';
+import type { DefaultThemeSetting } from '../db/queries/themes';
 import type { Theme } from '../db/types';
 import { buildSiteThemeUrl } from '../utils/site-theme-url';
 import { prefixPath } from '../utils/basepath.util';
@@ -353,7 +354,7 @@ export const themesRoutes = new Elysia({ name: 'themes-routes' })
 
         // Get enabled site themes from database
         let siteThemes: ThemeConfig[] = [];
-        let defaultTheme = { type: 'base' as const, dirName: 'base' };
+        let defaultTheme: DefaultThemeSetting = { type: 'base', dirName: 'base' };
         let baseThemesFromDb: Theme[] = [];
 
         try {

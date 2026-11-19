@@ -213,13 +213,11 @@ describe('005_user_id_nullable migration', () => {
         (db as { getExecutor: typeof db.getExecutor }).getExecutor = () => {
             const executor = originalGetExecutor();
             const originalExecuteQuery = executor.executeQuery.bind(executor);
-            (executor as { executeQuery: typeof executor.executeQuery }).executeQuery = async (
-                compiled: Parameters<typeof executor.executeQuery>[0],
-                queryId?: Parameters<typeof executor.executeQuery>[1],
-            ) => {
+            const recordingExecuteQuery: typeof executor.executeQuery = (compiled, options) => {
                 executed.push(compiled.sql);
-                return originalExecuteQuery(compiled, queryId as never);
+                return originalExecuteQuery(compiled, options);
             };
+            (executor as { executeQuery: typeof executor.executeQuery }).executeQuery = recordingExecuteQuery;
             return executor;
         };
         return {

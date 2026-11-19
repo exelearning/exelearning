@@ -8,7 +8,7 @@ import {
     setPostgresSqlConstructorForTesting,
     resetPostgresSqlConstructorForTesting,
 } from './bun-postgres-dialect';
-import { PostgresAdapter, PostgresIntrospector, PostgresQueryCompiler } from 'kysely';
+import { CompiledQuery, PostgresAdapter, PostgresIntrospector, PostgresQueryCompiler } from 'kysely';
 
 type ReservedConnection = {
     unsafe: (sql: string, params: unknown[]) => Promise<unknown>;
@@ -36,7 +36,9 @@ function setupSqlHarness(reserved: ReservedConnection) {
         }
     }
 
-    setPostgresSqlConstructorForTesting(FakeSQL);
+    setPostgresSqlConstructorForTesting(
+        FakeSQL as unknown as Parameters<typeof setPostgresSqlConstructorForTesting>[0],
+    );
 
     return {
         getConnectionString: () => connectionString,
@@ -132,10 +134,7 @@ describe('BunPostgresDialect', () => {
             await driver.init();
             const connection = await driver.acquireConnection();
 
-            const result = await connection.executeQuery<{ id: number }>({
-                sql: 'SELECT id FROM users',
-                parameters: [],
-            });
+            const result = await connection.executeQuery<{ id: number }>(CompiledQuery.raw('SELECT id FROM users'));
 
             expect(result.rows).toEqual([{ id: 1 }]);
             expect(result.numAffectedRows).toBeUndefined();
@@ -153,10 +152,9 @@ describe('BunPostgresDialect', () => {
             await driver.init();
             const connection = await driver.acquireConnection();
 
-            const result = await connection.executeQuery({
-                sql: 'INSERT INTO users (email) VALUES ($1)',
-                parameters: ['test@example.com'],
-            });
+            const result = await connection.executeQuery(
+                CompiledQuery.raw('INSERT INTO users (email) VALUES ($1)', ['test@example.com']),
+            );
 
             expect(result.rows).toEqual([]);
             expect(result.numAffectedRows).toBe(2n);
@@ -174,10 +172,7 @@ describe('BunPostgresDialect', () => {
             await driver.init();
             const connection = await driver.acquireConnection();
 
-            const iterator = connection.streamQuery<{ id: number }>({
-                sql: 'SELECT id FROM users',
-                parameters: [],
-            });
+            const iterator = connection.streamQuery<{ id: number }>(CompiledQuery.raw('SELECT id FROM users'), 1);
 
             const results: number[] = [];
             for await (const batch of iterator) {
@@ -196,14 +191,16 @@ describe('BunPostgresDialect', () => {
                     calls.push(sql);
                     return { rows: [] };
                 },
-            } as Parameters<typeof driver.beginTransaction>[0];
+            } as unknown as Parameters<typeof driver.beginTransaction>[0];
+            const compiler = new PostgresQueryCompiler();
+            const compileQuery = compiler.compileQuery.bind(compiler);
 
             await driver.beginTransaction(connection, { isolationLevel: 'repeatable read', accessMode: 'read only' });
             await driver.commitTransaction(connection);
             await driver.rollbackTransaction(connection);
-            await driver.savepoint(connection, 'sp1');
-            await driver.rollbackToSavepoint(connection, 'sp1');
-            await driver.releaseSavepoint(connection, 'sp1');
+            await driver.savepoint?.(connection, 'sp1', compileQuery);
+            await driver.rollbackToSavepoint?.(connection, 'sp1', compileQuery);
+            await driver.releaseSavepoint?.(connection, 'sp1', compileQuery);
 
             expect(calls).toEqual([
                 'START TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY',

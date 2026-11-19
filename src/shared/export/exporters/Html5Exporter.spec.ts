@@ -5,7 +5,7 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'bun:test';
 import { loadIdeviceConfigs, resetIdeviceConfigCache } from '../../../services/idevice-config';
 import { Html5Exporter } from './Html5Exporter';
-import { zipSync, unzipSync, strToU8 } from 'fflate';
+import { unzipSync } from 'fflate';
 import type {
     ExportDocument,
     ExportMetadata,
@@ -13,7 +13,9 @@ import type {
     ResourceProvider,
     AssetProvider,
     ZipProvider,
+    ExportAsset,
 } from '../interfaces';
+import { MockAssetProvider, MockZipProvider } from '../../../../test/helpers/export-providers';
 
 function decodePreviewFile(content: ArrayBuffer | Uint8Array | string | undefined): string {
     if (typeof content === 'string') {
@@ -74,7 +76,7 @@ class MockDocument implements ExportDocument {
 class MockResourceProvider implements ResourceProvider {
     faviconToReturn: string | null = null;
 
-    async fetchTheme(_name: string): Promise<Map<string, Buffer>> {
+    async fetchTheme(_name: string): Promise<Map<string, Uint8Array>> {
         const files = new Map<string, Buffer>();
         // Theme files keep their original names (style.css, style.js)
         files.set('style.css', Buffer.from('/* theme css */'));
@@ -89,18 +91,18 @@ class MockResourceProvider implements ResourceProvider {
         return files;
     }
 
-    async fetchIdeviceResources(_type: string): Promise<Map<string, Buffer>> {
+    async fetchIdeviceResources(_type: string): Promise<Map<string, Uint8Array>> {
         return new Map();
     }
 
-    async fetchBaseLibraries(): Promise<Map<string, Buffer>> {
+    async fetchBaseLibraries(): Promise<Map<string, Uint8Array>> {
         const files = new Map<string, Buffer>();
         files.set('jquery/jquery.min.js', Buffer.from('// jquery'));
         files.set('common.js', Buffer.from('// common'));
         return files;
     }
 
-    async fetchLibraryFiles(_files: string[]): Promise<Map<string, Buffer>> {
+    async fetchLibraryFiles(_files: string[]): Promise<Map<string, Uint8Array>> {
         const files = new Map<string, Buffer>();
         if (_files.includes('material-icons/material-icons.svg')) {
             files.set(
@@ -120,7 +122,7 @@ class MockResourceProvider implements ResourceProvider {
         return files;
     }
 
-    async fetchScormFiles(_version: string): Promise<Map<string, Buffer>> {
+    async fetchScormFiles(_version: string): Promise<Map<string, Uint8Array>> {
         return new Map();
     }
 
@@ -128,11 +130,11 @@ class MockResourceProvider implements ResourceProvider {
         return ideviceType.toLowerCase().replace(/idevice$/i, '');
     }
 
-    async fetchExeLogo(): Promise<Buffer | null> {
+    async fetchExeLogo(): Promise<Uint8Array | null> {
         return null;
     }
 
-    async fetchContentCss(): Promise<Map<string, Buffer>> {
+    async fetchContentCss(): Promise<Map<string, Uint8Array>> {
         const files = new Map<string, Buffer>();
         files.set('content/css/base.css', Buffer.from('/* base css */'));
         return files;
@@ -142,7 +144,7 @@ class MockResourceProvider implements ResourceProvider {
         return new Map();
     }
 
-    async fetchGlobalFontFiles(fontId: string): Promise<Map<string, Buffer>> {
+    async fetchGlobalFontFiles(fontId: string): Promise<Map<string, Uint8Array>> {
         if (!fontId || fontId === 'default') {
             return new Map();
         }
@@ -166,49 +168,9 @@ class MockResourceProvider implements ResourceProvider {
     }
 }
 
-// Mock asset provider
-class MockAssetProvider implements AssetProvider {
-    async getAsset(_path: string): Promise<Buffer | null> {
-        return null;
-    }
-
-    async getAllAssets(): Promise<
-        Array<{
-            id: string;
-            filename: string;
-            originalPath: string;
-            folderPath?: string;
-            mime: string;
-            data: Buffer;
-        }>
-    > {
-        return [];
-    }
-
-    async getProjectAssets(): Promise<
-        Array<{
-            id: string;
-            filename: string;
-            originalPath: string;
-            folderPath?: string;
-            mime: string;
-            data: Buffer;
-        }>
-    > {
-        return this.getAllAssets();
-    }
-}
-
 // Mock asset provider with forEachAsset support (for memory-efficient preview tests)
 class MockAssetProviderWithForEach extends MockAssetProvider {
-    private assetList: Array<{
-        id: string;
-        filename: string;
-        originalPath: string;
-        folderPath?: string;
-        mime: string;
-        data: Buffer;
-    }> = [];
+    private assetList: ExportAsset[] = [];
 
     addAsset(id: string, filename: string, mime: string, data: Buffer, folderPath?: string): void {
         this.assetList.push({
@@ -233,16 +195,7 @@ class MockAssetProviderWithForEach extends MockAssetProvider {
         }));
     }
 
-    async forEachAsset(
-        callback: (asset: {
-            id: string;
-            filename: string;
-            originalPath: string;
-            folderPath?: string;
-            mime: string;
-            data: Uint8Array | Blob;
-        }) => void | Promise<void>,
-    ): Promise<void> {
+    async forEachAsset(callback: (asset: ExportAsset) => Promise<void>): Promise<number> {
         const assets = await this.getAllAssets();
         for (const asset of assets) {
             await callback({
@@ -254,37 +207,7 @@ class MockAssetProviderWithForEach extends MockAssetProvider {
                 data: asset.data,
             });
         }
-    }
-}
-
-// Mock zip provider
-class MockZipProvider implements ZipProvider {
-    files = new Map<string, string | Buffer>();
-
-    addFile(path: string, content: string | Buffer): void {
-        this.files.set(path, content);
-    }
-
-    hasFile(path: string): boolean {
-        return this.files.has(path);
-    }
-
-    getFilePaths(): string[] {
-        return Array.from(this.files.keys());
-    }
-
-    async generateAsync(): Promise<Buffer> {
-        // Create actual ZIP for realistic testing using fflate
-        const zipData: Record<string, Uint8Array> = {};
-        for (const [path, content] of this.files) {
-            if (typeof content === 'string') {
-                zipData[path] = strToU8(content);
-            } else {
-                zipData[path] = new Uint8Array(content);
-            }
-        }
-        const zipped = zipSync(zipData);
-        return Buffer.from(zipped);
+        return assets.length;
     }
 }
 
@@ -306,6 +229,7 @@ const samplePages: ExportPage[] = [
                         type: 'FreeTextIdevice',
                         order: 0,
                         content: '<p>Welcome to the course.</p>',
+                        properties: {},
                     },
                 ],
             },
@@ -327,6 +251,7 @@ const samplePages: ExportPage[] = [
                         type: 'FreeTextIdevice',
                         order: 0,
                         content: '<p>This is chapter 1.</p>',
+                        properties: {},
                     },
                 ],
             },
@@ -555,12 +480,12 @@ describe('Html5Exporter', () => {
 
         it('should catch and return errors', async () => {
             // Create a failing zip provider
-            const failingZip: ZipProvider = {
+            const failingZip = {
                 addFile: () => {},
                 generateAsync: async () => {
                     throw new Error('ZIP generation failed');
                 },
-            };
+            } as unknown as ZipProvider;
             exporter = new Html5Exporter(document, resources, assets, failingZip);
 
             const result = await exporter.export();
@@ -1036,6 +961,7 @@ describe('Html5Exporter', () => {
                                     type: 'FreeTextIdevice',
                                     order: 0,
                                     content: '<p>Formula: \\(x^2\\)</p>',
+                                    properties: {},
                                 },
                             ],
                         },
@@ -1084,6 +1010,7 @@ describe('Html5Exporter', () => {
                                     type: 'FreeTextIdevice',
                                     order: 0,
                                     content: '<p>Formula: \\(x^2\\)</p>',
+                                    properties: {},
                                 },
                             ],
                         },
@@ -1412,6 +1339,7 @@ describe('Html5Exporter', () => {
                                     type: 'download-source-file',
                                     order: 0,
                                     content: '<p>Download content</p>',
+                                    properties: {},
                                 },
                             ],
                         },
@@ -1457,6 +1385,7 @@ describe('Html5Exporter', () => {
                                     type: 'FreeTextIdevice',
                                     order: 0,
                                     content: '<p class="exe-download-package-link"><a href="#">Download</a></p>',
+                                    properties: {},
                                 },
                             ],
                         },
@@ -1495,6 +1424,7 @@ describe('Html5Exporter', () => {
                                     type: 'download-source-file',
                                     order: 0,
                                     content: '<p>Download</p>',
+                                    properties: {},
                                 },
                             ],
                         },
@@ -1534,6 +1464,7 @@ describe('Html5Exporter', () => {
                                     type: 'download-source-file',
                                     order: 0,
                                     content: '<p>Click to download</p>',
+                                    properties: {},
                                 },
                             ],
                         },
@@ -1577,6 +1508,7 @@ describe('Html5Exporter', () => {
                                     type: 'download-source-file',
                                     order: 0,
                                     content: '<p>Download content</p>',
+                                    properties: {},
                                 },
                             ],
                         },
@@ -1628,6 +1560,7 @@ describe('Html5Exporter', () => {
                                     type: 'download-source-file',
                                     order: 0,
                                     content: '<p>Download content</p>',
+                                    properties: {},
                                 },
                             ],
                         },
@@ -1667,6 +1600,7 @@ describe('Html5Exporter', () => {
                                     type: 'text',
                                     order: 0,
                                     content: '<p>Regular text content</p>',
+                                    properties: {},
                                 },
                             ],
                         },
@@ -1688,6 +1622,7 @@ describe('Html5Exporter', () => {
                                     type: 'download-source-file',
                                     order: 0,
                                     content: '<p class="exe-download-package-link">Download</p>',
+                                    properties: {},
                                 },
                             ],
                         },
@@ -1920,6 +1855,7 @@ describe('Html5Exporter', () => {
                                     order: 0,
                                     content:
                                         '<p><img src="asset://a1b2c3d4-e5f6-7890-abcd-ef1234567890/photo.jpg" /></p>',
+                                    properties: {},
                                 },
                             ],
                         },
@@ -1982,6 +1918,7 @@ describe('Html5Exporter', () => {
                                     type: 'text',
                                     order: 0,
                                     content: '<p>Some searchable content</p>',
+                                    properties: {},
                                 },
                             ],
                         },
@@ -2504,7 +2441,7 @@ describe('Html5Exporter', () => {
         it('should handle asset fetch failure gracefully', async () => {
             // Create asset provider that throws
             const failingAssets = new (class extends MockAssetProvider {
-                async getAllAssets() {
+                async getAllAssets(): Promise<ExportAsset[]> {
                     throw new Error('Asset fetch failed');
                 }
             })();
@@ -2635,6 +2572,7 @@ describe('Html5Exporter', () => {
                                     type: 'download-source-file',
                                     order: 0,
                                     content: '<p>Download</p>',
+                                    properties: {},
                                 },
                             ],
                         },
@@ -2674,6 +2612,7 @@ describe('Html5Exporter', () => {
                                     type: 'download-source-file',
                                     order: 0,
                                     content: '<p>Download</p>',
+                                    properties: {},
                                 },
                             ],
                         },
@@ -2714,6 +2653,7 @@ describe('Html5Exporter', () => {
                                     type: 'download-source-file',
                                     order: 0,
                                     content: '<p>Download</p>',
+                                    properties: {},
                                 },
                             ],
                         },
@@ -2754,6 +2694,7 @@ describe('Html5Exporter', () => {
                                     type: 'download-source-file',
                                     order: 0,
                                     content: '<p>Download</p>',
+                                    properties: {},
                                 },
                             ],
                         },
@@ -2791,6 +2732,7 @@ describe('Html5Exporter', () => {
                                     type: 'text',
                                     order: 0,
                                     content: '<p class="exe-download-package-link">Download</p>',
+                                    properties: {},
                                 },
                             ],
                         },
@@ -2892,7 +2834,7 @@ describe('Html5Exporter', () => {
 
     describe('prepareThemeData', () => {
         it('should extract root-level CSS and JS files', async () => {
-            resources.fetchTheme = async (): Promise<Map<string, Buffer>> => {
+            resources.fetchTheme = async (): Promise<Map<string, Uint8Array>> => {
                 const files = new Map<string, Buffer>();
                 files.set('style.css', Buffer.from('/* css */'));
                 files.set('style.js', Buffer.from('// js'));
@@ -2914,7 +2856,7 @@ describe('Html5Exporter', () => {
         });
 
         it('should use fallback when theme fetch fails', async () => {
-            resources.fetchTheme = async (): Promise<Map<string, Buffer>> => {
+            resources.fetchTheme = async (): Promise<Map<string, Uint8Array>> => {
                 throw new Error('Theme not found');
             };
 
@@ -2928,7 +2870,7 @@ describe('Html5Exporter', () => {
         });
 
         it('should detect favicon from theme files', async () => {
-            resources.fetchTheme = async (): Promise<Map<string, Buffer>> => {
+            resources.fetchTheme = async (): Promise<Map<string, Uint8Array>> => {
                 const files = new Map<string, Buffer>();
                 files.set('style.css', Buffer.from('/* css */'));
                 files.set('img/favicon.ico', Buffer.from('ico-data'));
@@ -2997,7 +2939,7 @@ describe('Html5Exporter', () => {
     describe('Icon Resolution via setThemeIconFiles', () => {
         it('should configure IdeviceRenderer with theme icon files', async () => {
             // Override fetchTheme to include icon files
-            resources.fetchTheme = async (_name: string): Promise<Map<string, Buffer>> => {
+            resources.fetchTheme = async (_name: string): Promise<Map<string, Uint8Array>> => {
                 const files = new Map<string, Buffer>();
                 files.set('style.css', Buffer.from('/* theme css */'));
                 files.set('icons/activity.svg', Buffer.from('<svg></svg>'));
@@ -3016,7 +2958,7 @@ describe('Html5Exporter', () => {
 
         it('should only resolve image files from icons/ folder', async () => {
             // Override fetchTheme to include various file types
-            resources.fetchTheme = async (_name: string): Promise<Map<string, Buffer>> => {
+            resources.fetchTheme = async (_name: string): Promise<Map<string, Uint8Array>> => {
                 const files = new Map<string, Buffer>();
                 files.set('style.css', Buffer.from('/* css */'));
                 files.set('icons/info.svg', Buffer.from('<svg></svg>'));
@@ -3035,7 +2977,7 @@ describe('Html5Exporter', () => {
 
         it('should handle theme with no icon files', async () => {
             // Override fetchTheme with no icons
-            resources.fetchTheme = async (_name: string): Promise<Map<string, Buffer>> => {
+            resources.fetchTheme = async (_name: string): Promise<Map<string, Uint8Array>> => {
                 const files = new Map<string, Buffer>();
                 files.set('style.css', Buffer.from('/* css */'));
                 files.set('style.js', Buffer.from('// js'));
@@ -3071,7 +3013,7 @@ describe('Html5Exporter', () => {
             document = new MockDocument({}, pagesWithIcon);
 
             // Override fetchTheme to return icon with extension
-            resources.fetchTheme = async (_name: string): Promise<Map<string, Buffer>> => {
+            resources.fetchTheme = async (_name: string): Promise<Map<string, Uint8Array>> => {
                 const files = new Map<string, Buffer>();
                 files.set('style.css', Buffer.from('/* css */'));
                 files.set('icons/lightbulb.svg', Buffer.from('<svg></svg>'));
@@ -3110,7 +3052,7 @@ describe('Html5Exporter', () => {
             document = new MockDocument({}, pagesWithIcon);
 
             // Theme with PNG icon
-            resources.fetchTheme = async (_name: string): Promise<Map<string, Buffer>> => {
+            resources.fetchTheme = async (_name: string): Promise<Map<string, Uint8Array>> => {
                 const files = new Map<string, Buffer>();
                 files.set('style.css', Buffer.from('/* css */'));
                 files.set('icons/star.png', Buffer.from('png-data'));
@@ -3127,7 +3069,7 @@ describe('Html5Exporter', () => {
 
         it('should support all common image extensions for icon resolution', async () => {
             // Override fetchTheme with various image formats
-            resources.fetchTheme = async (_name: string): Promise<Map<string, Buffer>> => {
+            resources.fetchTheme = async (_name: string): Promise<Map<string, Uint8Array>> => {
                 const files = new Map<string, Buffer>();
                 files.set('style.css', Buffer.from('/* css */'));
                 files.set('icons/icon1.svg', Buffer.from('svg'));
@@ -3183,8 +3125,8 @@ describe('Html5Exporter', () => {
 
             // Override forEachAsset to also yield an orphan asset
             const origForEach = forEachAssets.forEachAsset.bind(forEachAssets);
-            forEachAssets.forEachAsset = async (callback: (asset: any) => void | Promise<void>) => {
-                await origForEach(callback);
+            forEachAssets.forEachAsset = async (callback: (asset: ExportAsset) => Promise<void>) => {
+                const count = await origForEach(callback);
                 await callback({
                     id: 'uuid-orphan-prev',
                     filename: 'orphan.txt',
@@ -3192,6 +3134,7 @@ describe('Html5Exporter', () => {
                     mime: 'text/plain',
                     data: Buffer.from('orphan'),
                 });
+                return count + 1;
             };
 
             const previewExporter = new Html5Exporter(document, resources, forEachAssets, zip);
@@ -3225,6 +3168,7 @@ const internalLinkPages: ExportPage[] = [
                         order: 0,
                         content:
                             '<p>Go to <a href="exe-node:page-2">About</a> and <a href="exe-node:page-2#sec">a section</a>.</p>',
+                        properties: {},
                     },
                 ],
             },
@@ -3246,6 +3190,7 @@ const internalLinkPages: ExportPage[] = [
                         type: 'FreeTextIdevice',
                         order: 0,
                         content: '<p>Back to <a href="exe-node:page-1">Home</a>.</p>',
+                        properties: {},
                     },
                 ],
             },
