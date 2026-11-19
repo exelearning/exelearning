@@ -60,6 +60,13 @@ class AssetWebSocketHandler {
     // Active uploads being tracked for preemption (assetId -> AbortController)
     this.activeUploads = new Map();
 
+    // Assets above this size are sent with the resumable chunk endpoints, like
+    // SaveManager does. A single multipart request is rejected by the server's
+    // request-body cap (Bun defaults to 128 MiB), e.g. a 312 MB 3D model (#2794).
+    // Must stay below the server's MAX_CHUNK_BYTES (20 MB) per request.
+    this.CHUNK_UPLOAD_THRESHOLD = 20 * 1024 * 1024;
+    this.CHUNK_SIZE = 5 * 1024 * 1024;
+
     // Event listeners
     this.listeners = {
       assetReceived: [],
@@ -665,6 +672,70 @@ class AssetWebSocketHandler {
   }
 
   /**
+   * POST one asset to the server. Small assets go in a single multipart request
+   * to `url`; large ones use the resumable chunk endpoints so no request exceeds
+   * the server's body cap.
+   * @param {string} assetId
+   * @param {{blob: Blob, filename?: string, mime?: string}} assetData
+   * @param {string} url - Single-request upload URL
+   * @returns {Promise<{ok: boolean, status: number, json: Function, text: Function}>}
+   */
+  async _uploadAssetData(assetId, assetData, url) {
+    const headers = { 'Authorization': `Bearer ${this.config.token}` };
+
+    if (assetData.blob.size <= this.CHUNK_UPLOAD_THRESHOLD) {
+      const formData = new FormData();
+      formData.append('file', assetData.blob, assetData.filename);
+      return fetch(url, { method: 'POST', headers, body: formData });
+    }
+
+    const blob = assetData.blob;
+    const filename = assetData.filename || `asset-${assetId}`;
+    const mime = assetData.mime || 'application/octet-stream';
+    const baseUrl = `${this.config.apiUrl}/projects/${this.config.projectId}/assets/upload-chunk`;
+    const identifier = `${assetId}-${Date.now()}`;
+    const totalChunks = Math.ceil(blob.size / this.CHUNK_SIZE);
+
+    Logger.log(`[AssetWebSocketHandler] Chunked upload of ${assetId.substring(0, 8)}... (${blob.size} bytes, ${totalChunks} chunks)`);
+
+    // Sequential on purpose: keeps at most one chunk in flight per asset.
+    for (let i = 0; i < totalChunks; i++) {
+      const chunk = blob.slice(i * this.CHUNK_SIZE, Math.min((i + 1) * this.CHUNK_SIZE, blob.size));
+      const formData = new FormData();
+      formData.append('file', new File([chunk], filename, { type: mime }));
+      formData.append('resumableIdentifier', identifier);
+      formData.append('resumableChunkNumber', String(i + 1));
+      formData.append('resumableTotalChunks', String(totalChunks));
+      formData.append('resumableFilename', filename);
+      formData.append('resumableType', mime);
+      formData.append('clientId', assetId);
+
+      const chunkResponse = await fetch(baseUrl, { method: 'POST', headers, body: formData });
+      if (!chunkResponse.ok) return chunkResponse;
+    }
+
+    const finalizeResponse = await fetch(`${baseUrl}/finalize`, {
+      method: 'POST',
+      headers: { ...headers, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        resumableIdentifier: identifier,
+        resumableTotalChunks: totalChunks,
+        resumableFilename: filename,
+        resumableType: mime,
+        clientId: assetId,
+      }),
+    });
+    if (!finalizeResponse.ok) return finalizeResponse;
+
+    const result = await finalizeResponse.json();
+    if (result?.complete) {
+      return { ok: true, status: finalizeResponse.status, json: async () => result, text: async () => JSON.stringify(result) };
+    }
+    const message = 'Chunked upload was not confirmed by the server';
+    return { ok: false, status: finalizeResponse.status, json: async () => result, text: async () => message };
+  }
+
+  /**
    * Handle upload request from server
    * Server is asking us to upload an asset we have
    * @param {Object} payload
@@ -694,23 +765,13 @@ class AssetWebSocketHandler {
         return;
       }
 
-      // Upload to server via REST API
-      const formData = new FormData();
-      formData.append('file', assetData.blob, assetData.filename);
-
       // Use server-provided uploadUrl (includes clientId as query param)
       // Fall back to constructing URL if not provided
       const url = uploadUrl
         ? `${this.config.apiUrl}${uploadUrl}`
         : `${this.config.apiUrl}/projects/${this.config.projectId}/assets?clientId=${assetId}`;
 
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${this.config.token}`,
-        },
-        body: formData,
-      });
+      const response = await this._uploadAssetData(assetId, assetData, url);
 
       if (response.ok) {
         const result = await response.json();
@@ -808,22 +869,12 @@ class AssetWebSocketHandler {
           continue;
         }
 
-        // Upload to server
-        const formData = new FormData();
-        formData.append('file', assetData.blob, assetData.filename);
-
         // Use server-provided uploadUrl (includes clientId as query param)
         const url = uploadUrl
           ? `${this.config.apiUrl}${uploadUrl}?clientId=${assetId}`
           : `${this.config.apiUrl}/projects/${this.config.projectId}/assets?clientId=${assetId}`;
 
-        const response = await fetch(url, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${this.config.token}`,
-          },
-          body: formData,
-        });
+        const response = await this._uploadAssetData(assetId, assetData, url);
 
         if (response.ok) {
           completed++;

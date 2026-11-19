@@ -11,6 +11,12 @@ const Logger = window.AppLogger || console;
  * assets into TinyMCE editors.
  */
 export default class ModalFilemanager extends Modal {
+    /** 3D model extensions accepted by the 3D viewer iDevice. */
+    static MODEL_3D_EXTENSIONS = ['.glb', '.gltf', '.stl'];
+
+    /** 3D models above this size get a performance warning after upload (#2794). */
+    static LARGE_3D_MODEL_BYTES = 50 * 1024 * 1024;
+
     constructor(manager) {
         const id = 'modalFileManager';
         const titleDefault = _('File manager');
@@ -2199,8 +2205,17 @@ export default class ModalFilemanager extends Modal {
 
         let uploadedCount = 0;
         let lastUploadedUrl = null;
+        const limits = await this.getUploadLimits();
+        const tooLarge = [];
+        const large3DModels = [];
 
         for (const file of files) {
+            // #2794: enforce the configured FILE_UPLOAD_MAX_SIZE here too, not only
+            // when opening .elpx files, so an oversized asset never enters the project.
+            if (limits?.maxFileSize && file.size > limits.maxFileSize) {
+                tooLarge.push(file);
+                continue;
+            }
             try {
                 Logger.log(`[MediaLibrary] Uploading: ${file.name} to projectId: ${this.assetManager.projectId}, folder: "${this.currentPath}"`);
                 // Upload to current folder.
@@ -2217,10 +2232,13 @@ export default class ModalFilemanager extends Modal {
                 });
                 uploadedCount++;
                 lastUploadedUrl = url;
+                if (this.isLarge3DModel(file)) large3DModels.push(file);
             } catch (err) {
                 console.error(`[MediaLibrary] Failed to upload ${file.name}:`, err);
             }
         }
+
+        this.reportUploadSizeIssues(tooLarge, large3DModels, limits);
 
         if (uploadedCount > 0) {
             Logger.log(`[MediaLibrary] Uploaded ${uploadedCount} files to folder "${this.currentPath}"`);
@@ -2231,6 +2249,72 @@ export default class ModalFilemanager extends Modal {
                 await this.autoSelectUploadedAsset(assetId);
             }
         }
+    }
+
+    /**
+     * Server upload limits (FILE_UPLOAD_MAX_SIZE). Returns null when there is no
+     * server (static mode) or the limits cannot be read, so uploads are not blocked.
+     * @returns {Promise<{maxFileSize: number, maxFileSizeFormatted: string}|null>}
+     */
+    async getUploadLimits() {
+        const app = eXeLearning.app;
+        if (app?.capabilities?.storage?.remote === false || !app?.api?.getUploadLimits) return null;
+        try {
+            return await app.api.getUploadLimits();
+        } catch (err) {
+            console.warn('[MediaLibrary] Could not load upload limits:', err);
+            return null;
+        }
+    }
+
+    /**
+     * Whether a file is a 3D model heavy enough to fail or freeze the viewer on
+     * modest devices (#2794).
+     * @param {File} file
+     * @returns {boolean}
+     */
+    isLarge3DModel(file) {
+        const name = (file?.name || '').toLowerCase();
+        return (
+            ModalFilemanager.MODEL_3D_EXTENSIONS.some((ext) => name.endsWith(ext)) &&
+            file.size > ModalFilemanager.LARGE_3D_MODEL_BYTES
+        );
+    }
+
+    /**
+     * Tell the user about rejected oversized files and heavy 3D models in one alert.
+     * @param {File[]} tooLarge - Files rejected for exceeding the upload limit
+     * @param {File[]} large3DModels - Uploaded 3D models above the warning size
+     * @param {{maxFileSizeFormatted: string}|null} limits
+     */
+    reportUploadSizeIssues(tooLarge, large3DModels, limits) {
+        if (tooLarge.length === 0 && large3DModels.length === 0) return;
+        const format = (bytes) => this.assetManager?.formatFileSize?.(bytes) || `${bytes}`;
+        const paragraphs = [];
+
+        for (const file of tooLarge) {
+            const message = _('File size ({fileSize}) exceeds the maximum allowed size ({maxSize}).')
+                .replace('{fileSize}', format(file.size))
+                .replace('{maxSize}', limits?.maxFileSizeFormatted || '');
+            paragraphs.push(`<p><strong>${this.escapeHtml(file.name)}</strong>: ${this.escapeHtml(message)}</p>`);
+        }
+        for (const file of large3DModels) {
+            const message = _(
+                'This 3D model is {fileSize}. It may load slowly or not display on modest computers, tablets and phones. Reduce its textures and geometry if possible.'
+            ).replace('{fileSize}', format(file.size));
+            paragraphs.push(`<p><strong>${this.escapeHtml(file.name)}</strong>: ${this.escapeHtml(message)}</p>`);
+        }
+
+        // A toast inside the media library, not modals.alert: showing another modal
+        // closes this one and would interrupt picking the file for the iDevice.
+        // No auto-remove, so there is time to read it.
+        eXeLearning.app.toasts.createToast({
+            title: tooLarge.length > 0 ? _('File too large') : _('Large 3D model'),
+            body: paragraphs.join(''),
+            icon: tooLarge.length > 0 ? 'error' : 'warning',
+            error: tooLarge.length > 0,
+            modal: true,
+        });
     }
 
     /**
