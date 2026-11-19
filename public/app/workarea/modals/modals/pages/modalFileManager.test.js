@@ -1131,6 +1131,88 @@ it('should filter by accept=3d for 3D models', () => {
         expect(window.eXeLearning.app.toasts.createToast).not.toHaveBeenCalled();
       });
 
+      it('loads the limits once and reuses them for later uploads', async () => {
+        await modal.uploadFiles([sizedFile('a.png', 1 * MB, 'image/png')]);
+        await modal.uploadFiles([sizedFile('b.png', 1 * MB, 'image/png')]);
+
+        expect(window.eXeLearning.app.api.getUploadLimits).toHaveBeenCalledTimes(1);
+      });
+
+      it('retries loading the limits after a failure', async () => {
+        window.eXeLearning.app.api.getUploadLimits.mockRejectedValueOnce(new Error('offline'));
+
+        await modal.uploadFiles([sizedFile('huge.png', 312 * MB, 'image/png')]);
+        await modal.uploadFiles([sizedFile('huge2.png', 312 * MB, 'image/png')]);
+
+        expect(window.eXeLearning.app.api.getUploadLimits).toHaveBeenCalledTimes(2);
+        // The second upload had limits and was rejected.
+        expect(window.eXeLearning.app.toasts.createToast).toHaveBeenCalledTimes(1);
+      });
+
+      it('does not hold the upload when the limits take too long', async () => {
+        vi.useFakeTimers();
+        try {
+          window.eXeLearning.app.api.getUploadLimits.mockReturnValue(new Promise(() => {}));
+          const insertImage = window.eXeLearning.app.project._yjsBridge.assetManager.insertImage;
+
+          const upload = modal.uploadFiles([sizedFile('huge.png', 312 * MB, 'image/png')]);
+          await vi.advanceTimersByTimeAsync(ModalFilemanager.UPLOAD_LIMITS_WAIT_MS);
+          await upload;
+
+          expect(insertImage).toHaveBeenCalledTimes(1);
+        } finally {
+          vi.useRealTimers();
+        }
+      });
+
+      it('starts loading the limits when the media library opens', async () => {
+        vi.useFakeTimers();
+        try {
+          await modal.show();
+          vi.advanceTimersByTime(500);
+          expect(window.eXeLearning.app.api.getUploadLimits).toHaveBeenCalledTimes(1);
+        } finally {
+          vi.useRealTimers();
+        }
+      });
+
+      it('reads a dropped file list before waiting for the limits', async () => {
+        const insertImage = window.eXeLearning.app.project._yjsBridge.assetManager.insertImage;
+        const file = sizedFile('photo.png', 1 * MB, 'image/png');
+        // A live FileList that empties once the drop event is over.
+        const live = [file];
+        window.eXeLearning.app.api.getUploadLimits.mockImplementation(async () => {
+          live.length = 0;
+          return { maxFileSize: 100 * MB, maxFileSizeFormatted: '100.00 MB' };
+        });
+
+        await modal.uploadFiles(live);
+
+        expect(insertImage).toHaveBeenCalledWith(file, { folderPath: '', forceNewId: false });
+      });
+
+      it('treats a limit of 0 as no limit', async () => {
+        window.eXeLearning.app.api.getUploadLimits.mockResolvedValue({ maxFileSize: 0, maxFileSizeFormatted: '0 B' });
+        const insertImage = window.eXeLearning.app.project._yjsBridge.assetManager.insertImage;
+
+        await modal.uploadFiles([sizedFile('photo.png', 5 * MB, 'image/png')]);
+
+        expect(insertImage).toHaveBeenCalledTimes(1);
+      });
+
+      it('detects 3D models by MIME type as well as extension', async () => {
+        await modal.uploadFiles([sizedFile('scan.bin', 60 * MB, 'model/gltf-binary')]);
+
+        const { title } = window.eXeLearning.app.toasts.createToast.mock.calls[0][0];
+        expect(title).toBe('Large 3D model');
+      });
+
+      it('removes the size toast after a while', async () => {
+        await modal.uploadFiles([sizedFile('huge.glb', 312 * MB)]);
+
+        expect(window.eXeLearning.app.toasts.createToast.mock.calls[0][0].remove).toBe(ModalFilemanager.SIZE_TOAST_MS);
+      });
+
       it('skips the hard limit in static mode (no server)', async () => {
         window.eXeLearning.app.capabilities = { storage: { remote: false } };
         const insertImage = window.eXeLearning.app.project._yjsBridge.assetManager.insertImage;

@@ -591,10 +591,111 @@ describe('AssetWebSocketHandler', () => {
 
       await handler._handleUploadRequest({ assetId: 'asset-1', requestId: 'req-1' });
 
-      expect(global.fetch).toHaveBeenCalledTimes(1);
+      // One chunk, then the cancel so the partial chunks do not linger on the server.
+      expect(global.fetch).toHaveBeenCalledTimes(2);
+      const identifier = global.fetch.mock.calls[0][1].body.get('resumableIdentifier');
+      expect(global.fetch.mock.calls[1][0]).toBe(
+        `http://localhost:3001/api/projects/project-123/assets/upload-chunk/${encodeURIComponent(identifier)}`,
+      );
+      expect(global.fetch.mock.calls[1][1].method).toBe('DELETE');
       const response = decodeAssetMessage(mockWsProvider.ws.send.mock.calls[0][0]);
       expect(response.data.success).toBe(false);
       expect(response.data.error).toContain('413');
+      expect(response.data.error).toContain('Payload Too Large');
+    });
+
+    it('cancels the upload and reports the error when a request throws', async () => {
+      global.fetch = mock((url, options) => {
+        if (options?.method === 'DELETE') return Promise.resolve(okJson({ success: true }));
+        return Promise.reject(new Error('network down'));
+      });
+
+      await handler._handleUploadRequest({ assetId: 'asset-1', requestId: 'req-1' });
+
+      expect(global.fetch.mock.calls.at(-1)[1].method).toBe('DELETE');
+      const response = decodeAssetMessage(mockWsProvider.ws.send.mock.calls[0][0]);
+      expect(response.data.success).toBe(false);
+      expect(response.data.error).toBe('network down');
+    });
+
+    it('cancels the upload when finalize fails', async () => {
+      global.fetch = mock((url, options) => {
+        if (url.endsWith('/finalize')) {
+          return Promise.resolve({ ok: false, status: 400, text: mock(() => undefined).mockResolvedValue('Missing chunks') });
+        }
+        return Promise.resolve(okJson({ success: true }));
+      });
+
+      await handler._handleUploadRequest({ assetId: 'asset-1', requestId: 'req-1' });
+
+      expect(global.fetch.mock.calls.at(-1)[1].method).toBe('DELETE');
+      const response = decodeAssetMessage(mockWsProvider.ws.send.mock.calls[0][0]);
+      expect(response.data.error).toContain('Missing chunks');
+    });
+
+    it('shares one chunked upload between simultaneous requests for the same asset', async () => {
+      await Promise.all([
+        handler._handleUploadRequest({ assetId: 'asset-1', requestId: 'req-1' }),
+        handler._handleUploadRequest({ assetId: 'asset-1', requestId: 'req-2' }),
+      ]);
+
+      const urls = global.fetch.mock.calls.map((call) => call[0]);
+      expect(urls.filter((u) => u.endsWith('/upload-chunk'))).toHaveLength(3);
+      expect(urls.filter((u) => u.endsWith('/finalize'))).toHaveLength(1);
+      const replies = mockWsProvider.ws.send.mock.calls.map((call) => decodeAssetMessage(call[0]));
+      expect(replies.map((r) => r.data.requestId).sort()).toEqual(['req-1', 'req-2']);
+      expect(replies.every((r) => r.data.success)).toBe(true);
+      expect(handler.chunkedUploads.size).toBe(0);
+    });
+
+    it('shares a failed upload result without reading a response body twice', async () => {
+      const text = mock(() => undefined).mockResolvedValue('Payload Too Large');
+      global.fetch = mock((url, options) =>
+        Promise.resolve(options?.method === 'DELETE' ? okJson({ success: true }) : { ok: false, status: 413, text }),
+      );
+
+      await Promise.all([
+        handler._handleUploadRequest({ assetId: 'asset-1', requestId: 'req-1' }),
+        handler._handleUploadRequest({ assetId: 'asset-1', requestId: 'req-2' }),
+      ]);
+
+      expect(text).toHaveBeenCalledTimes(1);
+      const replies = mockWsProvider.ws.send.mock.calls.map((call) => decodeAssetMessage(call[0]));
+      expect(replies).toHaveLength(2);
+      expect(replies.every((r) => r.data.error.includes('Payload Too Large'))).toBe(true);
+    });
+
+    it('uses a different upload identifier for each upload of the same asset', async () => {
+      await handler._handleUploadRequest({ assetId: 'asset-1', requestId: 'req-1' });
+      await handler._handleUploadRequest({ assetId: 'asset-1', requestId: 'req-2' });
+
+      const ids = new Set(
+        global.fetch.mock.calls
+          .filter((call) => call[0].endsWith('/upload-chunk'))
+          .map((call) => call[1].body.get('resumableIdentifier')),
+      );
+      expect(ids.size).toBe(2);
+    });
+
+    it('reports "not found" when only the metadata is cached (no blob)', async () => {
+      mockAssetManager.getAssetForUpload.mockResolvedValue({ blob: null, filename: 'volcano.glb' });
+
+      await handler._handleUploadRequest({ assetId: 'asset-1', requestId: 'req-1' });
+
+      expect(global.fetch).not.toHaveBeenCalled();
+      const response = decodeAssetMessage(mockWsProvider.ws.send.mock.calls[0][0]);
+      expect(response.data.error).toBe('Asset not found in local storage');
+    });
+
+    it('reports "not found" in bulk sync when the blob is missing', async () => {
+      mockAssetManager.getAssetForUpload.mockResolvedValue({ blob: null, filename: 'volcano.glb' });
+
+      await handler._handleBulkUploadRequest({ assetIds: ['asset-1'] });
+
+      expect(global.fetch).not.toHaveBeenCalled();
+      const messages = mockWsProvider.ws.send.mock.calls.map((call) => decodeAssetMessage(call[0]));
+      const done = messages.find((m) => m.data.status === 'completed');
+      expect(done.data.failedAssets).toEqual([{ assetId: 'asset-1', error: 'Asset not found in local storage' }]);
     });
 
     it('reports an error when finalize does not confirm completion', async () => {

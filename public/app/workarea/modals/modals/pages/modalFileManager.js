@@ -11,11 +11,14 @@ const Logger = window.AppLogger || console;
  * assets into TinyMCE editors.
  */
 export default class ModalFilemanager extends Modal {
-    /** 3D model extensions accepted by the 3D viewer iDevice. */
-    static MODEL_3D_EXTENSIONS = ['.glb', '.gltf', '.stl'];
-
     /** 3D models above this size get a performance warning after upload (#2794). */
     static LARGE_3D_MODEL_BYTES = 50 * 1024 * 1024;
+
+    /** Longest wait for the upload limits before uploading without them (ms). */
+    static UPLOAD_LIMITS_WAIT_MS = 3000;
+
+    /** Size warnings stay visible long enough to read, then go away (ms). */
+    static SIZE_TOAST_MS = 15000;
 
     constructor(manager) {
         const id = 'modalFileManager';
@@ -511,6 +514,8 @@ export default class ModalFilemanager extends Modal {
      */
     async show(data = {}) {
         this.titleDefault = _('File manager');
+        // Warm the upload limits so uploads normally find them already loaded.
+        this.loadUploadLimits();
         const time = this.manager.closeModals() ? this.timeMax : this.timeMin;
 
         setTimeout(async () => {
@@ -1677,7 +1682,7 @@ export default class ModalFilemanager extends Modal {
             case 'video':
                 return mime.startsWith('video/');
             case '3d':
-                return mime.startsWith('model/') || /\.(glb|gltf|stl)$/i.test(filename);
+                return this.is3DModel(mime, filename);
             case 'molecule':
                 // The 3Dmol picker accepts genuine molecules plus compressed
                 // containers it can unpack (the latter only inside this filter).
@@ -2205,14 +2210,17 @@ export default class ModalFilemanager extends Modal {
 
         let uploadedCount = 0;
         let lastUploadedUrl = null;
+        // Copy first: a drop's FileList is live and may empty once we await.
+        const fileList = Array.from(files);
         const limits = await this.getUploadLimits();
+        const maxFileSize = Number.isFinite(limits?.maxFileSize) && limits.maxFileSize > 0 ? limits.maxFileSize : null;
         const tooLarge = [];
         const large3DModels = [];
 
-        for (const file of files) {
+        for (const file of fileList) {
             // #2794: enforce the configured FILE_UPLOAD_MAX_SIZE here too, not only
             // when opening .elpx files, so an oversized asset never enters the project.
-            if (limits?.maxFileSize && file.size > limits.maxFileSize) {
+            if (maxFileSize !== null && file.size > maxFileSize) {
                 tooLarge.push(file);
                 continue;
             }
@@ -2252,19 +2260,53 @@ export default class ModalFilemanager extends Modal {
     }
 
     /**
-     * Server upload limits (FILE_UPLOAD_MAX_SIZE). Returns null when there is no
-     * server (static mode) or the limits cannot be read, so uploads are not blocked.
+     * Start loading the server upload limits (FILE_UPLOAD_MAX_SIZE) once and keep
+     * the result. A failed request is forgotten so the next call retries.
+     * @returns {Promise<{maxFileSize: number, maxFileSizeFormatted: string}|null>}
+     */
+    loadUploadLimits() {
+        const app = eXeLearning.app;
+        if (app?.capabilities?.storage?.remote === false || !app?.api?.getUploadLimits) {
+            return Promise.resolve(null);
+        }
+        if (!this.uploadLimitsPromise) {
+            this.uploadLimitsPromise = Promise.resolve()
+                .then(() => app.api.getUploadLimits())
+                .catch((err) => {
+                    console.warn('[MediaLibrary] Could not load upload limits:', err);
+                    this.uploadLimitsPromise = null;
+                    return null;
+                });
+        }
+        return this.uploadLimitsPromise;
+    }
+
+    /**
+     * Upload limits for an upload. Returns null (no hard limit) in static mode, when
+     * the limits cannot be read, or when they take too long, so a slow server never
+     * holds up adding files to the media library.
      * @returns {Promise<{maxFileSize: number, maxFileSizeFormatted: string}|null>}
      */
     async getUploadLimits() {
-        const app = eXeLearning.app;
-        if (app?.capabilities?.storage?.remote === false || !app?.api?.getUploadLimits) return null;
+        let timer;
+        const timeout = new Promise((resolve) => {
+            timer = setTimeout(() => resolve(null), ModalFilemanager.UPLOAD_LIMITS_WAIT_MS);
+        });
         try {
-            return await app.api.getUploadLimits();
-        } catch (err) {
-            console.warn('[MediaLibrary] Could not load upload limits:', err);
-            return null;
+            return await Promise.race([this.loadUploadLimits(), timeout]);
+        } finally {
+            clearTimeout(timer);
         }
+    }
+
+    /**
+     * Whether a file is a 3D model the 3D viewer iDevice can show.
+     * @param {string} mime
+     * @param {string} filename
+     * @returns {boolean}
+     */
+    is3DModel(mime, filename) {
+        return (mime || '').startsWith('model/') || /\.(glb|gltf|stl)$/i.test(filename || '');
     }
 
     /**
@@ -2274,11 +2316,7 @@ export default class ModalFilemanager extends Modal {
      * @returns {boolean}
      */
     isLarge3DModel(file) {
-        const name = (file?.name || '').toLowerCase();
-        return (
-            ModalFilemanager.MODEL_3D_EXTENSIONS.some((ext) => name.endsWith(ext)) &&
-            file.size > ModalFilemanager.LARGE_3D_MODEL_BYTES
-        );
+        return this.is3DModel(file?.type, file?.name) && file.size > ModalFilemanager.LARGE_3D_MODEL_BYTES;
     }
 
     /**
@@ -2307,13 +2345,13 @@ export default class ModalFilemanager extends Modal {
 
         // A toast inside the media library, not modals.alert: showing another modal
         // closes this one and would interrupt picking the file for the iDevice.
-        // No auto-remove, so there is time to read it.
         eXeLearning.app.toasts.createToast({
             title: tooLarge.length > 0 ? _('File too large') : _('Large 3D model'),
             body: paragraphs.join(''),
             icon: tooLarge.length > 0 ? 'error' : 'warning',
             error: tooLarge.length > 0,
             modal: true,
+            remove: ModalFilemanager.SIZE_TOAST_MS,
         });
     }
 
