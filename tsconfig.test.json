@@ -13,11 +13,11 @@
         "src/**/*.d.ts",
         "app/**/*.spec.ts",
         "scripts/**/*.spec.ts",
-        "src/cli/**/*.spec.ts",
-        "src/utils/**/*.spec.ts",
-        "src/websocket/**/*.spec.ts",
-        "src/yjs/**/*.spec.ts",
-        "test/helpers/**/*.ts"
+        "src/**/*.spec.ts",
+        "test/helpers/**/*.ts",
+        "test/integration/**/*.ts",
+        "test/e2e/**/*.ts",
+        "playwright*.config.ts"
     ],
     "exclude": ["node_modules", "dist", "app/dist"]
 }

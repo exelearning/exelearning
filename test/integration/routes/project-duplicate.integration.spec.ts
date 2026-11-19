@@ -25,7 +25,7 @@ const TEST_JWT_SECRET = 'test_secret_for_integration_tests';
 describe('Project Duplication - YJS Title Update', () => {
     let db: Kysely<Database>;
     let testUser: User;
-    let app: Elysia;
+    let app: Pick<Elysia, 'handle'>;
 
     beforeAll(async () => {
         // Create test database
@@ -49,7 +49,7 @@ describe('Project Duplication - YJS Title Update', () => {
                 const authHeader = request.headers.get('authorization');
                 if (authHeader?.startsWith('Bearer ')) {
                     token = authHeader.slice(7);
-                } else if (cookie.auth?.value) {
+                } else if (typeof cookie.auth?.value === 'string' && cookie.auth.value) {
                     token = cookie.auth.value;
                 }
 
@@ -58,14 +58,14 @@ describe('Project Duplication - YJS Title Update', () => {
                 }
 
                 try {
-                    const payload = (await jwt.verify(token)) as { sub: number } | false;
+                    const payload = (await jwt.verify(token)) as { sub: string } | false;
                     if (!payload || !payload.sub) {
                         return { currentUser: null, testDb: db };
                     }
                     const user = await db
                         .selectFrom('users')
                         .selectAll()
-                        .where('id', '=', payload.sub)
+                        .where('id', '=', Number(payload.sub))
                         .executeTakeFirst();
                     return {
                         currentUser: user ? { ...user, roles: JSON.parse(user.roles) } : null,
@@ -109,8 +109,8 @@ describe('Project Duplication - YJS Title Update', () => {
                         license: project.license || null,
                         status: 'active',
                         saved_once: 1,
-                        created_at: new Date().toISOString(),
-                        updated_at: new Date().toISOString(),
+                        created_at: Date.now(),
+                        updated_at: Date.now(),
                     })
                     .returning(['id', 'uuid', 'title'])
                     .executeTakeFirstOrThrow();
@@ -142,8 +142,8 @@ describe('Project Duplication - YJS Title Update', () => {
                             project_id: duplicateProject.id,
                             snapshot_data: newState,
                             snapshot_version: Date.now().toString(),
-                            created_at: new Date().toISOString(),
-                            updated_at: new Date().toISOString(),
+                            created_at: Date.now(),
+                            updated_at: Date.now(),
                         })
                         .execute();
                 }
@@ -213,8 +213,8 @@ describe('Project Duplication - YJS Title Update', () => {
                     project_id: project.id,
                     snapshot_data: yjsState,
                     snapshot_version: Date.now().toString(),
-                    created_at: new Date().toISOString(),
-                    updated_at: new Date().toISOString(),
+                    created_at: Date.now(),
+                    updated_at: Date.now(),
                 })
                 .execute();
 
@@ -317,8 +317,8 @@ describe('Project Duplication - YJS Title Update', () => {
                     project_id: project.id,
                     snapshot_data: yjsState,
                     snapshot_version: Date.now().toString(),
-                    created_at: new Date().toISOString(),
-                    updated_at: new Date().toISOString(),
+                    created_at: Date.now(),
+                    updated_at: Date.now(),
                 })
                 .execute();
 
