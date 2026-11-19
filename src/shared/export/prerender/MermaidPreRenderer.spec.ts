@@ -148,20 +148,20 @@ describe('MermaidPreRenderer', () => {
             expect(result.mermaidRendered).toBe(false);
             expect(result.html).toBe(html);
             expect(result.failures).toHaveLength(1);
-            expect(result.failures[0].code).toBe('syntax');
-            expect(result.failures[0].message).toContain('line 2');
-            expect(result.failures[0].source).toBe('flowchart LR\n  A -->');
+            expect(result.failures?.[0]?.code).toBe('syntax');
+            expect(result.failures?.[0]?.message).toContain('line 2');
+            expect(result.failures?.[0]?.source).toBe('flowchart LR\n  A -->');
         });
 
         it('reports unsupported diagram types', async () => {
             const result = await renderer.preRender(pre('notADiagram foo'));
             expect(result.failures).toHaveLength(1);
-            expect(result.failures[0].code).toBe('unsupported-diagram');
+            expect(result.failures?.[0]?.code).toBe('unsupported-diagram');
         });
 
         it('reports diagrams over the source size limit', async () => {
             const result = await renderer.preRender(pre(`graph TD\n${'  A-->B\n'.repeat(8000)}`));
-            expect(result.failures[0].code).toBe('limit');
+            expect(result.failures?.[0]?.code).toBe('limit');
         });
 
         it('accounts for partial rendering instead of reporting full success', async () => {

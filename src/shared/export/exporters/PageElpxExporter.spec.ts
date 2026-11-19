@@ -17,6 +17,7 @@ import type {
     AssetProvider,
     ZipProvider,
     ElpxExportOptions,
+    ExportAsset,
 } from '../interfaces';
 
 // Mock document with Tree Structure
@@ -62,8 +63,12 @@ class MockTreeDocument implements ExportDocument {
                                 type: 'text',
                                 content:
                                     '<p>Page 1 content with image <img src="asset://aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee/image1.jpg"></p>',
+                                order: 0,
+                                properties: {},
                             },
                         ],
+                        order: 0,
+                        name: '',
                     },
                 ],
             },
@@ -81,8 +86,12 @@ class MockTreeDocument implements ExportDocument {
                                 type: 'text',
                                 content:
                                     '<p>Page 2 content with image <img src="asset://11111111-2222-3333-4444-555555555555/image2.jpg"></p>',
+                                order: 0,
+                                properties: {},
                             },
                         ],
+                        order: 0,
+                        name: '',
                     },
                 ],
                 properties: {
@@ -104,8 +113,12 @@ class MockTreeDocument implements ExportDocument {
                                 type: 'text',
                                 content:
                                     '<p>Page 2-1 content with image <img src="asset://66666666-7777-8888-9999-aaaaaaaaaaaa/image3.jpg"></p>',
+                                order: 0,
+                                properties: {},
                             },
                         ],
+                        order: 0,
+                        name: '',
                     },
                 ],
             },
@@ -130,8 +143,12 @@ class MockTreeDocument implements ExportDocument {
                                 type: 'text',
                                 content:
                                     '<p>Page 3 content with image <img src="asset://bbbbbbbb-cccc-dddd-eeee-ffffffffffff/image4.jpg"></p>',
+                                order: 0,
+                                properties: {},
                             },
                         ],
+                        order: 0,
+                        name: '',
                     },
                 ],
             },
@@ -183,6 +200,10 @@ class MockResourceProvider implements ResourceProvider {
 
     async fetchI18nTranslations(_language: string): Promise<Map<string, string>> {
         return new Map();
+    }
+
+    async fetchGlobalFontFiles(_fontName: string): Promise<Map<string, Uint8Array> | null> {
+        return null;
     }
 }
 
@@ -317,7 +338,9 @@ describe('PageElpxExporter Unit Tests', () => {
 
         it('should handle invalid rootPageId by exporting all (fallback)', async () => {
             zip.files.clear();
-            const result = await exporter.export({ rootPageId: 'invalid-id' });
+            const options: ElpxExportOptions = { rootPageId: 'invalid-id' };
+
+            const result = await exporter.export(options);
             expect(result.success).toBe(true);
 
             const contentXml = zip.getFileAsString('content.xml');
@@ -475,15 +498,19 @@ describe('PageElpxExporter Unit Tests', () => {
                                         type: 'text',
                                         // New format: asset://uuid.ext (no path separator)
                                         content: '<p><img src="asset://new-format-asset-uuid.jpg" alt="test"></p>',
+                                        order: 0,
+                                        properties: {},
                                     },
                                 ],
+                                order: 0,
+                                name: '',
                             },
                         ],
                     },
                 ],
             };
 
-            const newFormatAssets: AssetProvider = {
+            const newFormatAssets = {
                 getAsset: async (id: string) => {
                     if (id === 'new-format-asset-uuid') {
                         return { id, filename: 'test.jpg', data: new Uint8Array([1, 2, 3]) };
@@ -496,15 +523,17 @@ describe('PageElpxExporter Unit Tests', () => {
                 getProjectAssets: async () => [
                     { id: 'new-format-asset-uuid', filename: 'test.jpg', data: new Uint8Array([1, 2, 3]) },
                 ],
-            };
+            } as unknown as AssetProvider;
 
             const newZip = new CapturingZipProvider();
             const newExporter = new PageElpxExporter(newFormatDocument, resources, newFormatAssets, newZip);
 
-            const result = await newExporter.export({
+            const options: ElpxExportOptions = {
                 rootPageId: 'page-new-format',
                 filename: 'new_format_test',
-            });
+            };
+
+            const result = await newExporter.export(options);
 
             expect(result.success).toBe(true);
 
@@ -542,8 +571,12 @@ describe('PageElpxExporter Unit Tests', () => {
                                         id: 'comp-subs',
                                         type: 'text',
                                         content: `<video controls><track kind="subtitles" src="asset://${SRT_UUID}.srt" /></video>`,
+                                        order: 0,
+                                        properties: {},
                                     },
                                 ],
+                                order: 0,
+                                name: '',
                             },
                         ],
                     },
@@ -556,16 +589,18 @@ describe('PageElpxExporter Unit Tests', () => {
                 mime: 'application/x-subrip',
                 data: new TextEncoder().encode('1\n00:00:01,000 --> 00:00:02,000\nHola\n'),
             };
-            const subsAssets: AssetProvider = {
+            const subsAssets = {
                 getAsset: async (id: string) => (id === SRT_UUID ? srtAsset : null),
                 getAllAssets: async () => [srtAsset],
                 getProjectAssets: async () => [srtAsset],
-            };
+            } as unknown as AssetProvider;
 
             const subsZip = new CapturingZipProvider();
             const subsExporter = new PageElpxExporter(subsDocument, resources, subsAssets, subsZip);
 
-            const result = await subsExporter.export({ rootPageId: 'page-subs', filename: 'subs_export' });
+            const options: ElpxExportOptions = { rootPageId: 'page-subs', filename: 'subs_export' };
+
+            const result = await subsExporter.export(options);
             expect(result.success).toBe(true);
 
             const vttPath = subsZip.getFilePaths().find(f => f.startsWith('content/resources/') && f.endsWith('.vtt'));
@@ -610,15 +645,19 @@ describe('PageElpxExporter Unit Tests', () => {
                                         // Legacy format: asset://uuid/filename
                                         content:
                                             '<p><img src="asset://legacy-format-asset-uuid/original-name.png" alt="test"></p>',
+                                        order: 0,
+                                        properties: {},
                                     },
                                 ],
+                                order: 0,
+                                name: '',
                             },
                         ],
                     },
                 ],
             };
 
-            const legacyFormatAssets: AssetProvider = {
+            const legacyFormatAssets = {
                 getAsset: async (id: string) => {
                     if (id === 'legacy-format-asset-uuid') {
                         return { id, filename: 'original-name.png', data: new Uint8Array([4, 5, 6]) };
@@ -631,15 +670,17 @@ describe('PageElpxExporter Unit Tests', () => {
                 getProjectAssets: async () => [
                     { id: 'legacy-format-asset-uuid', filename: 'original-name.png', data: new Uint8Array([4, 5, 6]) },
                 ],
-            };
+            } as unknown as AssetProvider;
 
             const legacyZip = new CapturingZipProvider();
             const legacyExporter = new PageElpxExporter(legacyFormatDocument, resources, legacyFormatAssets, legacyZip);
 
-            const result = await legacyExporter.export({
+            const options: ElpxExportOptions = {
                 rootPageId: 'page-legacy-format',
                 filename: 'legacy_format_test',
-            });
+            };
+
+            const result = await legacyExporter.export(options);
 
             expect(result.success).toBe(true);
 
@@ -687,15 +728,18 @@ describe('PageElpxExporter Unit Tests', () => {
                                         properties: {
                                             images: [{ src: 'asset://props-asset-uuid.png', caption: 'Test' }],
                                         },
+                                        order: 0,
                                     },
                                 ],
+                                order: 0,
+                                name: '',
                             },
                         ],
                     },
                 ],
             };
 
-            const propsAssets: AssetProvider = {
+            const propsAssets = {
                 getAsset: async (id: string) => {
                     if (id === 'props-asset-uuid') {
                         return { id, filename: 'gallery-image.png', data: new Uint8Array([7, 8, 9]) };
@@ -708,15 +752,17 @@ describe('PageElpxExporter Unit Tests', () => {
                 getProjectAssets: async () => [
                     { id: 'props-asset-uuid', filename: 'gallery-image.png', data: new Uint8Array([7, 8, 9]) },
                 ],
-            };
+            } as unknown as AssetProvider;
 
             const propsZip = new CapturingZipProvider();
             const propsExporter = new PageElpxExporter(propsDocument, resources, propsAssets, propsZip);
 
-            const result = await propsExporter.export({
+            const options: ElpxExportOptions = {
                 rootPageId: 'page-props',
                 filename: 'props_test',
-            });
+            };
+
+            const result = await propsExporter.export(options);
 
             expect(result.success).toBe(true);
 

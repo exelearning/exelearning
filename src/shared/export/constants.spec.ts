@@ -38,13 +38,13 @@ const REAL_IDEVICES_PATH = path.join(process.cwd(), 'public/files/perm/idevices/
 describe('Constants', () => {
     describe('ExportFormat enum', () => {
         it('should have all expected export formats', () => {
-            expect(ExportFormat.HTML5).toBe('html5');
-            expect(ExportFormat.HTML5_SINGLE_PAGE).toBe('html5-sp');
-            expect(ExportFormat.SCORM_12).toBe('scorm12');
-            expect(ExportFormat.SCORM_2004).toBe('scorm2004');
-            expect(ExportFormat.IMS).toBe('ims');
-            expect(ExportFormat.EPUB3).toBe('epub3');
-            expect(ExportFormat.ELPX).toBe('elpx');
+            expect(ExportFormat.HTML5 as string).toBe('html5');
+            expect(ExportFormat.HTML5_SINGLE_PAGE as string).toBe('html5-sp');
+            expect(ExportFormat.SCORM_12 as string).toBe('scorm12');
+            expect(ExportFormat.SCORM_2004 as string).toBe('scorm2004');
+            expect(ExportFormat.IMS as string).toBe('ims');
+            expect(ExportFormat.EPUB3 as string).toBe('epub3');
+            expect(ExportFormat.ELPX as string).toBe('elpx');
         });
     });
 

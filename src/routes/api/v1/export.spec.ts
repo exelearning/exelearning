@@ -16,6 +16,7 @@ import { now } from '../../../db/types';
 import { exportRoutes } from './export';
 import { createAuthRoutes } from '../../auth';
 import { findUserByEmail, findUserById, createUser, saveFullState } from '../../../db/queries';
+import type { Kysely } from 'kysely';
 
 /**
  * Helper to create a minimal Yjs document for export testing
@@ -113,8 +114,8 @@ describe('Export API v1', () => {
 
         await resetClientCacheForTesting();
         await up(db);
-        await up008(db);
-        await up009(db);
+        await up008(db as unknown as Kysely<unknown>);
+        await up009(db as unknown as Kysely<unknown>);
         await db.deleteFrom('projects').execute();
         await db.deleteFrom('users').execute();
 

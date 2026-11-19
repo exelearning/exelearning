@@ -7,7 +7,7 @@
  *
  * Uses Dependency Injection pattern for testability
  */
-import { Elysia } from 'elysia';
+import { Elysia, t } from 'elysia';
 import * as fsExtra from 'fs-extra';
 import * as pathModule from 'path';
 
@@ -202,6 +202,22 @@ const EXPORT_FORMATS = [
 // ============================================================================
 // Yjs Structure Population
 // ============================================================================
+
+/**
+ * Body of POST /:odeSessionId/:exportType/download. Every other option is passed
+ * through to the exporter (`...options`), so unknown keys must be kept. Elysia
+ * fills a missing `meta` with {} and rejects a `structure` that is not an object.
+ */
+const LooseObject = t.Object({}, { additionalProperties: true });
+const ExportDownloadBody = t.Object(
+    {
+        structure: t.Optional(
+            t.Object({ meta: LooseObject, pages: t.Array(LooseObject) }, { additionalProperties: true }),
+        ),
+        rootPageId: t.Optional(t.String()),
+    },
+    { additionalProperties: true },
+);
 
 /**
  * Populate a Y.Doc from YjsExportStructure
@@ -461,27 +477,15 @@ export function createExportRoutes(deps: ExportDependencies = {}) {
                     const project = await findProjectByUuid(db, session.odeId);
                     if (project) {
                         const yjsDoc = await reconstructDocument(project.id);
-                        if (yjsDoc) {
-                            // Check if document has content
-                            yjsDocWrapper = new ServerYjsDocumentWrapper(yjsDoc, session.odeId);
-                            if (yjsDocWrapper.hasContent()) {
-                                console.log('[Export] Using Yjs document from database');
-                                document = new YjsDocumentAdapter(yjsDocWrapper);
-                            } else {
-                                console.log('[Export] Yjs document empty, falling back to ELP import');
-                                yjsDocWrapper.destroy();
-                                yjsDocWrapper = null;
-                                // Try to import from ELP file
-                                const imported = await importElpFromTempDir();
-                                if (imported) {
-                                    document = imported.document;
-                                    yjsDocWrapper = imported.wrapper;
-                                } else {
-                                    return { success: false, error: 'No project structure found' };
-                                }
-                            }
+                        // Check if document has content
+                        yjsDocWrapper = new ServerYjsDocumentWrapper(yjsDoc, session.odeId);
+                        if (yjsDocWrapper.hasContent()) {
+                            console.log('[Export] Using Yjs document from database');
+                            document = new YjsDocumentAdapter(yjsDocWrapper);
                         } else {
-                            console.log('[Export] No Yjs document in database, falling back to ELP import');
+                            console.log('[Export] Yjs document empty, falling back to ELP import');
+                            yjsDocWrapper.destroy();
+                            yjsDocWrapper = null;
                             // Try to import from ELP file
                             const imported = await importElpFromTempDir();
                             if (imported) {
@@ -738,81 +742,85 @@ export function createExportRoutes(deps: ExportDependencies = {}) {
             // =====================================================
 
             // POST /api/export/:odeSessionId/:exportType/download - Download export with options
-            .post('/:odeSessionId/:exportType/download', async ({ params, body, set, identity }) => {
-                const { odeSessionId, exportType } = params;
-                const options = castRequestBody<ExportOptionsRequest>(body);
+            .post(
+                '/:odeSessionId/:exportType/download',
+                async ({ params, body, set, identity }) => {
+                    const { odeSessionId, exportType } = params;
+                    const options = castRequestBody<ExportOptionsRequest>(body);
 
-                // Reject path-traversal session ids before any filesystem path is built.
-                // Real ids are UUIDs or YYYYMMDDHHmmss + alphanumerics, all of which pass.
-                if (!isSafePathSegment(odeSessionId, { allowDots: true })) {
-                    set.status = 400;
-                    return { success: false, error: 'Invalid session id' };
-                }
-
-                let session = getSession(odeSessionId);
-                const authz = authorizeExport(session, identity);
-                if (authz.ok === false) {
-                    set.status = authz.status;
-                    return { success: false, error: authz.message };
-                }
-
-                // For Yjs-only sessions (yjs-*), create a virtual session if structure is provided
-                if (!session && options.structure) {
-                    console.log('[Export] Yjs-only session detected, using structure from request body');
-                    const projectTitle = options.structure.meta?.title || 'Untitled';
-                    session = {
-                        sessionId: odeSessionId,
-                        fileName: `${projectTitle}.elp`,
-                        createdAt: new Date(),
-                        updatedAt: new Date(),
-                    } as ProjectSession;
-                }
-
-                if (!session) {
-                    set.status = 404;
-                    return {
-                        success: false,
-                        error: 'Session not found. For Yjs sessions, include structure in request body.',
-                    };
-                }
-
-                // Validate export type
-                const format = EXPORT_FORMATS.find(f => f.id === exportType);
-                if (!format) {
-                    set.status = 400;
-                    return {
-                        success: false,
-                        error: `Invalid export type: ${exportType}`,
-                        validTypes: EXPORT_FORMATS.map(f => f.id),
-                    };
-                }
-
-                try {
-                    // Prepare export with options (pass virtual session for Yjs-only exports)
-                    const exportResult = await prepareExport(odeSessionId, exportType, options, session);
-
-                    if (!exportResult.success) {
-                        set.status = 500;
-                        return { success: false, error: exportResult.error };
+                    // Reject path-traversal session ids before any filesystem path is built.
+                    // Real ids are UUIDs or YYYYMMDDHHmmss + alphanumerics, all of which pass.
+                    if (!isSafePathSegment(odeSessionId, { allowDots: true })) {
+                        set.status = 400;
+                        return { success: false, error: 'Invalid session id' };
                     }
 
-                    // Read the zip file
-                    const zipBuffer = await readFile(exportResult.zipPath!);
+                    let session = getSession(odeSessionId);
+                    const authz = authorizeExport(session, identity);
+                    if (authz.ok === false) {
+                        set.status = authz.status;
+                        return { success: false, error: authz.message };
+                    }
 
-                    // Set headers for download
-                    const rawFilename = `${session.fileName?.replace(/\.elp$/, '') || 'export'}_${exportType}.${format.extension}`;
+                    // For Yjs-only sessions (yjs-*), create a virtual session if structure is provided
+                    if (!session && options.structure) {
+                        console.log('[Export] Yjs-only session detected, using structure from request body');
+                        const projectTitle = options.structure.meta?.title || 'Untitled';
+                        session = {
+                            sessionId: odeSessionId,
+                            fileName: `${projectTitle}.elp`,
+                            createdAt: new Date(),
+                            updatedAt: new Date(),
+                        } as ProjectSession;
+                    }
 
-                    set.headers['content-type'] = format.mimeType;
-                    set.headers['content-disposition'] = buildContentDisposition(rawFilename);
-                    set.headers['content-length'] = zipBuffer.length.toString();
+                    if (!session) {
+                        set.status = 404;
+                        return {
+                            success: false,
+                            error: 'Session not found. For Yjs sessions, include structure in request body.',
+                        };
+                    }
 
-                    return zipBuffer;
-                } catch (error: unknown) {
-                    const errorMessage = error instanceof Error ? error.message : String(error);
-                    set.status = 500;
-                    return { success: false, error: errorMessage };
-                }
-            })
+                    // Validate export type
+                    const format = EXPORT_FORMATS.find(f => f.id === exportType);
+                    if (!format) {
+                        set.status = 400;
+                        return {
+                            success: false,
+                            error: `Invalid export type: ${exportType}`,
+                            validTypes: EXPORT_FORMATS.map(f => f.id),
+                        };
+                    }
+
+                    try {
+                        // Prepare export with options (pass virtual session for Yjs-only exports)
+                        const exportResult = await prepareExport(odeSessionId, exportType, options, session);
+
+                        if (!exportResult.success) {
+                            set.status = 500;
+                            return { success: false, error: exportResult.error };
+                        }
+
+                        // Read the zip file
+                        const zipBuffer = await readFile(exportResult.zipPath!);
+
+                        // Set headers for download
+                        const rawFilename = `${session.fileName?.replace(/\.elp$/, '') || 'export'}_${exportType}.${format.extension}`;
+
+                        set.headers['content-type'] = format.mimeType;
+                        set.headers['content-disposition'] = buildContentDisposition(rawFilename);
+                        set.headers['content-length'] = zipBuffer.length.toString();
+
+                        return zipBuffer;
+                    } catch (error: unknown) {
+                        const errorMessage = error instanceof Error ? error.message : String(error);
+                        set.status = 500;
+                        return { success: false, error: errorMessage };
+                    }
+                },
+                { body: ExportDownloadBody },
+            )
     );
 }
 
