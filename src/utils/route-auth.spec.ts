@@ -20,7 +20,8 @@ const TEST_JWT_SECRET = getJwtSecret();
 
 async function signToken(sub: number, roles: string[] = ['ROLE_USER']): Promise<string> {
     const secret = new TextEncoder().encode(TEST_JWT_SECRET);
-    return new SignJWT({ sub, email: `u${sub}@test.local`, roles })
+    // Issuers (auth.ts, pages.ts) sign `sub` as a string, per RFC 7519.
+    return new SignJWT({ sub: String(sub), email: `u${sub}@test.local`, roles })
         .setProtectedHeader({ alg: 'HS256' })
         .setIssuedAt()
         .setExpirationTime('1h')
@@ -28,7 +29,7 @@ async function signToken(sub: number, roles: string[] = ['ROLE_USER']): Promise<
 }
 
 describe('withJwtAuth', () => {
-    let app: Elysia;
+    let app: Pick<Elysia, 'handle'>;
     let token: string;
 
     beforeAll(async () => {

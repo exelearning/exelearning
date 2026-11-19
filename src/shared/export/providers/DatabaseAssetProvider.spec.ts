@@ -34,8 +34,9 @@ describe('DatabaseAssetProvider', () => {
         author: null,
         author_url: null,
         source_url: null,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
+        folder_path: '',
+        created_at: Date.now(),
+        updated_at: Date.now(),
         ...overrides,
     });
 
@@ -575,7 +576,7 @@ describe('DatabaseAssetProvider', () => {
 
             expect(result).not.toBeNull();
             // Should get one of the files (first alphabetically)
-            expect(['a-first.png', 'b-second.png']).toContain(result?.filename);
+            expect(['a-first.png', 'b-second.png']).toContain(result?.filename ?? '');
         });
 
         it('should handle missing session assets directory gracefully', async () => {

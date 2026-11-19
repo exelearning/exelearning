@@ -546,18 +546,12 @@ describe('xml-parser', () => {
     describe('parseRawXml', () => {
         it('should parse any XML to JavaScript object', () => {
             const xml = '<root><item>value</item><number>42</number></root>';
-            const result = parseRawXml(xml);
-
-            expect(result.root.item).toBe('value');
-            expect(result.root.number).toBe(42);
+            expect(parseRawXml(xml)).toMatchObject({ root: { item: 'value', number: 42 } });
         });
 
         it('should handle XML with attributes', () => {
             const xml = '<root attr="test"><item id="1">value</item></root>';
-            const result = parseRawXml(xml);
-
-            expect(result.root['@_attr']).toBe('test');
-            expect(result.root.item['@_id']).toBe(1);
+            expect(parseRawXml(xml)).toMatchObject({ root: { '@_attr': 'test', item: { '@_id': 1 } } });
         });
     });
 

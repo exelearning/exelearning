@@ -41,7 +41,7 @@ const TEST_JWT_SECRET = getJwtSecret();
 
 async function signTestToken(sub: number, roles: string[] = ['ROLE_USER']): Promise<string> {
     const secret = new TextEncoder().encode(TEST_JWT_SECRET);
-    return new SignJWT({ sub, email: `u${sub}@test.local`, roles })
+    return new SignJWT({ sub: String(sub), email: `u${sub}@test.local`, roles })
         .setProtectedHeader({ alg: 'HS256' })
         .setIssuedAt()
         .setExpirationTime('1h')
@@ -60,7 +60,7 @@ function createMockFileHelper(): AssetsFileHelperDeps {
         tryResolveAssetStoragePath: (storagePath: string) => tryResolveAssetStoragePathPure(testDir, storagePath),
         fileExists: async (filePath: string) => fs.pathExists(filePath),
         readFile: async (filePath: string) => fs.readFile(filePath),
-        writeFile: async (filePath: string, data: Buffer) => fs.writeFile(filePath, data),
+        writeFile: async (filePath: string, data: string | Buffer) => fs.writeFile(filePath, data),
         remove: async (filePath: string) => fs.remove(filePath),
         getStats: async (filePath: string) => {
             try {
@@ -106,7 +106,7 @@ function createMockPriorityQueue(): AssetsPriorityQueueDeps {
 }
 
 describe('Assets Routes', () => {
-    let app: Elysia;
+    let app: Pick<Elysia, 'handle'>;
     let mockAssets: Map<number, any>;
     let mockProjects: Map<string, any>;
     let assetIdCounter: number;
@@ -290,6 +290,90 @@ describe('Assets Routes', () => {
         if (await fs.pathExists(testDir)) {
             await fs.remove(testDir);
         }
+    });
+
+    describe('body schemas', () => {
+        const post = (url: string, body: BodyInit, contentType?: string) =>
+            handle(
+                new Request(`http://localhost/api/projects/1/assets${url}`, {
+                    method: 'POST',
+                    ...(contentType ? { headers: { 'Content-Type': contentType } } : {}),
+                    body,
+                }),
+            );
+        const form = (fields: Record<string, string | Blob>) => {
+            const fd = new FormData();
+            for (const [k, v] of Object.entries(fields)) fd.append(k, v);
+            return fd;
+        };
+        const file = () => new Blob(['content'], { type: 'text/plain' });
+
+        // Each of these used to reach the handler and answer 500, or store a non-string filename.
+        // The body schema rejects them; the app's global onError answers 400.
+        it('rejects a simple upload whose file is not a file', async () => {
+            // JSON can carry no file at all; these used to answer 500 (folderPath.trim, Buffer.from).
+            for (const body of [{ file: 'abc', folderPath: { a: 1 } }, { file: { a: 1 } }]) {
+                expect((await post('', JSON.stringify(body), 'application/json')).status).toBe(422);
+            }
+            expect((await post('', form({ file: 'not a file' }))).status).toBe(422);
+        });
+
+        it('rejects a chunk that is not a file', async () => {
+            const body = form({
+                file: 'not a file',
+                resumableIdentifier: 'id1',
+                resumableChunkNumber: '1',
+                resumableTotalChunks: '1',
+            });
+            expect((await post('/upload-chunk', body)).status).toBe(422);
+        });
+
+        it('rejects a wrong-typed finalize field', async () => {
+            const body = JSON.stringify({ resumableIdentifier: 'x', clientId: 'c', folderPath: { a: 1 } });
+            expect((await post('/upload-chunk/finalize', body, 'application/json')).status).toBe(422);
+        });
+
+        it('rejects sync files that are not files', async () => {
+            expect((await post('/sync', form({ files: 'not a file', metadata: '[]' }))).status).toBe(422);
+        });
+
+        it('rejects sync metadata entries with non-string fields', async () => {
+            // Elysia parses the multipart JSON string against the array schema, entries included.
+            const metadata = JSON.stringify([{ clientId: 'c1', filename: { x: 1 } }]);
+            expect((await post('/sync', form({ files: file(), metadata }))).status).toBe(422);
+        });
+
+        it('rejects sync metadata that is JSON but not an array', async () => {
+            const res = await post('/sync', form({ files: file(), metadata: '{"clientId":"c1"}' }));
+            expect(res.status).toBe(422);
+        });
+
+        it('rejects sync metadata that parses to something other than an array', async () => {
+            const res = await post('/sync', form({ files: file(), metadata: 'null' }));
+            expect(res.status).toBe(400);
+            expect((await res.json()).error).toContain('expected an array');
+        });
+
+        it('still accepts what the workarea sends', async () => {
+            const chunk = form({
+                file: file(),
+                resumableIdentifier: 'ok-id',
+                resumableChunkNumber: '1',
+                resumableTotalChunks: '1',
+                resumableFilename: 'a.txt',
+                resumableType: 'text/plain',
+                clientId: 'ok-client',
+            });
+            expect((await post('/upload-chunk', chunk)).status).toBe(200);
+            const finalize = JSON.stringify({
+                resumableIdentifier: 'ok-id',
+                resumableTotalChunks: 1,
+                resumableFilename: 'a.txt',
+                resumableType: 'text/plain',
+                clientId: 'ok-client',
+            });
+            expect((await post('/upload-chunk/finalize', finalize, 'application/json')).status).toBe(200);
+        });
     });
 
     describe('POST /api/projects/:projectId/assets - Upload Asset', () => {
@@ -1170,6 +1254,20 @@ describe('Assets Routes', () => {
     });
 
     describe('DELETE /api/projects/:projectId/assets/bulk', () => {
+        it('rejects clientIds that are not an array of strings', async () => {
+            for (const clientIds of ['abc', [{ a: 1 }], 5]) {
+                const res = await handle(
+                    new Request(`http://localhost/api/projects/1/assets/bulk`, {
+                        method: 'DELETE',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ clientIds }),
+                    }),
+                );
+                // The body schema rejects it; the app's global onError answers 400.
+                expect(res.status).toBe(422);
+            }
+        });
+
         it('should delete multiple assets by client IDs', async () => {
             const filePath1 = path.join(legacyProjectDir, 'bulk-delete-1.txt');
             const filePath2 = path.join(legacyProjectDir, 'bulk-delete-2.txt');
@@ -2152,7 +2250,7 @@ describe('Chunked upload leak/limit fix (BUG H9)', () => {
 // BUG H9: chunk size caps enforced by the upload route
 // =====================================================
 describe('Chunked upload size caps (BUG H9)', () => {
-    let app: Elysia;
+    let app: Pick<Elysia, 'handle'>;
     let mockAssets: Map<number, any>;
     let mockProjects: Map<string, any>;
     let assetIdCounter: number;
@@ -2186,6 +2284,8 @@ describe('Chunked upload size caps (BUG H9)', () => {
                     if (project.owner_id === userId) return { hasAccess: true };
                     return { hasAccess: false, reason: 'ACCESS_DENIED' };
                 },
+                searchAssetsForProject: async () => [],
+                updateAssetMetadataByClientId: async () => false,
             },
             fileHelper: createMockFileHelper(),
             sessionManager: createMockSessionManager(),
@@ -2318,7 +2418,7 @@ describe('Chunked upload size caps (BUG H9)', () => {
 // Issue #2283: chunk uploads must live under FILES_DIR
 // =====================================================
 describe('Chunked upload FILES_DIR resolution (#2283)', () => {
-    let app: Elysia;
+    let app: Pick<Elysia, 'handle'>;
     let mockAssets: Map<number, any>;
     let mockProjects: Map<string, any>;
     let assetIdCounter: number;
@@ -2356,6 +2456,8 @@ describe('Chunked upload FILES_DIR resolution (#2283)', () => {
                     if (project.owner_id === userId) return { hasAccess: true };
                     return { hasAccess: false, reason: 'ACCESS_DENIED' };
                 },
+                searchAssetsForProject: async () => [],
+                updateAssetMetadataByClientId: async () => false,
             },
             fileHelper: {
                 ...createMockFileHelper(),

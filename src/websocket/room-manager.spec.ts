@@ -24,6 +24,7 @@ import {
     getRoomByProjectUuid,
     relayToOtherInstances,
     initializeCrossInstanceHandler,
+    type RoomManagerPubSub,
 } from './room-manager';
 
 // Mock WebSocket for testing
@@ -758,7 +759,7 @@ describe('Room Manager', () => {
         });
 
         it('should broadcast cross-instance messages to local room', () => {
-            const setMessageHandler = mock(() => {});
+            const setMessageHandler = mock((_handler: Parameters<RoomManagerPubSub['setMessageHandler']>[0]) => {});
             configure({
                 pubSub: {
                     publish: mock(async () => {}),
@@ -778,11 +779,13 @@ describe('Room Manager', () => {
 
             const handler = setMessageHandler.mock.calls[0]?.[0];
             expect(typeof handler).toBe('function');
+            if (!handler) throw new Error('setMessageHandler was not called');
 
-            handler('project-cross', 'cross-message', { isAsset: false });
+            const crossMessage = Buffer.from('cross-message');
+            handler('project-cross', crossMessage, { isAsset: false });
 
-            expect(ws1.send).toHaveBeenCalledWith('cross-message');
-            expect(ws2.send).toHaveBeenCalledWith('cross-message');
+            expect(ws1.send).toHaveBeenCalledWith(crossMessage);
+            expect(ws2.send).toHaveBeenCalledWith(crossMessage);
         });
     });
 });

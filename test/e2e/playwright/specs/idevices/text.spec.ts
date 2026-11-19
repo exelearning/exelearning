@@ -534,8 +534,8 @@ test.describe('Text iDevice', () => {
                 .then(handle => handle.jsonValue());
 
             // The <pre class="mermaid"> should exist and be processed
-            expect(mermaidRendered.hasPre).toBe(true);
-            expect(mermaidRendered.hasSvg || mermaidRendered.hasDataProcessed).toBe(true);
+            expect(mermaidRendered?.hasPre).toBe(true);
+            expect(mermaidRendered?.hasSvg || mermaidRendered?.hasDataProcessed).toBe(true);
 
             // Save the project
             await workarea.save();
@@ -586,12 +586,12 @@ test.describe('Text iDevice', () => {
                 .then(handle => handle.jsonValue());
 
             // The diagram should have been rendered (either pre-rendered or runtime)
-            expect(previewMermaidRendered.hasSvg).toBe(true);
+            expect(previewMermaidRendered?.hasSvg).toBe(true);
 
             // When pre-rendering works, it should use exe-mermaid-rendered class
             // and preserve original code in data-mermaid attribute
-            if (previewMermaidRendered.isPreRendered) {
-                expect(previewMermaidRendered.hasDataMermaid).toBe(true);
+            if (previewMermaidRendered?.isPreRendered) {
+                expect(previewMermaidRendered?.hasDataMermaid).toBe(true);
             }
         });
 
@@ -878,13 +878,13 @@ test.describe('Text iDevice', () => {
                 .then(handle => handle.jsonValue());
 
             // Diagram should render as SVG
-            expect(preRenderResult.hasSvg).toBe(true);
+            expect(preRenderResult?.hasSvg).toBe(true);
 
             // When pre-rendering is successful:
             // - Should have exe-mermaid-rendered class
             // - Should preserve original code in data-mermaid
-            if (preRenderResult.isPreRendered) {
-                expect(preRenderResult.hasDataMermaid).toBe(true);
+            if (preRenderResult?.isPreRendered) {
+                expect(preRenderResult?.hasDataMermaid).toBe(true);
                 // Note: The library may still be included in the export even when pre-rendered.
                 // The key verification is that the diagram was successfully converted to SVG.
                 // Library exclusion optimization may vary by export type.
@@ -1238,8 +1238,8 @@ test.describe('Text iDevice', () => {
                     .then(handle => handle.jsonValue());
 
                 // The src should be resolved to blob:// and original asset:// stored in data-asset-src
-                expect(audioSrc.src).toContain('blob:');
-                expect(audioSrc.dataAssetSrc).toBe(assetUrl);
+                expect(audioSrc?.src).toContain('blob:');
+                expect(audioSrc?.dataAssetSrc).toBe(assetUrl);
             }
         });
     });
@@ -1875,6 +1875,7 @@ test.describe('Text iDevice', () => {
 
                 return { id: newPage.id, name: newPage.pageName || 'Second Page' };
             });
+            if (!secondPageInfo) throw new Error('Could not create the second page');
 
             // Wait for page to be added to DOM
             await page.waitForFunction(
@@ -2079,6 +2080,7 @@ test.describe('Text iDevice', () => {
 
                 return { id: newPage.id, name: newPage.pageName || 'Second Page' };
             });
+            if (!secondPageInfo) throw new Error('Could not create the second page');
 
             // Wait for page to be added to DOM
             await page.waitForFunction(

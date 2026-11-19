@@ -12,7 +12,7 @@
  * Uses Dependency Injection pattern for testability.
  */
 
-import { Elysia, t } from 'elysia';
+import { Elysia, t, type Static } from 'elysia';
 import { jwt } from '@elysiajs/jwt';
 import * as fs from 'fs-extra';
 import * as path from 'path';
@@ -24,7 +24,7 @@ import type { Kysely } from 'kysely';
 import { db as defaultDb } from '../db/client';
 import type { Database } from '../db/types';
 import { findUserById as findUserByIdDefault } from '../db/queries';
-import { castRequestBody, type ConvertRequest } from './types/request-payloads';
+import { castRequestBody } from './types/request-payloads';
 
 // Centralized export system
 import {
@@ -81,13 +81,14 @@ const ALLOWED_EXTENSIONS = ['.elp', '.elpx', '.zip'];
 const _ALLOWED_MIME_TYPES = ['application/zip', 'application/x-zip-compressed', 'application/octet-stream'];
 
 /**
- * File with optional name property (for Blob/File uploads)
+ * Multipart body of both convert routes. `file` stays optional so a missing file
+ * keeps the handlers' own 400 MISSING_FILE; a text field named `file` is rejected.
  */
-interface FileWithName extends Blob {
-    name?: string;
-}
-
-type UploadedFile = Blob | File | Buffer;
+const ConvertBody = t.Object({
+    file: t.Optional(t.File()),
+    baseUrl: t.Optional(t.String()),
+    theme: t.Optional(t.String()),
+});
 
 /**
  * Export options type
@@ -135,14 +136,14 @@ export function createConvertRoutes(deps: ConvertDependencies = defaultDeps) {
     /**
      * Validate uploaded file
      */
-    function validateFile(file: UploadedFile | null | undefined): { valid: boolean; error?: string } {
+    function validateFile(file: File | undefined): { valid: true; file: File } | { valid: false; error: string } {
         if (!file) {
             return { valid: false, error: 'No file uploaded' };
         }
 
         // Check file size
         const maxSize = getMaxUploadSize();
-        const fileSize = Buffer.isBuffer(file) ? file.byteLength : file.size;
+        const fileSize = file.size;
         if (fileSize > maxSize) {
             return {
                 valid: false,
@@ -151,7 +152,7 @@ export function createConvertRoutes(deps: ConvertDependencies = defaultDeps) {
         }
 
         // Check file extension
-        const filename = (file as FileWithName).name || '';
+        const filename = file.name || '';
         const ext = path.extname(filename).toLowerCase();
         if (ext && !ALLOWED_EXTENSIONS.includes(ext)) {
             return {
@@ -160,7 +161,7 @@ export function createConvertRoutes(deps: ConvertDependencies = defaultDeps) {
             };
         }
 
-        return { valid: true };
+        return { valid: true, file };
     }
 
     /**
@@ -178,10 +179,10 @@ export function createConvertRoutes(deps: ConvertDependencies = defaultDeps) {
      * out of it. safeJoin validates the segment and asserts containment. Returns
      * the on-disk path the export pipeline should read.
      */
-    async function writeUploadedFile(file: UploadedFile, tempDirPath: string): Promise<string> {
-        const ext = sanitizeFileExtension((file as FileWithName).name) || '.elp';
+    async function writeUploadedFile(file: File, tempDirPath: string): Promise<string> {
+        const ext = sanitizeFileExtension(file.name) || '.elp';
         const uploadPath = safeJoin(tempDirPath, `upload-${randomUUID()}${ext}`);
-        const buffer = Buffer.isBuffer(file) ? file : Buffer.from(await file.arrayBuffer());
+        const buffer = Buffer.from(await file.arrayBuffer());
         await fs.writeFile(uploadPath, buffer);
         return uploadPath;
     }
@@ -339,12 +340,12 @@ export function createConvertRoutes(deps: ConvertDependencies = defaultDeps) {
                         return { code: 'UNAUTHORIZED', detail: 'Authentication required' };
                     }
 
-                    const data = castRequestBody<ConvertRequest>(body);
+                    const data = castRequestBody<Static<typeof ConvertBody>>(body);
                     const download = query.download === '1';
 
                     // Validate file
                     const validation = validateFile(data.file);
-                    if (!validation.valid) {
+                    if (validation.valid === false) {
                         set.status = 400;
                         return { code: 'MISSING_FILE', detail: validation.error };
                     }
@@ -356,7 +357,7 @@ export function createConvertRoutes(deps: ConvertDependencies = defaultDeps) {
                         tempDirPath = await createTempDir();
 
                         // Write uploaded file under a server-generated, contained name.
-                        const uploadPath = await writeUploadedFile(data.file, tempDirPath);
+                        const uploadPath = await writeUploadedFile(validation.file, tempDirPath);
 
                         // Run ELPX export (conversion)
                         const result = await runExport(uploadPath, 'elpx');
@@ -400,6 +401,7 @@ export function createConvertRoutes(deps: ConvertDependencies = defaultDeps) {
                     query: t.Object({
                         download: t.Optional(t.String()),
                     }),
+                    body: ConvertBody,
                 },
             )
 
@@ -428,14 +430,14 @@ export function createConvertRoutes(deps: ConvertDependencies = defaultDeps) {
                         };
                     }
 
-                    const data = castRequestBody<ConvertRequest>(body);
+                    const data = castRequestBody<Static<typeof ConvertBody>>(body);
                     const download = query.download === '1';
                     const baseUrl = data.baseUrl || undefined;
                     const theme = data.theme || undefined;
 
                     // Validate file
                     const validation = validateFile(data.file);
-                    if (!validation.valid) {
+                    if (validation.valid === false) {
                         set.status = 400;
                         return { code: 'MISSING_FILE', detail: validation.error };
                     }
@@ -447,7 +449,7 @@ export function createConvertRoutes(deps: ConvertDependencies = defaultDeps) {
                         tempDirPath = await createTempDir();
 
                         // Write uploaded file under a server-generated, contained name.
-                        const uploadPath = await writeUploadedFile(data.file, tempDirPath);
+                        const uploadPath = await writeUploadedFile(validation.file, tempDirPath);
 
                         // Run export
                         const result = await runExport(uploadPath, format, { baseUrl, theme });
@@ -495,6 +497,7 @@ export function createConvertRoutes(deps: ConvertDependencies = defaultDeps) {
                     query: t.Object({
                         download: t.Optional(t.String()),
                     }),
+                    body: ConvertBody,
                 },
             )
     );

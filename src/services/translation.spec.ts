@@ -140,8 +140,8 @@ describe('translation service', () => {
         });
 
         it('should handle non-string values', () => {
-            // @ts-expect-error Testing non-string input
-            const result = translateValue(123);
+            // Untyped callers can pass a non-string; it comes back unchanged.
+            const result: unknown = translateValue(123 as unknown as string);
             expect(result).toBe(123);
         });
     });
