@@ -3690,5 +3690,67 @@ describe('common_edition.js', () => {
         }
       });
     });
+
+    describe('AI import', () => {
+      const share = () => globalThis.$exeDevicesEdition.iDevice.gamification.share;
+
+      afterEach(() => {
+        share().aiImport = null;
+      });
+
+      it('splitAILines separates the lines that match the format', () => {
+        expect(share().splitAILines(0, [' Heart#Organ ', '', 'no separator'])).toEqual({
+          validLines: ['Heart#Organ'],
+          invalidLines: ['no separator'],
+        });
+      });
+
+      it('runs the open edition callback with the valid lines and options', async () => {
+        openEdition();
+        const saveQuestions = vi.fn().mockResolvedValue({ handledMessaging: true });
+        share().registerAIImport(10, saveQuestions, () => ({ numLevels: 4 }));
+
+        const outcome = await share().importAILines('```\n2@3#Heart#Organ\n```');
+
+        expect(outcome.validLines).toEqual(['2@3#Heart#Organ']);
+        expect(outcome.invalidLines).toEqual(['```', '```']);
+        expect(outcome.result).toEqual({ handledMessaging: true });
+        expect(saveQuestions).toHaveBeenCalledWith(['2@3#Heart#Organ'], ['```', '```']);
+      });
+
+      it('does not call the iDevice when no line is valid', async () => {
+        openEdition();
+        const saveQuestions = vi.fn();
+        share().registerAIImport(0, saveQuestions, () => ({}));
+
+        const outcome = await share().importAILines(['nothing here']);
+
+        expect(outcome.validLines).toEqual([]);
+        expect(saveQuestions).not.toHaveBeenCalled();
+      });
+
+      it('forgets the importer when its edition closes', async () => {
+        openEdition();
+        share().registerAIImport(0, vi.fn(), () => ({}));
+        expect(share().aiImport.lifecycle).toBe(lifecycle);
+
+        closeEdition();
+
+        expect(share().aiImport).toBeNull();
+        await expect(share().importAILines(['a#b'])).rejects.toThrow('No open iDevice edition');
+      });
+
+      it('ignores iDevices that register no callback', () => {
+        share().registerAIImport(2, undefined, () => ({}));
+        expect(share().aiImport).toBeNull();
+      });
+
+      it('addEvents registers the iDevice callback', () => {
+        openEdition();
+        const saveQuestions = vi.fn();
+        share().addEvents(1, saveQuestions);
+        expect(share().aiImport).toMatchObject({ type: 1, saveQuestions });
+      });
+    });
   });
 });

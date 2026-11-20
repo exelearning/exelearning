@@ -8,6 +8,7 @@ import ModalStyleManager from './modals/pages/modalStyleManager.js';
 import ModalIdeviceManager from './modals/pages/modalIdeviceManager.js';
 import ModalLopd from './modals/pages/modalLopd.js';
 import ModalAssistant from './modals/pages/modalAssistant.js';
+import ModalConnectMcp from './modals/pages/modalConnectMcp.js';
 import ModalReleaseNotes from './modals/pages/modalReleaseNotes.js';
 import ModalLegalNotes from './modals/pages/modalLegalNotes.js';
 import ModalAbout from './modals/pages/modalAbout.js';
@@ -36,6 +37,7 @@ export default class ModalsManagement {
         this.odeusedfiles = null;
         this.lopd = null;
         this.assistant = null;
+        this.connectmcp = null;
         this.releasenotes = null;
         this.legalnotes = null;
         this.about = null;
@@ -66,6 +68,7 @@ export default class ModalsManagement {
         this.odeusedfiles = new ModalOdeUsedFiles(this);
         this.lopd = new ModalLopd(this);
         this.assistant = new ModalAssistant(this);
+        this.connectmcp = new ModalConnectMcp(this);
         this.releasenotes = new ModalReleaseNotes(this);
         this.legalnotes = new ModalLegalNotes(this);
         this.about = new ModalAbout(this);
@@ -96,6 +99,7 @@ export default class ModalsManagement {
         this.odeusedfiles.behaviour();
         this.lopd.behaviour();
         this.assistant.behaviour();
+        this.connectmcp.behaviour();
         this.releasenotes.behaviour();
         this.legalnotes.behaviour();
         this.about.behaviour();
@@ -128,6 +132,7 @@ export default class ModalsManagement {
             this.odeusedfiles,
             this.lopd,
             this.assistant,
+            this.connectmcp,
             this.releasenotes,
             this.legalnotes,
             this.about,

@@ -1,0 +1,67 @@
+<div class="modal exe-modal-fade" tabindex="-1" id="modalConnectMcp" role="dialog" aria-hidden="true" data-testid="modal-connect-mcp" data-open="false">
+    <div class="modal-dialog modal-dialog-centered modal-confirm" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title">{{ 'Connect MCP' | trans }}</div>
+                <button type="button" class="close" data-dismiss="modal" aria-label="{{ 'Close' | trans }}">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body help-modal">
+                <div class="help-modal-content">
+                    <p>{{ 'eXeLearning registers its editing tools with the browser through WebMCP, so a browser AI agent can work on the open project.' | trans }}</p>
+                    <p>{{ 'In Chrome, enable chrome://flags/#enable-webmcp-testing and relaunch the browser. The tools then appear in DevTools > Application > WebMCP.' | trans }}</p>
+                    <p>{{ 'Recommended workflow: set project title/author/description first, then create text iDevices with block title and optional icon.' | trans }}</p>
+
+                    <div class="alert alert-info mt-3 mb-3">
+                        <strong>{{ 'Status:' | trans }}</strong>
+                        <span id="webmcp-status-value">-</span>
+                        <br>
+                        <small id="webmcp-status-description"></small>
+                    </div>
+
+                    <div class="d-flex gap-2 flex-wrap mb-3">
+                        <button type="button" class="btn btn-primary" id="button-open-webmcp-agent">{{ 'Try the tools with an AI assistant' | trans }}</button>
+                        <button type="button" class="btn btn-outline-secondary" id="button-open-webmcp-docs">{{ 'Open guide' | trans }}</button>
+                    </div>
+
+                    <h6>{{ 'Available tools in this eXe session:' | trans }}</h6>
+                    <ul id="webmcp-tools-list" class="mb-0"></ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<aside id="webmcp-agent-panel" class="webmcp-agent-panel" aria-labelledby="webmcp-agent-title" data-testid="webmcp-agent-panel" hidden>
+    <div class="webmcp-agent-header">
+        <h2 id="webmcp-agent-title">{{ 'AI assistant' | trans }}</h2>
+        <button type="button" class="btn-close" id="webmcp-agent-close" aria-label="{{ 'Close' | trans }}"></button>
+    </div>
+    <form class="webmcp-agent-settings" id="webmcp-agent-settings">
+        <label for="webmcp-agent-provider" class="form-label">{{ 'Model' | trans }}</label>
+        <select id="webmcp-agent-provider" class="form-select form-select-sm">
+            <option value="builtin">{{ 'Browser built-in AI' | trans }}</option>
+            <option value="openai">{{ 'OpenAI-compatible API with your key' | trans }}</option>
+        </select>
+        <p class="form-text mb-0" id="webmcp-agent-builtin-status" data-provider="builtin"></p>
+        <div data-provider="openai">
+            <label for="webmcp-agent-base-url" class="form-label">{{ 'Endpoint URL' | trans }}</label>
+            <input type="url" id="webmcp-agent-base-url" class="form-control form-control-sm" value="https://api.openai.com/v1" autocomplete="off">
+            <label for="webmcp-agent-model" class="form-label">{{ 'Model name' | trans }}</label>
+            <input type="text" id="webmcp-agent-model" class="form-control form-control-sm" autocomplete="off">
+            <label for="webmcp-agent-api-key" class="form-label">{{ 'API key' | trans }}</label>
+            <input type="password" id="webmcp-agent-api-key" class="form-control form-control-sm" autocomplete="off">
+            <p class="form-text mb-0">{{ 'The key is kept only in this browser tab and is sent only to the endpoint above.' | trans }}</p>
+        </div>
+    </form>
+    <div class="webmcp-agent-log" id="webmcp-agent-log" role="log" aria-live="polite"></div>
+    <form class="webmcp-agent-input" id="webmcp-agent-form">
+        <label for="webmcp-agent-prompt" class="visually-hidden">{{ 'Message' | trans }}</label>
+        <textarea id="webmcp-agent-prompt" class="form-control" rows="3" placeholder="{{ 'Ask for a change, for example: add a page about volcanoes with a short text' | trans }}"></textarea>
+        <div class="d-flex gap-2 mt-2">
+            <button type="submit" class="btn btn-primary btn-sm" id="webmcp-agent-send">{{ 'Send' | trans }}</button>
+            <button type="button" class="btn btn-outline-secondary btn-sm" id="webmcp-agent-reset">{{ 'New conversation' | trans }}</button>
+        </div>
+    </form>
+</aside>
