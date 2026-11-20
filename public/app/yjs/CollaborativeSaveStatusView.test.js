@@ -1,5 +1,5 @@
 /**
- * Tests for CollaborativeSaveStatusView (issue #1592).
+ * Tests for CollaborativeSaveStatusView (issues #1592 and #2615).
  *
  * Test helpers (describe/it/expect/vi/beforeEach/afterEach) are exposed as
  * globals by public/vitest.setup.js under happy-dom, so we can build a real DOM
@@ -70,7 +70,7 @@ describe('CollaborativeSaveStatusView (issue #1592)', () => {
             expect(badge.classList.contains('d-none')).toBe(false);
             expect(badge.getAttribute('data-collab-phase')).toBe('clean');
             expect(badge.textContent).toBe('check');
-            expect(getLiveText()).toBe('All collaborative changes are saved.');
+            expect(getLiveText()).toBe('All changes are saved.');
             expect(getButton().hasAttribute('aria-busy')).toBe(false);
             expect(createToast).not.toHaveBeenCalled();
         });
@@ -82,7 +82,7 @@ describe('CollaborativeSaveStatusView (issue #1592)', () => {
             const badge = getBadge();
             expect(badge.getAttribute('data-collab-phase')).toBe('pending');
             expect(badge.textContent).toBe(''); // plain dot: colour + placement, no glyph
-            expect(getLiveText()).toBe('Collaborative changes are shared live and will be saved automatically.');
+            expect(getLiveText()).toBe('Changes will be saved automatically.');
             expect(getButton().hasAttribute('aria-busy')).toBe(false);
             expect(createToast).not.toHaveBeenCalled();
         });
@@ -94,7 +94,7 @@ describe('CollaborativeSaveStatusView (issue #1592)', () => {
             const badge = getBadge();
             expect(badge.getAttribute('data-collab-phase')).toBe('saving');
             expect(badge.textContent).toBe(''); // motion cue comes from the CSS pulse
-            expect(getLiveText()).toBe('Saving collaborative changes...');
+            expect(getLiveText()).toBe('Saving changes...');
             expect(getButton().getAttribute('aria-busy')).toBe('true');
             expect(createToast).not.toHaveBeenCalled();
         });
@@ -117,7 +117,7 @@ describe('CollaborativeSaveStatusView (issue #1592)', () => {
             const payload = createToast.mock.calls[0][0];
             expect(payload.error).toBe(true);
             expect(payload.icon).toBe('error');
-            expect(payload.title).toBe('Collaborative autosave failed');
+            expect(payload.title).toBe('Autosave failed');
             expect(payload.body).toBe('Autosave failed. Please click Save before leaving.');
             // The assertive toast body differs from the polite live-region text,
             // so a screen reader does not hear the identical sentence twice.
@@ -138,7 +138,7 @@ describe('CollaborativeSaveStatusView (issue #1592)', () => {
             expect(badge.hasAttribute('data-collab-phase')).toBe(false);
             expect(badge.textContent).toBe('');
             // Live region left untouched so no empty/confusing announcement.
-            expect(getLiveText()).toBe('Collaborative changes are shared live and will be saved automatically.');
+            expect(getLiveText()).toBe('Changes will be saved automatically.');
             expect(createToast).not.toHaveBeenCalled();
         });
 
@@ -270,10 +270,10 @@ describe('CollaborativeSaveStatusView (issue #1592)', () => {
             const { view, createToast } = makeView();
             view.setPhase('failed');
             expect(getBadge().getAttribute('title')).toBe(
-                'Autosave failed. Your latest collaborative changes may not be saved.',
+                'Autosave failed. Your latest changes may not be saved.',
             );
             expect(createToast.mock.calls[0][0].body).toBe(
-                'Autosave failed. Your latest collaborative changes may not be saved.',
+                'Autosave failed. Your latest changes may not be saved.',
             );
         });
 
@@ -282,7 +282,7 @@ describe('CollaborativeSaveStatusView (issue #1592)', () => {
             const { view } = makeView();
             view.setPhase('failed');
             expect(getBadge().getAttribute('title')).toBe(
-                'Autosave failed. Your latest collaborative changes may not be saved.',
+                'Autosave failed. Your latest changes may not be saved.',
             );
             document.body.removeAttribute('data-exe-hide-save');
         });
@@ -292,7 +292,7 @@ describe('CollaborativeSaveStatusView (issue #1592)', () => {
             const { view } = makeView();
             view.setPhase('failed');
             expect(getBadge().getAttribute('title')).toBe(
-                'Autosave failed. Your latest collaborative changes may not be saved.',
+                'Autosave failed. Your latest changes may not be saved.',
             );
         });
     });
@@ -373,7 +373,7 @@ describe('CollaborativeSaveStatusView (issue #1592)', () => {
             });
             view.setPhase('clean');
             // The vitest global _() echoes the source string back.
-            expect(getLiveText()).toBe('All collaborative changes are saved.');
+            expect(getLiveText()).toBe('All changes are saved.');
         });
 
         it('resolves the toast manager from window.eXeLearning.app.toasts by default', () => {
@@ -403,7 +403,7 @@ describe('CollaborativeSaveStatusView (issue #1592)', () => {
             try {
                 const view = new CollaborativeSaveStatusView({ document, getToastManager: () => null });
                 view.setPhase('clean');
-                expect(getLiveText()).toBe('All collaborative changes are saved.');
+                expect(getLiveText()).toBe('All changes are saved.');
             } finally {
                 global._ = previousUnderscore;
             }
@@ -420,5 +420,128 @@ describe('CollaborativeSaveStatusView (issue #1592)', () => {
                 window.eXeLearning = previous;
             }
         });
+    });
+});
+
+describe('cloud status chip replaces the Save button (issue #2615)', () => {
+    /** Toolbar fragment as rendered by menuHeadTop.njk in cloud mode. */
+    function buildCloudDom() {
+        document.body.innerHTML = `
+            <button id="head-top-save-button" class="cloud-autosave saved" title="Save" aria-describedby="exe-collab-save-status">
+                <div class="small-icon save-icon-white"></div>
+                <span class="save-label">Save</span>
+                <span class="auto-icon cloud-save-icon" aria-hidden="true"></span>
+                <span class="cloud-save-label"></span>
+                <span class="collab-autosave-badge d-none" aria-hidden="true"></span>
+            </button>
+            <div id="exe-collab-save-status" class="collab-save-status" role="status" aria-live="polite" aria-atomic="true">
+                <span class="content"></span>
+            </div>
+        `;
+    }
+    const icon = () => document.querySelector('#head-top-save-button .cloud-save-icon');
+    const label = () => document.querySelector('#head-top-save-button .cloud-save-label');
+
+    beforeEach(() => {
+        buildCloudDom();
+    });
+
+    afterEach(() => {
+        document.body.innerHTML = '';
+    });
+
+    it('renders clean as cloud_done / "Saved" with a neutral tooltip and announcement, no toast', () => {
+        const { view, createToast } = makeView();
+        view.setPhase('clean');
+
+        expect(icon().textContent).toBe('cloud_done');
+        expect(label().textContent).toBe('Saved');
+        expect(getButton().getAttribute('data-cloud-phase')).toBe('clean');
+        expect(getButton().getAttribute('title')).toBe('All changes are saved.');
+        expect(getLiveText()).toBe('All changes are saved.');
+        expect(createToast).not.toHaveBeenCalled();
+    });
+
+    it('renders pending as cloud_upload / "Unsaved changes"', () => {
+        const { view } = makeView();
+        view.setPhase('pending');
+
+        expect(icon().textContent).toBe('cloud_upload');
+        expect(label().textContent).toBe('Unsaved changes');
+        expect(getLiveText()).toBe('Changes will be saved automatically.');
+        expect(getButton().hasAttribute('aria-busy')).toBe(false);
+    });
+
+    it('renders saving as cloud_sync / "Saving..." and marks the control busy', () => {
+        const { view } = makeView();
+        view.setPhase('saving');
+
+        expect(icon().textContent).toBe('cloud_sync');
+        expect(label().textContent).toBe('Saving...');
+        expect(getButton().getAttribute('aria-busy')).toBe('true');
+        expect(getLiveText()).toBe('Saving changes...');
+    });
+
+    it('renders failed as cloud_off / "Not saved" with the retry-queue wording (no "click Save")', () => {
+        const { view, createToast } = makeView();
+        view.setPhase('failed');
+
+        expect(icon().textContent).toBe('cloud_off');
+        expect(label().textContent).toBe('Not saved');
+        const expected = 'Autosave failed. Retrying automatically. Click the status to retry now.';
+        expect(getButton().getAttribute('title')).toBe(expected);
+        expect(createToast).toHaveBeenCalledTimes(1);
+        expect(createToast.mock.calls[0][0]).toMatchObject({ title: 'Autosave failed', body: expected, error: true });
+        expect(getLiveText()).toBe('Autosave failed.');
+    });
+
+    it('translates the short labels through the injected translator', () => {
+        const { view } = makeView({ translate: (source) => `t:${source}` });
+        view.setPhase('saving');
+        expect(label().textContent).toBe('t:Saving...');
+        expect(getButton().getAttribute('title')).toBe('t:Saving changes...');
+    });
+
+    it('keeps the dot badge hidden and never claims the manual-dot takeover class', () => {
+        const { view } = makeView();
+        for (const phase of ['pending', 'saving', 'clean', 'failed']) {
+            view.setPhase(phase);
+            expect(getBadge().classList.contains('d-none')).toBe(true);
+            expect(getBadge().hasAttribute('data-collab-phase')).toBe(false);
+            expect(getButton().classList.contains('collab-autosave-active')).toBe(false);
+        }
+    });
+
+    it('resets the chip and restores the original tooltip for an unknown phase and on destroy', () => {
+        const { view } = makeView();
+        view.setPhase('clean');
+        view.setPhase('bogus');
+        expect(getButton().hasAttribute('data-cloud-phase')).toBe(false);
+        expect(icon().textContent).toBe('');
+        expect(label().textContent).toBe('');
+        expect(getButton().getAttribute('title')).toBe('Save');
+
+        view.setPhase('saving');
+        view.destroy();
+        expect(getButton().hasAttribute('data-cloud-phase')).toBe(false);
+        expect(getButton().hasAttribute('aria-busy')).toBe(false);
+        expect(getButton().getAttribute('title')).toBe('Save');
+        expect(getLiveText()).toBe('');
+    });
+
+    it('does not throw when the icon/label spans are missing from the markup', () => {
+        document.querySelector('.cloud-save-icon').remove();
+        document.querySelector('.cloud-save-label').remove();
+        const { view } = makeView();
+        expect(() => view.setPhase('saving')).not.toThrow();
+        expect(getButton().getAttribute('data-cloud-phase')).toBe('saving');
+    });
+
+    it('leaves the control clickable in every phase (click = save now / manual retry)', () => {
+        const { view } = makeView();
+        for (const phase of ['pending', 'saving', 'clean', 'failed']) {
+            view.setPhase(phase);
+            expect(getButton().hasAttribute('disabled')).toBe(false);
+        }
     });
 });

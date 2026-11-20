@@ -1675,6 +1675,26 @@ describe('AssetManager', () => {
   });
 
   describe('markAssetUploaded', () => {
+    it('writes the uploaded flag with the asset-upload origin (#2615)', async () => {
+      mockYjsBridge._assetsMap.set('a1', { filename: 'test.jpg', uploaded: false });
+      const doc = mockYjsBridge.getAssetsMap().doc;
+      const transact = spyOn(doc, 'transact');
+
+      await assetManager.markAssetUploaded('a1');
+
+      expect(transact).toHaveBeenCalledWith(expect.any(Function), 'asset-upload');
+      expect(mockYjsBridge._assetsMap.get('a1').uploaded).toBe(true);
+    });
+
+    it('still marks the asset uploaded when the map has no document', async () => {
+      mockYjsBridge._assetsMap.set('a1', { filename: 'test.jpg', uploaded: false });
+      delete mockYjsBridge.getAssetsMap().doc;
+
+      await assetManager.markAssetUploaded('a1');
+
+      expect(mockYjsBridge._assetsMap.get('a1').uploaded).toBe(true);
+    });
+
     it('marks asset as uploaded via Yjs metadata', async () => {
       // (In-memory storage - no db initialization needed)
 

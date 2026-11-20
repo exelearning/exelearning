@@ -1,33 +1,32 @@
 /**
  * CollaborativeAutosaveManager
  *
- * Conservative autosave coordinator for online collaborative editing sessions
- * (issue #1592). In a Yjs collaborative session every participant sees each
- * other's edits live, which makes the document feel like it autosaves the way
- * Google Docs does. It does not: the shared Yjs state is only persisted when
- * someone explicitly saves. If the last editor closes their tab without saving,
- * the visible collaborative changes are lost.
+ * Autosave coordinator for online (cloud) editing sessions. Every browser holds
+ * the authoritative Y.Doc, and the server only receives it through the explicit
+ * save path. Until issue #2615 that path ran only on a manual Save (plus a
+ * best-effort `sendBeacon` on unload that silently fails above 64 KiB), so
+ * closing the tab without saving lost the edits once the next fresh tab wiped
+ * the local IndexedDB copy. Issue #1592 added this idle autosave for
+ * collaborative sessions; #2615 extends it to every online session, so cloud
+ * mode persists like Google Docs: edits are saved automatically after a short
+ * idle period and the toolbar shows the save state instead of a Save button.
  *
- * This manager closes that gap by persisting the shared Yjs snapshot after a
- * short idle period, but ONLY in genuine online collaborative sessions. It is
- * deliberately conservative:
+ * Behaviour:
  *
- *   - It never runs in static / offline / Electron-packaged mode (no remote
- *     storage), so local-only editing behaviour is unchanged.
- *   - It only activates once another collaborator has been present during the
- *     session, so ordinary single-user online editing is not silently turned
- *     into autosave.
+ *   - It never runs in static / offline / Electron mode (no remote storage):
+ *     those keep the file-based Save flow unchanged.
+ *   - It requires a live WebSocket/synced document so the first autosave never
+ *     races the initial load.
  *   - It never overlaps with another save (manual or automatic).
- *   - It retries failed saves with a bounded backoff rather than tight-looping.
+ *   - It retries failed saves with an exponential, capped backoff and never
+ *     gives up while the document is dirty; a reconnection retries at once.
  *
- * Persistence note: autosave uses the SAME explicit save path as the manual
- * Save button (`SaveManager.save`), which encodes the latest Yjs snapshot,
- * uploads pending assets and calls `markClean()`. There is no separate
- * "snapshot-only" persistence — a reopened project reliably contains the latest
- * autosaved collaborative state. The only product distinction is intent: an
+ * Persistence note: autosave uses the SAME explicit save path as a manual save
+ * (`SaveManager.save`), which encodes the latest Yjs snapshot, uploads pending
+ * assets and calls `markClean()`. The only product distinction is intent: an
  * autosave passes `reason: 'collaborative-autosave'` and is silent (no progress
- * modal), whereas a manual save shows progress. The manual Save button is left
- * completely unchanged; this is purely additive.
+ * toast). A blank project that was never edited never becomes dirty, so it is
+ * never autosaved and keeps today's "unsaved project" lifecycle.
  *
  * The manager is intentionally DOM-free so it can be unit-tested in isolation.
  * UI feedback is delivered through the `onStatusChange(phase)` callback, where
@@ -42,7 +41,9 @@ class CollaborativeAutosaveManager {
      * @param {number} [options.idleDelayMs=8000] - Debounce window after the
      *   last change before autosaving.
      * @param {number} [options.retryBaseMs=5000] - Base delay for backoff retry.
-     * @param {number} [options.maxRetries=5] - Maximum consecutive retry attempts.
+     * @param {number} [options.maxRetries=5] - Number of fast (exponential)
+     *   retries before settling into the capped steady retry interval. Autosave
+     *   never gives up while the document is dirty (issue #2615).
      * @param {(phase: string) => void} [options.onStatusChange] - Notified when
      *   the collaborative save phase changes.
      */
@@ -57,15 +58,14 @@ class CollaborativeAutosaveManager {
         this._saveInProgress = false;
         this._pendingAfterSave = false;
         this._retryCount = 0;
-        this._collaboratorEverPresent = false;
         this._started = false;
         this._destroyed = false;
         this._phase = 'clean';
-        this._unsubscribeUsers = null;
+        this._announced = false;
 
         // Stable references so they can be detached with off().
         this._onSaveStatus = this._handleSaveStatus.bind(this);
-        this._onUsersChange = this._handleUsersChange.bind(this);
+        this._onConnectionChange = this._handleConnectionChange.bind(this);
     }
 
     /**
@@ -78,40 +78,22 @@ class CollaborativeAutosaveManager {
 
         this._started = true;
         dm.on('saveStatus', this._onSaveStatus);
+        // The WebSocket is usually still connecting when autosave starts, so a
+        // dirty state restored from a reload (#2615) must be picked up once the
+        // connection is live, not only on the next edit.
+        dm.on('sync', this._onConnectionChange);
+        dm.on('connectionChange', this._onConnectionChange);
 
-        if (typeof dm.onUsersChange === 'function') {
-            this._unsubscribeUsers = dm.onUsersChange(this._onUsersChange);
-        } else {
-            dm.on('usersChange', this._onUsersChange);
-        }
-
-        this._refreshCollaboratorPresence();
-
-        // A session may already be dirty (e.g. dirty state restored from a
-        // previous reload) by the time autosave starts.
-        if (this._isDirty() && this.isEligible()) {
-            this._setPhase('pending');
-            this.scheduleSave();
-        }
+        this._handleConnectionChange();
     }
 
     /**
-     * Whether the current session is eligible for collaborative autosave:
-     * remote storage + collaboration enabled, a live websocket, and at least
-     * one other collaborator seen during this session.
+     * Whether the current session is eligible for autosave: remote storage +
+     * collaboration enabled and a live, synced websocket connection. Presence
+     * of other collaborators is irrelevant since issue #2615.
      * @returns {boolean}
      */
     isEligible() {
-        return this._isModeEligible() && this._collaboratorEverPresent;
-    }
-
-    /**
-     * Mode-level eligibility (capabilities + live connection), independent of
-     * collaborator presence.
-     * @returns {boolean}
-     * @private
-     */
-    _isModeEligible() {
         const caps = this.bridge && this.bridge.app && this.bridge.app.capabilities;
         if (!caps || !caps.collaboration || !caps.collaboration.enabled) return false;
         if (!caps.storage || !caps.storage.remote) return false;
@@ -122,7 +104,10 @@ class CollaborativeAutosaveManager {
 
         const ws = dm.wsProvider;
         if (!ws) return false;
-        return ws.wsconnected === true || ws.synced === true || dm.synced === true;
+        // The provider resets both flags when the socket closes; the document
+        // manager's own `synced` flag is never reset, so it cannot tell whether
+        // the connection is still live.
+        return ws.wsconnected === true || ws.synced === true;
     }
 
     /**
@@ -161,18 +146,26 @@ class CollaborativeAutosaveManager {
         this._destroyed = true;
         this._clearTimer();
         const dm = this.bridge && this.bridge.documentManager;
-        if (dm && this._started) {
-            if (typeof dm.off === 'function') {
-                dm.off('saveStatus', this._onSaveStatus);
-            }
-            if (this._unsubscribeUsers) {
-                this._unsubscribeUsers();
-            } else if (typeof dm.off === 'function') {
-                dm.off('usersChange', this._onUsersChange);
-            }
+        if (dm && this._started && typeof dm.off === 'function') {
+            dm.off('saveStatus', this._onSaveStatus);
+            dm.off('sync', this._onConnectionChange);
+            dm.off('connectionChange', this._onConnectionChange);
         }
-        this._unsubscribeUsers = null;
         this._started = false;
+    }
+
+    /**
+     * A save that did not come from this manager (a click on the chip, a
+     * pre-export flush) failed. SaveManager cancelled the queued autosave when
+     * that save started, and the failure is not reported through the document
+     * manager, so re-arm the retry loop while there is still unsaved work.
+     */
+    notifyExternalSaveFailed() {
+        if (this._destroyed || !this.isEligible() || !this._isDirty()) return;
+        this._pendingAfterSave = false;
+        if (this._phase !== 'failed') this._setPhase('pending');
+        this.scheduleSave({ retry: true });
+        this._retryCount += 1;
     }
 
     /** @returns {string} The current collaborative save phase. */
@@ -205,42 +198,37 @@ class CollaborativeAutosaveManager {
             this._retryCount = 0;
             this._pendingAfterSave = false;
             this._clearTimer();
-            if (this._isModeEligible()) this._setPhase('clean');
+            if (this.isEligible()) this._setPhase('clean');
         }
     }
 
     /**
-     * Track collaborator presence. Once another participant has been seen the
-     * session stays eligible even after they leave, because any remaining
-     * participant can persist the shared state.
-     * @param {{users?: Array}} data
+     * Re-evaluate eligibility when the connection state changes (and once at
+     * start). The first time the session is eligible the current phase is
+     * announced so the UI shows the autosave state before any edit; a dirty
+     * document (restored after a reload, or edited while offline) is scheduled
+     * for autosave as soon as the connection is live.
      * @private
      */
-    _handleUsersChange(data) {
-        if (this._destroyed) return;
-        const users = (data && data.users) || [];
-        const hadCollaborator = this._collaboratorEverPresent;
-        if (users.some((u) => u && !u.isLocal)) {
-            this._collaboratorEverPresent = true;
+    _handleConnectionChange() {
+        if (this._destroyed || !this._started || !this.isEligible()) return;
+        if (!this._announced) {
+            this._announced = true;
+            this._notify(this._phase);
         }
-        // If a collaborator has just appeared while changes are already pending,
-        // arm the autosave that was previously gated out.
-        if (!hadCollaborator && this._collaboratorEverPresent && this._isDirty() && this._isModeEligible()) {
+        if (!this._isDirty() || this._saveInProgress) return;
+        if (this._phase === 'failed') {
+            // The connection is back after failed attempts: drop the backoff
+            // timer and retry promptly (the UI keeps showing 'failed' until the
+            // save actually succeeds).
+            this._retryCount = 0;
+            this._clearTimer();
+            this.scheduleSave();
+            return;
+        }
+        if (!this._timer) {
             this._setPhase('pending');
             this.scheduleSave();
-        }
-    }
-
-    /**
-     * Read current collaborator presence from awareness (used at start()).
-     * @private
-     */
-    _refreshCollaboratorPresence() {
-        const dm = this.bridge && this.bridge.documentManager;
-        if (!dm || typeof dm.getOnlineUsers !== 'function') return;
-        const others = dm.getOnlineUsers().filter((u) => u && !u.isLocal);
-        if (others.length > 0) {
-            this._collaboratorEverPresent = true;
         }
     }
 
@@ -290,12 +278,14 @@ class CollaborativeAutosaveManager {
         } else {
             this._pendingAfterSave = false;
             this._setPhase('failed');
-            if (this._retryCount < this.maxRetries) {
-                this.scheduleSave({ retry: true });
-                this._retryCount += 1;
-            }
-            // Otherwise give up retrying and leave the 'failed' notice up; the
-            // user must save manually, and the beforeunload warning still fires.
+            // Never give up while there is unsaved work (#2615): back off
+            // exponentially for the first `maxRetries` attempts, then keep
+            // retrying at the capped interval. A reconnection (see
+            // _handleConnectionChange) restarts the fast cycle immediately, the
+            // 'failed' notice stays visible and the beforeunload warning still
+            // protects the dirty document meanwhile.
+            this.scheduleSave({ retry: true });
+            this._retryCount += 1;
         }
     }
 
@@ -306,7 +296,7 @@ class CollaborativeAutosaveManager {
      * @private
      */
     _retryDelay() {
-        const exponent = Math.min(this._retryCount, 4);
+        const exponent = Math.min(this._retryCount, this.maxRetries, 4);
         return this.retryBaseMs * Math.pow(2, exponent);
     }
 
@@ -334,12 +324,21 @@ class CollaborativeAutosaveManager {
     _setPhase(phase) {
         if (this._phase === phase) return;
         this._phase = phase;
-        if (this.onStatusChange) {
-            try {
-                this.onStatusChange(phase);
-            } catch (error) {
-                // A UI listener must never break the autosave loop.
-            }
+        this._notify(phase);
+    }
+
+    /**
+     * Deliver a phase to the listener (used by _setPhase and for the one-off
+     * announcement once the session becomes eligible).
+     * @param {string} phase
+     * @private
+     */
+    _notify(phase) {
+        if (!this.onStatusChange) return;
+        try {
+            this.onStatusChange(phase);
+        } catch (error) {
+            // A UI listener must never break the autosave loop.
         }
     }
 }

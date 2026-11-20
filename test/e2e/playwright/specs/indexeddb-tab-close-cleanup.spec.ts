@@ -14,6 +14,14 @@ import type { Page } from '@playwright/test';
  */
 
 test.describe('IndexedDB Tab-Close Cleanup', () => {
+    // Issue #2615: autosave now runs in every online session. These tests exercise
+    // the manual dirty/save flows, so push the idle autosave out of the way.
+    test.beforeEach(async ({ authenticatedPage }) => {
+        await authenticatedPage.addInitScript(() => {
+            (window as any).__EXE_COLLAB_AUTOSAVE_IDLE_MS__ = 10 * 60 * 1000;
+        });
+    });
+
     test.beforeEach(({}, testInfo) => {
         skipInStaticMode(test, testInfo, 'Requires real Yjs IndexedDB and WebSocket');
     });
@@ -99,12 +107,12 @@ test.describe('IndexedDB Tab-Close Cleanup', () => {
     // Test 1: Cleanup sets the needs-cleanup flag; deferred IDB deletion + dirty state
     // clear happen on the next initialize() in a fresh tab session
     // ---------------------------------------------------------------------------
-    test('cleanup sets flag; next navigation deletes IndexedDB and clears dirty state', async ({
+    test('cleanup sets flag; next navigation keeps unsaved work instead of wiping it (issue #2615)', async ({
         authenticatedPage,
         createProject,
     }) => {
         const page = authenticatedPage;
-        const projectUuid = await createProject(page, 'IDB Cleanup Test');
+        const projectUuid = await createProject(page, 'IDB Cleanup Unsaved Test');
 
         await gotoWorkarea(page, projectUuid);
         await waitForAppReady(page);
@@ -129,11 +137,7 @@ test.describe('IndexedDB Tab-Close Cleanup', () => {
         expect(dirtyFlagBefore).toBe('true');
 
         // Trigger cleanup (simulates closing the last tab).
-        // With the deferred architecture, _cleanupOnLastTabClose() only sets the flag.
-        // All actual cleanup is deferred to initialize() in the next fresh tab session.
         await triggerTabCloseCleanup(page);
-
-        // The needs-cleanup flag should be set immediately after forceCleanup()
         const needsCleanupFlag = await page.evaluate(id => {
             return localStorage.getItem(`exe-needs-cleanup-${id}`);
         }, projectUuid);
@@ -141,24 +145,78 @@ test.describe('IndexedDB Tab-Close Cleanup', () => {
 
         // Simulate opening the project in a fresh tab session.
         await page.evaluate(() => sessionStorage.clear());
-
-        // Reopen the project so initialize() performs deferred cleanup
         await gotoWorkarea(page, projectUuid);
         await waitForAppReady(page);
 
-        // The needs-cleanup flag must be consumed by initialize()
+        // The needs-cleanup flag is consumed ...
         const needsCleanupAfterReopen = await page.evaluate(id => {
             return localStorage.getItem(`exe-needs-cleanup-${id}`);
         }, projectUuid);
         expect(needsCleanupAfterReopen).toBeNull();
 
-        // Dirty state must be cleared — save button shows saved
+        // ... but the unsaved work and its dirty state are kept (the autosave
+        // idle is pinned long in this spec, so it is still pending here).
+        const authorAfterReopen = await page.evaluate(() => {
+            const bridge = (window as any).eXeLearning.app.project._yjsBridge;
+            return bridge.documentManager.getMetadata().get('author') ?? '';
+        });
+        expect(authorAfterReopen).toBe('TestUnsaved');
+        const dirtyFlagAfter = await page.evaluate(id => {
+            return localStorage.getItem(`exelearning_dirty_state_${id}`);
+        }, projectUuid);
+        expect(dirtyFlagAfter).toBe('true');
+        await expect(page.locator('#head-top-save-button')).toHaveClass(/unsaved/);
+    });
+
+    test('cleanup sets flag; next navigation deletes IndexedDB and clears state when nothing is unsaved', async ({
+        authenticatedPage,
+        createProject,
+    }) => {
+        const page = authenticatedPage;
+        const projectUuid = await createProject(page, 'IDB Cleanup Clean Test');
+
+        await gotoWorkarea(page, projectUuid);
+        await waitForAppReady(page);
+        await waitForIndexedDBPopulated(page, projectUuid);
+        await expect(page.locator('#head-top-save-button')).not.toHaveClass(/unsaved/);
+
+        await triggerTabCloseCleanup(page);
+        const needsCleanupFlag = await page.evaluate(id => {
+            return localStorage.getItem(`exe-needs-cleanup-${id}`);
+        }, projectUuid);
+        expect(needsCleanupFlag).toBe('true');
+
+        // Prove the wipe really happens: plant a local-only marker that a wipe
+        // must erase and a server reload must not bring back.
+        await page.evaluate(() => {
+            const bridge = (window as any).eXeLearning.app.project._yjsBridge;
+            bridge.documentManager.withoutDirtyTracking
+                ? bridge.documentManager.withoutDirtyTracking(() =>
+                      bridge.documentManager.getMetadata().set('localOnlyMarker', 'wipe-me'),
+                  )
+                : bridge.documentManager.getMetadata().set('localOnlyMarker', 'wipe-me');
+            bridge.documentManager.markClean();
+        });
+        await page.waitForTimeout(500);
+
+        await page.evaluate(() => sessionStorage.clear());
+        await gotoWorkarea(page, projectUuid);
+        await waitForAppReady(page);
+
+        const needsCleanupAfterReopen = await page.evaluate(id => {
+            return localStorage.getItem(`exe-needs-cleanup-${id}`);
+        }, projectUuid);
+        expect(needsCleanupAfterReopen).toBeNull();
         const dirtyFlagAfter = await page.evaluate(id => {
             return localStorage.getItem(`exelearning_dirty_state_${id}`);
         }, projectUuid);
         expect(dirtyFlagAfter).toBeNull();
-
         await expect(page.locator('#head-top-save-button')).not.toHaveClass(/unsaved/);
+        const marker = await page.evaluate(() => {
+            const bridge = (window as any).eXeLearning.app.project._yjsBridge;
+            return bridge.documentManager.getMetadata().get('localOnlyMarker') ?? '';
+        });
+        expect(marker).toBe('');
     });
 
     // ---------------------------------------------------------------------------
