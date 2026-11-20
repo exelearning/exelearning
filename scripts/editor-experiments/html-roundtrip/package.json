@@ -1,0 +1,20 @@
+{
+    "name": "editor-experiment-html-roundtrip",
+    "private": true,
+    "type": "module",
+    "license": "AGPL-3.0-or-later",
+    "description": "ADR-2467-01 experiment, not production code. Install only in a temporary copy (see ../README.md).",
+    "devDependencies": {
+        "@tiptap/core": "3.31.3",
+        "@tiptap/extension-image": "3.31.3",
+        "@tiptap/pm": "3.31.3",
+        "@tiptap/starter-kit": "3.31.3",
+        "@wangeditor-next/editor": "6.4.2",
+        "fflate": "0.8.3",
+        "hugerte": "1.0.14",
+        "parse5": "8.0.1",
+        "playwright-core": "1.58.2",
+        "squire-rte": "2.4.9",
+        "tinymce": "8.9.2"
+    }
+}

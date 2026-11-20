@@ -1,0 +1,53 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Editor round-trip harness</title>
+<!-- One page, one editor per load: ?editor=<name>. Exposes window.rt(html) -> Promise<html>. -->
+<textarea id="ta"></textarea>
+<div id="editor"></div>
+<script type="module">
+const name = new URLSearchParams(location.search).get('editor');
+const load = (src) => new Promise((ok, ko) => { const s = document.createElement('script'); s.src = src; s.onload = ok; s.onerror = ko; document.head.append(s); });
+
+// eXe's TinyMCE 5 settings (public/app/editor/tinymce_5_settings.js), minus eXe's own plugins and
+// the asset:// <-> blob: hooks, which need the running app.
+const exeConfig = {
+  schema: 'html5', valid_elements: '*[*]', extended_valid_elements: '', valid_children: '+body[style]',
+  convert_urls: false, entity_encoding: 'raw', remove_trailing_brs: false, fix_list_elements: true,
+  plugins: 'lists advlist link image media table code', menubar: false, toolbar: false, branding: false,
+};
+async function tinyFamily(global, extra) {
+  const ed = (await window[global].init({ target: document.getElementById('ta'), ...exeConfig, ...extra }))[0];
+  window.rt = async (html) => { ed.setContent(html); return ed.getContent(); };
+  window.editorVersion = `${global} ${window[global].majorVersion}.${window[global].minorVersion} ${JSON.stringify(extra)}`;
+}
+
+const adapters = {
+  // eXe ships no core `media` plugin; `exemedia` is its fork and is what parses iframes/video in 5.x.
+  tinymce5: async () => { window._ = (s) => s; /* eXe's i18n global, used by exemedia */ await load('/tinymce5/tinymce.min.js'); await tinyFamily('tinymce', { plugins: exeConfig.plugins.replace('media', 'exemedia') }); },
+  // TinyMCE 8 defaults kept: xss_sanitization, sandbox_iframes, convert_unsafe_embeds are all on.
+  tinymce8: async () => { await load('/node_modules/tinymce/tinymce.min.js'); await tinyFamily('tinymce', { license_key: 'gpl' }); },
+  // Same, with the three security defaults switched off explicitly (what eXe would need for 5.x parity).
+  'tinymce8-relaxed': async () => { await load('/node_modules/tinymce/tinymce.min.js'); await tinyFamily('tinymce', { license_key: 'gpl', xss_sanitization: false, sandbox_iframes: false, convert_unsafe_embeds: false }); },
+  hugerte: async () => { await load('/node_modules/hugerte/hugerte.min.js'); await tinyFamily('hugerte', {}); },
+  // Relaxed flags and no core `media` plugin: isolates what `media` does to data-mce-* on iframes.
+  'tinymce8-nomedia': async () => { await load('/node_modules/tinymce/tinymce.min.js'); await tinyFamily('tinymce', { license_key: 'gpl', xss_sanitization: false, sandbox_iframes: false, convert_unsafe_embeds: false, plugins: exeConfig.plugins.replace(' media', '') }); },
+  'hugerte-nomedia': async () => { await load('/node_modules/hugerte/hugerte.min.js'); await tinyFamily('hugerte', { xss_sanitization: false, sandbox_iframes: false, convert_unsafe_embeds: false, plugins: exeConfig.plugins.replace(' media', '') }); },
+  squire: async () => {
+    const { default: Squire } = await import('/node_modules/squire-rte/dist/squire-raw.mjs');
+    // No DOMPurify: pass-through parsing, so only Squire's own cleanTree() applies.
+    const toFrag = (html) => { const t = document.createElement('template'); t.innerHTML = html; return t.content; };
+    const ed = new Squire(document.getElementById('editor'), { sanitizeToDOMFragment: toFrag });
+    window.rt = async (html) => { ed.setHTML(html); return ed.getHTML(); };
+    window.editorVersion = 'squire-rte 2.4.9 (squire-raw, no DOMPurify)';
+  },
+  wangeditor: async () => {
+    await load('/node_modules/@wangeditor-next/editor/dist/index.js');
+    const ed = window.wangEditor.createEditor({ selector: '#editor', html: '<p></p>' });
+    window.rt = async (html) => { ed.setHtml(html); return ed.getHtml(); };
+    window.editorVersion = '@wangeditor-next/editor 6.4.2 (stock)';
+  },
+  tiptap: () => load('/tiptap.bundle.js'),
+};
+await adapters[name]();
+window.ready = true;
+</script>
