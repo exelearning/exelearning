@@ -8,6 +8,9 @@ import {
     saveIdevice,
 } from '../../helpers/workarea-helpers';
 
+/** The slice of TinyMCE's global these specs read, instead of casting to `any`. */
+type TinyMceWindow = Window & { tinymce?: { activeEditor?: { initialized?: boolean } } };
+
 /**
  * E2E tests for the focused full-workarea iDevice edit mode (Refs #1811, #1411).
  *
@@ -49,8 +52,8 @@ async function ensureEditing(page: Page, ideviceId: string): Promise<void> {
 async function fillActiveEditor(page: Page, text: string): Promise<void> {
     await page.waitForFunction(
         () => {
-            const ed = (window as any).tinymce?.activeEditor;
-            return ed && ed.initialized;
+            const ed = (window as TinyMceWindow).tinymce?.activeEditor;
+            return ed?.initialized;
         },
         undefined,
         { timeout: 15000 },
