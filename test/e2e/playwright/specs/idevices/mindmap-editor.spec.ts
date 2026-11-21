@@ -240,7 +240,7 @@ test.describe('Mind map editor (Mind Elixir)', () => {
         await saveIdevice(page, block);
 
         const [saved] = await storedMaps(page);
-        expect(saved.svg).toContain('>Raíz &quot;1&quot; # *a*</tspan>');
+        expect(saved.svg).toMatch(/>Raíz (&quot;|")1(&quot;|") # \*a\*<\/tspan>/);
         expect(saved.svg).toContain('>Hija editada</tspan>');
         await expect(page.locator('#node-content .exe-mind-map')).toHaveCount(1);
         await expect(page.locator('#node-content .exe-mind-map figcaption')).toHaveCount(0);
