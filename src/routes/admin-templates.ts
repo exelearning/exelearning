@@ -11,7 +11,7 @@ import { db as defaultDb } from '../db/client';
 import { buildContentDisposition } from '../shared/http/headers';
 import type { Kysely } from 'kysely';
 import type { Database, Template } from '../db/types';
-import type { JwtPayload } from './auth';
+import { toAuthenticatedIdentity, type JwtPayload } from '../auth/types';
 import {
     getAllTemplates as getAllTemplatesDefault,
     getTemplatesByLocale as getTemplatesByLocaleDefault,
@@ -34,6 +34,7 @@ import {
 } from '../services/admin-upload-validator';
 import { requireAdmin } from '../utils/guards';
 import { getFilesDir as getFilesDirDefault, getJwtSecret, deleteFileIfExists } from '../utils/admin-route-helpers';
+import { castRequestBody } from './types/request-payloads';
 
 // ============================================================================
 // TYPES
@@ -66,6 +67,16 @@ export interface AdminTemplatesDependencies {
     validator: AdminTemplatesValidatorDeps;
     getFilesDir: () => string;
 }
+
+type TemplateUpdateInput = { displayName?: string; description?: string; sortOrder?: number };
+type TemplateToggleInput = { isEnabled: boolean };
+type TemplateUploadInput = {
+    file?: File;
+    locale: string;
+    displayName?: string;
+    description?: string;
+    isEnabled?: boolean;
+};
 
 // ============================================================================
 // DEFAULTS
@@ -136,19 +147,20 @@ export function createAdminTemplatesRoutes(deps: AdminTemplatesDependencies = de
             // Global guard for admin routes
             .guard({
                 async beforeHandle({ jwt, cookie, set }) {
-                    const token = cookie.auth?.value;
+                    const token = cookie.auth?.value as string | undefined;
                     if (!token) {
                         set.status = 401;
                         return { error: 'Unauthorized', message: 'No authentication token' };
                     }
 
-                    const payload = (await jwt.verify(token)) as JwtPayload | false;
-                    if (!payload) {
+                    const payload = (await jwt.verify(token)) as unknown as JwtPayload | false;
+                    const identity = payload ? toAuthenticatedIdentity(payload) : null;
+                    if (!identity) {
                         set.status = 401;
                         return { error: 'Unauthorized', message: 'Invalid token' };
                     }
 
-                    const authError = requireAdmin(payload);
+                    const authError = requireAdmin(identity);
                     if (authError) {
                         set.status = 403;
                         return { error: authError.error, message: authError.message };
@@ -238,7 +250,8 @@ export function createAdminTemplatesRoutes(deps: AdminTemplatesDependencies = de
                 '/api/admin/templates/upload',
                 async ({ body, set, jwt, cookie }) => {
                     try {
-                        const { file, locale, displayName, description, isEnabled } = body;
+                        const { file, locale, displayName, description, isEnabled } =
+                            castRequestBody<TemplateUploadInput>(body);
 
                         if (!file) {
                             set.status = 400;
@@ -296,9 +309,14 @@ export function createAdminTemplatesRoutes(deps: AdminTemplatesDependencies = de
                         // Save template (as ELPX file, not extracted)
                         await validator.extractTemplate(fileBuffer, targetPath);
 
-                        // Get current user ID from JWT
-                        const token = cookie.auth?.value;
-                        const payload = (await jwt.verify(token!)) as JwtPayload;
+                        const token = cookie.auth?.value as string | undefined;
+                        const uploadIdentity = toAuthenticatedIdentity(
+                            (await jwt.verify(token!)) as unknown as JwtPayload,
+                        );
+                        if (!uploadIdentity) {
+                            set.status = 401;
+                            return { error: 'Unauthorized', message: 'Invalid token' };
+                        }
 
                         // Get next sort order
                         const sortOrder = await queries.getNextTemplateSortOrder(database, locale);
@@ -314,7 +332,7 @@ export function createAdminTemplatesRoutes(deps: AdminTemplatesDependencies = de
                             storage_path: storagePath,
                             file_size: fileBuffer.length,
                             preview_image: null,
-                            uploaded_by: payload.sub,
+                            uploaded_by: uploadIdentity.userId,
                         });
 
                         set.status = 201;
@@ -356,14 +374,15 @@ export function createAdminTemplatesRoutes(deps: AdminTemplatesDependencies = de
 
                     const updates: Parameters<typeof queries.updateTemplate>[2] = {};
 
-                    if (body.displayName !== undefined) {
-                        updates.display_name = body.displayName;
+                    const input = castRequestBody<TemplateUpdateInput>(body);
+                    if (input.displayName !== undefined) {
+                        updates.display_name = input.displayName;
                     }
-                    if (body.description !== undefined) {
-                        updates.description = body.description;
+                    if (input.description !== undefined) {
+                        updates.description = input.description;
                     }
-                    if (body.sortOrder !== undefined) {
-                        updates.sort_order = body.sortOrder;
+                    if (input.sortOrder !== undefined) {
+                        updates.sort_order = input.sortOrder;
                     }
 
                     const updatedTemplate = await queries.updateTemplate(database, id, updates);
@@ -401,7 +420,11 @@ export function createAdminTemplatesRoutes(deps: AdminTemplatesDependencies = de
                         return { error: 'Not Found', message: 'Template not found' };
                     }
 
-                    const updatedTemplate = await queries.toggleTemplateEnabled(database, id, body.isEnabled);
+                    const updatedTemplate = await queries.toggleTemplateEnabled(
+                        database,
+                        id,
+                        castRequestBody<TemplateToggleInput>(body).isEnabled,
+                    );
                     if (!updatedTemplate) {
                         set.status = 500;
                         return { error: 'Internal Server Error', message: 'Failed to update template' };

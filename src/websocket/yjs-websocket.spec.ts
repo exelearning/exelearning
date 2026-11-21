@@ -5,10 +5,11 @@
  * This test file uses REAL implementations for sibling modules (room-manager, heartbeat,
  * message-parser, config). Only external dependencies are mocked via DI.
  */
+import type { AssetMessage, YjsSocketData } from './types';
 import { describe, it, expect, beforeEach, afterEach, mock } from 'bun:test';
 import { Elysia } from 'elysia';
 import type { Kysely } from 'kysely';
-import type { Database } from '../db/schema';
+import type { Database, Project } from '../db/types';
 
 // Import real implementations
 import * as roomManager from './room-manager';
@@ -32,7 +33,6 @@ import {
     handleWebSocketPong,
     handleWebSocketMessage,
     handleWebSocketClose,
-    WsData,
     YJS_WS_MAX_PAYLOAD_LENGTH,
     type YjsWebSocketQueries,
     type YjsWebSocketSessionManager,
@@ -51,7 +51,7 @@ const mockDb = {} as Kysely<Database>;
 function createMockQueries(): YjsWebSocketQueries {
     return {
         findProjectByUuid: async (_db: any, uuid: string) => mockProjects.get(uuid),
-        checkProjectAccess: async (_db: any, project: any, userId: number) => {
+        checkProjectAccess: async (_db, project, userId) => {
             if (!project) return { hasAccess: false, reason: 'Project not found' };
             if (project.owner_id === userId) return { hasAccess: true };
             if (project.visibility === 'public') return { hasAccess: true };
@@ -73,13 +73,13 @@ function createMockAuth(): YjsWebSocketAuth {
     return {
         verifyToken: async (token: string) => {
             if (token === 'valid-token-user-1') {
-                return { sub: 1, email: 'user1@test.com', roles: ['ROLE_USER'] };
+                return { userId: 1, email: 'user1@test.com', roles: ['ROLE_USER'], isGuest: false };
             }
             if (token === 'valid-token-user-2') {
-                return { sub: 2, email: 'user2@test.com', roles: ['ROLE_USER'] };
+                return { userId: 2, email: 'user2@test.com', roles: ['ROLE_USER'], isGuest: false };
             }
             if (token === 'valid-token-admin') {
-                return { sub: 3, email: 'admin@test.com', roles: ['ROLE_ADMIN'] };
+                return { userId: 3, email: 'admin@test.com', roles: ['ROLE_ADMIN'], isGuest: false };
             }
             return null;
         },
@@ -98,7 +98,7 @@ function createMockAssetCoordinator(): YjsWebSocketAssetCoordinator {
 }
 
 // Mock WebSocket for testing
-function createMockWebSocket(data: Partial<WsData> = {}): any {
+function createMockWebSocket(data: Partial<YjsSocketData> = {}): any {
     const sentMessages: any[] = [];
     const closeArgs: any[] = [];
     return {
@@ -192,6 +192,20 @@ describe('Yjs WebSocket Service', () => {
             wsHook?.pong?.(ws as any, undefined as any);
             wsHook?.message?.(ws as any, Buffer.from([0x01]));
             wsHook?.close?.(ws as any, 1000, 'closed');
+        });
+
+        it('closes the socket when the upgrade token is not a string', async () => {
+            const routes = createWebSocketRoutes();
+            const wsRoute = routes.routes.find(route => route.method === 'WS' && route.path === '/yjs/:docName');
+            const wsHook = (wsRoute?.hooks as any)?.websocket;
+            const ws = createMockWebSocket({
+                params: {},
+                query: { token: ['not-a-string'] as unknown as string },
+            });
+
+            await wsHook?.open?.(ws as any);
+
+            expect(ws.close).toHaveBeenCalled();
         });
 
         it('exposes a public GET /yjs/info liveness probe without leaking ops detail', async () => {
@@ -671,8 +685,8 @@ describe('Yjs WebSocket Service', () => {
         it('should handle non-existent project access check', async () => {
             const mockQueries = createMockQueries();
 
-            // Note: First param is _db (ignored), second is project (null), third is userId
-            const result = await mockQueries.checkProjectAccess(null, null, 1);
+            // Note: First param is _db (ignored), second is project (undefined), third is userId
+            const result = await mockQueries.checkProjectAccess(mockDb, undefined, 1);
             expect(result.hasAccess).toBe(false);
         });
     });
@@ -730,7 +744,7 @@ describe('Yjs WebSocket Service', () => {
             const user = await mockAuth.verifyToken('valid-token-user-1');
 
             expect(user).not.toBeNull();
-            expect(user?.sub).toBe(1);
+            expect(user?.userId).toBe(1);
             expect(user?.email).toBe('user1@test.com');
         });
 
@@ -745,7 +759,7 @@ describe('Yjs WebSocket Service', () => {
         it('should check project access via database when no session', async () => {
             const mockQueries = createMockQueries();
             const project = mockProjects.get('test-uuid');
-            const result = await mockQueries.checkProjectAccess(null, project, 1);
+            const result = await mockQueries.checkProjectAccess(mockDb, project, 1);
 
             expect(result.hasAccess).toBe(true);
         });
@@ -754,7 +768,7 @@ describe('Yjs WebSocket Service', () => {
             const mockQueries = createMockQueries();
             // test-uuid is owned by user 1, but user 2 tries to access
             const project = mockProjects.get('test-uuid');
-            const result = await mockQueries.checkProjectAccess(null, project, 2);
+            const result = await mockQueries.checkProjectAccess(mockDb, project, 2);
 
             expect(result.hasAccess).toBe(false);
             expect(result.reason).toBe('Access denied');
@@ -764,7 +778,7 @@ describe('Yjs WebSocket Service', () => {
             const mockQueries = createMockQueries();
             // public-uuid is owned by user 2 but accessible to all
             const project = mockProjects.get('public-uuid');
-            const result = await mockQueries.checkProjectAccess(null, project, 999);
+            const result = await mockQueries.checkProjectAccess(mockDb, project, 999);
 
             expect(result.hasAccess).toBe(true);
         });
@@ -776,6 +790,7 @@ describe('Yjs WebSocket Service', () => {
             const parsed = parseMessage(message);
 
             expect(parsed.kind).toBe('yjs');
+            if (parsed.kind !== 'yjs') throw new Error('expected a yjs message');
             expect(parsed.data).toBeDefined();
         });
 
@@ -789,6 +804,7 @@ describe('Yjs WebSocket Service', () => {
             const parsed = parseMessage(assetMessage);
 
             expect(parsed.kind).toBe('asset');
+            if (parsed.kind !== 'asset') throw new Error('expected an asset message');
             expect(parsed.message).toBeDefined();
             expect(parsed.message.type).toBe('request-asset');
         });
@@ -944,7 +960,7 @@ describe('Yjs WebSocket Service', () => {
                 assetCoordinator: mockAssetCoordinator,
             });
 
-            const assetMsg = { type: 'request-asset', projectId: 'p1', clientId: 'c1', data: {} };
+            const assetMsg: AssetMessage = { type: 'request-asset', projectId: 'p1', clientId: 'c1', data: {} };
             await mockAssetCoordinator.handleMessage('test-uuid', 'client-1', assetMsg);
 
             expect(handleMessageSpy).toHaveBeenCalledWith('test-uuid', 'client-1', assetMsg);
@@ -992,7 +1008,9 @@ describe('Yjs WebSocket Service', () => {
     describe('Dependency Injection', () => {
         it('should use configured queries', async () => {
             const customQueries = createMockQueries();
-            const findProjectSpy = mock(async () => ({ id: 999, uuid: 'custom', owner_id: 1 }));
+            const findProjectSpy = mock<YjsWebSocketQueries['findProjectByUuid']>(
+                async () => ({ id: 999, uuid: 'custom', owner_id: 1 }) as Project,
+            );
             customQueries.findProjectByUuid = findProjectSpy;
 
             configure({
@@ -1009,7 +1027,12 @@ describe('Yjs WebSocket Service', () => {
 
         it('should use configured auth', async () => {
             const customAuth = createMockAuth();
-            const verifySpy = mock(async () => ({ sub: 999, email: 'custom@test.com', roles: [] }));
+            const verifySpy = mock<YjsWebSocketAuth['verifyToken']>(async () => ({
+                userId: 999,
+                email: 'custom@test.com',
+                roles: [],
+                isGuest: false,
+            }));
             customAuth.verifyToken = verifySpy;
 
             configure({
@@ -1295,6 +1318,14 @@ describe('Yjs WebSocket Service', () => {
             expect(result.error?.reason).toBe('Invalid token');
         });
 
+        it('verifies tokens through the session revocation check by default', async () => {
+            resetDependencies();
+            const ws = createMockWebSocket() as any;
+            const result = await handleWebSocketOpen(ws, 'project-a1b2c3d4-e5f6-7890-abcd-ef1234567890', 'not-a-jwt');
+            expect(result.error?.code).toBe(4001);
+            expect(result.error?.reason).toBe('Invalid token');
+        });
+
         it('should return error when access denied', async () => {
             const ws = createMockWebSocket() as any;
             // Add a project that user 2 doesn't have access to (owned by user 1, private)
@@ -1340,7 +1371,9 @@ describe('Yjs WebSocket Service', () => {
             // during the await, handleWebSocketClose runs first (a no-op,
             // since ws.data.docName isn't set yet) and no further `close`
             // event will ever fire for this connection.
-            let resolveVerify!: (user: { sub: number; email: string; roles: string[] } | null) => void;
+            let resolveVerify!: (
+                user: { userId: number; email: string; roles: string[]; isGuest: boolean } | null,
+            ) => void;
             const mockAuth: YjsWebSocketAuth = {
                 verifyToken: () =>
                     new Promise(resolve => {
@@ -1356,7 +1389,7 @@ describe('Yjs WebSocket Service', () => {
             });
 
             // Before `open` populates it, real Elysia/Bun ws.data only has
-            // {params, query} — none of the WsData fields the default mock
+            // {params, query} — none of the identity fields the default mock
             // pre-fills. Override them to undefined so handleWebSocketClose
             // sees the same "not populated yet" state it would in production.
             const ws = createMockWebSocket({
@@ -1364,7 +1397,7 @@ describe('Yjs WebSocket Service', () => {
                 userId: undefined,
                 projectUuid: undefined,
                 docName: undefined,
-            } as unknown as Partial<WsData>) as any;
+            }) as any;
             const docName = 'project-a1b2c3d4-e5f6-7890-abcd-ef1234567890';
             // In-memory session so checkWebSocketProjectAccess grants access
             // without touching the (unmocked-here) DB path, isolating the
@@ -1382,7 +1415,7 @@ describe('Yjs WebSocket Service', () => {
             handleWebSocketClose(ws, ws.data);
 
             // The awaited verification now resolves successfully.
-            resolveVerify({ sub: 1, email: 'user1@test.com', roles: ['ROLE_USER'] });
+            resolveVerify({ userId: 1, email: 'user1@test.com', roles: ['ROLE_USER'], isGuest: false });
             const result = await openPromise;
 
             expect(result.success).toBe(false);
@@ -1826,7 +1859,7 @@ describe('Yjs WebSocket Service', () => {
             // Start heartbeat first
             heartbeat.startHeartbeat(clientId, ws as any);
 
-            const data: WsData = {
+            const data: YjsSocketData = {
                 clientId,
                 userId: 1,
                 projectUuid: 'test-uuid',
@@ -1849,7 +1882,7 @@ describe('Yjs WebSocket Service', () => {
                 userId: 1,
                 projectUuid: 'test-uuid',
                 docName: 'project-test-uuid',
-            } as WsData;
+            } as YjsSocketData;
 
             // Should not throw
             handleWebSocketPong(data);
@@ -1865,7 +1898,7 @@ describe('Yjs WebSocket Service', () => {
             roomManager.addConnection(docName, sender as any);
             roomManager.addConnection(docName, receiver as any);
 
-            const data: WsData = {
+            const data: YjsSocketData = {
                 clientId: 'sender-client',
                 userId: 1,
                 projectUuid: 'message-test-uuid',
@@ -1895,7 +1928,7 @@ describe('Yjs WebSocket Service', () => {
             const docName = 'project-asset-msg-test';
             roomManager.addConnection(docName, ws as any);
 
-            const data: WsData = {
+            const data: YjsSocketData = {
                 clientId: 'asset-client',
                 userId: 1,
                 projectUuid: 'asset-test-uuid',
@@ -1935,7 +1968,7 @@ describe('Yjs WebSocket Service', () => {
             const docName = 'project-asset-error-test';
             roomManager.addConnection(docName, ws as any);
 
-            const data: WsData = {
+            const data: YjsSocketData = {
                 clientId: 'asset-error-client',
                 userId: 1,
                 projectUuid: 'asset-error-uuid',
@@ -1956,10 +1989,39 @@ describe('Yjs WebSocket Service', () => {
             await new Promise(resolve => setTimeout(resolve, 20));
         });
 
+        it('should ignore messages when connection metadata is incomplete', () => {
+            const ws = createMockWebSocket();
+
+            expect(() =>
+                handleWebSocketMessage(ws as any, { userId: 1 } as YjsSocketData, Buffer.from([1, 2, 3])),
+            ).not.toThrow();
+            expect(() =>
+                handleWebSocketMessage(
+                    ws as any,
+                    { clientId: 'c1', userId: 1, projectUuid: 'uuid' } as YjsSocketData,
+                    Buffer.from([1, 2, 3]),
+                ),
+            ).not.toThrow();
+            expect(() =>
+                handleWebSocketMessage(
+                    ws as any,
+                    { docName: 'project-x', userId: 1, projectUuid: 'uuid' } as YjsSocketData,
+                    Buffer.from([1, 2, 3]),
+                ),
+            ).not.toThrow();
+            expect(() =>
+                handleWebSocketMessage(
+                    ws as any,
+                    { docName: 'project-x', clientId: 'c1', userId: 1 } as YjsSocketData,
+                    Buffer.from([1, 2, 3]),
+                ),
+            ).not.toThrow();
+        });
+
         it('should ignore messages when room not found', () => {
             const ws = createMockWebSocket();
 
-            const data: WsData = {
+            const data: YjsSocketData = {
                 clientId: 'no-room-client',
                 userId: 1,
                 projectUuid: 'no-room-uuid',
@@ -1975,7 +2037,7 @@ describe('Yjs WebSocket Service', () => {
             const docName = 'project-unknown-msg-test';
             roomManager.addConnection(docName, ws as any);
 
-            const data: WsData = {
+            const data: YjsSocketData = {
                 clientId: 'unknown-msg-client',
                 userId: 1,
                 projectUuid: 'unknown-msg-uuid',
@@ -1984,6 +2046,41 @@ describe('Yjs WebSocket Service', () => {
 
             // Should not throw for invalid JSON
             handleWebSocketMessage(ws as any, data, 'not valid json {');
+        });
+
+        it('logs unknown message types when APP_DEBUG is enabled', () => {
+            const original = process.env.APP_DEBUG;
+            process.env.APP_DEBUG = '1';
+            try {
+                const ws = createMockWebSocket();
+                const docName = 'project-unknown-debug-test';
+                roomManager.addConnection(docName, ws as any);
+
+                const logs: string[] = [];
+                const originalLog = console.log;
+                console.log = (...args: unknown[]) => {
+                    logs.push(args.map(String).join(' '));
+                };
+                try {
+                    handleWebSocketMessage(
+                        ws as any,
+                        {
+                            clientId: 'unknown-debug-client',
+                            userId: 1,
+                            projectUuid: 'unknown-debug-uuid',
+                            docName,
+                        },
+                        'not valid json {',
+                    );
+                } finally {
+                    console.log = originalLog;
+                }
+
+                expect(logs.some(line => line.includes('Unknown message type from unknown-debug-client'))).toBe(true);
+            } finally {
+                if (original === undefined) delete process.env.APP_DEBUG;
+                else process.env.APP_DEBUG = original;
+            }
         });
     });
 
@@ -1996,7 +2093,7 @@ describe('Yjs WebSocket Service', () => {
             roomManager.addConnection(docName, ws as any);
             heartbeat.startHeartbeat(clientId, ws as any);
 
-            const data: WsData = {
+            const data: YjsSocketData = {
                 clientId,
                 userId: 1,
                 projectUuid: 'close-test-uuid',
@@ -2018,7 +2115,7 @@ describe('Yjs WebSocket Service', () => {
         it('should handle data with unknown docName', () => {
             const ws = createMockWebSocket();
 
-            const data: WsData = {
+            const data: YjsSocketData = {
                 clientId: 'unknown-doc-client',
                 userId: 1,
                 projectUuid: 'unknown-doc-uuid',
@@ -2045,7 +2142,7 @@ describe('Yjs WebSocket Service', () => {
             const ws = createMockWebSocket();
             const docName = 'project-unregister-test';
 
-            const data: WsData = {
+            const data: YjsSocketData = {
                 clientId: 'unregister-client',
                 userId: 1,
                 projectUuid: 'unregister-uuid',

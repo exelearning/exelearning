@@ -12,10 +12,20 @@ import {
     parseJsonResponse,
     createTestUser,
     generateTestToken,
+    type TestApp,
 } from '../helpers/integration-app';
 import type { Database, User } from '../../../src/db/types';
 import { createAdminRoutes } from '../../../src/routes/admin';
-import { findUserById, findUserByEmail, updateUserRoles, deleteUser } from '../../../src/db/queries/users';
+import {
+    findUserById,
+    findUsersByIds,
+    findUserByEmail,
+    updateUserRoles,
+    updateUserPassword,
+    deleteUser,
+} from '../../../src/db/queries/users';
+import { createImpersonationAuditSession } from '../../../src/db/queries/impersonation';
+import { getActiveUserMetrics, getActivityTimeSeries, getPeakUsage } from '../../../src/db/queries/admin-analytics';
 import {
     findUsersPaginated,
     countAdmins,
@@ -34,6 +44,7 @@ import {
     findProjectsByOwnerId,
 } from '../../../src/db/queries/projects';
 import { getUserStorageUsage } from '../../../src/db/queries/assets';
+import { getDefaultQuotaMb } from '../../../src/services/app-settings';
 
 const TEST_JWT_SECRET = 'test_secret_for_integration_tests';
 
@@ -50,7 +61,7 @@ process.env.JWT_SECRET = TEST_JWT_SECRET;
 
 describe('Admin Routes Integration', () => {
     let db: Kysely<Database>;
-    let app: Elysia;
+    let app: TestApp;
     let adminUser: User;
     let regularUser: User;
     let adminToken: string;
@@ -72,6 +83,7 @@ describe('Admin Routes Integration', () => {
                 updateUserStatus: (db, id, isActive) => updateUserStatus(db, id, isActive),
                 createUserAsAdmin: (db, data) => createUserAsAdmin(db, data),
                 updateUserQuota: (db, id, quota) => updateUserQuota(db, id, quota),
+                getDefaultQuotaMb: db => getDefaultQuotaMb(db),
                 deleteUser: (db, id) => deleteUser(db, id),
                 getSystemStats: db => getSystemStats(db),
                 getUserStorageUsage: (db, userId) => getUserStorageUsage(db, userId),
@@ -82,6 +94,12 @@ describe('Admin Routes Integration', () => {
                 updateProject: (db, id, data) => updateProject(db, id, data),
                 hardDeleteProject: (db, id) => hardDeleteProject(db, id),
                 findProjectsByOwnerId: (db, userId) => findProjectsByOwnerId(db, userId),
+                findUsersByIds,
+                updateUserPassword,
+                createImpersonationAuditSession,
+                getActiveUserMetrics,
+                getActivityTimeSeries,
+                getPeakUsage,
             },
         });
 
@@ -115,11 +133,11 @@ describe('Admin Routes Integration', () => {
         adminToken = await generateTestToken({
             ...adminUser,
             roles: ['ROLE_USER', 'ROLE_ADMIN'],
-        } as User);
+        });
         userToken = await generateTestToken({
             ...regularUser,
             roles: ['ROLE_USER'],
-        } as User);
+        });
     });
 
     // ========================================================================
@@ -131,7 +149,7 @@ describe('Admin Routes Integration', () => {
             const response = await testRequest(app, '/api/admin/users');
 
             expect(response.status).toBe(401);
-            const data = await parseJsonResponse(response);
+            const data = await parseJsonResponse<{ error: string }>(response);
             expect(data.error).toBe('UNAUTHORIZED');
         });
 
@@ -141,7 +159,7 @@ describe('Admin Routes Integration', () => {
             });
 
             expect(response.status).toBe(403);
-            const data = await parseJsonResponse(response);
+            const data = await parseJsonResponse<{ error: string }>(response);
             expect(data.error).toBe('FORBIDDEN');
         });
 
@@ -274,7 +292,7 @@ describe('Admin Routes Integration', () => {
             });
 
             expect(response.status).toBe(404);
-            const data = await parseJsonResponse(response);
+            const data = await parseJsonResponse<{ error: string }>(response);
             expect(data.error).toBe('NOT_FOUND');
         });
 
@@ -284,7 +302,7 @@ describe('Admin Routes Integration', () => {
             });
 
             expect(response.status).toBe(400);
-            const data = await parseJsonResponse(response);
+            const data = await parseJsonResponse<{ error: string }>(response);
             expect(data.error).toBe('BAD_REQUEST');
         });
     });
@@ -314,6 +332,32 @@ describe('Admin Routes Integration', () => {
 
             expect(data.user.email).toBe('newuser@test.local');
             expect(data.user.roles).toContain('ROLE_USER');
+        });
+
+        it('should apply the stored DEFAULT_QUOTA when no quota is given, and null as unlimited (#2514)', async () => {
+            await setSetting(db as any, 'DEFAULT_QUOTA', '321', 'number');
+            try {
+                const create = (email: string, extra: Record<string, unknown> = {}) =>
+                    testRequest(app, '/api/admin/users', {
+                        method: 'POST',
+                        headers: {
+                            Authorization: `Bearer ${adminToken}`,
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ email, password: 'quota1234', ...extra }),
+                    });
+
+                const defaulted = await create('defaulted@test.local');
+                const unlimited = await create('unlimited@test.local', { quota_mb: null });
+                const explicit = await create('explicit@test.local', { quota_mb: 50 });
+
+                expect([defaulted.status, unlimited.status, explicit.status]).toEqual([201, 201, 201]);
+                expect((await findUserByEmail(db, 'defaulted@test.local'))?.quota_mb).toBe(321);
+                expect((await findUserByEmail(db, 'unlimited@test.local'))?.quota_mb).toBeNull();
+                expect((await findUserByEmail(db, 'explicit@test.local'))?.quota_mb).toBe(50);
+            } finally {
+                await db.deleteFrom('app_settings').where('key', '=', 'DEFAULT_QUOTA').execute();
+            }
         });
 
         it('should create user with custom roles', async () => {
@@ -353,7 +397,7 @@ describe('Admin Routes Integration', () => {
             });
 
             expect(response.status).toBe(409);
-            const data = await parseJsonResponse(response);
+            const data = await parseJsonResponse<{ error: string }>(response);
             expect(data.error).toBe('CONFLICT');
         });
     });
@@ -423,7 +467,7 @@ describe('Admin Routes Integration', () => {
             });
 
             expect(response.status).toBe(400);
-            const data = await parseJsonResponse(response);
+            const data = await parseJsonResponse<{ error: string }>(response);
             expect(data.error).toBe('CANNOT_REMOVE_LAST_ADMIN');
         });
     });
@@ -489,7 +533,7 @@ describe('Admin Routes Integration', () => {
             });
 
             expect(response.status).toBe(400);
-            const data = await parseJsonResponse(response);
+            const data = await parseJsonResponse<{ error: string }>(response);
             expect(data.error).toBe('CANNOT_DEACTIVATE_SELF');
         });
     });
@@ -567,7 +611,7 @@ describe('Admin Routes Integration', () => {
             });
 
             expect(response.status).toBe(400);
-            const data = await parseJsonResponse(response);
+            const data = await parseJsonResponse<{ error: string }>(response);
             expect(data.error).toBe('CANNOT_DELETE_SELF');
         });
 
@@ -580,7 +624,7 @@ describe('Admin Routes Integration', () => {
             const secondAdminToken = await generateTestToken({
                 ...secondAdmin,
                 roles: ['ROLE_USER', 'ROLE_ADMIN'],
-            } as User);
+            });
 
             // Delete the first admin using second admin's token
             await db.deleteFrom('users').where('id', '=', regularUser.id).execute();
@@ -603,7 +647,7 @@ describe('Admin Routes Integration', () => {
 
             // This should fail as CANNOT_DELETE_SELF
             expect(response2.status).toBe(400);
-            const data = await parseJsonResponse(response2);
+            const data = await parseJsonResponse<{ error: string }>(response2);
             expect(data.error).toBe('CANNOT_DELETE_SELF');
         });
 
