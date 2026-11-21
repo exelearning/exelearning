@@ -202,8 +202,8 @@ test.describe('3D Viewer interactions', () => {
         // "load" event.
         await page.waitForFunction(
             () => {
-                const inp = document.querySelector('#threeD3DModelFile');
-                return !!(inp && inp.value && inp.value.toLowerCase().includes('.stl'));
+                const inp = document.querySelector<HTMLInputElement>('#threeD3DModelFile');
+                return !!inp?.value?.toLowerCase().includes('.stl');
             },
             { timeout: 20000 },
         );
