@@ -312,7 +312,7 @@ test.describe('iDevice Drag and Drop', () => {
                         },
                         { once: true, capture: true },
                     );
-                    project.isAvalaibleOdeComponent = async (...args) => {
+                    project.isAvalaibleOdeComponent = async (...args: unknown[]) => {
                         await new Promise(resolve => setTimeout(resolve, delay));
                         const response = await original(...args);
                         available = true;

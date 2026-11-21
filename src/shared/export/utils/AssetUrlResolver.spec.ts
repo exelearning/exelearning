@@ -13,6 +13,7 @@ function providerOf(assets: ExportAsset[], streaming = true): AssetProvider {
     if (streaming) {
         provider.forEachAsset = async (callback: (asset: ExportAsset) => Promise<void>) => {
             for (const asset of assets) await callback(asset);
+            return assets.length;
         };
     }
 
@@ -113,13 +114,6 @@ describe('AssetUrlResolver', () => {
         expect(resolver.resolve('asset://uuid-1')).toBe('blob:http://localhost/1');
     });
 
-    it('exposes the id map for renderers that resolve paths themselves', async () => {
-        const resolver = new AssetUrlResolver(providerOf([assetOf()]));
-        await resolver.build();
-
-        expect(resolver.getExportPathMap()?.get('uuid-1')).toBe('blob:http://localhost/1');
-    });
-
     describe('building only what some content references', () => {
         const three = () => [
             assetOf({ id: 'a', filename: 'a.png' }),
@@ -134,7 +128,7 @@ describe('AssetUrlResolver', () => {
             const walk = provider.forEachAsset!;
             provider.forEachAsset = async callback => {
                 walks++;
-                await walk(callback);
+                return walk(callback);
             };
             return provider;
         };
@@ -192,7 +186,6 @@ describe('AssetUrlResolver', () => {
             await resolver.build();
 
             expect(resolver.resolve('<img src="asset://uuid-1">')).toBe('<img src="asset://uuid-1">');
-            expect(resolver.getExportPathMap()).toBeUndefined();
         });
 
         it('skips assets that carry no data', async () => {

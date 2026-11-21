@@ -564,7 +564,6 @@ export class SlideContextualToolbar {
         this.openPopoverWith(anchor, wrap);
     }
 
-    // @ts-expect-error reserved helper for future numeric controls
     private numberStepper(args: {
         label: string;
         suffix?: string;
@@ -715,6 +714,7 @@ export { DEFAULT_FILL, DEFAULT_FONT_FAMILY, DEFAULT_STROKE };
 function emptyInfo(): SelectionInfo {
     return {
         kind: 'none',
+        shapeRole: null,
         fill: null,
         stroke: null,
         strokeWidth: null,
@@ -726,5 +726,7 @@ function emptyInfo(): SelectionInfo {
         italic: false,
         align: null,
         isEditing: false,
+        cornerRadius: 0,
+        shadowIntensity: 0,
     };
 }

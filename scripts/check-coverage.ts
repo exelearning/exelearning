@@ -43,8 +43,8 @@ const EXCLUDED_FILES = [
  * Remove ANSI escape codes from string
  */
 function stripAnsi(str: string): string {
-    // eslint-disable-next-line no-control-regex
-    return str.replace(/\x1b\[[0-9;]*m/g, '');
+    const esc = String.fromCharCode(27); // ANSI escape character
+    return str.replace(new RegExp(`${esc}\\[[0-9;]*m`, 'g'), '');
 }
 
 interface FileResult {

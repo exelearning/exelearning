@@ -8,9 +8,10 @@
  * Folders are "virtual" - they are derived from the folder_path values of assets.
  * An empty folder_path means the asset is at the project root.
  */
-import { Kysely } from 'kysely';
 
-export async function up(db: Kysely<unknown>): Promise<void> {
+import { type UntypedKysely, createIndexIfNotExists } from '../helpers';
+
+export async function up(db: UntypedKysely): Promise<void> {
     // Add folder_path column to assets table
     // Empty string = project root, "website/css" = nested folder
     await db.schema
@@ -19,15 +20,12 @@ export async function up(db: Kysely<unknown>): Promise<void> {
         .execute();
 
     // Add index for folder queries (list assets in a folder, get subfolders)
-    await db.schema
-        .createIndex('idx_assets_folder_path')
-        .ifNotExists()
-        .on('assets')
-        .columns(['project_id', 'folder_path'])
-        .execute();
+    await createIndexIfNotExists(db, 'idx_assets_folder_path', 'assets', index =>
+        index.columns(['project_id', 'folder_path']),
+    );
 }
 
-export async function down(db: Kysely<unknown>): Promise<void> {
+export async function down(db: UntypedKysely): Promise<void> {
     // Remove index first
     await db.schema.dropIndex('idx_assets_folder_path').ifExists().execute();
 

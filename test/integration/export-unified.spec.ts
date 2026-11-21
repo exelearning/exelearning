@@ -20,16 +20,16 @@ import {
     Scorm2004Exporter,
     ImsExporter,
     unzipSync,
-    type ParsedOdeStructure,
 } from '../../src/shared/export';
 
 // Import test helpers
 import { createDocumentFromStructure } from '../helpers/document-test-utils';
+import type { DocumentStructure } from '../helpers/document-test-utils';
 
 const testDir = path.join(process.cwd(), 'test', 'temp', 'export-unified-test');
 
 // Sample parsed structure for testing
-const sampleParsedStructure: ParsedOdeStructure = {
+const sampleParsedStructure: DocumentStructure = {
     meta: {
         title: 'Test Project',
         author: 'Test Author',
@@ -71,8 +71,6 @@ const sampleParsedStructure: ParsedOdeStructure = {
             position: 1,
         },
     ],
-    navigation: null,
-    raw: null,
 };
 
 describe('Unified Export System Integration', () => {

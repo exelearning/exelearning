@@ -55,7 +55,7 @@ describe('Admin Routes Integration', () => {
     });
 
     describe('Admin Themes Routes', () => {
-        function createThemesApp(): Elysia {
+        function createThemesApp() {
             // Create routes without auth (for testing)
             const routes = new Elysia()
                 .get('/api/admin/themes', async () => {
@@ -195,7 +195,7 @@ describe('Admin Routes Integration', () => {
     });
 
     describe('Admin Templates Routes', () => {
-        function createTemplatesApp(): Elysia {
+        function createTemplatesApp() {
             return new Elysia()
                 .get('/api/admin/templates', async ({ query }) => {
                     let templates;

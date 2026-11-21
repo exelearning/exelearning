@@ -51,12 +51,18 @@ describe('Users API v1', () => {
         originalEnv = {
             APP_AUTH_METHODS: process.env.APP_AUTH_METHODS,
             JWT_SECRET: process.env.JWT_SECRET,
+            DB_DRIVER: process.env.DB_DRIVER,
+            DB_PATH: process.env.DB_PATH,
         };
         process.env.APP_AUTH_METHODS = 'password';
         process.env.JWT_SECRET = 'test-secret-for-users-tests';
+        // The users table is wiped below: never let that reach a .env-configured database.
+        process.env.DB_DRIVER = 'pdo_sqlite';
+        process.env.DB_PATH = ':memory:';
 
         await resetClientCacheForTesting();
         await migrateToLatest(db);
+        await db.deleteFrom('users').execute();
 
         app = createTestApp();
 
@@ -314,6 +320,55 @@ describe('Users API v1', () => {
             );
             expect(response.status).toBe(200);
             const data = (await response.json()) as { success: boolean; data: object };
+            expect(data.success).toBe(true);
+        });
+
+        it('should update email for admin', async () => {
+            const response = await app.handle(
+                new Request(`http://localhost/users/${userId}`, {
+                    method: 'PATCH',
+                    headers: {
+                        Authorization: `Bearer ${adminToken}`,
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ email: 'renamed-user@test.com' }),
+                }),
+            );
+            expect(response.status).toBe(200);
+            const data = (await response.json()) as { success: boolean; data: { email: string } };
+            expect(data.success).toBe(true);
+            expect(data.data.email).toBe('renamed-user@test.com');
+        });
+
+        it('should return 409 when email is already in use', async () => {
+            const response = await app.handle(
+                new Request(`http://localhost/users/${userId}`, {
+                    method: 'PATCH',
+                    headers: {
+                        Authorization: `Bearer ${adminToken}`,
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ email: 'superadmin@test.com' }),
+                }),
+            );
+            expect(response.status).toBe(409);
+            const data = (await response.json()) as { success: boolean; error: { code: string } };
+            expect(data.error.code).toBe('CONFLICT');
+        });
+
+        it('should update password for admin', async () => {
+            const response = await app.handle(
+                new Request(`http://localhost/users/${userId}`, {
+                    method: 'PATCH',
+                    headers: {
+                        Authorization: `Bearer ${adminToken}`,
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ password: 'newpass123' }),
+                }),
+            );
+            expect(response.status).toBe(200);
+            const data = (await response.json()) as { success: boolean };
             expect(data.success).toBe(true);
         });
 
