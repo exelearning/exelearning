@@ -284,7 +284,6 @@ export class PrintPreviewExporter {
                 passScore: meta.passScore,
                 passScoreEveryActivity: meta.passScoreEveryActivity,
                 version, // From browser context
-                assetExportPathMap: assetResolver.getExportPathMap(),
                 materialIconDataUris,
                 printContext: { kind: 'document', activities: options.activities?.mode ?? null },
                 themeFiles: themeRootFiles,
@@ -1025,13 +1024,16 @@ $(function() {
             if (classes.includes('feedback') && classes.includes('js-hidden')) {
                 // It's a feedback div. Remove display properties from inline style
                 // Replace style="..." completely if it checks out, or just modify content
-                const newAttributes = attributes.replace(/style=(["'])(.*?)\1/i, (styleMatch, quote, styleContent) => {
-                    // Remove display: none (case insensitive, optional space, optional semicolon)
-                    // Also robust against 'display:none' without space
-                    const newStyle = styleContent.replace(/display:\s*none;?/gi, '').trim();
-                    // If style is empty after removal, we can return empty string or style=""
-                    return newStyle ? `style=${quote}${newStyle}${quote}` : '';
-                });
+                const newAttributes = attributes.replace(
+                    /style=(["'])(.*?)\1/i,
+                    (_styleMatch: string, quote: string, styleContent: string) => {
+                        // Remove display: none (case insensitive, optional space, optional semicolon)
+                        // Also robust against 'display:none' without space
+                        const newStyle = styleContent.replace(/display:\s*none;?/gi, '').trim();
+                        // If style is empty after removal, we can return empty string or style=""
+                        return newStyle ? `style=${quote}${newStyle}${quote}` : '';
+                    },
+                );
                 return `<div${newAttributes}>`;
             }
 

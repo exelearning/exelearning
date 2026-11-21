@@ -66,7 +66,7 @@ export class PageElpxExporter extends ElpxExporter {
      * This follows the same pattern as ComponentExporter.addComponentAssetsToZip()
      * which successfully filters assets for component exports.
      */
-    protected async addAssetsToZipWithResourcePath(trackingList?: string[] | null): Promise<number> {
+    public async addAssetsToZipWithResourcePath(trackingList?: string[] | null): Promise<number> {
         // If no filter (full export), use default behavior
         if (!this.filteredAssetIds) {
             return super.addAssetsToZipWithResourcePath(trackingList);
@@ -162,7 +162,7 @@ export class PageElpxExporter extends ElpxExporter {
     /**
      * Override buildPageList to filter subtree
      */
-    protected buildPageList(): ExportPage[] {
+    public buildPageList(): ExportPage[] {
         const allPages = super.buildPageList();
 
         // If no rootPageId provided, export everything (fallback)

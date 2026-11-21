@@ -96,7 +96,13 @@ test.describe('home_is_where_art_is.elp Import Tests', () => {
                 }
 
                 // Now check for gallery content
-                const checkGallery = () => {
+                const checkGallery = (): {
+                    success?: boolean;
+                    imageCount?: number;
+                    foundGalleryElement?: boolean;
+                    decodedLength?: number;
+                    error?: string;
+                } | null => {
                     const iframe = document.getElementById('preview-iframe') as HTMLIFrameElement;
                     const body = iframe?.contentDocument?.body;
                     if (!body) return null;
@@ -161,12 +167,6 @@ test.describe('home_is_where_art_is.elp Import Tests', () => {
             // If JSON was parsed, verify it's not truncated
             if (previewCheck.decodedLength) {
                 expect(previewCheck.decodedLength).toBeGreaterThan(100);
-            }
-
-            // URLs should be valid (blob, relative path, or other valid type)
-            // With SW-based preview, URLs are relative paths like content/resources/...
-            if (previewCheck.urlType) {
-                expect(['blob', 'relative', 'other']).toContain(previewCheck.urlType);
             }
         });
 

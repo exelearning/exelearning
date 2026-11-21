@@ -25,7 +25,6 @@ import {
     LOCALE_NAMES,
     PACKAGE_LOCALES,
     LICENSES,
-    type IdeviceConfig,
     type ApiParameters,
 } from './build-static-bundle';
 import { buildConfigParams } from '../src/routes/config-params';
