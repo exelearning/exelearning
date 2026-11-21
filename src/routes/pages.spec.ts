@@ -2304,7 +2304,7 @@ describe('Pages Routes', () => {
             const jwt = await import('@elysiajs/jwt');
             const tempApp = new Elysia().use(jwt.jwt({ name: 'jwt', secret: 'test-secret-for-testing-only' }));
             const token = await tempApp.decorator.jwt.sign({
-                sub: 12,
+                sub: '12',
                 email: 'admin3@test.com',
                 roles: ['ROLE_USER', 'ROLE_ADMIN'],
                 isGuest: false,

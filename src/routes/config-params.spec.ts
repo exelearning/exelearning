@@ -50,7 +50,7 @@ describe('buildConfigParams', () => {
         });
 
         it('includes all defaultAI options', () => {
-            const options = result.USER_PREFERENCES_CONFIG.defaultAI.options;
+            const options = result.USER_PREFERENCES_CONFIG.defaultAI!.options;
             expect(Object.keys(options)).toContain('https://chatgpt.com/?q=');
             expect(Object.keys(options)).toContain('https://chat.qwen.ai/?text=');
         });

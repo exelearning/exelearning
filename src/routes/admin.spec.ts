@@ -1631,7 +1631,13 @@ describe('Admin Routes', () => {
                 createAdminRoutes(
                     createMockDeps({
                         getAllSettings: async () => [
-                            { key: 'AI_AZURE_API_KEY', value: 'stored-secret', type: 'string' },
+                            {
+                                key: 'AI_AZURE_API_KEY',
+                                value: 'stored-secret',
+                                type: 'string',
+                                updated_at: null,
+                                updated_by: null,
+                            },
                         ],
                     }),
                 ),
