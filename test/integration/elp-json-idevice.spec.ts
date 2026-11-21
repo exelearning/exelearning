@@ -67,16 +67,8 @@ describe('ELP JSON iDevice Import', () => {
             // Note: The XML parser returns components directly on pages (not nested in blocks)
             const allComponents: any[] = [];
             for (const page of structure.pages) {
-                // Components can be directly on page or in blocks depending on the parser
                 if (page.components && Array.isArray(page.components)) {
                     allComponents.push(...page.components);
-                }
-                if (page.blocks && Array.isArray(page.blocks)) {
-                    for (const block of page.blocks) {
-                        if (block.components && Array.isArray(block.components)) {
-                            allComponents.push(...block.components);
-                        }
-                    }
                 }
             }
 
@@ -128,13 +120,6 @@ describe('ELP JSON iDevice Import', () => {
             for (const page of structure.pages) {
                 if (page.components && Array.isArray(page.components)) {
                     allComponents.push(...page.components);
-                }
-                if (page.blocks && Array.isArray(page.blocks)) {
-                    for (const block of page.blocks) {
-                        if (block.components && Array.isArray(block.components)) {
-                            allComponents.push(...block.components);
-                        }
-                    }
                 }
             }
 

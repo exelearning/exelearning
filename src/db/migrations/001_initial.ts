@@ -8,10 +8,17 @@
  * - Settings: app_settings
  * - Themes: themes, templates
  */
-import { Kysely, sql } from 'kysely';
-import { getAutoIncrementType, addAutoIncrement, getBinaryType } from '../helpers';
 
-export async function up(db: Kysely<unknown>): Promise<void> {
+import { sql } from 'kysely';
+import {
+    type UntypedKysely,
+    getAutoIncrementType,
+    addAutoIncrement,
+    getBinaryType,
+    createIndexIfNotExists,
+} from '../helpers';
+
+export async function up(db: UntypedKysely): Promise<void> {
     // Get the correct types for the current database
     const idType = getAutoIncrementType();
     const binaryType = getBinaryType();
@@ -27,7 +34,9 @@ export async function up(db: Kysely<unknown>): Promise<void> {
         .addColumn('email', 'varchar(180)', col => col.notNull().unique())
         .addColumn('user_id', 'varchar(255)', col => col.notNull())
         .addColumn('password', 'text', col => col.notNull())
-        .addColumn('roles', 'text', col => col.notNull().defaultTo('[]'))
+        // MySQL only accepts an expression default on TEXT (a literal fails with error 1101);
+        // the parenthesised form works on every supported database.
+        .addColumn('roles', 'text', col => col.notNull().defaultTo(sql`('[]')`))
         .addColumn('is_lopd_accepted', 'integer', col => col.notNull().defaultTo(0))
         .addColumn('quota_mb', 'integer')
         .addColumn('external_identifier', 'varchar(180)')
@@ -53,12 +62,9 @@ export async function up(db: Kysely<unknown>): Promise<void> {
         .addColumn('updated_at', 'bigint') // Unix timestamp in milliseconds
         .execute();
 
-    await db.schema
-        .createIndex('idx_users_preferences_user_id')
-        .ifNotExists()
-        .on('users_preferences')
-        .column('user_id')
-        .execute();
+    await createIndexIfNotExists(db, 'idx_users_preferences_user_id', 'users_preferences', index =>
+        index.column('user_id'),
+    );
 
     // ========================================================================
     // PROJECTS
@@ -83,12 +89,7 @@ export async function up(db: Kysely<unknown>): Promise<void> {
         .addColumn('updated_at', 'bigint') // Unix timestamp in milliseconds
         .execute();
 
-    await db.schema
-        .createIndex('idx_projects_platform_id')
-        .ifNotExists()
-        .on('projects')
-        .column('platform_id')
-        .execute();
+    await createIndexIfNotExists(db, 'idx_projects_platform_id', 'projects', index => index.column('platform_id'));
 
     // ========================================================================
     // PROJECT COLLABORATORS (Join Table)
@@ -100,13 +101,9 @@ export async function up(db: Kysely<unknown>): Promise<void> {
         .addColumn('user_id', 'integer', col => col.notNull().references('users.id').onDelete('cascade'))
         .execute();
 
-    await db.schema
-        .createIndex('idx_project_collaborators_pk')
-        .ifNotExists()
-        .on('project_collaborators')
-        .columns(['project_id', 'user_id'])
-        .unique()
-        .execute();
+    await createIndexIfNotExists(db, 'idx_project_collaborators_pk', 'project_collaborators', index =>
+        index.columns(['project_id', 'user_id']).unique(),
+    );
 
     // ========================================================================
     // ASSETS
@@ -127,13 +124,9 @@ export async function up(db: Kysely<unknown>): Promise<void> {
         .addColumn('updated_at', 'bigint') // Unix timestamp in milliseconds
         .execute();
 
-    await db.schema
-        .createIndex('idx_asset_client_project')
-        .ifNotExists()
-        .on('assets')
-        .columns(['client_id', 'project_id'])
-        .unique()
-        .execute();
+    await createIndexIfNotExists(db, 'idx_asset_client_project', 'assets', index =>
+        index.columns(['client_id', 'project_id']).unique(),
+    );
 
     // ========================================================================
     // YJS DOCUMENTS (Snapshots)
@@ -144,7 +137,7 @@ export async function up(db: Kysely<unknown>): Promise<void> {
         .addColumn('id', idType, col => addAutoIncrement(col.primaryKey()))
         .addColumn('project_id', 'integer', col => col.notNull().unique().references('projects.id').onDelete('cascade'))
         .addColumn('snapshot_data', binaryType, col => col.notNull())
-        .addColumn('snapshot_version', 'text', col => col.notNull().defaultTo('0'))
+        .addColumn('snapshot_version', 'text', col => col.notNull().defaultTo(sql`('0')`)) // expression default: see users.roles
         .addColumn('created_at', 'bigint') // Unix timestamp in milliseconds
         .addColumn('updated_at', 'bigint') // Unix timestamp in milliseconds
         .execute();
@@ -163,12 +156,9 @@ export async function up(db: Kysely<unknown>): Promise<void> {
         .addColumn('created_at', 'bigint') // Unix timestamp in milliseconds
         .execute();
 
-    await db.schema
-        .createIndex('idx_yjs_updates_project_version')
-        .ifNotExists()
-        .on('yjs_updates')
-        .columns(['project_id', 'version'])
-        .execute();
+    await createIndexIfNotExists(db, 'idx_yjs_updates_project_version', 'yjs_updates', index =>
+        index.columns(['project_id', 'version']),
+    );
 
     // ========================================================================
     // YJS VERSION HISTORY (Rollback support)
@@ -185,12 +175,9 @@ export async function up(db: Kysely<unknown>): Promise<void> {
         .addColumn('created_at', 'bigint', col => col.notNull()) // Unix timestamp in milliseconds (required)
         .execute();
 
-    await db.schema
-        .createIndex('idx_yjs_version_history_project')
-        .ifNotExists()
-        .on('yjs_version_history')
-        .column('project_id')
-        .execute();
+    await createIndexIfNotExists(db, 'idx_yjs_version_history_project', 'yjs_version_history', index =>
+        index.column('project_id'),
+    );
 
     // ========================================================================
     // APP SETTINGS
@@ -231,12 +218,9 @@ export async function up(db: Kysely<unknown>): Promise<void> {
         .addColumn('updated_at', 'bigint') // Unix timestamp in milliseconds
         .execute();
 
-    await db.schema
-        .createIndex('idx_themes_enabled')
-        .ifNotExists()
-        .on('themes')
-        .columns(['is_enabled', 'is_builtin', 'sort_order'])
-        .execute();
+    await createIndexIfNotExists(db, 'idx_themes_enabled', 'themes', index =>
+        index.columns(['is_enabled', 'is_builtin', 'sort_order']),
+    );
 
     // ========================================================================
     // TEMPLATES (project templates for new projects)
@@ -260,21 +244,14 @@ export async function up(db: Kysely<unknown>): Promise<void> {
         .execute();
 
     // Unique constraint: same filename can exist in different locales
-    await db.schema
-        .createIndex('idx_templates_filename_locale')
-        .ifNotExists()
-        .on('templates')
-        .columns(['filename', 'locale'])
-        .unique()
-        .execute();
+    await createIndexIfNotExists(db, 'idx_templates_filename_locale', 'templates', index =>
+        index.columns(['filename', 'locale']).unique(),
+    );
 
     // Index for fast locale-based queries
-    await db.schema
-        .createIndex('idx_templates_locale')
-        .ifNotExists()
-        .on('templates')
-        .columns(['locale', 'is_enabled', 'sort_order'])
-        .execute();
+    await createIndexIfNotExists(db, 'idx_templates_locale', 'templates', index =>
+        index.columns(['locale', 'is_enabled', 'sort_order']),
+    );
 
     // ========================================================================
     // DEFAULT SETTINGS
@@ -290,7 +267,7 @@ export async function up(db: Kysely<unknown>): Promise<void> {
         });
 }
 
-export async function down(db: Kysely<unknown>): Promise<void> {
+export async function down(db: UntypedKysely): Promise<void> {
     // Drop tables in reverse order (respecting foreign keys)
     await db.schema.dropTable('templates').ifExists().execute();
     await db.schema.dropTable('themes').ifExists().execute();

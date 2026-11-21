@@ -8,7 +8,10 @@ import { FileAttachHandler } from './FileAttachHandler';
  */
 function createDictionary(xml: string): Element {
     const parser = new DOMParser();
-    return parser.parseFromString(xml, 'text/xml').documentElement;
+    const root = parser.parseFromString(xml, 'text/xml').documentElement;
+    if (!root) throw new Error('Test XML has no root element');
+    // xmldom stands in for the browser DOM the handlers are typed against.
+    return root as unknown as Element;
 }
 
 describe('FileAttachHandler', () => {

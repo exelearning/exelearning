@@ -39,10 +39,6 @@ describe('CombinedAssetProvider', () => {
             exists: async (path: string) => {
                 return assets.some(a => a.originalPath === path || a.id === path.split('/')[0]);
             },
-            getContent: async (path: string) => {
-                const asset = assets.find(a => a.originalPath === path);
-                return asset ? Buffer.from(asset.data as Uint8Array) : null;
-            },
             getMimeType: (path: string) => {
                 const asset = assets.find(a => a.originalPath === path);
                 return asset?.mime || 'application/octet-stream';

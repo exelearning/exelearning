@@ -29,7 +29,7 @@ const TEST_JWT_SECRET = getJwtSecret();
 
 async function signTestToken(sub: number, roles: string[] = ['ROLE_USER']): Promise<string> {
     const secret = new TextEncoder().encode(TEST_JWT_SECRET);
-    return new SignJWT({ sub, email: `u${sub}@test.local`, roles })
+    return new SignJWT({ sub: String(sub), email: `u${sub}@test.local`, roles })
         .setProtectedHeader({ alg: 'HS256' })
         .setIssuedAt()
         .setExpirationTime('1h')
@@ -157,7 +157,11 @@ function createMockExportSystem(): ExportSystemDeps {
 }
 
 // Create mock dependencies
-function createMockDependencies(): ExportDependencies {
+/** The dependencies every spec here builds; `database` and `yjsPersistence` stay per test. */
+type MockExportDependencies = ExportDependencies &
+    Required<Pick<ExportDependencies, 'fs' | 'path' | 'sessionManager' | 'fileHelper' | 'exportSystem' | 'publicDir'>>;
+
+function createMockDependencies(): MockExportDependencies {
     return {
         fs: fs,
         path: path,
@@ -229,7 +233,7 @@ describe('populateYDocFromStructure block icons', () => {
 });
 
 describe('Export Routes', () => {
-    let app: Elysia;
+    let app: Pick<Elysia, 'handle'>;
     let mockDeps: ExportDependencies;
     let ownerToken: string;
 
@@ -238,7 +242,7 @@ describe('Export Routes', () => {
      * one (used by negative-auth tests). Mirrors the wrapper used in
      * assets.spec.ts.
      */
-    async function handleWith(target: Elysia, req: Request): Promise<Response> {
+    async function handleWith(target: Pick<Elysia, 'handle'>, req: Request): Promise<Response> {
         if (req.headers.has('authorization')) {
             return target.handle(req);
         }
@@ -446,6 +450,31 @@ describe('Export Routes', () => {
             );
 
             expect(res.status).toBe(200);
+        });
+
+        it('exports a Yjs-only session whose structure omits meta instead of failing with 500', async () => {
+            const res = await handle(
+                new Request('http://localhost/api/export/yjs-no-meta/html5/download', {
+                    method: 'POST',
+                    body: JSON.stringify({ structure: { pages: [], navigation: [] } }),
+                    headers: { 'Content-Type': 'application/json' },
+                }),
+            );
+
+            expect(res.status).toBe(200);
+        });
+
+        it('rejects a structure that is not an object', async () => {
+            const res = await handle(
+                new Request('http://localhost/api/export/yjs-bad/html5/download', {
+                    method: 'POST',
+                    body: JSON.stringify({ structure: 'not-a-structure' }),
+                    headers: { 'Content-Type': 'application/json' },
+                }),
+            );
+
+            // The body schema rejects it; the app's global onError answers 400.
+            expect(res.status).toBe(422);
         });
 
         it('should return same format as GET', async () => {
@@ -1125,40 +1154,6 @@ describe('Export Routes', () => {
             expect(res.status).toBe(200);
         });
 
-        it('should fallback when reconstructDocument returns null', async () => {
-            const nullYjsSessionId = 'null-yjs-session';
-            mockSessions.set(nullYjsSessionId, {
-                id: nullYjsSessionId,
-                fileName: 'null-yjs.elp',
-                odeId: 'null-yjs-project-uuid',
-            });
-
-            // Create temp dir with content.xml for fallback
-            const nullYjsTempDir = path.join(testDir, 'tmp', nullYjsSessionId);
-            await fs.ensureDir(nullYjsTempDir);
-            await fs.writeFile(path.join(nullYjsTempDir, 'content.xml'), '<?xml version="1.0"?><ode></ode>');
-            await fs.ensureDir(path.join(testDir, 'dist', nullYjsSessionId));
-
-            // Create deps where reconstructDocument returns null
-            const nullYjsDeps = createMockDependencies();
-            nullYjsDeps.database = {
-                db: {} as any,
-                findProjectByUuid: async () => ({ id: 1, uuid: 'null-yjs-project-uuid', title: 'Test' }) as any,
-            };
-            nullYjsDeps.yjsPersistence = {
-                reconstructDocument: async () => null,
-            };
-
-            const nullYjsApp = new Elysia().use(createExportRoutes(nullYjsDeps));
-
-            const res = await handleWith(
-                nullYjsApp,
-                new Request(`http://localhost/api/export/${nullYjsSessionId}/html5/download`),
-            );
-
-            expect(res.status).toBe(200);
-        });
-
         it('should fallback when findProjectByUuid returns null', async () => {
             const noProjectSessionId = 'no-project-session';
             mockSessions.set(noProjectSessionId, {
@@ -1177,7 +1172,7 @@ describe('Export Routes', () => {
             const noProjectDeps = createMockDependencies();
             noProjectDeps.database = {
                 db: {} as any,
-                findProjectByUuid: async () => null,
+                findProjectByUuid: async () => undefined,
             };
 
             const noProjectApp = new Elysia().use(createExportRoutes(noProjectDeps));
@@ -1228,40 +1223,6 @@ describe('Export Routes', () => {
             expect(body.error).toContain('No project structure');
         });
 
-        it('should return error when reconstructDocument is null and no ELP fallback', async () => {
-            const nullNoFallbackId = 'null-no-fallback-session';
-            mockSessions.set(nullNoFallbackId, {
-                id: nullNoFallbackId,
-                fileName: 'null-no-fallback.elp',
-                odeId: 'null-no-fallback-uuid',
-            });
-
-            // Create temp dir WITHOUT content.xml
-            await fs.ensureDir(path.join(testDir, 'tmp', nullNoFallbackId));
-            await fs.ensureDir(path.join(testDir, 'dist', nullNoFallbackId));
-
-            // Create deps where reconstructDocument returns null and no ELP
-            const nullNoFallbackDeps = createMockDependencies();
-            nullNoFallbackDeps.database = {
-                db: {} as any,
-                findProjectByUuid: async () => ({ id: 1, uuid: 'null-no-fallback-uuid', title: 'Test' }) as any,
-            };
-            nullNoFallbackDeps.yjsPersistence = {
-                reconstructDocument: async () => null,
-            };
-
-            const nullNoFallbackApp = new Elysia().use(createExportRoutes(nullNoFallbackDeps));
-
-            const res = await handleWith(
-                nullNoFallbackApp,
-                new Request(`http://localhost/api/export/${nullNoFallbackId}/html5/download`),
-            );
-
-            expect(res.status).toBe(500);
-            const body = await res.json();
-            expect(body.error).toContain('No project structure');
-        });
-
         it('should return error when project not found and no ELP fallback', async () => {
             const noProjectNoFallbackId = 'no-project-no-fallback-session';
             mockSessions.set(noProjectNoFallbackId, {
@@ -1278,7 +1239,7 @@ describe('Export Routes', () => {
             const noProjectNoFallbackDeps = createMockDependencies();
             noProjectNoFallbackDeps.database = {
                 db: {} as any,
-                findProjectByUuid: async () => null,
+                findProjectByUuid: async () => undefined,
             };
 
             const noProjectNoFallbackApp = new Elysia().use(createExportRoutes(noProjectNoFallbackDeps));

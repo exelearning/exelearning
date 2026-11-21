@@ -372,7 +372,7 @@ describe('execute', () => {
 
     it('processes all locales when no specific locale is given', async () => {
         const { execute, configure } = await import('./translations-format');
-        let formattedLocale: string | null = null;
+        let formattedLocale = null as string | null; // assigned in a callback: keep TS from narrowing to null
         configure({
             fileExists: p => p.includes('messages.es.xlf'),
             readFile: p => {

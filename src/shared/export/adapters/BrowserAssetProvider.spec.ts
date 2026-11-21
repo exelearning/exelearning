@@ -10,7 +10,7 @@ function createMockBlob(content: string | Uint8Array): Blob {
     if (typeof content === 'string') {
         return new Blob([content], { type: 'text/plain' });
     }
-    return new Blob([content], { type: 'application/octet-stream' });
+    return new Blob([new Uint8Array(content)], { type: 'application/octet-stream' });
 }
 
 // Mock AssetManager interface

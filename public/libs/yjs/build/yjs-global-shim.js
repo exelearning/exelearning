@@ -7,20 +7,7 @@
 // Get Yjs from global (loaded via yjs.min.js)
 const Y = (typeof window !== 'undefined' && window.Y) ? window.Y : require('yjs');
 
-// Re-export everything from Y
+// Re-export everything from Y. Named exports (Doc, Map, ...) come through as-is;
+// do not reassign them: window.Y's are getter-only, so that throws in strict mode.
 module.exports = Y;
 module.exports.default = Y;
-
-// Also export named exports that @hocuspocus/provider might need
-module.exports.Doc = Y.Doc;
-module.exports.Array = Y.Array;
-module.exports.Map = Y.Map;
-module.exports.Text = Y.Text;
-module.exports.XmlFragment = Y.XmlFragment;
-module.exports.XmlElement = Y.XmlElement;
-module.exports.XmlText = Y.XmlText;
-module.exports.applyUpdate = Y.applyUpdate;
-module.exports.encodeStateAsUpdate = Y.encodeStateAsUpdate;
-module.exports.encodeStateVector = Y.encodeStateVector;
-module.exports.createAbsolutePositionFromRelativePosition = Y.createAbsolutePositionFromRelativePosition;
-module.exports.createRelativePositionFromTypeIndex = Y.createRelativePositionFromTypeIndex;
