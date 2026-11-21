@@ -476,8 +476,14 @@ export default class MenuStructureCompose {
             menuButton.setAttribute('id', `dropdownMenuButtonPage${node.id}`);
             menuButton.setAttribute('data-bs-toggle', 'dropdown');
             menuButton.setAttribute('data-bs-container', 'body'); // Append menu to body to avoid overflow clipping
-            // Use fixed positioning strategy to escape scroll containers
-            menuButton.setAttribute('data-bs-popper-config', JSON.stringify({ strategy: 'fixed' }));
+            // Keep the menu reachable when neither above nor below the trigger has enough space.
+            menuButton.setAttribute('data-bs-popper-config', JSON.stringify({
+                strategy: 'fixed',
+                modifiers: [
+                    { name: 'offset', options: { offset: [0, 2] } },
+                    { name: 'preventOverflow', options: { altAxis: true, padding: 8 } },
+                ],
+            }));
             menuButton.setAttribute('aria-expanded', 'false');
             menuButton.setAttribute('aria-label', _('Page options'));
             menuButton.setAttribute('title', _('Page options'));

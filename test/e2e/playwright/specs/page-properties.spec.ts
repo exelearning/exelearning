@@ -1,5 +1,5 @@
 import { test, expect } from '../fixtures/auth.fixture';
-import { changeTheme, waitForAppReady, gotoWorkarea } from '../helpers/workarea-helpers';
+import { changeTheme, waitForAppReady, gotoWorkarea, selectFirstPage } from '../helpers/workarea-helpers';
 
 /**
  * E2E Tests for Page Properties
@@ -11,6 +11,27 @@ import { changeTheme, waitForAppReady, gotoWorkarea } from '../helpers/workarea-
  * - editableInPage + titlePage: Shows a different title in the page content
  */
 test.describe('Page Properties', () => {
+    test('opens Page Properties from the options menu in a short viewport', async ({
+        authenticatedPage,
+        createProject,
+    }) => {
+        const page = authenticatedPage;
+        await page.setViewportSize({ width: 1200, height: 750 });
+        await gotoWorkarea(page, await createProject(page, 'Page Options Viewport'));
+        await waitForAppReady(page);
+        await selectFirstPage(page);
+
+        await page.setViewportSize({ width: 1200, height: 360 });
+        const navNode = page.locator('.nav-element.selected:not([nav-id="root"])');
+        await navNode.locator(':scope > .nav-element-text').hover();
+        await navNode.locator('.page-settings-trigger').click();
+
+        const properties = navNode.locator('.dropdown-menu.show .page-settings');
+        await expect(properties).toBeInViewport({ ratio: 1 });
+        await properties.click();
+        await expect(page.getByTestId('modal-properties')).toBeVisible();
+    });
+
     test('visibility property should hide page from navigation', async ({ authenticatedPage, createProject }) => {
         const page = authenticatedPage;
 
