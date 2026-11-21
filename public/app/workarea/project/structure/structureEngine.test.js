@@ -51,6 +51,7 @@ global.eXeLearning = {
 // Import the real module - StructureNode will now see window
 import StructureEngine from './structureEngine.js';
 import StructureNode from './structureNode.js';
+import IdevicesEngine from '../idevices/idevicesEngine.js';
 
 describe('StructureEngine', () => {
   let engine;
@@ -1016,12 +1017,48 @@ describe('StructureEngine', () => {
   });
 
   describe('renameNodeAndReload', () => {
-    it('renames node and resets structure', () => {
-      const renameSpy = vi.spyOn(engine, 'renameNode').mockImplementation(() => {});
+    it('renames node and resets structure', async () => {
+      const renameSpy = vi.spyOn(engine, 'renameNode').mockResolvedValue({ responseMessage: 'OK' });
       const resetSpy = vi.spyOn(engine, 'resetStructureData').mockResolvedValue();
-      engine.renameNodeAndReload('page-1', 'New');
+      vi.spyOn(engine, 'getSelectedNode').mockReturnValue(false);
+      await engine.renameNodeAndReload('page-1', 'New');
       expect(renameSpy).toHaveBeenCalledWith('page-1', 'New');
       expect(resetSpy).toHaveBeenCalledWith('page-1');
+    });
+
+    it.each([
+      [{}, 'New'],
+      [{ hidePageTitle: true }, ''],
+      [{ editableInPage: 'true', titlePage: 'Custom title' }, 'Custom title'],
+    ])('updates the canvas after renaming with properties %j', async (properties, expected) => {
+      let titleNode = 'Original (copy)';
+      mockProject._yjsEnabled = true;
+      mockProject._yjsBridge = {
+        structureBinding: { getPageProperties: () => ({ titleNode, ...properties }) },
+      };
+      mockProject.idevices = Object.assign(Object.create(IdevicesEngine.prototype), {
+        project: mockProject,
+        nodeContainerElement: document.body,
+      });
+      engine.nodeContainer.innerHTML = '<h1 id="page-title-node-content"></h1>';
+      const heading = engine.nodeContainer.querySelector('h1');
+      mockProject.idevices.setNodeContentPageTitle('page-1');
+      const selected = {
+        id: 'page-1',
+        async rename(title) {
+          await Promise.resolve();
+          titleNode = title;
+          return { responseMessage: 'OK' };
+        },
+      };
+      engine.data = [selected];
+      vi.spyOn(engine, 'resetStructureData').mockResolvedValue();
+      vi.spyOn(engine, 'getSelectedNode').mockReturnValue(selected);
+
+      await engine.renameNodeAndReload('page-1', 'New');
+
+      expect(heading.innerText).toBe(expected);
+      expect(heading.classList.contains('hidden')).toBe(!expected);
     });
   });
 

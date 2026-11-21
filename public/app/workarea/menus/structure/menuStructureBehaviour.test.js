@@ -573,10 +573,12 @@ describe('MenuStructureBehaviour', () => {
             expect(mockStructureEngine.renameNodeAndReload).not.toHaveBeenCalled();
         });
 
-        it('updates #page-title-node-content after rename', () => {
+        it('leaves canvas rendering to the shared rename flow', () => {
+            const typesetPromise = vi.fn().mockResolvedValue(undefined);
+            vi.stubGlobal('MathJax', { typesetPromise });
             const pageTitle = document.createElement('h1');
             pageTitle.id = 'page-title-node-content';
-            pageTitle.textContent = 'Node 1';
+            pageTitle.classList.add('hidden');
             document.body.appendChild(pageTitle);
 
             const navElement = document.querySelector('.nav-element[nav-id="node-1"]');
@@ -585,7 +587,10 @@ describe('MenuStructureBehaviour', () => {
             span.textContent = 'Updated Title';
             span.dispatchEvent(new Event('blur'));
 
-            expect(pageTitle.textContent).toBe('Updated Title');
+            vi.unstubAllGlobals();
+            expect(typesetPromise).toHaveBeenCalledWith([span]);
+            expect(pageTitle.textContent).toBe('');
+            expect(pageTitle.classList.contains('hidden')).toBe(true);
             pageTitle.remove();
         });
 

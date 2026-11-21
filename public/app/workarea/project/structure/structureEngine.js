@@ -774,9 +774,13 @@ export default class structureEngine {
      * @param {String} id
      * @param {*} title
      */
-    renameNodeAndReload(id, title) {
-        this.renameNode(id, title);
-        this.resetStructureData(id);
+    async renameNodeAndReload(id, title) {
+        if (!(await this.renameNode(id, title))) return;
+        await this.resetStructureData(id);
+        const selected = this.getSelectedNode();
+        if (selected?.id === id) {
+            this.project.idevices.setNodeContentPageTitle(this.isYjsEnabled() ? id : selected.properties);
+        }
     }
 
     /**
@@ -785,7 +789,7 @@ export default class structureEngine {
      * @param {*} title
      */
     renameNode(id, title) {
-        this.getNode(id).rename(title);
+        return this.getNode(id).rename(title);
     }
 
     /**
