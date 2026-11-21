@@ -570,8 +570,50 @@ describe('SaveManager', () => {
 
       await manager.save();
 
-      // saveYjsState is called with projectId, documentManager, pre-encoded state, and onProgress callback
-      expect(spy).toHaveBeenCalledWith('project-123', mockBridge.documentManager, expect.any(Uint8Array), expect.any(Function));
+      // saveYjsState is called with projectId, documentManager, pre-encoded state, onProgress callback
+      // and the save kind (issue #2689): a plain save() is a manual save.
+      expect(spy).toHaveBeenCalledWith(
+        'project-123',
+        mockBridge.documentManager,
+        expect.any(Uint8Array),
+        expect.any(Function),
+        'manual'
+      );
+    });
+
+    it('passes the collaborative-autosave kind through to saveYjsState (issue #2689)', async () => {
+      const manager = new SaveManager(mockBridge);
+      const spy = vi.spyOn(manager, 'saveYjsState').mockResolvedValue();
+
+      await manager.save({ showProgress: false, silent: true, reason: 'collaborative-autosave' });
+
+      expect(spy.mock.calls[0][4]).toBe('collaborative-autosave');
+    });
+
+    it('flushes the activity reporter before saving without waiting for it (issue #2689)', async () => {
+      let resolveFlush;
+      const flush = vi.fn(() => new Promise((resolve) => { resolveFlush = resolve; }));
+      mockBridge.activityReporter = { flush };
+      const manager = new SaveManager(mockBridge);
+      vi.spyOn(manager, 'saveYjsState').mockResolvedValue();
+
+      const result = await manager.save();
+
+      expect(flush).toHaveBeenCalledTimes(1);
+      expect(result.success).toBe(true);
+      resolveFlush();
+      mockBridge.activityReporter = null;
+    });
+
+    it('ignores a failing activity reporter flush', async () => {
+      mockBridge.activityReporter = { flush: vi.fn(() => Promise.reject(new Error('offline'))) };
+      const manager = new SaveManager(mockBridge);
+      vi.spyOn(manager, 'saveYjsState').mockResolvedValue();
+
+      const result = await manager.save();
+
+      expect(result.success).toBe(true);
+      mockBridge.activityReporter = null;
     });
 
     it('calls updateProjectMetadata', async () => {
@@ -707,6 +749,20 @@ describe('SaveManager', () => {
       );
       expect(xhr.setRequestHeader).toHaveBeenCalledWith('Content-Type', 'application/octet-stream');
       expect(xhr.setRequestHeader).toHaveBeenCalledWith('Authorization', 'Bearer test-token');
+    });
+
+    it('sends X-Save-Kind: manual by default and collaborative-autosave for autosaves (issue #2689)', async () => {
+      const manager = new SaveManager(mockBridge, { token: 'test-token', apiUrl: 'http://test.com/api' });
+      await manager.saveYjsState('project-123', mockBridge.documentManager, null);
+      expect(xhrInstances[0].setRequestHeader).toHaveBeenCalledWith('X-Save-Kind', 'manual');
+
+      await manager.saveYjsState('project-123', mockBridge.documentManager, null, null, 'collaborative-autosave');
+      expect(xhrInstances[1].setRequestHeader).toHaveBeenCalledWith('X-Save-Kind', 'collaborative-autosave');
+      // markSaved keeps its meaning for both kinds.
+      expect(xhrInstances[1].open).toHaveBeenCalledWith(
+        'POST',
+        'http://test.com/api/projects/uuid/project-123/yjs-document?markSaved=true'
+      );
     });
 
     it('sends X-Project-Title header with encoded title', async () => {

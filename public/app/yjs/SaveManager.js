@@ -1128,6 +1128,19 @@ class SaveManager {
       return { success: false, error: 'Save already in progress' };
     }
 
+    // Activity (issue #2689): push the content events captured so far before
+    // the save event is recorded. Fire-and-forget: the log orders entries by
+    // their own timestamps, and a save must never wait for the reporter.
+    const activityReporter = this.bridge && this.bridge.activityReporter;
+    if (activityReporter && typeof activityReporter.flush === 'function') {
+      try {
+        const flushed = activityReporter.flush();
+        if (flushed && typeof flushed.catch === 'function') flushed.catch(() => {});
+      } catch (_) {
+        // never block a save on activity reporting
+      }
+    }
+
     this.isSaving = true;
     this.startSaveMemoryTrace();
 
@@ -1220,9 +1233,15 @@ class SaveManager {
 
         progressTracker.setPhase('yjs');
         await this.sampleSaveMemory('save:yjs-upload:before', { yjsBytes });
-        await this.saveYjsState(projectId, documentManager, encodedYjsState, (percent) => {
-          progressTracker.updatePhaseProgress(percent);
-        });
+        await this.saveYjsState(
+          projectId,
+          documentManager,
+          encodedYjsState,
+          (percent) => {
+            progressTracker.updatePhaseProgress(percent);
+          },
+          reason === 'collaborative-autosave' ? 'collaborative-autosave' : 'manual'
+        );
         await this.sampleSaveMemory('save:yjs-upload:after', { yjsBytes });
         encodedYjsState = null; // Free encoded state after upload
         progressTracker.updatePhaseProgress(100);
@@ -1362,8 +1381,12 @@ class SaveManager {
    * @param {YjsDocumentManager} documentManager
    * @param {Uint8Array|null} preEncodedState - Pre-encoded Yjs state (avoids double encoding)
    * @param {Function} onProgress - Progress callback (0-100)
+   * @param {'manual'|'collaborative-autosave'} [saveKind='manual'] - Save intent
+   *   sent as `X-Save-Kind` (issue #2689). It does not change `markSaved`:
+   *   both kinds mark the project as saved; the server only uses it to
+   *   classify the activity entry (and, once merged, version history).
    */
-  async saveYjsState(projectId, documentManager, preEncodedState, onProgress) {
+  async saveYjsState(projectId, documentManager, preEncodedState, onProgress, saveKind = 'manual') {
     // Use pre-encoded state if available, otherwise encode now
     const state = preEncodedState || window.Y.encodeStateAsUpdate(documentManager.ydoc);
 
@@ -1405,6 +1428,7 @@ class SaveManager {
       xhr.setRequestHeader('Content-Type', 'application/octet-stream');
       xhr.setRequestHeader('Authorization', `Bearer ${this.token}`);
       xhr.setRequestHeader('X-Project-Title', encodeURIComponent(title));
+      xhr.setRequestHeader('X-Save-Kind', saveKind === 'collaborative-autosave' ? 'collaborative-autosave' : 'manual');
       // Save validation (#2615): tell the server which stored version this
       // state was built on. If the server holds a newer one it merges instead
       // of replacing, so a stale client can never overwrite others' saves.

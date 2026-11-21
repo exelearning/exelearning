@@ -20,6 +20,7 @@ import ModalTemplateSelection from './modals/pages/modalTemplateSelection.js';
 import ModalSessionLogout from './modals/pages/modalSessionLogout.js';
 import ModalUploadProgress from './modals/pages/modalUploadProgress.js';
 import ModalShare from './modals/pages/modalShare.js';
+import ModalActivity from './modals/pages/modalActivity.js';
 import ModalPrintPreview from './modals/pages/modalPrintPreview.js';
 import ModalImageOptimizer from './modals/pages/modalImageOptimizer.js';
 import { GlobalSearchModal } from '../../search/index.js';
@@ -46,6 +47,7 @@ vi.mock('./modals/pages/modalTemplateSelection.js');
 vi.mock('./modals/pages/modalSessionLogout.js');
 vi.mock('./modals/pages/modalUploadProgress.js');
 vi.mock('./modals/pages/modalShare.js');
+vi.mock('./modals/pages/modalActivity.js');
 vi.mock('./modals/pages/modalPrintPreview.js');
 vi.mock('./modals/pages/modalImageOptimizer.js');
 vi.mock('../../search/index.js', () => {
@@ -129,9 +131,10 @@ describe('ModalsManagement', () => {
     it('should return an array of all modals', () => {
       modalsManager.init();
       const list = modalsManager.list();
-      expect(list).toHaveLength(23); // GlobalSearch is last
+      expect(list).toHaveLength(24); // GlobalSearch is last
       expect(list).toContain(modalsManager.alert);
       expect(list).toContain(modalsManager.share);
+      expect(list).toContain(modalsManager.activity);
       expect(list).toContain(modalsManager.printpreview);
       expect(list).toContain(modalsManager.imageoptimizer);
       expect(list).toContain(modalsManager.globalsearch);

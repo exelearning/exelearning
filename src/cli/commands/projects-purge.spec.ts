@@ -41,6 +41,7 @@ describe('Projects Purge Command', () => {
                 yjs_updates?: number;
                 yjs_version_history?: number;
                 project_collaborators?: number;
+                project_activity?: number;
             };
         } = {},
     ) => {
@@ -164,6 +165,7 @@ describe('Projects Purge Command', () => {
                     yjs_updates: 4,
                     yjs_version_history: 5,
                     project_collaborators: 6,
+                    project_activity: 7,
                 },
             });
 
@@ -181,6 +183,7 @@ describe('Projects Purge Command', () => {
             expect(result.stats?.yjsUpdates).toBe(4);
             expect(result.stats?.yjsVersions).toBe(5);
             expect(result.stats?.collaborators).toBe(6);
+            expect(result.stats?.activity).toBe(7);
         });
 
         it('should remove assets directory from disk', async () => {

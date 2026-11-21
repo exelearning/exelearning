@@ -130,6 +130,23 @@ export {
 } from './yjs';
 export type { UpdateStats, SaveIncrementalResult } from './yjs';
 
+// Project activity queries (issue #2689)
+export * as projectActivityQueries from './project-activity';
+export {
+    insertProjectActivity,
+    hasProjectActivityDedupeKey,
+    findLatestProjectActivityForCoalesce,
+    incrementProjectActivity,
+    hasProjectSessionOpened,
+    listProjectActivity,
+    listProjectActivityActors,
+    findUserEmailsByIds,
+    countProjectActivity,
+    deleteProjectActivityBefore,
+    deleteProjectActivityForProject,
+} from './project-activity';
+export type { ProjectActivityCursor, ListProjectActivityOptions, ProjectActivityListRow } from './project-activity';
+
 // Preference queries
 export * as preferenceQueries from './preferences';
 export {

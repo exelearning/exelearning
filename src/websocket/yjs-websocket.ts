@@ -34,6 +34,10 @@ import {
 } from '../db/queries';
 import { db as defaultDb } from '../db/client';
 import { getSession as getSessionDefault } from '../services/session-manager';
+import {
+    projectActivityService as projectActivityServiceDefault,
+    type ProjectActivityService,
+} from '../services/project-activity';
 import type { Kysely } from 'kysely';
 import type { Database } from '../db/types';
 
@@ -90,6 +94,8 @@ export interface YjsWebSocketDependencies {
     sessionManager: YjsWebSocketSessionManager;
     auth: YjsWebSocketAuth;
     assetCoordinator: YjsWebSocketAssetCoordinator;
+    /** Project activity recorder (issue #2689): one `session.opened` per client editor session. */
+    activity: ProjectActivityService;
 }
 
 // Default dependencies
@@ -114,6 +120,7 @@ const defaultDependencies: YjsWebSocketDependencies = {
         onCollaborationDetected: assetCoordinatorDefault.onCollaborationDetected,
         cleanupProject: assetCoordinatorDefault.cleanupProject,
     },
+    activity: projectActivityServiceDefault,
 };
 
 // Module-level dependencies (set via configure function)
@@ -195,7 +202,7 @@ export function generateClientId(): string {
 export async function checkWebSocketProjectAccess(
     projectUuid: string,
     userId: number,
-): Promise<{ hasAccess: boolean; reason?: string }> {
+): Promise<{ hasAccess: boolean; reason?: string; projectId?: number }> {
     // Resolve the persisted project first. When a project record exists it is
     // authoritative: run the centralized owner/collaborator/public access check.
     // The mere existence of an in-memory session must NEVER substitute for
@@ -205,7 +212,9 @@ export async function checkWebSocketProjectAccess(
     // the workarea page handler in src/routes/pages.ts.
     const project = await deps.queries.findProjectByUuid(deps.db, projectUuid);
     if (project) {
-        return deps.queries.checkProjectAccess(deps.db, project, userId);
+        const access = await deps.queries.checkProjectAccess(deps.db, project, userId);
+        // The persisted id lets the caller record activity without a second lookup.
+        return access.hasAccess ? { ...access, projectId: project.id } : access;
     }
 
     // No persisted project. An in-memory session can still legitimately exist for
@@ -241,6 +250,7 @@ export async function handleWebSocketOpen(
     ws: YjsSocket,
     docName: string,
     token: string | undefined,
+    sessionId?: string,
 ): Promise<{ success: boolean; error?: { code: number; reason: string } }> {
     // Extract project UUID from document name
     const projectUuid = roomManager.extractProjectUuid(docName);
@@ -314,6 +324,18 @@ export async function handleWebSocketOpen(
 
     const clientCount = room.conns.size;
     console.log(`[YjsWebSocket] Client ${clientId} (user ${userId}) connected to ${docName} (${clientCount} total)`);
+
+    // Activity (issue #2689): one `session.opened` per client editor session on a
+    // persisted project. The optional `session` query parameter is a correlation
+    // id chosen by the client so reconnections of the same tab do not add rows;
+    // it is never used for authorization (identity and access were resolved
+    // above). In-memory sessions without a project row record nothing. Best
+    // effort and detached from the connection flow.
+    if (access.projectId !== undefined) {
+        deps.activity
+            .recordSessionOpened(deps.db, { projectId: access.projectId, userId, sessionId })
+            .catch(err => console.error('[YjsWebSocket] Error recording session activity:', err));
+    }
 
     // Detect collaboration and trigger asset prefetch
     if (clientCount > 1) {
@@ -499,7 +521,8 @@ export function createWebSocketRoutes() {
                     // Elysia may hand us non-string query values; only a real
                     // string token can ever verify.
                     const token = typeof ws.data.query?.token === 'string' ? ws.data.query.token : undefined;
-                    const result = await handleWebSocketOpen(ws, ws.data.params?.docName || '', token);
+                    const sessionId = typeof ws.data.query?.session === 'string' ? ws.data.query.session : undefined;
+                    const result = await handleWebSocketOpen(ws, ws.data.params?.docName || '', token, sessionId);
                     if (!result.success && result.error) {
                         ws.close(result.error.code, result.error.reason);
                     }

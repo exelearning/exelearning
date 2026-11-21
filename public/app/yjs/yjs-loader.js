@@ -101,6 +101,7 @@
       '/app/common/blockIconRuntime.js',
       'SaveManager.js',
       'CollaborativeAutosaveManager.js',  // Collaborative autosave coordinator (issue #1592), used by the bridge
+      'ProjectActivityReporter.js',  // Per-project activity capture (issue #2689), used by the bridge
       'CollaborativeSaveStatusView.js',  // Renders the compact collaborative autosave status (issue #1592)
       'YjsStructureTreeAdapter.js',
       'YjsPropertiesBinding.js',

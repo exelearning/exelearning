@@ -19,6 +19,7 @@ import ModalTemplateSelection from './modals/pages/modalTemplateSelection.js';
 import ModalSessionLogout from './modals/pages/modalSessionLogout.js';
 import ModalUploadProgress from './modals/pages/modalUploadProgress.js';
 import ModalShare from './modals/pages/modalShare.js';
+import ModalActivity from './modals/pages/modalActivity.js';
 import ModalPrintPreview from './modals/pages/modalPrintPreview.js';
 import ModalImageOptimizer from './modals/pages/modalImageOptimizer.js';
 import { GlobalSearchModal } from '../../search/index.js';
@@ -77,6 +78,7 @@ export default class ModalsManagement {
         this.sessionlogout = new ModalSessionLogout(this);
         this.uploadprogress = new ModalUploadProgress(document.body);
         this.share = new ModalShare(this);
+        this.activity = new ModalActivity(this);
         this.printpreview = new ModalPrintPreview(this);
         this.imageoptimizer = new ModalImageOptimizer(this);
         this.globalsearch = new GlobalSearchModal(this);
@@ -106,6 +108,7 @@ export default class ModalsManagement {
         this.templateselection.behaviour();
         this.sessionlogout.behaviour();
         this.share.behaviour();
+        this.activity.behaviour();
         this.printpreview.behaviour();
         this.imageoptimizer.behaviour();
         this.globalsearch.behaviour();
@@ -138,6 +141,7 @@ export default class ModalsManagement {
             this.templateselection,
             this.sessionlogout,
             this.share,
+            this.activity,
             this.printpreview,
             this.imageoptimizer,
             this.globalsearch,

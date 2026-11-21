@@ -47,6 +47,9 @@ export default class ModalShare extends Modal {
         this.publicRegenerateConfirmNo = this.modalElement.querySelector('#public-regenerate-confirm-no');
 
         this.ariaLive = this.modalElement.querySelector('#share-aria-live');
+
+        // Activity log entry point (issue #2689)
+        this.activityButton = this.modalElement.querySelector('#share-activity-button');
     }
 
     /**
@@ -86,6 +89,9 @@ export default class ModalShare extends Modal {
         this.publicRegenerateConfirmNo?.addEventListener('click', () =>
             this.hideRegenerateConfirm()
         );
+
+        // Activity log (issue #2689): the server decides who may read it
+        this.activityButton?.addEventListener('click', () => this.openActivity());
 
         // Copy link buttons
         this.copyButton?.addEventListener('click', () => this.handleCopyLink(this.linkInput, this.copyButton));
@@ -166,6 +172,7 @@ export default class ModalShare extends Modal {
                 this.renderVisibilitySection();
                 this.renderPublicViewSection();
                 this.renderLinkSection();
+                this.renderActivityButton();
 
                 // Focus invite email input only if owner
                 if (this.currentUserIsOwner && this.inviteEmail) {
@@ -207,6 +214,30 @@ export default class ModalShare extends Modal {
             this.showError(_('Failed to load project data'));
             return false;
         }
+    }
+
+    /**
+     * Show the Activity button only when the server says the current user may
+     * read the project's activity log (owner, administrator, or editor when
+     * the site allows it). The server re-checks on every request.
+     */
+    renderActivityButton() {
+        if (!this.activityButton) return;
+        const canView = this.projectData?.activity?.canView === true;
+        this.activityButton.classList.toggle('d-none', !canView);
+    }
+
+    /**
+     * Open the activity modal for this project.
+     */
+    openActivity() {
+        const activityModal = this.manager?.activity;
+        if (!activityModal || typeof activityModal.show !== 'function') return;
+        const documentTitle = eXeLearning.app.project?.properties?.properties?.pp_title?.value;
+        activityModal.show({
+            projectId: this.projectData?.uuid || eXeLearning.app.project?.odeId,
+            title: documentTitle || this.projectData?.title,
+        });
     }
 
     /**
