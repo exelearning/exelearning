@@ -5,7 +5,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
 import * as Y from 'yjs';
 import type { Kysely } from 'kysely';
-import type { Database } from '../db/schema';
+import type { Database, YjsDocument, YjsUpdate } from '../db/types';
 
 import {
     configure,
@@ -38,96 +38,129 @@ let mockProjects: Map<string, any>;
 // Mock database (not used but required by interface)
 const mockDb = {} as Kysely<Database>;
 
+function snapshotRow(projectId: number, snapshotData: Uint8Array, snapshotVersion: string): YjsDocument {
+    return {
+        id: projectId,
+        project_id: projectId,
+        snapshot_data: snapshotData,
+        snapshot_version: snapshotVersion,
+        created_at: null,
+        updated_at: null,
+    };
+}
+
+function updateRow(projectId: number, updateData: Uint8Array, version: string, clientId?: string): YjsUpdate {
+    return {
+        id: 0,
+        project_id: projectId,
+        update_data: updateData,
+        version,
+        client_id: clientId ?? null,
+        created_at: null,
+    };
+}
+
 // Create mock queries
 function createMockQueries(): YjsPersistenceQueries {
     return {
-        saveFullState: async (_db: any, projectId: number, buffer: Buffer, _clientId?: string) => {
+        saveFullState: async (_db, projectId, state, clientId) => {
+            const version = Date.now().toString();
             mockSnapshots.set(projectId, {
                 project_id: projectId,
-                snapshot_data: buffer,
-                version: Date.now().toString(),
+                snapshot_data: state,
+                version,
             });
+            return updateRow(projectId, state, version, clientId);
         },
-        loadDocumentState: async (_db: any, projectId: number) => {
+        loadDocumentState: async (_db, projectId: number) => {
             const snapshot = mockSnapshots.get(projectId);
             return snapshot?.snapshot_data || null;
         },
-        findUpdatesByProjectId: async (_db: any, projectId: number) => {
+        findUpdatesByProjectId: async (_db, projectId: number) => {
             return mockUpdates.get(projectId) || [];
         },
-        findUpdatesSince: async (_db: any, projectId: number, sinceVersion: string) => {
+        findUpdatesSince: async (_db, projectId: number, sinceVersion: string) => {
             const updates = mockUpdates.get(projectId) || [];
             return updates.filter(u => u.version > sinceVersion);
         },
-        deleteAllUpdates: async (_db: any, projectId: number) => {
+        deleteAllUpdates: async (_db, projectId) => {
+            const deleted = mockUpdates.get(projectId)?.length ?? 0;
             mockUpdates.delete(projectId);
             mockSnapshots.delete(projectId);
+            return deleted;
         },
-        deleteUpdatesBefore: async (_db: any, projectId: number, beforeVersion: string) => {
+        deleteUpdatesBefore: async (_db, projectId, beforeVersion) => {
             const updates = mockUpdates.get(projectId) || [];
-            mockUpdates.set(
-                projectId,
-                updates.filter(u => u.version >= beforeVersion),
-            );
+            const kept = updates.filter(u => u.version >= beforeVersion);
+            mockUpdates.set(projectId, kept);
+            return updates.length - kept.length;
         },
-        countUpdates: async (_db: any, projectId: number) => {
+        countUpdates: async (_db, projectId: number) => {
             return (mockUpdates.get(projectId) || []).length;
         },
-        getLatestVersion: async (_db: any, projectId: number) => {
+        getLatestVersion: async (_db, projectId: number) => {
             const updates = mockUpdates.get(projectId) || [];
             if (updates.length === 0) return '0';
             return updates[updates.length - 1].version;
         },
-        findProjectByUuid: async (_db: any, uuid: string) => mockProjects.get(uuid),
-        markProjectAsSaved: async (_db: any, projectId: number) => {
+        findProjectByUuid: async (_db, uuid: string) => mockProjects.get(uuid),
+        markProjectAsSaved: async (_db, projectId: number) => {
             for (const project of mockProjects.values()) {
                 if (project.id === projectId) {
                     project.saved_once = 1;
                 }
             }
         },
-        getAllUpdateBuffers: async (_db: any, projectId: number) => {
+        getAllUpdateBuffers: async (_db, projectId: number) => {
             const updates = mockUpdates.get(projectId) || [];
             return updates.map(u => u.update_data);
         },
-        documentExists: async (_db: any, projectId: number) => {
+        documentExists: async (_db, projectId: number) => {
             return mockSnapshots.has(projectId) || mockUpdates.has(projectId);
         },
-        saveIncrementalUpdate: async (_db: any, projectId: number, update: Uint8Array, _clientId?: string) => {
+        saveIncrementalUpdate: async (_db, projectId, update, clientId) => {
             if (!mockUpdates.has(projectId)) {
                 mockUpdates.set(projectId, []);
             }
             const updates = mockUpdates.get(projectId)!;
-            updates.push({
+            const row = {
                 project_id: projectId,
                 update_data: Buffer.from(update),
                 version: Date.now().toString(),
-            });
+            };
+            updates.push(row);
             return {
+                update: updateRow(projectId, row.update_data, row.version, clientId),
                 compacted: updates.length >= 10, // Mock compaction threshold
                 stats: {
                     count: updates.length,
                     totalBytes: updates.reduce((sum, u) => sum + u.update_data.length, 0),
+                    oldestVersion: updates[0].version,
+                    newestVersion: row.version,
                 },
             };
         },
-        loadDocumentWithUpdates: async (_db: any, projectId: number) => {
+        loadDocumentWithUpdates: async (_db, projectId: number) => {
             return {
                 snapshot: mockSnapshots.get(projectId) || null,
                 updates: mockUpdates.get(projectId) || [],
             };
         },
-        upsertSnapshot: async (_db: any, projectId: number, state: Uint8Array, version: string) => {
+        upsertSnapshot: async (_db, projectId, state, version) => {
+            const snapshotData = Buffer.from(state);
             mockSnapshots.set(projectId, {
                 project_id: projectId,
-                snapshot_data: Buffer.from(state),
+                snapshot_data: snapshotData,
                 version,
             });
+            return snapshotRow(projectId, snapshotData, version);
         },
-        deleteUpdatesUpToVersion: async (_db: any, projectId: number, _version: string) => {
+        deleteUpdatesUpToVersion: async (_db, projectId, _version) => {
+            const deleted = mockUpdates.get(projectId)?.length ?? 0;
             mockUpdates.set(projectId, []);
+            return deleted;
         },
-        findSnapshotByProjectId: async (_db: any, projectId: number) => {
+        findSnapshotByProjectId: async (_db, projectId: number) => {
             return mockSnapshots.get(projectId) || null;
         },
     };
@@ -624,16 +657,18 @@ describe('Yjs Persistence Service', () => {
                 db: mockDb,
                 queries: {
                     ...createMockQueries(),
-                    saveIncrementalUpdate: async () => ({
+                    saveIncrementalUpdate: async (_db, projectId, update) => ({
+                        update: updateRow(projectId, update, '1'),
                         compacted: true, // Signal compaction needed
-                        stats: { count: 10, totalBytes: 1000 },
+                        stats: { count: 10, totalBytes: 1000, oldestVersion: '1', newestVersion: '1' },
                     }),
                     loadDocumentWithUpdates: async () => ({
-                        snapshot: null,
+                        snapshot: undefined,
                         updates: [],
                     }),
-                    upsertSnapshot: async () => {},
-                    deleteUpdatesUpToVersion: async () => {},
+                    upsertSnapshot: async (_db, projectId, snapshotData, snapshotVersion) =>
+                        snapshotRow(projectId, snapshotData, snapshotVersion),
+                    deleteUpdatesUpToVersion: async () => 0,
                 },
             });
 
@@ -670,21 +705,12 @@ describe('Yjs Persistence Service', () => {
                 queries: {
                     ...createMockQueries(),
                     loadDocumentWithUpdates: async () => ({
-                        snapshot: {
-                            project_id: 1,
-                            snapshot_data: Buffer.from(snapshotState),
-                            version: '100',
-                        },
-                        updates: [
-                            {
-                                project_id: 1,
-                                update_data: Y.encodeStateAsUpdate(new Y.Doc()),
-                                version: '200',
-                            },
-                        ],
+                        snapshot: snapshotRow(1, Buffer.from(snapshotState), '100'),
+                        updates: [updateRow(1, Y.encodeStateAsUpdate(new Y.Doc()), '200')],
                     }),
-                    upsertSnapshot: async () => {},
-                    deleteUpdatesUpToVersion: async () => {},
+                    upsertSnapshot: async (_db, projectId, snapshotData, snapshotVersion) =>
+                        snapshotRow(projectId, snapshotData, snapshotVersion),
+                    deleteUpdatesUpToVersion: async () => 0,
                 },
             });
 

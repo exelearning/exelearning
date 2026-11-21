@@ -3,10 +3,10 @@
  *
  * Activity log for dashboard analytics: auth events, project creation, impersonation.
  */
-import { Kysely } from 'kysely';
-import { addAutoIncrement, getAutoIncrementType } from '../helpers';
 
-export async function up(db: Kysely<unknown>): Promise<void> {
+import { type UntypedKysely, addAutoIncrement, getAutoIncrementType, createIndexIfNotExists } from '../helpers';
+
+export async function up(db: UntypedKysely): Promise<void> {
     const idType = getAutoIncrementType();
 
     await db.schema
@@ -18,29 +18,18 @@ export async function up(db: Kysely<unknown>): Promise<void> {
         .addColumn('created_at', 'bigint', col => col.notNull())
         .execute();
 
-    await db.schema
-        .createIndex('idx_activity_log_type_created')
-        .ifNotExists()
-        .on('activity_log')
-        .columns(['event_type', 'created_at'])
-        .execute();
+    await createIndexIfNotExists(db, 'idx_activity_log_type_created', 'activity_log', index =>
+        index.columns(['event_type', 'created_at']),
+    );
 
-    await db.schema
-        .createIndex('idx_activity_log_actor_created')
-        .ifNotExists()
-        .on('activity_log')
-        .columns(['user_id', 'created_at'])
-        .execute();
+    await createIndexIfNotExists(db, 'idx_activity_log_actor_created', 'activity_log', index =>
+        index.columns(['user_id', 'created_at']),
+    );
 
-    await db.schema
-        .createIndex('idx_activity_log_created')
-        .ifNotExists()
-        .on('activity_log')
-        .column('created_at')
-        .execute();
+    await createIndexIfNotExists(db, 'idx_activity_log_created', 'activity_log', index => index.column('created_at'));
 }
 
-export async function down(db: Kysely<unknown>): Promise<void> {
+export async function down(db: UntypedKysely): Promise<void> {
     console.warn('[Migration 007] Dropping activity_log table — all audit data will be lost.');
     await db.schema.dropTable('activity_log').ifExists().execute();
 }

@@ -655,7 +655,7 @@ test.describe('Undo/Redo iDevice Icon - Issue #956', () => {
                 return img.getAttribute('src')?.replace(/^\.\//, '/') === expectedSrc;
             }
 
-            const materialIcon = iconBtn.querySelector('.exe-material-icon');
+            const materialIcon = iconBtn.querySelector<HTMLElement>('.exe-material-icon');
             if (!materialIcon) return false;
 
             const computed = window.getComputedStyle(materialIcon);

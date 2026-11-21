@@ -14,6 +14,7 @@ import type {
     AssetProvider,
     ZipProvider,
     ExportAsset,
+    ZipArchive,
 } from '../interfaces';
 
 // Mock document adapter
@@ -51,7 +52,7 @@ class MockDocument implements ExportDocument {
 
 // Mock resource provider
 class MockResourceProvider implements ResourceProvider {
-    async fetchTheme(_name: string): Promise<Map<string, Buffer>> {
+    async fetchTheme(_name: string): Promise<Map<string, Uint8Array>> {
         const files = new Map<string, Buffer>();
         // Theme files keep their original names (style.css, style.js)
         files.set('style.css', Buffer.from('/* theme css */'));
@@ -59,18 +60,18 @@ class MockResourceProvider implements ResourceProvider {
         return files;
     }
 
-    async fetchIdeviceResources(_type: string): Promise<Map<string, Buffer>> {
+    async fetchIdeviceResources(_type: string): Promise<Map<string, Uint8Array>> {
         return new Map();
     }
 
-    async fetchBaseLibraries(): Promise<Map<string, Buffer>> {
+    async fetchBaseLibraries(): Promise<Map<string, Uint8Array>> {
         const files = new Map<string, Buffer>();
         files.set('jquery/jquery.min.js', Buffer.from('// jquery'));
         files.set('common.js', Buffer.from('// common'));
         return files;
     }
 
-    async fetchLibraryFiles(_files: string[]): Promise<Map<string, Buffer>> {
+    async fetchLibraryFiles(_files: string[]): Promise<Map<string, Uint8Array>> {
         const files = new Map<string, Buffer>();
         if (_files.includes('material-icons/material-icons.svg')) {
             files.set(
@@ -90,7 +91,7 @@ class MockResourceProvider implements ResourceProvider {
         return files;
     }
 
-    async fetchScormFiles(_version: string): Promise<Map<string, Buffer>> {
+    async fetchScormFiles(_version: string): Promise<Map<string, Uint8Array>> {
         return new Map();
     }
 
@@ -98,17 +99,17 @@ class MockResourceProvider implements ResourceProvider {
         return ideviceType.toLowerCase().replace(/idevice$/i, '');
     }
 
-    async fetchExeLogo(): Promise<Buffer | null> {
+    async fetchExeLogo(): Promise<Uint8Array | null> {
         return null;
     }
 
-    async fetchContentCss(): Promise<Map<string, Buffer>> {
+    async fetchContentCss(): Promise<Map<string, Uint8Array>> {
         const files = new Map<string, Buffer>();
         files.set('content/css/base.css', Buffer.from('/* base css */'));
         return files;
     }
 
-    async fetchGlobalFontFiles(_fontName: string): Promise<Map<string, Buffer> | null> {
+    async fetchGlobalFontFiles(_fontName: string): Promise<Map<string, Uint8Array> | null> {
         return null;
     }
 
@@ -123,7 +124,7 @@ class MockResourceProvider implements ResourceProvider {
 
 // Mock asset provider
 class MockAssetProvider implements AssetProvider {
-    async getAsset(_path: string): Promise<Buffer | null> {
+    async getAsset(_path: string): Promise<ExportAsset | null> {
         return null;
     }
 
@@ -131,22 +132,18 @@ class MockAssetProvider implements AssetProvider {
         return [];
     }
 
-    async getAllAssets(): Promise<
-        Array<{
-            id: string;
-            filename: string;
-            path: string;
-            mimeType: string;
-            data: Buffer;
-        }>
-    > {
+    async getAllAssets(): Promise<ExportAsset[]> {
         return [];
     }
 }
 
 // Mock zip provider that tracks files added
 class MockZipProvider implements ZipProvider {
-    files = new Map<string, string | Buffer>();
+    createZip(): ZipArchive {
+        throw new Error('createZip is not used by the exporters under test');
+    }
+
+    files = new Map<string, string | Uint8Array>();
 
     addFile(path: string, content: string | Buffer): void {
         this.files.set(path, content);
@@ -195,6 +192,7 @@ const samplePages: ExportPage[] = [
                         type: 'FreeTextIdevice',
                         order: 0,
                         content: '<p>Welcome to the course.</p>',
+                        properties: {},
                     },
                 ],
             },
@@ -216,6 +214,7 @@ const samplePages: ExportPage[] = [
                         type: 'FreeTextIdevice',
                         order: 0,
                         content: '<p>This is chapter 1.</p>',
+                        properties: {},
                     },
                 ],
             },
@@ -686,6 +685,7 @@ describe('Epub3Exporter', () => {
                                     type: 'FreeTextIdevice',
                                     order: 0,
                                     content: '<p>Line 1<br>Line 2</p><hr><img src="test.png">',
+                                    properties: {},
                                 },
                             ],
                         },
@@ -1063,6 +1063,7 @@ $("." + k + "-accordion").each(function (i) {
                                 type: 'text',
                                 order: 0,
                                 content: '<div class="exe-accordion">test</div>',
+                                properties: {},
                             },
                         ],
                     },
@@ -1207,6 +1208,7 @@ describe('htmlToXhtml conversion (H11 corruption fixes)', () => {
                                 type: 'FreeTextIdevice',
                                 order: 0,
                                 content,
+                                properties: {},
                             },
                         ],
                     },
