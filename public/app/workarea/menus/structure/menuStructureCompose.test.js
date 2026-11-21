@@ -400,7 +400,7 @@ describe('MenuStructureCompose', () => {
             expect(settingsButton.getAttribute('data-menunavid')).toBe('test-node');
         });
 
-        it('should configure dropdown trigger with fixed positioning strategy', () => {
+        it('keeps the page options menu inside the viewport on both axes', () => {
             const result = menuStructureCompose.makeNodeTextElement(mockNode);
             const dropdownTrigger = result.querySelector('.page-settings-trigger');
             expect(dropdownTrigger).not.toBeNull();
@@ -408,6 +408,10 @@ describe('MenuStructureCompose', () => {
             expect(popperConfig).not.toBeNull();
             const config = JSON.parse(popperConfig);
             expect(config.strategy).toBe('fixed');
+            expect(config.modifiers).toContainEqual({
+                name: 'preventOverflow',
+                options: { altAxis: true, padding: 8 },
+            });
         });
 
         it('should not contain settings button for root node', () => {
