@@ -35,7 +35,7 @@ const testSessions = new Map<
 
 describe('ELP Import Flow Integration', () => {
     let db: Kysely<Database>;
-    let app: Elysia;
+    let app: Pick<Elysia, 'handle'>;
     let testUser: User;
     let filesDir: string;
     let authToken: string;
@@ -55,7 +55,7 @@ describe('ELP Import Flow Integration', () => {
         testUser = await createTestUser(db, { email: 'elp_import_test@test.local' });
 
         // Create test app with required routes
-        app = new Elysia({ name: 'elp-import-test' })
+        const testApp = new Elysia({ name: 'elp-import-test' })
             .use(
                 jwt({
                     name: 'jwt',
@@ -69,7 +69,7 @@ describe('ELP Import Flow Integration', () => {
                 const authHeader = request.headers.get('authorization');
                 if (authHeader?.startsWith('Bearer ')) {
                     token = authHeader.slice(7);
-                } else if (cookie.auth?.value) {
+                } else if (typeof cookie.auth?.value === 'string' && cookie.auth.value) {
                     token = cookie.auth.value;
                 }
 
@@ -78,14 +78,14 @@ describe('ELP Import Flow Integration', () => {
                 }
 
                 try {
-                    const payload = (await jwt.verify(token)) as { sub: number } | false;
+                    const payload = (await jwt.verify(token)) as { sub: string } | false;
                     if (!payload || !payload.sub) {
                         return { currentUser: null, testDb: db, filesDir };
                     }
                     const user = await db
                         .selectFrom('users')
                         .selectAll()
-                        .where('id', '=', payload.sub)
+                        .where('id', '=', Number(payload.sub))
                         .executeTakeFirst();
                     return {
                         currentUser: user ? { ...user, roles: JSON.parse(user.roles) } : null,
@@ -169,8 +169,8 @@ describe('ELP Import Flow Integration', () => {
                             owner_id: currentUser.id,
                             saved_once: 0,
                             visibility: 'private',
-                            created_at: new Date().toISOString(),
-                            updated_at: new Date().toISOString(),
+                            created_at: Date.now(),
+                            updated_at: Date.now(),
                         })
                         .returning(['id', 'uuid'])
                         .executeTakeFirstOrThrow();
@@ -275,6 +275,7 @@ describe('ELP Import Flow Integration', () => {
                 set.headers['content-type'] = 'application/octet-stream';
                 return content;
             });
+        app = testApp;
 
         // Generate auth token
         const _jwtInstance = jwt({
@@ -284,8 +285,8 @@ describe('ELP Import Flow Integration', () => {
         });
 
         // Create signed token
-        authToken = await app.decorator.jwt.sign({
-            sub: testUser.id,
+        authToken = await testApp.decorator.jwt.sign({
+            sub: String(testUser.id),
             email: testUser.email,
         });
     });

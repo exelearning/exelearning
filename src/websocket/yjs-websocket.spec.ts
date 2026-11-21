@@ -5,11 +5,11 @@
  * This test file uses REAL implementations for sibling modules (room-manager, heartbeat,
  * message-parser, config). Only external dependencies are mocked via DI.
  */
-import type { YjsSocketData } from './types';
+import type { AssetMessage, YjsSocketData } from './types';
 import { describe, it, expect, beforeEach, afterEach, mock } from 'bun:test';
 import { Elysia } from 'elysia';
 import type { Kysely } from 'kysely';
-import type { Database } from '../db/schema';
+import type { Database, Project } from '../db/types';
 
 // Import real implementations
 import * as roomManager from './room-manager';
@@ -51,7 +51,7 @@ const mockDb = {} as Kysely<Database>;
 function createMockQueries(): YjsWebSocketQueries {
     return {
         findProjectByUuid: async (_db: any, uuid: string) => mockProjects.get(uuid),
-        checkProjectAccess: async (_db: any, project: any, userId: number) => {
+        checkProjectAccess: async (_db, project, userId) => {
             if (!project) return { hasAccess: false, reason: 'Project not found' };
             if (project.owner_id === userId) return { hasAccess: true };
             if (project.visibility === 'public') return { hasAccess: true };
@@ -687,8 +687,8 @@ describe('Yjs WebSocket Service', () => {
         it('should handle non-existent project access check', async () => {
             const mockQueries = createMockQueries();
 
-            // Note: First param is _db (ignored), second is project (null), third is userId
-            const result = await mockQueries.checkProjectAccess(null, null, 1);
+            // Note: First param is _db (ignored), second is project (undefined), third is userId
+            const result = await mockQueries.checkProjectAccess(mockDb, undefined, 1);
             expect(result.hasAccess).toBe(false);
         });
     });
@@ -761,7 +761,7 @@ describe('Yjs WebSocket Service', () => {
         it('should check project access via database when no session', async () => {
             const mockQueries = createMockQueries();
             const project = mockProjects.get('test-uuid');
-            const result = await mockQueries.checkProjectAccess(null, project, 1);
+            const result = await mockQueries.checkProjectAccess(mockDb, project, 1);
 
             expect(result.hasAccess).toBe(true);
         });
@@ -770,7 +770,7 @@ describe('Yjs WebSocket Service', () => {
             const mockQueries = createMockQueries();
             // test-uuid is owned by user 1, but user 2 tries to access
             const project = mockProjects.get('test-uuid');
-            const result = await mockQueries.checkProjectAccess(null, project, 2);
+            const result = await mockQueries.checkProjectAccess(mockDb, project, 2);
 
             expect(result.hasAccess).toBe(false);
             expect(result.reason).toBe('Access denied');
@@ -780,7 +780,7 @@ describe('Yjs WebSocket Service', () => {
             const mockQueries = createMockQueries();
             // public-uuid is owned by user 2 but accessible to all
             const project = mockProjects.get('public-uuid');
-            const result = await mockQueries.checkProjectAccess(null, project, 999);
+            const result = await mockQueries.checkProjectAccess(mockDb, project, 999);
 
             expect(result.hasAccess).toBe(true);
         });
@@ -792,6 +792,7 @@ describe('Yjs WebSocket Service', () => {
             const parsed = parseMessage(message);
 
             expect(parsed.kind).toBe('yjs');
+            if (parsed.kind !== 'yjs') throw new Error('expected a yjs message');
             expect(parsed.data).toBeDefined();
         });
 
@@ -805,6 +806,7 @@ describe('Yjs WebSocket Service', () => {
             const parsed = parseMessage(assetMessage);
 
             expect(parsed.kind).toBe('asset');
+            if (parsed.kind !== 'asset') throw new Error('expected an asset message');
             expect(parsed.message).toBeDefined();
             expect(parsed.message.type).toBe('request-asset');
         });
@@ -960,7 +962,7 @@ describe('Yjs WebSocket Service', () => {
                 assetCoordinator: mockAssetCoordinator,
             });
 
-            const assetMsg = { type: 'request-asset', projectId: 'p1', clientId: 'c1', data: {} };
+            const assetMsg: AssetMessage = { type: 'request-asset', projectId: 'p1', clientId: 'c1', data: {} };
             await mockAssetCoordinator.handleMessage('test-uuid', 'client-1', assetMsg);
 
             expect(handleMessageSpy).toHaveBeenCalledWith('test-uuid', 'client-1', assetMsg);
@@ -1008,7 +1010,9 @@ describe('Yjs WebSocket Service', () => {
     describe('Dependency Injection', () => {
         it('should use configured queries', async () => {
             const customQueries = createMockQueries();
-            const findProjectSpy = mock(async () => ({ id: 999, uuid: 'custom', owner_id: 1 }));
+            const findProjectSpy = mock<YjsWebSocketQueries['findProjectByUuid']>(
+                async () => ({ id: 999, uuid: 'custom', owner_id: 1 }) as Project,
+            );
             customQueries.findProjectByUuid = findProjectSpy;
 
             configure({
@@ -1025,7 +1029,12 @@ describe('Yjs WebSocket Service', () => {
 
         it('should use configured auth', async () => {
             const customAuth = createMockAuth();
-            const verifySpy = mock(async () => ({ sub: 999, email: 'custom@test.com', roles: [] }));
+            const verifySpy = mock<YjsWebSocketAuth['verifyToken']>(async () => ({
+                userId: 999,
+                email: 'custom@test.com',
+                roles: [],
+                isGuest: false,
+            }));
             customAuth.verifyToken = verifySpy;
 
             configure({

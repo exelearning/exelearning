@@ -23,9 +23,12 @@ describe('FflateZipProvider', () => {
         provider = new FflateZipProvider();
     });
 
+    /** createZip() resets the provider and returns it, so the archive has the provider's methods. */
+    const newArchive = () => provider.createZip() as FflateZipProvider;
+
     describe('createZip', () => {
         it('should create a new ZipArchive instance', () => {
-            const archive = provider.createZip();
+            const archive = newArchive();
             expect(archive).toBeDefined();
             expect(archive.addFile).toBeDefined();
             expect(archive.generate).toBeDefined();
@@ -35,34 +38,34 @@ describe('FflateZipProvider', () => {
     describe('FflateZipArchive', () => {
         describe('addFile', () => {
             it('rejects a Blob instead of storing it as "[object Blob]"', () => {
-                const archive = provider.createZip();
+                const archive = newArchive();
                 const blob = new Blob(['data']) as unknown as string;
                 expect(() => archive.addFile('asset.png', blob)).toThrow('convert Blobs');
             });
 
             it('should add a string file', () => {
-                const archive = provider.createZip();
+                const archive = newArchive();
                 archive.addFile('test.txt', 'Hello, World!');
                 expect(archive.hasFile('test.txt')).toBe(true);
                 expect(archive.getFileCount()).toBe(1);
             });
 
             it('should add a Uint8Array file', () => {
-                const archive = provider.createZip();
+                const archive = newArchive();
                 const content = new TextEncoder().encode('Binary content');
                 archive.addFile('binary.bin', content);
                 expect(archive.hasFile('binary.bin')).toBe(true);
             });
 
             it('should add a Buffer file', () => {
-                const archive = provider.createZip();
+                const archive = newArchive();
                 const content = Buffer.from('Buffer content');
                 archive.addFile('buffer.txt', content);
                 expect(archive.hasFile('buffer.txt')).toBe(true);
             });
 
             it('should add files with nested paths', () => {
-                const archive = provider.createZip();
+                const archive = newArchive();
                 archive.addFile('folder/subfolder/file.txt', 'Nested content');
                 expect(archive.hasFile('folder/subfolder/file.txt')).toBe(true);
             });
@@ -70,7 +73,7 @@ describe('FflateZipProvider', () => {
 
         describe('addFiles', () => {
             it('should add multiple files from a Map', () => {
-                const archive = provider.createZip();
+                const archive = newArchive();
                 const files = new Map<string, string | Uint8Array>();
                 files.set('file1.txt', 'Content 1');
                 files.set('file2.txt', 'Content 2');
@@ -87,7 +90,7 @@ describe('FflateZipProvider', () => {
 
         describe('getFile', () => {
             it('should retrieve file content as Uint8Array', () => {
-                const archive = provider.createZip();
+                const archive = newArchive();
                 const content = 'Test content';
                 archive.addFile('test.txt', content);
 
@@ -97,14 +100,14 @@ describe('FflateZipProvider', () => {
             });
 
             it('should return undefined for non-existent files', () => {
-                const archive = provider.createZip();
+                const archive = newArchive();
                 expect(archive.getFile('nonexistent.txt')).toBeUndefined();
             });
         });
 
         describe('getFileAsString', () => {
             it('should retrieve file content as string', () => {
-                const archive = provider.createZip();
+                const archive = newArchive();
                 const content = 'Test content';
                 archive.addFile('test.txt', content);
 
@@ -112,14 +115,14 @@ describe('FflateZipProvider', () => {
             });
 
             it('should return undefined for non-existent files', () => {
-                const archive = provider.createZip();
+                const archive = newArchive();
                 expect(archive.getFileAsString('nonexistent.txt')).toBeUndefined();
             });
         });
 
         describe('generate', () => {
             it('should generate a valid ZIP buffer', async () => {
-                const archive = provider.createZip();
+                const archive = newArchive();
                 archive.addFile('test.txt', 'Hello, World!');
 
                 const zipBuffer = await archive.generate();
@@ -133,7 +136,7 @@ describe('FflateZipProvider', () => {
             });
 
             it('should generate a ZIP that can be unzipped', async () => {
-                const archive = provider.createZip();
+                const archive = newArchive();
                 archive.addFile('test.txt', 'Test content');
                 archive.addFile('folder/nested.txt', 'Nested content');
 
@@ -146,7 +149,7 @@ describe('FflateZipProvider', () => {
             });
 
             it('should generate empty ZIP for empty archive', async () => {
-                const archive = provider.createZip();
+                const archive = newArchive();
                 const zipBuffer = await archive.generate();
 
                 expect(zipBuffer).toBeInstanceOf(Uint8Array);
@@ -155,7 +158,7 @@ describe('FflateZipProvider', () => {
             });
 
             it('preserves content and records text vs binary compression stats', async () => {
-                const archive = provider.createZip();
+                const archive = newArchive();
                 archive.addFile('content/page.html', '<html><body>Hello</body></html>');
                 archive.addFile('content/image.png', new Uint8Array([137, 80, 78, 71, 1, 2, 3, 4]));
 
@@ -175,7 +178,7 @@ describe('FflateZipProvider', () => {
             });
 
             it('tracks compression stats for the last generated ZIP', async () => {
-                const archive = provider.createZip();
+                const archive = newArchive();
                 archive.addFile('content/page.html', '<html><body>Hello</body></html>');
                 archive.addFile('content/image.png', new Uint8Array([137, 80, 78, 71, 1, 2, 3, 4]));
 
@@ -192,7 +195,7 @@ describe('FflateZipProvider', () => {
 
         describe('reset', () => {
             it('should clear all files from the archive', () => {
-                const archive = provider.createZip();
+                const archive = newArchive();
                 archive.addFile('test.txt', 'Content');
                 expect(archive.getFileCount()).toBe(1);
 

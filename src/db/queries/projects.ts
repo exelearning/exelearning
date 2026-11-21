@@ -349,22 +349,16 @@ export async function findSavedProjectsForUser(db: Kysely<Database>, userId: num
 // ============================================================================
 
 /**
- * Input for {@link createProject}. Mirrors NewProject minus the generated
- * uuid; `status`, `visibility` and `public_view_enabled` are optional because the
- * database defines defaults for them ('active' / 'private' / 0).
+ * Input for {@link createProject}: NewProject minus the generated uuid. Omitted
+ * `status`, `visibility` and `public_view_enabled` take their column defaults.
  */
-export type CreateProjectInput = Omit<NewProject, 'uuid' | 'status' | 'visibility' | 'public_view_enabled'> &
-    Partial<Pick<NewProject, 'status' | 'visibility' | 'public_view_enabled'>>;
+export type CreateProjectInput = Omit<NewProject, 'uuid'>;
 
 export async function createProject(db: Kysely<Database>, data: CreateProjectInput): Promise<Project> {
     const timestamp = now();
     const uuid = uuidv4();
     const values = {
         ...data,
-        // Fall back to the column defaults so callers may omit these fields
-        status: data.status ?? 'active',
-        visibility: data.visibility ?? 'private',
-        public_view_enabled: data.public_view_enabled ?? 0,
         uuid,
         created_at: timestamp,
         updated_at: timestamp,
@@ -561,10 +555,6 @@ export async function createProjectWithUuid(
     const timestamp = now();
     const values = {
         ...data,
-        // Fall back to the column defaults so callers may omit these fields
-        status: data.status ?? 'active',
-        visibility: data.visibility ?? 'private',
-        public_view_enabled: data.public_view_enabled ?? 0,
         uuid,
         created_at: timestamp,
         updated_at: timestamp,

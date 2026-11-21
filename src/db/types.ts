@@ -43,12 +43,12 @@ interface UsersTable {
      */
     user_id: string | null;
     password: string;
-    roles: string; // JSON stored as text, parse with JSON.parse()
-    is_lopd_accepted: number; // SQLite boolean = 0/1
+    roles: Generated<string>; // JSON stored as text, parse with JSON.parse()
+    is_lopd_accepted: Generated<number>; // SQLite boolean = 0/1
     quota_mb: number | null;
     external_identifier: string | null;
     api_token: string | null;
-    is_active: number;
+    is_active: Generated<number>;
     created_at: number | null; // Unix timestamp in milliseconds
     updated_at: number | null; // Unix timestamp in milliseconds
 }
@@ -59,7 +59,7 @@ interface UsersPreferencesTable {
     preference_key: string;
     value: string;
     description: string | null;
-    is_active: number;
+    is_active: Generated<number>;
     created_at: number | null; // Unix timestamp in milliseconds
     updated_at: number | null; // Unix timestamp in milliseconds
 }
@@ -70,15 +70,15 @@ interface ProjectsTable {
     title: string;
     description: string | null;
     owner_id: number;
-    status: string; // 'active' | 'inactive' | 'archived'
-    visibility: string; // 'public' | 'private'
+    status: Generated<string>; // 'active' | 'inactive' | 'archived'
+    visibility: Generated<string>; // 'public' | 'private'
     public_view_id: string | null; // Opaque id for public viewer URLs (distinct from uuid)
-    public_view_enabled: number; // 0/1 flag: public read-only viewer link enabled (independent of visibility)
+    public_view_enabled: Generated<number>; // 0/1 flag: public read-only viewer link enabled (independent of visibility)
     language: string | null;
     author: string | null;
     license: string | null;
     last_accessed_at: number | null; // Unix timestamp in milliseconds
-    saved_once: number;
+    saved_once: Generated<number>;
     platform_id: string | null; // External platform ID (e.g., Moodle cmid)
     platform_site: string | null; // Base URL of the platform site platform_id belongs to
     platform_package_hash: string | null; // SHA-256 of the last package exchanged with the platform
@@ -101,7 +101,7 @@ interface AssetsTable {
     client_id: string | null;
     component_id: string | null;
     content_hash: string | null;
-    folder_path: string; // Relative folder path: "" = root, "website/css" = nested
+    folder_path: Generated<string>; // Relative folder path: "" = root, "website/css" = nested
     created_at: number | null; // Unix timestamp in milliseconds
     updated_at: number | null; // Unix timestamp in milliseconds
 }
@@ -110,7 +110,7 @@ interface YjsDocumentsTable {
     id: Generated<number>;
     project_id: number;
     snapshot_data: Uint8Array; // Blob/bytea - compatible across all dialects
-    snapshot_version: string; // bigint as text
+    snapshot_version: Generated<string>; // bigint as text
     created_at: number | null; // Unix timestamp in milliseconds
     updated_at: number | null; // Unix timestamp in milliseconds
 }
@@ -137,7 +137,7 @@ interface YjsVersionHistoryTable {
 interface AppSettingsTable {
     key: string;
     value: string;
-    type: string;
+    type: Generated<string>;
     updated_at: number | null; // Unix timestamp in milliseconds
     updated_by: number | null;
 }
@@ -155,10 +155,10 @@ interface ThemesTable {
     version: string | null;
     author: string | null;
     license: string | null;
-    is_builtin: number; // SQLite boolean: 1=base theme, 0=site theme
-    is_enabled: number; // SQLite boolean = 0/1
-    is_default: number; // SQLite boolean = 0/1
-    sort_order: number;
+    is_builtin: Generated<number>; // SQLite boolean: 1=base theme, 0=site theme
+    is_enabled: Generated<number>; // SQLite boolean = 0/1
+    is_default: Generated<number>; // SQLite boolean = 0/1
+    sort_order: Generated<number>;
     storage_path: string | null; // NULL for builtin themes (use filesystem)
     file_size: number | null;
     uploaded_by: number | null;
@@ -172,8 +172,8 @@ interface TemplatesTable {
     display_name: string;
     description: string | null;
     locale: string;
-    is_enabled: number; // SQLite boolean = 0/1
-    sort_order: number;
+    is_enabled: Generated<number>; // SQLite boolean = 0/1
+    sort_order: Generated<number>;
     storage_path: string;
     file_size: number | null;
     preview_image: string | null;
@@ -309,7 +309,9 @@ export type ProjectVisibility = 'public' | 'private';
 // Helper to parse JSON roles from string
 export function parseRoles(roles: string): string[] {
     try {
-        return JSON.parse(roles);
+        const parsed: unknown = JSON.parse(roles);
+        // Anything but a list grants no roles, instead of leaking a string or null to callers.
+        return Array.isArray(parsed) ? parsed : [];
     } catch {
         return [];
     }

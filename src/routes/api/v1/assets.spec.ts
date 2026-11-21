@@ -17,6 +17,7 @@ import { createAuthRoutes } from '../../auth';
 import { findUserByEmail, findUserById, createUser, createAsset } from '../../../db/queries';
 import { getAssetShard } from '../../../utils/asset-paths';
 import { configureDocManager, resetDocManager, configureBroadcaster, resetBroadcaster } from '../../../yjs';
+import { noopDocManagerRuntime } from '../../../../test/helpers/doc-manager-fakes';
 import * as Y from 'yjs';
 
 let originalEnv: Record<string, string | undefined>;
@@ -99,27 +100,7 @@ describe('Assets API v1', () => {
                 saveFullState: async () => {},
                 loadDocument: async () => Y.encodeStateAsUpdate(mockYDoc),
             },
-            cache: {
-                getDocument: () => undefined,
-                createEntry: (uuid, projectId, ydoc) => ({
-                    projectUuid: uuid,
-                    projectId,
-                    ydoc,
-                    isDirty: false,
-                    lastAccessedAt: Date.now(),
-                    loadedAt: Date.now(),
-                }),
-                markDirty: () => {},
-                markClean: () => {},
-                removeDocument: () => false,
-                hasDocument: () => false,
-                getStats: () => ({ size: 0, maxSize: 50, entries: [] }),
-            },
-            lock: {
-                acquireLock: async () => () => {},
-                getStats: () => ({ activeLocks: 0, waitingCount: 0 }),
-            },
-            broadcaster: { broadcastUpdate: () => true },
+            ...noopDocManagerRuntime(),
         });
 
         configureBroadcaster({

@@ -19,11 +19,11 @@ import {
     type ProjectDependencies,
     type SessionManagerDeps,
     type FileHelperDeps,
-    type ZipDeps,
     type QueriesDeps,
     type UtilsDeps,
 } from './project';
 import type { Theme } from '../db/types';
+import type { Map as YMap } from 'yjs';
 
 const testDir = path.join(process.cwd(), 'test', 'temp', 'project-test');
 
@@ -40,7 +40,7 @@ async function createAuthToken(userId: number = 1): Promise<string> {
     });
     const tempApp = new Elysia().use(jwtInstance);
     return tempApp.decorator.jwt.sign({
-        sub: userId,
+        sub: String(userId),
         email: mockUsers.get(userId)?.email || 'test@test.com',
         roles: ['ROLE_USER'],
         isGuest: false,
@@ -99,23 +99,10 @@ function createMockSessionManager(): SessionManagerDeps {
 function createMockFileHelper(): FileHelperDeps {
     return {
         getOdeSessionTempDir: (sessionId: string) => path.join(testDir, 'tmp', sessionId),
-        getOdeSessionDistDir: (sessionId: string) => path.join(testDir, 'dist', sessionId),
-        createSessionDirectories: async (sessionId: string) => {
-            await fs.ensureDir(path.join(testDir, 'tmp', sessionId));
-            await fs.ensureDir(path.join(testDir, 'dist', sessionId));
-        },
-        cleanupSessionDirectories: async (sessionId: string) => {
-            await fs.remove(path.join(testDir, 'tmp', sessionId)).catch(() => {});
-            await fs.remove(path.join(testDir, 'dist', sessionId)).catch(() => {});
-        },
         getContentXmlPath: (sessionId: string) => path.join(testDir, 'tmp', sessionId, 'content.xml'),
         fileExists: async (filePath: string) => fs.pathExists(filePath),
         readFileAsString: async (filePath: string) => fs.readFile(filePath, 'utf-8'),
-        writeFile: async (filePath: string, content: string | Buffer) => {
-            await fs.ensureDir(path.dirname(filePath));
-            await fs.writeFile(filePath, content);
-        },
-        appendFile: async (filePath: string, content: Buffer) => {
+        appendFile: async (filePath: string, content: string | Buffer) => {
             await fs.ensureDir(path.dirname(filePath));
             await fs.appendFile(filePath, content);
         },
@@ -125,28 +112,6 @@ function createMockFileHelper(): FileHelperDeps {
         // relative paths resolve under testDir/assets/<shard>/<uuid>/.
         resolveAssetStoragePath: (storagePath: string) => resolveAssetStoragePathPure(testDir, storagePath),
         tryResolveAssetStoragePath: (storagePath: string) => tryResolveAssetStoragePathPure(testDir, storagePath),
-    };
-}
-
-/**
- * Create mock zip service dependency
- */
-function createMockZip(): ZipDeps {
-    return {
-        extractZip: async (_zipPath: string, destDir: string) => {
-            await fs.ensureDir(destDir);
-            await fs.writeFile(path.join(destDir, 'content.xml'), '<?xml version="1.0"?><ode></ode>');
-            return ['content.xml'];
-        },
-        extractZipFromBuffer: async (_buffer: Buffer, destDir: string) => {
-            await fs.ensureDir(destDir);
-            await fs.writeFile(path.join(destDir, 'content.xml'), '<?xml version="1.0"?><ode></ode>');
-            return ['content.xml'];
-        },
-        createZip: async (_srcDir: string, destPath: string) => {
-            await fs.writeFile(destPath, 'PK fake zip');
-        },
-        readFileFromZipAsString: async () => '<?xml version="1.0"?><ode></ode>',
     };
 }
 
@@ -347,8 +312,17 @@ function createMockQueries(): QueriesDeps {
             return { hasAccess: false, reason: 'Access denied' };
         },
         findSnapshotByProjectId: async (_db: any, projectId: number) => mockSnapshots.get(projectId),
-        upsertSnapshot: async (_db: any, projectId: number, data: Buffer, version: string) => {
-            mockSnapshots.set(projectId, { project_id: projectId, snapshot_data: data, version });
+        upsertSnapshot: async (_db: any, projectId: number, data: Uint8Array, version: string) => {
+            const row = {
+                id: projectId,
+                project_id: projectId,
+                snapshot_data: data,
+                snapshot_version: version,
+                created_at: Date.now(),
+                updated_at: Date.now(),
+            };
+            mockSnapshots.set(projectId, row);
+            return row;
         },
         findAllAssetsForProject: async (_db: any, projectId: number) => {
             return mockAssets.get(projectId) || [];
@@ -374,7 +348,7 @@ function createMockQueries(): QueriesDeps {
  */
 function createMockUtils(): UtilsDeps {
     return {
-        createGravatarUrl: (email: string) => `https://gravatar.com/avatar/${email}`,
+        createGravatarUrl: (email?: string | null) => `https://gravatar.com/avatar/${email}`,
     };
 }
 
@@ -389,7 +363,6 @@ function createMockDependencies(): ProjectDependencies {
         path: path,
         sessionManager: createMockSessionManager(),
         fileHelper: createMockFileHelper(),
-        zip: createMockZip(),
         queries: createMockQueries(),
         utils: createMockUtils(),
         settings: { isPublicViewFeatureEnabled: async () => publicViewFeatureEnabled },
@@ -400,7 +373,7 @@ function createMockDependencies(): ProjectDependencies {
 let publicViewFeatureEnabled = true;
 
 describe('Project Routes', () => {
-    let app: Elysia;
+    let app: Pick<Elysia, 'handle'>;
     let mockDeps: ProjectDependencies;
     const originalEnv = { ...process.env };
 
@@ -1104,7 +1077,7 @@ describe('Project Routes', () => {
             });
             const tempApp = new Elysia().use(jwtInstance);
             return tempApp.decorator.jwt.sign({
-                sub: userId,
+                sub: String(userId),
                 email: mockUsers.get(userId)?.email || 'test@test.com',
                 roles: ['ROLE_USER'],
                 isGuest: false,
@@ -1780,7 +1753,7 @@ describe('Project Routes', () => {
             });
             const tempApp = new Elysia().use(jwtInstance);
             return tempApp.decorator.jwt.sign({
-                sub: userId,
+                sub: String(userId),
                 email: mockUsers.get(userId)?.email || 'test@test.com',
                 roles: ['ROLE_USER'],
                 isGuest: false,
@@ -2553,11 +2526,11 @@ describe('Project Routes', () => {
             const newYdoc = new Y.Doc();
             Y.applyUpdate(newYdoc, new Uint8Array(newSnapshot.snapshot_data));
             const newPages = newYdoc.getMap('pages');
-            const newPage = newPages.get('page-1') as Y.Map<unknown>;
-            const newBlocks = newPage?.get('blocks') as Y.Map<unknown>;
-            const newBlock = newBlocks?.get('block-1') as Y.Map<unknown>;
-            const newIdevices = newBlock?.get('idevices') as Y.Map<unknown>;
-            const newIdevice = newIdevices?.get('idevice-456') as Y.Map<unknown>;
+            const newPage = newPages.get('page-1') as YMap<unknown>;
+            const newBlocks = newPage?.get('blocks') as YMap<unknown>;
+            const newBlock = newBlocks?.get('block-1') as YMap<unknown>;
+            const newIdevices = newBlock?.get('idevices') as YMap<unknown>;
+            const newIdevice = newIdevices?.get('idevice-456') as YMap<unknown>;
             const newInnerHtml = newIdevice?.get('innerHtml') as string;
 
             expect(newInnerHtml).toContain(newClientId);
@@ -2640,7 +2613,7 @@ describe('Project Routes', () => {
             });
             const tempApp = new Elysia().use(jwtInstance);
             return tempApp.decorator.jwt.sign({
-                sub: userId,
+                sub: String(userId),
                 email: mockUsers.get(userId)?.email || 'test@test.com',
                 roles: ['ROLE_USER'],
                 isGuest: false,
@@ -2715,7 +2688,7 @@ describe('Project Routes', () => {
             });
             const tempApp = new Elysia().use(jwtInstance);
             return tempApp.decorator.jwt.sign({
-                sub: userId,
+                sub: String(userId),
                 email: mockUsers.get(userId)?.email || 'test@test.com',
                 roles: ['ROLE_USER'],
                 isGuest: false,
@@ -3285,7 +3258,7 @@ describe('Project Routes', () => {
             });
             const tempApp = new Elysia().use(jwtInstance);
             return tempApp.decorator.jwt.sign({
-                sub: userId,
+                sub: String(userId),
                 email: mockUsers.get(userId)?.email || 'test@test.com',
                 roles: ['ROLE_USER'],
                 isGuest: false,
@@ -3465,7 +3438,7 @@ describe('Project Routes', () => {
             });
             const tempApp = new Elysia().use(jwtInstance);
             const token = await tempApp.decorator.jwt.sign({
-                sub: 1,
+                sub: '1',
                 email: 'test@test.com',
                 roles: ['ROLE_USER'],
                 isGuest: false,
@@ -3526,7 +3499,7 @@ describe('Project Routes', () => {
             });
             const tempApp = new Elysia().use(jwtInstance);
             const token = await tempApp.decorator.jwt.sign({
-                sub: 2, // User 2 is a collaborator
+                sub: '2', // User 2 is a collaborator
                 email: 'user2@test.com',
                 roles: ['ROLE_USER'],
                 isGuest: false,
@@ -3711,7 +3684,7 @@ describe('Project Routes', () => {
             });
             const tempApp = new Elysia().use(jwtInstance);
             return tempApp.decorator.jwt.sign({
-                sub: userId,
+                sub: String(userId),
                 email: mockUsers.get(userId)?.email || 'test@test.com',
                 roles: ['ROLE_USER'],
                 isGuest: false,
@@ -3835,7 +3808,7 @@ describe('Project Routes', () => {
             });
             const tempApp = new Elysia().use(jwtInstance);
             return tempApp.decorator.jwt.sign({
-                sub: userId,
+                sub: String(userId),
                 email: mockUsers.get(userId)?.email || 'test@test.com',
                 roles: ['ROLE_USER'],
                 isGuest: false,
@@ -3887,7 +3860,7 @@ describe('Project Routes', () => {
             });
             const tempApp = new Elysia().use(jwtInstance);
             return tempApp.decorator.jwt.sign({
-                sub: userId,
+                sub: String(userId),
                 email: mockUsers.get(userId)?.email || 'test@test.com',
                 roles: ['ROLE_USER'],
                 isGuest: false,
@@ -3948,7 +3921,7 @@ describe('Project Routes', () => {
             });
             const tempApp = new Elysia().use(jwtInstance);
             return tempApp.decorator.jwt.sign({
-                sub: userId,
+                sub: String(userId),
                 email: mockUsers.get(userId)?.email || 'test@test.com',
                 roles: ['ROLE_USER'],
                 isGuest: false,
@@ -4040,7 +4013,7 @@ describe('Project Routes', () => {
             });
             const tempApp = new Elysia().use(jwtInstance);
             return tempApp.decorator.jwt.sign({
-                sub: userId,
+                sub: String(userId),
                 email: mockUsers.get(userId)?.email || 'test@test.com',
                 roles: ['ROLE_USER'],
                 isGuest: false,
@@ -4233,7 +4206,7 @@ describe('Project Routes', () => {
             });
             const tempApp = new Elysia().use(jwtInstance);
             return tempApp.decorator.jwt.sign({
-                sub: userId,
+                sub: String(userId),
                 email: mockUsers.get(userId)?.email || 'test@test.com',
                 roles: ['ROLE_USER'],
                 isGuest: false,
@@ -4307,7 +4280,7 @@ describe('Project Routes', () => {
             });
             const tempApp = new Elysia().use(jwtInstance);
             const token = await tempApp.decorator.jwt.sign({
-                sub: 1,
+                sub: '1',
                 email: mockUsers.get(1)?.email || 'test@test.com',
                 roles: ['ROLE_USER'],
                 isGuest: false,
@@ -4357,7 +4330,7 @@ describe('Project Routes', () => {
             });
             const tempApp = new Elysia().use(jwtInstance);
             return tempApp.decorator.jwt.sign({
-                sub: userId,
+                sub: String(userId),
                 email: mockUsers.get(userId)?.email || 'test@test.com',
                 roles: ['ROLE_USER'],
                 isGuest: false,
@@ -4419,7 +4392,7 @@ describe('Project Routes', () => {
             });
             const tempApp = new Elysia().use(jwtInstance);
             return tempApp.decorator.jwt.sign({
-                sub: userId,
+                sub: String(userId),
                 email: mockUsers.get(userId)?.email || 'test@test.com',
                 roles: ['ROLE_USER'],
                 isGuest: false,
@@ -4648,7 +4621,7 @@ describe('Project Routes', () => {
             });
             const tempApp = new Elysia().use(jwtInstance);
             return tempApp.decorator.jwt.sign({
-                sub: userId,
+                sub: String(userId),
                 email: mockUsers.get(userId)?.email || 'test@test.com',
                 roles: ['ROLE_USER'],
                 isGuest: false,
@@ -4731,7 +4704,7 @@ describe('Project Routes', () => {
             });
             const tempApp = new Elysia().use(jwtInstance);
             return tempApp.decorator.jwt.sign({
-                sub: userId,
+                sub: String(userId),
                 email: mockUsers.get(userId)?.email || 'test@test.com',
                 roles: ['ROLE_USER'],
                 isGuest: false,
@@ -4820,7 +4793,7 @@ describe('Project Routes', () => {
             });
             const tempApp = new Elysia().use(jwtInstance);
             return tempApp.decorator.jwt.sign({
-                sub: userId,
+                sub: String(userId),
                 email: mockUsers.get(userId)?.email || 'test@test.com',
                 roles: ['ROLE_USER'],
                 isGuest: false,
@@ -4944,7 +4917,7 @@ describe('Project Routes', () => {
             });
             const tempApp = new Elysia().use(jwtInstance);
             return tempApp.decorator.jwt.sign({
-                sub: userId,
+                sub: String(userId),
                 email: mockUsers.get(userId)?.email || 'test@test.com',
                 roles: ['ROLE_USER'],
                 isGuest: false,
@@ -5035,7 +5008,7 @@ describe('Project Routes', () => {
             });
             const tempApp = new Elysia().use(jwtInstance);
             return tempApp.decorator.jwt.sign({
-                sub: userId,
+                sub: String(userId),
                 email: mockUsers.get(userId)?.email || 'test@test.com',
                 roles: ['ROLE_USER'],
                 isGuest: false,
@@ -5397,7 +5370,7 @@ describe('Project Routes', () => {
             });
             const tempApp = new Elysia().use(jwtInstance);
             return tempApp.decorator.jwt.sign({
-                sub: userId,
+                sub: String(userId),
                 email: mockUsers.get(userId)?.email || 'test@test.com',
                 roles: ['ROLE_USER'],
                 isGuest: false,
@@ -5477,7 +5450,7 @@ describe('Project Routes', () => {
             });
             const tempApp = new Elysia().use(jwtInstance);
             const token = await tempApp.decorator.jwt.sign({
-                sub: 1,
+                sub: '1',
                 email: 'owner@test.com',
                 roles: ['ROLE_USER'],
                 isGuest: false,
@@ -5507,7 +5480,7 @@ describe('Project Routes', () => {
             });
             const tempApp = new Elysia().use(jwtInstance);
             const token = await tempApp.decorator.jwt.sign({
-                sub: 1,
+                sub: '1',
                 email: 'owner@test.com',
                 roles: ['ROLE_USER'],
                 isGuest: false,
@@ -5535,7 +5508,7 @@ describe('Project Routes', () => {
             });
             const tempApp = new Elysia().use(jwtInstance);
             const token = await tempApp.decorator.jwt.sign({
-                sub: 1,
+                sub: '1',
                 email: 'owner@test.com',
                 roles: ['ROLE_USER'],
                 isGuest: false,
@@ -5567,7 +5540,7 @@ describe('Project Routes', () => {
             });
             const tempApp = new Elysia().use(jwtInstance);
             return tempApp.decorator.jwt.sign({
-                sub: userId,
+                sub: String(userId),
                 email: mockUsers.get(userId)?.email || 'test@test.com',
                 roles: ['ROLE_USER'],
                 isGuest: false,
@@ -5647,7 +5620,7 @@ describe('Project Routes', () => {
             });
             const tempApp = new Elysia().use(jwtInstance);
             return tempApp.decorator.jwt.sign({
-                sub: userId,
+                sub: String(userId),
                 email: mockUsers.get(userId)?.email || 'test@test.com',
                 roles: ['ROLE_USER'],
                 isGuest: false,
@@ -5696,7 +5669,7 @@ describe('Project Routes', () => {
             });
             const tempApp = new Elysia().use(jwtInstance);
             return tempApp.decorator.jwt.sign({
-                sub: userId,
+                sub: String(userId),
                 email: mockUsers.get(userId)?.email || 'test@test.com',
                 roles: ['ROLE_USER'],
                 isGuest: false,
@@ -6040,7 +6013,7 @@ describe('Project Routes', () => {
             });
             const tempApp = new Elysia().use(jwtInstance);
             return tempApp.decorator.jwt.sign({
-                sub: userId,
+                sub: String(userId),
                 email: mockUsers.get(userId)?.email || 'test@test.com',
                 roles: ['ROLE_USER'],
                 isGuest: false,

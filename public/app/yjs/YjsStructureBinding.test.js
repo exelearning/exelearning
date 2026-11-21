@@ -274,6 +274,20 @@ describe('YjsStructureBinding', () => {
       const navigation = mockDocManager.getNavigation();
       expect(navigation.length).toBe(1);
     });
+
+    it('removes every descendant and keeps other branches', () => {
+      const navigation = mockDocManager.getNavigation();
+      navigation.push([
+        createYMap({ id: 'child', pageId: 'child', parentId: 'page-1' }),
+        createYMap({ id: 'grandchild', pageId: 'grandchild', parentId: 'child' }),
+        createYMap({ id: 'other', pageId: 'other' }),
+        createYMap({ id: 'other-child', pageId: 'other-child', parentId: 'other' }),
+      ]);
+
+      expect(binding.deletePage('page-1')).toBe(true);
+
+      expect(navigation.toArray().map((p) => p.get('id'))).toEqual(['other', 'other-child']);
+    });
   });
 
   describe('reorderPage', () => {

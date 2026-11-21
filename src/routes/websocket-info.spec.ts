@@ -16,7 +16,7 @@ const TEST_SECRET = getJwtSecret();
 
 async function signToken(sub: number, roles: string[]): Promise<string> {
     const secret = new TextEncoder().encode(TEST_SECRET);
-    return new SignJWT({ sub, email: `u${sub}@test.local`, roles })
+    return new SignJWT({ sub: String(sub), email: `u${sub}@test.local`, roles })
         .setProtectedHeader({ alg: 'HS256' })
         .setIssuedAt()
         .setExpirationTime('1h')
@@ -54,7 +54,7 @@ function makeDeps(): WebSocketInfoDependencies {
 describe('WebSocket info routes', () => {
     let userToken: string;
     let adminToken: string;
-    let app: Elysia;
+    let app: Pick<Elysia, 'handle'>;
 
     beforeAll(async () => {
         userToken = await signToken(42, ['ROLE_USER']);

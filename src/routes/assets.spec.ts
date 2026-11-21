@@ -41,7 +41,7 @@ const TEST_JWT_SECRET = getJwtSecret();
 
 async function signTestToken(sub: number, roles: string[] = ['ROLE_USER']): Promise<string> {
     const secret = new TextEncoder().encode(TEST_JWT_SECRET);
-    return new SignJWT({ sub, email: `u${sub}@test.local`, roles })
+    return new SignJWT({ sub: String(sub), email: `u${sub}@test.local`, roles })
         .setProtectedHeader({ alg: 'HS256' })
         .setIssuedAt()
         .setExpirationTime('1h')
@@ -60,7 +60,7 @@ function createMockFileHelper(): AssetsFileHelperDeps {
         tryResolveAssetStoragePath: (storagePath: string) => tryResolveAssetStoragePathPure(testDir, storagePath),
         fileExists: async (filePath: string) => fs.pathExists(filePath),
         readFile: async (filePath: string) => fs.readFile(filePath),
-        writeFile: async (filePath: string, data: Buffer) => fs.writeFile(filePath, data),
+        writeFile: async (filePath: string, data: string | Buffer) => fs.writeFile(filePath, data),
         remove: async (filePath: string) => fs.remove(filePath),
         getStats: async (filePath: string) => {
             try {
@@ -106,7 +106,7 @@ function createMockPriorityQueue(): AssetsPriorityQueueDeps {
 }
 
 describe('Assets Routes', () => {
-    let app: Elysia;
+    let app: Pick<Elysia, 'handle'>;
     let mockAssets: Map<number, any>;
     let mockProjects: Map<string, any>;
     let assetIdCounter: number;
@@ -2089,7 +2089,7 @@ describe('Chunked upload leak/limit fix (BUG H9)', () => {
 // BUG H9: chunk size caps enforced by the upload route
 // =====================================================
 describe('Chunked upload size caps (BUG H9)', () => {
-    let app: Elysia;
+    let app: Pick<Elysia, 'handle'>;
     let mockAssets: Map<number, any>;
     let mockProjects: Map<string, any>;
     let assetIdCounter: number;
@@ -2255,7 +2255,7 @@ describe('Chunked upload size caps (BUG H9)', () => {
 // Issue #2283: chunk uploads must live under FILES_DIR
 // =====================================================
 describe('Chunked upload FILES_DIR resolution (#2283)', () => {
-    let app: Elysia;
+    let app: Pick<Elysia, 'handle'>;
     let mockAssets: Map<number, any>;
     let mockProjects: Map<string, any>;
     let assetIdCounter: number;
