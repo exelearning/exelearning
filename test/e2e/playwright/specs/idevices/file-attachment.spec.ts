@@ -130,7 +130,7 @@ test.describe('File attachment iDevice', () => {
 
         // Rename through the real AssetManager (the same path the Media Library uses).
         await page.evaluate(async id => {
-            const am = window.eXeLearning.app.project._yjsBridge.assetManager;
+            const am = (window as any).eXeLearning.app.project._yjsBridge.assetManager;
             await am.renameAsset(id, 'renamed-worksheet.pdf');
         }, uuid);
         await expect(row.locator('.fileAttachment-edit-filename')).toHaveText('renamed-worksheet.pdf', {
@@ -139,7 +139,7 @@ test.describe('File attachment iDevice', () => {
 
         // Delete the asset: the attachment must flag itself as missing, not stay stale.
         await page.evaluate(async id => {
-            const am = window.eXeLearning.app.project._yjsBridge.assetManager;
+            const am = (window as any).eXeLearning.app.project._yjsBridge.assetManager;
             await am.deleteAsset(id, { skipServerDelete: true });
         }, uuid);
         await expect(row).toHaveClass(/fileAttachment-edit-item--missing/, { timeout: 10000 });

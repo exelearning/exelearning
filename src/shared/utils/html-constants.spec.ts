@@ -8,7 +8,7 @@ describe('VOID_ELEMENTS', () => {
 
     it('should include common void elements', () => {
         for (const el of ['input', 'img', 'br', 'hr', 'link', 'meta']) {
-            expect(VOID_ELEMENTS).toContain(el);
+            expect(VOID_ELEMENTS as readonly string[]).toContain(el);
         }
     });
 

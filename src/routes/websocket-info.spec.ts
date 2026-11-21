@@ -16,7 +16,7 @@ const TEST_SECRET = getJwtSecret();
 
 async function signToken(sub: number, roles: string[]): Promise<string> {
     const secret = new TextEncoder().encode(TEST_SECRET);
-    return new SignJWT({ sub, email: `u${sub}@test.local`, roles })
+    return new SignJWT({ sub: String(sub), email: `u${sub}@test.local`, roles })
         .setProtectedHeader({ alg: 'HS256' })
         .setIssuedAt()
         .setExpirationTime('1h')
@@ -54,7 +54,7 @@ function makeDeps(): WebSocketInfoDependencies {
 describe('WebSocket info routes', () => {
     let userToken: string;
     let adminToken: string;
-    let app: Elysia;
+    let app: Pick<Elysia, 'handle'>;
 
     beforeAll(async () => {
         userToken = await signToken(42, ['ROLE_USER']);
@@ -142,6 +142,17 @@ describe('WebSocket info routes', () => {
             const res = await app.handle(
                 new Request('http://localhost/api/websocket/my-rooms', {
                     headers: { Authorization: `Bearer ${userToken}` },
+                }),
+            );
+            expect(res.status).toBe(200);
+            const data = (await res.json()) as { rooms: Array<{ projectUuid: string; myConnections: number }> };
+            expect(data.rooms).toEqual([{ projectUuid: 'uuid-a', myConnections: 1 }]);
+        });
+
+        it('accepts the auth token from a cookie', async () => {
+            const res = await app.handle(
+                new Request('http://localhost/api/websocket/my-rooms', {
+                    headers: { Cookie: `auth=${userToken}` },
                 }),
             );
             expect(res.status).toBe(200);

@@ -7,19 +7,16 @@
  * guarantees uniqueness; multiple NULLs are allowed (private projects).
  */
 import { Kysely } from 'kysely';
+import { createIndexIfNotExists } from '../helpers';
 
 export async function up(db: Kysely<unknown>): Promise<void> {
     await db.schema.alterTable('projects').addColumn('public_view_id', 'varchar(36)').execute();
 
     // Unique index. SQL unique indexes permit multiple NULL values on SQLite,
     // PostgreSQL and MariaDB, so private projects (NULL) do not collide.
-    await db.schema
-        .createIndex('idx_projects_public_view_id')
-        .ifNotExists()
-        .unique()
-        .on('projects')
-        .column('public_view_id')
-        .execute();
+    await createIndexIfNotExists(db, 'idx_projects_public_view_id', 'projects', index =>
+        index.column('public_view_id').unique(),
+    );
 }
 
 export async function down(db: Kysely<unknown>): Promise<void> {

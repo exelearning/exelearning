@@ -82,9 +82,7 @@ export async function buildHtml5PreviewExport(project: Project): Promise<ExportR
     const zipProvider = new FflateZipProvider();
 
     // Create the HTML5 exporter for preview
-    const exporter = new Html5Exporter(documentAdapter, resourceProvider, assetProvider, zipProvider, {
-        singlePage: false,
-    });
+    const exporter = new Html5Exporter(documentAdapter, resourceProvider, assetProvider, zipProvider);
 
     // Run the export with server-side LaTeX pre-render hooks.
     const latexRenderer = new ServerLatexPreRenderer();
