@@ -4,7 +4,7 @@
 
 import { describe, it, expect, beforeEach } from 'bun:test';
 import { Scorm12ManifestGenerator } from './Scorm12Manifest';
-import type { ExportPage } from '../interfaces';
+import type { ExportPage, ScormManifestOptions } from '../interfaces';
 
 describe('Scorm12ManifestGenerator', () => {
     let generator: Scorm12ManifestGenerator;
@@ -20,7 +20,7 @@ describe('Scorm12ManifestGenerator', () => {
             title: 'Test Course',
             author: 'Test Author',
             language: 'en',
-        });
+        } as ScormManifestOptions);
     });
 
     describe('generate', () => {
@@ -127,7 +127,9 @@ describe('Scorm12ManifestGenerator', () => {
             // would make the package schema-invalid.
             const pages = createTestPages();
             pages.push({ id: 'page-2', title: 'Chapter 1 again', parentId: null, order: 3, blocks: [] });
-            const duplicated = new Scorm12ManifestGenerator('test-project-123', pages, { title: 'Test Course' });
+            const duplicated = new Scorm12ManifestGenerator('test-project-123', pages, {
+                title: 'Test Course',
+            } as ScormManifestOptions);
 
             const originalWarn = console.warn;
             console.warn = () => {};
@@ -211,7 +213,7 @@ describe('Scorm12ManifestGenerator', () => {
         it('should escape XML special characters', () => {
             const generatorWithSpecialChars = new Scorm12ManifestGenerator('test', [], {
                 title: 'Test & Course <1>',
-            });
+            } as ScormManifestOptions);
             const xml = generatorWithSpecialChars.generate();
 
             expect(xml).toContain('Test &amp; Course &lt;1&gt;');
@@ -256,8 +258,8 @@ describe('Scorm12ManifestGenerator', () => {
 
     describe('generateId', () => {
         it('should generate unique IDs', () => {
-            const gen1 = new Scorm12ManifestGenerator('', [], {});
-            const _gen2 = new Scorm12ManifestGenerator('', [], {});
+            const gen1 = new Scorm12ManifestGenerator('', [], {} as ScormManifestOptions);
+            const _gen2 = new Scorm12ManifestGenerator('', [], {} as ScormManifestOptions);
 
             // The IDs should be different (though in a fast test they could be the same due to timing)
             // We just verify the format
@@ -268,7 +270,9 @@ describe('Scorm12ManifestGenerator', () => {
 
     describe('empty project', () => {
         it('should handle empty pages array', () => {
-            const emptyGenerator = new Scorm12ManifestGenerator('empty', [], { title: 'Empty' });
+            const emptyGenerator = new Scorm12ManifestGenerator('empty', [], {
+                title: 'Empty',
+            } as ScormManifestOptions);
             const xml = emptyGenerator.generate();
 
             expect(xml).toContain('<organizations');

@@ -18,6 +18,7 @@
 // Import adapters
 import { YjsDocumentAdapter } from '../adapters/YjsDocumentAdapter';
 import { BrowserResourceProvider } from '../adapters/BrowserResourceProvider';
+import type { ResourceProvider } from '../interfaces';
 import { BrowserAssetProvider } from '../adapters/BrowserAssetProvider';
 import { ExportAssetResolver } from '../adapters/ExportAssetResolver';
 
@@ -61,6 +62,7 @@ import '../../../../public/app/common/LatexPreRenderer.js';
 
 // Import types
 import type { ExportOptions } from '../interfaces';
+import { blobFromBytes } from '../../utils/blob';
 
 /**
  * Yjs Document Manager interface (browser class)
@@ -112,19 +114,19 @@ type ExportFormat = 'html5' | 'html5-sp' | 'page' | 'scorm12' | 'scorm2004' | 'i
  * Create a null-safe resource provider that returns empty results
  * Used when ResourceFetcher is not available
  */
-function createNullResourceProvider() {
+function createNullResourceProvider(): ResourceProvider {
     return {
         fetchTheme: async () => new Map<string, Uint8Array>(),
         fetchIdeviceResources: async () => new Map<string, Uint8Array>(),
         fetchBaseLibraries: async () => new Map<string, Uint8Array>(),
         fetchScormFiles: async () => new Map<string, Uint8Array>(),
         fetchLibraryFiles: async () => new Map<string, Uint8Array>(),
-        fetchLibraryDirectory: async () => new Map<string, Uint8Array>(),
-        fetchSchemas: async () => new Map<string, Uint8Array>(),
         fetchContentCss: async () => new Map<string, Uint8Array>(),
         normalizeIdeviceType: (type: string) => type.toLowerCase().replace(/idevice$/i, '') || 'text',
         fetchExeLogo: async () => null,
-        fetchGlobalFontFiles: async () => new Map<string, Uint8Array>(),
+        fetchGlobalFontFiles: async () => null,
+        fetchI18nFile: async language => `// No i18n content available for '${language}' (null resource provider).`,
+        fetchI18nTranslations: async () => new Map<string, string>(),
     };
 }
 
@@ -171,7 +173,7 @@ export function createExporter(
 
     // Create resource provider with null-safe fallback
     // Create resource provider with null-safe fallback
-    let resources;
+    let resources: ResourceProvider;
     if (resourceFetcher) {
         // biome-ignore lint/suspicious/noExplicitAny: legacy resource fetcher compatibility
         resources = new BrowserResourceProvider(resourceFetcher as any);
@@ -368,7 +370,7 @@ async function ensureMathJaxForLatexPreRender(): Promise<boolean> {
     if (typeof window === 'undefined') return false;
 
     const windowWithMath = window as unknown as {
-        MathJax?: { tex2svg?: unknown };
+        MathJax?: { tex2svg?: unknown; tex?: Record<string, unknown> };
         $exe?: {
             math?: {
                 loadMathJax?: (cb?: () => void) => void;
@@ -619,8 +621,7 @@ export async function exportAndDownload(
     const fullFilename = filename.endsWith(extension) ? filename : `${filename}${extension}`;
 
     // Create download
-    // biome-ignore lint/suspicious/noExplicitAny: legacy blob data compatibility
-    const blob = new Blob([result.data as any], { type: 'application/zip' });
+    const blob = blobFromBytes(result.data, 'application/zip');
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
@@ -682,7 +683,7 @@ export async function generatePrintPreview(
     // biome-ignore lint/suspicious/noExplicitAny: legacy Yjs document manager compatibility
     const document = new YjsDocumentAdapter(documentManager as any);
 
-    let resources;
+    let resources: ResourceProvider;
     if (resourceFetcher) {
         // biome-ignore lint/suspicious/noExplicitAny: legacy resource fetcher compatibility
         resources = new BrowserResourceProvider(resourceFetcher as any);
@@ -782,7 +783,7 @@ export function createPrintPreviewExporter(
     // biome-ignore lint/suspicious/noExplicitAny: legacy Yjs document manager compatibility
     const document = new YjsDocumentAdapter(documentManager as any);
 
-    let resources;
+    let resources: ResourceProvider;
     if (resourceFetcher) {
         // biome-ignore lint/suspicious/noExplicitAny: legacy resource fetcher compatibility
         resources = new BrowserResourceProvider(resourceFetcher as any);
@@ -851,7 +852,7 @@ export async function generatePreviewForSW(
 
         // Create resource provider with null-safe fallback
         // Create resource provider with null-safe fallback
-        let resources;
+        let resources: ResourceProvider;
         if (resourceFetcher) {
             // biome-ignore lint/suspicious/noExplicitAny: legacy resource fetcher compatibility
             resources = new BrowserResourceProvider(resourceFetcher as any);

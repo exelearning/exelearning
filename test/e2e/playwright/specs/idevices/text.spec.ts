@@ -327,53 +327,26 @@ test.describe('Text iDevice', () => {
             await expect(mindmapButton).toBeVisible({ timeout: 10000 });
             await mindmapButton.click();
 
-            // Wait for the mindmap TinyMCE dialog to appear
+            // The editor opens straight away, in one TinyMCE dialog
             const dialog = page.locator('.tox-dialog');
-            await expect(dialog).toBeVisible({ timeout: 10000 });
-
-            // Verify the dialog title contains "Mind map" or similar
-            const dialogTitle = dialog.locator('.tox-dialog__title');
-            await expect(dialogTitle).toContainText(/Mind|Mapa/i, { timeout: 5000 });
-
-            // Find and click the "Open the mind map editor" button (it's a primary button)
-            const openEditorButton = dialog.locator('button.tox-button').filter({
-                hasText: /Open.*mind.*map|Abrir.*mapa.*mental|editor/i,
-            });
-            await expect(openEditorButton).toBeVisible({ timeout: 5000 });
-            await openEditorButton.click();
-
-            // Wait for the mindmap editor dialog (nested dialog) to appear
-            // This is a second dialog that contains an iframe with the mindmap editor
-            const editorDialog = page.locator('.tox-dialog').nth(1);
-            await expect(editorDialog).toBeVisible({ timeout: 10000 });
+            await expect(dialog).toHaveCount(1, { timeout: 10000 });
+            await expect(dialog.locator('.tox-dialog__title')).toContainText(/Mind|Mapa/i, { timeout: 5000 });
 
             // Find the mindmap editor iframe
             // Server mode: /api/exemindmap-editor/index.html
             // Static mode: ./libs/tinymce_5/js/tinymce/plugins/exemindmap/editor/index.html
             const mindmapFrame = page.frameLocator('iframe[src*="exemindmap"]');
 
-            // Verify key UI elements are visible inside the iframe (NOT blank)
-            // The mindmap editor should have toolbar and canvas elements
+            // Verify key UI elements are visible inside the iframe (NOT blank):
+            // the editor toolbar and Mind Elixir's root node
             await expect(mindmapFrame.locator('#toolbar')).toBeVisible({ timeout: 15000 });
-            await expect(mindmapFrame.locator('canvas').first()).toBeVisible({ timeout: 5000 });
+            await expect(mindmapFrame.locator('.me-root .me-tpc')).toBeVisible({ timeout: 5000 });
 
-            // Close both dialogs
-            // First close the editor dialog (the nested one)
-            const closeEditorButton = editorDialog
-                .locator('.tox-dialog__header-close, button[aria-label="Close"]')
-                .first();
-            if ((await closeEditorButton.count()) > 0) {
-                await closeEditorButton.click();
-            }
-
-            // Then close the main mindmap dialog
-            const cancelButton = dialog
-                .locator('button')
+            // Close it without saving
+            await dialog
+                .locator('.tox-dialog__footer button')
                 .filter({ hasText: /Cancel|Cancelar/i })
-                .first();
-            if ((await cancelButton.count()) > 0 && (await cancelButton.isVisible())) {
-                await cancelButton.click();
-            }
+                .click();
 
             // Verify dialogs are closed
             await expect(page.locator('.tox-dialog')).not.toBeVisible({ timeout: 5000 });
@@ -561,8 +534,8 @@ test.describe('Text iDevice', () => {
                 .then(handle => handle.jsonValue());
 
             // The <pre class="mermaid"> should exist and be processed
-            expect(mermaidRendered.hasPre).toBe(true);
-            expect(mermaidRendered.hasSvg || mermaidRendered.hasDataProcessed).toBe(true);
+            expect(mermaidRendered?.hasPre).toBe(true);
+            expect(mermaidRendered?.hasSvg || mermaidRendered?.hasDataProcessed).toBe(true);
 
             // Save the project
             await workarea.save();
@@ -613,12 +586,12 @@ test.describe('Text iDevice', () => {
                 .then(handle => handle.jsonValue());
 
             // The diagram should have been rendered (either pre-rendered or runtime)
-            expect(previewMermaidRendered.hasSvg).toBe(true);
+            expect(previewMermaidRendered?.hasSvg).toBe(true);
 
             // When pre-rendering works, it should use exe-mermaid-rendered class
             // and preserve original code in data-mermaid attribute
-            if (previewMermaidRendered.isPreRendered) {
-                expect(previewMermaidRendered.hasDataMermaid).toBe(true);
+            if (previewMermaidRendered?.isPreRendered) {
+                expect(previewMermaidRendered?.hasDataMermaid).toBe(true);
             }
         });
 
@@ -905,13 +878,13 @@ test.describe('Text iDevice', () => {
                 .then(handle => handle.jsonValue());
 
             // Diagram should render as SVG
-            expect(preRenderResult.hasSvg).toBe(true);
+            expect(preRenderResult?.hasSvg).toBe(true);
 
             // When pre-rendering is successful:
             // - Should have exe-mermaid-rendered class
             // - Should preserve original code in data-mermaid
-            if (preRenderResult.isPreRendered) {
-                expect(preRenderResult.hasDataMermaid).toBe(true);
+            if (preRenderResult?.isPreRendered) {
+                expect(preRenderResult?.hasDataMermaid).toBe(true);
                 // Note: The library may still be included in the export even when pre-rendered.
                 // The key verification is that the diagram was successfully converted to SVG.
                 // Library exclusion optimization may vary by export type.
@@ -1265,8 +1238,8 @@ test.describe('Text iDevice', () => {
                     .then(handle => handle.jsonValue());
 
                 // The src should be resolved to blob:// and original asset:// stored in data-asset-src
-                expect(audioSrc.src).toContain('blob:');
-                expect(audioSrc.dataAssetSrc).toBe(assetUrl);
+                expect(audioSrc?.src).toContain('blob:');
+                expect(audioSrc?.dataAssetSrc).toBe(assetUrl);
             }
         });
     });
@@ -1902,6 +1875,7 @@ test.describe('Text iDevice', () => {
 
                 return { id: newPage.id, name: newPage.pageName || 'Second Page' };
             });
+            if (!secondPageInfo) throw new Error('Could not create the second page');
 
             // Wait for page to be added to DOM
             await page.waitForFunction(
@@ -2106,6 +2080,7 @@ test.describe('Text iDevice', () => {
 
                 return { id: newPage.id, name: newPage.pageName || 'Second Page' };
             });
+            if (!secondPageInfo) throw new Error('Could not create the second page');
 
             // Wait for page to be added to DOM
             await page.waitForFunction(

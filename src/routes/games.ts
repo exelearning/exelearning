@@ -541,7 +541,7 @@ function extractIdevicesFromYjsDoc(sessionId: string, ydoc: Y.Doc): SessionIdevi
  * unsaved project.
  *
  * @param session - The in-memory session, or undefined if none exists.
- * @param callerUserId - The authenticated caller's user id (`jwtPayload.sub`).
+ * @param callerUserId - The authenticated caller's user id (`identity.userId`).
  * @param isAdmin - Whether the caller has the admin role.
  * @returns true if the caller may read the unsaved project.
  */
@@ -566,7 +566,7 @@ export function canAccessUnsavedSession(
 export const gamesRoutes = new Elysia({ prefix: '/api/games' })
     // Auth: this endpoint returns the full flattened iDevice structure of a
     // project (including each component's rendered HTML), so it must never be
-    // reachable anonymously. `withJwtAuth` derives a nullable `jwtPayload`
+    // reachable anonymously. `withJwtAuth` derives a nullable `identity`
     // (from the `Authorization` header or the same-origin `auth` cookie) and
     // bubbles it to the route via `.as('scoped')`.
     .use(withJwtAuth())
@@ -580,7 +580,7 @@ export const gamesRoutes = new Elysia({ prefix: '/api/games' })
      */
     .get(
         '/:odeSessionId/idevices',
-        async ({ params, jwtPayload, set }) => {
+        async ({ params, identity, set }) => {
             const { odeSessionId } = params;
 
             // Access control: `:odeSessionId` is a project UUID. Require an
@@ -588,7 +588,7 @@ export const gamesRoutes = new Elysia({ prefix: '/api/games' })
             // collaborator / admin, or any authenticated user on public
             // projects — same semantics as the Yjs WebSocket via
             // checkProjectAccess). Returns 401/403/404 otherwise.
-            const access = await enforceProjectAccess(jwtPayload, odeSessionId, {
+            const access = await enforceProjectAccess(identity, odeSessionId, {
                 db: deps.getDb(),
                 queries: {
                     findProjectByUuid: deps.findProjectByUuid,
@@ -610,12 +610,12 @@ export const gamesRoutes = new Elysia({ prefix: '/api/games' })
                 // that here. We only reach the session fallback on a 404 (project
                 // genuinely not persisted): a 401/403 is an explicit auth/access
                 // denial that must stand even if a session happens to exist.
-                const callerAuthErr = requireAuth(jwtPayload);
-                const isAdmin = !callerAuthErr && hasRole(jwtPayload?.roles, ROLES.ADMIN);
+                const callerAuthErr = requireAuth(identity);
+                const isAdmin = !callerAuthErr && hasRole(identity?.roles, ROLES.ADMIN);
                 const sessionGranted =
                     access.status === 404 &&
                     !callerAuthErr &&
-                    canAccessUnsavedSession(session, Number(jwtPayload?.sub), isAdmin);
+                    canAccessUnsavedSession(session, identity!.userId, isAdmin);
 
                 if (!sessionGranted) {
                     set.status = access.status;

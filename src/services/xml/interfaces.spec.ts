@@ -19,6 +19,7 @@ import type {
     LegacyInstanceXmlDocument,
     LegacyValueNode,
     LegacyListNode,
+    LegacyInstanceNode,
 } from './interfaces';
 
 describe('XML Interfaces', () => {
