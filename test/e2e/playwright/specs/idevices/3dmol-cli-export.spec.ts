@@ -34,12 +34,12 @@ async function addMolecule(page: Page): Promise<void> {
 }
 
 test('CLI export starts 3DMol and loads its resources on the home page and subpage', async ({
-    guestSession: page,
+    authenticatedPage: page,
     createProject,
     browser,
 }, testInfo) => {
     test.setTimeout(120000);
-    // Static mode already has an isolated local project from guestSession.
+    // Static mode already has an isolated local project from authenticatedPage.
     if (!isStaticProject(testInfo)) {
         const uuid = await createProject(page, '3DMol CLI resources');
         await gotoWorkarea(page, uuid);
