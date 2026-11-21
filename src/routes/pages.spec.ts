@@ -1090,7 +1090,7 @@ describe('Pages Routes', () => {
     });
 
     describe('start screen (no project asked for)', () => {
-        async function signToken(payload: Record<string, unknown>): Promise<string> {
+        async function signToken(payload: Record<string, any>): Promise<string> {
             const jwt = await import('@elysiajs/jwt');
             const tempApp = new Elysia().use(jwt.jwt({ name: 'jwt', secret: 'test-secret-for-testing-only' }));
             return tempApp.decorator.jwt.sign(payload);
@@ -1173,7 +1173,7 @@ describe('Pages Routes', () => {
         });
 
         it('does not show an e-mail for a guest', async () => {
-            const token = await signToken({ sub: 'guest-123', email: 'guest@guest.local', isGuest: true });
+            const token = await signToken({ sub: 1, email: 'guest@guest.local', roles: ['ROLE_USER'], isGuest: true });
             const { customApp, rendered } = appCapturingTemplate();
 
             const res = await customApp.handle(
@@ -1456,7 +1456,7 @@ describe('Pages Routes', () => {
         }
 
         // Shape of the token mod_exescorm signs: cmid is a JSON number.
-        function platformToken(payload: Record<string, unknown> = {}): Promise<string> {
+        function platformToken(payload: Record<string, any> = {}): Promise<string> {
             return new SignJWT({
                 action: '/new_ode',
                 cmid: 1234,
@@ -3022,7 +3022,7 @@ describe('Pages Routes', () => {
          * object handed to the template.
          */
         async function renderWorkareaUser(
-            payload: Record<string, unknown>,
+            payload: Record<string, any>,
             options: { user?: Record<string, unknown>; env?: Record<string, string> } = {},
         ): Promise<Record<string, any>> {
             mockUsers.set(1, {
