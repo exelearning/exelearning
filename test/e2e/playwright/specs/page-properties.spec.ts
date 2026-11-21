@@ -28,6 +28,8 @@ test.describe('Page Properties', () => {
 
         const properties = navNode.locator('.dropdown-menu.show .page-settings');
         await expect(properties).toBeInViewport({ ratio: 1 });
+        // Safari clips the fixed menu to an overflow-hidden sidebar that is also a stacking context (#2801).
+        await expect(page.locator('.asideleft')).toHaveCSS('overflow-x', 'visible');
         await properties.click();
         await expect(page.getByTestId('modal-properties')).toBeVisible();
     });
