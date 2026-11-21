@@ -314,6 +314,7 @@ describe('Scorm12Exporter', () => {
                                     order: 0,
                                     content:
                                         '<div class="rubric"><div class="exe-rubrics-DataGame js-hidden">x</div></div>',
+                                    properties: {},
                                 },
                             ],
                         },

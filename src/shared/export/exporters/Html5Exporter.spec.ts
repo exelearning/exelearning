@@ -602,7 +602,7 @@ describe('Html5Exporter', () => {
                         id: 'block-pdf',
                         name: 'Content',
                         order: 0,
-                        components: [{ id: 'comp-pdf', type: 'checklist', order: 0, content }],
+                        components: [{ id: 'comp-pdf', type: 'checklist', order: 0, content, properties: {} }],
                     },
                 ],
             },
