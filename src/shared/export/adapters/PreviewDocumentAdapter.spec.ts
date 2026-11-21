@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'bun:test';
 // The client policy's CSS screening is DOM-free string logic, so the backend
 // spec can exercise the real implementation across the JS/TS boundary.
+// @ts-expect-error -- importing vanilla JS module into TS spec
 import { prepareStyleForPreview } from '../../../../public/app/utils/previewContentPolicy.js';
-import type { ExportDocument, PreviewContentPolicy } from '../interfaces';
+import type { ExportBlockProperties, ExportDocument, PreviewContentPolicy } from '../interfaces';
 import { PREVIEW_METADATA_FIELD_CLASSIFICATION, PreviewDocumentAdapter } from './PreviewDocumentAdapter';
 import { YjsDocumentAdapter } from './YjsDocumentAdapter';
 
@@ -69,13 +70,15 @@ describe('PreviewDocumentAdapter', () => {
                     ...page,
                     blocks: page.blocks.map(block => ({
                         ...block,
-                        properties: { caption: '<img src="x" onerror="block()">' },
+                        properties: {
+                            caption: '<img src="x" onerror="block()">',
+                        } as unknown as ExportBlockProperties,
                     })),
                 })),
         };
         const adapter = new PreviewDocumentAdapter(withBlockProperties, policy);
 
-        const caption = adapter.getNavigation()[0].blocks[0].properties?.caption;
+        const caption = (adapter.getNavigation()[0].blocks[0].properties as Record<string, any>)?.caption;
 
         expect(caption).toStartWith('[component-property]');
     });
@@ -91,7 +94,9 @@ describe('PreviewDocumentAdapter', () => {
         expect(metadata.extraHeadContent).toStartWith('[custom-head]');
         expect(metadata.footer).toStartWith('[custom-footer]');
         expect(pages[0].blocks[0].components[0].content).toStartWith('[component-html]');
-        expect(pages[0].blocks[0].components[0].properties.nested[0]).toStartWith('[component-property]');
+        expect(
+            ((pages[0].blocks[0].components[0].properties as Record<string, any>).nested as string[])[0],
+        ).toStartWith('[component-property]');
         expect(originalPages[0].blocks[0].components[0].content).toContain('onerror');
         expect(source.getMetadata().extraHeadContent).toContain('<script>');
     });
@@ -188,7 +193,7 @@ describe('PreviewDocumentAdapter', () => {
                 }),
             } as ExportDocument;
             const adapter = new PreviewDocumentAdapter(withSurprise, policy);
-            const metadata = adapter.getMetadata() as Record<string, unknown>;
+            const metadata = adapter.getMetadata() as unknown as Record<string, unknown>;
             expect(metadata.brandNewField).toContain('[unclassified-metadata]');
             expect(metadata.brandNewField).not.toContain('<script>');
             const report = adapter.getReport();

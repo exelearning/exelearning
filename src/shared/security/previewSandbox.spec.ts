@@ -5,6 +5,7 @@
 import { describe, expect, it } from 'bun:test';
 // The browser client's iframe sandbox constant — imported directly from the
 // vanilla JS module so the drift test compares the real shipped values.
+// @ts-expect-error -- importing vanilla JS module into TS spec
 import { EMBEDDED_PREVIEW_SANDBOX } from '../../../public/app/workarea/interface/elements/preview/EmbeddedPreviewSnapshot.js';
 import {
     PREVIEW_SNAPSHOT_SANDBOX,
@@ -21,7 +22,7 @@ describe('previewSandbox', () => {
     });
 
     it('grants scripts, forms and popups (content must stay functional)', () => {
-        for (const token of ['allow-scripts', 'allow-forms', 'allow-popups']) {
+        for (const token of ['allow-scripts', 'allow-forms', 'allow-popups'] as const) {
             expect(PREVIEW_SNAPSHOT_SANDBOX_TOKENS).toContain(token);
         }
     });

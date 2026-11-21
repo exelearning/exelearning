@@ -22,7 +22,7 @@ const OTHER_USER_ID = 7;
 
 async function signTestToken(sub: number): Promise<string> {
     const secret = new TextEncoder().encode(TEST_JWT_SECRET);
-    return new SignJWT({ sub, email: `u${sub}@test.local`, roles: ['ROLE_USER'] })
+    return new SignJWT({ sub: String(sub), email: `u${sub}@test.local`, roles: ['ROLE_USER'] })
         .setProtectedHeader({ alg: 'HS256' })
         .setIssuedAt()
         .setExpirationTime('1h')
@@ -46,7 +46,7 @@ const DEFAULT_ENTRIES = {
 
 function uploadRequest(
     token: string | null,
-    entries = DEFAULT_ENTRIES,
+    entries: Record<string, string> = DEFAULT_ENTRIES,
     previewId?: string,
     headers: Record<string, string> = {},
 ) {
@@ -62,8 +62,10 @@ function uploadRequest(
     });
 }
 
+const createTestApp = () => new Elysia().use(createPreviewSnapshotApiRoutes()).use(createPreviewSnapshotServeRoutes());
+
 describe('preview-snapshot routes', () => {
-    let app: Elysia;
+    let app: ReturnType<typeof createTestApp>;
     let ownerToken: string;
     let otherToken: string;
     const savedJwtSecret = process.env.JWT_SECRET;
@@ -74,7 +76,7 @@ describe('preview-snapshot routes', () => {
         process.env.JWT_SECRET = TEST_JWT_SECRET;
         ownerToken = await signTestToken(OWNER_USER_ID);
         otherToken = await signTestToken(OTHER_USER_ID);
-        app = new Elysia().use(createPreviewSnapshotApiRoutes()).use(createPreviewSnapshotServeRoutes());
+        app = createTestApp();
     });
 
     afterEach(() => {
@@ -87,7 +89,7 @@ describe('preview-snapshot routes', () => {
 
     async function createSnapshot(
         token = ownerToken,
-        entries = DEFAULT_ENTRIES,
+        entries: Record<string, string> = DEFAULT_ENTRIES,
     ): Promise<{ previewId: string; previewUrl: string }> {
         const res = await app.handle(uploadRequest(token, entries));
         expect(res.status).toBe(200);
