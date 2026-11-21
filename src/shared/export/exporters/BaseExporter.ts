@@ -693,7 +693,7 @@ export abstract class BaseExporter {
      */
     isAncestorOf(potentialAncestor: ExportPage, childId: string, allPages: ExportPage[]): boolean {
         const child = allPages.find(p => p.id === childId);
-        if (!child || !child.parentId) return false;
+        if (!child?.parentId) return false;
         if (child.parentId === potentialAncestor.id) return true;
         return this.isAncestorOf(potentialAncestor, child.parentId, allPages);
     }
@@ -756,22 +756,18 @@ export abstract class BaseExporter {
     }
 
     /**
-     * Decode asset binary data (Uint8Array or Blob) to text. Subtitle files
+     * Decode asset binary data to text. Subtitle files
      * are usually UTF-8, but `.srt` files in the wild are very frequently
      * Windows-1252/Latin-1 (accented characters). A non-fatal UTF-8 decode
      * would silently replace every high byte with U+FFFD, so we decode UTF-8
      * strictly first and fall back to Windows-1252 when that fails -- keeping
      * accented captions readable instead of garbled.
      */
-    protected async readAssetDataAsText(data: Uint8Array | Blob): Promise<string> {
-        const bytes =
-            typeof Blob !== 'undefined' && data instanceof Blob
-                ? new Uint8Array(await data.arrayBuffer())
-                : (data as Uint8Array);
+    protected readAssetDataAsText(data: Uint8Array): string {
         try {
-            return new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+            return new TextDecoder('utf-8', { fatal: true }).decode(data);
         } catch {
-            return new TextDecoder('windows-1252').decode(bytes);
+            return new TextDecoder('windows-1252').decode(data);
         }
     }
 
@@ -789,13 +785,13 @@ export abstract class BaseExporter {
     protected async resolveAssetExportData(asset: {
         filename?: string;
         mime?: string;
-        data: Uint8Array | Blob;
-    }): Promise<Uint8Array | Blob | string> {
+        data: Uint8Array;
+    }): Promise<Uint8Array | string> {
         if (!this.isSrtSubtitleAsset(asset.filename, asset.mime)) {
             return asset.data;
         }
         try {
-            const text = await this.readAssetDataAsText(asset.data);
+            const text = this.readAssetDataAsText(asset.data);
             const { vtt, error } = convertSrtToVtt(text);
             if (error) {
                 // The document is still valid (empty) WebVTT, but surface why no

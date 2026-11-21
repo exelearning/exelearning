@@ -6,11 +6,26 @@
  */
 import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
 import { Elysia } from 'elysia';
-import { resourcesRoutes, configure, resetDependencies, isScormTestFile } from './resources';
+import {
+    resourcesRoutes,
+    configure,
+    resetDependencies,
+    isScormTestFile,
+    type ResourcesRouteDependencies,
+} from './resources';
 import * as fs from 'fs';
 
+/**
+ * The route's fs dependency, built from fakes that only implement the call shapes the route
+ * uses. Node's fs functions are overloaded, so a single-signature fake never matches them.
+ */
+type RouteFs = ResourcesRouteDependencies['fs'];
+function fakeFs(fakes: { [K in keyof RouteFs]: (...args: never[]) => unknown }): RouteFs {
+    return fakes as unknown as RouteFs;
+}
+
 describe('Resources Routes', () => {
-    let app: Elysia;
+    let app: Pick<Elysia, 'handle'>;
 
     beforeEach(() => {
         resetDependencies();
@@ -85,7 +100,7 @@ describe('Resources Routes', () => {
 
         it('should return site themes from FILES_DIR', async () => {
             configure({
-                fs: {
+                fs: fakeFs({
                     existsSync: (filePath: string) => {
                         // Base theme doesn't exist
                         if (filePath === 'public/files/perm/themes/base/site-custom-theme') return false;
@@ -100,11 +115,11 @@ describe('Resources Routes', () => {
                                 { name: 'config.xml', isFile: () => true, isDirectory: () => false },
                             ] as unknown as fs.Dirent[];
                         }
-                        return fs.readdirSync(dirPath, options);
+                        return fs.readdirSync(dirPath, options as { withFileTypes: true });
                     },
                     statSync: fs.statSync,
                     readFileSync: fs.readFileSync,
-                },
+                }),
                 getEnv: (key: string) => {
                     if (key === 'ELYSIA_FILES_DIR' || key === 'FILES_DIR') return '/tmp/test-files';
                     return process.env[key];
@@ -209,7 +224,7 @@ describe('Resources Routes', () => {
 
         it('should only return files that exist', async () => {
             configure({
-                fs: {
+                fs: fakeFs({
                     existsSync: (filePath: string) => {
                         // jQuery exists, but bootstrap.min.css is simulated as missing
                         if (filePath.includes('bootstrap.min.css')) return false;
@@ -218,7 +233,7 @@ describe('Resources Routes', () => {
                     readdirSync: fs.readdirSync,
                     statSync: fs.statSync,
                     readFileSync: fs.readFileSync,
-                },
+                }),
             });
             app = new Elysia().use(resourcesRoutes);
 
@@ -262,7 +277,7 @@ describe('Resources Routes', () => {
     describe('GET /api/resources/libs/scorm', () => {
         it('should return empty array if scorm directory does not exist', async () => {
             configure({
-                fs: {
+                fs: fakeFs({
                     existsSync: (filePath: string) => {
                         if (filePath.includes('common/scorm')) return false;
                         return fs.existsSync(filePath);
@@ -270,7 +285,7 @@ describe('Resources Routes', () => {
                     readdirSync: fs.readdirSync,
                     statSync: fs.statSync,
                     readFileSync: fs.readFileSync,
-                },
+                }),
             });
             app = new Elysia().use(resourcesRoutes);
 
@@ -283,7 +298,7 @@ describe('Resources Routes', () => {
 
         it('should return SCORM files if directory exists', async () => {
             configure({
-                fs: {
+                fs: fakeFs({
                     existsSync: (filePath: string) => {
                         if (filePath === 'public/app/common/scorm') return true;
                         return fs.existsSync(filePath);
@@ -294,11 +309,11 @@ describe('Resources Routes', () => {
                                 { name: 'SCORM_API.js', isFile: () => true, isDirectory: () => false },
                             ] as unknown as fs.Dirent[];
                         }
-                        return fs.readdirSync(dirPath, options);
+                        return fs.readdirSync(dirPath, options as { withFileTypes: true });
                     },
                     statSync: fs.statSync,
                     readFileSync: fs.readFileSync,
-                },
+                }),
             });
             app = new Elysia().use(resourcesRoutes);
 
@@ -312,7 +327,7 @@ describe('Resources Routes', () => {
 
         it('should not list unit tests or their shared test helpers', async () => {
             configure({
-                fs: {
+                fs: fakeFs({
                     existsSync: (filePath: string) => {
                         if (filePath === 'public/app/common/scorm') return true;
                         return fs.existsSync(filePath);
@@ -330,11 +345,11 @@ describe('Resources Routes', () => {
                                 isDirectory: () => false,
                             })) as unknown as fs.Dirent[];
                         }
-                        return fs.readdirSync(dirPath, options);
+                        return fs.readdirSync(dirPath, options as { withFileTypes: true });
                     },
                     statSync: fs.statSync,
                     readFileSync: fs.readFileSync,
-                },
+                }),
             });
             app = new Elysia().use(resourcesRoutes);
 
@@ -364,7 +379,7 @@ describe('Resources Routes', () => {
     describe('GET /api/resources/libs/epub', () => {
         it('should return empty array if epub directory does not exist', async () => {
             configure({
-                fs: {
+                fs: fakeFs({
                     existsSync: (filePath: string) => {
                         if (filePath.includes('common/epub')) return false;
                         return fs.existsSync(filePath);
@@ -372,7 +387,7 @@ describe('Resources Routes', () => {
                     readdirSync: fs.readdirSync,
                     statSync: fs.statSync,
                     readFileSync: fs.readFileSync,
-                },
+                }),
             });
             app = new Elysia().use(resourcesRoutes);
 
@@ -393,7 +408,7 @@ describe('Resources Routes', () => {
 
         it('should check common path first, then libs path', async () => {
             configure({
-                fs: {
+                fs: fakeFs({
                     existsSync: (filePath: string) => {
                         // Not in common, but exists in libs
                         if (filePath === 'public/app/common/jquery') return false;
@@ -406,11 +421,11 @@ describe('Resources Routes', () => {
                                 { name: 'jquery.min.js', isFile: () => true, isDirectory: () => false },
                             ] as unknown as fs.Dirent[];
                         }
-                        return fs.readdirSync(dirPath, options);
+                        return fs.readdirSync(dirPath, options as { withFileTypes: true });
                     },
                     statSync: fs.statSync,
                     readFileSync: fs.readFileSync,
-                },
+                }),
             });
             app = new Elysia().use(resourcesRoutes);
 
@@ -423,7 +438,7 @@ describe('Resources Routes', () => {
 
         it('should prefer common path over libs path', async () => {
             configure({
-                fs: {
+                fs: fakeFs({
                     existsSync: (filePath: string) => {
                         // Exists in common
                         if (filePath === 'public/app/common/exe_effects') return true;
@@ -435,11 +450,11 @@ describe('Resources Routes', () => {
                                 { name: 'exe_effects.js', isFile: () => true, isDirectory: () => false },
                             ] as unknown as fs.Dirent[];
                         }
-                        return fs.readdirSync(dirPath, options);
+                        return fs.readdirSync(dirPath, options as { withFileTypes: true });
                     },
                     statSync: fs.statSync,
                     readFileSync: fs.readFileSync,
-                },
+                }),
             });
             app = new Elysia().use(resourcesRoutes);
 
@@ -489,7 +504,7 @@ describe('Resources Routes', () => {
     describe('scanDirectory', () => {
         it('should skip hidden files and directories', async () => {
             configure({
-                fs: {
+                fs: fakeFs({
                     existsSync: (filePath: string) => {
                         if (filePath === 'public/files/perm/themes/base/test-hidden') return true;
                         return fs.existsSync(filePath);
@@ -502,11 +517,11 @@ describe('Resources Routes', () => {
                                 { name: 'visible.css', isFile: () => true, isDirectory: () => false },
                             ] as unknown as fs.Dirent[];
                         }
-                        return fs.readdirSync(dirPath, options);
+                        return fs.readdirSync(dirPath, options as { withFileTypes: true });
                     },
                     statSync: fs.statSync,
                     readFileSync: fs.readFileSync,
-                },
+                }),
             });
             app = new Elysia().use(resourcesRoutes);
 
@@ -520,7 +535,7 @@ describe('Resources Routes', () => {
 
         it('should recursively scan subdirectories', async () => {
             configure({
-                fs: {
+                fs: fakeFs({
                     existsSync: (filePath: string) => {
                         if (filePath === 'public/files/perm/themes/base/test-recursive') return true;
                         // Also need to say the img subdirectory exists for the recursive call
@@ -541,11 +556,11 @@ describe('Resources Routes', () => {
                                 ] as unknown as fs.Dirent[];
                             }
                         }
-                        return fs.readdirSync(dirPath, options);
+                        return fs.readdirSync(dirPath, options as { withFileTypes: true });
                     },
                     statSync: fs.statSync,
                     readFileSync: fs.readFileSync,
-                },
+                }),
             });
             app = new Elysia().use(resourcesRoutes);
 
@@ -560,7 +575,7 @@ describe('Resources Routes', () => {
 
         it('should handle readdirSync errors gracefully', async () => {
             configure({
-                fs: {
+                fs: fakeFs({
                     existsSync: (filePath: string) => {
                         if (filePath === 'public/files/perm/themes/base/error-theme') return true;
                         return fs.existsSync(filePath);
@@ -569,11 +584,11 @@ describe('Resources Routes', () => {
                         if (typeof dirPath === 'string' && dirPath.includes('error-theme')) {
                             throw new Error('Permission denied');
                         }
-                        return fs.readdirSync(dirPath, options);
+                        return fs.readdirSync(dirPath, options as { withFileTypes: true });
                     },
                     statSync: fs.statSync,
                     readFileSync: fs.readFileSync,
-                },
+                }),
             });
             app = new Elysia().use(resourcesRoutes);
 
@@ -588,7 +603,7 @@ describe('Resources Routes', () => {
     describe('getAppVersion fallback', () => {
         it('should return v0.0.0 when package.json cannot be read', async () => {
             configure({
-                fs: {
+                fs: fakeFs({
                     existsSync: fs.existsSync,
                     readdirSync: fs.readdirSync,
                     statSync: fs.statSync,
@@ -598,7 +613,7 @@ describe('Resources Routes', () => {
                         }
                         return fs.readFileSync(filePath, 'utf-8');
                     },
-                },
+                }),
                 getEnv: () => undefined,
             });
             app = new Elysia().use(resourcesRoutes);
@@ -615,7 +630,7 @@ describe('Resources Routes', () => {
     describe('iDevice type normalization variations', () => {
         it('should try kebab-case variation for iDevice', async () => {
             configure({
-                fs: {
+                fs: fakeFs({
                     existsSync: (filePath: string) => {
                         // Only kebab-case version exists
                         if (filePath.includes('idevices/users')) return false;
@@ -629,11 +644,11 @@ describe('Resources Routes', () => {
                                 { name: 'script.js', isFile: () => true, isDirectory: () => false },
                             ] as unknown as fs.Dirent[];
                         }
-                        return fs.readdirSync(dirPath, options);
+                        return fs.readdirSync(dirPath, options as { withFileTypes: true });
                     },
                     statSync: fs.statSync,
                     readFileSync: fs.readFileSync,
-                },
+                }),
             });
             app = new Elysia().use(resourcesRoutes);
 
@@ -648,7 +663,7 @@ describe('Resources Routes', () => {
     describe('GET /api/resources/content-css', () => {
         it('should return CSS files from workarea directory', async () => {
             configure({
-                fs: {
+                fs: fakeFs({
                     existsSync: (filePath: string) => {
                         if (filePath === 'public/style/workarea') return true;
                         return fs.existsSync(filePath);
@@ -661,11 +676,11 @@ describe('Resources Routes', () => {
                                 { name: 'style.js', isFile: () => true, isDirectory: () => false }, // Should be filtered
                             ] as unknown as fs.Dirent[];
                         }
-                        return fs.readdirSync(dirPath, options);
+                        return fs.readdirSync(dirPath, options as { withFileTypes: true });
                     },
                     statSync: fs.statSync,
                     readFileSync: fs.readFileSync,
-                },
+                }),
             });
             app = new Elysia().use(resourcesRoutes);
 
@@ -680,7 +695,7 @@ describe('Resources Routes', () => {
 
         it('should return empty array if workarea directory does not exist', async () => {
             configure({
-                fs: {
+                fs: fakeFs({
                     existsSync: (filePath: string) => {
                         if (filePath === 'public/style/workarea') return false;
                         return fs.existsSync(filePath);
@@ -688,7 +703,7 @@ describe('Resources Routes', () => {
                     readdirSync: fs.readdirSync,
                     statSync: fs.statSync,
                     readFileSync: fs.readFileSync,
-                },
+                }),
             });
             app = new Elysia().use(resourcesRoutes);
 
@@ -704,7 +719,7 @@ describe('Resources Routes', () => {
         describe('GET /api/resources/bundle/manifest', () => {
             it('should return 404 if manifest does not exist', async () => {
                 configure({
-                    fs: {
+                    fs: fakeFs({
                         existsSync: (filePath: string) => {
                             if (filePath.includes('bundles') && filePath.includes('manifest.json')) return false;
                             return fs.existsSync(filePath);
@@ -712,7 +727,7 @@ describe('Resources Routes', () => {
                         readdirSync: fs.readdirSync,
                         statSync: fs.statSync,
                         readFileSync: fs.readFileSync,
-                    },
+                    }),
                 });
                 app = new Elysia().use(resourcesRoutes);
 
@@ -731,7 +746,7 @@ describe('Resources Routes', () => {
                 };
 
                 configure({
-                    fs: {
+                    fs: fakeFs({
                         existsSync: (filePath: string) => {
                             if (filePath.includes('bundles') && filePath.includes('manifest.json')) return true;
                             return fs.existsSync(filePath);
@@ -744,7 +759,7 @@ describe('Resources Routes', () => {
                             }
                             return fs.readFileSync(filePath, 'utf-8');
                         },
-                    },
+                    }),
                 });
                 app = new Elysia().use(resourcesRoutes);
 
@@ -760,7 +775,7 @@ describe('Resources Routes', () => {
 
             it('should return 500 if manifest is invalid JSON', async () => {
                 configure({
-                    fs: {
+                    fs: fakeFs({
                         existsSync: (filePath: string) => {
                             if (filePath.includes('bundles') && filePath.includes('manifest.json')) return true;
                             return fs.existsSync(filePath);
@@ -773,7 +788,7 @@ describe('Resources Routes', () => {
                             }
                             return fs.readFileSync(filePath, 'utf-8');
                         },
-                    },
+                    }),
                 });
                 app = new Elysia().use(resourcesRoutes);
 
@@ -788,7 +803,7 @@ describe('Resources Routes', () => {
         describe('GET /api/resources/bundle/theme/:themeName', () => {
             it('should return 404 if theme bundle does not exist', async () => {
                 configure({
-                    fs: {
+                    fs: fakeFs({
                         existsSync: (filePath: string) => {
                             if (filePath.includes('bundles') && filePath.includes('.zip')) return false;
                             return fs.existsSync(filePath);
@@ -796,7 +811,7 @@ describe('Resources Routes', () => {
                         readdirSync: fs.readdirSync,
                         statSync: fs.statSync,
                         readFileSync: fs.readFileSync,
-                    },
+                    }),
                 });
                 app = new Elysia().use(resourcesRoutes);
 
@@ -812,7 +827,7 @@ describe('Resources Routes', () => {
 
             it('should return 404 if site theme is empty', async () => {
                 configure({
-                    fs: {
+                    fs: fakeFs({
                         existsSync: (filePath: string) => {
                             if (filePath.includes('bundles')) return false;
                             if (filePath === '/tmp/test-files/themes/site/empty-theme') return true;
@@ -822,11 +837,11 @@ describe('Resources Routes', () => {
                             if (typeof dirPath === 'string' && dirPath.includes('site/empty-theme')) {
                                 return [] as unknown as fs.Dirent[];
                             }
-                            return fs.readdirSync(dirPath, options);
+                            return fs.readdirSync(dirPath, options as { withFileTypes: true });
                         },
                         statSync: fs.statSync,
                         readFileSync: fs.readFileSync,
-                    },
+                    }),
                     getEnv: (key: string) => {
                         if (key === 'ELYSIA_FILES_DIR' || key === 'FILES_DIR') return '/tmp/test-files';
                         return process.env[key];
@@ -843,7 +858,7 @@ describe('Resources Routes', () => {
 
             it('should generate ZIP on-the-fly for site themes', async () => {
                 configure({
-                    fs: {
+                    fs: fakeFs({
                         existsSync: (filePath: string) => {
                             if (filePath.includes('bundles')) return false;
                             if (filePath === '/tmp/test-files/themes/site/site-theme-test') return true;
@@ -855,7 +870,7 @@ describe('Resources Routes', () => {
                                     { name: 'style.css', isFile: () => true, isDirectory: () => false },
                                 ] as unknown as fs.Dirent[];
                             }
-                            return fs.readdirSync(dirPath, options);
+                            return fs.readdirSync(dirPath, options as { withFileTypes: true });
                         },
                         statSync: fs.statSync,
                         readFileSync: (filePath: string) => {
@@ -864,7 +879,7 @@ describe('Resources Routes', () => {
                             }
                             return fs.readFileSync(filePath, 'utf-8');
                         },
-                    },
+                    }),
                     getEnv: (key: string) => {
                         if (key === 'ELYSIA_FILES_DIR' || key === 'FILES_DIR') return '/tmp/test-files';
                         return process.env[key];
@@ -883,7 +898,7 @@ describe('Resources Routes', () => {
 
             it('should skip files that cannot be read for site themes', async () => {
                 configure({
-                    fs: {
+                    fs: fakeFs({
                         existsSync: (filePath: string) => {
                             if (filePath.includes('bundles')) return false;
                             if (filePath === '/tmp/test-files/themes/site/theme-with-error') return true;
@@ -896,7 +911,7 @@ describe('Resources Routes', () => {
                                     { name: 'broken.css', isFile: () => true, isDirectory: () => false },
                                 ] as unknown as fs.Dirent[];
                             }
-                            return fs.readdirSync(dirPath, options);
+                            return fs.readdirSync(dirPath, options as { withFileTypes: true });
                         },
                         statSync: fs.statSync,
                         readFileSync: (filePath: string) => {
@@ -908,7 +923,7 @@ describe('Resources Routes', () => {
                             }
                             return fs.readFileSync(filePath, 'utf-8');
                         },
-                    },
+                    }),
                     getEnv: (key: string) => {
                         if (key === 'ELYSIA_FILES_DIR' || key === 'FILES_DIR') return '/tmp/test-files';
                         return process.env[key];
@@ -927,7 +942,7 @@ describe('Resources Routes', () => {
 
             it('should generate ZIP on-the-fly for admin themes', async () => {
                 configure({
-                    fs: {
+                    fs: fakeFs({
                         existsSync: (filePath: string) => {
                             // No prebuilt bundle
                             if (filePath.includes('bundles')) return false;
@@ -942,7 +957,7 @@ describe('Resources Routes', () => {
                                     { name: 'config.xml', isFile: () => true, isDirectory: () => false },
                                 ] as unknown as fs.Dirent[];
                             }
-                            return fs.readdirSync(dirPath, options);
+                            return fs.readdirSync(dirPath, options as { withFileTypes: true });
                         },
                         statSync: fs.statSync,
                         readFileSync: (filePath: string) => {
@@ -954,7 +969,7 @@ describe('Resources Routes', () => {
                             }
                             return fs.readFileSync(filePath, 'utf-8');
                         },
-                    },
+                    }),
                     getEnv: (key: string) => {
                         if (key === 'ELYSIA_FILES_DIR' || key === 'FILES_DIR') return '/tmp/test-files';
                         return process.env[key];
@@ -971,7 +986,7 @@ describe('Resources Routes', () => {
 
             it('should return 404 if admin/site theme is empty', async () => {
                 configure({
-                    fs: {
+                    fs: fakeFs({
                         existsSync: (filePath: string) => {
                             if (filePath.includes('bundles')) return false;
                             if (filePath === '/tmp/test-files/themes/site/empty-site-theme') return true;
@@ -981,11 +996,11 @@ describe('Resources Routes', () => {
                             if (typeof dirPath === 'string' && dirPath.includes('empty-site-theme')) {
                                 return [] as unknown as fs.Dirent[];
                             }
-                            return fs.readdirSync(dirPath, options);
+                            return fs.readdirSync(dirPath, options as { withFileTypes: true });
                         },
                         statSync: fs.statSync,
                         readFileSync: fs.readFileSync,
-                    },
+                    }),
                     getEnv: (key: string) => {
                         if (key === 'ELYSIA_FILES_DIR' || key === 'FILES_DIR') return '/tmp/test-files';
                         return process.env[key];
@@ -1006,7 +1021,7 @@ describe('Resources Routes', () => {
         describe('GET /api/resources/bundle/idevices', () => {
             it('should return 404 if idevices bundle does not exist', async () => {
                 configure({
-                    fs: {
+                    fs: fakeFs({
                         existsSync: (filePath: string) => {
                             if (filePath.includes('idevices.zip')) return false;
                             return fs.existsSync(filePath);
@@ -1014,7 +1029,7 @@ describe('Resources Routes', () => {
                         readdirSync: fs.readdirSync,
                         statSync: fs.statSync,
                         readFileSync: fs.readFileSync,
-                    },
+                    }),
                 });
                 app = new Elysia().use(resourcesRoutes);
 
@@ -1029,7 +1044,7 @@ describe('Resources Routes', () => {
         describe('GET /api/resources/bundle/libs', () => {
             it('should return 404 if libs bundle does not exist', async () => {
                 configure({
-                    fs: {
+                    fs: fakeFs({
                         existsSync: (filePath: string) => {
                             if (filePath.includes('libs.zip')) return false;
                             return fs.existsSync(filePath);
@@ -1037,7 +1052,7 @@ describe('Resources Routes', () => {
                         readdirSync: fs.readdirSync,
                         statSync: fs.statSync,
                         readFileSync: fs.readFileSync,
-                    },
+                    }),
                 });
                 app = new Elysia().use(resourcesRoutes);
 
@@ -1052,7 +1067,7 @@ describe('Resources Routes', () => {
         describe('GET /api/resources/bundle/common', () => {
             it('should return 404 if common bundle does not exist', async () => {
                 configure({
-                    fs: {
+                    fs: fakeFs({
                         existsSync: (filePath: string) => {
                             if (filePath.includes('common.zip')) return false;
                             return fs.existsSync(filePath);
@@ -1060,7 +1075,7 @@ describe('Resources Routes', () => {
                         readdirSync: fs.readdirSync,
                         statSync: fs.statSync,
                         readFileSync: fs.readFileSync,
-                    },
+                    }),
                 });
                 app = new Elysia().use(resourcesRoutes);
 
@@ -1075,7 +1090,7 @@ describe('Resources Routes', () => {
         describe('GET /api/resources/bundle/content-css', () => {
             it('should return 404 if content-css bundle does not exist', async () => {
                 configure({
-                    fs: {
+                    fs: fakeFs({
                         existsSync: (filePath: string) => {
                             if (filePath.includes('content-css.zip')) return false;
                             return fs.existsSync(filePath);
@@ -1083,7 +1098,7 @@ describe('Resources Routes', () => {
                         readdirSync: fs.readdirSync,
                         statSync: fs.statSync,
                         readFileSync: fs.readFileSync,
-                    },
+                    }),
                 });
                 app = new Elysia().use(resourcesRoutes);
 
@@ -1122,14 +1137,14 @@ describe('Resources Routes', () => {
                 }
             };
             configure({
-                fs: {
+                fs: fakeFs({
                     existsSync: (p: string) => {
                         record(p);
                         return fs.existsSync(p);
                     },
                     readdirSync: ((p: string, options?: { withFileTypes: boolean }) => {
                         record(p);
-                        return fs.readdirSync(p, options);
+                        return fs.readdirSync(p, options as { withFileTypes: true });
                     }) as typeof fs.readdirSync,
                     statSync: ((p: string) => {
                         record(p);
@@ -1137,9 +1152,9 @@ describe('Resources Routes', () => {
                     }) as typeof fs.statSync,
                     readFileSync: ((p: string, encoding?: BufferEncoding) => {
                         record(p);
-                        return fs.readFileSync(p, encoding);
+                        return fs.readFileSync(p, encoding as Parameters<typeof fs.readFileSync>[1]);
                     }) as typeof fs.readFileSync,
-                },
+                }),
             });
             app = new Elysia().use(resourcesRoutes);
             return { touched };

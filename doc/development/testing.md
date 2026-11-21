@@ -81,6 +81,15 @@ ignore = ["nestjs_legacy/**", "symfony_legacy/**", "node_modules/**"]
 env = { DB_PATH = ":memory:", ELYSIA_FILES_DIR = "/tmp/exelearning-test" }
 ```
 
+### Type-Checking Tests
+
+`tsconfig.json` excludes test files. `make typecheck`, which also runs as part of
+`make lint` and `make fix`, type-checks them in a second pass with `tsconfig.test.json`
+(strict mode, `bun:test` globals). That config covers only the directories listed in its
+`include`, and the list grows as each directory's specs are made to compile. A spec in a
+covered directory must type-check: type a partial mock narrowly (for example
+`as unknown as Deps['queries']`) rather than with `any`.
+
 ### Dependency Injection Pattern
 
 **NEVER use `mock.module()`** - it causes test pollution in Bun.

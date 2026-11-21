@@ -95,11 +95,11 @@ retired identifier.
 
 ## Coding Standards
 
-- Run linters and fix style before pushing:
+- Run linters and fix style before pushing (`make lint` includes Biome and `tsc --noEmit`):
 
 ```bash
 make lint
-make fix   # automatic fixes when possible
+make fix   # automatic fixes when possible, then typecheck
 ```
 
 - Follow existing code patterns and structure. Keep changes focused.
