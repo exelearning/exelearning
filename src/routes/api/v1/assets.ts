@@ -6,7 +6,7 @@
  *
  * Changes are automatically broadcast to WebSocket clients.
  */
-import { Elysia, t } from 'elysia';
+import { Elysia, t, type Static } from 'elysia';
 import { v4 as uuidv4 } from 'uuid';
 import * as fs from 'fs-extra';
 import * as path from 'path';
@@ -14,7 +14,6 @@ import * as path from 'path';
 import { db } from '../../../db/client';
 import { buildContentDisposition } from '../../../shared/http/headers';
 import {
-    findProjectByUuid,
     createAsset,
     findAssetById,
     findAllAssetsForProject,
@@ -34,58 +33,32 @@ import {
 import { buildAssetStoragePath } from '../../../utils/asset-paths';
 import { isSafePathSegment, sanitizeFileExtension } from '../../../utils/safe-path';
 import { withDocument, setAssetMetadata, deleteAssetMetadata, type AssetMetadata } from '../../../yjs';
-import {
-    authenticateRequest,
-    errorResponse,
-    successResponse,
-    isAdmin,
-    type AuthenticatedUser,
-    type ApiErrorResponse,
-} from './types';
+import { castRequestBody } from '../../types/request-payloads';
+import { authenticateRequest, errorResponse, successResponse, checkProjectAccess } from './types';
 
 // ============================================================================
 // HELPERS
 // ============================================================================
 
-/**
- * Verify user has access to the project (owner or admin)
- */
-async function checkProjectAccess(
-    uuid: string,
-    auth: AuthenticatedUser,
-): Promise<{ project: Awaited<ReturnType<typeof findProjectByUuid>>; error?: ApiErrorResponse }> {
-    const project = await findProjectByUuid(db, uuid);
-
-    if (!project) {
-        return { project: null, error: errorResponse('NOT_FOUND', `Project not found: ${uuid}`) };
-    }
-
-    if (project.owner_id !== auth.userId && !isAdmin(auth)) {
-        return { project: null, error: errorResponse('FORBIDDEN', 'You do not have access to this project') };
-    }
-
-    return { project };
-}
-
-/**
- * File with optional name property (for Blob/File uploads)
- */
-interface FileWithName extends Blob {
-    name?: string;
-}
+/** Multipart body for POST /:uuid/assets. */
+const UploadAssetBody = t.Object({
+    file: t.Optional(t.File()),
+    clientId: t.Optional(t.String()),
+    folderPath: t.Optional(t.String()),
+});
 
 /**
  * Serialize asset for API response
  */
-interface SerializedAsset {
+export interface SerializedAsset {
     id: number;
     clientId: string | null;
     filename: string;
     mimeType: string | null;
     size: number;
     folderPath: string;
-    createdAt: string;
-    updatedAt: string;
+    createdAt: number | null;
+    updatedAt: number | null;
 }
 
 function serializeAsset(asset: Asset): SerializedAsset {
@@ -137,7 +110,7 @@ export const assetsRoutes = new Elysia({ prefix: '/projects' })
         '/:uuid/assets',
         async ({ headers, params, set }) => {
             const authResult = await authenticateRequest(headers);
-            if (!authResult.success) {
+            if (authResult.success === false) {
                 set.status = authResult.status;
                 return authResult.response;
             }
@@ -168,7 +141,7 @@ export const assetsRoutes = new Elysia({ prefix: '/projects' })
         '/:uuid/assets',
         async ({ headers, params, body, set }) => {
             const authResult = await authenticateRequest(headers);
-            if (!authResult.success) {
+            if (authResult.success === false) {
                 set.status = authResult.status;
                 return authResult.response;
             }
@@ -181,7 +154,7 @@ export const assetsRoutes = new Elysia({ prefix: '/projects' })
             }
 
             // Extract file from multipart body
-            const data = body as { file?: Blob | Buffer; clientId?: string; folderPath?: string };
+            const data = castRequestBody<Static<typeof UploadAssetBody>>(body);
 
             if (!data.file) {
                 set.status = 400;
@@ -197,23 +170,9 @@ export const assetsRoutes = new Elysia({ prefix: '/projects' })
             }
             const folderPath = sanitizeFolderPath(data.folderPath);
 
-            // Get file data
-            let fileBuffer: Buffer;
-            let filename: string;
-            let mimetype: string;
-
-            if (file instanceof Blob) {
-                fileBuffer = Buffer.from(await file.arrayBuffer());
-                filename = (file as FileWithName).name || 'uploaded_file';
-                mimetype = file.type || 'application/octet-stream';
-            } else if (Buffer.isBuffer(file)) {
-                fileBuffer = file;
-                filename = 'uploaded_file';
-                mimetype = 'application/octet-stream';
-            } else {
-                set.status = 400;
-                return errorResponse('BAD_REQUEST', 'Invalid file format');
-            }
+            const fileBuffer = Buffer.from(await file.arrayBuffer());
+            const filename = file.name || 'uploaded_file';
+            const mimetype = file.type || 'application/octet-stream';
 
             // Sharded storage: assets/<shard>/<projectUuid>/<clientId>.<ext>
             // The database stores the FILES_DIR-relative path.
@@ -290,6 +249,8 @@ export const assetsRoutes = new Elysia({ prefix: '/projects' })
                 description: 'Upload a new asset file to the project. Changes are broadcast to WebSocket clients.',
                 tags: ['Assets'],
             },
+            // `file` stays optional so a missing file keeps its documented 400 BAD_REQUEST.
+            body: UploadAssetBody,
         },
     )
 
@@ -300,7 +261,7 @@ export const assetsRoutes = new Elysia({ prefix: '/projects' })
         '/:uuid/assets/:assetId',
         async ({ headers, params, set }) => {
             const authResult = await authenticateRequest(headers);
-            if (!authResult.success) {
+            if (authResult.success === false) {
                 set.status = authResult.status;
                 return authResult.response;
             }
@@ -354,7 +315,7 @@ export const assetsRoutes = new Elysia({ prefix: '/projects' })
         '/:uuid/assets/:assetId/metadata',
         async ({ headers, params, set }) => {
             const authResult = await authenticateRequest(headers);
-            if (!authResult.success) {
+            if (authResult.success === false) {
                 set.status = authResult.status;
                 return authResult.response;
             }
@@ -396,7 +357,7 @@ export const assetsRoutes = new Elysia({ prefix: '/projects' })
         '/:uuid/assets/:assetId',
         async ({ headers, params, set }) => {
             const authResult = await authenticateRequest(headers);
-            if (!authResult.success) {
+            if (authResult.success === false) {
                 set.status = authResult.status;
                 return authResult.response;
             }
@@ -455,7 +416,7 @@ export const assetsRoutes = new Elysia({ prefix: '/projects' })
         '/:uuid/assets/bulk-delete',
         async ({ headers, params, body, set }) => {
             const authResult = await authenticateRequest(headers);
-            if (!authResult.success) {
+            if (authResult.success === false) {
                 set.status = authResult.status;
                 return authResult.response;
             }
@@ -467,7 +428,7 @@ export const assetsRoutes = new Elysia({ prefix: '/projects' })
                 return error;
             }
 
-            const { clientIds } = body as { clientIds: string[] };
+            const { clientIds } = castRequestBody<{ clientIds: string[] }>(body);
             if (!clientIds || clientIds.length === 0) {
                 return successResponse({ deleted: 0 });
             }

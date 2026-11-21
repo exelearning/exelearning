@@ -13,6 +13,14 @@ import {
 } from './OdeXmlGenerator';
 import type { ExportMetadata, ExportPage } from '../interfaces';
 
+/**
+ * Metadata with only the fields a test sets: the generator fills the rest with its defaults,
+ * which is what many of these tests check.
+ */
+function partialMeta(meta: Partial<ExportMetadata>): ExportMetadata {
+    return meta as ExportMetadata;
+}
+
 describe('OdeXmlGenerator', () => {
     describe('generateOdeXml', () => {
         it('should generate valid ODE XML with DOCTYPE declaration', () => {
@@ -33,10 +41,10 @@ describe('OdeXmlGenerator', () => {
         });
 
         it('should include userPreferences section with theme', () => {
-            const meta: ExportMetadata = {
+            const meta = partialMeta({
                 title: 'Test',
                 theme: 'blue',
-            };
+            });
             const pages: ExportPage[] = [];
 
             const xml = generateOdeXml(meta, pages);
@@ -48,9 +56,9 @@ describe('OdeXmlGenerator', () => {
         });
 
         it('should include odeResources section with IDs and version', () => {
-            const meta: ExportMetadata = {
+            const meta = partialMeta({
                 title: 'Test',
-            };
+            });
             const pages: ExportPage[] = [];
 
             const xml = generateOdeXml(meta, pages);
@@ -63,10 +71,10 @@ describe('OdeXmlGenerator', () => {
         });
 
         it('should write exe_version from meta.exelearningVersion', () => {
-            const meta: ExportMetadata = {
+            const meta = partialMeta({
                 title: 'Test',
                 exelearningVersion: '4.0.0',
-            };
+            });
             const pages: ExportPage[] = [];
 
             const xml = generateOdeXml(meta, pages);
@@ -76,10 +84,10 @@ describe('OdeXmlGenerator', () => {
         });
 
         it('should strip the leading v prefix from exelearningVersion', () => {
-            const meta: ExportMetadata = {
+            const meta = partialMeta({
                 title: 'Test',
                 exelearningVersion: 'v4.0.0-rc3',
-            };
+            });
             const pages: ExportPage[] = [];
 
             const xml = generateOdeXml(meta, pages);
@@ -88,7 +96,7 @@ describe('OdeXmlGenerator', () => {
         });
 
         it('should write empty exe_version when exelearningVersion is missing', () => {
-            const meta: ExportMetadata = { title: 'Test' };
+            const meta = partialMeta({ title: 'Test' });
             const pages: ExportPage[] = [];
 
             const xml = generateOdeXml(meta, pages);
@@ -98,7 +106,7 @@ describe('OdeXmlGenerator', () => {
         });
 
         it('should include odeProperties section with metadata', () => {
-            const meta: ExportMetadata = {
+            const meta = partialMeta({
                 title: 'My Title',
                 subtitle: 'My Subtitle',
                 author: 'John Doe',
@@ -106,7 +114,7 @@ describe('OdeXmlGenerator', () => {
                 description: 'A description',
                 license: 'CC-BY-SA',
                 keywords: 'test, project',
-            };
+            });
             const pages: ExportPage[] = [];
 
             const xml = generateOdeXml(meta, pages);
@@ -124,13 +132,16 @@ describe('OdeXmlGenerator', () => {
         });
 
         it('does not duplicate the screenshot data URL in content.xml', () => {
-            const xml = generateOdeXml({ title: 'T', screenshot: 'data:image/png;base64,iVBORw0KGgo=' }, []);
+            const xml = generateOdeXml(
+                partialMeta({ title: 'T', screenshot: 'data:image/png;base64,iVBORw0KGgo=' }),
+                [],
+            );
             expect(xml).not.toContain('pp_screenshot');
             expect(xml).not.toContain('data:image/png');
         });
 
         it('should save the every-activity pass rule so it survives a reopen', () => {
-            const xml = generateOdeXml({ title: 'T', passScoreEveryActivity: true }, []);
+            const xml = generateOdeXml(partialMeta({ title: 'T', passScoreEveryActivity: true }), []);
 
             expect(xml).toContain(`<odeProperty>
     <key>pp_passScoreEveryActivity</key>
@@ -139,7 +150,7 @@ describe('OdeXmlGenerator', () => {
         });
 
         it('should include empty odeNavStructures for no pages', () => {
-            const meta: ExportMetadata = { title: 'Test' };
+            const meta = partialMeta({ title: 'Test' });
             const pages: ExportPage[] = [];
 
             const xml = generateOdeXml(meta, pages);
@@ -151,7 +162,7 @@ describe('OdeXmlGenerator', () => {
         });
 
         it('should generate odeNavStructure for each page', () => {
-            const meta: ExportMetadata = { title: 'Test' };
+            const meta = partialMeta({ title: 'Test' });
             const pages: ExportPage[] = [
                 {
                     id: 'page-1',
@@ -180,7 +191,7 @@ describe('OdeXmlGenerator', () => {
         });
 
         it('should include page-level properties in odeNavStructureProperties', () => {
-            const meta: ExportMetadata = { title: 'Test' };
+            const meta = partialMeta({ title: 'Test' });
             const pages: ExportPage[] = [
                 {
                     id: 'page-1',
@@ -209,7 +220,7 @@ describe('OdeXmlGenerator', () => {
         });
 
         it('should include parentId for child pages', () => {
-            const meta: ExportMetadata = { title: 'Test' };
+            const meta = partialMeta({ title: 'Test' });
             const pages: ExportPage[] = [
                 {
                     id: 'parent',
@@ -234,7 +245,7 @@ describe('OdeXmlGenerator', () => {
         });
 
         it('should generate odePagStructure for blocks', () => {
-            const meta: ExportMetadata = { title: 'Test' };
+            const meta = partialMeta({ title: 'Test' });
             const pages: ExportPage[] = [
                 {
                     id: 'page-1',
@@ -261,7 +272,7 @@ describe('OdeXmlGenerator', () => {
         });
 
         it('should generate odeComponent for components', () => {
-            const meta: ExportMetadata = { title: 'Test' };
+            const meta = partialMeta({ title: 'Test' });
             const pages: ExportPage[] = [
                 {
                     id: 'page-1',
@@ -297,7 +308,7 @@ describe('OdeXmlGenerator', () => {
         });
 
         it('should include jsonProperties for component properties', () => {
-            const meta: ExportMetadata = { title: 'Test' };
+            const meta = partialMeta({ title: 'Test' });
             const pages: ExportPage[] = [
                 {
                     id: 'page-1',
@@ -335,7 +346,7 @@ describe('OdeXmlGenerator', () => {
 
         it('should write a malformed payload verbatim instead of an empty element (#2190)', () => {
             const malformed = '{"questionsData":[{"baseText":"<audio src="broken.webm"></audio>"}]}';
-            const meta: ExportMetadata = { title: 'Test' };
+            const meta = partialMeta({ title: 'Test' });
             const pages: ExportPage[] = [
                 {
                     id: 'page-1',
@@ -371,7 +382,7 @@ describe('OdeXmlGenerator', () => {
         });
 
         it('should use custom odeId and versionId when provided', () => {
-            const meta: ExportMetadata = { title: 'Test' };
+            const meta = partialMeta({ title: 'Test' });
             const pages: ExportPage[] = [];
 
             const xml = generateOdeXml(meta, pages, {
@@ -384,10 +395,10 @@ describe('OdeXmlGenerator', () => {
         });
 
         it('should use meta.odeVersionId when options.versionId is not set', () => {
-            const meta: ExportMetadata = {
+            const meta = partialMeta({
                 title: 'Test',
                 odeVersionId: '20251201123456FEDCBA',
-            };
+            });
             const pages: ExportPage[] = [];
 
             const xml = generateOdeXml(meta, pages);
@@ -396,7 +407,7 @@ describe('OdeXmlGenerator', () => {
         });
 
         it('should generate a fresh versionId when neither options.versionId nor meta.odeVersionId is set', () => {
-            const meta: ExportMetadata = { title: 'Test' };
+            const meta = partialMeta({ title: 'Test' });
             const pages: ExportPage[] = [];
 
             const xml = generateOdeXml(meta, pages);
@@ -408,10 +419,10 @@ describe('OdeXmlGenerator', () => {
         });
 
         it('should prefer options.versionId over meta.odeVersionId', () => {
-            const meta: ExportMetadata = {
+            const meta = partialMeta({
                 title: 'Test',
                 odeVersionId: '20251201123456FEDCBA',
-            };
+            });
             const pages: ExportPage[] = [];
 
             const xml = generateOdeXml(meta, pages, {
@@ -423,7 +434,7 @@ describe('OdeXmlGenerator', () => {
         });
 
         it('should include DOCTYPE by default', () => {
-            const meta: ExportMetadata = { title: 'Test' };
+            const meta = partialMeta({ title: 'Test' });
             const pages: ExportPage[] = [];
 
             const xml = generateOdeXml(meta, pages);
@@ -432,7 +443,7 @@ describe('OdeXmlGenerator', () => {
         });
 
         it('should exclude DOCTYPE when includeDoctype is false', () => {
-            const meta: ExportMetadata = { title: 'Test' };
+            const meta = partialMeta({ title: 'Test' });
             const pages: ExportPage[] = [];
 
             const xml = generateOdeXml(meta, pages, { includeDoctype: false });
@@ -444,7 +455,7 @@ describe('OdeXmlGenerator', () => {
         });
 
         it('should include DOCTYPE when includeDoctype is true', () => {
-            const meta: ExportMetadata = { title: 'Test' };
+            const meta = partialMeta({ title: 'Test' });
             const pages: ExportPage[] = [];
 
             const xml = generateOdeXml(meta, pages, { includeDoctype: true });
@@ -453,10 +464,10 @@ describe('OdeXmlGenerator', () => {
         });
 
         it('should escape XML special characters in content', () => {
-            const meta: ExportMetadata = {
+            const meta = partialMeta({
                 title: 'Test & Demo <Project>',
                 author: '"Author"',
-            };
+            });
             const pages: ExportPage[] = [];
 
             const xml = generateOdeXml(meta, pages);
@@ -466,7 +477,7 @@ describe('OdeXmlGenerator', () => {
         });
 
         it('should include block properties', () => {
-            const meta: ExportMetadata = { title: 'Test' };
+            const meta = partialMeta({ title: 'Test' });
             const pages: ExportPage[] = [
                 {
                     id: 'page-1',
@@ -501,7 +512,7 @@ describe('OdeXmlGenerator', () => {
         });
 
         it('should include component structure properties', () => {
-            const meta: ExportMetadata = { title: 'Test' };
+            const meta = partialMeta({ title: 'Test' });
             const pages: ExportPage[] = [
                 {
                     id: 'page-1',
@@ -668,7 +679,7 @@ describe('OdeXmlGenerator', () => {
 
     describe('asset URL handling in content.xml (URLs pre-converted by BaseExporter)', () => {
         it('should preserve {{context_path}}/content/resources/ URLs in htmlView', () => {
-            const meta: ExportMetadata = { title: 'Test' };
+            const meta = partialMeta({ title: 'Test' });
             const pages: ExportPage[] = [
                 {
                     id: 'page-1',
@@ -701,7 +712,7 @@ describe('OdeXmlGenerator', () => {
         });
 
         it('should preserve {{context_path}} URLs in jsonProperties', () => {
-            const meta: ExportMetadata = { title: 'Test' };
+            const meta = partialMeta({ title: 'Test' });
             const pages: ExportPage[] = [
                 {
                     id: 'page-1',
@@ -740,7 +751,7 @@ describe('OdeXmlGenerator', () => {
         });
 
         it('should handle multiple {{context_path}} URLs in single component', () => {
-            const meta: ExportMetadata = { title: 'Test' };
+            const meta = partialMeta({ title: 'Test' });
             const pages: ExportPage[] = [
                 {
                     id: 'page-1',
@@ -775,7 +786,7 @@ describe('OdeXmlGenerator', () => {
         });
 
         it('should preserve other URL protocols in content.xml', () => {
-            const meta: ExportMetadata = { title: 'Test' };
+            const meta = partialMeta({ title: 'Test' });
             const pages: ExportPage[] = [
                 {
                     id: 'page-1',
@@ -807,7 +818,7 @@ describe('OdeXmlGenerator', () => {
         });
 
         it('should handle nested folder paths in {{context_path}} URLs', () => {
-            const meta: ExportMetadata = { title: 'Test' };
+            const meta = partialMeta({ title: 'Test' });
             const pages: ExportPage[] = [
                 {
                     id: 'page-1',
@@ -841,7 +852,7 @@ describe('OdeXmlGenerator', () => {
         });
 
         it('should preserve unresolved asset UUIDs in {{context_path}} format', () => {
-            const meta: ExportMetadata = { title: 'Test' };
+            const meta = partialMeta({ title: 'Test' });
             const pages: ExportPage[] = [
                 {
                     id: 'page-1',

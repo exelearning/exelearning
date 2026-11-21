@@ -13,6 +13,7 @@ import {
     hardDeleteProject,
 } from '../../../db/queries';
 import { ensureDocument } from '../../../yjs';
+import { castRequestBody } from '../../types/request-payloads';
 import {
     authenticateRequest,
     errorResponse,
@@ -20,6 +21,8 @@ import {
     isAdmin,
     CreateProjectBody,
     UpdateProjectBody,
+    type CreateProjectInput,
+    type UpdateProjectInput,
     ProjectUuidParam,
 } from './types';
 
@@ -33,7 +36,7 @@ export const projectsRoutes = new Elysia({ prefix: '/projects' })
         '/',
         async ({ headers, set }) => {
             const authResult = await authenticateRequest(headers);
-            if (!authResult.success) {
+            if (authResult.success === false) {
                 set.status = authResult.status;
                 return authResult.response;
             }
@@ -67,16 +70,18 @@ export const projectsRoutes = new Elysia({ prefix: '/projects' })
         '/',
         async ({ headers, body, set }) => {
             const authResult = await authenticateRequest(headers);
-            if (!authResult.success) {
+            if (authResult.success === false) {
                 set.status = authResult.status;
                 return authResult.response;
             }
             const auth = authResult.user;
 
+            const input = castRequestBody<CreateProjectInput>(body);
             // Create project in database (createProject generates its own UUID internally)
             const project = await createProject(db, {
-                title: body.title,
+                title: input.title,
                 owner_id: auth.userId,
+                saved_once: 0,
             });
 
             const projectUuid = project.uuid;
@@ -88,7 +93,7 @@ export const projectsRoutes = new Elysia({ prefix: '/projects' })
             return successResponse({
                 id: project.id,
                 uuid: projectUuid,
-                title: body.title,
+                title: input.title,
                 owner_id: auth.userId,
                 created_at: project.created_at,
                 updated_at: project.updated_at,
@@ -110,7 +115,7 @@ export const projectsRoutes = new Elysia({ prefix: '/projects' })
         '/:uuid',
         async ({ headers, params, set }) => {
             const authResult = await authenticateRequest(headers);
-            if (!authResult.success) {
+            if (authResult.success === false) {
                 set.status = authResult.status;
                 return authResult.response;
             }
@@ -154,7 +159,7 @@ export const projectsRoutes = new Elysia({ prefix: '/projects' })
         '/:uuid',
         async ({ headers, params, body, set }) => {
             const authResult = await authenticateRequest(headers);
-            if (!authResult.success) {
+            if (authResult.success === false) {
                 set.status = authResult.status;
                 return authResult.response;
             }
@@ -173,9 +178,9 @@ export const projectsRoutes = new Elysia({ prefix: '/projects' })
                 return errorResponse('FORBIDDEN', 'You do not have access to this project');
             }
 
-            // Update project
+            const input = castRequestBody<UpdateProjectInput>(body);
             const updates: Record<string, unknown> = {};
-            if (body.title !== undefined) updates.title = body.title;
+            if (input.title !== undefined) updates.title = input.title;
 
             if (Object.keys(updates).length > 0) {
                 await updateProject(db, project.id, updates);
@@ -210,7 +215,7 @@ export const projectsRoutes = new Elysia({ prefix: '/projects' })
         '/:uuid',
         async ({ headers, params, set }) => {
             const authResult = await authenticateRequest(headers);
-            if (!authResult.success) {
+            if (authResult.success === false) {
                 set.status = authResult.status;
                 return authResult.response;
             }
@@ -249,7 +254,7 @@ export const projectsRoutes = new Elysia({ prefix: '/projects' })
         '/:uuid/duplicate',
         async ({ headers, params, body, set }) => {
             const authResult = await authenticateRequest(headers);
-            if (!authResult.success) {
+            if (authResult.success === false) {
                 set.status = authResult.status;
                 return authResult.response;
             }
@@ -268,12 +273,14 @@ export const projectsRoutes = new Elysia({ prefix: '/projects' })
                 return errorResponse('FORBIDDEN', 'You do not have access to this project');
             }
 
-            const newTitle = body?.title || `${sourceProject.title} (copy)`;
+            const newTitle =
+                castRequestBody<UpdateProjectInput | undefined>(body)?.title || `${sourceProject.title} (copy)`;
 
             // Create new project (createProject generates its own UUID internally)
             const newProject = await createProject(db, {
                 title: newTitle,
                 owner_id: auth.userId,
+                saved_once: 0,
             });
 
             // TODO: Copy Yjs document state from source to new project

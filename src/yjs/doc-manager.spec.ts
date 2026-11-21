@@ -21,6 +21,7 @@ import {
     getStats,
     ProjectNotFoundError,
     DocumentLoadError,
+    type DocManagerDependencies,
 } from './doc-manager';
 import type { ChangeOrigin } from './types';
 
@@ -63,13 +64,14 @@ describe('doc-manager', () => {
         // Configure with mock dependencies
         configure({
             queries: {
-                findProjectByUuid: async (_db: unknown, uuid: string) => {
+                // Partial project row: doc-manager only reads id, uuid and title
+                findProjectByUuid: (async (_db: unknown, uuid: string) => {
                     findProjectByUuidCalls.push({ uuid });
                     if (uuid === mockProject.uuid) {
                         return mockProject;
                     }
                     return undefined;
-                },
+                }) as unknown as DocManagerDependencies['queries']['findProjectByUuid'],
             },
             persistence: {
                 reconstructDocument: async (projectId: number) => {
@@ -128,7 +130,7 @@ describe('doc-manager', () => {
                     maxSize: 50,
                     entries: [],
                 }),
-            },
+            } as unknown as DocManagerDependencies['cache'],
             lock: {
                 acquireLock: async (uuid: string) => {
                     lockAcquireCalls.push(uuid);
@@ -136,15 +138,15 @@ describe('doc-manager', () => {
                 },
                 getStats: () => ({
                     activeLocks: lockAcquireCalls.length,
-                    waitingCount: 0,
+                    locks: [],
                 }),
-            },
+            } as unknown as DocManagerDependencies['lock'],
             broadcaster: {
                 broadcastUpdate: (uuid: string, update: Uint8Array) => {
                     broadcastCalls.push({ uuid, update });
                     return true;
                 },
-            },
+            } as unknown as DocManagerDependencies['broadcaster'],
         });
     });
 
@@ -333,10 +335,10 @@ describe('doc-manager', () => {
             // Configure loadDocument to return null (no existing document)
             configure({
                 queries: {
-                    findProjectByUuid: async (_db: unknown, uuid: string) => {
+                    findProjectByUuid: (async (_db: unknown, uuid: string) => {
                         if (uuid === mockProject.uuid) return mockProject;
                         return undefined;
-                    },
+                    }) as unknown as DocManagerDependencies['queries']['findProjectByUuid'],
                 },
                 persistence: {
                     reconstructDocument: async () => mockYDoc,
@@ -347,7 +349,7 @@ describe('doc-manager', () => {
                 },
                 cache: {
                     getDocument: () => undefined,
-                    createEntry: (uuid, projectId, ydoc) => ({
+                    createEntry: (uuid: string, projectId: number, ydoc: Y.Doc) => ({
                         projectUuid: uuid,
                         projectId,
                         ydoc,
@@ -360,14 +362,14 @@ describe('doc-manager', () => {
                     removeDocument: () => false,
                     hasDocument: () => false,
                     getStats: () => ({ size: 0, maxSize: 50, entries: [] }),
-                },
+                } as unknown as DocManagerDependencies['cache'],
                 lock: {
                     acquireLock: async () => () => {},
-                    getStats: () => ({ activeLocks: 0, waitingCount: 0 }),
-                },
+                    getStats: () => ({ activeLocks: 0, locks: [] }),
+                } as unknown as DocManagerDependencies['lock'],
                 broadcaster: {
                     broadcastUpdate: () => true,
-                },
+                } as unknown as DocManagerDependencies['broadcaster'],
             });
 
             await ensureDocument(mockProject.uuid);

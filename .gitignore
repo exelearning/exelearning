@@ -87,6 +87,7 @@ yarn.lock
 
 # Ignore dist directory
 /dist
+*.tsbuildinfo
 
 public/style/workarea/main.css
 public/style/workarea/main.css.map
