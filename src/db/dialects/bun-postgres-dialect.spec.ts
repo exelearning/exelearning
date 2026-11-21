@@ -182,10 +182,9 @@ describe('BunPostgresDialect', () => {
             await driver.init();
             const connection = await driver.acquireConnection();
 
-            const result = await connection.executeQuery<{ id: number; updated_at: number; title: string }>({
-                sql: 'SELECT id, updated_at, title FROM projects',
-                parameters: [],
-            });
+            const result = await connection.executeQuery<{ id: number; updated_at: number; title: string }>(
+                CompiledQuery.raw('SELECT id, updated_at, title FROM projects'),
+            );
 
             expect(result.rows).toEqual([{ id: 1, updated_at: 1793284626519, title: '2024' }]);
             expect(new Date(result.rows[0].updated_at).toISOString()).toBe('2026-10-29T14:37:06.519Z');
@@ -210,10 +209,9 @@ describe('BunPostgresDialect', () => {
             await driver.init();
             const connection = await driver.acquireConnection();
 
-            const result = await connection.executeQuery<{ big: string; nothing: null }>({
-                sql: 'SELECT big, nothing FROM t',
-                parameters: [],
-            });
+            const result = await connection.executeQuery<{ big: string; nothing: null }>(
+                CompiledQuery.raw('SELECT big, nothing FROM t'),
+            );
 
             expect(result.rows).toEqual([{ big: '9223372036854775807', nothing: null }]);
         });
