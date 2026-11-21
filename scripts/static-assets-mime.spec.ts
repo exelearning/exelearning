@@ -89,3 +89,36 @@ describe('static nginx image MIME configuration', () => {
         expect(patterns).not.toContain('docker/nginx/mime-extra.conf');
     });
 });
+
+describe('Dockerfile.static nginx delivery settings', () => {
+    const dockerfile = fs.readFileSync(path.join(projectRoot, 'Dockerfile.static'), 'utf-8');
+
+    it('compresses responses to HTTP/1.0 requests, which is what a reverse proxy sends by default', () => {
+        expect(dockerfile).toMatch(/^gzip on;$/m);
+        expect(dockerfile).toMatch(/^gzip_http_version 1\.0;$/m);
+    });
+
+    it('marks only release-versioned assets as immutable', () => {
+        const pattern = dockerfile.match(/"~(\S+)" "public, max-age=31536000, immutable";/)?.[1];
+        expect(pattern).toBeDefined();
+        const versioned = new RegExp(pattern as string);
+
+        expect(versioned.test('v4.0.6')).toBe(true);
+        expect(versioned.test('v4.1.0-beta1')).toBe(true);
+        // Branch builds reuse the same ?v= across deploys and must stay revalidatable.
+        expect(versioned.test('main')).toBe(false);
+        expect(versioned.test('latest')).toBe(false);
+        expect(versioned.test('')).toBe(false);
+    });
+
+    it('forces HTML to be revalidated so a new release is picked up', () => {
+        const pattern = dockerfile.match(/"~(\S+)" "no-cache";/)?.[1];
+        expect(pattern).toBeDefined();
+        const html = new RegExp(pattern as string);
+
+        expect(html.test('/')).toBe(true);
+        expect(html.test('/index.html')).toBe(true);
+        expect(html.test('/app/app.bundle.js')).toBe(false);
+        expect(dockerfile).toMatch(/^add_header Cache-Control \$exe_cache_control;$/m);
+    });
+});

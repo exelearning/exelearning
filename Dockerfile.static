@@ -27,11 +27,33 @@ FROM nginx:alpine
 # types are listed on purpose: nginx's own mime.types maps .js to
 # application/javascript, while mime-extra.conf below maps .mjs to
 # text/javascript. text/html is always compressed and needs no entry.
+#
+# gzip_http_version 1.0: this image usually sits behind a reverse proxy, and
+# nginx's proxy_pass speaks HTTP/1.0 to its upstream unless told otherwise.
+# The default (1.1) silently turns compression off for every such request.
 COPY <<'EOF' /etc/nginx/conf.d/gzip.conf
 gzip on;
 gzip_vary on;
+gzip_http_version 1.0;
 gzip_min_length 1024;
 gzip_types text/javascript application/javascript application/json text/css image/svg+xml text/xml application/xml text/plain;
+EOF
+# Without Cache-Control browsers fall back to heuristic freshness, which is
+# shortest right after a deploy. Assets requested with the release cache-buster
+# (?v=v4.0.6) never change under that URL, so they are cached for a year. Only
+# release-shaped versions qualify: a branch build (?v=main) reuses its URL.
+# HTML must be revalidated so a new release is picked up. Everything else keeps
+# the default behaviour (an empty value makes nginx omit the header).
+COPY <<'EOF' /etc/nginx/conf.d/cache-control.conf
+map $arg_v $exe_cache_versioned {
+    default "";
+    "~^v\d+\.\d+\.\d+" "public, max-age=31536000, immutable";
+}
+map $uri $exe_cache_control {
+    default $exe_cache_versioned;
+    "~(/|\.html)$" "no-cache";
+}
+add_header Cache-Control $exe_cache_control;
 EOF
 # nginx's bundled mime.types has no entry for several extensions we serve and
 # falls back to application/octet-stream, which browsers reject for ES modules.
