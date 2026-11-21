@@ -214,6 +214,7 @@ describe('structure-binding', () => {
                 // Delete it
                 const result = deleteAssetMetadata(ydoc, 'delete-me-id');
                 expect(result.success).toBe(true);
+                if (!result.success) throw new Error(result.error);
                 expect(result.data.deleted).toBe(true);
 
                 // Verify it's gone
@@ -223,6 +224,7 @@ describe('structure-binding', () => {
             it('should return deleted: false for non-existent asset', () => {
                 const result = deleteAssetMetadata(ydoc, 'never-existed-id');
                 expect(result.success).toBe(true);
+                if (!result.success) throw new Error(result.error);
                 expect(result.data.deleted).toBe(false);
             });
         });
@@ -394,6 +396,7 @@ describe('structure-binding', () => {
             it('should return error for non-existent page', () => {
                 const result = updatePage(ydoc, 'non-existent', { name: 'Test' });
                 expect(result.success).toBe(false);
+                if (result.success) throw new Error('expected updatePage to fail');
                 expect(result.error).toContain('not found');
             });
         });
@@ -707,11 +710,11 @@ describe('structure-binding', () => {
 
                 // Update properties should create the map
                 updateBlock(ydoc, 'block-no-props', {
-                    properties: { customProp: 'value' },
+                    properties: { cssClass: 'value' },
                 });
 
                 const block = getBlock(ydoc, 'block-no-props');
-                expect(block?.properties?.customProp).toBe('value');
+                expect(block?.properties?.cssClass).toBe('value');
             });
 
             it('should return error for non-existent block', () => {
@@ -868,6 +871,15 @@ describe('structure-binding', () => {
         });
 
         describe('createComponent', () => {
+            it('names the page in the not-found error only when one was given', () => {
+                const withoutPage = createComponent(ydoc, { blockId: 'missing', ideviceType: 'text' });
+                if (withoutPage.success) throw new Error('expected createComponent to fail');
+                expect(withoutPage.error).toBe('Block missing not found');
+                const withPage = createComponent(ydoc, { pageId, blockId: 'missing', ideviceType: 'text' });
+                if (withPage.success) throw new Error('expected createComponent to fail');
+                expect(withPage.error).toBe(`Block missing not found in page ${pageId}`);
+            });
+
             it('should create a component', () => {
                 const result = createComponent(ydoc, {
                     pageId,

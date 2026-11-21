@@ -152,6 +152,20 @@ describe('sanitizeHtml', () => {
             expect(sanitizeHtml(html)).toBe(html);
         });
 
+        it('keeps only what each held when asked to, as for a clue whose links may lead to its answer', () => {
+            const clue = '<p>Este <a href="https://es.wikipedia.org/wiki/An%C3%A9lido"><b>invertebrado</b></a></p>';
+
+            expect(sanitizeHtml(clue, { links: false })).toBe('<p>Este <b>invertebrado</b></p>');
+        });
+
+        it('still says where embedded content can be found when links are left out, in a link of its own', () => {
+            expect(
+                sanitizeHtml('<a href="https://x/Toledo">Mira <iframe src="https://v/1"></iframe></a>', {
+                    links: false,
+                }),
+            ).toBe('Mira <span class="worksheet-embed-address"><a href="https://v/1">https://v/1</a></span>');
+        });
+
         it('keeps its address and nothing else of it', () => {
             expect(
                 sanitizeHtml(
@@ -252,6 +266,18 @@ describe('htmlToText', () => {
 
     it('turns non-breaking spaces into ordinary spaces', () => {
         expect(htmlToText('<p>a&nbsp;b</p>')).toBe('a b');
+    });
+
+    it('sets the address of embedded content apart from the words round it, as on a line of its own', () => {
+        expect(htmlToText('Mira<iframe src="https://v/1"></iframe>el mapa')).toBe('Mira https://v/1 el mapa');
+        // Also inside an author's link, where the address is written as plain text.
+        expect(htmlToText('<a href="https://x">Mira<iframe src="https://v/1"></iframe>el mapa</a>')).toBe(
+            'Mira https://v/1 el mapa',
+        );
+    });
+
+    it('keeps the words of inline elements together', () => {
+        expect(htmlToText('<p>An<strong>é</strong>lido y <span>Toledo</span></p>')).toBe('Anélido y Toledo');
     });
 
     it('returns empty string for empty input', () => {

@@ -1989,6 +1989,26 @@ describe('common.js $exeDevices', () => {
       expect(helpers.decodeStoredText(text)).toBe(text);
     });
 
+    it('decodeStoredText decodes a text without tags stored escaped', () => {
+      const helpers = getHelpers();
+      for (const text of ['Hola mundo', 'Canción de León', 'Cuesta 5 €', '100%']) {
+        expect(helpers.decodeStoredText(escape(text))).toBe(text);
+      }
+    });
+
+    it('decodeStoredText leaves a text without tags that escape() could not have written', () => {
+      const helpers = getHelpers();
+      for (const text of [
+        'Ver https://es.wikipedia.org/wiki/An%C3%A9lido',
+        '50%20 del total',
+        'An%C3%A9lido',
+        '100%',
+        'Sube un 5%zz',
+      ]) {
+        expect(helpers.decodeStoredText(text)).toBe(text);
+      }
+    });
+
     it('decodeStoredText returns an empty string for anything but a string', () => {
       const helpers = getHelpers();
       expect(helpers.decodeStoredText(undefined)).toBe('');

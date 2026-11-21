@@ -8,7 +8,6 @@ import type { Database } from './types';
 import { up } from './migrations/001_initial';
 import {
     db,
-    dialect,
     closeDb,
     isConnected,
     getDbInfo,
@@ -73,12 +72,6 @@ describe('Kysely ORM Client', () => {
             await resetClientCacheForTesting();
             expect(getDialect()).toBe('sqlite');
         });
-
-        it('should proxy dialect properties', async () => {
-            await resetClientCacheForTesting();
-            const length = dialect.length;
-            expect(length).toBe(getDialect().length);
-        });
     });
 
     describe('getDbConfig', () => {
@@ -86,8 +79,7 @@ describe('Kysely ORM Client', () => {
             const config = getDbConfig();
 
             expect(config).toBeDefined();
-            expect(config.dialect).toBe('sqlite');
-            expect(typeof config.sqlitePath).toBe('string');
+            expect(config).toMatchObject({ dialect: 'sqlite', sqlitePath: expect.any(String) });
         });
     });
 
@@ -119,7 +111,7 @@ describe('Kysely ORM Client', () => {
                 const info = getDbInfo();
 
                 // Password should be masked
-                expect(info.config.password).toBe('***');
+                expect(info.config).toMatchObject({ password: '***' });
             } finally {
                 // Restore original env
                 process.env.DB_DRIVER = originalDriver;
@@ -140,7 +132,7 @@ describe('Kysely ORM Client', () => {
                 const info = getDbInfo();
 
                 // Empty password should remain empty
-                expect(info.config.password).toBe('');
+                expect(info.config).toMatchObject({ password: '' });
             } finally {
                 // Restore original env
                 process.env.DB_DRIVER = originalDriver;

@@ -13,7 +13,7 @@ import * as path from 'path';
 import { db as defaultDb } from '../db/client';
 import type { Kysely } from 'kysely';
 import type { Database, Theme } from '../db/types';
-import type { JwtPayload } from './auth';
+import { toAuthenticatedIdentity, type JwtPayload } from '../auth/types';
 import {
     // Site theme queries (is_builtin=0)
     getSiteThemes as getSiteThemesDefault,
@@ -46,6 +46,7 @@ import {
 } from '../services/admin-upload-validator';
 import { requireAdmin } from '../utils/guards';
 import { getFilesDir as getFilesDirDefault, getJwtSecret, deleteFileIfExists } from '../utils/admin-route-helpers';
+import { castRequestBody } from './types/request-payloads';
 
 // ============================================================================
 // TYPES
@@ -73,6 +74,10 @@ export interface ThemesQueries {
     getDefaultTheme: typeof getDefaultThemeDefault;
     setDefaultTheme: typeof setDefaultThemeDefault;
 }
+
+type ThemeUpdateInput = { displayName?: string; description?: string; sortOrder?: number };
+type ThemeToggleInput = { isEnabled: boolean };
+type ThemeUploadInput = { file?: File; displayName?: string; isEnabled?: boolean };
 
 export interface ThemesValidatorDeps {
     validateThemeZip: typeof validateThemeZipDefault;
@@ -141,8 +146,8 @@ export interface SerializedTheme {
     storagePath: string | null;
     fileSize: number | null;
     uploadedBy: number | null;
-    createdAt: string | null;
-    updatedAt: string | null;
+    createdAt: number | null;
+    updatedAt: number | null;
     source: 'base' | 'site';
 }
 
@@ -214,19 +219,20 @@ export function createAdminThemesRoutes(deps: ThemesDependencies = defaultDepend
             // Global guard for admin routes
             .guard({
                 async beforeHandle({ jwt, cookie, set }) {
-                    const token = cookie.auth?.value;
+                    const token = cookie.auth?.value as string | undefined;
                     if (!token) {
                         set.status = 401;
                         return { error: 'Unauthorized', message: 'No authentication token' };
                     }
 
-                    const payload = (await jwt.verify(token)) as JwtPayload | false;
-                    if (!payload) {
+                    const payload = (await jwt.verify(token)) as unknown as JwtPayload | false;
+                    const identity = payload ? toAuthenticatedIdentity(payload) : null;
+                    if (!identity) {
                         set.status = 401;
                         return { error: 'Unauthorized', message: 'Invalid token' };
                     }
 
-                    const authError = requireAdmin(payload);
+                    const authError = requireAdmin(identity);
                     if (authError) {
                         set.status = 403;
                         return { error: authError.error, message: authError.message };
@@ -309,7 +315,7 @@ export function createAdminThemesRoutes(deps: ThemesDependencies = defaultDepend
                 '/api/admin/themes/upload',
                 async ({ body, set, jwt, cookie }) => {
                     try {
-                        const { file, displayName, isEnabled } = body;
+                        const { file, displayName, isEnabled } = castRequestBody<ThemeUploadInput>(body);
 
                         if (!file) {
                             set.status = 400;
@@ -366,9 +372,14 @@ export function createAdminThemesRoutes(deps: ThemesDependencies = defaultDepend
                         const storagePath = `themes/site/${dirName}`;
                         const targetDir = path.join(filesDir(), storagePath);
 
-                        // Get current user ID from JWT
-                        const token = cookie.auth?.value;
-                        const payload = (await jwt.verify(token!)) as JwtPayload;
+                        const token = cookie.auth?.value as string | undefined;
+                        const uploadIdentity = toAuthenticatedIdentity(
+                            (await jwt.verify(token!)) as unknown as JwtPayload,
+                        );
+                        if (!uploadIdentity) {
+                            set.status = 401;
+                            return { error: 'Unauthorized', message: 'Invalid token' };
+                        }
 
                         if (existingTheme) {
                             // Replace flow: wipe the old directory so leftover files from
@@ -385,7 +396,7 @@ export function createAdminThemesRoutes(deps: ThemesDependencies = defaultDepend
                                 license: validation.metadata!.license || null,
                                 storage_path: storagePath,
                                 file_size: fileBuffer.length,
-                                uploaded_by: payload.sub,
+                                uploaded_by: uploadIdentity.userId,
                                 // is_enabled toggled only if the admin explicitly passed it
                                 ...(isEnabled === undefined ? {} : { is_enabled: isEnabled ? 1 : 0 }),
                             });
@@ -424,7 +435,7 @@ export function createAdminThemesRoutes(deps: ThemesDependencies = defaultDepend
                             sort_order: sortOrder,
                             storage_path: storagePath,
                             file_size: fileBuffer.length,
-                            uploaded_by: payload.sub,
+                            uploaded_by: uploadIdentity.userId,
                         });
 
                         set.status = 201;
@@ -464,14 +475,15 @@ export function createAdminThemesRoutes(deps: ThemesDependencies = defaultDepend
 
                     const updates: Parameters<typeof queries.updateTheme>[2] = {};
 
-                    if (body.displayName !== undefined) {
-                        updates.display_name = body.displayName;
+                    const input = castRequestBody<ThemeUpdateInput>(body);
+                    if (input.displayName !== undefined) {
+                        updates.display_name = input.displayName;
                     }
-                    if (body.description !== undefined) {
-                        updates.description = body.description;
+                    if (input.description !== undefined) {
+                        updates.description = input.description;
                     }
-                    if (body.sortOrder !== undefined) {
-                        updates.sort_order = body.sortOrder;
+                    if (input.sortOrder !== undefined) {
+                        updates.sort_order = input.sortOrder;
                     }
 
                     const updatedTheme = await queries.updateTheme(database, id, updates);
@@ -510,7 +522,11 @@ export function createAdminThemesRoutes(deps: ThemesDependencies = defaultDepend
                         return { error: 'Not Found', message: 'Theme not found' };
                     }
 
-                    const updatedTheme = await queries.toggleThemeEnabled(database, id, body.isEnabled);
+                    const updatedTheme = await queries.toggleThemeEnabled(
+                        database,
+                        id,
+                        castRequestBody<ThemeToggleInput>(body).isEnabled,
+                    );
                     if (!updatedTheme) {
                         set.status = 500;
                         return { error: 'Internal Server Error', message: 'Failed to update theme' };
@@ -629,7 +645,8 @@ export function createAdminThemesRoutes(deps: ThemesDependencies = defaultDepend
                     }
 
                     // Cannot disable the default theme
-                    if (!body.isEnabled) {
+                    const input = castRequestBody<ThemeToggleInput>(body);
+                    if (!input.isEnabled) {
                         try {
                             const defaultTheme = await queries.getDefaultTheme(database);
                             if (defaultTheme.type === 'base' && defaultTheme.dirName === dirName) {
@@ -645,9 +662,9 @@ export function createAdminThemesRoutes(deps: ThemesDependencies = defaultDepend
                         }
                     }
 
-                    await queries.toggleThemeEnabled(database, theme.id, body.isEnabled);
+                    await queries.toggleThemeEnabled(database, theme.id, input.isEnabled);
 
-                    return { success: true, dirName, isEnabled: body.isEnabled };
+                    return { success: true, dirName, isEnabled: input.isEnabled };
                 },
                 {
                     body: t.Object({
