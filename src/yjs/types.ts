@@ -11,7 +11,8 @@ import type * as Y from 'yjs';
  * Origin information attached to Yjs transactions
  */
 export interface ChangeOrigin {
-    type: 'rest' | 'websocket' | 'cli' | 'system';
+    type?: 'rest' | 'websocket' | 'cli' | 'system';
+    source?: string;
     userId?: number;
     clientId?: string;
     requestId?: string;
@@ -25,11 +26,9 @@ export interface ChangeOrigin {
 /**
  * Result of a structure operation
  */
-export interface OperationResult<T = void> {
-    success: boolean;
-    data?: T;
-    error?: string;
-}
+export type OperationResult<T = void> =
+    | (T extends void ? { success: true; data?: undefined } : { success: true; data: T })
+    | { success: false; data?: undefined; error: string };
 
 // ============================================================================
 // PAGE TYPES
@@ -181,7 +180,7 @@ export interface ComponentProperties {
  * Input for creating a component
  */
 export interface CreateComponentInput {
-    pageId: string;
+    pageId?: string;
     blockId: string;
     ideviceType: string;
     initialData?: Record<string, unknown>;

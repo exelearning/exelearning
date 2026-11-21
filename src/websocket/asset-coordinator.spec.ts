@@ -7,12 +7,14 @@
  */
 import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
 import { createAssetCoordinator, type AssetCoordinator, type AssetCoordinatorDeps } from './asset-coordinator';
+import type { AssetMessageData } from './types';
+import type { Project } from '../db/types';
 
-// Create mock WebSocket
-function createMockSocket(): any {
-    const messages: any[] = [];
+// Create mock WebSocket (the coordinator only sends 0xFF-prefixed Uint8Array frames)
+function createMockSocket() {
+    const messages: Uint8Array[] = [];
     return {
-        send: (data: any) => messages.push(data),
+        send: (data: Uint8Array) => messages.push(data),
         close: () => {},
         messages,
         readyState: 1, // OPEN
@@ -22,11 +24,11 @@ function createMockSocket(): any {
 // Create mock dependencies
 function createMockDeps(overrides: Partial<AssetCoordinatorDeps> = {}): AssetCoordinatorDeps {
     return {
-        findProjectByUuid: async (_db: any, uuid: string) => {
+        findProjectByUuid: async (_db, uuid) => {
             if (uuid === 'test-project') {
-                return { id: 1, uuid: 'test-project', owner_id: 1 };
+                return { id: 1, uuid: 'test-project', owner_id: 1 } as Project;
             }
-            return null;
+            return undefined;
         },
         findAssetByClientId: async (_db: any, clientId: string, projectId: number) => {
             if (projectId === 1 && clientId === 'asset-123') {
@@ -60,13 +62,13 @@ function createMockDeps(overrides: Partial<AssetCoordinatorDeps> = {}): AssetCoo
             clearProject: () => {},
             shouldPreempt: () => ({
                 shouldPreempt: false,
-                targetSlot: null,
-                preemptingItem: null,
             }),
             getStats: () => ({
                 queueLength: 0,
                 activeSlots: 0,
                 maxSlots: 4,
+                highestPriority: 0,
+                lowestActivePriority: 0,
             }),
             peekNextUpload: () => null,
         },
@@ -108,13 +110,13 @@ describe('Asset Coordinator Service (DI)', () => {
                 },
                 shouldPreempt: () => ({
                     shouldPreempt: false,
-                    targetSlot: null,
-                    preemptingItem: null,
                 }),
                 getStats: () => ({
                     queueLength: priorityQueueRequests.length,
                     activeSlots: priorityQueueSlots.size,
                     maxSlots: 4,
+                    highestPriority: 0,
+                    lowestActivePriority: 0,
                 }),
                 peekNextUpload: () => priorityQueueRequests[0] || null,
             },
@@ -971,7 +973,11 @@ describe('Asset Coordinator Service (DI)', () => {
                         },
                         preemptingItem: {
                             assetId: 'high-priority-asset',
+                            clientId: 'client-1',
                             priority: 100,
+                            reason: 'render',
+                            requestedAt: Date.now(),
+                            projectId: 'test-project',
                         },
                     }),
                 },
@@ -1240,9 +1246,9 @@ describe('Asset Coordinator Service (DI)', () => {
     describe('Upload Session Messages', () => {
         beforeEach(() => {
             mockDeps = createMockDeps({
-                findProjectByUuid: async (_db: any, uuid: string) => {
+                findProjectByUuid: async (_db, uuid) => {
                     if (uuid === 'upload-session-project') {
-                        return { id: 42, uuid: 'upload-session-project', user_id: 1 };
+                        return { id: 42, uuid: 'upload-session-project', owner_id: 1 } as Project;
                     }
                     return undefined;
                 },
@@ -1295,7 +1301,7 @@ describe('Asset Coordinator Service (DI)', () => {
 
             await coordinator.handleMessage('upload-session-project', 'client-undef', {
                 type: 'upload-session-create',
-                data: undefined,
+                data: undefined as unknown as AssetMessageData,
             });
 
             // Should not crash
