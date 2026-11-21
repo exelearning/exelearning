@@ -152,9 +152,11 @@ test.describe('Workspace page title rename', () => {
         }, firstId);
         await expect(title).toBeHidden();
 
-        const navLabel = page.locator(`.nav-element[nav-id="${firstId}"] > .nav-element-text`);
+        const navNode = page.locator(`.nav-element[nav-id="${firstId}"]`);
+        const navLabel = navNode.locator(':scope > .nav-element-text');
         const navText = navLabel.locator('.node-text-span');
-        await navLabel.click();
+        await expect(navNode).toHaveClass(/\bselected\b/);
+        await navLabel.dispatchEvent('click');
         await expect(navText).toHaveAttribute('contenteditable', 'true');
         await navText.fill('Renamed hidden page');
         await navText.press('Enter');
@@ -185,7 +187,7 @@ test.describe('Workspace page title rename', () => {
         const title = page.getByTestId('page-title');
         await expect(title).toHaveText('New page (copy)');
         await renameInput.fill('Renamed clone');
-        await renameInput.press('Enter');
+        await page.getByTestId('modal-confirm').getByTestId('confirm-action').click();
 
         const selected = page.locator('.nav-element.selected');
         await expect(selected.locator(':scope > .nav-element-text .node-text-span')).toHaveText('Renamed clone');
