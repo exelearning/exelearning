@@ -8,6 +8,7 @@
 import { describe, it, expect, beforeEach, afterEach, beforeAll, afterAll } from 'bun:test';
 import { zipSync, strToU8, unzipSync, strFromU8 } from 'fflate';
 import * as Y from 'yjs';
+import type { Kysely } from 'kysely';
 import { db, resetClientCacheForTesting } from '../db/client';
 import { up } from '../db/migrations/001_initial';
 import { up as up008 } from '../db/migrations/008_project_public_view_id';
@@ -299,8 +300,9 @@ describe('buildHtml5PreviewExport (real exporter)', () => {
     beforeAll(async () => {
         await resetClientCacheForTesting();
         await up(db);
-        await up008(db);
-        await up009(db);
+        // 008/009 take the untyped schema builder (Kysely<unknown>), like the migrator passes it.
+        await up008(db as unknown as Kysely<unknown>);
+        await up009(db as unknown as Kysely<unknown>);
 
         const user = await db
             .insertInto('users')

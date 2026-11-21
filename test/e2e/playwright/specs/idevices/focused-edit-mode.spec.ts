@@ -1,3 +1,4 @@
+import type { Page } from '@playwright/test';
 import { test, expect } from '../../fixtures/auth.fixture';
 import {
     waitForAppReady,
@@ -24,7 +25,7 @@ const NODE_CLASS = 'idevice-node--focused-editing';
  * text iDevice is already in edition mode (no export-mode dropdown), so the
  * generic id helper does not apply here.
  */
-async function getTextIdeviceId(page): Promise<string> {
+async function getTextIdeviceId(page: Page): Promise<string> {
     const node = page.locator('#node-content article .idevice_node.text').first();
     await node.waitFor({ state: 'attached', timeout: 15000 });
     const id = await node.getAttribute('id');
@@ -33,7 +34,7 @@ async function getTextIdeviceId(page): Promise<string> {
 }
 
 /** Ensure the given iDevice is in edition mode (no-op if already editing). */
-async function ensureEditing(page, ideviceId: string): Promise<void> {
+async function ensureEditing(page: Page, ideviceId: string): Promise<void> {
     const mode = await page.locator(`.idevice_node[id="${ideviceId}"]`).getAttribute('mode');
     if (mode !== 'edition') {
         await editIdevice(page, ideviceId);
@@ -45,7 +46,7 @@ async function ensureEditing(page, ideviceId: string): Promise<void> {
  * cannot be saved ("Failed to save the iDevice to database"), so the save and
  * discard flows must add content first.
  */
-async function fillActiveEditor(page, text: string): Promise<void> {
+async function fillActiveEditor(page: Page, text: string): Promise<void> {
     await page.waitForFunction(
         () => {
             const ed = (window as any).tinymce?.activeEditor;
@@ -54,7 +55,7 @@ async function fillActiveEditor(page, text: string): Promise<void> {
         undefined,
         { timeout: 15000 },
     );
-    await page.evaluate(t => {
+    await page.evaluate((t: string) => {
         const ed = (window as any).tinymce.activeEditor;
         ed.setContent(`<p>${t}</p>`);
         ed.fire('change');
@@ -64,20 +65,20 @@ async function fillActiveEditor(page, text: string): Promise<void> {
 }
 
 /** Confirm the generic confirmation modal (used by discard and delete). */
-async function confirmModal(page): Promise<void> {
+async function confirmModal(page: Page): Promise<void> {
     const confirmBtn = page.locator('#modalConfirm .confirm, [data-testid="confirm-action"]').first();
     await confirmBtn.waitFor({ state: 'visible', timeout: 5000 });
     await confirmBtn.click();
 }
 
-async function waitForFocusActive(page): Promise<void> {
-    await page.waitForFunction(cls => document.body.classList.contains(cls), BODY_CLASS, {
+async function waitForFocusActive(page: Page): Promise<void> {
+    await page.waitForFunction((cls: string) => document.body.classList.contains(cls), BODY_CLASS, {
         timeout: 10000,
     });
 }
 
-async function waitForFocusInactive(page): Promise<void> {
-    await page.waitForFunction(cls => !document.body.classList.contains(cls), BODY_CLASS, {
+async function waitForFocusInactive(page: Page): Promise<void> {
+    await page.waitForFunction((cls: string) => !document.body.classList.contains(cls), BODY_CLASS, {
         timeout: 15000,
     });
 }
@@ -87,7 +88,7 @@ async function waitForFocusInactive(page): Promise<void> {
  * saved iDevice id. Mirrors the proven single-iDevice save flow used by the
  * other tests in this file to avoid empty-save / unsaved-changes flakiness.
  */
-async function addSavedTextIdevice(page): Promise<string> {
+async function addSavedTextIdevice(page: Page): Promise<string> {
     await addTextIdevice(page);
     const id = await getTextIdeviceId(page);
     await ensureEditing(page, id);
@@ -106,7 +107,7 @@ async function addSavedTextIdevice(page): Promise<string> {
  * it directly is deterministic — unlike toggling the real fullscreen plugin in
  * headless. Returns whether both classes were applied.
  */
-async function injectLeftoverFullscreenState(page): Promise<boolean> {
+async function injectLeftoverFullscreenState(page: Page): Promise<boolean> {
     return page.evaluate(() => {
         document.documentElement.classList.add('tox-fullscreen');
         document.body.classList.add('tox-fullscreen');
@@ -326,8 +327,8 @@ test.describe('Focused iDevice edit mode (experiment)', () => {
         // click. Add a real sibling iDevice node to the focused block and assert the
         // fix removes it from layout while the edited iDevice stays visible.
         const result = await page.evaluate(focusedId => {
-            const focused = document.getElementById(focusedId);
-            const block = focused.closest('.box');
+            const focused = document.getElementById(focusedId) as HTMLElement;
+            const block = focused.closest('.box') as HTMLElement;
             const content = block.querySelector(':scope > .box-content') || block;
             const sibling = document.createElement('div');
             sibling.className = 'idevice_node idevice-element-in-content draggable text';
