@@ -10,7 +10,7 @@
  * - Progress is emitted via WebSocket as files are written
  * - Supports mega-batches (up to 100MB or 200 files)
  */
-import { Elysia } from 'elysia';
+import { Elysia, t, type Static } from 'elysia';
 import * as fs from 'fs-extra';
 import * as path from 'path';
 import type { Kysely } from 'kysely';
@@ -32,22 +32,22 @@ import {
     MAX_BATCH_FILES,
 } from '../services/upload-session-manager';
 
-/**
- * File with optional name property (for Blob/File uploads)
- */
-interface FileWithName extends Blob {
-    name?: string;
-}
+/** One metadata entry per file, as SaveManager sends it. */
+const MetadataEntry = t.Object({
+    clientId: t.String(),
+    filename: t.Optional(t.String()),
+    mimeType: t.Optional(t.String()),
+    folderPath: t.Optional(t.String()),
+});
 
 /**
- * Metadata entry from client
+ * Multipart batch body. `metadata` is a JSON string that Elysia parses against the
+ * entry schema; `files` must be real files. Missing files keep the handler's 400.
  */
-interface MetadataEntry {
-    clientId: string;
-    filename: string;
-    mimeType: string;
-    folderPath?: string;
-}
+const BatchBody = t.Object({
+    files: t.Optional(t.Files()),
+    metadata: t.Optional(t.Union([t.String(), t.Array(MetadataEntry)])),
+});
 
 /**
  * Dependencies for upload session routes
@@ -99,366 +99,357 @@ export function createUploadSessionRoutes(deps: UploadSessionDependencies = defa
 
             // POST /api/upload-session/:token/batch - Upload batch with session token
             // NO AUTH MIDDLEWARE - validates session token instead
-            .post('/:token/batch', async ({ params, body, request, set }) => {
-                const { token } = params;
+            .post(
+                '/:token/batch',
+                async ({ params, body, request, set }) => {
+                    const { token } = params;
 
-                // Validate session token (O(1) - just JWT verification)
-                const session = await validateSession(token);
-                if (!session) {
-                    set.status = 401;
-                    return { success: false, error: 'Invalid or expired session token' };
-                }
+                    // Validate session token (O(1) - just JWT verification)
+                    const session = await validateSession(token);
+                    if (!session) {
+                        set.status = 401;
+                        return { success: false, error: 'Invalid or expired session token' };
+                    }
 
-                // Also verify header token matches (defense in depth)
-                const headerToken = request.headers.get('x-upload-session');
-                if (headerToken && headerToken !== token) {
-                    set.status = 401;
-                    return { success: false, error: 'Token mismatch' };
-                }
+                    // Also verify header token matches (defense in depth)
+                    const headerToken = request.headers.get('x-upload-session');
+                    if (headerToken && headerToken !== token) {
+                        set.status = 401;
+                        return { success: false, error: 'Token mismatch' };
+                    }
 
-                try {
-                    const data = body as {
-                        metadata?: string | MetadataEntry[];
-                        files?: Blob | Blob[];
-                    };
+                    try {
+                        const data = body as Static<typeof BatchBody>;
 
-                    // Parse metadata from JSON string
-                    let metadata: MetadataEntry[] = [];
-                    if (typeof data.metadata === 'string') {
-                        try {
-                            metadata = JSON.parse(data.metadata);
-                        } catch {
-                            set.status = 400;
-                            return { success: false, error: 'Invalid metadata JSON' };
+                        // Parse metadata from JSON string
+                        let metadata: Static<typeof MetadataEntry>[] = [];
+                        if (typeof data.metadata === 'string') {
+                            try {
+                                metadata = JSON.parse(data.metadata);
+                            } catch {
+                                set.status = 400;
+                                return { success: false, error: 'Invalid metadata JSON' };
+                            }
+                        } else if (Array.isArray(data.metadata)) {
+                            metadata = data.metadata;
                         }
-                    } else if (Array.isArray(data.metadata)) {
-                        metadata = data.metadata;
-                    }
 
-                    // Get files from FormData
-                    let files: (Blob | Buffer)[] = [];
-                    if (data.files) {
-                        files = Array.isArray(data.files) ? data.files : [data.files];
-                    }
-
-                    if (files.length === 0) {
-                        set.status = 400;
-                        return { success: false, error: 'No files provided' };
-                    }
-
-                    // Validate batch size
-                    if (files.length > MAX_BATCH_FILES) {
-                        set.status = 400;
-                        return {
-                            success: false,
-                            error: `Too many files. Maximum is ${MAX_BATCH_FILES} files per batch.`,
-                        };
-                    }
-
-                    // Each effective clientId becomes an on-disk filename; reject traversal/separators
-                    // up front so nothing is written when any clientId is unsafe. The session JWT binds
-                    // only projectId, not the per-file clientId, so the metadata is untrusted input.
-                    // Mirror the per-file fallback used below: a missing metadata entry yields `file-${i}`.
-                    for (let i = 0; i < files.length; i++) {
-                        const clientId = (metadata[i] || { clientId: `file-${i}` }).clientId;
-                        if (!isSafePathSegment(clientId)) {
+                        if (!Array.isArray(metadata)) {
                             set.status = 400;
-                            return { success: false, error: 'Invalid clientId in metadata' };
+                            return { success: false, error: 'Invalid metadata: expected an array' };
                         }
-                    }
 
-                    // Enforce the total batch size BEFORE buffering any bytes into memory.
-                    // Blob/File expose `.size` and Buffer exposes `.length` without reading the
-                    // payload, so we can reject an oversized batch using the declared sizes and never
-                    // materialize the files. This closes a memory-amplification vector under concurrency
-                    // where many large batches would otherwise be fully buffered before the cap is hit.
-                    let declaredBatchBytes = 0;
-                    for (const file of files) {
-                        if (file instanceof Blob) {
+                        const files = data.files ?? [];
+
+                        if (files.length === 0) {
+                            set.status = 400;
+                            return { success: false, error: 'No files provided' };
+                        }
+
+                        // Validate batch size
+                        if (files.length > MAX_BATCH_FILES) {
+                            set.status = 400;
+                            return {
+                                success: false,
+                                error: `Too many files. Maximum is ${MAX_BATCH_FILES} files per batch.`,
+                            };
+                        }
+
+                        // Each effective clientId becomes an on-disk filename; reject traversal/separators
+                        // up front so nothing is written when any clientId is unsafe. The session JWT binds
+                        // only projectId, not the per-file clientId, so the metadata is untrusted input.
+                        // Mirror the per-file fallback used below: a missing metadata entry yields `file-${i}`.
+                        for (let i = 0; i < files.length; i++) {
+                            const clientId = (metadata[i] || { clientId: `file-${i}` }).clientId;
+                            if (!isSafePathSegment(clientId)) {
+                                set.status = 400;
+                                return { success: false, error: 'Invalid clientId in metadata' };
+                            }
+                        }
+
+                        // Enforce the total batch size BEFORE buffering any bytes into memory.
+                        // Blob/File expose `.size` and Buffer exposes `.length` without reading the
+                        // payload, so we can reject an oversized batch using the declared sizes and never
+                        // materialize the files. This closes a memory-amplification vector under concurrency
+                        // where many large batches would otherwise be fully buffered before the cap is hit.
+                        let declaredBatchBytes = 0;
+                        for (const file of files) {
                             declaredBatchBytes += file.size;
-                        } else if (Buffer.isBuffer(file)) {
-                            declaredBatchBytes += file.length;
+                            if (declaredBatchBytes > MAX_BATCH_BYTES) {
+                                set.status = 400;
+                                return {
+                                    success: false,
+                                    error: `Batch too large. Maximum is ${MAX_BATCH_BYTES / (1024 * 1024)}MB per batch.`,
+                                };
+                            }
                         }
-                        if (declaredBatchBytes > MAX_BATCH_BYTES) {
-                            set.status = 400;
-                            return {
-                                success: false,
-                                error: `Batch too large. Maximum is ${MAX_BATCH_BYTES / (1024 * 1024)}MB per batch.`,
-                            };
-                        }
-                    }
 
-                    // Storage paths are derived from the session's project UUID:
-                    // assets/<shard>/<projectUuid>/<clientId>.<ext> relative to
-                    // FILES_DIR, resolved to a physical path per file below.
+                        // Storage paths are derived from the session's project UUID:
+                        // assets/<shard>/<projectUuid>/<clientId>.<ext> relative to
+                        // FILES_DIR, resolved to a physical path per file below.
 
-                    // =====================================================
-                    // PHASE 1: Convert files to buffers sequentially, aborting early
-                    // Emit progress for each file as we process it
-                    // =====================================================
-                    // Buffer one file at a time and track the running total instead of materializing
-                    // the whole set with Promise.all. This bounds peak memory and lets us abort as soon
-                    // as the actual buffered bytes exceed MAX_BATCH_BYTES, even when a declared `.size`
-                    // was missing or under-reported above.
-                    type BufferedFile = {
-                        clientId: string;
-                        filename: string;
-                        mimeType: string;
-                        folderPath: string;
-                        fileBuffer: Buffer;
-                        filePath: string;
-                        storagePath: string;
-                        flatFilename: string;
-                    };
-                    const fileData: BufferedFile[] = [];
-                    let bufferedBatchBytes = 0;
-
-                    for (let i = 0; i < files.length; i++) {
-                        const file = files[i];
-                        const fileMeta = metadata[i] || {
-                            clientId: `file-${i}`,
-                            filename: 'unknown',
-                            mimeType: 'application/octet-stream',
+                        // =====================================================
+                        // PHASE 1: Convert files to buffers sequentially, aborting early
+                        // Emit progress for each file as we process it
+                        // =====================================================
+                        // Buffer one file at a time and track the running total instead of materializing
+                        // the whole set with Promise.all. This bounds peak memory and lets us abort as soon
+                        // as the actual buffered bytes exceed MAX_BATCH_BYTES, even when a declared `.size`
+                        // was missing or under-reported above.
+                        type BufferedFile = {
+                            clientId: string;
+                            filename: string;
+                            mimeType: string;
+                            folderPath: string;
+                            fileBuffer: Buffer;
+                            filePath: string;
+                            storagePath: string;
+                            flatFilename: string;
                         };
-                        let fileBuffer: Buffer;
-                        let filename = fileMeta.filename || 'uploaded_file';
-                        let mimeType = fileMeta.mimeType || 'application/octet-stream';
-                        const folderPath = sanitizeFolderPath(fileMeta.folderPath);
+                        const fileData: BufferedFile[] = [];
+                        let bufferedBatchBytes = 0;
 
-                        if (file instanceof Blob) {
-                            fileBuffer = Buffer.from(await file.arrayBuffer());
-                            if ((file as FileWithName).name) filename = (file as FileWithName).name!;
-                            if (file.type) mimeType = file.type;
-                        } else if (Buffer.isBuffer(file)) {
-                            fileBuffer = file;
-                        } else {
-                            fileBuffer = Buffer.from(file as unknown as ArrayBuffer);
-                        }
-
-                        // Abort as soon as the actual buffered total exceeds the cap. Releasing the
-                        // already-buffered files (and not buffering the rest) keeps peak memory bounded.
-                        bufferedBatchBytes += fileBuffer.length;
-                        if (bufferedBatchBytes > MAX_BATCH_BYTES) {
-                            fileData.length = 0;
-                            set.status = 400;
-                            return {
-                                success: false,
-                                error: `Batch too large. Maximum is ${MAX_BATCH_BYTES / (1024 * 1024)}MB per batch.`,
+                        for (let i = 0; i < files.length; i++) {
+                            const file = files[i];
+                            const fileMeta = metadata[i] || {
+                                clientId: `file-${i}`,
+                                filename: 'unknown',
+                                mimeType: 'application/octet-stream',
                             };
-                        }
+                            let filename = fileMeta.filename || 'uploaded_file';
+                            let mimeType = fileMeta.mimeType || 'application/octet-stream';
+                            const folderPath = sanitizeFolderPath(fileMeta.folderPath);
 
-                        // Use clientId as filename with original extension. clientId was validated as a
-                        // safe path segment above; buildAssetStoragePath re-validates every segment and
-                        // resolveAssetStoragePath asserts containment, so a crafted clientId or extension
-                        // cannot escape the project assets directory.
-                        const ext = sanitizeFileExtension(filename);
-                        const flatFilename = `${fileMeta.clientId}${ext}`;
-                        const storagePath = buildAssetStoragePath(session.projectId, flatFilename);
-                        const filePath = resolveAssetStoragePath(storagePath);
+                            const fileBuffer = Buffer.from(await file.arrayBuffer());
+                            if (file.name) filename = file.name;
+                            if (file.type) mimeType = file.type;
 
-                        fileData.push({
-                            clientId: fileMeta.clientId,
-                            filename,
-                            mimeType,
-                            folderPath,
-                            fileBuffer,
-                            filePath,
-                            storagePath,
-                            flatFilename,
-                        });
-                    }
-
-                    // Lazy directory creation: the sharded project directory is
-                    // created only when there is something to write.
-                    if (fileData.length > 0) {
-                        await fs.ensureDir(path.dirname(fileData[0].filePath));
-                    }
-
-                    // =====================================================
-                    // PHASE 2: Write all files to disk
-                    // Emit progress for each file as it's written
-                    // =====================================================
-                    const writeResults: Array<{ index: number; success: boolean; error?: string }> = [];
-
-                    for (let i = 0; i < fileData.length; i++) {
-                        const data = fileData[i];
-
-                        try {
-                            // Emit progress: writing
-                            emitProgress(session.sessionId, {
-                                clientId: data.clientId,
-                                bytesWritten: 0,
-                                totalBytes: data.fileBuffer.length,
-                                status: 'writing',
-                            });
-
-                            // Write file using Bun.write for optimal performance
-                            if (typeof Bun !== 'undefined' && Bun.write) {
-                                await Bun.write(data.filePath, data.fileBuffer);
-                            } else {
-                                await fs.writeFile(data.filePath, data.fileBuffer);
+                            // Abort as soon as the actual buffered total exceeds the cap. Releasing the
+                            // already-buffered files (and not buffering the rest) keeps peak memory bounded.
+                            bufferedBatchBytes += fileBuffer.length;
+                            if (bufferedBatchBytes > MAX_BATCH_BYTES) {
+                                fileData.length = 0;
+                                set.status = 400;
+                                return {
+                                    success: false,
+                                    error: `Batch too large. Maximum is ${MAX_BATCH_BYTES / (1024 * 1024)}MB per batch.`,
+                                };
                             }
 
-                            // Emit progress: complete
-                            emitProgress(session.sessionId, {
-                                clientId: data.clientId,
-                                bytesWritten: data.fileBuffer.length,
-                                totalBytes: data.fileBuffer.length,
-                                status: 'complete',
-                            });
+                            // Use clientId as filename with original extension. clientId was validated as a
+                            // safe path segment above; buildAssetStoragePath re-validates every segment and
+                            // resolveAssetStoragePath asserts containment, so a crafted clientId or extension
+                            // cannot escape the project assets directory.
+                            const ext = sanitizeFileExtension(filename);
+                            const flatFilename = `${fileMeta.clientId}${ext}`;
+                            const storagePath = buildAssetStoragePath(session.projectId, flatFilename);
+                            const filePath = resolveAssetStoragePath(storagePath);
 
-                            writeResults.push({ index: i, success: true });
-                        } catch (err) {
-                            const errMsg = err instanceof Error ? err.message : String(err);
-
-                            // Emit progress: error
-                            emitProgress(session.sessionId, {
-                                clientId: data.clientId,
-                                bytesWritten: 0,
-                                totalBytes: data.fileBuffer.length,
-                                status: 'error',
-                                error: errMsg,
-                            });
-
-                            writeResults.push({ index: i, success: false, error: errMsg });
-                        }
-                    }
-
-                    // =====================================================
-                    // PHASE 3: Bulk lookup existing assets (1 query)
-                    // =====================================================
-                    const successfulWrites = writeResults.filter(r => r.success);
-                    const clientIds = successfulWrites.map(r => fileData[r.index].clientId);
-
-                    const existingAssets = await queries.findAssetsByClientIds(
-                        database,
-                        clientIds,
-                        session.projectIdNum,
-                    );
-                    const existingMap = new Map(existingAssets.map(a => [a.client_id, a]));
-
-                    // =====================================================
-                    // PHASE 4: Separate new vs existing assets
-                    // =====================================================
-                    const toCreate: Array<{
-                        project_id: number;
-                        filename: string;
-                        storage_path: string;
-                        mime_type: string;
-                        file_size: string;
-                        component_id: null;
-                        client_id: string;
-                        folder_path: string;
-                    }> = [];
-                    const toUpdate: Array<{
-                        id: number;
-                        data: { storage_path: string; file_size: string; folder_path: string };
-                    }> = [];
-                    const results: Array<{
-                        clientId: string;
-                        success: boolean;
-                        serverId?: number;
-                        error?: string;
-                    }> = [];
-
-                    // Add failed writes to results
-                    for (const result of writeResults) {
-                        if (!result.success) {
-                            results.push({
-                                clientId: fileData[result.index].clientId,
-                                success: false,
-                                error: result.error,
+                            fileData.push({
+                                clientId: fileMeta.clientId,
+                                filename,
+                                mimeType,
+                                folderPath,
+                                fileBuffer,
+                                filePath,
+                                storagePath,
+                                flatFilename,
                             });
                         }
-                    }
 
-                    // Process successful writes
-                    for (const writeResult of successfulWrites) {
-                        const data = fileData[writeResult.index];
-                        const existing = existingMap.get(data.clientId);
+                        // Lazy directory creation: the sharded project directory is
+                        // created only when there is something to write.
+                        if (fileData.length > 0) {
+                            await fs.ensureDir(path.dirname(fileData[0].filePath));
+                        }
 
-                        if (existing) {
-                            // A relocating update (row still pointing at a legacy
-                            // or conflict-parked location) must not leave the
-                            // superseded file behind as an untracked orphan.
-                            if (existing.storage_path && existing.storage_path !== data.storagePath) {
-                                const oldPath = tryResolveAssetStoragePath(existing.storage_path);
-                                if (oldPath && oldPath !== data.filePath) {
-                                    await remove(oldPath).catch(() => {});
+                        // =====================================================
+                        // PHASE 2: Write all files to disk
+                        // Emit progress for each file as it's written
+                        // =====================================================
+                        const writeResults: Array<{ index: number; success: boolean; error?: string }> = [];
+
+                        for (let i = 0; i < fileData.length; i++) {
+                            const data = fileData[i];
+
+                            try {
+                                // Emit progress: writing
+                                emitProgress(session.sessionId, {
+                                    clientId: data.clientId,
+                                    bytesWritten: 0,
+                                    totalBytes: data.fileBuffer.length,
+                                    status: 'writing',
+                                });
+
+                                // Write file using Bun.write for optimal performance
+                                if (typeof Bun !== 'undefined' && Bun.write) {
+                                    await Bun.write(data.filePath, data.fileBuffer);
+                                } else {
+                                    await fs.writeFile(data.filePath, data.fileBuffer);
                                 }
+
+                                // Emit progress: complete
+                                emitProgress(session.sessionId, {
+                                    clientId: data.clientId,
+                                    bytesWritten: data.fileBuffer.length,
+                                    totalBytes: data.fileBuffer.length,
+                                    status: 'complete',
+                                });
+
+                                writeResults.push({ index: i, success: true });
+                            } catch (err) {
+                                const errMsg = err instanceof Error ? err.message : String(err);
+
+                                // Emit progress: error
+                                emitProgress(session.sessionId, {
+                                    clientId: data.clientId,
+                                    bytesWritten: 0,
+                                    totalBytes: data.fileBuffer.length,
+                                    status: 'error',
+                                    error: errMsg,
+                                });
+
+                                writeResults.push({ index: i, success: false, error: errMsg });
                             }
-                            toUpdate.push({
-                                id: existing.id,
-                                data: {
+                        }
+
+                        // =====================================================
+                        // PHASE 3: Bulk lookup existing assets (1 query)
+                        // =====================================================
+                        const successfulWrites = writeResults.filter(r => r.success);
+                        const clientIds = successfulWrites.map(r => fileData[r.index].clientId);
+
+                        const existingAssets = await queries.findAssetsByClientIds(
+                            database,
+                            clientIds,
+                            session.projectIdNum,
+                        );
+                        const existingMap = new Map(existingAssets.map(a => [a.client_id, a]));
+
+                        // =====================================================
+                        // PHASE 4: Separate new vs existing assets
+                        // =====================================================
+                        const toCreate: Array<{
+                            project_id: number;
+                            filename: string;
+                            storage_path: string;
+                            mime_type: string;
+                            file_size: string;
+                            component_id: null;
+                            client_id: string;
+                            folder_path: string;
+                        }> = [];
+                        const toUpdate: Array<{
+                            id: number;
+                            data: { storage_path: string; file_size: string; folder_path: string };
+                        }> = [];
+                        const results: Array<{
+                            clientId: string;
+                            success: boolean;
+                            serverId?: number;
+                            error?: string;
+                        }> = [];
+
+                        // Add failed writes to results
+                        for (const result of writeResults) {
+                            if (!result.success) {
+                                results.push({
+                                    clientId: fileData[result.index].clientId,
+                                    success: false,
+                                    error: result.error,
+                                });
+                            }
+                        }
+
+                        // Process successful writes
+                        for (const writeResult of successfulWrites) {
+                            const data = fileData[writeResult.index];
+                            const existing = existingMap.get(data.clientId);
+
+                            if (existing) {
+                                // A relocating update (row still pointing at a legacy
+                                // or conflict-parked location) must not leave the
+                                // superseded file behind as an untracked orphan.
+                                if (existing.storage_path && existing.storage_path !== data.storagePath) {
+                                    const oldPath = tryResolveAssetStoragePath(existing.storage_path);
+                                    if (oldPath && oldPath !== data.filePath) {
+                                        await remove(oldPath).catch(() => {});
+                                    }
+                                }
+                                toUpdate.push({
+                                    id: existing.id,
+                                    data: {
+                                        storage_path: data.storagePath,
+                                        file_size: String(data.fileBuffer.length),
+                                        folder_path: data.folderPath,
+                                    },
+                                });
+                                results.push({
+                                    clientId: data.clientId,
+                                    success: true,
+                                    serverId: existing.id,
+                                });
+                            } else {
+                                toCreate.push({
+                                    project_id: session.projectIdNum,
+                                    filename: data.filename,
                                     storage_path: data.storagePath,
+                                    mime_type: data.mimeType,
                                     file_size: String(data.fileBuffer.length),
+                                    component_id: null,
+                                    client_id: data.clientId,
                                     folder_path: data.folderPath,
-                                },
-                            });
-                            results.push({
-                                clientId: data.clientId,
-                                success: true,
-                                serverId: existing.id,
-                            });
-                        } else {
-                            toCreate.push({
-                                project_id: session.projectIdNum,
-                                filename: data.filename,
-                                storage_path: data.storagePath,
-                                mime_type: data.mimeType,
-                                file_size: String(data.fileBuffer.length),
-                                component_id: null,
-                                client_id: data.clientId,
-                                folder_path: data.folderPath,
-                            });
+                                });
+                            }
                         }
-                    }
 
-                    // =====================================================
-                    // PHASE 5: Bulk database operations
-                    // =====================================================
-                    // Bulk insert new assets
-                    if (toCreate.length > 0) {
-                        const created = await queries.createAssets(database, toCreate);
-                        const createdMap = new Map(created.map(a => [a.client_id, a.id]));
+                        // =====================================================
+                        // PHASE 5: Bulk database operations
+                        // =====================================================
+                        // Bulk insert new assets
+                        if (toCreate.length > 0) {
+                            const created = await queries.createAssets(database, toCreate);
+                            const createdMap = new Map(created.map(a => [a.client_id, a.id]));
 
-                        for (const asset of toCreate) {
-                            const serverId = createdMap.get(asset.client_id);
-                            results.push({
-                                clientId: asset.client_id,
-                                success: true,
-                                serverId,
-                            });
+                            for (const asset of toCreate) {
+                                const serverId = createdMap.get(asset.client_id);
+                                results.push({
+                                    clientId: asset.client_id,
+                                    success: true,
+                                    serverId,
+                                });
+                            }
                         }
+
+                        // Bulk update existing assets
+                        if (toUpdate.length > 0) {
+                            await queries.bulkUpdateAssets(database, toUpdate);
+                        }
+
+                        const successCount = results.filter(r => r.success).length;
+                        const failCount = results.filter(r => !r.success).length;
+
+                        // Emit batch complete via WebSocket
+                        emitBatchComplete(session.sessionId, {
+                            uploaded: successCount,
+                            failed: failCount,
+                            results,
+                        });
+
+                        return {
+                            success: failCount === 0,
+                            uploaded: successCount,
+                            failed: failCount,
+                            results,
+                        };
+                    } catch (error: unknown) {
+                        set.status = 500;
+                        const errorMessage = error instanceof Error ? error.message : String(error);
+                        return { success: false, error: errorMessage };
                     }
-
-                    // Bulk update existing assets
-                    if (toUpdate.length > 0) {
-                        await queries.bulkUpdateAssets(database, toUpdate);
-                    }
-
-                    const successCount = results.filter(r => r.success).length;
-                    const failCount = results.filter(r => !r.success).length;
-
-                    // Emit batch complete via WebSocket
-                    emitBatchComplete(session.sessionId, {
-                        uploaded: successCount,
-                        failed: failCount,
-                        results,
-                    });
-
-                    return {
-                        success: failCount === 0,
-                        uploaded: successCount,
-                        failed: failCount,
-                        results,
-                    };
-                } catch (error: unknown) {
-                    set.status = 500;
-                    const errorMessage = error instanceof Error ? error.message : String(error);
-                    return { success: false, error: errorMessage };
-                }
-            })
+                },
+                { body: BatchBody },
+            )
 
             // =====================================================
             // Cancel Upload Session

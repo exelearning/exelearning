@@ -88,21 +88,21 @@ test.describe('Theme navigation and search togglers', () => {
             // Initial state: menu open, announced as expanded and reachable.
             await expect(navToggler).toHaveAttribute('aria-controls', 'siteNav');
             await expect(navToggler).toHaveAttribute('aria-expanded', 'true');
-            expect(await nav.evaluate(el => el.inert)).toBe(false);
+            expect(await nav.evaluate((el: HTMLElement) => el.inert)).toBe(false);
             expect(await canFocus(firstNavLink)).toBe(true);
             expect(await nextButton.getAttribute('href')).not.toContain('nav=false');
 
             // Collapse: announced as collapsed AND removed from focus/a11y tree.
             await navToggler.click();
             await expect(navToggler).toHaveAttribute('aria-expanded', 'false');
-            expect(await nav.evaluate(el => el.inert)).toBe(true);
+            expect(await nav.evaluate((el: HTMLElement) => el.inert)).toBe(true);
             expect(await canFocus(firstNavLink)).toBe(false);
             expect(await nextButton.getAttribute('href')).toContain('nav=false');
 
             // Reopen: desktop branch clears nav=false again.
             await navToggler.click();
             await expect(navToggler).toHaveAttribute('aria-expanded', 'true');
-            expect(await nav.evaluate(el => el.inert)).toBe(false);
+            expect(await nav.evaluate((el: HTMLElement) => el.inert)).toBe(false);
             expect(await canFocus(firstNavLink)).toBe(true);
             expect(await nextButton.getAttribute('href')).not.toContain('nav=false');
 
