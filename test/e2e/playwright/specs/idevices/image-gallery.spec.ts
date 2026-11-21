@@ -1590,7 +1590,7 @@ test.describe('Image Gallery iDevice', () => {
             // Stock npm build (the old fork carried an eXe caption patch).
             const lib = fs.readFileSync(path.join(dir, libKey as string), 'utf8');
             expect(lib).not.toContain('myCaptionData');
-            // prettyPhoto is only for rel="lightbox" content, which this project has none of.
+            // exe_lightbox is only for rel="lightbox" content, which this project has none of.
             expect(files.some(f => f.includes('exe_lightbox/'))).toBe(false);
 
             // Open the exported site from disk and block every non-file request.
@@ -1630,7 +1630,7 @@ test.describe('Image Gallery iDevice', () => {
             await exported.close();
         });
 
-        test('SCORM export ships stock SimpleLightbox and no prettyPhoto', async ({
+        test('SCORM export ships stock SimpleLightbox and no exe_lightbox', async ({
             authenticatedPage,
             createProject,
         }) => {

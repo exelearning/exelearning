@@ -3681,10 +3681,11 @@ describe('exe_export.js', () => {
         expect(pm().isOverlayActive()).toBe(false);
       });
 
-      it('exe_lightbox (prettyPhoto) counts only while visible', () => {
-        document.body.innerHTML = '<div class="pp_pic_holder" style="display:none"></div>';
+      it('exe_lightbox (Tobii) counts only while open', () => {
+        // Tobii creates its dialog once and toggles aria-hidden on open/close.
+        document.body.innerHTML = '<div role="dialog" class="tobii" aria-hidden="true"></div>';
         expect(pm().isOverlayActive()).toBe(false);
-        document.querySelector('.pp_pic_holder').style.display = 'block';
+        document.querySelector('.tobii').setAttribute('aria-hidden', 'false');
         expect(pm().isOverlayActive()).toBe(true);
       });
 

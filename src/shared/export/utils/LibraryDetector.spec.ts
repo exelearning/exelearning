@@ -4,6 +4,7 @@
 
 import { describe, it, expect, beforeEach } from 'bun:test';
 import { LibraryDetector } from './LibraryDetector';
+import { LIBRARY_PATTERNS } from '../constants';
 
 describe('LibraryDetector', () => {
     let detector: LibraryDetector;
@@ -76,8 +77,8 @@ describe('LibraryDetector', () => {
             expect(result.libraries.map(l => l.name)).toContain('exe_lightbox_gallery');
         });
 
-        it('should not load prettyPhoto for the image-gallery iDevice (imageGallery-IDevice)', () => {
-            // That iDevice ships its own SimpleLightbox; prettyPhoto would be dead weight.
+        it('should not load exe_lightbox for the image-gallery iDevice (imageGallery-IDevice)', () => {
+            // That iDevice ships its own SimpleLightbox; exe_lightbox would be dead weight.
             const html =
                 '<div class="imageGallery-IDevice"><a class="imageLink" href="a.jpg"><img src="t.jpg"></a></div>';
             const result = detector.detectLibraries(html);
@@ -245,25 +246,31 @@ describe('LibraryDetector', () => {
             expect(result.files).toContain('exe_math');
         });
 
-        it('should mark exe_lightbox with isDirectory=true for full directory export', () => {
+        it('should ship Tobii before the exe_lightbox adapter for lightbox links', () => {
             const html = '<a href="image.jpg" rel="lightbox">Image</a>';
             const result = detector.detectLibraries(html);
 
             const lightboxPattern = result.patterns.find(p => p.name === 'exe_lightbox');
             expect(lightboxPattern).toBeDefined();
-            expect(lightboxPattern?.isDirectory).toBe(true);
-            // Should still have the main files for HTML references
+            // No sprite images any more: the listed files are the whole library.
+            expect(lightboxPattern?.isDirectory).toBeUndefined();
+            expect(lightboxPattern?.files).toEqual([
+                'exe_lightbox/tobii.min.js',
+                'exe_lightbox/exe_lightbox.js',
+                'exe_lightbox/tobii.min.css',
+                'exe_lightbox/exe_lightbox.css',
+            ]);
+            expect(result.files).toContain('exe_lightbox/tobii.min.js');
             expect(result.files).toContain('exe_lightbox/exe_lightbox.js');
-            expect(result.files).toContain('exe_lightbox/exe_lightbox.css');
         });
 
-        it('should mark exe_lightbox_gallery with isDirectory=true for full directory export', () => {
+        it('should ship the same lightbox files for legacy image galleries', () => {
             const html = '<div class="imageGallery">Gallery</div>';
             const result = detector.detectLibraries(html);
 
             const galleryPattern = result.patterns.find(p => p.name === 'exe_lightbox_gallery');
             expect(galleryPattern).toBeDefined();
-            expect(galleryPattern?.isDirectory).toBe(true);
+            expect(galleryPattern?.files).toEqual(LIBRARY_PATTERNS.find(p => p.name === 'exe_lightbox')?.files);
         });
 
         it('should mark exe_atools with isDirectory=true for full directory export', () => {
