@@ -3249,6 +3249,43 @@ describe('NavbarFile', () => {
             navbarFile = new NavbarFile(mockMenu);
         });
 
+        it('uses the browser file picker where it can keep file handles', async () => {
+            const file = new File(['x'], 'picked.elpx');
+            const recent = { isRecentHandlesSupported: () => true, pickProjectFile: vi.fn().mockResolvedValue(file) };
+            navbarFile.openLocalFile = vi.fn();
+
+            await navbarFile.openFileInputStatic(recent);
+
+            expect(recent.pickProjectFile).toHaveBeenCalled();
+            expect(navbarFile.openLocalFile).toHaveBeenCalledWith(file);
+            expect(document.getElementById('static-open-file-input')).toBeNull();
+        });
+
+        it('opens nothing when the browser file picker is cancelled', async () => {
+            const recent = { isRecentHandlesSupported: () => true, pickProjectFile: vi.fn().mockResolvedValue(null) };
+            navbarFile.openLocalFile = vi.fn();
+
+            await navbarFile.openFileInputStatic(recent);
+
+            expect(navbarFile.openLocalFile).not.toHaveBeenCalled();
+        });
+
+        it('reports a failure of the browser file picker', async () => {
+            const recent = {
+                isRecentHandlesSupported: () => true,
+                pickProjectFile: vi.fn().mockRejectedValue(new Error('SecurityError')),
+            };
+            const show = vi.fn();
+            const previousModals = global.eXeLearning.app.modals;
+            global.eXeLearning.app.modals = { ...previousModals, alert: { show } };
+            vi.spyOn(console, 'error').mockImplementation(() => {});
+
+            await navbarFile.openFileInputStatic(recent);
+
+            expect(show).toHaveBeenCalledWith(expect.objectContaining({ contentId: 'error' }));
+            global.eXeLearning.app.modals = previousModals;
+        });
+
         it('should create file input element if not exists', () => {
             navbarFile.openFileInputStatic();
 
@@ -3305,6 +3342,22 @@ describe('NavbarFile', () => {
         // Save dialog, not B.elpx. The static path used to skip
         // setSavedPath entirely, so the main-process "current file" slot
         // still held B's name.
+        it('should settle only when the import itself settles', async () => {
+            let finishImport;
+            eXeLearning.app.modals.openuserodefiles = {
+                largeFilesUpload: vi.fn(() => new Promise((resolve) => (finishImport = resolve))),
+            };
+            let settled = false;
+            const opening = navbarFile.openLocalFile(new File(['x'], 'a.elpx')).then(() => (settled = true));
+
+            await new Promise((resolve) => setTimeout(resolve, 0));
+            expect(settled).toBe(false);
+
+            finishImport();
+            await opening;
+            expect(settled).toBe(true);
+        });
+
         it('should persist the opened file name via setSavedPath in static mode', async () => {
             const largeFilesUploadSpy = vi.fn();
             const setSavedPath = vi.fn().mockResolvedValue(true);

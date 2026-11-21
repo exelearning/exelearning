@@ -1,0 +1,19 @@
+{% extends "base.njk" %}
+
+{% block stylesheets %}
+    <link class="exe" rel="stylesheet" href="{{ '/style/workarea/main.css' | asset }}">
+{% endblock %}
+
+{% block class %}exe-start-page{% endblock %}
+{% block title %}{{ appName or 'eXeLearning' }}{% endblock %}
+
+{% block body %}
+<header class="exe-start-page__bar">
+    <img src="{{ '/images/logo.svg' | asset }}" alt="{{ appName or 'eXeLearning' }}" class="exe-start-page__logo">
+    {% if userEmail %}<span class="exe-start-page__user">{{ userEmail }}</span>{% endif %}
+    <a href="{{ basePath }}/logout" class="exe-start-page__logout">{{ t.logout or 'Logout' }}</a>
+</header>
+{# The project is created only when the author chooses: see startPage.js #}
+<main id="exe-start-root" data-config="{{ startConfig | json }}"></main>
+<script class="exe" type="module" src="{{ '/app/workarea/start/startPage.js' | asset }}"></script>
+{% endblock %}

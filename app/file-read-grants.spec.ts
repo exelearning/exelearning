@@ -37,6 +37,16 @@ describe('file-read-grants', () => {
         expect(createFileReadGrants().grant(project)).toBe(project);
     });
 
+    it('tells whether the main process handed out a path', () => {
+        const grants = createFileReadGrants();
+        grants.grant(project);
+
+        expect(grants.has(path.join(dir, 'sub', '..', 'project.elpx'))).toBe(true);
+        expect(grants.has(secret)).toBe(false);
+        expect(grants.has('')).toBe(false);
+        expect(grants.has(undefined)).toBe(false);
+    });
+
     it('refuses a path the main process never handed to the renderer', () => {
         const grants = createFileReadGrants();
         grants.grant(project);

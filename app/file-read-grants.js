@@ -15,6 +15,11 @@ function createFileReadGrants() {
             return filePath;
         },
 
+        // Whether the main process handed this path out (a dialog choice or a file the OS opened).
+        has(filePath) {
+            return typeof filePath === 'string' && !!filePath && granted.has(path.resolve(filePath));
+        },
+
         // Read file contents as base64 for upload (renderer builds a File)
         read(filePath) {
             try {

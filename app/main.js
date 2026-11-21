@@ -16,6 +16,7 @@ const {
 const { checkLink } = require('./link-check');
 const { extractZipEntries } = require('./zip-extract');
 const { createFileReadGrants } = require('./file-read-grants');
+const { addRecentFile, describeRecentFiles, reopenRecentFile } = require('./recent-files');
 const { savePrintPreviewAsPdf } = require('./print-to-pdf');
 const { printPreview } = require('./print-preview');
 const {
@@ -328,6 +329,23 @@ function getLastUsedDir() {
 }
 
 /**
+ * Add a project file that was just opened or saved to the recent list of the
+ * settings object being written (the start screen shows it) and to the
+ * operating system's own list (dock menu, taskbar jump list). Exports and
+ * bare file names without a folder are not projects one can reopen.
+ */
+function rememberRecentFile(settings, dirPath, fileName) {
+    if (!dirPath || !fileName || !/\.elpx?$/i.test(fileName)) return;
+    const filePath = path.join(dirPath, fileName);
+    settings.recentFiles = addRecentFile(settings.recentFiles, filePath);
+    try {
+        app.addRecentDocument(filePath);
+    } catch (_err) {
+        // Best effort: the list in settings.json is the one the app relies on.
+    }
+}
+
+/**
  * Apply a Save-dialog outcome to settings.json in a single read+write:
  * wipes the stale per-project name cache, then updates the global slot,
  * the per-project entry, and the session-wide lastUsedDir fallback.
@@ -337,6 +355,7 @@ function persistSaveLocation(key, dirPath, fileName) {
     const s = readSettings();
     clearSavedNameCache(s);
     s.currentFileSave = { dir: dirPath || null, name: fileName || null };
+    rememberRecentFile(s, dirPath, fileName);
     if (key) {
         s.lastSaveDir = s.lastSaveDir || {};
         s.lastSaveDir[key] = dirPath;
@@ -352,10 +371,11 @@ function persistSaveLocation(key, dirPath, fileName) {
  * per-project slot. Used by the setSavedPath IPC when the renderer opens a
  * file from disk.
  */
-function setCurrentFileSaveInfo(dirPath, fileName) {
+function setCurrentFileSaveInfo(dirPath, fileName, isRecent) {
     const s = readSettings();
     clearSavedNameCache(s);
     s.currentFileSave = { dir: dirPath || null, name: fileName || null };
+    if (isRecent) rememberRecentFile(s, dirPath, fileName);
     if (dirPath) s.lastUsedDir = dirPath;
     writeSettings(s);
 }
@@ -1467,7 +1487,9 @@ ipcMain.handle('app:setSavedPath', async (_e, payload = {}) => {
         const filePath = typeof payload === 'string' ? payload : payload?.filePath;
         const split = splitSavePath(filePath);
         if (!split) return false;
-        setCurrentFileSaveInfo(split.dir, split.name);
+        // Only a file the main process handed out (Open dialog, OS) becomes a recent file: the list
+        // feeds reopening, which grants reading, so a path the renderer makes up must not get there.
+        setCurrentFileSaveInfo(split.dir, split.name, fileReadGrants.has(filePath));
         return true;
     } catch (_err) {
         return false;
@@ -1498,6 +1520,25 @@ ipcMain.handle('app:openElp', async e => {
     if (canceled || !filePaths || !filePaths.length) return null;
     setLastUsedDir(path.dirname(filePaths[0]));
     return fileReadGrants.grant(filePaths[0]);
+});
+
+// Recent project files for the start screen: names and folders only, each under an opaque id.
+ipcMain.handle('app:getRecentFiles', async () => describeRecentFiles(readSettings().recentFiles));
+
+// Open one of them: confirm unsaved changes, reload, and hand the file to the fresh page through the
+// same handshake as a file opened by the OS (see reopenRecentFile in recent-files.js).
+ipcMain.handle('app:openRecentFile', async (e, { id } = {}) => {
+    const win = BrowserWindow.fromWebContents(e.sender);
+    return reopenRecentFile(e.sender, id, {
+        list: readSettings().recentFiles,
+        hasUnsavedChanges: () => windowHasUnsavedChanges(win),
+        confirmDiscard: async () =>
+            confirmWindowCloseWithUnsavedChanges(
+                win,
+                (await getCloseCopyFromRenderer(win)) || getUnsavedChangesCloseCopy(),
+            ),
+        setPending: filePath => pendingOpenFileByWebContentsId.set(e.sender.id, filePath),
+    });
 });
 
 // Read file contents as base64 for upload (renderer builds a File), only for granted paths
