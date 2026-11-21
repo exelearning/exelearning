@@ -375,6 +375,23 @@ class YjsProjectBridge {
   }
 
   /**
+   * Replace the JWT after the server re-issued it (e.g. a self password change
+   * revokes the old one). Reconnects of the WebSocket read `params`, so the
+   * open socket keeps working and the next reconnect uses the new token.
+   * @param {string} token
+   */
+  updateAuthToken(token) {
+    this.authToken = token;
+    if (this.documentManager?.config) this.documentManager.config.token = token;
+    if (this.documentManager?.wsProvider?.params) this.documentManager.wsProvider.params.token = token;
+    this.saveManager?.setToken?.(token);
+    if (this.assetWebSocketHandler?.config) this.assetWebSocketHandler.config.token = token;
+    if (this.assetManager?._serverApiBaseUrl) {
+      this.assetManager.setServerConfig(this.assetManager._serverApiBaseUrl, token);
+    }
+  }
+
+  /**
    * Initialize the Yjs bridge for a project
    * @param {number} projectId - Project ID
    * @param {string} authToken - JWT authentication token

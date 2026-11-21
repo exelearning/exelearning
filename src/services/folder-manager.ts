@@ -5,7 +5,7 @@
  * Uses Dependency Injection pattern for testability
  */
 import type { Kysely } from 'kysely';
-import type { Database, Asset, NewAsset } from '../db/types';
+import type { Database, Asset } from '../db/types';
 import * as assetQueries from '../db/queries/assets';
 import { db as defaultDb } from '../db/client';
 import * as fflateModule from 'fflate';
@@ -430,7 +430,7 @@ export function createFolderManagerService(deps: FolderManagerDeps = {}): Folder
         // Create new asset record. A database failure is reported as such, and
         // the already-copied file is removed so no untracked orphan remains.
         try {
-            const newAssetData: NewAsset = {
+            const newAssetData = {
                 project_id: projectId,
                 filename: newFilename,
                 storage_path: newStoragePath,
@@ -678,7 +678,7 @@ export function createFolderManagerService(deps: FolderManagerDeps = {}): Folder
             const hash = crypto.createHash('sha256').update(data).digest('hex');
 
             // Create asset record
-            const newAssetData: NewAsset = {
+            const newAssetData = {
                 project_id: projectId,
                 filename: entryFilename,
                 storage_path: storagePath,

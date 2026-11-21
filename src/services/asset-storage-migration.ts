@@ -546,7 +546,7 @@ export async function migrateAssetStorage(deps: AssetStorageMigrationDeps = {}):
                         const resolved = assetRow.storage_path
                             ? tryResolveAssetStoragePath(filesDir, assetRow.storage_path)
                             : null;
-                        if (resolved && resolved.startsWith(legacyDir + path.sep)) {
+                        if (resolved?.startsWith(legacyDir + path.sep)) {
                             referencedPaths.add(resolved);
                         }
                     }

@@ -514,7 +514,7 @@ import { parseFromString } from '../../../src/services/xml/xml-parser';
 import { createDocumentFromElpFile, createDocumentFromStructure } from '../../helpers/document-test-utils';
 
 // Helper to get HTML from preview files
-const getHtmlFromPreviewFiles = (files: Map<string, Uint8Array | string>, filename: string): string => {
+const getHtmlFromPreviewFiles = (files: Map<string, ArrayBuffer | Uint8Array | string>, filename: string): string => {
     const content = files.get(filename);
     if (!content) return '';
     if (typeof content === 'string') return content;

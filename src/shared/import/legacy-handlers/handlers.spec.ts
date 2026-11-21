@@ -10,6 +10,7 @@ import { DOMParser } from '@xmldom/xmldom';
 
 // Import all handlers
 import { DefaultHandler } from './DefaultHandler';
+import type { IdeviceHandlerContext } from './IdeviceHandler';
 import { FreeTextHandler } from './FreeTextHandler';
 import { MultichoiceHandler } from './MultichoiceHandler';
 import { TrueFalseHandler } from './TrueFalseHandler';
@@ -36,7 +37,14 @@ import { NotaHandler } from './NotaHandler';
 function createDomElement(xml: string): Element {
     const parser = new DOMParser();
     const doc = parser.parseFromString(xml, 'text/xml');
-    return doc.documentElement;
+    if (!doc.documentElement) throw new Error('Test XML has no root element');
+    // xmldom stands in for the browser DOM the handlers are typed against.
+    return doc.documentElement as unknown as Element;
+}
+
+/** Handler context for a language; the handlers under test only read `language`. */
+function ctx(language: string): IdeviceHandlerContext {
+    return { language, ideviceId: 'idevice-1', className: '' };
 }
 
 describe('DefaultHandler', () => {
@@ -304,7 +312,7 @@ describe('DefaultHandler', () => {
                     </instance>
                 </dictionary>
             `);
-            const result = handler.extractFeedback(dict, { language: 'en' });
+            const result = handler.extractFeedback(dict, ctx('en'));
             expect(result.content).toBe('Answer feedback');
             expect(result.buttonCaption).toBe('Show Feedback');
         });
@@ -479,7 +487,7 @@ describe('FreeTextHandler', () => {
                 </dictionary>
             `);
 
-            const result = handler.extractHtmlView(dict, { language: 'en' });
+            const result = handler.extractHtmlView(dict, ctx('en'));
             expect(result).toContain('<p>Main content</p>');
             expect(result).toContain('feedbackbutton');
             expect(result).toContain('Info content');
@@ -506,7 +514,7 @@ describe('FreeTextHandler', () => {
                     </instance>
                 </dictionary>
             `);
-            const result = handler.extractHtmlView(dict, { language: 'en' });
+            const result = handler.extractHtmlView(dict, ctx('en'));
             expect(result).toContain('exe-text-activity');
             expect(result).toContain('Main content');
             expect(result).toContain('feedbacktooglebutton');
@@ -537,7 +545,7 @@ describe('FreeTextHandler', () => {
                     </instance>
                 </dictionary>
             `);
-            const result = handler.extractHtmlView(dict, { language: 'en' });
+            const result = handler.extractHtmlView(dict, ctx('en'));
             // Should contain existing feedback, not duplicate
             expect(result).toContain('Existing Feedback');
             expect(result).toContain('Existing feedback content');
@@ -572,7 +580,7 @@ describe('FreeTextHandler', () => {
                     </instance>
                 </dictionary>
             `);
-            const result = handler.extractHtmlView(dict, { language: 'en' });
+            const result = handler.extractHtmlView(dict, ctx('en'));
             expect(result).toContain('Info content');
             expect(result).not.toContain('Should be ignored');
         });
@@ -594,7 +602,7 @@ describe('FreeTextHandler', () => {
                     </instance>
                 </dictionary>
             `);
-            const result = handler.extractHtmlView(dict, { language: 'en' });
+            const result = handler.extractHtmlView(dict, ctx('en'));
             expect(result).toContain('exe-text-activity');
             expect(result).toContain('Feedback');
         });
@@ -621,7 +629,7 @@ describe('FreeTextHandler', () => {
                     </instance>
                 </dictionary>
             `);
-            const result = handler.extractFeedback(dict, { language: 'en' });
+            const result = handler.extractFeedback(dict, ctx('en'));
             expect(result.content).toBe('Answer feedback');
             expect(result.buttonCaption).toBe('Show Answer');
         });
@@ -638,7 +646,7 @@ describe('FreeTextHandler', () => {
                     </instance>
                 </dictionary>
             `);
-            const result = handler.extractFeedback(dict, { language: 'en' });
+            const result = handler.extractFeedback(dict, ctx('en'));
             expect(result.content).toBe('Feedback text');
             expect(result.buttonCaption).toBe('Show Feedback');
         });
@@ -676,7 +684,7 @@ describe('FreeTextHandler', () => {
                     </instance>
                 </dictionary>
             `);
-            const result = handler.extractFeedback(dict, { language: 'es' });
+            const result = handler.extractFeedback(dict, ctx('es'));
             expect(result.buttonCaption).toBe('Mostrar retroalimentación');
         });
 
@@ -704,7 +712,7 @@ describe('FreeTextHandler', () => {
                     </instance>
                 </dictionary>
             `);
-            const result = handler.extractFeedback(dict, { language: 'en' });
+            const result = handler.extractFeedback(dict, ctx('en'));
             // Should return empty because content already has feedback
             expect(result.content).toBe('');
             expect(result.buttonCaption).toBe('');
@@ -1771,7 +1779,7 @@ describe('DropdownHandler', () => {
                     </instance>
                 </dictionary>
             `);
-            const result = handler.extractFeedback(dict, { language: 'en' });
+            const result = handler.extractFeedback(dict, ctx('en'));
             expect(result.content).toBe('Alt feedback');
             expect(result.buttonCaption).toBe('Show Feedback');
         });
@@ -2352,7 +2360,7 @@ describe('CaseStudyHandler', () => {
                     </list>
                 </dictionary>
             `);
-            const props = handler.extractProperties(dict, undefined, { language: 'es' });
+            const props = handler.extractProperties(dict, undefined, ctx('es'));
             const activities = props.activities as { buttonCaption: string }[];
             expect(activities[0].buttonCaption).toBe('Mostrar retroalimentación');
         });

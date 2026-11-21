@@ -98,7 +98,7 @@ export class YjsDocumentAdapter implements ExportDocument {
                 (typeof window !== 'undefined' ? window.eXeLearning?.version : undefined) ||
                 (typeof process !== 'undefined' ? process.env?.APP_VERSION : undefined),
             createdAt: (meta.get('createdAt') as string) || new Date().toISOString(),
-            modified: (meta.get('modifiedAt') as string) || new Date().toISOString(),
+            modifiedAt: (meta.get('modifiedAt') as string) || new Date().toISOString(),
             // Custom styles support
             customStyles: (meta.get('customStyles') as string) || undefined,
 
@@ -344,16 +344,9 @@ export class YjsDocumentAdapter implements ExportDocument {
      */
     private convertComponent(compMap: YMap, index: number): ExportComponent {
         // Get HTML content - could be in 'content', 'htmlContent', or 'htmlView'
-        let content =
-            (compMap.get('content') as string) ||
-            (compMap.get('htmlContent') as string) ||
-            (compMap.get('htmlView') as string) ||
-            '';
-
-        // Handle Y.Text objects (convert to string if needed)
-        if (content && typeof content === 'object' && 'toString' in content) {
-            content = content.toString();
-        }
+        const content: string = String(
+            compMap.get('content') || compMap.get('htmlContent') || compMap.get('htmlView') || '',
+        );
 
         // Get iDevice-specific properties (jsonProperties) as plain object
         // jsonProperties can be stored as:

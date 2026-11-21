@@ -9,11 +9,11 @@ import * as path from 'path';
 import * as fs from 'fs';
 import * as os from 'os';
 import { db } from '../../../db/client';
-import { findProjectByUuid } from '../../../db/queries';
 import { getProjectAssetsDirCandidates } from '../../../services/file-helper';
 import { buildContentDisposition } from '../../../shared/http/headers';
 import {
     Html5Exporter,
+    PageExporter,
     Scorm12Exporter,
     Scorm2004Exporter,
     ImsExporter,
@@ -30,15 +30,7 @@ import {
 } from '../../../shared/export';
 import { reconstructDocument } from '../../../websocket/yjs-persistence';
 import { getAppVersion } from '../../../utils/version';
-import {
-    authenticateRequest,
-    errorResponse,
-    successResponse,
-    isAdmin,
-    ExportFormatParam,
-    type AuthenticatedUser,
-    type ApiErrorResponse,
-} from './types';
+import { authenticateRequest, errorResponse, successResponse, ExportFormatParam, checkProjectAccess } from './types';
 
 // ============================================================================
 // CONSTANTS
@@ -104,27 +96,6 @@ const EXPORT_FORMATS: Record<
 };
 
 // ============================================================================
-// HELPERS
-// ============================================================================
-
-async function checkProjectAccess(
-    uuid: string,
-    auth: AuthenticatedUser,
-): Promise<{ project: Awaited<ReturnType<typeof findProjectByUuid>>; error?: ApiErrorResponse }> {
-    const project = await findProjectByUuid(db, uuid);
-
-    if (!project) {
-        return { project: null, error: errorResponse('NOT_FOUND', `Project not found: ${uuid}`) };
-    }
-
-    if (project.owner_id !== auth.userId && !isAdmin(auth)) {
-        return { project: null, error: errorResponse('FORBIDDEN', 'You do not have access to this project') };
-    }
-
-    return { project };
-}
-
-// ============================================================================
 // ROUTES
 // ============================================================================
 
@@ -134,7 +105,7 @@ export const exportRoutes = new Elysia({ prefix: '/export' })
         '/formats',
         async ({ headers, set }) => {
             const authResult = await authenticateRequest(headers);
-            if (!authResult.success) {
+            if (authResult.success === false) {
                 set.status = authResult.status;
                 return authResult.response;
             }
@@ -160,7 +131,7 @@ export const exportRoutes = new Elysia({ prefix: '/export' })
             '/:uuid/export/:format',
             async ({ headers, params, set }) => {
                 const authResult = await authenticateRequest(headers);
-                if (!authResult.success) {
+                if (authResult.success === false) {
                     set.status = authResult.status;
                     return authResult.response;
                 }
@@ -213,26 +184,10 @@ export const exportRoutes = new Elysia({ prefix: '/export' })
                     let exporter;
                     switch (format) {
                         case 'html5':
-                            exporter = new Html5Exporter(
-                                documentAdapter,
-                                resourceProvider,
-                                assetProvider,
-                                zipProvider,
-                                {
-                                    singlePage: false,
-                                },
-                            );
+                            exporter = new Html5Exporter(documentAdapter, resourceProvider, assetProvider, zipProvider);
                             break;
                         case 'html5-sp':
-                            exporter = new Html5Exporter(
-                                documentAdapter,
-                                resourceProvider,
-                                assetProvider,
-                                zipProvider,
-                                {
-                                    singlePage: true,
-                                },
-                            );
+                            exporter = new PageExporter(documentAdapter, resourceProvider, assetProvider, zipProvider);
                             break;
                         case 'scorm12':
                             exporter = new Scorm12Exporter(
@@ -288,17 +243,18 @@ export const exportRoutes = new Elysia({ prefix: '/export' })
                     const contentDisposition = buildContentDisposition(filename);
                     set.headers['Content-Type'] = formatInfo.mimeType;
                     set.headers['Content-Disposition'] = contentDisposition;
-                    set.headers['Content-Length'] = result.data.length.toString();
+                    const exportLength = result.data.byteLength;
+                    set.headers['Content-Length'] = exportLength.toString();
 
                     // Clean up temp directory
                     fs.rmSync(tempDir, { recursive: true, force: true });
 
                     // Return the ZIP/export data
-                    return new Response(result.data, {
+                    return new Response(result.data as BodyInit, {
                         headers: {
                             'Content-Type': formatInfo.mimeType,
                             'Content-Disposition': contentDisposition,
-                            'Content-Length': result.data.length.toString(),
+                            'Content-Length': exportLength.toString(),
                         },
                     });
                 } catch (err) {
