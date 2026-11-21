@@ -52,6 +52,16 @@ describe('ServerLatexPreRenderer', () => {
     });
 
     describe('preRender', () => {
+        it('renders numbered equations before references and preserves surrounding prose', async () => {
+            const html = String.raw`<p>Equation</p>\\begin{equation}x=2\\label{coverage-eq}\\end{equation}<p>See \\eqref{coverage-eq} and \\(x+1\\).</p>`;
+            const result = await renderer.preRender(html);
+            expect(result.count).toBe(3);
+            expect(result.latexRendered).toBe(true);
+            expect(result.html).toContain('<p>Equation</p>');
+            expect(result.html.match(/class="exe-math-rendered"/g)).toHaveLength(3);
+            expect(result.html).toContain('<svg');
+        });
+
         it('should pre-render inline LaTeX to SVG', async () => {
             const html = '<p>The formula \\(x^2\\) is simple.</p>';
             const result = await renderer.preRender(html);

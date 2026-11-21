@@ -131,3 +131,23 @@ describe('ExportAssetResolver', () => {
         });
     });
 });
+
+describe('ExportAssetResolver temporary URL preservation', () => {
+    it.each([
+        'asset://blob:temporary',
+        '{{context_path}}/data:image/png;base64,AAAA',
+        'files/tmp/session/blob:temporary/image.png',
+        '/files/tmp/session/blob:temporary',
+    ])('preserves temporary or embedded content in %s', source => {
+        const resolver = new ExportAssetResolver();
+        const html = `<img src="${source}">`;
+        expect(resolver.processHtml(html)).toBe(html);
+    });
+
+    it('resolves a root-relative temporary file without an asset directory', () => {
+        const resolver = new ExportAssetResolver({ basePath: '../' });
+        expect(resolver.processHtml('<img src="/files/tmp/session/image.png">')).toBe(
+            '<img src="../content/resources/image.png">',
+        );
+    });
+});
