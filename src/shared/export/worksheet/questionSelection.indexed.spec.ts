@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'bun:test';
 import { indexedQuestions, readPrintableOptions } from './questionSelection';
-import type { WorksheetOmissionReason } from './types';
+import type { WorksheetAdapterOptions } from './types';
+
+type OmissionReason = Parameters<NonNullable<WorksheetAdapterOptions['onOmission']>>[0];
 
 describe('indexedQuestions', () => {
     it('pairs each question with the index the sidecars are keyed by', () => {
@@ -28,7 +30,7 @@ describe('indexedQuestions', () => {
     });
 
     it('reports what it dropped when the caller asks', () => {
-        const reasons: WorksheetOmissionReason[] = [];
+        const reasons: OmissionReason[] = [];
 
         indexedQuestions(['broken', { a: 1 }] as unknown[], { onOmission: reason => reasons.push(reason) });
 

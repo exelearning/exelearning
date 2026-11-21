@@ -20,18 +20,18 @@ import {
     FflateZipProvider,
     Scorm2004Exporter,
     unzipSync as fflateUnzipSync,
-    type ParsedOdeStructure,
 } from '../../../src/shared/export';
 
 // Import test helpers
 import { createDocumentFromStructure, createDocumentFromElpFile } from '../../helpers/document-test-utils';
+import type { DocumentStructure } from '../../helpers/document-test-utils';
 
 const testDir = path.join(process.cwd(), 'test', 'temp', 'scorm2004-exporter-test');
 const fixtureElpx = path.join(process.cwd(), 'test', 'fixtures', 'really-simple-test-project.elpx');
 const publicDir = path.join(process.cwd(), 'public');
 
 // Sample parsed structure for unit-level testing
-const sampleParsedStructure: ParsedOdeStructure = {
+const sampleParsedStructure: DocumentStructure = {
     meta: {
         title: 'SCORM 2004 Test Project',
         author: 'Test Author',
@@ -89,8 +89,6 @@ const sampleParsedStructure: ParsedOdeStructure = {
             position: 2,
         },
     ],
-    navigation: null,
-    raw: null,
 };
 
 describe('Scorm2004Exporter Integration', () => {
@@ -261,10 +259,8 @@ describe('Scorm2004Exporter Integration', () => {
                 expect(result.success).toBe(true);
                 expect(result.data).toBeDefined();
             } finally {
-                // Clean up extracted temp directory
-                if (document.extractedPath?.includes('/tmp/')) {
-                    await fs.remove(document.extractedPath);
-                }
+                // Clean up the extracted temp directory (document has no extractedPath, so the old check never ran)
+                await cleanup();
             }
         });
 
@@ -493,11 +489,9 @@ describe('Scorm2004Exporter Integration', () => {
 
     describe('Error handling', () => {
         it('should handle empty pages gracefully', async () => {
-            const emptyStructure: ParsedOdeStructure = {
+            const emptyStructure: DocumentStructure = {
                 meta: { title: 'Empty', author: '', language: 'en', theme: 'base' },
                 pages: [],
-                navigation: null,
-                raw: null,
             };
             const document = createDocumentFromStructure(emptyStructure, path.join(testDir, 'extracted'));
             const resources = new FileSystemResourceProvider(publicDir);

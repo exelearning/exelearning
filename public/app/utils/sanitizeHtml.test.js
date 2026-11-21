@@ -76,6 +76,38 @@ describe('sanitizeHtml', () => {
             expect(sanitizeCollaborativeHtml(undefined)).toBe('');
         });
 
+        // The Image Gallery stores each image's attribution on the <img> itself
+        // (see image-gallery/export/image-gallery.js), and its lightbox reads it
+        // back from the rendered DOM. DOMPurify drops attributes it does not
+        // know, so without them on the allow-list the caption loses its author
+        // and licence on every editor render. See #2675.
+        const GALLERY_IMG =
+            '<img src="blob:http://localhost/1" height="128" width="128" title="Sunset" alt="Sunset"' +
+            ' titlelink="https://example.com/sunset" author="Jane Doe" authorlink="https://example.com/jane"' +
+            ' license="CC-BY" licenselink="http://creativecommons.org/licenses/">';
+
+        it('keeps the image gallery attribution attributes', () => {
+            const out = sanitizeCollaborativeHtml(GALLERY_IMG);
+            expect(out).toContain('author="Jane Doe"');
+            expect(out).toContain('authorlink="https://example.com/jane"');
+            expect(out).toContain('titlelink="https://example.com/sunset"');
+            expect(out).toContain('license="CC-BY"');
+            expect(out).toContain('licenselink="http://creativecommons.org/licenses/"');
+        });
+
+        it('strips a script-executing scheme from an attribution link', () => {
+            // The caption renders these as <a href="...">, so they go through the
+            // same scheme check as href/src.
+            const out = sanitizeCollaborativeHtml(
+                '<img src="x" author="Jane" authorlink="javascript:window.__xss=1"' +
+                    ' titlelink="vbscript:1" licenselink="javascript:1">',
+            );
+            expect(out.toLowerCase()).not.toContain('javascript:');
+            expect(out.toLowerCase()).not.toContain('vbscript:');
+            // The inert part of the attribution survives.
+            expect(out).toContain('author="Jane"');
+        });
+
         it('exports a config that allows iframes and embed attributes', () => {
             expect(COLLABORATIVE_HTML_CONFIG.ADD_TAGS).toContain('iframe');
             expect(COLLABORATIVE_HTML_CONFIG.ADD_ATTR).toEqual(
