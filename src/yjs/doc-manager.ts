@@ -20,7 +20,7 @@ import * as yjsPersistenceDefault from '../websocket/yjs-persistence';
 import { findProjectByUuid as findProjectByUuidDefault } from '../db/queries';
 import { db as defaultDb } from '../db/client';
 import type { Kysely } from 'kysely';
-import type { Database } from '../db/schema';
+import type { Database } from '../db/types';
 import type { ChangeOrigin, CachedDocument, TransactionResult } from './types';
 
 // ============================================================================

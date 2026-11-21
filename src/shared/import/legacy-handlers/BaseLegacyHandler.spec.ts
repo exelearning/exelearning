@@ -49,7 +49,9 @@ class TestHandler extends BaseLegacyHandler {
 function createDomElement(xml: string): Element {
     const parser = new DOMParser();
     const doc = parser.parseFromString(xml, 'text/xml');
-    return doc.documentElement;
+    if (!doc.documentElement) throw new Error('Test XML has no root element');
+    // xmldom stands in for the browser DOM the handlers are typed against.
+    return doc.documentElement as unknown as Element;
 }
 
 describe('BaseLegacyHandler', () => {

@@ -7,14 +7,23 @@
  */
 import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach } from 'bun:test';
 import { Elysia } from 'elysia';
-import { themesRoutes, configure, resetDependencies } from './themes';
+import { themesRoutes, configure, resetDependencies, type ThemesRouteDependencies } from './themes';
 import * as fs from 'fs';
 import * as path from 'path';
 import { getDb, resetClientCacheForTesting } from '../db/client';
 import { migrateToLatest } from '../db/migrations';
 
+/**
+ * The route's fs dependency, built from fakes that only implement the call shapes the route
+ * uses. Node's fs functions are overloaded, so a single-signature fake never matches them.
+ */
+type RouteFs = ThemesRouteDependencies['fs'];
+function fakeFs(fakes: { [K in keyof RouteFs]: (...args: never[]) => unknown }): RouteFs {
+    return fakes as unknown as RouteFs;
+}
+
 describe('Themes Routes', () => {
-    let app: Elysia;
+    let app: Pick<Elysia, 'handle'>;
     let originalBasePath: string | undefined;
 
     beforeAll(() => {
@@ -167,14 +176,14 @@ describe('Themes Routes', () => {
 
         it('should return empty array when themes path does not exist', async () => {
             configure({
-                fs: {
+                fs: fakeFs({
                     existsSync: (filePath: string) => {
                         if (filePath === 'public/files/perm/themes/base') return false;
                         return fs.existsSync(filePath);
                     },
                     readFileSync: fs.readFileSync,
                     readdirSync: fs.readdirSync,
-                },
+                }),
             });
             app = new Elysia().use(themesRoutes);
 
@@ -229,11 +238,11 @@ describe('Themes Routes', () => {
 
                 configure({
                     getEnv: (key: string) => (key === 'APP_VERSION' ? 'v9.9.9' : undefined),
-                    fs: {
+                    fs: fakeFs({
                         existsSync: () => false,
                         readFileSync: fs.readFileSync,
                         readdirSync: fs.readdirSync,
-                    },
+                    }),
                 });
                 app = new Elysia().use(themesRoutes);
 
@@ -306,7 +315,7 @@ describe('Themes Routes', () => {
                     .execute();
 
                 configure({
-                    fs: {
+                    fs: fakeFs({
                         existsSync: (p: string) => {
                             if (typeof p === 'string' && p.includes('non-downloadable-theme')) return true;
                             return false;
@@ -319,7 +328,7 @@ describe('Themes Routes', () => {
                             ) {
                                 return '<theme><name>Non Downloadable Theme</name><downloadable>0</downloadable></theme>';
                             }
-                            return fs.readFileSync(p, encoding);
+                            return fs.readFileSync(p, encoding as Parameters<typeof fs.readFileSync>[1]);
                         },
                         readdirSync: (dirPath: string, options?: { withFileTypes: boolean }) => {
                             if (typeof dirPath === 'string' && dirPath.includes('non-downloadable-theme')) {
@@ -327,7 +336,7 @@ describe('Themes Routes', () => {
                             }
                             return [] as fs.Dirent[];
                         },
-                    },
+                    }),
                 });
                 app = new Elysia().use(themesRoutes);
 
@@ -389,7 +398,7 @@ describe('Themes Routes', () => {
                     .execute();
 
                 configure({
-                    fs: {
+                    fs: fakeFs({
                         existsSync: (p: string) => {
                             if (typeof p === 'string' && p.includes('no-flag-theme')) return true;
                             return false;
@@ -398,7 +407,7 @@ describe('Themes Routes', () => {
                             if (typeof p === 'string' && p.includes('no-flag-theme') && p.includes('config.xml')) {
                                 return '<theme><name>No Flag Theme</name></theme>';
                             }
-                            return fs.readFileSync(p, encoding);
+                            return fs.readFileSync(p, encoding as Parameters<typeof fs.readFileSync>[1]);
                         },
                         readdirSync: (dirPath: string, options?: { withFileTypes: boolean }) => {
                             if (typeof dirPath === 'string' && dirPath.includes('no-flag-theme')) {
@@ -406,7 +415,7 @@ describe('Themes Routes', () => {
                             }
                             return [] as fs.Dirent[];
                         },
-                    },
+                    }),
                 });
                 app = new Elysia().use(themesRoutes);
 
@@ -462,7 +471,7 @@ describe('Themes Routes', () => {
                 process.env.ELYSIA_FILES_DIR = '/tmp/test-files';
                 configure({
                     getEnv: (key: string) => (key === 'APP_VERSION' ? 'v1.0.0' : undefined),
-                    fs: {
+                    fs: fakeFs({
                         existsSync: (p: string) => {
                             if (p === baseConfigPath) return false;
                             if (p === siteConfigPath) return true;
@@ -474,10 +483,10 @@ describe('Themes Routes', () => {
                             if (p === siteConfigPath) {
                                 return '<theme><name>Site Theme</name><version>1.0</version></theme>';
                             }
-                            return fs.readFileSync(p, encoding);
+                            return fs.readFileSync(p, encoding as Parameters<typeof fs.readFileSync>[1]);
                         },
                         readdirSync: fs.readdirSync,
-                    },
+                    }),
                 });
                 app = new Elysia().use(themesRoutes);
 
@@ -588,7 +597,7 @@ describe('Themes Routes', () => {
         it('should fall back to v0.0.0 when package.json is invalid', async () => {
             configure({
                 getEnv: () => undefined,
-                fs: {
+                fs: fakeFs({
                     existsSync: (p: string) => {
                         if (p.includes('package.json')) return true;
                         return fs.existsSync(p);
@@ -597,10 +606,10 @@ describe('Themes Routes', () => {
                         if (typeof p === 'string' && p.includes('package.json')) {
                             return 'invalid json {{{';
                         }
-                        return fs.readFileSync(p, encoding);
+                        return fs.readFileSync(p, encoding as Parameters<typeof fs.readFileSync>[1]);
                     },
                     readdirSync: fs.readdirSync,
-                },
+                }),
             });
             app = new Elysia().use(themesRoutes);
 
@@ -615,14 +624,14 @@ describe('Themes Routes', () => {
         it('should fall back to v0.0.0 when package.json does not exist', async () => {
             configure({
                 getEnv: () => undefined,
-                fs: {
+                fs: fakeFs({
                     existsSync: (p: string) => {
                         if (typeof p === 'string' && p.includes('package.json')) return false;
                         return fs.existsSync(p);
                     },
                     readFileSync: fs.readFileSync,
                     readdirSync: fs.readdirSync,
-                },
+                }),
             });
             app = new Elysia().use(themesRoutes);
 
@@ -638,7 +647,7 @@ describe('Themes Routes', () => {
     describe('edge cases', () => {
         it('should handle theme with no CSS files (falls back to style.css)', async () => {
             configure({
-                fs: {
+                fs: fakeFs({
                     existsSync: fs.existsSync,
                     readFileSync: fs.readFileSync,
                     readdirSync: (dirPath: string, options?: { withFileTypes: boolean }) => {
@@ -648,15 +657,15 @@ describe('Themes Routes', () => {
                             dirPath.includes('themes/base/') &&
                             !dirPath.includes('icons')
                         ) {
-                            const entries = fs.readdirSync(dirPath, options);
+                            const entries = fs.readdirSync(dirPath, options as { withFileTypes: true });
                             // Filter out CSS files to simulate no CSS
                             if (Array.isArray(entries) && entries.length > 0 && typeof entries[0] === 'object') {
                                 return (entries as fs.Dirent[]).filter(e => !e.name.endsWith('.css'));
                             }
                         }
-                        return fs.readdirSync(dirPath, options);
+                        return fs.readdirSync(dirPath, options as { withFileTypes: true });
                     },
-                },
+                }),
             });
             app = new Elysia().use(themesRoutes);
 
@@ -670,14 +679,14 @@ describe('Themes Routes', () => {
 
         it('should handle theme with no icons directory', async () => {
             configure({
-                fs: {
+                fs: fakeFs({
                     existsSync: (p: string) => {
                         if (typeof p === 'string' && p.includes('/icons')) return false;
                         return fs.existsSync(p);
                     },
                     readFileSync: fs.readFileSync,
                     readdirSync: fs.readdirSync,
-                },
+                }),
             });
             app = new Elysia().use(themesRoutes);
 
@@ -692,7 +701,7 @@ describe('Themes Routes', () => {
         it('should support multiple icon formats (svg, png, gif, jpg, jpeg, webp)', async () => {
             // Mock theme with icons in various formats
             configure({
-                fs: {
+                fs: fakeFs({
                     existsSync: (p: string) => {
                         if (typeof p === 'string' && p.includes('multi-format-theme')) return true;
                         return fs.existsSync(p);
@@ -701,7 +710,7 @@ describe('Themes Routes', () => {
                         if (typeof p === 'string' && p.includes('multi-format-theme/config.xml')) {
                             return '<theme><name>Multi Format Theme</name><version>1.0</version></theme>';
                         }
-                        return fs.readFileSync(p, encoding);
+                        return fs.readFileSync(p, encoding as Parameters<typeof fs.readFileSync>[1]);
                     },
                     readdirSync: (dirPath: string, options?: { withFileTypes: boolean }) => {
                         if (typeof dirPath === 'string' && dirPath === 'public/files/perm/themes/base') {
@@ -722,9 +731,9 @@ describe('Themes Routes', () => {
                         if (typeof dirPath === 'string' && dirPath.includes('multi-format-theme')) {
                             return [] as fs.Dirent[];
                         }
-                        return fs.readdirSync(dirPath, options);
+                        return fs.readdirSync(dirPath, options as { withFileTypes: true });
                     },
-                },
+                }),
             });
             app = new Elysia().use(themesRoutes);
 
@@ -764,7 +773,7 @@ describe('Themes Routes', () => {
         it('should prioritize SVG over PNG when same icon exists in multiple formats', async () => {
             // Mock theme with same icon in svg and png formats
             configure({
-                fs: {
+                fs: fakeFs({
                     existsSync: (p: string) => {
                         if (typeof p === 'string' && p.includes('priority-theme')) return true;
                         return fs.existsSync(p);
@@ -773,7 +782,7 @@ describe('Themes Routes', () => {
                         if (typeof p === 'string' && p.includes('priority-theme/config.xml')) {
                             return '<theme><name>Priority Theme</name><version>1.0</version></theme>';
                         }
-                        return fs.readFileSync(p, encoding);
+                        return fs.readFileSync(p, encoding as Parameters<typeof fs.readFileSync>[1]);
                     },
                     readdirSync: (dirPath: string, options?: { withFileTypes: boolean }) => {
                         if (typeof dirPath === 'string' && dirPath === 'public/files/perm/themes/base') {
@@ -792,9 +801,9 @@ describe('Themes Routes', () => {
                         if (typeof dirPath === 'string' && dirPath.includes('priority-theme')) {
                             return [] as fs.Dirent[];
                         }
-                        return fs.readdirSync(dirPath, options);
+                        return fs.readdirSync(dirPath, options as { withFileTypes: true });
                     },
-                },
+                }),
             });
             app = new Elysia().use(themesRoutes);
 
@@ -814,7 +823,7 @@ describe('Themes Routes', () => {
 
         it('should prioritize PNG over GIF when SVG is not available', async () => {
             configure({
-                fs: {
+                fs: fakeFs({
                     existsSync: (p: string) => {
                         if (typeof p === 'string' && p.includes('png-gif-theme')) return true;
                         return fs.existsSync(p);
@@ -823,7 +832,7 @@ describe('Themes Routes', () => {
                         if (typeof p === 'string' && p.includes('png-gif-theme/config.xml')) {
                             return '<theme><name>PNG GIF Theme</name><version>1.0</version></theme>';
                         }
-                        return fs.readFileSync(p, encoding);
+                        return fs.readFileSync(p, encoding as Parameters<typeof fs.readFileSync>[1]);
                     },
                     readdirSync: (dirPath: string, options?: { withFileTypes: boolean }) => {
                         if (typeof dirPath === 'string' && dirPath === 'public/files/perm/themes/base') {
@@ -841,9 +850,9 @@ describe('Themes Routes', () => {
                         if (typeof dirPath === 'string' && dirPath.includes('png-gif-theme')) {
                             return [] as fs.Dirent[];
                         }
-                        return fs.readdirSync(dirPath, options);
+                        return fs.readdirSync(dirPath, options as { withFileTypes: true });
                     },
-                },
+                }),
             });
             app = new Elysia().use(themesRoutes);
 
@@ -864,7 +873,7 @@ describe('Themes Routes', () => {
             const iconsDir = path.join('sorted-theme', 'icons');
             const configPath = path.join('sorted-theme', 'config.xml');
             configure({
-                fs: {
+                fs: fakeFs({
                     existsSync: (p: string) => {
                         if (typeof p === 'string' && p.includes('sorted-theme')) return true;
                         return fs.existsSync(p);
@@ -873,7 +882,7 @@ describe('Themes Routes', () => {
                         if (typeof p === 'string' && p.includes(configPath)) {
                             return '<theme><name>Sorted Theme</name><version>1.0</version></theme>';
                         }
-                        return fs.readFileSync(p, encoding);
+                        return fs.readFileSync(p, encoding as Parameters<typeof fs.readFileSync>[1]);
                     },
                     readdirSync: (dirPath: string, options?: { withFileTypes: boolean }) => {
                         if (typeof dirPath === 'string' && dirPath === 'public/files/perm/themes/base') {
@@ -895,9 +904,9 @@ describe('Themes Routes', () => {
                         if (typeof dirPath === 'string' && dirPath.includes('sorted-theme')) {
                             return [] as fs.Dirent[];
                         }
-                        return fs.readdirSync(dirPath, options);
+                        return fs.readdirSync(dirPath, options as { withFileTypes: true });
                     },
-                },
+                }),
             });
             app = new Elysia().use(themesRoutes);
 
@@ -920,7 +929,7 @@ describe('Themes Routes', () => {
 
         it('should ignore unsupported file formats in icons directory', async () => {
             configure({
-                fs: {
+                fs: fakeFs({
                     existsSync: (p: string) => {
                         if (typeof p === 'string' && p.includes('mixed-files-theme')) return true;
                         return fs.existsSync(p);
@@ -929,7 +938,7 @@ describe('Themes Routes', () => {
                         if (typeof p === 'string' && p.includes('mixed-files-theme/config.xml')) {
                             return '<theme><name>Mixed Files Theme</name><version>1.0</version></theme>';
                         }
-                        return fs.readFileSync(p, encoding);
+                        return fs.readFileSync(p, encoding as Parameters<typeof fs.readFileSync>[1]);
                     },
                     readdirSync: (dirPath: string, options?: { withFileTypes: boolean }) => {
                         if (typeof dirPath === 'string' && dirPath === 'public/files/perm/themes/base') {
@@ -949,9 +958,9 @@ describe('Themes Routes', () => {
                         if (typeof dirPath === 'string' && dirPath.includes('mixed-files-theme')) {
                             return [] as fs.Dirent[];
                         }
-                        return fs.readdirSync(dirPath, options);
+                        return fs.readdirSync(dirPath, options as { withFileTypes: true });
                     },
-                },
+                }),
             });
             app = new Elysia().use(themesRoutes);
 
@@ -970,11 +979,11 @@ describe('Themes Routes', () => {
 
         it('should handle non-directory entries in themes folder', async () => {
             configure({
-                fs: {
+                fs: fakeFs({
                     existsSync: fs.existsSync,
                     readFileSync: fs.readFileSync,
                     readdirSync: (dirPath: string, options?: { withFileTypes: boolean }) => {
-                        const entries = fs.readdirSync(dirPath, options);
+                        const entries = fs.readdirSync(dirPath, options as { withFileTypes: true });
                         if (typeof dirPath === 'string' && dirPath === 'public/files/perm/themes/base') {
                             // Add a fake file entry
                             if (Array.isArray(entries) && options?.withFileTypes) {
@@ -988,7 +997,7 @@ describe('Themes Routes', () => {
                         }
                         return entries;
                     },
-                },
+                }),
             });
             app = new Elysia().use(themesRoutes);
 
@@ -1001,11 +1010,11 @@ describe('Themes Routes', () => {
 
         it('should handle hidden directories (starting with dot)', async () => {
             configure({
-                fs: {
+                fs: fakeFs({
                     existsSync: fs.existsSync,
                     readFileSync: fs.readFileSync,
                     readdirSync: (dirPath: string, options?: { withFileTypes: boolean }) => {
-                        const entries = fs.readdirSync(dirPath, options);
+                        const entries = fs.readdirSync(dirPath, options as { withFileTypes: true });
                         if (typeof dirPath === 'string' && dirPath === 'public/files/perm/themes/base') {
                             if (Array.isArray(entries) && options?.withFileTypes) {
                                 const hiddenDir = {
@@ -1018,7 +1027,7 @@ describe('Themes Routes', () => {
                         }
                         return entries;
                     },
-                },
+                }),
             });
             app = new Elysia().use(themesRoutes);
 
@@ -1033,7 +1042,7 @@ describe('Themes Routes', () => {
         it('should return 500 when theme config parsing fails', async () => {
             // Create a mock that makes parseThemeConfig throw and return null
             configure({
-                fs: {
+                fs: fakeFs({
                     existsSync: (p: string) => {
                         if (typeof p === 'string' && p.includes('malformed-theme')) {
                             return true;
@@ -1044,16 +1053,16 @@ describe('Themes Routes', () => {
                         if (typeof p === 'string' && p.includes('malformed-theme/config.xml')) {
                             return '<theme><name>Test</name></theme>';
                         }
-                        return fs.readFileSync(p, encoding);
+                        return fs.readFileSync(p, encoding as Parameters<typeof fs.readFileSync>[1]);
                     },
                     readdirSync: (dirPath: string, options?: { withFileTypes: boolean }) => {
                         // Make readdirSync throw for the theme directory (inside parseThemeConfig try block)
                         if (typeof dirPath === 'string' && dirPath.includes('malformed-theme')) {
                             throw new Error('Cannot read directory');
                         }
-                        return fs.readdirSync(dirPath, options);
+                        return fs.readdirSync(dirPath, options as { withFileTypes: true });
                     },
-                },
+                }),
             });
             app = new Elysia().use(themesRoutes);
 
@@ -1068,7 +1077,7 @@ describe('Themes Routes', () => {
         it('should handle scanThemeFiles when path does not exist', async () => {
             // Test the scanThemeFiles early return when path doesn't exist
             configure({
-                fs: {
+                fs: fakeFs({
                     existsSync: (p: string) => {
                         // config.xml exists
                         if (typeof p === 'string' && p.includes('empty-theme/config.xml')) {
@@ -1084,7 +1093,7 @@ describe('Themes Routes', () => {
                         if (typeof p === 'string' && p.includes('empty-theme/config.xml')) {
                             return '<theme><name>Empty Theme</name><version>1.0</version></theme>';
                         }
-                        return fs.readFileSync(p, encoding);
+                        return fs.readFileSync(p, encoding as Parameters<typeof fs.readFileSync>[1]);
                     },
                     readdirSync: (dirPath: string, options?: { withFileTypes: boolean }) => {
                         if (typeof dirPath === 'string' && dirPath === 'public/files/perm/themes/base') {
@@ -1100,9 +1109,9 @@ describe('Themes Routes', () => {
                         if (typeof dirPath === 'string' && dirPath.includes('empty-theme')) {
                             return [] as fs.Dirent[];
                         }
-                        return fs.readdirSync(dirPath, options);
+                        return fs.readdirSync(dirPath, options as { withFileTypes: true });
                     },
-                },
+                }),
             });
             app = new Elysia().use(themesRoutes);
 
@@ -1157,7 +1166,7 @@ describe('Themes Routes', () => {
             try {
                 process.env.ELYSIA_FILES_DIR = '/tmp/test-nonexistent';
                 configure({
-                    fs: {
+                    fs: fakeFs({
                         existsSync: (p: string) => {
                             // Base theme doesn't exist
                             if (p === path.join('public/files/perm/themes/base', 'check-site-theme')) {
@@ -1171,7 +1180,7 @@ describe('Themes Routes', () => {
                         },
                         readFileSync: fs.readFileSync,
                         readdirSync: fs.readdirSync,
-                    },
+                    }),
                 });
                 app = new Elysia().use(themesRoutes);
 
@@ -1196,17 +1205,17 @@ describe('Themes Routes', () => {
             // We use the "base" theme which exists and has files for createZipBuffer
             // but mock the readFileSync to return config without name
             configure({
-                fs: {
+                fs: fakeFs({
                     existsSync: fs.existsSync,
                     readFileSync: (p: string, encoding?: BufferEncoding) => {
                         // When reading config.xml for name extraction, return config without name
                         if (typeof p === 'string' && p.includes('base/config.xml') && encoding === 'utf-8') {
                             return '<theme><version>1.0</version></theme>';
                         }
-                        return fs.readFileSync(p, encoding);
+                        return fs.readFileSync(p, encoding as Parameters<typeof fs.readFileSync>[1]);
                     },
                     readdirSync: fs.readdirSync,
-                },
+                }),
             });
             app = new Elysia().use(themesRoutes);
 
@@ -1344,20 +1353,20 @@ describe('Themes Routes', () => {
                 }
             };
             configure({
-                fs: {
+                fs: fakeFs({
                     existsSync: (p: string) => {
                         record(p);
                         return fs.existsSync(p);
                     },
                     readFileSync: ((p: string, encoding?: BufferEncoding) => {
                         record(p);
-                        return fs.readFileSync(p, encoding);
+                        return fs.readFileSync(p, encoding as Parameters<typeof fs.readFileSync>[1]);
                     }) as typeof fs.readFileSync,
                     readdirSync: ((p: string, options?: { withFileTypes: boolean }) => {
                         record(p);
-                        return fs.readdirSync(p, options);
+                        return fs.readdirSync(p, options as { withFileTypes: true });
                     }) as typeof fs.readdirSync,
-                },
+                }),
             });
             app = new Elysia().use(themesRoutes);
             return { touched };

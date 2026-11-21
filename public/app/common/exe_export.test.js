@@ -3112,7 +3112,7 @@ describe('exe_export.js', () => {
         expect(pm().isSupported()).toBe(true);
       });
 
-      it.each(['exe-scorm', 'exe-ims', 'exe-epub'])('rejects a %s export', (cls) => {
+      it.each(['exe-scorm', 'exe-ims', 'exe-epub', 'exe-single-page'])('rejects a %s export', (cls) => {
         document.body.className = 'exe-export ' + cls;
         expect(pm().isSupported()).toBe(false);
       });
@@ -3508,6 +3508,62 @@ describe('exe_export.js', () => {
         const event = makeEvent({ key });
         pm().handleKeydown(event);
         expect(event.preventDefault).not.toHaveBeenCalled();
+      });
+
+      describe('presenter remote buttons', () => {
+        const lastMenuLink = () => document.querySelector('#siteNav a:last-child');
+
+        it('b is not captured', () => {
+          const clickSpy = vi.spyOn(document.querySelector('#siteNav a'), 'click');
+          const event = makeEvent({ key: 'b', code: 'KeyB' });
+          pm().handleKeydown(event);
+          expect(event.preventDefault).not.toHaveBeenCalled();
+          expect(clickSpy).not.toHaveBeenCalled();
+        });
+
+        it.each([{}, { shiftKey: true }])(
+          'F5 %o neither reloads nor changes page, even under an overlay or from a form field',
+          (mods) => {
+            const clickSpy = vi.spyOn(lastMenuLink(), 'click');
+            const plain = makeEvent(Object.assign({ key: 'F5', code: 'F5' }, mods));
+            pm().handleKeydown(plain);
+            expect(plain.preventDefault).toHaveBeenCalledTimes(1);
+            const input = document.createElement('input');
+            document.body.appendChild(input);
+            const inField = makeEvent(Object.assign({ key: 'F5', code: 'F5', target: input }, mods));
+            pm().handleKeydown(inField);
+            expect(inField.preventDefault).toHaveBeenCalledTimes(1);
+            document.body.insertAdjacentHTML('beforeend', '<div class="sl-wrapper"></div>');
+            const underOverlay = makeEvent(Object.assign({ key: 'F5', code: 'F5' }, mods));
+            pm().handleKeydown(underOverlay);
+            expect(underOverlay.preventDefault).toHaveBeenCalledTimes(1);
+            expect(clickSpy).not.toHaveBeenCalled();
+          }
+        );
+
+        it.each(['Shift', 'Escape'])('%s alone is left to the browser', (key) => {
+          const clickSpy = vi.spyOn(lastMenuLink(), 'click');
+          const event = makeEvent({ key, shiftKey: key === 'Shift' });
+          pm().handleKeydown(event);
+          expect(event.preventDefault).not.toHaveBeenCalled();
+          expect(clickSpy).not.toHaveBeenCalled();
+        });
+
+        it.each([{ ctrlKey: true }, { metaKey: true }, { altKey: true }])(
+          'keeps the browser reload with a modified F5 %o',
+          (mods) => {
+            const event = makeEvent(Object.assign({ key: 'F5', code: 'F5' }, mods));
+            pm().handleKeydown(event);
+            expect(event.preventDefault).not.toHaveBeenCalled();
+          }
+        );
+
+        it('F5 reloads as usual after leaving the mode', () => {
+          pm().leave();
+          const event = new KeyboardEvent('keydown', { key: 'F5', cancelable: true, bubbles: true });
+          document.dispatchEvent(event);
+          expect(event.defaultPrevented).toBe(false);
+        });
       });
 
       it('m shows and hides the menu through the style toggler', () => {

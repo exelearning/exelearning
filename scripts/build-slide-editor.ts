@@ -55,7 +55,8 @@ const globalsPlugin: import('bun').BunPlugin = {
     },
 };
 
-const result = await Bun.build({
+// IIFE global name; omitted from Bun 1.4 BuildConfig types.
+const buildOptions = {
     entrypoints: [join(root, 'src/index.ts')],
     outdir: join(root, 'edition'),
     naming: '[dir]/slide-editor.bundle.[ext]',
@@ -64,7 +65,9 @@ const result = await Bun.build({
     minify: true,
     target: 'browser',
     plugins: [globalsPlugin],
-});
+} as Bun.BuildConfig & { globalName: string };
+
+const result = await Bun.build(buildOptions);
 
 if (!result.success) {
     for (const log of result.logs) {
