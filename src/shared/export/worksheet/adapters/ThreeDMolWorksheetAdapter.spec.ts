@@ -234,6 +234,7 @@ describe('ThreeDMolWorksheetAdapter', () => {
                     instructionsDiv: instructions,
                     instructionsExe: escape('<img src="blob:https://old.example/expired" />'),
                 }),
+                {},
             );
             expect(activity?.instructions).toBe(instructions);
         });

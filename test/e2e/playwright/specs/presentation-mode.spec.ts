@@ -71,6 +71,36 @@ test.describe('Presentation mode (web site export)', () => {
         await expect(heading).toHaveText(firstTitle ?? '');
     });
 
+    test('presenter remote buttons: F5 and Shift+F5 neither reload nor change page', async ({
+        authenticatedPage,
+        createProject,
+    }) => {
+        const page = authenticatedPage;
+        await exportTwoPageSite(page, createProject);
+
+        await page.goto(`${ORIGIN}/index.html?exe-presentation=1`);
+        const heading = page.locator('main h1.page-title');
+        await expect(heading).toBeVisible();
+        const firstTitle = await heading.textContent();
+        await expectPresenting(page, true);
+
+        // A reload would drop the marker. Window listeners run after the mode's document
+        // listener, so they also see whether the browser's reload was cancelled.
+        await page.evaluate(() => {
+            const seen: boolean[] = [];
+            (window as any).__f5Cancelled = seen;
+            window.addEventListener('keydown', event => {
+                if (event.key === 'F5') seen.push(event.defaultPrevented);
+            });
+        });
+
+        await page.keyboard.press('F5');
+        await page.keyboard.press('Shift+F5');
+        expect(await page.evaluate(() => (window as any).__f5Cancelled)).toEqual([true, true]);
+        await expect(heading).toHaveText(firstTitle ?? '');
+        await expectPresenting(page, true);
+    });
+
     test('the parameter enters the mode, the keys present, and leaving rewrites the parameter to 0', async ({
         authenticatedPage,
         createProject,

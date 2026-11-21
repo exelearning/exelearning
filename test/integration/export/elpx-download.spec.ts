@@ -20,6 +20,8 @@ import type {
     ExportPage,
     ResourceProvider,
     AssetProvider,
+    ExportAsset,
+    ZipArchive,
     ZipProvider,
 } from '../../../src/shared/export/interfaces';
 import * as path from 'path';
@@ -56,6 +58,7 @@ class MockDocument implements ExportDocument {
                                 id: 'idevice-1',
                                 type: 'download-source-file',
                                 order: 0,
+                                properties: {},
                                 content: `
                                     <div class="exe-download-package-instructions">
                                         <table class="exe-table exe-package-info">
@@ -175,32 +178,30 @@ class FileResourceProvider implements ResourceProvider {
 
 // Mock asset provider
 class MockAssetProvider implements AssetProvider {
-    async getAsset(_path: string): Promise<Buffer | null> {
+    async getAsset(): Promise<ExportAsset | null> {
         return null;
     }
-
-    async getAllAssets(): Promise<
-        Array<{
-            id: string;
-            filename: string;
-            path: string;
-            mimeType: string;
-            data: Buffer;
-        }>
-    > {
+    async getAllAssets(): Promise<ExportAsset[]> {
+        return [];
+    }
+    async getProjectAssets(): Promise<ExportAsset[]> {
         return [];
     }
 }
 
 // Capturing zip provider to inspect added files
 class CapturingZipProvider implements ZipProvider {
-    files = new Map<string, string | Buffer>();
+    files = new Map<string, string | Uint8Array>();
 
-    addFile(path: string, content: string | Buffer): void {
+    createZip(): ZipArchive {
+        throw new Error('createZip is not used by the exporters under test');
+    }
+
+    addFile(path: string, content: string | Uint8Array): void {
         this.files.set(path, content);
     }
 
-    async generateAsync(): Promise<Buffer> {
+    async generateAsync(): Promise<Uint8Array> {
         return Buffer.from('mock-zip');
     }
 
@@ -208,7 +209,7 @@ class CapturingZipProvider implements ZipProvider {
         return this.files.has(path);
     }
 
-    getFileContent(path: string): string | Buffer | undefined {
+    getFileContent(path: string): string | Uint8Array | undefined {
         return this.files.get(path);
     }
 
@@ -219,7 +220,7 @@ class CapturingZipProvider implements ZipProvider {
     getFileAsString(path: string): string | undefined {
         const content = this.files.get(path);
         if (!content) return undefined;
-        return content instanceof Buffer ? content.toString('utf-8') : content;
+        return typeof content === 'string' ? content : Buffer.from(content).toString('utf-8');
     }
 }
 
@@ -254,6 +255,7 @@ class MockDocumentWithManualLink implements ExportDocument {
                                 id: 'idevice-1',
                                 type: 'text', // NOT download-source-file!
                                 order: 0,
+                                properties: {},
                                 // Manual link without the CSS class
                                 content: `<p>Click <a href="exe-package:elp" download="exe-package:elp-name">here</a> to download the source file.</p>`,
                             },

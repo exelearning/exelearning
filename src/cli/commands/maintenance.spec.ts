@@ -8,7 +8,7 @@ describe('maintenance CLI command', () => {
         storedSettings = new Map();
         configure({
             db: {} as any,
-            setSetting: async (_db: any, key: string, value: string, type: string) => {
+            setSetting: async (_db: unknown, key: string, value: string, type = 'string') => {
                 storedSettings.set(key, { value, type });
             },
             getSetting: async (_db: any, key: string) => {
