@@ -465,10 +465,10 @@ endif
 # =============================================================================
 
 .PHONY: lint
-lint: check-bun lint-ts lint-js lint-tests architecture-check update-licenses-check
+lint: check-bun lint-ts lint-js lint-tests typecheck architecture-check update-licenses-check
 
 .PHONY: fix
-fix: check-bun fix-ts fix-js fix-tests
+fix: check-bun fix-ts fix-js fix-tests typecheck
 
 # Regenerate public/app/common/exe_math/ from the pinned `mathjax` npm package.
 # The tree is committed (exports, the static build and Electron all need it on
@@ -495,6 +495,12 @@ architecture-records: check-bun
 .PHONY: architecture-check
 architecture-check: check-bun
 	bun run scripts/architecture-records.mts check
+
+# Typecheck TypeScript (src/) with tsc. Bun/Biome do not do this.
+# Wired into `lint` (CI) and `fix` so a type error fails the same gates as Biome.
+.PHONY: typecheck
+typecheck: check-bun
+	bun run typecheck
 
 # Lint TypeScript source files (src/)
 .PHONY: lint-ts
@@ -589,7 +595,7 @@ test-unit-ci: check-bun check-tests check-env ## Run unit tests with lcov covera
 
 .PHONY: test-e2e-chromium
 test-e2e-chromium: check-env ## Run Playwright E2E tests with Chromium
-	bun x playwright test --project=chromium
+	bun x --bun playwright test --project=chromium
 
 .PHONY: test-e2e
 test-e2e: test-e2e-chromium bundle ## Run Playwright E2E tests (alias for test-e2e-chromium)
@@ -600,7 +606,7 @@ test-e2e-ui: check-env ## Run Playwright E2E tests with UI
 
 .PHONY: test-e2e-firefox
 test-e2e-firefox: check-env bundle ## Run Playwright E2E tests with Firefox
-	bun x playwright test --project=firefox
+	bun x --bun playwright test --project=firefox
 
 .PHONY: test-e2e-static
 test-e2e-static: check-bun bundle build-static fail-on-windows ## Run E2E tests against static build
@@ -611,7 +617,7 @@ test-e2e-static: check-bun bundle build-static fail-on-windows ## Run E2E tests 
 	@echo ""
 	@echo "Running Playwright tests (server managed by Playwright)..."
 	@echo ""
-	@bun x playwright test --project=static; \
+	@bun x --bun playwright test --project=static; \
 	test_exit=$$?; \
 	echo ""; \
 	if [ $$test_exit -eq 0 ]; then \
@@ -685,7 +691,7 @@ test-e2e-mariadb: check-docker check-env vendor-libs down-e2e ## Run E2E tests w
 	@echo ""
 	@echo "Step 4: Running Playwright tests..."
 	@echo ""
-	@E2E_BASE_URL=http://localhost:8080 bun x playwright test --project=chromium; \
+	@E2E_BASE_URL=http://localhost:8080 bun x --bun playwright test --project=chromium; \
 	test_exit=$$?; \
 	echo ""; \
 	echo "Step 5: Cleaning up..."; \
@@ -717,7 +723,7 @@ test-e2e-postgres: check-docker check-env vendor-libs down-e2e ## Run E2E tests 
 	@echo ""
 	@echo "Step 4: Running Playwright tests..."
 	@echo ""
-	@E2E_BASE_URL=http://localhost:8080 bun x playwright test --project=chromium; \
+	@E2E_BASE_URL=http://localhost:8080 bun x --bun playwright test --project=chromium; \
 	test_exit=$$?; \
 	echo ""; \
 	echo "Step 5: Cleaning up..."; \
@@ -749,7 +755,7 @@ test-e2e-sqlite: check-docker check-env vendor-libs down-e2e ## Run E2E tests wi
 	@echo ""
 	@echo "Step 4: Running Playwright tests..."
 	@echo ""
-	@E2E_BASE_URL=http://localhost:8080 bun x playwright test --project=chromium; \
+	@E2E_BASE_URL=http://localhost:8080 bun x --bun playwright test --project=chromium; \
 	test_exit=$$?; \
 	echo ""; \
 	echo "Step 5: Cleaning up..."; \
@@ -977,17 +983,18 @@ help:
 	@echo "  make test-e2e-sqlite    Run E2E tests with SQLite backend"
 	@echo "  make test-e2e-ui        Run E2E tests with Playwright UI"
 	@echo ""
-	@echo "Linting (Biome):"
-	@echo "  make fix             Fix all lint issues"
+	@echo "Linting (Biome + tsc):"
+	@echo "  make fix             Fix all lint issues, then typecheck"
 	@echo "  make fix-js          Fix JavaScript linting issues"
 	@echo "  make fix-tests       Fix test linting issues"
 	@echo "  make fix-ts          Fix TypeScript linting issues"
 	@echo "  make format          Format code with Biome"
 	@echo "  make format-check    Check formatting without fixing"
-	@echo "  make lint            Run lint on all files"
+	@echo "  make lint            Run lint + typecheck on all files"
 	@echo "  make lint-js         Lint JavaScript (public/app/)"
 	@echo "  make lint-tests      Lint test files"
 	@echo "  make lint-ts         Lint TypeScript source (src/)"
+	@echo "  make typecheck       Typecheck TypeScript with tsc --noEmit"
 	@echo ""
 	@echo "Packaging:"
 	@echo "  make package VERSION=1.0.0                    Build release"

@@ -440,7 +440,7 @@ test.describe('Component Export/Import', () => {
         console.log('Image resolution status:', JSON.stringify(resolution, null, 2));
 
         // The image should be resolved
-        expect(resolution.isResolved).toBe(true);
+        expect(resolution?.isResolved).toBe(true);
 
         // 7. Verify image actually loads (not broken)
         // Wait for image to fully load

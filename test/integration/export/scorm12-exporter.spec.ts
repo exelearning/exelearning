@@ -20,11 +20,11 @@ import {
     FflateZipProvider,
     Scorm12Exporter,
     unzipSync as fflateUnzipSync,
-    type ParsedOdeStructure,
 } from '../../../src/shared/export';
 
 // Import test helpers
 import { createDocumentFromStructure, createDocumentFromElpFile } from '../../helpers/document-test-utils';
+import type { DocumentStructure } from '../../helpers/document-test-utils';
 import { formatUnloadFindings, scanPackageForUnloadHandlers } from '../../helpers/unload-handler-scanner';
 
 const testDir = path.join(process.cwd(), 'test', 'temp', 'scorm12-exporter-test');
@@ -32,7 +32,7 @@ const fixtureElpx = path.join(process.cwd(), 'test', 'fixtures', 'really-simple-
 const publicDir = path.join(process.cwd(), 'public');
 
 // Sample parsed structure for unit-level testing
-const sampleParsedStructure: ParsedOdeStructure = {
+const sampleParsedStructure: DocumentStructure = {
     meta: {
         title: 'SCORM 1.2 Test Project',
         author: 'Test Author',
@@ -74,8 +74,6 @@ const sampleParsedStructure: ParsedOdeStructure = {
             position: 1,
         },
     ],
-    navigation: null,
-    raw: null,
 };
 
 describe('Scorm12Exporter Integration', () => {
@@ -573,7 +571,7 @@ describe('Scorm12Exporter Integration', () => {
                 ]),
             );
 
-            const structure: ParsedOdeStructure = {
+            const structure: DocumentStructure = {
                 meta: { title: 'iDevice matrix', author: '', language: 'en', theme: 'base' },
                 pages: folders.map((folder, index) => ({
                     id: `page-${index}`,
@@ -591,8 +589,6 @@ describe('Scorm12Exporter Integration', () => {
                     parent_id: null,
                     position: index,
                 })),
-                navigation: null,
-                raw: null,
             };
 
             const document = createDocumentFromStructure(structure, path.join(testDir, 'extracted'));
@@ -639,11 +635,9 @@ describe('Scorm12Exporter Integration', () => {
 
     describe('Error handling', () => {
         it('should handle empty pages gracefully', async () => {
-            const emptyStructure: ParsedOdeStructure = {
+            const emptyStructure: DocumentStructure = {
                 meta: { title: 'Empty', author: '', language: 'en', theme: 'base' },
                 pages: [],
-                navigation: null,
-                raw: null,
             };
             const document = createDocumentFromStructure(emptyStructure, path.join(testDir, 'extracted'));
             const resources = new FileSystemResourceProvider(publicDir);

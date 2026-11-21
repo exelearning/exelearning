@@ -249,7 +249,7 @@ describe('save-utils', () => {
         it('wipes the per-project name map without touching directories or the global slot', () => {
             const settings = {
                 lastSaveDir: { 'uuid-a': '/docs', 'uuid-b': '/elsewhere' },
-                lastSaveName: { 'uuid-a': 'A.elpx', 'uuid-b': 'B.elpx' },
+                lastSaveName: { 'uuid-a': 'A.elpx', 'uuid-b': 'B.elpx' } as Record<string, string>,
                 currentFileSave: { dir: '/docs', name: 'A.elpx' },
             };
             const ret = clearSavedNameCache(settings);

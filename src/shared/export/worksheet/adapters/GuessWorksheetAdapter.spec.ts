@@ -322,14 +322,14 @@ describe('GuessWorksheetAdapter', () => {
             expect(activity?.items[0].extraText).toBe('<p>Texto plano</p>');
         });
 
-        it('keeps the percent-encoding of a link in rich text saved as written', () => {
+        it('prints the links of rich text saved as written as their words, since they may lead to the answer', () => {
             const eText = '<p>Mira el <a href="https://es.wikipedia.org/wiki/An%C3%A9lido">anélido</a></p>';
             const activity = GuessWorksheetAdapter.build(
-                guessHtml({ wordsGame: [{ word: 'Cid', definition: 'Apodo', type: 3, eText }] }),
+                guessHtml({ wordsGame: [{ word: 'Anélido', definition: 'Gusano', type: 3, eText }] }),
                 {},
             );
 
-            expect(activity?.items[0].extraText).toBe(eText);
+            expect(activity?.items[0].extraText).toBe('<p>Mira el anélido</p>');
         });
 
         it('omits a video question that cannot be answered from paper', () => {
