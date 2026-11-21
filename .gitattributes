@@ -154,3 +154,9 @@ public/app/common/scorm/scorm12/vendor/** -text
 /.claude export-ignore
 /AGENTS.md export-ignore
 /CLAUDE.md export-ignore
+
+# ---------------------------------------------------------------------
+# User manual sources (doc/manual/<lang>/): authored assets are stored
+# byte for byte, whatever their extension.
+# ---------------------------------------------------------------------
+doc/manual/*/content/resources/** -text

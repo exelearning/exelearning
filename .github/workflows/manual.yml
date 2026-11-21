@@ -1,0 +1,141 @@
+# Builds and validates the user manuals stored in doc/manual/<lang>/ and attaches
+# them to the eXeLearning release they document. See doc/development/user-manual.md.
+#
+# - Pull requests and pushes to main that touch a manual: build + validate, and keep
+#   the files as a workflow artifact for review.
+# - A published release (pre-release or release): build from the release tag with the
+#   exporter of that same tag and attach `exelearning-manual-<lang>-<tag>.elpx` and
+#   `exelearning-manual-<lang>-<tag>-html.zip` to the release.
+# - Manual run with `tag` + `revision`: attach a corrected manual, built from the
+#   selected branch, as `...-<tag>-<revision>.*`. Published files are never replaced.
+name: User Manual
+run-name: >-
+  ${{ github.event_name == 'release' && format('User manual for {0}', github.event.release.tag_name)
+  || inputs.tag && format('User manual correction {0}-{1}', inputs.tag, inputs.revision)
+  || '' }}
+
+on:
+  pull_request:
+    paths:
+      - 'doc/manual/**'
+      - 'scripts/build-manual.ts'
+      - '.github/workflows/manual.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'doc/manual/**'
+      - 'scripts/build-manual.ts'
+      - '.github/workflows/manual.yml'
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Published release to attach a corrected manual to (e.g. v4.0.6). Leave empty to only build.'
+        required: false
+        type: string
+      revision:
+        description: 'Correction number for that release (1, 2, …). Required with a tag.'
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: manual-${{ github.event.release.tag_name || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  build:
+    name: Build and validate
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.version.outputs.tag }}
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      # A release event checks out the release tag, so the manual and the exporter
+      # that builds it are the ones of that release.
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Resolve the version to publish
+        id: version
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          INPUT_TAG: ${{ inputs.tag }}
+          INPUT_REVISION: ${{ inputs.revision }}
+        run: |
+          set -euo pipefail
+          tag="${RELEASE_TAG:-${INPUT_TAG:-}}"
+          version="$tag"
+          if [ -n "$tag" ] && ! printf '%s' "$tag" | grep -Eq '^v[0-9]+(\.[0-9]+)*([.-][0-9A-Za-z]+)*$'; then
+            echo "::error::'$tag' is not a release tag such as v4.0.6"
+            exit 1
+          fi
+          if [ -n "${INPUT_TAG:-}" ]; then
+            if ! printf '%s' "${INPUT_REVISION:-}" | grep -Eq '^[1-9][0-9]*$'; then
+              echo "::error::A correction needs a revision number (1, 2, …)"
+              exit 1
+            fi
+            version="$tag-$INPUT_REVISION"
+          fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Build the assets the exporter reads
+        run: bun run build:all
+
+      - name: Build and validate the manuals
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          set -euo pipefail
+          if [ -n "$TAG" ]; then export APP_VERSION="$TAG"; fi
+          bun run scripts/build-manual.ts ${VERSION:+--version="$VERSION"}
+          for file in dist/manual/*.elpx dist/manual/*-html.zip; do unzip -tq "$file"; done
+          ls -l dist/manual
+
+      - name: Keep the manuals as a workflow artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: user-manual-${{ steps.version.outputs.version || github.event.pull_request.number || github.sha }}
+          path: |
+            dist/manual/*.elpx
+            dist/manual/*-html.zip
+          if-no-files-found: error
+          retention-days: 30
+
+  publish:
+    name: Attach to the release
+    needs: build
+    if: needs.build.outputs.tag != '' && github.repository == 'exelearning/exelearning'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download the manuals
+        uses: actions/download-artifact@v8
+        with:
+          name: user-manual-${{ needs.build.outputs.version }}
+          path: manual
+
+      # No --clobber: files already published for a release are never rewritten.
+      # A corrected manual is attached next to them with its own revision number.
+      - name: Attach the manuals to the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ needs.build.outputs.tag }}
+        run: |
+          set -euo pipefail
+          gh release upload "$TAG" manual/*.elpx manual/*-html.zip

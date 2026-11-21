@@ -31,6 +31,9 @@ let renderCounter = 0;
 const CHAR_WIDTH = 8;
 const LINE_HEIGHT = 16;
 
+/** Width of a Gantt chart, whose container jsdom cannot measure. */
+const GANTT_WIDTH = 1200;
+
 /** Elements that draw nothing where they stand, so take no room in their parent's box. */
 const NOT_DRAWN = new Set([
     'style',
@@ -316,7 +319,10 @@ export class ServerMermaidPreRenderer implements ServerMermaidPreRendererInterfa
                 // Use simple settings for server-side rendering
                 flowchart: { useMaxWidth: true },
                 sequence: { useMaxWidth: true },
-                gantt: { useMaxWidth: true },
+                // A Gantt chart takes its width from its container, and jsdom measures none: at
+                // 0px the chart is drawn with bars of negative width and cannot be seen. Give it
+                // the width Mermaid itself falls back to when there is nothing to measure.
+                gantt: { useMaxWidth: true, useWidth: GANTT_WIDTH },
             });
 
             this.initialized = true;
@@ -554,5 +560,5 @@ interface MermaidConfig {
     secure?: string[];
     flowchart?: { useMaxWidth?: boolean; htmlLabels?: boolean };
     sequence?: { useMaxWidth?: boolean };
-    gantt?: { useMaxWidth?: boolean };
+    gantt?: { useMaxWidth?: boolean; useWidth?: number };
 }
