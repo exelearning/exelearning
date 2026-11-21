@@ -1637,6 +1637,9 @@ var $exeDevice = (function () {
         if (criterios.length) {
             var ccHeader = getCompClaveHeader(criterios[0].etapa);
             var infantil = isInfantil(criterios[0].etapa);
+            var hasDescriptors = infantil || criterios.some(function (sel) {
+                return sel.competenciasClave && sel.competenciasClave.length > 0;
+            });
             var hasSaberes = saberes.length > 0;
 
             // Group by competencia específica
@@ -1663,7 +1666,9 @@ var $exeDevice = (function () {
                 html += '<th' + tipAttr(_('Assessment criteria')) + '>' + _('Eval. Criteria') + '</th>';
             } else {
                 html += '<th' + tipAttr(_('Assessment criteria')) + '>' + _('Eval. Criteria') + '</th>';
-                html += '<th' + tipAttr(_('Operational descriptors')) + '>' + esc(ccHeader) + '</th>';
+                if (hasDescriptors) {
+                    html += '<th' + tipAttr(_('Operational descriptors')) + '>' + esc(ccHeader) + '</th>';
+                }
             }
             if (hasSaberes) html += '<th>' + _('Basic knowledge') + '</th>';
             html += '</tr></thead><tbody>';
@@ -1697,7 +1702,7 @@ var $exeDevice = (function () {
                     if (infantil) {
                         html += ccCell + criterioCell;
                     } else {
-                        html += criterioCell + ccCell;
+                        html += criterioCell + (hasDescriptors ? ccCell : '');
                     }
                     // Single shared Saberes cell on first row
                     if (hasSaberes && isFirstCriterioRow) {

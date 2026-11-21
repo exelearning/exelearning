@@ -174,6 +174,9 @@ var $Lomloe = {
         if (criterios.length) {
             var ccHeader = self._getCompClaveHeader(criterios[0].etapa);
             var infantil = self._isInfantil(criterios[0].etapa);
+            var hasDescriptors = infantil || criterios.some(function (sel) {
+                return sel.competenciasClave && sel.competenciasClave.length > 0;
+            });
             var hasSaberes = saberes.length > 0;
 
             // Group by competencia específica
@@ -205,7 +208,9 @@ var $Lomloe = {
                 html += '<th data-lomloe-tip="Criterios de evaluación">Criterios de Eval.</th>';
             } else {
                 html += '<th data-lomloe-tip="Criterios de evaluación">Criterios de Eval.</th>';
-                html += '<th data-lomloe-tip="Descriptores operativos">' + self._esc(ccHeader) + '</th>';
+                if (hasDescriptors) {
+                    html += '<th data-lomloe-tip="Descriptores operativos">' + self._esc(ccHeader) + '</th>';
+                }
             }
             if (hasSaberes) html += '<th>Saberes Básicos</th>';
             html += '</tr></thead><tbody>';
@@ -240,7 +245,7 @@ var $Lomloe = {
                     if (infantil) {
                         html += ccCell + criterioCell;
                     } else {
-                        html += criterioCell + ccCell;
+                        html += criterioCell + (hasDescriptors ? ccCell : '');
                     }
                     if (hasSaberes && isFirstCriterioRow) {
                         html += '<td rowspan="' + totalCriterioRows + '" class="lomloe-saberes-cell">';
