@@ -12,6 +12,9 @@ const {
 // undici reports the final URL after redirect: 'follow'; same-origin unless stated.
 const response = (status: number, url?: string) => ({ status, url });
 
+/** The request options `rangedGet` passes to the injected fetch. */
+type RangedGetOptions = { method: string; redirect: string; headers: Record<string, string> };
+
 describe('link-check', () => {
     describe('classifyHttpStatus', () => {
         it('treats 2xx and 3xx as valid', () => {
@@ -34,7 +37,9 @@ describe('link-check', () => {
 
     describe('checkExternalLink', () => {
         it('sends a single ranged GET with browser-like headers', async () => {
-            const fetchImpl = mock(async () => response(200, 'https://example.com/'));
+            const fetchImpl = mock(async (_url: string, _options: RangedGetOptions) =>
+                response(200, 'https://example.com/'),
+            );
 
             const result = await checkExternalLink('https://example.com', { fetchImpl });
 
@@ -286,7 +291,7 @@ describe('link-check', () => {
         });
 
         it('normalizes protocol-relative URLs to https', async () => {
-            const fetchImpl = mock(async () => response(200, 'https://cdn.example.com/file.js'));
+            const fetchImpl = mock(async (_url: string) => response(200, 'https://cdn.example.com/file.js'));
 
             await checkExternalLink('//cdn.example.com/file.js', { fetchImpl });
 

@@ -10,8 +10,15 @@
  * - Assets referenced by the component
  */
 
-import type { ExportAsset, ExportBlock, ExportComponent, ExportOptions, ExportResult } from '../interfaces';
+import {
+    type ExportAsset,
+    type ExportBlock,
+    type ExportComponent,
+    type ExportOptions,
+    type ExportResult,
+} from '../interfaces';
 import { BaseExporter } from './BaseExporter';
+import { blobFromBytes } from '../../utils/blob';
 
 /**
  * Result of a component export operation
@@ -103,7 +110,7 @@ export class ComponentExporter extends BaseExporter {
             await this.addComponentAssetsToZip(block, component);
 
             // Generate ZIP
-            const data = await this.zip.generate();
+            const data = await this.zip.generateAsync();
 
             console.log(`[ComponentExporter] Export complete: ${filename}`);
             return { success: true, data, filename };
@@ -401,7 +408,8 @@ export class ComponentExporter extends BaseExporter {
             return;
         }
 
-        const blob = new Blob([data], { type: 'application/zip' });
+        // A Blob is created only here, at the browser download boundary.
+        const blob = blobFromBytes(data, 'application/zip');
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;

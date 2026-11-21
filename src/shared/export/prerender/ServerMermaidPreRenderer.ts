@@ -275,23 +275,18 @@ export class ServerMermaidPreRenderer implements ServerMermaidPreRendererInterfa
             };
         }
 
-        // Set up minimal browser globals that Mermaid expects
-        // @ts-expect-error - Adding globals for Mermaid compatibility
-        global.window = window;
-        // @ts-expect-error - Adding globals for Mermaid compatibility
-        global.document = window.document;
-        // @ts-expect-error - Adding globals for Mermaid compatibility
-        global.navigator = window.navigator;
-        // @ts-expect-error - Adding globals for Mermaid compatibility
-        global.Element = window.Element;
-        // @ts-expect-error - Adding globals for Mermaid compatibility
-        global.HTMLElement = window.HTMLElement;
-        // @ts-expect-error - Adding globals for Mermaid compatibility
-        global.SVGElement = window.SVGElement;
+        // Set up minimal browser globals that Mermaid expects.
+        // jsdom's DOMWindow is not assignable to lib.dom Window; install them by name.
+        const globalScope = globalThis as unknown as Record<string, unknown>;
+        globalScope.window = window;
+        globalScope.document = window.document;
+        globalScope.navigator = window.navigator;
+        globalScope.Element = window.Element;
+        globalScope.HTMLElement = window.HTMLElement;
+        globalScope.SVGElement = window.SVGElement;
         // Mermaid builds each diagram's styles in a constructed stylesheet; without it every
         // diagram fails to render and the export keeps the source instead.
-        // @ts-expect-error - Adding globals for Mermaid compatibility
-        global.CSSStyleSheet = window.CSSStyleSheet;
+        globalScope.CSSStyleSheet = window.CSSStyleSheet;
 
         try {
             // Import mermaid from npm package (cached for subsequent initializations)
@@ -394,7 +389,7 @@ export class ServerMermaidPreRenderer implements ServerMermaidPreRendererInterfa
         if (this.initializationFailed || !this.mermaid) {
             return {
                 html,
-                hasMermaid: hasMermaidInHtml || hasMermaidInJson,
+                hasMermaid: Boolean(hasMermaidInHtml || hasMermaidInJson),
                 mermaidRendered: false,
                 count: 0,
             };
@@ -513,7 +508,7 @@ export class ServerMermaidPreRenderer implements ServerMermaidPreRendererInterfa
 
         return {
             html: result,
-            hasMermaid: hasMermaidInHtml || hasMermaidInJson,
+            hasMermaid: Boolean(hasMermaidInHtml || hasMermaidInJson),
             mermaidRendered: renderedCount > 0,
             count: renderedCount,
         };
@@ -529,20 +524,14 @@ export class ServerMermaidPreRenderer implements ServerMermaidPreRendererInterfa
         this.initialized = false;
 
         // Clean up global references
-        // @ts-expect-error - Cleaning up globals
-        delete global.window;
-        // @ts-expect-error - Cleaning up globals
-        delete global.document;
-        // @ts-expect-error - Cleaning up globals
-        delete global.navigator;
-        // @ts-expect-error - Cleaning up globals
-        delete global.Element;
-        // @ts-expect-error - Cleaning up globals
-        delete global.HTMLElement;
-        // @ts-expect-error - Cleaning up globals
-        delete global.SVGElement;
-        // @ts-expect-error - Cleaning up globals
-        delete global.CSSStyleSheet;
+        const globalScope = globalThis as unknown as Record<string, unknown>;
+        delete globalScope.window;
+        delete globalScope.document;
+        delete globalScope.navigator;
+        delete globalScope.Element;
+        delete globalScope.HTMLElement;
+        delete globalScope.SVGElement;
+        delete globalScope.CSSStyleSheet;
     }
 }
 

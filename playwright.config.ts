@@ -31,9 +31,6 @@ if (isRunningOnlyStatic) {
 // Shared environment for dynamic server (chromium/firefox)
 const dynamicServerEnv = {
     NODE_ENV: 'test',
-    APP_ENV: 'test',
-    API_JWT_SECRET: 'e2e-only-api-jwt-secret-not-for-production-000000000001',
-    APP_SECRET: 'e2e-only-platform-secret-not-for-production-000000000001',
     DB_PATH: ':memory:',
     // FIX: '/tmp/' usually does not exist on Windows.
     // We use the OS temporary folder dynamically.
@@ -103,7 +100,9 @@ function getWebServerConfig() {
         return dynamicWebServer;
     }
     // Mixed or all projects - start both servers
-    return [dynamicWebServer, staticWebServer].filter(Boolean);
+    return [dynamicWebServer, staticWebServer].filter((server): server is NonNullable<typeof server> =>
+        Boolean(server),
+    );
 }
 
 export default defineConfig({
