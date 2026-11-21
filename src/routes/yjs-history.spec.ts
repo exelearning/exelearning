@@ -18,7 +18,7 @@ const mockProject = {
 
 async function signToken(sub: number, roles: string[]): Promise<string> {
     const secret = new TextEncoder().encode(TEST_SECRET);
-    return new SignJWT({ sub, email: `u${sub}@test.local`, roles })
+    return new SignJWT({ sub: String(sub), email: `u${sub}@test.local`, roles })
         .setProtectedHeader({ alg: 'HS256' })
         .setIssuedAt()
         .setExpirationTime('1h')
@@ -32,8 +32,10 @@ function authHeaders(token: string): Record<string, string> {
     };
 }
 
+const createTestApp = (deps: YjsDependencies) => new Elysia().use(createYjsRoutes(deps));
+
 describe('Yjs version history routes', () => {
-    let app: Elysia;
+    let app: ReturnType<typeof createTestApp>;
     let adminToken: string;
     let userToken: string;
     let historySaveCalls: unknown[][];
@@ -67,6 +69,7 @@ describe('Yjs version history routes', () => {
                 updateProjectTitle: async () => undefined,
                 updateProjectTitleAndSave: async () => undefined,
                 checkProjectAccess: async () => ({ hasAccess: true }),
+                replaceSnapshotIfVersion: async () => true,
             },
             history: {
                 saveSnapshotWithHistory: async (...args: unknown[]) => {
@@ -112,7 +115,7 @@ describe('Yjs version history routes', () => {
         historySaveCalls = [];
         canonicalSaveCalls = [];
         restoreCalls = [];
-        app = new Elysia().use(createYjsRoutes(createDependencies()));
+        app = createTestApp(createDependencies());
     });
 
     it('uses versioned persistence for explicit saves', async () => {
@@ -168,7 +171,7 @@ describe('Yjs version history routes', () => {
             );
         }
 
-        function createAppWithSnapshot(historyResults: Array<'saved' | 'stale'>): Elysia {
+        function createAppWithSnapshot(historyResults: Array<'saved' | 'stale'>): ReturnType<typeof createTestApp> {
             casCalls = [];
             const deps = createDependencies();
             deps.queries.loadDocumentWithUpdates = async () => ({ snapshot: storedSnapshot as any, updates: [] });
@@ -181,7 +184,7 @@ describe('Yjs version history routes', () => {
                 const result = await saveWithHistory(...args);
                 return historyResults.shift() === 'stale' ? undefined : result;
             };
-            return new Elysia().use(createYjsRoutes(deps));
+            return createTestApp(deps);
         }
 
         it('passes the stored version as the compare-and-set guard on explicit saves', async () => {
