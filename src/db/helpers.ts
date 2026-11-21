@@ -9,7 +9,7 @@
  * - MySQL: Use two-step approach (execute + SELECT)
  */
 
-import type { Kysely, Insertable, Updateable, Selectable, ColumnDefinitionBuilder } from 'kysely';
+import type { Kysely, Insertable, Updateable, Selectable, ColumnDefinitionBuilder, CreateIndexBuilder } from 'kysely';
 import { sql } from 'kysely';
 import type { Database } from './types';
 import { getDialectFromEnv, type DbDialect } from './dialect';
@@ -175,6 +175,27 @@ export async function columnExists<DB>(db: Kysely<DB>, tableName: string, column
 // ============================================================================
 // CROSS-DATABASE SCHEMA HELPERS
 // ============================================================================
+
+/**
+ * Create an index unless one with that name already exists on the table.
+ * MySQL has no CREATE INDEX IF NOT EXISTS (MariaDB does), so on the mysql dialect
+ * the index is looked up with SHOW INDEX first, which needs no information_schema access.
+ */
+export async function createIndexIfNotExists<DB>(
+    db: Kysely<DB>,
+    name: string,
+    table: string,
+    define: (index: CreateIndexBuilder) => CreateIndexBuilder<string>,
+): Promise<void> {
+    if (getDialect() !== 'mysql') {
+        await define(db.schema.createIndex(name).ifNotExists().on(table)).execute();
+        return;
+    }
+    const existing = await sql`SHOW INDEX FROM ${sql.table(table)} WHERE Key_name = ${name}`.execute(db);
+    if (existing.rows.length === 0) {
+        await define(db.schema.createIndex(name).on(table)).execute();
+    }
+}
 
 /**
  * Get the correct data type for auto-incrementing primary key.

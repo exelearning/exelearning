@@ -9,7 +9,7 @@
  * An empty folder_path means the asset is at the project root.
  */
 
-import type { UntypedKysely } from '../helpers';
+import { type UntypedKysely, createIndexIfNotExists } from '../helpers';
 
 export async function up(db: UntypedKysely): Promise<void> {
     // Add folder_path column to assets table
@@ -20,12 +20,9 @@ export async function up(db: UntypedKysely): Promise<void> {
         .execute();
 
     // Add index for folder queries (list assets in a folder, get subfolders)
-    await db.schema
-        .createIndex('idx_assets_folder_path')
-        .ifNotExists()
-        .on('assets')
-        .columns(['project_id', 'folder_path'])
-        .execute();
+    await createIndexIfNotExists(db, 'idx_assets_folder_path', 'assets', index =>
+        index.columns(['project_id', 'folder_path']),
+    );
 }
 
 export async function down(db: UntypedKysely): Promise<void> {
