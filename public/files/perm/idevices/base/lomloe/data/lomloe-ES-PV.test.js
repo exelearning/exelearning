@@ -3,7 +3,8 @@
  *
  * The dataset ships entirely in official Basque (euskara): Educación Básica
  * (Lehen Hezkuntza + DBH) from Decreto 77/2023 and Educación Infantil (Haur
- * Hezkuntza) from Decreto 75/2023, both EHAA 109. zk. (2023-06-09). These guards
+ * Hezkuntza) from Decreto 75/2023, both EHAA 109. zk. (2023-06-09), plus
+ * Batxilergoa from Decreto 76/2023 (corrected Annex II, EHAA 140. zk., 2023-07-24). These guards
  * keep the structure, code namespace, per-course ESO distribution, Basque-text
  * integrity, descriptor coverage and the documented Infantil descriptor gap from
  * silently regressing.
@@ -16,7 +17,9 @@ import dataset from './lomloe-ES-PV.json';
 const INFANTIL = 'Haur Hezkuntza';
 const PRIMARIA = 'Lehen Hezkuntza';
 const ESO = 'Derrigorrezko Bigarren Hezkuntza';
-const ETAPAS = [INFANTIL, PRIMARIA, ESO];
+const BACHILLERATO = 'Batxilergoa';
+const BACHILLERATO_NIVELES = ['Batxilergoko 1. maila', 'Batxilergoko 2. maila'];
+const ETAPAS = [INFANTIL, PRIMARIA, ESO, BACHILLERATO];
 
 const PRIMARIA_NIVELES = [
     'Lehen Hezkuntzako 1. maila', 'Lehen Hezkuntzako 2. maila',
@@ -26,9 +29,9 @@ const PRIMARIA_NIVELES = [
 const ESO_NIVELES = ['DBHko 1. maila', 'DBHko 2. maila', 'DBHko 3. maila', 'DBHko 4. maila'];
 const INFANTIL_NIVELES = ['Lehen zikloa (0-3 urte)', 'Bigarren zikloa (3-6 urte)'];
 
-// Basque descriptor family codes published in ANEXO I of Decreto 77/2023.
+// Basque descriptor families from Decreto 77/2023; fractional subcodes from Decreto 76/2023.
 const DESC_FAMILIES = ['HKK', 'KE', 'STEM', 'KD', 'KPSII', 'HK', 'EK', 'KAKK'];
-const DESC_CODE_RE = new RegExp(`^(${DESC_FAMILIES.join('|')})(\\d+)?$`);
+const DESC_CODE_RE = new RegExp(`^(${DESC_FAMILIES.join('|')})(\\d+(?:\\.\\d+)?)?$`);
 
 // Reserved top-level key, mirrors RESERVED_DATASET_KEYS in edition/lomloe.js.
 const RESERVED = ['descriptors'];
@@ -57,16 +60,15 @@ describe('lomloe-ES-PV.json — structure', () => {
         expect(Object.keys(dataset).length).toBeGreaterThan(0);
     });
 
-    it('exposes the three expected etapas (no Bachillerato) plus descriptors', () => {
+    it('exposes all four expected etapas plus descriptors', () => {
         expect(etapaKeys().sort()).toEqual([...ETAPAS].sort());
-        expect(dataset.Bachillerato).toBeUndefined();
-        expect(dataset.Batxillerat).toBeUndefined();
     });
 
     it('uses the expected Basque nivel keys for each etapa', () => {
         expect(Object.keys(dataset[INFANTIL])).toEqual(INFANTIL_NIVELES);
         expect(Object.keys(dataset[PRIMARIA])).toEqual(PRIMARIA_NIVELES);
         expect(Object.keys(dataset[ESO])).toEqual(ESO_NIVELES);
+        expect(Object.keys(dataset[BACHILLERATO])).toEqual(BACHILLERATO_NIVELES);
     });
 
     it('every area carries the iDevice schema shape', () => {
@@ -212,8 +214,8 @@ describe('lomloe-ES-PV.json — Basque text integrity', () => {
         const text = allText();
         expect(text).not.toMatch(/EUSKAL HERRIKO AGINTARITZAREN ALDIZKARIA/);
         expect(text).not.toMatch(/BOLET[ÍI]N OFICIAL DEL PA[ÍI]S VASCO/);
-        expect(text).not.toMatch(/109\. zk\./);
-        expect(text).not.toMatch(/2023\/27\d{2} \(\d+\/\d+\)/);
+        expect(text).not.toMatch(/(?:109|140)\. zk\./);
+        expect(text).not.toMatch(/2023\/(?:27\d{2}|3570) \(\d+\/\d+\)/);
     });
 });
 
@@ -341,5 +343,91 @@ describe('lomloe-ES-PV.json — Infantil descriptor policy (documented source li
             }
         }
         expect(total).toBeGreaterThan(0);
+    });
+});
+
+
+describe('lomloe-ES-PV.json — Baccalaureate (corrected Decreto 76/2023)', () => {
+    it('distributes common and modality subjects by course', () => {
+        const first = dataset[BACHILLERATO]?.[BACHILLERATO_NIVELES[0]] || {};
+        const second = dataset[BACHILLERATO]?.[BACHILLERATO_NIVELES[1]] || {};
+        expect(first.HF?.denominacion).toBe('Heziketa Fisikoa');
+        expect(first.FIL?.denominacion).toBe('Filosofia');
+        expect(second.EH?.denominacion).toBe('Espainiako Historia');
+        expect(second.FH?.denominacion).toBe('Filosofiaren Historia');
+        expect(first.EH).toBeUndefined();
+        expect(second.HF).toBeUndefined();
+        expect(first.BIO).toBeUndefined();
+        expect(second.BIO?.denominacion).toBe('Biologia');
+        for (const [areas, suffix] of [[first, 'I'], [second, 'II']]) {
+            expect(areas.EL?.denominacion).toBe(`Euskara eta Literatura ${suffix}`);
+            expect(areas.GL?.denominacion).toBe(`Gaztelania eta Literatura ${suffix}`);
+            expect(areas.MAT?.denominacion).toBe(`Matematika ${suffix}`);
+        }
+    });
+
+    it('keeps course-specific drawing criteria and knowledge separate', () => {
+        const first = dataset[BACHILLERATO]?.[BACHILLERATO_NIVELES[0]]?.APDAMT;
+        const second = dataset[BACHILLERATO]?.[BACHILLERATO_NIVELES[1]]?.APDAMT;
+        expect(first).toBeDefined();
+        expect(second).toBeDefined();
+        const criterion = area => Object.values(area.competencias_especificas)[0].criterios_evaluacion[0];
+        expect(criterion(first).descripcion).toContain('Naturan, ingurunean');
+        expect(criterion(second).descripcion).toContain('Hautemateko eta gozatzeko');
+        expect(first.saberes_basicos).not.toEqual(second.saberes_basicos);
+    });
+});
+
+
+describe('Baccalaureate extraction completeness', () => {
+    it.each([
+        ['Batxilergoko 1. maila', 44, 287, 694, 1566],
+        ['Batxilergoko 2. maila', 39, 254, 602, 1363],
+    ])('%s retains all extracted subjects and curriculum elements', (level, subjects, competencies, criteria, knowledge) => {
+        const areas = Object.values(dataset[BACHILLERATO][level]);
+        const comps = areas.flatMap(area => Object.values(area.competencias_especificas));
+        expect(areas).toHaveLength(subjects);
+        expect(comps).toHaveLength(competencies);
+        expect(comps.flatMap(comp => comp.criterios_evaluacion)).toHaveLength(criteria);
+        expect(areas.flatMap(area => Object.values(area.saberes_basicos.bloques).flat())).toHaveLength(knowledge);
+        for (const comp of comps) {
+            expect(comp.criterios_evaluacion.length).toBeGreaterThan(0);
+            expect(comp.criterios_evaluacion[0].competencias_clave.length).toBeGreaterThan(0);
+        }
+    });
+
+    it('uses the corrected annex counts rather than the preliminary notes', () => {
+        const count = (level, code) => Object.keys(dataset[BACHILLERATO][level][code].competencias_especificas).length;
+        expect(count(BACHILLERATO_NIVELES[0], 'HF')).toBe(7);
+        expect(count(BACHILLERATO_NIVELES[1], 'FH')).toBe(9);
+        expect(count(BACHILLERATO_NIVELES[1], 'EH')).toBe(8);
+    });
+
+    it('places elective anatomy and physiology in their published courses', () => {
+        const first = dataset[BACHILLERATO][BACHILLERATO_NIVELES[0]];
+        const second = dataset[BACHILLERATO][BACHILLERATO_NIVELES[1]];
+        expect(first.AA.denominacion).toBe('Anatomia Aplikatua');
+        expect(first.GAF).toBeUndefined();
+        expect(second.GAF.denominacion).toBe('Giza Anatomia eta Fisiologia');
+        expect(second.AA).toBeUndefined();
+        expect(first.IKT.saberes_basicos.bloques['A. Ikerketa- eta garapen-proiektuak.']).toHaveLength(8);
+        expect(first.IKT.saberes_basicos.bloques['B. Ikaskuntzarako ingurune pertsonala.']).toHaveLength(5);
+    });
+
+    it('follows explicit competency headings when the source criterion numbers contain typos', () => {
+        const comps = dataset[BACHILLERATO][BACHILLERATO_NIVELES[0]].EHH.competencias_especificas;
+        expect(comps['ES-PV-BACH1-EHH-CE02'].criterios_evaluacion[0].descripcion).toContain('lurralde-');
+        expect(comps['ES-PV-BACH1-EHH-CE08'].criterios_evaluacion[0].descripcion).toContain('genero-ikuspegia');
+        expect(comps['ES-PV-BACH1-EHH-CE08'].criterios_evaluacion).toHaveLength(2);
+    });
+
+    it('retains the fractional Basque Baccalaureate descriptor codes', () => {
+        for (const code of ['KPSII1.1', 'KPSII1.2', 'KPSII3.1', 'KPSII3.2', 'KAKK3.1', 'KAKK3.2', 'KAKK4.1', 'KAKK4.2']) {
+            expect(dataset.descriptors[code].length, code).toBeGreaterThan(50);
+        }
+        const area = dataset[BACHILLERATO][BACHILLERATO_NIVELES[0]].ALH;
+        const comp = area.competencias_especificas['ES-PV-BACH1-ALH-CE03'];
+        expect(comp.criterios_evaluacion[0].competencias_clave).toContain('KPSII3.1');
+        expect(comp.criterios_evaluacion[0].competencias_clave).toContain('KAKK3.1');
     });
 });
