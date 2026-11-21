@@ -220,6 +220,15 @@ let mermaidModule: MermaidAPI | null = null;
  */
 let mermaidDom: JSDOM | null = null;
 
+/** Browser globals Mermaid expects, installed from the jsdom window while a renderer is in use. */
+const MERMAID_GLOBALS = ['window', 'document', 'navigator', 'Element', 'HTMLElement', 'SVGElement', 'CSSStyleSheet'];
+
+/**
+ * What those globals were before a renderer replaced them. The runtime may own some of them (Bun
+ * has a navigator, read by its node:os), so cleanup puts them back rather than deleting them.
+ */
+let replacedGlobals: Map<string, PropertyDescriptor | undefined> | null = null;
+
 /**
  * Server-side Mermaid Pre-renderer using mermaid npm package
  */
@@ -275,18 +284,18 @@ export class ServerMermaidPreRenderer implements ServerMermaidPreRendererInterfa
             };
         }
 
-        // Set up minimal browser globals that Mermaid expects.
-        // jsdom's DOMWindow is not assignable to lib.dom Window; install them by name.
-        const globalScope = globalThis as unknown as Record<string, unknown>;
-        globalScope.window = window;
-        globalScope.document = window.document;
-        globalScope.navigator = window.navigator;
-        globalScope.Element = window.Element;
-        globalScope.HTMLElement = window.HTMLElement;
-        globalScope.SVGElement = window.SVGElement;
-        // Mermaid builds each diagram's styles in a constructed stylesheet; without it every
-        // diagram fails to render and the export keeps the source instead.
-        globalScope.CSSStyleSheet = window.CSSStyleSheet;
+        // Set up minimal browser globals that Mermaid expects. Mermaid builds each diagram's styles
+        // in a constructed stylesheet; without CSSStyleSheet every diagram fails to render and the
+        // export keeps the source instead.
+        const globals = globalThis as unknown as Record<string, unknown>;
+        if (!replacedGlobals) {
+            replacedGlobals = new Map(
+                MERMAID_GLOBALS.map(name => [name, Object.getOwnPropertyDescriptor(globals, name)]),
+            );
+        }
+        for (const name of MERMAID_GLOBALS) {
+            globals[name] = (window as unknown as Record<string, unknown>)[name];
+        }
 
         try {
             // Import mermaid from npm package (cached for subsequent initializations)
@@ -523,15 +532,17 @@ export class ServerMermaidPreRenderer implements ServerMermaidPreRendererInterfa
         this.mermaid = null;
         this.initialized = false;
 
-        // Clean up global references
-        const globalScope = globalThis as unknown as Record<string, unknown>;
-        delete globalScope.window;
-        delete globalScope.document;
-        delete globalScope.navigator;
-        delete globalScope.Element;
-        delete globalScope.HTMLElement;
-        delete globalScope.SVGElement;
-        delete globalScope.CSSStyleSheet;
+        // Put back the globals initialize() replaced
+        if (replacedGlobals) {
+            for (const [name, descriptor] of replacedGlobals) {
+                if (descriptor) {
+                    Object.defineProperty(globalThis, name, descriptor);
+                } else {
+                    delete (globalThis as Record<string, unknown>)[name];
+                }
+            }
+            replacedGlobals = null;
+        }
     }
 }
 
