@@ -58,6 +58,14 @@ import {
 export const VALID_FORMATS = ['html5', 'html5-sp', 'scorm12', 'scorm2004', 'ims', 'epub3', 'elpx'] as const;
 export type ExportFormat = (typeof VALID_FORMATS)[number];
 
+/** Guard for the exhaustive format switch; unreachable for VALID_FORMATS values. */
+export function assertExporter<T>(exporter: T | undefined, format: string): T {
+    if (!exporter) {
+        throw new Error(`Unsupported export format: ${format}`);
+    }
+    return exporter;
+}
+
 export interface ElpExportResult {
     success: boolean;
     message: string;
@@ -241,6 +249,8 @@ export async function execute(
         if (debug) {
             console.log(`[DEBUG] Starting ${format} export...`);
         }
+
+        exporter = assertExporter(exporter, format);
 
         // Create pre-render hooks for LaTeX and Mermaid
         // These convert LaTeX/Mermaid to static SVG, avoiding the need to bundle

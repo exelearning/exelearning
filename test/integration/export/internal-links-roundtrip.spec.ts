@@ -23,6 +23,8 @@ import type {
     ExportPage,
     ResourceProvider,
     AssetProvider,
+    ExportAsset,
+    ZipArchive,
     ZipProvider,
 } from '../../../src/shared/export/interfaces';
 import { ElpxImporter } from '../../../src/shared/import/ElpxImporter';
@@ -75,22 +77,29 @@ class MockResourceProvider implements ResourceProvider {
     async fetchI18nTranslations(): Promise<Map<string, string>> {
         return new Map();
     }
+    async fetchGlobalFontFiles(): Promise<Map<string, Uint8Array> | null> {
+        return null;
+    }
 }
 
 class MockAssetProvider implements AssetProvider {
-    async getAsset(): Promise<Buffer | null> {
+    async getAsset(): Promise<ExportAsset | null> {
         return null;
     }
-    async getAllAssets(): Promise<
-        Array<{ id: string; filename: string; path: string; mimeType: string; data: Buffer }>
-    > {
+    async getAllAssets(): Promise<ExportAsset[]> {
+        return [];
+    }
+    async getProjectAssets(): Promise<ExportAsset[]> {
         return [];
     }
 }
 
 class MockZipProvider implements ZipProvider {
-    files = new Map<string, string | Buffer>();
-    addFile(p: string, c: string | Buffer): void {
+    files = new Map<string, string | Uint8Array>();
+    createZip(): ZipArchive {
+        throw new Error('createZip is not used by the exporters under test');
+    }
+    addFile(p: string, c: string | Uint8Array): void {
         this.files.set(p, c);
     }
     hasFile(p: string): boolean {
@@ -99,7 +108,7 @@ class MockZipProvider implements ZipProvider {
     getFilePaths(): string[] {
         return Array.from(this.files.keys());
     }
-    async generateAsync(): Promise<Buffer> {
+    async generateAsync(): Promise<Uint8Array> {
         const data: Record<string, Uint8Array> = {};
         for (const [p, c] of this.files) {
             data[p] = typeof c === 'string' ? strToU8(c) : new Uint8Array(c);
@@ -125,6 +134,7 @@ function makeLinkedPages(): ExportPage[] {
                             id: 'comp-1',
                             type: 'FreeTextIdevice',
                             order: 0,
+                            properties: {},
                             content:
                                 '<p>Go to <a href="exe-node:page-2">About</a> and <a href="exe-node:page-2#sec">a section</a>.</p>',
                         },
@@ -147,6 +157,7 @@ function makeLinkedPages(): ExportPage[] {
                             id: 'comp-2',
                             type: 'FreeTextIdevice',
                             order: 0,
+                            properties: {},
                             content: '<p>Back to <a href="exe-node:page-1">Home</a>.</p>',
                         },
                     ],

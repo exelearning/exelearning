@@ -1081,6 +1081,7 @@ describe('PrintPreviewExporter', () => {
 
             const preRenderMermaid = async (html: string) => ({
                 html: html.replace('<div class="mermaid">graph TD; A-->B;</div>', '<svg>Mock SVG</svg>'),
+                hasMermaid: true,
                 mermaidRendered: true,
                 count: 1,
             });
@@ -3027,7 +3028,14 @@ describe('the printing context in the document', () => {
 
     it('provides the context before an iDevice script executes', async () => {
         const withActivity = page();
-        withActivity.blocks = [{ id: 'b', order: 0, components: [{ id: 'c', type: 'relate', order: 0, content: '' }] }];
+        withActivity.blocks = [
+            {
+                id: 'b',
+                name: '',
+                order: 0,
+                components: [{ id: 'c', type: 'relate', order: 0, content: '', properties: {} }],
+            },
+        ];
         const exporter = new PrintPreviewExporter(createMockDocument([withActivity]), createMockResourceProvider());
         const { html = '' } = await exporter.generatePreview();
         expect(html).toContain('relate.js');
