@@ -15,6 +15,9 @@ import {
     resetDependencies as resetServiceDependencies,
 } from '../services/platform-integration';
 import { getJwtSecret } from './auth';
+import { fetchHost } from '../../test/helpers/fetch-host';
+
+// Bun's `typeof fetch` also requires `preconnect`; the fakes below only replace the call itself.
 
 describe('Platform Integration Routes', () => {
     // Store original environment variables
@@ -49,7 +52,7 @@ describe('Platform Integration Routes', () => {
 
     afterEach(() => {
         // Restore original fetch
-        globalThis.fetch = originalFetch;
+        fetchHost.fetch = originalFetch;
         // Reset service dependencies
         resetServiceDependencies();
         // Reset route-level dependencies (ownership check lookup)
@@ -228,7 +231,7 @@ describe('Platform Integration Routes', () => {
             const token = await createValidToken();
 
             // Mock fetch to return ELP data
-            globalThis.fetch = async () =>
+            fetchHost.fetch = async () =>
                 new Response(
                     JSON.stringify({
                         ode_file: 'base64EncodedContent',
@@ -267,7 +270,7 @@ describe('Platform Integration Routes', () => {
                         platform_package_hash: hashPlatformPackage(packageBytes),
                     }),
             });
-            globalThis.fetch = async () =>
+            fetchHost.fetch = async () =>
                 new Response(
                     JSON.stringify({ ode_file: packageBytes.toString('base64'), ode_filename: 'a.zip', status: '0' }),
                     { status: 200 },
@@ -298,7 +301,7 @@ describe('Platform Integration Routes', () => {
                         platform_package_hash: hashPlatformPackage(Buffer.from('PK older package')),
                     }),
             });
-            globalThis.fetch = async () =>
+            fetchHost.fetch = async () =>
                 new Response(
                     JSON.stringify({ ode_file: packageBytes.toString('base64'), ode_filename: 'a.zip', status: '0' }),
                     { status: 200 },
@@ -322,7 +325,7 @@ describe('Platform Integration Routes', () => {
             const token = await createValidToken();
 
             // Mock fetch to return error
-            globalThis.fetch = async () => new Response(null, { status: 500 });
+            fetchHost.fetch = async () => new Response(null, { status: 500 });
 
             const response = await app.handle(
                 new Request('http://localhost/api/platform/integration/openPlatformElp', {
@@ -342,7 +345,7 @@ describe('Platform Integration Routes', () => {
             const token = await createValidToken();
 
             // Mock fetch to throw error
-            globalThis.fetch = async () => {
+            fetchHost.fetch = async () => {
                 throw new Error('Network error');
             };
 
@@ -391,7 +394,7 @@ describe('Platform Integration Routes', () => {
             });
 
             // Configure service with mock that returns null for project
-            configureService({ lookupFn: publicLookup, findProjectByUuid: async () => null });
+            configureService({ lookupFn: publicLookup, findProjectByUuid: async () => undefined });
 
             const response = await app.handle(
                 new Request('http://localhost/api/platform/integration/set_platform_new_ode', {
@@ -423,20 +426,14 @@ describe('Platform Integration Routes', () => {
             // Configure service with mocks
             configureService({
                 lookupFn: publicLookup,
-                findProjectByUuid: async () => ({
-                    id: 1,
-                    uuid: 'test-uuid',
-                    title: 'Test Project',
-                    createdAt: new Date(),
-                    updatedAt: new Date(),
-                }),
+                findProjectByUuid: async () => makeProjectRow({ uuid: 'test-uuid' }),
                 findSnapshotByProjectId: async () => mockSnapshot,
                 updateProjectByUuid: async () => undefined, // Mock update for platform_id
             });
 
             // Mock fetch to return success
             const platformResponse = { success: true, message: 'Upload complete' };
-            globalThis.fetch = async () =>
+            fetchHost.fetch = async () =>
                 new Response(JSON.stringify(platformResponse), {
                     status: 200,
                     headers: { 'Content-Type': 'application/json' },
@@ -471,18 +468,12 @@ describe('Platform Integration Routes', () => {
 
             configureService({
                 lookupFn: publicLookup,
-                findProjectByUuid: async () => ({
-                    id: 1,
-                    uuid: 'test-uuid',
-                    title: 'Test Project',
-                    createdAt: new Date(),
-                    updatedAt: new Date(),
-                }),
+                findProjectByUuid: async () => makeProjectRow({ uuid: 'test-uuid' }),
                 findSnapshotByProjectId: async () => mockSnapshot,
             });
 
             // Mock fetch to return error
-            globalThis.fetch = async () => new Response(null, { status: 500 });
+            fetchHost.fetch = async () => new Response(null, { status: 500 });
 
             const response = await app.handle(
                 new Request('http://localhost/api/platform/integration/set_platform_new_ode', {
@@ -513,18 +504,12 @@ describe('Platform Integration Routes', () => {
 
             configureService({
                 lookupFn: publicLookup,
-                findProjectByUuid: async () => ({
-                    id: 1,
-                    uuid: 'test-uuid',
-                    title: 'Test Project',
-                    createdAt: new Date(),
-                    updatedAt: new Date(),
-                }),
+                findProjectByUuid: async () => makeProjectRow({ uuid: 'test-uuid' }),
                 findSnapshotByProjectId: async () => mockSnapshot,
             });
 
             // Mock fetch to throw error
-            globalThis.fetch = async () => {
+            fetchHost.fetch = async () => {
                 throw new Error('Connection refused');
             };
 
@@ -575,7 +560,7 @@ describe('Platform Integration Routes', () => {
 
             // Network must never be touched (no ZIP shipped to the platform).
             let fetchCalled = false;
-            globalThis.fetch = async () => {
+            fetchHost.fetch = async () => {
                 fetchCalled = true;
                 return new Response(JSON.stringify({ status: '0' }), {
                     status: 200,
@@ -616,13 +601,7 @@ describe('Platform Integration Routes', () => {
             });
             configureService({
                 lookupFn: publicLookup,
-                findProjectByUuid: async () => ({
-                    id: 1,
-                    uuid: 'owned-uuid',
-                    title: 'Test Project',
-                    createdAt: new Date(),
-                    updatedAt: new Date(),
-                }),
+                findProjectByUuid: async () => makeProjectRow({ uuid: 'owned-uuid' }),
                 findSnapshotByProjectId: async () => {
                     snapshotLookupCalled = true;
                     return mockSnapshot;
@@ -630,7 +609,7 @@ describe('Platform Integration Routes', () => {
                 updateProjectByUuid: async () => undefined,
             });
 
-            globalThis.fetch = async () =>
+            fetchHost.fetch = async () =>
                 new Response(JSON.stringify({ status: '0' }), {
                     status: 200,
                     headers: { 'Content-Type': 'application/json' },
@@ -682,7 +661,7 @@ describe('Platform Integration Routes', () => {
                 findSnapshotByProjectId: async () => createMockSnapshot(),
                 updateProjectByUuid: async () => undefined,
             });
-            globalThis.fetch = async () => new Response(JSON.stringify({ status: '0' }), { status: 200 });
+            fetchHost.fetch = async () => new Response(JSON.stringify({ status: '0' }), { status: 200 });
 
             const response = await postServerExport(token);
 
@@ -700,7 +679,7 @@ describe('Platform Integration Routes', () => {
                     }),
             });
             let fetchCalled = false;
-            globalThis.fetch = async () => {
+            fetchHost.fetch = async () => {
                 fetchCalled = true;
                 return new Response(JSON.stringify({ status: '0' }), { status: 200 });
             };
@@ -716,7 +695,7 @@ describe('Platform Integration Routes', () => {
         const packageHash = hashPlatformPackage(Buffer.from('PK imported package'));
 
         async function signIn(userId: number): Promise<string> {
-            return new SignJWT({ sub: userId, email: `user${userId}@test.com`, roles: ['ROLE_USER'] })
+            return new SignJWT({ sub: String(userId), email: `user${userId}@test.com`, roles: ['ROLE_USER'] })
                 .setProtectedHeader({ alg: 'HS256' })
                 .setIssuedAt()
                 .setExpirationTime('1h')
@@ -922,7 +901,7 @@ describe('Platform Integration Routes', () => {
             const token = await createValidToken({ provider_id: 'my-moodle' });
 
             // Mock fetch to return success
-            globalThis.fetch = async () =>
+            fetchHost.fetch = async () =>
                 new Response(
                     JSON.stringify({
                         ode_file: 'content',
@@ -988,9 +967,9 @@ describe('Platform Integration Routes', () => {
             // (the realistic first-time browser-authored save).
             configurePlatformIntegrationRoutes({ findProjectByUuid: async () => undefined });
 
-            let capturedUrl: string | null = null;
-            let capturedFormData: FormData | null = null;
-            globalThis.fetch = async (url, init) => {
+            let capturedUrl = null as string | null; // assigned inside the fetch fake
+            let capturedFormData = null as FormData | null;
+            fetchHost.fetch = async (url, init) => {
                 capturedUrl = url as string;
                 capturedFormData = init?.body as FormData;
                 return new Response(JSON.stringify({ status: '0' }), {
@@ -1001,7 +980,7 @@ describe('Platform Integration Routes', () => {
 
             // Capture the platform_id linkage. The endpoint should persist
             // the cmid on a project that is not bound to any activity yet.
-            let linkedCmid: string | null = null;
+            let linkedCmid = null as string | null;
             configureService({
                 lookupFn: publicLookup,
                 findProjectByUuid: async () => makeProjectRow({ uuid: 'project-uuid-123' }),
@@ -1041,7 +1020,7 @@ describe('Platform Integration Routes', () => {
         // saved them (#2550).
         it('records the package only when the browser saved the project with its assets', async () => {
             const token = await createValidToken();
-            globalThis.fetch = async () =>
+            fetchHost.fetch = async () =>
                 new Response(JSON.stringify({ status: '0' }), {
                     status: 200,
                     headers: { 'Content-Type': 'application/json' },
@@ -1078,7 +1057,7 @@ describe('Platform Integration Routes', () => {
         it('propagates platform error descriptions back to the client as 500', async () => {
             const token = await createValidToken();
             configurePlatformIntegrationRoutes({ findProjectByUuid: async () => undefined });
-            globalThis.fetch = async () =>
+            fetchHost.fetch = async () =>
                 new Response(JSON.stringify({ status: '1', description: 'Quota exceeded' }), {
                     status: 200,
                     headers: { 'Content-Type': 'application/json' },
@@ -1099,7 +1078,7 @@ describe('Platform Integration Routes', () => {
         it('returns 500 when the platform replies with a non-OK HTTP status', async () => {
             const token = await createValidToken();
             configurePlatformIntegrationRoutes({ findProjectByUuid: async () => undefined });
-            globalThis.fetch = async () => new Response(null, { status: 503 });
+            fetchHost.fetch = async () => new Response(null, { status: 503 });
 
             const formData = new FormData();
             formData.append('jwt_token', token);
@@ -1154,7 +1133,7 @@ describe('Platform Integration Routes', () => {
 
             // The package must never be forwarded to any platform.
             let fetchCalled = false;
-            globalThis.fetch = async () => {
+            fetchHost.fetch = async () => {
                 fetchCalled = true;
                 return new Response(JSON.stringify({ status: '0' }), {
                     status: 200,
@@ -1188,7 +1167,7 @@ describe('Platform Integration Routes', () => {
             });
             configureService({ lookupFn: publicLookup, updateProjectByUuid: async () => undefined });
             let fetchCalled = false;
-            globalThis.fetch = async () => {
+            fetchHost.fetch = async () => {
                 fetchCalled = true;
                 return new Response(JSON.stringify({ status: '0' }), {
                     status: 200,
@@ -1318,7 +1297,7 @@ function createMockSnapshot() {
         project_id: 1,
         snapshot_data: snapshotData,
         snapshot_version: '1',
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
+        created_at: Date.now(),
+        updated_at: Date.now(),
     };
 }

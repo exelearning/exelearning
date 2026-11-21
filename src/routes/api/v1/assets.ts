@@ -6,7 +6,7 @@
  *
  * Changes are automatically broadcast to WebSocket clients.
  */
-import { Elysia, t } from 'elysia';
+import { Elysia, t, type Static } from 'elysia';
 import { v4 as uuidv4 } from 'uuid';
 import * as fs from 'fs-extra';
 import * as path from 'path';
@@ -40,12 +40,12 @@ import { authenticateRequest, errorResponse, successResponse, checkProjectAccess
 // HELPERS
 // ============================================================================
 
-/**
- * File with optional name property (for Blob/File uploads)
- */
-interface FileWithName extends Blob {
-    name?: string;
-}
+/** Multipart body for POST /:uuid/assets. */
+const UploadAssetBody = t.Object({
+    file: t.Optional(t.File()),
+    clientId: t.Optional(t.String()),
+    folderPath: t.Optional(t.String()),
+});
 
 /**
  * Serialize asset for API response
@@ -154,7 +154,7 @@ export const assetsRoutes = new Elysia({ prefix: '/projects' })
             }
 
             // Extract file from multipart body
-            const data = castRequestBody<{ file?: Blob | Buffer; clientId?: string; folderPath?: string }>(body);
+            const data = castRequestBody<Static<typeof UploadAssetBody>>(body);
 
             if (!data.file) {
                 set.status = 400;
@@ -170,23 +170,9 @@ export const assetsRoutes = new Elysia({ prefix: '/projects' })
             }
             const folderPath = sanitizeFolderPath(data.folderPath);
 
-            // Get file data
-            let fileBuffer: Buffer;
-            let filename: string;
-            let mimetype: string;
-
-            if (file instanceof Blob) {
-                fileBuffer = Buffer.from(await file.arrayBuffer());
-                filename = (file as FileWithName).name || 'uploaded_file';
-                mimetype = file.type || 'application/octet-stream';
-            } else if (Buffer.isBuffer(file)) {
-                fileBuffer = file;
-                filename = 'uploaded_file';
-                mimetype = 'application/octet-stream';
-            } else {
-                set.status = 400;
-                return errorResponse('BAD_REQUEST', 'Invalid file format');
-            }
+            const fileBuffer = Buffer.from(await file.arrayBuffer());
+            const filename = file.name || 'uploaded_file';
+            const mimetype = file.type || 'application/octet-stream';
 
             // Sharded storage: assets/<shard>/<projectUuid>/<clientId>.<ext>
             // The database stores the FILES_DIR-relative path.
@@ -263,6 +249,8 @@ export const assetsRoutes = new Elysia({ prefix: '/projects' })
                 description: 'Upload a new asset file to the project. Changes are broadcast to WebSocket clients.',
                 tags: ['Assets'],
             },
+            // `file` stays optional so a missing file keeps its documented 400 BAD_REQUEST.
+            body: UploadAssetBody,
         },
     )
 

@@ -11,7 +11,7 @@ import { configure, resetDependencies, notifyVisibilityChanged, notifyCollaborat
  */
 function createMockWebSocket() {
     return {
-        send: mock(() => {}),
+        send: mock((_data: Uint8Array) => {}),
         close: mock(() => {}),
         readyState: 1,
         data: { userId: 1, clientId: 'client-1', projectUuid: 'test-uuid', docName: 'project-test-uuid' },
@@ -93,7 +93,7 @@ describe('AccessNotifier', () => {
 
             // Check message was sent
             expect(mockWs.send).toHaveBeenCalled();
-            const sentMessage = mockWs.send.mock.calls[0][0] as Uint8Array;
+            const sentMessage = mockWs.send.mock.calls[0][0];
 
             // Verify 0xFF prefix
             expect(sentMessage[0]).toBe(0xff);
@@ -214,7 +214,7 @@ describe('AccessNotifier', () => {
 
             // Check message was sent
             expect(mockWs.send).toHaveBeenCalled();
-            const sentMessage = mockWs.send.mock.calls[0][0] as Uint8Array;
+            const sentMessage = mockWs.send.mock.calls[0][0];
 
             // Verify 0xFF prefix
             expect(sentMessage[0]).toBe(0xff);

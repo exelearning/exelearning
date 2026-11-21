@@ -29,7 +29,7 @@ describe('snapshot routes: concurrent replace', () => {
     it('is last-write-wins without partial reads (no torn snapshot)', async () => {
         delete process.env.API_JWT_SECRET;
         process.env.JWT_SECRET = TEST_JWT_SECRET;
-        const token = await new SignJWT({ sub: 1, email: 'u@test.local', roles: ['ROLE_USER'] })
+        const token = await new SignJWT({ sub: '1', email: 'u@test.local', roles: ['ROLE_USER'] })
             .setProtectedHeader({ alg: 'HS256' })
             .setIssuedAt()
             .setExpirationTime('1h')

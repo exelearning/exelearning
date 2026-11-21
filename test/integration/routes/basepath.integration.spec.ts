@@ -31,7 +31,7 @@ const MIME_TYPES: Record<string, string> = {
 /**
  * Create a test app that mimics the BASE_PATH handling from src/index.ts
  */
-function createBasePathTestApp(basePath: string | null = null): Elysia {
+function createBasePathTestApp(basePath: string | null = null) {
     const app = new Elysia()
         // Mimic the onRequest hook from src/index.ts for static file handling
         .onRequest(({ request }) => {
@@ -105,7 +105,7 @@ function createBasePathTestApp(basePath: string | null = null): Elysia {
 
 describe('BASE_PATH Integration', () => {
     describe('Without BASE_PATH (default)', () => {
-        let app: Elysia;
+        let app: Pick<Elysia, 'handle'>;
 
         beforeAll(() => {
             app = createBasePathTestApp(null);
@@ -146,7 +146,7 @@ describe('BASE_PATH Integration', () => {
     });
 
     describe('With BASE_PATH=/web/exelearning', () => {
-        let app: Elysia;
+        let app: Pick<Elysia, 'handle'>;
 
         beforeAll(() => {
             app = createBasePathTestApp(TEST_BASE_PATH);
@@ -222,7 +222,7 @@ describe('BASE_PATH Integration', () => {
     });
 
     describe('Static Files with BASE_PATH', () => {
-        let app: Elysia;
+        let app: Pick<Elysia, 'handle'>;
 
         beforeAll(() => {
             app = createBasePathTestApp(TEST_BASE_PATH);
@@ -320,7 +320,7 @@ describe('BASE_PATH Integration', () => {
     });
 
     describe('Content-Type headers', () => {
-        let app: Elysia;
+        let app: Pick<Elysia, 'handle'>;
 
         beforeAll(() => {
             app = createBasePathTestApp(TEST_BASE_PATH);

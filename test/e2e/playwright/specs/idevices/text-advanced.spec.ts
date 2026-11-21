@@ -192,9 +192,7 @@ test.describe('Text iDevice Advanced Features', () => {
             });
 
             // Also verify each dt has exactly 1 toggler
-            iconCheck.togglerCounts.forEach((count, i) => {
-                expect(count).toBe(1);
-            });
+            expect(iconCheck.togglerCounts).toEqual([1, 1, 1]);
         });
 
         test('should toggle exe-dl definition on click', async ({ authenticatedPage, createProject }) => {
