@@ -580,7 +580,7 @@ test-integration: check-bun check-env bundle ## Run integration tests
 	$(TEST_ENV) bun test:integration
 
 .PHONY: test-frontend
-test-frontend: check-bun check-env bundle ## Run frontend tests (with Vitest + happy-dom) with coverage
+test-frontend: check-bun check-env bundle ## Run frontend tests (bun test + happy-dom) with coverage
 	bun test:frontend
 
 .PHONY: test-coverage
@@ -965,7 +965,7 @@ help:
 	@echo "  make check-tests        Check test file coverage requirements"
 	@echo "  make test               Run all tests"
 	@echo "  make test-clean         Clean test artifacts"
-	@echo "  make test-frontend      Run frontend tests (Vitest)"
+	@echo "  make test-frontend      Run frontend tests (bun test + happy-dom)"
 	@echo "  make test-integration   Run integration tests"
 	@echo "  make test-unit          Run unit tests with coverage"
 	@echo "  make test-unit-ci       Run unit tests with lcov for CI"

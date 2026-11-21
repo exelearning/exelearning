@@ -5,7 +5,7 @@
 # Root directory for tests
 root = "."
 
-# Exclude legacy code, node_modules, Playwright e2e tests, and frontend tests (run by Vitest)
+# Exclude legacy code, node_modules, Playwright e2e tests, and frontend tests (bunfig.frontend.toml)
 # Note: websocket specs (yjs-persistence.spec.ts, yjs-websocket.spec.ts, room-manager.spec.ts) use mock.module()
 # and may cause test pollution when run together with other tests
 # pathIgnorePatterns prunes directories during scanning (more efficient than ignore for large dirs)

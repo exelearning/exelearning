@@ -35,6 +35,9 @@
 *   Package: @erseco/mind-elixir-export-svg
     *   Copyright: Ernesto Serrano
     *   License: MIT
+*   Package: @happy-dom/global-registrator
+    *   Copyright: David Ortner
+    *   License: MIT
 *   Package: @material-symbols/svg-400
     *   Copyright: Google LLC
     *   License: Apache-2.0
@@ -79,12 +82,6 @@
     *   License: MIT
 *   Package: @types/ws
     *   Copyright: Paul Loyd, Margus Lamp, Philippe D'Alva
-    *   License: MIT
-*   Package: @vitest/coverage-v8
-    *   Copyright: Anthony Fu
-    *   License: MIT
-*   Package: @vitest/ui
-    *   Copyright: VoidZero Inc. and Vitest contributors
     *   License: MIT
 *   Package: @xmldom/xmldom
     *   Copyright: Christopher J. Brody and other contributors
@@ -223,12 +220,6 @@
     *   License: Apache-2.0
 *   Package: uuid
     *   Copyright: Robert Kieffer and other contributors
-    *   License: MIT
-*   Package: vite
-    *   Copyright: Evan You
-    *   License: MIT
-*   Package: vitest
-    *   Copyright: Anthony Fu
     *   License: MIT
 *   Package: wait-on
     *   Copyright: Jeff Barczewski

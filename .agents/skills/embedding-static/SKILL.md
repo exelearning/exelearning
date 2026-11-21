@@ -5,7 +5,7 @@ description: "Change eXeLearning static runtime capabilities, iframe host commun
 
 # Static and embedded editor
 
-Read `public/app/core/RuntimeConfig.js`, `Capabilities.js`, `EmbeddingBridge.js`, their Vitest tests,
+Read `public/app/core/RuntimeConfig.js`, `Capabilities.js`, `EmbeddingBridge.js`, their frontend tests,
 `scripts/build-static-bundle.ts`, and `doc/development/embedding.md`.
 
 - Determine web, static, desktop and embedded capabilities through existing configuration. A static
@@ -21,6 +21,6 @@ Read `public/app/core/RuntimeConfig.js`, `Capabilities.js`, `EmbeddingBridge.js`
   Do not assume a server-only fallback repairs missing static assets.
 - Clean up listeners and resources when the bridge/editor is destroyed or reinitialized.
 
-Run the core config/capability/bridge Vitest tests and the static builder's relevant specs. Exercise static
+Run the core config/capability/bridge frontend tests and the static builder's relevant specs. Exercise static
 E2E plus an embedding harness for load/edit/save/cancel/failure and unwanted message sources when changing
 behavior. Use `verify-change`; building the server alone does not validate the embedded distribution.

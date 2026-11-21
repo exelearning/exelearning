@@ -111,6 +111,6 @@ Edit the source under the device's `src/` and run its registered build (slide: `
 Review source, tests and generated output together. Do not hand-edit the generated editor bundle or
 force legacy devices into a TypeScript scaffold as part of an unrelated fix.
 
-Run the target's existing Vitest `.test.js` files, including source-import tests for TypeScript components.
+Run the target's existing `.test.js` files (`bun run test:frontend <path>`), including source-import tests for TypeScript components.
 Add/update an E2E flow that creates, edits, saves, reloads and previews the device; use exporter tests for
 ZIP/resource changes and the collaboration fixture for remote-edit interactions. Finish with `verify-change`.

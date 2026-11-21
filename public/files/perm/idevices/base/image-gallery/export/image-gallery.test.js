@@ -135,6 +135,9 @@ describe('image-gallery iDevice export', () => {
     };
 
     beforeEach(() => {
+      // An open lightbox keeps animating on timers and animation frames. Left
+      // real, they fire after this file has finished and its window is gone.
+      vi.useFakeTimers();
       preloads = [];
       OriginalImage = window.Image;
       // Capture the lightbox's off-DOM preload image so the test can fire its
@@ -156,6 +159,7 @@ describe('image-gallery iDevice export', () => {
     });
 
     afterEach(() => {
+      vi.useRealTimers();
       window.Image = OriginalImage;
       vi.restoreAllMocks();
       document.querySelectorAll('.sl-wrapper, .sl-overlay').forEach(n => n.remove());

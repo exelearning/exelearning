@@ -26,13 +26,6 @@ updates:
       - dependency-name: "jquery"
         versions: [">=4"]
     groups:
-      # vitest and its @vitest/* companions pin each other with exact-version
-      # peer dependencies; bumping one alone breaks the run (#2384).
-      # Kept out of test-tools: a dependency may belong to only one group.
-      vitest:
-        patterns:
-          - "vitest"
-          - "@vitest/*"
       # Yjs ecosystem: keep in sync — shim build depends on compatible versions
       yjs-ecosystem:
         patterns:
@@ -54,12 +47,14 @@ updates:
       test-tools:
         patterns:
           - "@playwright/test"
+          # happy-dom and its global registrator must stay on one version: the
+          # frontend suite builds its window from both (test/happy-dom.preload.ts).
           - "happy-dom"
+          - "@happy-dom/*"
       # Build tooling
       build-tools:
         patterns:
           - "esbuild"
-          - "vite"
           - "sass"
           - "@biomejs/*"
       # Vendored front-end libraries: browser assets generated from npm by

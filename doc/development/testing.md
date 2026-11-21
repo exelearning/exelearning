@@ -12,7 +12,7 @@ Tests are organized by type and location:
 |------|--------|----------|---------|
 | **Unit** | Bun test | `src/**/*.spec.ts` | `make test-unit` |
 | **Integration** | Bun test | `test/integration/` | `make test-integration` |
-| **Frontend** | Vitest | `public/app/**/*.spec.js` | `make test-frontend` |
+| **Frontend** | Bun test + happy-dom | `public/**/*.test.js` | `make test-frontend` |
 | **E2E** | Playwright | `test/e2e/playwright/` | `make test-e2e` |
 
 Run all tests with:
@@ -220,35 +220,47 @@ describe('Project API Integration', () => {
 
 ## Frontend Tests
 
-Frontend tests use **Vitest** with **happy-dom** for DOM simulation.
+Frontend tests run on **`bun test`** with **happy-dom** for DOM simulation. They are written against
+the Vitest API (`vi.fn`, `vi.spyOn`, `vi.useFakeTimers`, `import ... from 'vitest'`), which `bun:test`
+provides: no `vitest` package is installed.
 
 ### Running Frontend Tests
 
 ```bash
-# Run all frontend tests
+# Run all frontend tests, with coverage
 make test-frontend
 
-# Run with UI
-bun run test:frontend:ui
+# Run one file, or one test in it
+bun run test:frontend public/app/yjs/AssetManager.test.js
+bun run test:frontend public/app/yjs/AssetManager.test.js -t "content-addressable"
 ```
+
+Plain `bun test <file>` does not work for these files: it reads the root `bunfig.toml`, which has no
+DOM and ignores `public/`.
 
 ### Configuration
 
-Frontend tests are configured in `vitest.config.ts`:
+`bunfig.frontend.toml` preloads two files and lists what coverage leaves out:
 
-```typescript
-export default defineConfig({
-    test: {
-        environment: 'happy-dom',
-        include: ['public/app/**/*.spec.js'],
-    },
-});
-```
+- `test/happy-dom.preload.ts` registers a happy-dom window. It is evaluated once per test file, so a
+  file that patches a DOM prototype cannot change the files that run after it.
+- `public/vitest.setup.js` loads jQuery, TinyMCE and Yjs and installs the shared eXe mocks.
+
+The `test:frontend` script passes the config with `--config` and adds `--parallel`, which runs every
+file in a fresh global object. Without `--parallel` or `--isolate` the files share one global and fail.
+
+### Differences from Vitest worth knowing
+
+- A failed matcher throws a plain `Error`, not an `AssertionError`.
+- `vi.clearAllTimers()` throws unless fake timers are installed; guard it with `vi.isFakeTimers()`.
+- `vi.advanceTimersByTimeAsync()` and the other async timer calls let one real event-loop turn pass,
+  so anything happy-dom scheduled for itself (an iframe or stylesheet load) can complete inside them.
+- Coverage reports lines and functions. There is no branch coverage.
 
 ### Example Frontend Test
 
 ```javascript
-// public/app/yjs/AssetManager.spec.js
+// public/app/yjs/AssetManager.test.js
 import { describe, it, expect, vi } from 'vitest';
 
 describe('AssetManager', () => {
@@ -449,7 +461,7 @@ make test-unit
 # Integration tests (test/integration/)
 make test-integration
 
-# Frontend tests (Vitest)
+# Frontend tests (bun test + happy-dom)
 make test-frontend
 
 # E2E tests (Playwright)
