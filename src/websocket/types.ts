@@ -3,6 +3,33 @@
  * Elysia migration - functional style
  */
 
+/** Per-connection fields: Elysia `params`/`query` plus ids written on open. */
+export interface YjsSocketData {
+    params?: { docName?: string };
+    query?: { token?: string };
+    clientId?: string;
+    userId?: number;
+    projectUuid?: string;
+    docName?: string;
+}
+
+/**
+ * Socket surface shared by Elysia `ElysiaWS`, Bun `ServerWebSocket`, and tests.
+ * Handlers take this instead of casting at every callback.
+ */
+export interface YjsSocket {
+    data: YjsSocketData;
+    readyState: number;
+    send(data: string | ArrayBufferView | ArrayBuffer | Buffer, compress?: boolean): unknown;
+    close(code?: number, reason?: string): unknown;
+    ping(data?: unknown): unknown;
+}
+
+/** Outbound socket used by the asset coordinator (`send` only). */
+export interface AssetClientSocket {
+    send(data: string | Uint8Array | Buffer | ArrayBufferView): unknown;
+}
+
 /**
  * Client metadata stored per connection
  */

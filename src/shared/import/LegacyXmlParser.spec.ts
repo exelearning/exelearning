@@ -2141,7 +2141,7 @@ describe('LegacyXmlParser', () => {
                 .find(d => d.type === 'trueorfalse');
 
             expect(idevice).toBeDefined();
-            return (idevice as { properties: { msgs: Record<string, string> } }).properties.msgs;
+            return idevice?.properties?.msgs as Record<string, string>;
         };
 
         it('should use the package language for the default messages', () => {

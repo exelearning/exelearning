@@ -1,13 +1,14 @@
 /**
  * Tests for Generate JWT Command
  */
-import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
+import { describe, it, expect, beforeEach, afterEach, spyOn } from 'bun:test';
 import { execute, printHelp, runCli, type GenerateJwtDependencies } from './generate-jwt';
 import * as jose from 'jose';
 import type { Kysely } from 'kysely';
+import type { Database, User } from '../../db/types';
 
-// Mock user for testing
-const mockUser = {
+// Mock user for testing (timestamps are Unix milliseconds, as stored)
+const mockUser: User = {
     id: 42,
     email: 'user@test.com',
     user_id: 'testuser',
@@ -15,15 +16,16 @@ const mockUser = {
     password: 'hashed',
     is_active: 1,
     is_lopd_accepted: 1,
-    created_at: '2024-01-01T00:00:00Z',
-    updated_at: '2024-01-01T00:00:00Z',
+    quota_mb: null,
+    created_at: Date.UTC(2024, 0, 1),
+    updated_at: Date.UTC(2024, 0, 1),
     api_token: null,
     external_identifier: null,
 };
 
 // Mock dependencies for database user lookup
 const mockDeps: GenerateJwtDependencies = {
-    findUserByEmail: async (_db: Kysely<any>, email: string) => {
+    findUserByEmail: async (_db: Kysely<Database>, email: string) => {
         if (email === 'user@test.com' || email === 'admin@example.com') {
             return { ...mockUser, email };
         }
@@ -45,6 +47,18 @@ describe('Generate JWT Command', () => {
     });
 
     describe('execute with --raw-sub (legacy mode)', () => {
+        it('warns when the sub is not a numeric user ID, and stays quiet when it is', async () => {
+            const errSpy = spyOn(console, 'error').mockImplementation(() => {});
+            try {
+                await execute(['42'], { 'raw-sub': true });
+                expect(errSpy).not.toHaveBeenCalled();
+                await execute(['admin@example.com'], { 'raw-sub': true });
+                expect(String(errSpy.mock.calls[0]?.[0])).toContain('not a numeric user ID');
+            } finally {
+                errSpy.mockRestore();
+            }
+        });
+
         it('should generate a valid JWT with subject', async () => {
             const result = await execute(['admin@example.com'], { 'raw-sub': true });
 

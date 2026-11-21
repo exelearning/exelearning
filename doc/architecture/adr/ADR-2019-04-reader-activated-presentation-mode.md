@@ -12,7 +12,7 @@ reviewers:
 related:
   prs: [2020]
   changes: ["2019-keyboard-navigation-export-preview"]
-  adrs: [ADR-2019-01, ADR-2019-02, ADR-2019-03]
+  adrs: [ADR-2019-01, ADR-2019-02, ADR-2019-03, ADR-2701-01]
 supersedes: []
 superseded_by: []
 ai_assistance:
@@ -168,7 +168,8 @@ enters and leaves it, rewriting the
 parameter in the URL and the navigation links. The parameter is the only
 state: no storage, no project property, no export option and no export type.
 The keys are `←`/`PageUp`, `→`/`PageDown`, `M` (menu) and `T` (Teacher Mode
-where available); `↑`/`↓`, `Space`, `Enter` and `Esc` are never captured. Fullscreen is not part of the mode
+where available), extended for presenter remotes by ADR-2701-01; `↑`/`↓`,
+`Space`, `Enter` and `Esc` are never captured. Fullscreen is not part of the mode
 and `Esc` is not its exit key. It exists only for web site exports, top-level
 or in an iframe whose URL carries the parameter.
 

@@ -3,8 +3,7 @@
  * Uses Bun's native SQL driver instead of the 'pg' package
  */
 import type { Dialect, Driver, DatabaseConnection, QueryResult, TransactionSettings, Kysely } from 'kysely';
-import type { CompiledQuery } from 'kysely';
-import { PostgresAdapter, PostgresIntrospector, PostgresQueryCompiler } from 'kysely';
+import { CompiledQuery, PostgresAdapter, PostgresIntrospector, PostgresQueryCompiler } from 'kysely';
 import { SQL } from 'bun';
 
 // ============================================================================
@@ -72,7 +71,6 @@ class BunPostgresConnection implements DatabaseConnection {
         return {
             rows: Array.isArray(result) ? (result as R[]) : [],
             numAffectedRows: isMutation ? BigInt(result.count ?? 0) : undefined,
-            numUpdatedRows: isMutation ? BigInt(result.count ?? 0) : undefined,
         };
     }
 
@@ -148,36 +146,27 @@ class BunPostgresDriver implements Driver {
             sql = `START TRANSACTION ${parts.join(' ')}`;
         }
 
-        await connection.executeQuery({ sql, parameters: [] });
+        await connection.executeQuery(CompiledQuery.raw(sql));
     }
 
     async commitTransaction(connection: DatabaseConnection): Promise<void> {
-        await connection.executeQuery({ sql: 'COMMIT', parameters: [] });
+        await connection.executeQuery(CompiledQuery.raw('COMMIT'));
     }
 
     async rollbackTransaction(connection: DatabaseConnection): Promise<void> {
-        await connection.executeQuery({ sql: 'ROLLBACK', parameters: [] });
+        await connection.executeQuery(CompiledQuery.raw('ROLLBACK'));
     }
 
     async savepoint(connection: DatabaseConnection, savepointName: string): Promise<void> {
-        await connection.executeQuery({
-            sql: `SAVEPOINT ${savepointName}`,
-            parameters: [],
-        });
+        await connection.executeQuery(CompiledQuery.raw(`SAVEPOINT ${savepointName}`));
     }
 
     async rollbackToSavepoint(connection: DatabaseConnection, savepointName: string): Promise<void> {
-        await connection.executeQuery({
-            sql: `ROLLBACK TO SAVEPOINT ${savepointName}`,
-            parameters: [],
-        });
+        await connection.executeQuery(CompiledQuery.raw(`ROLLBACK TO SAVEPOINT ${savepointName}`));
     }
 
     async releaseSavepoint(connection: DatabaseConnection, savepointName: string): Promise<void> {
-        await connection.executeQuery({
-            sql: `RELEASE SAVEPOINT ${savepointName}`,
-            parameters: [],
-        });
+        await connection.executeQuery(CompiledQuery.raw(`RELEASE SAVEPOINT ${savepointName}`));
     }
 
     async releaseConnection(connection: DatabaseConnection): Promise<void> {

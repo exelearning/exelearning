@@ -79,7 +79,7 @@ describe('WebSocket types', () => {
             expect(message.type).toBe('request-asset');
             expect(message.projectId).toBe('proj-1');
             expect(message.clientId).toBe('client-1');
-            expect(message.data.assetId).toBe('asset-1');
+            expect(message.data).toEqual({ assetId: 'asset-1' });
         });
 
         it('should allow optional projectId and clientId', () => {

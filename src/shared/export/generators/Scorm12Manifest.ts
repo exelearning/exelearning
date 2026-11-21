@@ -71,7 +71,7 @@ export class Scorm12ManifestGenerator {
     constructor(
         projectId: string,
         pages: ExportPage[],
-        metadata: ScormManifestOptions = {},
+        metadata: ScormManifestOptions = {} as ScormManifestOptions,
         manifestIdentifier: string | null = null,
     ) {
         this.projectId = projectId || this.generateId();

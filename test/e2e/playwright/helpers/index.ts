@@ -28,4 +28,6 @@ export * from './navigation-helpers';
 export * from './content-helpers';
 export * from './file-manager-helpers';
 export * from './editor-helpers';
+// Both workarea-helpers and editor-helpers define it; the workarea one also fires change/input.
+export { setTinyMCEContent } from './workarea-helpers';
 export * from './undo-redo-helpers';
