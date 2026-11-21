@@ -138,6 +138,62 @@ test.describe('Workspace page title rename', () => {
         await expect(page.locator('[data-testid="page-title"]')).toHaveText('Renamed from workspace');
     });
 
+    test('keeps the canvas title hidden after renaming from the tree', async ({ authenticatedPage, createProject }) => {
+        const page = authenticatedPage;
+        await gotoWorkarea(page, await createProject(page, 'Hidden Page Title Rename'));
+        await waitForAppReady(page);
+
+        const firstId = await prepareFirstPage(page);
+        const title = page.getByTestId('page-title');
+        await page.evaluate(id => {
+            const project = (window as any).eXeLearning.app.project;
+            project._yjsBridge.structureBinding.updatePageProperties(id, { hidePageTitle: true });
+            project.idevices.setNodeContentPageTitle(id);
+        }, firstId);
+        await expect(title).toBeHidden();
+
+        const navLabel = page.locator(`.nav-element[nav-id="${firstId}"] > .nav-element-text`);
+        const navText = navLabel.locator('.node-text-span');
+        await navLabel.click();
+        await expect(navText).toHaveAttribute('contenteditable', 'true');
+        await navText.fill('Renamed hidden page');
+        await navText.press('Enter');
+
+        await expect(navText).toHaveText('Renamed hidden page');
+        await expect.poll(() => getModelPageName(page, firstId)).toBe('Renamed hidden page');
+        const hidePageTitle = await page.evaluate(id => {
+            const bridge = (window as any).eXeLearning.app.project._yjsBridge;
+            return bridge.structureBinding.getPageProperties(id).hidePageTitle;
+        }, firstId);
+        expect(hidePageTitle).toBe(true);
+        await expect(title).toBeEmpty();
+        await expect(title).toBeHidden();
+    });
+
+    test('updates the canvas when the cloned page is renamed in the dialog', async ({
+        authenticatedPage,
+        createProject,
+    }) => {
+        const page = authenticatedPage;
+        await gotoWorkarea(page, await createProject(page, 'Cloned Page Title Rename'));
+        await waitForAppReady(page);
+        await prepareFirstPage(page);
+
+        await page.locator('.button_nav_action.action_clone').click();
+        const renameInput = page.locator('#input-rename-node');
+        await expect(renameInput).toBeVisible();
+        const title = page.getByTestId('page-title');
+        await expect(title).toHaveText('New page (copy)');
+        await renameInput.fill('Renamed clone');
+        await renameInput.press('Enter');
+
+        const selected = page.locator('.nav-element.selected');
+        await expect(selected.locator(':scope > .nav-element-text .node-text-span')).toHaveText('Renamed clone');
+        const cloneId = (await selected.getAttribute('nav-id'))!;
+        await expect.poll(() => getModelPageName(page, cloneId)).toBe('Renamed clone');
+        await expect(title).toHaveText('Renamed clone');
+    });
+
     test('Escape cancels editing and keeps the previous title', async ({ authenticatedPage, createProject }) => {
         const page = authenticatedPage;
         const projectUuid = await createProject(page, 'Workspace Title Escape');
