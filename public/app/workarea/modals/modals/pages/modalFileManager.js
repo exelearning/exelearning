@@ -3605,21 +3605,36 @@ export default class ModalFilemanager extends Modal {
     }
 
     /**
+     * Drop the source of every preview element.
+     *
+     * Assigning an empty string would leave src="" behind, which Firefox
+     * resolves against the document base URL and then requests and aborts
+     * (NS_BINDING_ABORTED) -- noise in the console and a useless hit on the
+     * server, or on the script named by <base href> when the editor is
+     * embedded. Removing the attribute (plus load() for media elements, so the
+     * player drops the already buffered resource) avoids the request.
+     */
+    clearMediaPreviewSources() {
+        for (const media of [this.previewVideo, this.previewAudio]) {
+            if (!media) continue;
+            if (typeof media.pause === 'function') media.pause();
+            media.removeAttribute('src');
+            if (typeof media.load === 'function') media.load();
+        }
+        for (const element of [this.previewImg, this.previewPdf]) {
+            if (element) element.removeAttribute('src');
+        }
+    }
+
+    /**
      * Override close to clean up
      */
     close(confirm) {
         // Unsubscribe from Yjs asset changes
         this._unsubscribeFromYjsChanges();
 
-        // Stop any playing media
-        if (this.previewVideo) {
-            this.previewVideo.pause();
-            this.previewVideo.src = '';
-        }
-        if (this.previewAudio) {
-            this.previewAudio.pause();
-            this.previewAudio.src = '';
-        }
+        // Stop any playing media and drop its source
+        this.clearMediaPreviewSources();
 
         // Clear selection
         this.selectedAsset = null;

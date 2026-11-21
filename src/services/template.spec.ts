@@ -387,6 +387,25 @@ describe('Template Service', () => {
         });
     });
 
+    describe('workarea/modals/pages/filemanager.njk media preview (issue #2691)', () => {
+        it('renders the media preview elements without an empty src attribute', () => {
+            const html = renderTemplate('workarea/modals/pages/filemanager.njk', {});
+
+            // Firefox resolves src="" against the document base URL, requests it
+            // and aborts the request (NS_BINDING_ABORTED), which also hits the
+            // script named by <base href> when the editor is embedded.
+            for (const className of [
+                'media-library-preview-img',
+                'media-library-preview-video',
+                'media-library-preview-audio',
+            ]) {
+                const tagMatch = html.match(new RegExp(`<[a-z]+[^>]*class="${className}"[^>]*>`));
+                expect(tagMatch).not.toBeNull();
+                expect(tagMatch ? tagMatch[0] : '').not.toMatch(/\ssrc=/);
+            }
+        });
+    });
+
     describe('workarea/access-denied.njk (issue #2499)', () => {
         it('links the secondary button to /logout so the user can switch accounts', () => {
             const html = renderTemplate('workarea/access-denied', { basePath: '/web/exelearning' });
