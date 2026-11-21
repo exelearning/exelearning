@@ -167,3 +167,24 @@ describe('codemagic plugin - Path Handling', () => {
         });
     });
 });
+
+describe('codemagic plugin - registration', () => {
+    const fs = require('node:fs');
+    const path = require('node:path');
+    const PLUGIN_SRC = fs.readFileSync(path.join(__dirname, 'plugin.min.js'), 'utf8');
+
+    // TinyMCE looks the plugin up as soon as plugin.min.js has executed. Deferring
+    // PluginManager.add (e.g. to jQuery's async ready callback) races editor init:
+    // when init wins, the plugin is silently skipped and its Tools menu item is missing.
+    it('registers with PluginManager synchronously when the script runs', () => {
+        const add = vi.fn();
+        const jQueryStub = vi.fn(() => ({ ready: vi.fn() }));
+        new Function('tinymce', 'jQuery', '$', '_', PLUGIN_SRC)(
+            { PluginManager: { add } },
+            jQueryStub,
+            jQueryStub,
+            (s) => s,
+        );
+        expect(add).toHaveBeenCalledWith('codemagic', expect.any(Function));
+    });
+});
