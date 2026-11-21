@@ -70,6 +70,7 @@ function buildClue(entry: IndexedWord, number: number, imageLinks: Map<number, s
     const item: PrintableItem = {
         // The answer is found in the shared grid, so the clue has no writing space of its own.
         number,
+        prompt: '',
     };
     if (hasPrintableContent(definition)) {
         item.prompt = definition;

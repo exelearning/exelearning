@@ -1,0 +1,23 @@
+{
+    // Type-checks test files, which tsconfig.json excludes. `make typecheck` runs it
+    // after the main project. Coverage grows directory by directory: add a directory
+    // to "include" once its specs are clean.
+    "extends": "./tsconfig.json",
+    "compilerOptions": {
+        "types": ["bun", "bun-types/test-globals"],
+        // scripts/ specs import .mts modules directly; nothing is emitted.
+        "allowImportingTsExtensions": true
+    },
+    "include": [
+        // Ambient declarations the main project picks up implicitly.
+        "src/**/*.d.ts",
+        "app/**/*.spec.ts",
+        "scripts/**/*.spec.ts",
+        "src/**/*.spec.ts",
+        "test/helpers/**/*.ts",
+        "test/integration/**/*.ts",
+        "test/e2e/**/*.ts",
+        "playwright*.config.ts"
+    ],
+    "exclude": ["node_modules", "dist", "app/dist"]
+}

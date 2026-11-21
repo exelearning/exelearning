@@ -4,7 +4,7 @@
 
 import { describe, it, expect, beforeEach } from 'bun:test';
 import { PageRenderer } from './PageRenderer';
-import type { ExportPage, PageRenderOptions } from '../interfaces';
+import type { ExportBlock, ExportComponent, ExportPage, PageRenderOptions } from '../interfaces';
 
 describe('PageRenderer', () => {
     let renderer: PageRenderer;
@@ -1148,7 +1148,7 @@ describe('PageRenderer', () => {
                 allPages: pages,
                 themeFiles: ['style.css', 'style.js'],
                 ...options,
-            });
+            } as PageRenderOptions);
 
             const sheetOrder = (html: string): string[] =>
                 Array.from(html.matchAll(/<link rel="stylesheet" href="([^"]+)">/g))
@@ -1528,9 +1528,9 @@ describe('PageRenderer', () => {
                                     <span class="exe-prop-description"></span>
                                     <span class="exe-prop-license"></span>
                                 `,
-                            },
+                            } as ExportComponent,
                         ],
-                    },
+                    } as ExportBlock,
                 ],
             });
 
@@ -1558,9 +1558,9 @@ describe('PageRenderer', () => {
                             {
                                 id: 'comp1',
                                 content: `<span class="exe-prop-license"></span>`,
-                            },
+                            } as ExportComponent,
                         ],
-                    },
+                    } as ExportBlock,
                 ],
             });
 
@@ -1582,9 +1582,9 @@ describe('PageRenderer', () => {
                             {
                                 id: 'comp1',
                                 content: `<span class="exe-prop-license"></span>`,
-                            },
+                            } as ExportComponent,
                         ],
-                    },
+                    } as ExportBlock,
                 ],
             });
 
@@ -1907,6 +1907,19 @@ describe('PageRenderer', () => {
             const html = '<div class="exe-fx-flip">Content</div>';
             const libs = renderer.detectContentLibraries(html);
             expect(libs).toContain('exe_effects');
+        });
+
+        it('should not detect a lightbox library for the image-gallery iDevice markup', () => {
+            const html =
+                '<div class="imageGallery-IDevice"><a class="imageLink" href="a.jpg"><img src="t.jpg"></a></div>';
+            const libs = renderer.detectContentLibraries(html);
+            expect(libs).not.toContain('exe_lightbox');
+            expect(libs).not.toContain('exe_lightbox_gallery');
+        });
+
+        it('should detect the legacy eXe 2 gallery class', () => {
+            const libs = renderer.detectContentLibraries('<ul class="exeImageGallery"><li>x</li></ul>');
+            expect(libs).toContain('exe_lightbox_gallery');
         });
 
         it('should detect exe_lightbox by rel attribute', () => {

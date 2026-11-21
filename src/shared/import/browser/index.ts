@@ -195,7 +195,7 @@ class BrowserElpxImporter {
      * meaningful cost.
      */
     private buildImporter(limits: ZipDecompressionLimits): ElpxImporter {
-        const ydoc = this.manager.getDoc() as Parameters<typeof ElpxImporter>[0];
+        const ydoc = this.manager.getDoc() as ConstructorParameters<typeof ElpxImporter>[0];
         const assetHandler = this.assetManager ? createBrowserAssetHandler(this.assetManager) : null;
         return new ElpxImporter(ydoc, assetHandler, this.logger, limits);
     }
@@ -279,7 +279,7 @@ class BrowserElpxImporter {
 
         // Build a fresh importer with the resolved limits and import.
         const importer = this.buildImporter(limits);
-        return importer.importFromBuffer(buffer, { clearExisting, parentId, onProgress });
+        return importer.importFromBuffer(buffer, { clearExisting, parentId, onProgress: onProgress ?? undefined });
     }
 }
 
@@ -409,7 +409,6 @@ export { ElpxImporter, BrowserAssetHandler, createBrowserAssetHandler };
 // Export the browser import adapter, its factory, and its option types so they
 // can be unit-tested and referenced by TypeScript consumers.
 export { BrowserElpxImporter, createBrowserImporter };
-export type { LargeEntryConfirmInfo, ImportFromFileOptions };
 
 // Re-export the import policy for TypeScript consumers of the browser barrel.
 export {

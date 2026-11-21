@@ -60,6 +60,8 @@ describe('Projects Cleanup Command', () => {
         owner_id: 1,
         status: 'active',
         visibility: 'private',
+        public_view_id: null,
+        public_view_enabled: 0,
         language: 'en',
         author: null,
         license: null,
@@ -68,6 +70,8 @@ describe('Projects Cleanup Command', () => {
         created_at: Date.now() - 48 * 60 * 60 * 1000, // 48 hours ago
         updated_at: Date.now() - 48 * 60 * 60 * 1000,
         platform_id: null,
+        platform_site: null,
+        platform_package_hash: null,
         ...overrides,
     });
 

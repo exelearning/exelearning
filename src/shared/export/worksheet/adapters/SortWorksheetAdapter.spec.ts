@@ -360,6 +360,7 @@ describe('SortWorksheetAdapter with fixed headings', () => {
                     { definition: 'Printable round', cards: [card(), card(), card()] },
                 ],
             }),
+            {},
         );
 
         expect(activity?.items).toHaveLength(1);
