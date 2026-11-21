@@ -9,6 +9,12 @@ import * as bcrypt from 'bcryptjs';
 import { createUserRoutes, type UserDependencies } from './user';
 import { passwordFingerprint, verifyToken } from './auth';
 
+/** Query fakes that return only the fields the route reads; typed as the route's real queries. */
+type FakeQueriesTarget = UserDependencies['queries'];
+function fakeQueries(fakes: { [K in keyof FakeQueriesTarget]?: (...args: never[]) => unknown }): FakeQueriesTarget {
+    return fakes as unknown as FakeQueriesTarget;
+}
+
 // Test JWT secret (must match what user.ts verifies with).
 const TEST_JWT_SECRET = 'test-secret-for-user-routes-testing';
 
@@ -27,7 +33,7 @@ const originalOnlineMode = process.env.APP_ONLINE_MODE;
 const CURRENT_PASSWORD = 'current-secret';
 
 describe('User Routes', () => {
-    let app: Elysia;
+    let app: Pick<Elysia, 'handle'>;
     let savedPreferences: Map<string, Map<string, string>>;
     let jwtHelper: { sign: (payload: any) => Promise<string> };
 
@@ -41,7 +47,7 @@ describe('User Routes', () => {
     function createMockDependencies(): UserDependencies {
         return {
             db: {} as any, // Not used directly, queries use it
-            queries: {
+            queries: fakeQueries({
                 findAllPreferencesForUser: async (_db: any, ownerId: number) => {
                     const userPrefs = savedPreferences.get(String(ownerId));
                     if (!userPrefs) return [];
@@ -78,7 +84,7 @@ describe('User Routes', () => {
                     user.password = password;
                     return user as any;
                 },
-            },
+            }),
             settings: {
                 getAuthMethods: async () => authMethodsSetting,
             },
@@ -186,7 +192,7 @@ describe('User Routes', () => {
                 }),
             )
             .get('/sign', async ({ jwt, query }) => {
-                const token = await jwt.sign({ sub: Number(query.sub), email: query.email });
+                const token = await jwt.sign({ sub: String(Number(query.sub)), email: query.email });
                 return { token };
             });
 
@@ -305,6 +311,34 @@ describe('User Routes', () => {
             );
 
             expect(res.status).toBe(401);
+        });
+
+        it('should reject a request without a body instead of failing with 500', async () => {
+            const authCookie = await generateAuthCookie(1);
+            const res = await app.handle(
+                new Request('http://localhost/api/user/preferences', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', Cookie: authCookie },
+                }),
+            );
+
+            // The body schema rejects it; the app's global onError answers 400.
+            expect(res.status).toBe(422);
+        });
+
+        it('should save form-encoded preferences the way the workarea sends them', async () => {
+            const authCookie = await generateAuthCookie(1);
+            const res = await app.handle(
+                new Request('http://localhost/api/user/preferences', {
+                    method: 'POST',
+                    body: 'theme=dark&advancedMode=true',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8', Cookie: authCookie },
+                }),
+            );
+
+            expect(res.status).toBe(200);
+            expect(savedPreferences.get('1')?.get('theme')).toBe('dark');
+            expect(savedPreferences.get('1')?.get('advancedMode')).toBe('true');
         });
 
         it('should save single preference for authenticated user', async () => {
@@ -483,13 +517,13 @@ describe('User Routes', () => {
             // Create a custom app with a modified derive that sets invalid user ID
             const customDeps: UserDependencies = {
                 db: {} as any,
-                queries: {
+                queries: fakeQueries({
                     findAllPreferencesForUser: async () => [],
                     findPreference: async () => undefined,
                     setPreference: async () => {},
                     findUserById: async () => null,
                     getUserStorageUsage: async () => 0,
-                },
+                }),
             };
 
             // For this test, we need to simulate invalid user ID parsing
@@ -615,7 +649,7 @@ describe('User Routes', () => {
             // Create a mock that throws for findAllPreferencesForUser
             const errorDeps: UserDependencies = {
                 db: {} as any,
-                queries: {
+                queries: fakeQueries({
                     findAllPreferencesForUser: async () => {
                         throw new Error('Database connection failed');
                     },
@@ -623,7 +657,7 @@ describe('User Routes', () => {
                     setPreference: async () => {},
                     findUserById: async () => null,
                     getUserStorageUsage: async () => 0,
-                },
+                }),
             };
             const errorApp = new Elysia().use(createUserRoutes(errorDeps));
 
@@ -646,7 +680,7 @@ describe('User Routes', () => {
             // The error is caught by saveUserPreference and logged, not propagated
             const errorDeps: UserDependencies = {
                 db: {} as any,
-                queries: {
+                queries: fakeQueries({
                     findAllPreferencesForUser: async () => [],
                     findPreference: async () => undefined,
                     setPreference: async () => {
@@ -654,7 +688,7 @@ describe('User Routes', () => {
                     },
                     findUserById: async () => null,
                     getUserStorageUsage: async () => 0,
-                },
+                }),
             };
             const errorApp = new Elysia().use(createUserRoutes(errorDeps));
 
@@ -677,7 +711,7 @@ describe('User Routes', () => {
         it('should handle PUT setPreference errors gracefully', async () => {
             const errorDeps: UserDependencies = {
                 db: {} as any,
-                queries: {
+                queries: fakeQueries({
                     findAllPreferencesForUser: async () => [],
                     findPreference: async () => undefined,
                     setPreference: async () => {
@@ -685,7 +719,7 @@ describe('User Routes', () => {
                     },
                     findUserById: async () => null,
                     getUserStorageUsage: async () => 0,
-                },
+                }),
             };
             const errorApp = new Elysia().use(createUserRoutes(errorDeps));
 
@@ -708,7 +742,7 @@ describe('User Routes', () => {
         it('should handle LOPD setPreference errors gracefully', async () => {
             const errorDeps: UserDependencies = {
                 db: {} as any,
-                queries: {
+                queries: fakeQueries({
                     findAllPreferencesForUser: async () => [],
                     findPreference: async () => undefined,
                     setPreference: async () => {
@@ -716,7 +750,7 @@ describe('User Routes', () => {
                     },
                     findUserById: async () => null,
                     getUserStorageUsage: async () => 0,
-                },
+                }),
             };
             const errorApp = new Elysia().use(createUserRoutes(errorDeps));
 
@@ -739,7 +773,7 @@ describe('User Routes', () => {
             let callCount = 0;
             const errorDeps: UserDependencies = {
                 db: {} as any,
-                queries: {
+                queries: fakeQueries({
                     findAllPreferencesForUser: async () => [],
                     findPreference: async () => undefined,
                     setPreference: async () => {
@@ -751,7 +785,7 @@ describe('User Routes', () => {
                     },
                     findUserById: async () => null,
                     getUserStorageUsage: async () => 0,
-                },
+                }),
             };
             const errorApp = new Elysia().use(createUserRoutes(errorDeps));
 
@@ -991,7 +1025,7 @@ describe('User Routes', () => {
                 expect(token).toBeDefined();
                 const payload = await verifyToken(token!);
                 expect(payload?.pwh).toBe(passwordFingerprint(passwordUpdates[0].password));
-                expect(payload?.sub).toBe(1);
+                expect(payload?.userId).toBe(1);
                 expect(payload?.authMethod).toBe('local');
             });
 
@@ -999,9 +1033,9 @@ describe('User Routes', () => {
                 const { status, body } = await changePassword(await localSession(), validBody);
 
                 expect(status).toBe(200);
-                const payload = await verifyToken(body.token);
+                const payload = await verifyToken(body.token as string);
                 expect(payload?.pwh).toBe(passwordFingerprint(passwordUpdates[0].password));
-                expect(payload?.sub).toBe(1);
+                expect(payload?.userId).toBe(1);
                 expect(payload?.isGuest).toBe(false);
             });
 

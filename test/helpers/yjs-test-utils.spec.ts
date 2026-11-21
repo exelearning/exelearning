@@ -180,14 +180,11 @@ describe('yjs-test-utils', () => {
                 title: 'Test',
                 author: 'Author',
                 language: 'en',
-                locale: 'en',
                 version: '1.0',
                 description: '',
                 keywords: '',
                 license: '',
                 theme: 'base',
-                odeIdentifier: '',
-                exportMediaFiles: 0,
             };
 
             expect(verifyMetadataEquality(meta, doc)).toBe(true);
@@ -199,14 +196,11 @@ describe('yjs-test-utils', () => {
                 title: 'Test',
                 author: '',
                 language: 'en',
-                locale: 'en',
                 version: '1.0',
                 description: '',
                 keywords: '',
                 license: '',
                 theme: 'base',
-                odeIdentifier: '',
-                exportMediaFiles: 0,
             };
 
             expect(verifyMetadataEquality(meta, doc)).toBe(false);
@@ -218,14 +212,11 @@ describe('yjs-test-utils', () => {
                 title: 'Test',
                 author: '',
                 language: 'en',
-                locale: 'en',
                 version: '1.0',
                 description: '',
                 keywords: '',
                 license: '',
                 theme: 'base',
-                odeIdentifier: '',
-                exportMediaFiles: 0,
             };
 
             expect(verifyMetadataEquality(meta, doc)).toBe(false);
@@ -393,14 +384,11 @@ describe('yjs-test-utils', () => {
                     title: 'Test',
                     author: '',
                     language: 'en',
-                    locale: 'en',
                     version: '1.0',
                     description: '',
                     keywords: '',
                     license: '',
                     theme: 'base',
-                    odeIdentifier: '',
-                    exportMediaFiles: 0,
                 },
                 pages: [
                     {
@@ -418,8 +406,9 @@ describe('yjs-test-utils', () => {
                         ],
                     },
                 ],
-                raw: {} as any,
-                srcRoutes: new Set(),
+                navigation: { page: [] },
+                raw: {} as ParsedOdeStructure['raw'],
+                srcRoutes: [],
             };
 
             const result = verifyParsedStructureMatchesYjs(parsed, doc);
@@ -434,14 +423,11 @@ describe('yjs-test-utils', () => {
                     title: 'Test',
                     author: '',
                     language: 'en',
-                    locale: 'en',
                     version: '1.0',
                     description: '',
                     keywords: '',
                     license: '',
                     theme: 'base',
-                    odeIdentifier: '',
-                    exportMediaFiles: 0,
                 },
                 pages: [
                     {
@@ -459,8 +445,9 @@ describe('yjs-test-utils', () => {
                         ],
                     },
                 ],
-                raw: {} as any,
-                srcRoutes: new Set(),
+                navigation: { page: [] },
+                raw: {} as ParsedOdeStructure['raw'],
+                srcRoutes: [],
             };
 
             const result = verifyParsedStructureMatchesYjs(parsed, doc);
@@ -475,14 +462,11 @@ describe('yjs-test-utils', () => {
                     title: 'Test',
                     author: '',
                     language: 'en',
-                    locale: 'en',
                     version: '1.0',
                     description: '',
                     keywords: '',
                     license: '',
                     theme: 'base',
-                    odeIdentifier: '',
-                    exportMediaFiles: 0,
                 },
                 pages: [
                     {
@@ -494,8 +478,9 @@ describe('yjs-test-utils', () => {
                         components: [],
                     },
                 ],
-                raw: {} as any,
-                srcRoutes: new Set(),
+                navigation: { page: [] },
+                raw: {} as ParsedOdeStructure['raw'],
+                srcRoutes: [],
             };
 
             const result = verifyParsedStructureMatchesYjs(parsed, doc);
@@ -510,14 +495,11 @@ describe('yjs-test-utils', () => {
                     title: 'Test',
                     author: '',
                     language: 'en',
-                    locale: 'en',
                     version: '1.0',
                     description: '',
                     keywords: '',
                     license: '',
                     theme: 'base',
-                    odeIdentifier: '',
-                    exportMediaFiles: 0,
                 },
                 pages: [
                     {
@@ -535,8 +517,9 @@ describe('yjs-test-utils', () => {
                         ],
                     },
                 ],
-                raw: {} as any,
-                srcRoutes: new Set(),
+                navigation: { page: [] },
+                raw: {} as ParsedOdeStructure['raw'],
+                srcRoutes: [],
             };
 
             const result = verifyParsedStructureMatchesYjs(parsed, doc);

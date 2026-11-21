@@ -11,7 +11,9 @@
  * - OpenID: "oidc:" + subject (up to 64 char hash) = ~70 chars
  * - Guest: "guest:" + UUID = ~42 chars
  */
-import { Kysely, sql } from 'kysely';
+
+import { sql } from 'kysely';
+import type { UntypedKysely } from '../helpers';
 import { getDialectFromEnv, type DbDialect } from '../dialect';
 
 // ============================================================================
@@ -46,7 +48,7 @@ export function resetDependencies(): void {
 // MIGRATION FUNCTIONS
 // ============================================================================
 
-export async function up(db: Kysely<unknown>): Promise<void> {
+export async function up(db: UntypedKysely): Promise<void> {
     const dialect = deps.getDialect();
 
     if (dialect === 'sqlite') {
@@ -65,7 +67,7 @@ export async function up(db: Kysely<unknown>): Promise<void> {
     }
 }
 
-export async function down(db: Kysely<unknown>): Promise<void> {
+export async function down(db: UntypedKysely): Promise<void> {
     const dialect = deps.getDialect();
 
     if (dialect === 'sqlite') {

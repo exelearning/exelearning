@@ -13,6 +13,7 @@ import {
     type AdminDependencies,
     type AdminQueries,
 } from './admin';
+import * as Y from 'yjs';
 import type { Kysely } from 'kysely';
 import { passwordFingerprint, verifyToken } from './auth';
 import type { Database, User, Project } from '../db/types';
@@ -36,10 +37,8 @@ const mockUser = (overrides: Partial<User> = {}): User => ({
     roles: '["ROLE_USER"]',
     is_active: 1,
     quota_mb: null,
-    created_at: new Date().toISOString(),
+    created_at: Date.now(),
     updated_at: null,
-    last_login: null,
-    auth_method: 'local',
     is_lopd_accepted: 0,
     external_identifier: null,
     api_token: null,
@@ -66,6 +65,10 @@ const mockProject = (overrides: Partial<Project> = {}): Project => ({
     last_accessed_at: null,
     saved_once: 1,
     platform_id: null,
+    platform_site: null,
+    platform_package_hash: null,
+    public_view_id: null,
+    public_view_enabled: 0,
     created_at: Date.now(),
     updated_at: null,
     ...overrides,
@@ -107,7 +110,8 @@ const createMockFileHelper = (overrides: Partial<FileHelper> = {}): FileHelper =
 // Create mock queries for unit tests
 const createMockQueries = (overrides: Partial<AdminQueries> = {}): AdminQueries => ({
     findUserById: async () => mockUser(),
-    findUserByEmail: async () => null,
+    findUsersByIds: async () => [],
+    findUserByEmail: async () => undefined,
     findUsersPaginated: async () => ({ users: [mockUser()], total: 1 }),
     countAdmins: async () => 2,
     updateUserRoles: async (_db, _id, roles) => mockUser({ roles: JSON.stringify(roles) }),
@@ -178,7 +182,7 @@ async function generateAdminToken(): Promise<string> {
     const tempApp = new Elysia().use(jwtInstance);
 
     return tempApp.decorator.jwt.sign({
-        sub: 1,
+        sub: '1',
         email: 'admin@example.com',
         roles: ['ROLE_USER', 'ROLE_ADMIN'],
         isGuest: false,
@@ -194,7 +198,7 @@ async function generateUserToken(): Promise<string> {
     const tempApp = new Elysia().use(jwtInstance);
 
     return tempApp.decorator.jwt.sign({
-        sub: 2,
+        sub: '2',
         email: 'user@example.com',
         roles: ['ROLE_USER'],
         isGuest: false,
@@ -1576,7 +1580,15 @@ describe('Admin Routes', () => {
             const app = new Elysia().use(
                 createAdminRoutes(
                     createMockDeps({
-                        getAllSettings: async () => [{ key: 'ONLINE_THEMES_INSTALL', value: '0', type: 'boolean' }],
+                        getAllSettings: async () => [
+                            {
+                                key: 'ONLINE_THEMES_INSTALL',
+                                value: '0',
+                                type: 'boolean',
+                                updated_at: null,
+                                updated_by: null,
+                            },
+                        ],
                     }),
                 ),
             );
@@ -2127,7 +2139,7 @@ describe('Admin Routes', () => {
         }
 
         async function resetPassword(
-            app: Elysia,
+            app: Pick<Elysia, 'handle'>,
             token: string | null,
             userId: string | number,
             body: unknown,
@@ -2573,7 +2585,7 @@ describe('Admin Routes', () => {
     describe('DELETE /api/admin/projects/:id', () => {
         it('should delete project successfully', async () => {
             const token = await generateAdminToken();
-            let deletedId: number | null = null;
+            let deletedId = null as number | null; // assigned inside the mock
             const app = new Elysia().use(
                 createAdminRoutes(
                     createMockDeps({
@@ -2670,6 +2682,46 @@ describe('Admin Routes', () => {
             expect(response.status).toBe(404);
             const body = await response.json();
             expect(body.error).toBe('NOT_FOUND');
+        });
+
+        it('should stream a successful export with a binary content-length', async () => {
+            const token = await generateAdminToken();
+            const deps = createMockDeps({
+                findProjectById: async () => mockProject({ id: 1, visibility: 'public', title: 'Public Course' }),
+            });
+            deps.reconstructDocument = async () => {
+                const doc = new Y.Doc();
+                const metadata = doc.getMap('metadata');
+                metadata.set('title', 'Public Course');
+                metadata.set('author', 'Test');
+                metadata.set('language', 'en');
+                metadata.set('theme', 'base');
+                const navigation = doc.getArray('navigation');
+                const rootPage = new Y.Map();
+                rootPage.set('id', 'root');
+                rootPage.set('pageName', 'Home');
+                rootPage.set('parentId', null);
+                rootPage.set('order', 0);
+                rootPage.set('blocks', new Y.Array());
+                navigation.push([rootPage]);
+                return doc;
+            };
+            const app = new Elysia().use(createAdminRoutes(deps));
+
+            const response = await app.handle(
+                new Request('http://localhost/api/admin/projects/1/download', {
+                    method: 'GET',
+                    headers: { Authorization: `Bearer ${token}` },
+                }),
+            );
+
+            expect(response.status).toBe(200);
+            expect(response.headers.get('content-type')).toBe('application/zip');
+            const contentLength = Number(response.headers.get('content-length'));
+            expect(contentLength).toBeGreaterThan(0);
+            expect(response.headers.get('content-disposition')).toContain('.elpx');
+            const body = new Uint8Array(await response.arrayBuffer());
+            expect(body.byteLength).toBe(contentLength);
         });
 
         it('should return 403 for private project', async () => {
@@ -3001,8 +3053,8 @@ describe('Admin Routes', () => {
         });
 
         it('should clamp days parameter between 1 and 365', async () => {
-            const capturedDaysArr: number[] = [];
-            const mockFn = async (_db: any, days: number) => {
+            const capturedDaysArr: Array<number | undefined> = [];
+            const mockFn = async (_db: any, days?: number) => {
                 capturedDaysArr.push(days);
                 return { labels: [], logins: [], projectsCreated: [] };
             };

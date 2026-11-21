@@ -16,7 +16,8 @@ import { addIdevice, editIdevice, gotoWorkarea, selectFirstPage, waitForAppReady
  */
 test.describe('electrical-circuits TikZJax repack (static dist)', () => {
     test('resolves TeX assets and fonts from the zstd sidecars', async ({ page }) => {
-        await gotoWorkarea(page);
+        // Static mode loads the workarea at / and ignores the project id.
+        await gotoWorkarea(page, '');
         await waitForAppReady(page);
         await selectFirstPage(page);
         await addIdevice(page, 'electrical-circuits');
