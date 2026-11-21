@@ -1,5 +1,8 @@
+import type { Page } from '@playwright/test';
 import { test, expect, skipInStaticMode, waitForModal } from '../fixtures/auth.fixture';
 import { waitForAppReady } from '../helpers/workarea-helpers';
+
+type CreateProjectFn = (page: Page, title?: string) => Promise<string>;
 
 /**
  * Connect MCP modal flow (Help -> Connect MCP).
@@ -18,14 +21,14 @@ test.describe('Connect MCP modal', () => {
         skipInStaticMode(test, testInfo, 'Server API for project creation');
     });
 
-    async function openWorkarea(page, createProject, title: string) {
+    async function openWorkarea(page: Page, createProject: CreateProjectFn, title: string) {
         const projectUuid = await createProject(page, title);
         await page.goto(`/workarea?project=${projectUuid}`);
         await page.waitForLoadState('networkidle');
         await waitForAppReady(page);
     }
 
-    async function openConnectMcpModal(page) {
+    async function openConnectMcpModal(page: Page) {
         await page.locator('#dropdownHelp').click();
         const mcpItem = page.locator('#navbar-button-connect-mcp');
         await mcpItem.waitFor({ state: 'visible' });
