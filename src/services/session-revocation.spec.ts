@@ -258,6 +258,39 @@ describe('session revocation', () => {
             expect((await res.json()).authorization).toBeNull();
         });
 
+        it('continues as anonymous instead of failing when the user lookup throws (#2782)', async () => {
+            const token = await tokenFor(users.get(1)!);
+            const failing: SessionRevocationDeps = {
+                ...deps(),
+                findUserById: async () => {
+                    throw new Error('database unavailable');
+                },
+            };
+            const res = await get(echoApp(failing), '/echo', {
+                authorization: `Bearer ${token}`,
+                cookie: `locale=es; auth=${token}`,
+            });
+            expect(res.status).toBe(200);
+            expect(await res.json()).toEqual({ authorization: null, cookie: 'locale=es' });
+        });
+
+        it('does not cache a failed lookup, so the session works again once the database is back', async () => {
+            const token = await tokenFor(users.get(1)!);
+            let databaseDown = true;
+            const flaky: SessionRevocationDeps = {
+                ...deps(),
+                findUserById: async (db, id) => {
+                    if (databaseDown) throw new Error('database unavailable');
+                    return deps().findUserById(db, id);
+                },
+            };
+            const app = echoApp(flaky);
+            expect((await (await get(app, '/echo', { cookie: `auth=${token}` })).json()).cookie).toBeNull();
+
+            databaseDown = false;
+            expect((await (await get(app, '/echo', { cookie: `auth=${token}` })).json()).cookie).toBe(`auth=${token}`);
+        });
+
         it('leaves forged, expired and non-session values for the routes to reject', async () => {
             const forged = await sign({ sub: 1 }, 'wrong-secret');
             const res = await get(echoApp(), '/echo', {
