@@ -54,7 +54,7 @@ export default class NavbarFile {
         this.recentProjectsButton = this.menu.navbar.querySelector(
             '#navbar-button-dropdown-recent-projects'
         );
-        // Advanced (Alt-revealed) folder-project entries — only present in the
+        // File > Advanced submenu (folder-project entries) — only present in the
         // offline navbar markup, so these may be null in online mode.
         this.openFolderOfflineButton = this.menu.navbar.querySelector(
             '#navbar-button-open-folder-offline'
@@ -173,57 +173,29 @@ export default class NavbarFile {
     }
 
     /**
-     * Wire the advanced "Open from folder" / "Save to folder" entries.
+     * Wire the File > Advanced submenu ("Open from folder" / "Save to folder").
      *
-     * These entries are hidden by default. They reveal themselves when
-     * the user holds Alt while the File menu is open, or unconditionally
-     * when the EXE_ENABLE_FOLDER_PROJECTS feature flag is set on the
-     * runtime config (`window.eXeLearning.config.enableFolderProjects`).
+     * The submenu stays hidden unless a runtime can read and write folders
+     * (the Electron bridge or the File System Access API) or the
+     * EXE_ENABLE_FOLDER_PROJECTS feature flag is set on the runtime config
+     * (`window.eXeLearning.config.enableFolderProjects`).
      */
     setFolderProjectActionsEvents() {
         if (!this.folderProjectActionItems || this.folderProjectActionItems.length === 0) {
             return;
         }
 
-        const flagEnabled = Boolean(
-            window.eXeLearning?.config?.enableFolderProjects
-        );
+        const flagEnabled = Boolean(window.eXeLearning?.config?.enableFolderProjects);
         const hasNativeBridge = Boolean(
             window.electronAPI && typeof window.electronAPI.openProjectFolder === 'function'
         );
-        const hasBrowserBridge = supportsFileSystemAccess();
-        if (!hasNativeBridge && !hasBrowserBridge && !flagEnabled) {
-            // Neither runtime can fulfil the action — leave entries hidden.
+        if (!hasNativeBridge && !supportsFileSystemAccess() && !flagEnabled) {
+            // Neither runtime can fulfil the actions — leave the submenu hidden.
             return;
         }
 
-        const setVisible = (visible) => {
-            for (const item of this.folderProjectActionItems) {
-                item.classList.toggle('d-none', !visible);
-            }
-        };
-
-        if (flagEnabled) {
-            setVisible(true);
-        } else {
-            // Reveal while Alt is held. Detect by key name only — `event.altKey`
-            // is not reliably true on the keydown of Alt itself in some Linux
-            // builds of Chromium/Firefox, which left the entries permanently
-            // hidden on that platform.
-            const onKey = (event) => {
-                if (event.key === 'Alt') {
-                    setVisible(event.type === 'keydown');
-                }
-            };
-            document.addEventListener('keydown', onKey);
-            document.addEventListener('keyup', onKey);
-            // Hide again when the File dropdown closes. We previously hid on
-            // window blur, but on Linux a bare Alt tap can briefly transfer
-            // focus to the WM/menu mnemonics and fire blur, which immediately
-            // re-hid the entries we had just revealed.
-            if (this.button) {
-                this.button.addEventListener('hide.bs.dropdown', () => setVisible(false));
-            }
+        for (const item of this.folderProjectActionItems) {
+            item.classList.remove('d-none');
         }
 
         if (this.openFolderOfflineButton) {
