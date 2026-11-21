@@ -102,6 +102,7 @@ export function getExportFixturePath(fixtureName: string, format: ExportFormatTy
         [ExportFormatType.HTML5]: '_web',
         [ExportFormatType.PAGE]: '_page',
         [ExportFormatType.SCORM12]: '_scorm',
+        [ExportFormatType.SCORM2004]: '_scorm2004', // no fixture committed yet
         [ExportFormatType.IMS]: '_ims',
         [ExportFormatType.EPUB3]: '_epub',
         [ExportFormatType.ELPX]: '_elpx',
@@ -275,6 +276,7 @@ export async function validateExportStructure(
         [ExportFormatType.HTML5]: ['index.html'],
         [ExportFormatType.PAGE]: ['index.html'],
         [ExportFormatType.SCORM12]: ['index.html', 'imsmanifest.xml'],
+        [ExportFormatType.SCORM2004]: ['index.html', 'imsmanifest.xml'],
         [ExportFormatType.IMS]: ['index.html', 'imsmanifest.xml'],
         [ExportFormatType.EPUB3]: ['mimetype', 'META-INF/container.xml', 'EPUB/package.opf'],
         [ExportFormatType.ELPX]: ['content.xml'],

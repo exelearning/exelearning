@@ -24,6 +24,7 @@ import {
     getRoomByProjectUuid,
     relayToOtherInstances,
     initializeCrossInstanceHandler,
+    type RoomManagerPubSub,
 } from './room-manager';
 
 // Mock WebSocket for testing
@@ -167,6 +168,14 @@ describe('Room Manager', () => {
             const room = getRoom('test-room');
             expect(room!.conns.size).toBe(1);
         });
+
+        it('should refuse to add a connection without clientId', () => {
+            const ws = createMockWebSocket();
+            ws.data.clientId = undefined;
+
+            expect(() => addConnection('test-room', ws)).toThrow(/clientId/);
+            expect(getRoom('test-room')).toBeUndefined();
+        });
     });
 
     describe('removeConnection', () => {
@@ -182,6 +191,17 @@ describe('Room Manager', () => {
         it('should handle removing from non-existent room', () => {
             const ws = createMockWebSocket();
             expect(() => removeConnection('non-existent', ws)).not.toThrow();
+        });
+
+        it('should no-op when removing a connection without clientId', () => {
+            const ws = createMockWebSocket('client-1');
+            addConnection('test-room', ws);
+
+            const orphan = createMockWebSocket();
+            orphan.data.clientId = undefined;
+            removeConnection('test-room', orphan);
+
+            expect(getRoom('test-room')!.conns.size).toBe(1);
         });
 
         it('removes the connection even when close() receives a different wrapper object than open() did', () => {
@@ -739,7 +759,7 @@ describe('Room Manager', () => {
         });
 
         it('should broadcast cross-instance messages to local room', () => {
-            const setMessageHandler = mock(() => {});
+            const setMessageHandler = mock((_handler: Parameters<RoomManagerPubSub['setMessageHandler']>[0]) => {});
             configure({
                 pubSub: {
                     publish: mock(async () => {}),
@@ -759,11 +779,13 @@ describe('Room Manager', () => {
 
             const handler = setMessageHandler.mock.calls[0]?.[0];
             expect(typeof handler).toBe('function');
+            if (!handler) throw new Error('setMessageHandler was not called');
 
-            handler('project-cross', 'cross-message', { isAsset: false });
+            const crossMessage = Buffer.from('cross-message');
+            handler('project-cross', crossMessage, { isAsset: false });
 
-            expect(ws1.send).toHaveBeenCalledWith('cross-message');
-            expect(ws2.send).toHaveBeenCalledWith('cross-message');
+            expect(ws1.send).toHaveBeenCalledWith(crossMessage);
+            expect(ws2.send).toHaveBeenCalledWith(crossMessage);
         });
     });
 });

@@ -14,8 +14,8 @@
  * 4. Trigger background prefetch
  * 5. Handle asset request routing
  */
-import { WebSocket as WsWebSocket } from 'ws';
 import { randomUUID } from 'crypto';
+import type { AssetClientSocket } from './types';
 import type { Kysely } from 'kysely';
 import {
     AssetMessage,
@@ -138,7 +138,7 @@ export interface AssetCoordinatorDeps {
  */
 export interface AssetCoordinator {
     isAssetMessage: (type: string) => boolean;
-    registerClient: (projectUuid: string, clientId: string, socket: WsWebSocket) => void;
+    registerClient: (projectUuid: string, clientId: string, socket: AssetClientSocket) => void;
     unregisterClient: (projectUuid: string, clientId: string) => void;
     cleanupProject: (projectUuid: string) => void;
     handleMessage: (projectUuid: string, clientId: string, message: AssetMessage) => Promise<void>;
@@ -162,7 +162,7 @@ export function createAssetCoordinator(deps: AssetCoordinatorDeps = {}): AssetCo
 
     // Internal state - isolated per instance
     const assetAvailability = new Map<string, Map<string, Set<string>>>();
-    const clientSockets = new Map<string, Map<string, WsWebSocket>>();
+    const clientSockets = new Map<string, Map<string, AssetClientSocket>>();
     const pendingRequests = new Map<string, PendingRequest[]>();
 
     /**
@@ -245,7 +245,7 @@ export function createAssetCoordinator(deps: AssetCoordinatorDeps = {}): AssetCo
     /**
      * Get WebSocket for specific client
      */
-    function getClientSocket(projectUuid: string, clientId: string): WsWebSocket | null {
+    function getClientSocket(projectUuid: string, clientId: string): AssetClientSocket | null {
         return clientSockets.get(projectUuid)?.get(clientId) || null;
     }
 
@@ -559,7 +559,7 @@ export function createAssetCoordinator(deps: AssetCoordinatorDeps = {}): AssetCo
         clientId: string,
         data: AssetRequestData | undefined,
     ): Promise<void> {
-        if (!data || !data.assetId) {
+        if (!data?.assetId) {
             console.warn(`[AssetCoordinator] Invalid asset request from ${clientId}`);
             return;
         }
@@ -641,7 +641,7 @@ export function createAssetCoordinator(deps: AssetCoordinatorDeps = {}): AssetCo
         clientId: string,
         data: AssetUploadedData | undefined,
     ): Promise<void> {
-        if (!data || !data.assetId) {
+        if (!data?.assetId) {
             console.warn(`[AssetCoordinator] Invalid asset uploaded from ${clientId}`);
             return;
         }
@@ -707,7 +707,7 @@ export function createAssetCoordinator(deps: AssetCoordinatorDeps = {}): AssetCo
         clientId: string,
         data: BulkUploadProgressData | undefined,
     ): Promise<void> {
-        if (!data || !data.status) {
+        if (!data?.status) {
             console.warn(`[AssetCoordinator] Invalid bulk upload progress from ${clientId}`);
             return;
         }
@@ -763,7 +763,7 @@ export function createAssetCoordinator(deps: AssetCoordinatorDeps = {}): AssetCo
         clientId: string,
         data: PriorityUpdateData | undefined,
     ): Promise<void> {
-        if (!data || !data.assetId) {
+        if (!data?.assetId) {
             console.warn(`[AssetCoordinator] Invalid priority update from ${clientId}`);
             return;
         }
@@ -866,7 +866,7 @@ export function createAssetCoordinator(deps: AssetCoordinatorDeps = {}): AssetCo
         clientId: string,
         data: NavigationHintData | undefined,
     ): Promise<void> {
-        if (!data || !data.assetIds || data.assetIds.length === 0) {
+        if (!data?.assetIds || data.assetIds.length === 0) {
             return;
         }
 
@@ -939,7 +939,7 @@ export function createAssetCoordinator(deps: AssetCoordinatorDeps = {}): AssetCo
         data: UploadSessionCreateData | undefined,
     ): Promise<void> {
         try {
-            if (!data || !data.projectId || typeof data.totalFiles !== 'number') {
+            if (!data?.projectId || typeof data.totalFiles !== 'number') {
                 console.warn(`[AssetCoordinator] Invalid upload session create from ${clientId}`);
                 return;
             }
@@ -977,7 +977,7 @@ export function createAssetCoordinator(deps: AssetCoordinatorDeps = {}): AssetCo
             // Get user ID from first client connection (they must be authenticated to have a socket)
             // For now, we'll use a placeholder - in production this would come from JWT token
             // The userId is used for session validation but the actual auth is via the session token
-            const userId = project.user_id || 0;
+            const userId = project.owner_id || 0;
 
             // Create session (async due to jose JWT library). The session's
             // projectId is the CANONICAL projects.uuid from the database, not
@@ -1076,7 +1076,7 @@ export function createAssetCoordinator(deps: AssetCoordinatorDeps = {}): AssetCo
     /**
      * Register a new client for asset coordination
      */
-    function registerClient(projectUuid: string, clientId: string, socket: WsWebSocket): void {
+    function registerClient(projectUuid: string, clientId: string, socket: AssetClientSocket): void {
         if (!clientSockets.has(projectUuid)) {
             clientSockets.set(projectUuid, new Map());
         }

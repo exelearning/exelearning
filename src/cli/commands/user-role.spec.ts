@@ -4,6 +4,24 @@
  */
 import { describe, it, expect, beforeEach } from 'bun:test';
 import { execute, printHelp, runCli, type UserRoleDependencies } from './user-role';
+import type { User } from '../../db/types';
+
+/** A complete `users` row; tests override only what they assert on. */
+const userRow = (overrides: Partial<User> = {}): User => ({
+    id: 1,
+    email: 'user@test.com',
+    user_id: null,
+    password: 'hashed',
+    roles: '["ROLE_USER"]',
+    is_lopd_accepted: 1,
+    quota_mb: null,
+    external_identifier: null,
+    api_token: null,
+    is_active: 1,
+    created_at: null,
+    updated_at: null,
+    ...overrides,
+});
 
 describe('User Role Command', () => {
     let updateUserRolesCalls: any[];
@@ -15,29 +33,21 @@ describe('User Role Command', () => {
             queries: {
                 findUserByEmail: async (_db: any, email: string) => {
                     if (email === 'existing@test.com') {
-                        return {
-                            id: 1,
-                            email: 'existing@test.com',
-                            roles: '["ROLE_USER"]',
-                        };
+                        return userRow({ id: 1, email: 'existing@test.com', roles: '["ROLE_USER"]' });
                     }
                     if (email === 'admin@test.com') {
-                        return {
-                            id: 2,
-                            email: 'admin@test.com',
-                            roles: '["ROLE_USER","ROLE_ADMIN"]',
-                        };
+                        return userRow({ id: 2, email: 'admin@test.com', roles: '["ROLE_USER","ROLE_ADMIN"]' });
                     }
                     return undefined;
                 },
                 updateUserRoles: async (_db: any, id: number, roles: string[]) => {
                     updateUserRolesCalls.push({ id, roles });
                     // Return the updated user object
-                    return {
+                    return userRow({
                         id,
                         email: id === 1 ? 'existing@test.com' : 'admin@test.com',
                         roles: JSON.stringify(roles),
-                    };
+                    });
                 },
             },
         };

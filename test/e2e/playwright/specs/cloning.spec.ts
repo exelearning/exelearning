@@ -476,8 +476,7 @@ test.describe('Cloning Functionality', () => {
     });
 
     test.describe('Clone Page', () => {
-        // Increase timeout for this test as it involves multiple operations
-        test('should clone page with all blocks and iDevices preserved', { timeout: 90000 }, async ({
+        test('should clone page with all blocks and iDevices preserved', async ({
             authenticatedPage,
             createProject,
         }) => {

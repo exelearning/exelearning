@@ -2,27 +2,19 @@
  * Elysia Test Helper
  * Utilities for testing Elysia routes
  */
-import type { Elysia } from 'elysia';
+import type { AnyElysia } from 'elysia';
 
 /**
  * Make a test request to an Elysia app
  */
-export async function testRequest(
-    app: Elysia<any, any, any, any, any, any, any, any>,
-    path: string,
-    options: RequestInit = {},
-): Promise<Response> {
+export async function testRequest(app: AnyElysia, path: string, options: RequestInit = {}): Promise<Response> {
     return app.handle(new Request(`http://localhost${path}`, options));
 }
 
 /**
  * Make a GET request
  */
-export async function testGet(
-    app: Elysia<any, any, any, any, any, any, any, any>,
-    path: string,
-    headers?: Record<string, string>,
-): Promise<Response> {
+export async function testGet(app: AnyElysia, path: string, headers?: Record<string, string>): Promise<Response> {
     return testRequest(app, path, {
         method: 'GET',
         headers,
@@ -33,7 +25,7 @@ export async function testGet(
  * Make a POST request with JSON body
  */
 export async function testPost(
-    app: Elysia<any, any, any, any, any, any, any, any>,
+    app: AnyElysia,
     path: string,
     body: unknown,
     headers?: Record<string, string>,
@@ -51,11 +43,7 @@ export async function testPost(
 /**
  * Make a DELETE request
  */
-export async function testDelete(
-    app: Elysia<any, any, any, any, any, any, any, any>,
-    path: string,
-    headers?: Record<string, string>,
-): Promise<Response> {
+export async function testDelete(app: AnyElysia, path: string, headers?: Record<string, string>): Promise<Response> {
     return testRequest(app, path, {
         method: 'DELETE',
         headers,
@@ -66,7 +54,7 @@ export async function testDelete(
  * Make an authenticated request with Bearer token
  */
 export async function testAuthRequest(
-    app: Elysia<any, any, any, any, any, any, any, any>,
+    app: AnyElysia,
     path: string,
     token: string,
     options: RequestInit = {},
@@ -79,12 +67,7 @@ export async function testAuthRequest(
 /**
  * Make an authenticated POST request with JSON body
  */
-export async function testAuthPost(
-    app: Elysia<any, any, any, any, any, any, any, any>,
-    path: string,
-    token: string,
-    body: unknown,
-): Promise<Response> {
+export async function testAuthPost(app: AnyElysia, path: string, token: string, body: unknown): Promise<Response> {
     return testAuthRequest(app, path, token, {
         method: 'POST',
         headers: {

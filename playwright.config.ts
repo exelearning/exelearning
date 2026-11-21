@@ -100,7 +100,9 @@ function getWebServerConfig() {
         return dynamicWebServer;
     }
     // Mixed or all projects - start both servers
-    return [dynamicWebServer, staticWebServer].filter(Boolean);
+    return [dynamicWebServer, staticWebServer].filter((server): server is NonNullable<typeof server> =>
+        Boolean(server),
+    );
 }
 
 export default defineConfig({

@@ -4,6 +4,7 @@
 
 import { describe, it, expect, beforeEach } from 'bun:test';
 import { BrowserResourceProvider } from './BrowserResourceProvider';
+import type { LibraryPattern } from '../interfaces';
 
 // Mock ResourceFetcher interface
 interface MockResourceFetcherInterface {
@@ -314,7 +315,15 @@ describe('BrowserResourceProvider', () => {
             dirFiles.set('styles.css', createMockBlob('/* styles */'));
             mockFetcher.setLibraryDirectory('exe_atools', dirFiles);
 
-            const patterns = [{ name: 'exe_atools', files: ['exe_atools/exe_atools.js'], isDirectory: true }];
+            const patterns: LibraryPattern[] = [
+                {
+                    name: 'exe_atools',
+                    type: 'class',
+                    pattern: 'exe_atools',
+                    files: ['exe_atools/exe_atools.js'],
+                    isDirectory: true,
+                },
+            ];
 
             const result = await provider.fetchLibraryFiles(['exe_atools/exe_atools.js'], patterns);
 
@@ -331,7 +340,9 @@ describe('BrowserResourceProvider', () => {
             dirFiles.set('utils.spec.js', createMockBlob('// spec'));
             mockFetcher.setLibraryDirectory('mylib', dirFiles);
 
-            const patterns = [{ name: 'mylib', files: ['mylib/main.js'], isDirectory: true }];
+            const patterns: LibraryPattern[] = [
+                { name: 'mylib', type: 'class', pattern: 'mylib', files: ['mylib/main.js'], isDirectory: true },
+            ];
 
             const result = await provider.fetchLibraryFiles(['mylib/main.js'], patterns);
 
@@ -349,7 +360,15 @@ describe('BrowserResourceProvider', () => {
             dirFiles.set('plugin.js', createMockBlob('// plugin'));
             mockFetcher.setLibraryDirectory('myplugin', dirFiles);
 
-            const patterns = [{ name: 'myplugin', files: ['myplugin/plugin.js'], isDirectory: true }];
+            const patterns: LibraryPattern[] = [
+                {
+                    name: 'myplugin',
+                    type: 'class',
+                    pattern: 'myplugin',
+                    files: ['myplugin/plugin.js'],
+                    isDirectory: true,
+                },
+            ];
 
             const result = await provider.fetchLibraryFiles(['jquery.min.js', 'myplugin/plugin.js'], patterns);
 
