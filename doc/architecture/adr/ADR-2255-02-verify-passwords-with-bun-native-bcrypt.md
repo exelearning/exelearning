@@ -1,7 +1,7 @@
 ---
 id: ADR-2255-02
 title: "Verify passwords with Bun's native bcrypt, never with pure-JS bcryptjs"
-status: Proposed
+status: Accepted
 date: 2026-09-02
 tracking_issue: 2255
 deciders:

@@ -1,7 +1,7 @@
 ---
 id: ADR-2019-03
 title: "Defer to open overlays via an extensible overlay-signal registry (active surface owns the keyboard)"
-status: Proposed
+status: Accepted
 date: 2026-07-09
 tracking_issue: 2019
 legacy_id: ADR-0041

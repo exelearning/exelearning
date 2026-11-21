@@ -1,7 +1,7 @@
 ---
 id: ADR-2549-01
 title: "Reopen one project per user and platform activity, reloading it only when the platform package changed"
-status: Proposed
+status: Accepted
 date: 2026-10-15
 tracking_issue: 2549
 deciders:
