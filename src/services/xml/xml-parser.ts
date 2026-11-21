@@ -175,7 +175,9 @@ function parseRealOdeFormat(parsed: RealOdeXmlDocument): ParsedOdeStructure {
         }
     }
 
-    const pages = normalizePagesFromOdeNavStructures(parsed.ode.odeNavStructures?.odeNavStructure || []);
+    const pages = normalizePagesFromOdeNavStructures(
+        (parsed.ode.odeNavStructures?.odeNavStructure || []) as unknown as RealOdeNavStructure[],
+    );
 
     console.log(`[XmlParser] Parsed ${pages.length} pages from real ODE XML`);
 
@@ -263,7 +265,7 @@ function extractMetadataFromOdeProperties(
     const propArray = Array.isArray(properties) ? properties : [properties];
 
     for (const prop of propArray) {
-        if (!prop || !prop.key) continue;
+        if (!prop?.key) continue;
 
         // Ensure key is string (fast-xml-parser may parse numeric/boolean keys)
         const xmlKey = String(prop.key).toLowerCase();
@@ -274,7 +276,7 @@ function extractMetadataFromOdeProperties(
         if (internalKey) {
             // Use centralized parsing based on property type
             const parsedValue = parsePropertyValue(internalKey, rawValue);
-            (meta as Record<string, unknown>)[internalKey] = parsedValue;
+            (meta as unknown as Record<string, unknown>)[internalKey] = parsedValue;
             continue;
         }
 
@@ -313,15 +315,16 @@ function normalizePagesFromNavigation(navigation: OdeXmlNavigation): NormalizedP
     const pageList = Array.isArray(navigation.page) ? navigation.page : [navigation.page];
 
     function processPage(page: OdeXmlPage, parentId: string | null, level: number, position: number): void {
-        const pageId = page['@_id'] || generateId();
+        const rawPage = page as unknown as Record<string, unknown>;
+        const pageId = String(rawPage['@_id'] || page.id || generateId());
 
         const components: NormalizedComponent[] = [];
         if (page.component) {
             const compList = Array.isArray(page.component) ? page.component : [page.component];
             compList.forEach((comp, idx) => {
                 components.push({
-                    id: comp['@_id'] || generateId(),
-                    type: comp['@_type'] || 'unknown',
+                    id: String((comp as unknown as Record<string, unknown>)['@_id'] || comp.id || generateId()),
+                    type: String((comp as unknown as Record<string, unknown>)['@_type'] || comp.type || 'unknown'),
                     order: idx,
                     content: comp.content || '',
                     data: comp.data || {},
@@ -331,7 +334,7 @@ function normalizePagesFromNavigation(navigation: OdeXmlNavigation): NormalizedP
 
         pages.push({
             id: pageId,
-            title: page['@_title'] || page.title || 'Untitled',
+            title: String(rawPage['@_title'] || page.title || 'Untitled'),
             level,
             position,
             parent_id: parentId,
@@ -386,7 +389,7 @@ function parseBlockProperties(props?: {
 
     const propArray = Array.isArray(props.odeProperty) ? props.odeProperty : [props.odeProperty];
     for (const prop of propArray) {
-        if (!prop || !prop.key) continue;
+        if (!prop?.key) continue;
         const key = prop.key;
         const value = prop.value;
 

@@ -181,7 +181,7 @@ describe('Heartbeat Manager', () => {
 
             const originalSetInterval = global.setInterval;
             const originalDateNow = Date.now;
-            let intervalCallback: (() => void) | null = null;
+            let intervalCallback = null as (() => void) | null;
             let fakeTime = 1000000;
 
             global.setInterval = ((cb: () => void, _ms: number) => {
@@ -196,9 +196,8 @@ describe('Heartbeat Manager', () => {
                 // Advance time beyond ping interval + pong timeout
                 fakeTime += 50000;
 
-                if (intervalCallback) {
-                    intervalCallback();
-                }
+                if (!intervalCallback) throw new Error('heartbeat interval was never registered');
+                intervalCallback();
 
                 // Coverage achieved for timeout debug log
                 expect(ws.close).toHaveBeenCalledWith(4008, 'Heartbeat timeout');
@@ -215,7 +214,7 @@ describe('Heartbeat Manager', () => {
             });
 
             const originalSetInterval = global.setInterval;
-            let intervalCallback: (() => void) | null = null;
+            let intervalCallback = null as (() => void) | null;
 
             global.setInterval = ((cb: () => void, _ms: number) => {
                 intervalCallback = cb;
@@ -225,9 +224,9 @@ describe('Heartbeat Manager', () => {
             try {
                 startHeartbeat('ping-error-debug-test', ws);
 
-                if (intervalCallback) {
-                    expect(() => intervalCallback!()).not.toThrow();
-                }
+                if (!intervalCallback) throw new Error('heartbeat interval was never registered');
+                const tick = intervalCallback;
+                expect(() => tick()).not.toThrow();
                 // Coverage achieved for ping error debug log
             } finally {
                 global.setInterval = originalSetInterval;
@@ -241,7 +240,7 @@ describe('Heartbeat Manager', () => {
 
             // Use fake timers to control the interval
             const originalSetInterval = global.setInterval;
-            let intervalCallback: (() => void) | null = null;
+            let intervalCallback = null as (() => void) | null;
 
             global.setInterval = ((cb: () => void, _ms: number) => {
                 intervalCallback = cb;
@@ -252,9 +251,8 @@ describe('Heartbeat Manager', () => {
                 startHeartbeat('client-1', ws);
 
                 // Trigger the interval callback manually
-                if (intervalCallback) {
-                    intervalCallback();
-                }
+                if (!intervalCallback) throw new Error('heartbeat interval was never registered');
+                intervalCallback();
 
                 // ping should have been called
                 expect(ws.ping).toHaveBeenCalled();
@@ -269,7 +267,7 @@ describe('Heartbeat Manager', () => {
             // Use fake timers to control the interval
             const originalSetInterval = global.setInterval;
             const originalDateNow = Date.now;
-            let intervalCallback: (() => void) | null = null;
+            let intervalCallback = null as (() => void) | null;
             let fakeTime = 1000000;
 
             global.setInterval = ((cb: () => void, _ms: number) => {
@@ -286,9 +284,8 @@ describe('Heartbeat Manager', () => {
                 fakeTime += 50000;
 
                 // Trigger the interval callback
-                if (intervalCallback) {
-                    intervalCallback();
-                }
+                if (!intervalCallback) throw new Error('heartbeat interval was never registered');
+                intervalCallback();
 
                 // Should have closed the connection due to timeout
                 expect(ws.close).toHaveBeenCalledWith(4008, 'Heartbeat timeout');
@@ -305,7 +302,7 @@ describe('Heartbeat Manager', () => {
             });
 
             const originalSetInterval = global.setInterval;
-            let intervalCallback: (() => void) | null = null;
+            let intervalCallback = null as (() => void) | null;
 
             global.setInterval = ((cb: () => void, _ms: number) => {
                 intervalCallback = cb;
@@ -316,9 +313,9 @@ describe('Heartbeat Manager', () => {
                 startHeartbeat('client-1', ws);
 
                 // Trigger the interval callback - should not throw
-                if (intervalCallback) {
-                    expect(() => intervalCallback!()).not.toThrow();
-                }
+                if (!intervalCallback) throw new Error('heartbeat interval was never registered');
+                const tick = intervalCallback;
+                expect(() => tick()).not.toThrow();
             } finally {
                 global.setInterval = originalSetInterval;
             }
@@ -328,7 +325,7 @@ describe('Heartbeat Manager', () => {
             const ws = createMockWebSocket();
 
             const originalSetInterval = global.setInterval;
-            let intervalCallback: (() => void) | null = null;
+            let intervalCallback = null as (() => void) | null;
 
             global.setInterval = ((cb: () => void, _ms: number) => {
                 intervalCallback = cb;
@@ -345,9 +342,8 @@ describe('Heartbeat Manager', () => {
                 ws.ping.mockClear();
 
                 // Trigger the interval callback after abort
-                if (intervalCallback) {
-                    intervalCallback();
-                }
+                if (!intervalCallback) throw new Error('heartbeat interval was never registered');
+                intervalCallback();
 
                 // ping should NOT have been called since aborted
                 expect(ws.ping).not.toHaveBeenCalled();
@@ -360,7 +356,7 @@ describe('Heartbeat Manager', () => {
             const ws = createMockWebSocket();
 
             const originalSetInterval = global.setInterval;
-            let intervalCallback: (() => void) | null = null;
+            let intervalCallback = null as (() => void) | null;
 
             global.setInterval = ((cb: () => void, _ms: number) => {
                 intervalCallback = cb;
@@ -378,9 +374,9 @@ describe('Heartbeat Manager', () => {
                 ws.ping.mockClear();
 
                 // Trigger callback - should handle missing state gracefully
-                if (intervalCallback) {
-                    expect(() => intervalCallback!()).not.toThrow();
-                }
+                if (!intervalCallback) throw new Error('heartbeat interval was never registered');
+                const tick = intervalCallback;
+                expect(() => tick()).not.toThrow();
 
                 expect(ws.ping).not.toHaveBeenCalled();
             } finally {
