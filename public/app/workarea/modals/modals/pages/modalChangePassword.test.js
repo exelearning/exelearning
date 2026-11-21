@@ -212,6 +212,29 @@ describe('ModalChangePassword', () => {
       expect(modal.confirmInput.value).toBe('');
     });
 
+    it('hands the refreshed editor token to the config and the Yjs bridge', async () => {
+      const updateAuthToken = vi.fn();
+      window.eXeLearning.config.token = 'old-token';
+      window.eXeLearning.app.project = { _yjsBridge: { updateAuthToken } };
+      mockFetch(200, { success: true, token: 'new-token' });
+      fill();
+
+      await modal.submit();
+
+      expect(window.eXeLearning.config.token).toBe('new-token');
+      expect(updateAuthToken).toHaveBeenCalledWith('new-token');
+    });
+
+    it('keeps the current token when the response carries none', async () => {
+      window.eXeLearning.config.token = 'old-token';
+      mockFetch(200, { success: true });
+      fill();
+
+      await modal.submit();
+
+      expect(window.eXeLearning.config.token).toBe('old-token');
+    });
+
     it('reports a wrong current password without logging out', async () => {
       mockFetch(401, { error: 'INVALID_CURRENT_PASSWORD' });
       fill();

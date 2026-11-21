@@ -395,6 +395,23 @@ describe('001_initial Migration', () => {
                         .execute(),
                 ).rejects.toThrow();
             });
+            it("should default snapshot_version to '0'", async () => {
+                await db
+                    .insertInto('users')
+                    .values({ email: 'yjs-default@test.com', user_id: 'yjs-default', password: 'hash' })
+                    .execute();
+                await db
+                    .insertInto('projects')
+                    .values({ uuid: 'yjs-default', title: 'Default', owner_id: 1 })
+                    .execute();
+                await db
+                    .insertInto('yjs_documents')
+                    .values({ project_id: 1, snapshot_data: Buffer.from([1]) })
+                    .execute();
+
+                const doc = await db.selectFrom('yjs_documents').select('snapshot_version').executeTakeFirst();
+                expect(doc!.snapshot_version).toBe('0');
+            });
         });
 
         describe('yjs_updates table', () => {

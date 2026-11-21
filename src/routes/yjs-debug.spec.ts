@@ -6,12 +6,13 @@ import { Elysia } from 'elysia';
 import { SignJWT, jwtVerify } from 'jose';
 import { createYjsDebugRoutes, type YjsDebugDependencies } from './yjs-debug';
 import { getJwtSecret } from '../utils/jwt-secret';
+import type { YjsSocket } from '../websocket/types';
 
 const TEST_SECRET = getJwtSecret();
 
 async function signToken(sub: number, roles: string[]): Promise<string> {
     const secret = new TextEncoder().encode(TEST_SECRET);
-    return new SignJWT({ sub, email: `u${sub}@test.local`, roles })
+    return new SignJWT({ sub: String(sub), email: `u${sub}@test.local`, roles })
         .setProtectedHeader({ alg: 'HS256' })
         .setIssuedAt()
         .setExpirationTime('1h')
@@ -41,7 +42,9 @@ function makeDeps(): YjsDebugDependencies {
                         id: 1,
                         project_id: 1,
                         snapshot_data: new Uint8Array([1, 2, 3, 4, 5, 6, 7, 8]),
-                        version: 'v-123',
+                        snapshot_version: 'v-123',
+                        created_at: Date.now(),
+                        updated_at: Date.now(),
                     };
                 }
                 return undefined;
@@ -56,7 +59,10 @@ function makeDeps(): YjsDebugDependencies {
             if (docName === 'project-uuid-owned') {
                 return {
                     name: docName,
-                    conns: new Set([{} as any, {} as any]),
+                    conns: new Map<string, YjsSocket>([
+                        ['conn-1', {} as YjsSocket],
+                        ['conn-2', {} as YjsSocket],
+                    ]),
                     projectUuid: 'uuid-owned',
                 };
             }
@@ -75,7 +81,7 @@ describe('Yjs debug routes', () => {
     let ownerToken: string;
     let strangerToken: string;
     let adminToken: string;
-    let app: Elysia;
+    let app: Pick<Elysia, 'handle'>;
 
     beforeAll(async () => {
         ownerToken = await signToken(42, ['ROLE_USER']);
@@ -106,6 +112,17 @@ describe('Yjs debug routes', () => {
                 }),
             );
             expect(res.status).toBe(404);
+        });
+
+        it('accepts the auth token from a cookie', async () => {
+            const res = await app.handle(
+                new Request('http://localhost/api/yjs/debug/uuid-owned', {
+                    headers: { Cookie: `auth=${ownerToken}` },
+                }),
+            );
+            expect(res.status).toBe(200);
+            const data = (await res.json()) as Record<string, unknown>;
+            expect(data.projectUuid).toBe('uuid-owned');
         });
 
         it('returns debug info for the owner', async () => {
@@ -163,10 +180,57 @@ describe('Yjs debug routes', () => {
             const token = data.wsUrl.split('token=')[1];
             const secret = new TextEncoder().encode(TEST_SECRET);
             const { payload } = await jwtVerify(token, secret);
-            expect(payload.sub).toBe(42);
+            expect(payload.sub).toBe('42');
             // Must be a short-lived token (≤ 5 min from now).
             const nowSec = Math.floor(Date.now() / 1000);
             expect((payload.exp as number) - nowSec).toBeLessThanOrEqual(300);
+        });
+
+        it('never outlives the caller token, so it cannot renew a session', async () => {
+            const callerExp = Math.floor(Date.now() / 1000) + 60;
+            const shortLived = await new SignJWT({ sub: '42', email: 'u42@test.local', roles: ['ROLE_USER'] })
+                .setProtectedHeader({ alg: 'HS256' })
+                .setIssuedAt()
+                .setExpirationTime(callerExp)
+                .sign(new TextEncoder().encode(TEST_SECRET));
+
+            const res = await app.handle(
+                new Request('http://localhost/api/yjs/debug/uuid-owned/ws-url', {
+                    headers: { Authorization: `Bearer ${shortLived}` },
+                }),
+            );
+            const data = (await res.json()) as { wsUrl: string; expiresInSeconds: number };
+            expect(data.expiresInSeconds).toBeLessThanOrEqual(60);
+
+            const { payload } = await jwtVerify(data.wsUrl.split('token=')[1], new TextEncoder().encode(TEST_SECRET));
+            expect(payload.exp).toBe(callerExp);
+        });
+
+        it("copies the caller's identity claims instead of upgrading them", async () => {
+            const guest = await new SignJWT({
+                sub: '42',
+                email: 'u42@test.local',
+                roles: ['ROLE_GUEST'],
+                isGuest: true,
+                authMethod: 'guest',
+                pwh: 'fingerprint',
+            })
+                .setProtectedHeader({ alg: 'HS256' })
+                .setIssuedAt()
+                .setExpirationTime('1h')
+                .sign(new TextEncoder().encode(TEST_SECRET));
+
+            const res = await app.handle(
+                new Request('http://localhost/api/yjs/debug/uuid-owned/ws-url', {
+                    headers: { Authorization: `Bearer ${guest}` },
+                }),
+            );
+            const data = (await res.json()) as { wsUrl: string };
+            const { payload } = await jwtVerify(data.wsUrl.split('token=')[1], new TextEncoder().encode(TEST_SECRET));
+            expect(payload.isGuest).toBe(true);
+            expect(payload.authMethod).toBe('guest');
+            expect(payload.pwh).toBe('fingerprint');
+            expect(payload.roles).toEqual(['ROLE_GUEST']);
         });
     });
 });

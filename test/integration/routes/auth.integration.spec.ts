@@ -21,7 +21,7 @@ const TEST_JWT_SECRET = 'test_secret_for_integration_tests';
 
 describe('Auth Routes Integration', () => {
     let db: Kysely<Database>;
-    let app: Elysia;
+    let app: Pick<Elysia, 'handle'>;
     let testUser: User;
     const testPassword = 'test1234';
 
@@ -44,7 +44,7 @@ describe('Auth Routes Integration', () => {
                 const authHeader = request.headers.get('authorization');
                 if (authHeader?.startsWith('Bearer ')) {
                     token = authHeader.slice(7);
-                } else if (cookie.auth?.value) {
+                } else if (typeof cookie.auth?.value === 'string' && cookie.auth.value) {
                     token = cookie.auth.value;
                 }
 
@@ -56,7 +56,7 @@ describe('Auth Routes Integration', () => {
                 }
 
                 try {
-                    const payload = (await jwt.verify(token)) as { sub: number; isGuest?: boolean } | false;
+                    const payload = (await jwt.verify(token)) as { sub: string; isGuest?: boolean } | false;
 
                     if (!payload || !payload.sub) {
                         return {
@@ -68,7 +68,7 @@ describe('Auth Routes Integration', () => {
                     const user = await db
                         .selectFrom('users')
                         .selectAll()
-                        .where('id', '=', payload.sub)
+                        .where('id', '=', Number(payload.sub))
                         .executeTakeFirst();
 
                     if (!user) {
@@ -118,7 +118,7 @@ describe('Auth Routes Integration', () => {
 
                     const roles = JSON.parse(user.roles);
                     const payload = {
-                        sub: user.id,
+                        sub: String(user.id),
                         email: user.email,
                         roles,
                         isGuest: false,
@@ -204,8 +204,8 @@ describe('Auth Routes Integration', () => {
                 is_lopd_accepted: 1,
                 quota_mb: 4096,
                 is_active: 1,
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString(),
+                created_at: Date.now(),
+                updated_at: Date.now(),
             })
             .returning([
                 'id',
