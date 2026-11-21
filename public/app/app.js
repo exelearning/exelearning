@@ -18,6 +18,7 @@ import UserManager from './workarea/user/userManager.js';
 import Actions from './common/app_actions.js';
 import Shortcuts from './common/shortcuts.js';
 import SessionMonitor from './common/sessionMonitor.js';
+import { ensureMathJax } from './common/mathJaxLoader.js';
 // Core infrastructure - mode detection
 import { RuntimeConfig } from './core/RuntimeConfig.js';
 import { Capabilities } from './core/Capabilities.js';
@@ -1071,6 +1072,13 @@ export default class App {
             console.error('[App] Failed to register static mode adapters:', error);
         }
     }
+
+    /**
+     * Load MathJax if it is not there yet (see common/mathJaxLoader.js).
+     * An arrow property so classic scripts can call it detached from the app.
+     * @returns {Promise<void>}
+     */
+    ensureMathJax = () => ensureMathJax(document);
 
     /**
      * Detect if the app should run in static (offline) mode

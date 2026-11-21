@@ -274,6 +274,19 @@
     }
 
     /**
+     * The workarea loads MathJax after startup. A preview or export requested
+     * before it has arrived waits for it here instead of shipping raw LaTeX.
+     * A no-op wherever the app does not provide the loader.
+     * @returns {Promise<void>}
+     */
+    async function waitForMathJax() {
+        const ensure = typeof window !== 'undefined' && window.eXeLearning?.app?.ensureMathJax;
+        if (typeof ensure === 'function') {
+            await ensure();
+        }
+    }
+
+    /**
      * Render a single LaTeX expression using MathJax
      * Uses async API (tex2svgPromise) when available to support extensions like \color
      * @param {string} latex - LaTeX expression (with or without delimiters, already cleaned from HTML)
@@ -904,6 +917,8 @@
             };
         }
 
+        await waitForMathJax();
+
         // Check MathJax availability
         if (typeof MathJax === 'undefined' || !MathJax.tex2svg) {
             console.warn('[LatexPreRenderer] MathJax not available, skipping pre-render');
@@ -1137,17 +1152,19 @@
             return { html, count: 0 };
         }
 
-        // Check MathJax availability
-        if (typeof MathJax === 'undefined' || !MathJax.tex2svg) {
-            return { html, count: 0 };
-        }
-
         // Find all DataGame divs (various naming conventions)
         // quext-DataGame, DataGame, etc.
         const dataGamePattern = /<div[^>]*class="[^"]*DataGame[^"]*"[^>]*>([\s\S]*?)<\/div>/gi;
         const matches = [...html.matchAll(dataGamePattern)];
 
         if (matches.length === 0) {
+            return { html, count: 0 };
+        }
+
+        await waitForMathJax();
+
+        // Check MathJax availability
+        if (typeof MathJax === 'undefined' || !MathJax.tex2svg) {
             return { html, count: 0 };
         }
 

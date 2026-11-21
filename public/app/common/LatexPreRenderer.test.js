@@ -1960,4 +1960,63 @@ describe('LatexPreRenderer', () => {
             expect(result.html).not.toContain('data-latex="&lt;span');
         });
     });
+    describe('deferred MathJax', () => {
+        let originalMathJax;
+        let originalExe;
+        let ensureMathJax;
+
+        const mathJaxMock = () => ({
+            tex2svg: vi.fn((latex) => ({
+                querySelector: (selector) =>
+                    selector === 'svg' ? { outerHTML: `<svg data-latex="${latex}"><g></g></svg>` } : null,
+            })),
+        });
+
+        beforeEach(() => {
+            originalMathJax = globalThis.MathJax;
+            originalExe = globalThis.window.eXeLearning;
+            delete globalThis.MathJax;
+            // Mimics the workarea loader: MathJax only exists once it resolves.
+            ensureMathJax = vi.fn(async () => {
+                globalThis.MathJax = mathJaxMock();
+            });
+            globalThis.window.eXeLearning = { app: { ensureMathJax } };
+        });
+
+        afterEach(() => {
+            globalThis.MathJax = originalMathJax;
+            globalThis.window.eXeLearning = originalExe;
+        });
+
+        test('preRender waits for MathJax instead of skipping the formulas', async () => {
+            const result = await LatexPreRenderer.preRender('<p>\\(x^2\\)</p>');
+
+            expect(ensureMathJax).toHaveBeenCalledTimes(1);
+            expect(result.latexRendered).toBe(true);
+            expect(result.count).toBe(1);
+        });
+
+        test('preRender does not load MathJax for content without LaTeX', async () => {
+            await LatexPreRenderer.preRender('<p>Hello world</p>');
+
+            expect(ensureMathJax).not.toHaveBeenCalled();
+        });
+
+        test('preRenderDataGameLatex waits for MathJax only when there is game data', async () => {
+            await LatexPreRenderer.preRenderDataGameLatex('<p>No games here</p>');
+            expect(ensureMathJax).not.toHaveBeenCalled();
+
+            await LatexPreRenderer.preRenderDataGameLatex('<div class="quext-DataGame">abc</div>');
+            expect(ensureMathJax).toHaveBeenCalledTimes(1);
+        });
+
+        test('keeps working where the app provides no loader', async () => {
+            globalThis.window.eXeLearning = undefined;
+
+            const result = await LatexPreRenderer.preRender('<p>\\(x^2\\)</p>');
+
+            expect(result.hasLatex).toBe(true);
+            expect(result.latexRendered).toBe(false);
+        });
+    });
 });
