@@ -16,7 +16,7 @@ describe('BrowserAssetHandler', () => {
         return {
             init: mock(() => Promise.resolve()),
             storeBlob: mock(() => Promise.resolve('stored-id')),
-            setAssetMetadata: mock(() => {}),
+            setAssetMetadata: mock((_id: string, _metadata: unknown) => {}),
             getAssetUrl: mock((id: string, filename: string) => {
                 const ext = filename?.includes('.') ? filename.split('.').pop()?.toLowerCase() : '';
                 return ext ? `asset://${id}.${ext}` : `asset://${id}`;
@@ -136,9 +136,9 @@ describe('BrowserAssetHandler', () => {
 
         it('should log and rethrow error when extraction fails', async () => {
             const mockLogger = {
-                log: mock(() => {}),
-                warn: mock(() => {}),
-                error: mock(() => {}),
+                log: mock((..._args: unknown[]) => {}),
+                warn: mock((..._args: unknown[]) => {}),
+                error: mock((..._args: unknown[]) => {}),
             };
             const handler = new BrowserAssetHandler(mockAssetManager, mockLogger);
             const zipContents = {

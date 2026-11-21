@@ -106,12 +106,12 @@ describe('Admin Serializers', () => {
 
     describe('createSerializer', () => {
         test('should create a reusable serializer function', () => {
-            interface Theme {
+            type Theme = {
                 id: number;
                 display_name: string;
                 is_enabled: number;
                 is_default: number;
-            }
+            };
 
             const serializeTheme = createSerializer<Theme>(['is_enabled', 'is_default']);
 
@@ -149,7 +149,7 @@ describe('Admin Serializers', () => {
         });
 
         test('should handle complex objects', () => {
-            interface Template {
+            type Template = {
                 id: number;
                 filename: string;
                 display_name: string;
@@ -161,7 +161,7 @@ describe('Admin Serializers', () => {
                 file_size: number | null;
                 created_at: string;
                 updated_at: string;
-            }
+            };
 
             const serializeTemplate = createSerializer<Template>(['is_enabled']);
 
