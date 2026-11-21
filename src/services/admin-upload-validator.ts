@@ -190,7 +190,7 @@ export function createAdminUploadValidator(deps: AdminUploadValidatorDeps = {}):
             const metadata = parseThemeConfig(configContent);
 
             // Validate required fields
-            if (!metadata.name) {
+            if (!metadata?.name) {
                 return { valid: false, error: 'Invalid theme: config.xml missing <name> element' };
             }
 

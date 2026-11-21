@@ -86,9 +86,9 @@ export function createFileManagerRoutes(deps: FileManagerDependencies = defaultD
             // Auth: every filemanager endpoint requires an authenticated user
             // with access to the project (same semantics as assets routes).
             .use(withJwtAuth())
-            .onBeforeHandle(async ({ jwtPayload, params, set }) => {
+            .onBeforeHandle(async ({ identity, params, set }) => {
                 const projectIdParam = (params as Record<string, string>).projectId;
-                const result = await enforceProjectAccess(jwtPayload, projectIdParam, {
+                const result = await enforceProjectAccess(identity, projectIdParam, {
                     db: database,
                     queries: {
                         // Filemanager routes are UUID-only in practice;

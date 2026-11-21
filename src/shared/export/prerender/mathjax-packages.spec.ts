@@ -19,7 +19,7 @@ describe('mathjax-packages', () => {
     it('enables exactly the extensions the browser configures', () => {
         // Browser and server pre-render must produce identical SVG; a document must not
         // depend on which path ran. See ADR-2259-01.
-        expect([...TEX_EXE_EXTENSIONS].sort()).toEqual(readBrowserExtensions().sort());
+        expect([...TEX_EXE_EXTENSIONS].sort() as string[]).toEqual(readBrowserExtensions().sort());
     });
 
     it('combines the component defaults with the eXeLearning extensions', () => {

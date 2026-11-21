@@ -67,7 +67,7 @@ export class ImsManifestGenerator {
     constructor(
         projectId: string,
         pages: ExportPage[],
-        metadata: ImsManifestOptions = {},
+        metadata: ImsManifestOptions = {} as ImsManifestOptions,
         manifestIdentifier: string | null = null,
     ) {
         this.projectId = projectId || this.generateId();
