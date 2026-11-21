@@ -79,6 +79,7 @@ updates:
           - "fabric"
           - "pdfjs-dist"
           - "mermaid"
+          - "jspdf"
           - "simplelightbox"
 
   # Electron main-process dependencies. app/ has its own manifest and lockfile,
