@@ -47,9 +47,6 @@ const createMockDocumentWithFeedback = (): ExportDocument => ({
         license: 'CC-BY-SA',
         keywords: '',
         theme: 'default',
-        version: '4.0',
-        created: new Date().toISOString(),
-        modified: new Date().toISOString(),
     }),
     getNavigation: (): ExportPage[] => [
         {
@@ -84,8 +81,7 @@ const createMockResourceProvider = (): ResourceProvider => ({
     fetchBaseLibraries: async () => new Map(),
     fetchScormFiles: async () => new Map(),
     fetchLibraryFiles: async () => new Map(),
-    fetchLibraryDirectory: async () => new Map(),
-    fetchSchemas: async () => new Map(),
+    fetchExeLogo: async () => null,
     fetchContentCss: async () => new Map(),
     normalizeIdeviceType: (type: string) => type.toLowerCase().replace(/idevice$/i, '') || 'text',
     fetchGlobalFontFiles: async (_fontName: string) => null,
@@ -96,13 +92,12 @@ const createMockResourceProvider = (): ResourceProvider => ({
 // Mock asset provider
 const createMockAssetProvider = (): AssetProvider => ({
     getAsset: async () => null,
-    hasAsset: async () => false,
-    listAssets: async () => [],
+    getProjectAssets: async () => [],
     getAllAssets: async () => [],
 });
 
 // Helper to get HTML content from preview files
-const getHtmlFromPreviewFiles = (files: Map<string, Uint8Array | string>, filename: string): string => {
+const getHtmlFromPreviewFiles = (files: Map<string, ArrayBuffer | Uint8Array | string>, filename: string): string => {
     const content = files.get(filename);
     if (!content) return '';
     if (typeof content === 'string') return content;

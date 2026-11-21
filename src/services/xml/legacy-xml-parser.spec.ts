@@ -6,6 +6,14 @@ import { describe, it, expect } from 'bun:test';
 import { parse } from './legacy-xml-parser';
 import type { LegacyInstanceXmlDocument } from './interfaces';
 
+/**
+ * The parser walks the parsed XML generically (it finds `@_class` nodes at any depth), so these
+ * synthetic trees use free-form keys that the closed LegacyInstanceNode shape does not declare.
+ */
+function legacyTree(tree: Record<string, unknown>): LegacyInstanceXmlDocument {
+    return tree as unknown as LegacyInstanceXmlDocument;
+}
+
 describe('legacy-xml-parser', () => {
     describe('parse', () => {
         it('should parse empty instance document', () => {
@@ -24,7 +32,7 @@ describe('legacy-xml-parser', () => {
         });
 
         it('should extract metadata from instance', () => {
-            const parsed: LegacyInstanceXmlDocument = {
+            const parsed = legacyTree({
                 instance: {
                     '@_class': 'exe.engine.package.Package',
                     dictionary: {
@@ -32,7 +40,7 @@ describe('legacy-xml-parser', () => {
                         unicode: [{ '@_value': 'Test Title' }, { '@_value': 'Test Author' }],
                     },
                 },
-            };
+            });
 
             const result = parse(parsed);
 
@@ -41,7 +49,7 @@ describe('legacy-xml-parser', () => {
         });
 
         it('should find and parse nodes', () => {
-            const parsed: LegacyInstanceXmlDocument = {
+            const parsed = legacyTree({
                 instance: {
                     '@_class': 'exe.engine.package.Package',
                     children: {
@@ -54,7 +62,7 @@ describe('legacy-xml-parser', () => {
                         },
                     },
                 },
-            };
+            });
 
             const result = parse(parsed);
 
@@ -65,7 +73,7 @@ describe('legacy-xml-parser', () => {
             // LEGACY V2.X ROOT NODE FLATTENING CONVENTION
             // When a single root has children, those direct children are promoted to top-level.
             // See doc/conventions.md for full documentation.
-            const parsed: LegacyInstanceXmlDocument = {
+            const parsed = legacyTree({
                 instance: {
                     '@_class': 'exe.engine.package.Package',
                     nested: {
@@ -87,7 +95,7 @@ describe('legacy-xml-parser', () => {
                         },
                     },
                 },
-            };
+            });
 
             const result = parse(parsed);
 
@@ -106,7 +114,7 @@ describe('legacy-xml-parser', () => {
         });
 
         it('should handle CDATA content in iDevices', () => {
-            const parsed: LegacyInstanceXmlDocument = {
+            const parsed = legacyTree({
                 instance: {
                     '@_class': 'exe.engine.package.Package',
                     node: {
@@ -126,7 +134,7 @@ describe('legacy-xml-parser', () => {
                         },
                     },
                 },
-            };
+            });
 
             const result = parse(parsed);
 
@@ -139,7 +147,7 @@ describe('legacy-xml-parser', () => {
         });
 
         it('should extract resource paths from content', () => {
-            const parsed: LegacyInstanceXmlDocument = {
+            const parsed = legacyTree({
                 instance: {
                     '@_class': 'exe.engine.package.Package',
                     node: {
@@ -157,7 +165,7 @@ describe('legacy-xml-parser', () => {
                         },
                     },
                 },
-            };
+            });
 
             const result = parse(parsed);
 
@@ -191,7 +199,7 @@ describe('legacy-xml-parser', () => {
         });
 
         it('should map iDevice types correctly', () => {
-            const parsed: LegacyInstanceXmlDocument = {
+            const parsed = legacyTree({
                 instance: {
                     '@_class': 'exe.engine.package.Package',
                     node: {
@@ -218,7 +226,7 @@ describe('legacy-xml-parser', () => {
                         },
                     },
                 },
-            };
+            });
 
             const result = parse(parsed);
 
@@ -232,7 +240,7 @@ describe('legacy-xml-parser', () => {
         });
 
         it('should convert pages to RealOdeNavStructures format', () => {
-            const parsed: LegacyInstanceXmlDocument = {
+            const parsed = legacyTree({
                 instance: {
                     '@_class': 'exe.engine.package.Package',
                     node: {
@@ -243,7 +251,7 @@ describe('legacy-xml-parser', () => {
                         },
                     },
                 },
-            };
+            });
 
             const result = parse(parsed);
 
@@ -265,12 +273,13 @@ describe('legacy-xml-parser', () => {
 
             expect(result.meta.title).toBe('Untitled');
             expect(result.meta.author).toBe('');
-            expect(result.meta.locale).toBe('en');
+            // The legacy parser also returns locale, which OdeXmlMeta does not declare.
+            expect(result.meta).toMatchObject({ locale: 'en' });
             expect(result.meta.version).toBe('1.0');
         });
 
         it('should extract title from different formats', () => {
-            const parsed: LegacyInstanceXmlDocument = {
+            const parsed = legacyTree({
                 instance: {
                     '@_class': 'exe.engine.package.Package',
                     dictionary: {
@@ -278,7 +287,7 @@ describe('legacy-xml-parser', () => {
                         unicode: { '@_value': 'My Document Title' },
                     },
                 },
-            };
+            });
 
             const result = parse(parsed);
 
@@ -290,7 +299,7 @@ describe('legacy-xml-parser', () => {
         it('should calculate page levels correctly with root flattening', () => {
             // LEGACY V2.X ROOT NODE FLATTENING CONVENTION
             // Root's direct children are promoted to level 0, grandchildren are at level 1.
-            const parsed: LegacyInstanceXmlDocument = {
+            const parsed = legacyTree({
                 instance: {
                     '@_class': 'exe.engine.package.Package',
                     root: {
@@ -309,7 +318,7 @@ describe('legacy-xml-parser', () => {
                         },
                     },
                 },
-            };
+            });
 
             const result = parse(parsed);
 
@@ -327,7 +336,7 @@ describe('legacy-xml-parser', () => {
         });
 
         it('should assign positions to pages', () => {
-            const parsed: LegacyInstanceXmlDocument = {
+            const parsed = legacyTree({
                 instance: {
                     '@_class': 'exe.engine.package.Package',
                     nodes: [
@@ -343,7 +352,7 @@ describe('legacy-xml-parser', () => {
                         },
                     ],
                 },
-            };
+            });
 
             const result = parse(parsed);
 
@@ -361,7 +370,7 @@ describe('legacy-xml-parser', () => {
          */
 
         it('should flatten direct children of single root to top-level', () => {
-            const parsed: LegacyInstanceXmlDocument = {
+            const parsed = legacyTree({
                 instance: {
                     '@_class': 'exe.engine.package.Package',
                     content: {
@@ -391,7 +400,7 @@ describe('legacy-xml-parser', () => {
                         },
                     },
                 },
-            };
+            });
 
             const result = parse(parsed);
 
@@ -417,7 +426,7 @@ describe('legacy-xml-parser', () => {
         });
 
         it('should preserve grandchild relationships with adjusted levels', () => {
-            const parsed: LegacyInstanceXmlDocument = {
+            const parsed = legacyTree({
                 instance: {
                     '@_class': 'exe.engine.package.Package',
                     content: {
@@ -442,7 +451,7 @@ describe('legacy-xml-parser', () => {
                         },
                     },
                 },
-            };
+            });
 
             const result = parse(parsed);
 
@@ -466,7 +475,7 @@ describe('legacy-xml-parser', () => {
         });
 
         it('should not flatten when root has no children', () => {
-            const parsed: LegacyInstanceXmlDocument = {
+            const parsed = legacyTree({
                 instance: {
                     '@_class': 'exe.engine.package.Package',
                     content: {
@@ -478,7 +487,7 @@ describe('legacy-xml-parser', () => {
                         },
                     },
                 },
-            };
+            });
 
             const result = parse(parsed);
 
@@ -489,7 +498,7 @@ describe('legacy-xml-parser', () => {
         });
 
         it('should not flatten when multiple root nodes exist', () => {
-            const parsed: LegacyInstanceXmlDocument = {
+            const parsed = legacyTree({
                 instance: {
                     '@_class': 'exe.engine.package.Package',
                     content: {
@@ -514,7 +523,7 @@ describe('legacy-xml-parser', () => {
                         ],
                     },
                 },
-            };
+            });
 
             const result = parse(parsed);
 
@@ -527,7 +536,7 @@ describe('legacy-xml-parser', () => {
         });
 
         it('should preserve content and metadata after flattening', () => {
-            const parsed: LegacyInstanceXmlDocument = {
+            const parsed = legacyTree({
                 instance: {
                     '@_class': 'exe.engine.package.Package',
                     dictionary: {
@@ -560,7 +569,7 @@ describe('legacy-xml-parser', () => {
                         },
                     },
                 },
-            };
+            });
 
             const result = parse(parsed);
 
@@ -581,7 +590,7 @@ describe('legacy-xml-parser', () => {
 
     describe('extractIdeviceContent', () => {
         it('should extract content from unicode array with @_content=true (boolean)', () => {
-            const parsed: LegacyInstanceXmlDocument = {
+            const parsed = legacyTree({
                 instance: {
                     '@_class': 'exe.engine.package.Package',
                     node: {
@@ -607,7 +616,7 @@ describe('legacy-xml-parser', () => {
                         },
                     },
                 },
-            };
+            });
 
             const result = parse(parsed);
             const page = result.pages.find(p => p.id === 'node-1');
@@ -615,7 +624,7 @@ describe('legacy-xml-parser', () => {
         });
 
         it('should extract content from unicode array with @_content="true" (string)', () => {
-            const parsed: LegacyInstanceXmlDocument = {
+            const parsed = legacyTree({
                 instance: {
                     '@_class': 'exe.engine.package.Package',
                     node: {
@@ -641,7 +650,7 @@ describe('legacy-xml-parser', () => {
                         },
                     },
                 },
-            };
+            });
 
             const result = parse(parsed);
             const page = result.pages.find(p => p.id === 'node-1');
@@ -649,7 +658,7 @@ describe('legacy-xml-parser', () => {
         });
 
         it('should extract content from single unicode object', () => {
-            const parsed: LegacyInstanceXmlDocument = {
+            const parsed = legacyTree({
                 instance: {
                     '@_class': 'exe.engine.package.Package',
                     node: {
@@ -671,7 +680,7 @@ describe('legacy-xml-parser', () => {
                         },
                     },
                 },
-            };
+            });
 
             const result = parse(parsed);
             const page = result.pages.find(p => p.id === 'node-1');
@@ -679,7 +688,7 @@ describe('legacy-xml-parser', () => {
         });
 
         it('should skip unicode without HTML tags in array', () => {
-            const parsed: LegacyInstanceXmlDocument = {
+            const parsed = legacyTree({
                 instance: {
                     '@_class': 'exe.engine.package.Package',
                     node: {
@@ -708,7 +717,7 @@ describe('legacy-xml-parser', () => {
                         },
                     },
                 },
-            };
+            });
 
             const result = parse(parsed);
             const page = result.pages.find(p => p.id === 'node-1');
@@ -718,7 +727,7 @@ describe('legacy-xml-parser', () => {
 
     describe('extractResourcePaths', () => {
         it('should handle nested arrays when extracting resource paths', () => {
-            const parsed: LegacyInstanceXmlDocument = {
+            const parsed = legacyTree({
                 instance: {
                     '@_class': 'exe.engine.package.Package',
                     node: {
@@ -740,7 +749,7 @@ describe('legacy-xml-parser', () => {
                         },
                     },
                 },
-            };
+            });
 
             const result = parse(parsed);
             expect(result.srcRoutes).toContain('resources/image1.jpg');
@@ -763,7 +772,7 @@ describe('legacy-xml-parser', () => {
         it('should convert unknown iDevice type to text for editability', () => {
             // LEGACY V2.X IDEVICE TYPE CONVERSION CONVENTION
             // Unknown iDevices are converted to 'text' to ensure editability
-            const parsed: LegacyInstanceXmlDocument = {
+            const parsed = legacyTree({
                 instance: {
                     '@_class': 'exe.engine.package.Package',
                     node: {
@@ -780,7 +789,7 @@ describe('legacy-xml-parser', () => {
                         },
                     },
                 },
-            };
+            });
 
             const result = parse(parsed);
             const page = result.pages.find(p => p.id === 'node-1');
@@ -791,7 +800,7 @@ describe('legacy-xml-parser', () => {
         it('should convert unrecognized iDevice class to text for editability', () => {
             // LEGACY V2.X IDEVICE TYPE CONVERSION CONVENTION
             // Any iDevice class that doesn't match a known pattern is converted to 'text'
-            const parsed: LegacyInstanceXmlDocument = {
+            const parsed = legacyTree({
                 instance: {
                     '@_class': 'exe.engine.package.Package',
                     node: {
@@ -809,7 +818,7 @@ describe('legacy-xml-parser', () => {
                         },
                     },
                 },
-            };
+            });
 
             const result = parse(parsed);
             const page = result.pages.find(p => p.id === 'node-1');
@@ -830,7 +839,7 @@ describe('legacy-xml-parser', () => {
             ];
 
             for (const { className, expected } of testCases) {
-                const parsed: LegacyInstanceXmlDocument = {
+                const parsed = legacyTree({
                     instance: {
                         '@_class': 'exe.engine.package.Package',
                         node: {
@@ -847,7 +856,7 @@ describe('legacy-xml-parser', () => {
                             },
                         },
                     },
-                };
+                });
 
                 const result = parse(parsed);
                 const page = result.pages.find(p => p.id === `node-${expected}`);
@@ -871,7 +880,7 @@ describe('legacy-xml-parser', () => {
          */
 
         it('should convert FreeTextIdevice to text', () => {
-            const parsed: LegacyInstanceXmlDocument = {
+            const parsed = legacyTree({
                 instance: {
                     '@_class': 'exe.engine.package.Package',
                     node: {
@@ -888,7 +897,7 @@ describe('legacy-xml-parser', () => {
                         },
                     },
                 },
-            };
+            });
 
             const result = parse(parsed);
             const page = result.pages.find(p => p.id === 'node-1');
@@ -896,7 +905,7 @@ describe('legacy-xml-parser', () => {
         });
 
         it('should convert GenericIdevice to text', () => {
-            const parsed: LegacyInstanceXmlDocument = {
+            const parsed = legacyTree({
                 instance: {
                     '@_class': 'exe.engine.package.Package',
                     node: {
@@ -913,7 +922,7 @@ describe('legacy-xml-parser', () => {
                         },
                     },
                 },
-            };
+            });
 
             const result = parse(parsed);
             const page = result.pages.find(p => p.id === 'node-1');
@@ -921,7 +930,7 @@ describe('legacy-xml-parser', () => {
         });
 
         it('should convert ReflectionIdevice to text', () => {
-            const parsed: LegacyInstanceXmlDocument = {
+            const parsed = legacyTree({
                 instance: {
                     '@_class': 'exe.engine.package.Package',
                     node: {
@@ -938,7 +947,7 @@ describe('legacy-xml-parser', () => {
                         },
                     },
                 },
-            };
+            });
 
             const result = parse(parsed);
             const page = result.pages.find(p => p.id === 'node-1');
@@ -962,7 +971,7 @@ describe('legacy-xml-parser', () => {
             ];
 
             for (const className of fpdIdevices) {
-                const parsed: LegacyInstanceXmlDocument = {
+                const parsed = legacyTree({
                     instance: {
                         '@_class': 'exe.engine.package.Package',
                         node: {
@@ -979,7 +988,7 @@ describe('legacy-xml-parser', () => {
                             },
                         },
                     },
-                };
+                });
 
                 const result = parse(parsed);
                 const page = result.pages.find(p => p.id === 'node-1');
@@ -996,7 +1005,7 @@ describe('legacy-xml-parser', () => {
             ];
 
             for (const className of obsoleteIdevices) {
-                const parsed: LegacyInstanceXmlDocument = {
+                const parsed = legacyTree({
                     instance: {
                         '@_class': 'exe.engine.package.Package',
                         node: {
@@ -1013,7 +1022,7 @@ describe('legacy-xml-parser', () => {
                             },
                         },
                     },
-                };
+                });
 
                 const result = parse(parsed);
                 const page = result.pages.find(p => p.id === 'node-1');
@@ -1025,7 +1034,7 @@ describe('legacy-xml-parser', () => {
             // FileAttachIdevice converted to text (not attached-files) because
             // attached-files iDevice has no editor. This matches Symfony behavior.
             // See FileAttachHandler.js and OdeOldXmlFileAttachIdevice.php
-            const parsed: LegacyInstanceXmlDocument = {
+            const parsed = legacyTree({
                 instance: {
                     '@_class': 'exe.engine.package.Package',
                     node: {
@@ -1042,7 +1051,7 @@ describe('legacy-xml-parser', () => {
                         },
                     },
                 },
-            };
+            });
 
             const result = parse(parsed);
             const page = result.pages.find(p => p.id === 'node-1');
@@ -1051,7 +1060,7 @@ describe('legacy-xml-parser', () => {
 
         it('should convert FileAttachIdeviceInc to text for editability', () => {
             // FileAttachIdeviceInc is a variant that also converts to text
-            const parsed: LegacyInstanceXmlDocument = {
+            const parsed = legacyTree({
                 instance: {
                     '@_class': 'exe.engine.package.Package',
                     node: {
@@ -1068,7 +1077,7 @@ describe('legacy-xml-parser', () => {
                         },
                     },
                 },
-            };
+            });
 
             const result = parse(parsed);
             const page = result.pages.find(p => p.id === 'node-1');
@@ -1077,7 +1086,7 @@ describe('legacy-xml-parser', () => {
 
         it('should convert AttachmentIdevice to text for editability', () => {
             // AttachmentIdevice is another file attachment variant → text
-            const parsed: LegacyInstanceXmlDocument = {
+            const parsed = legacyTree({
                 instance: {
                     '@_class': 'exe.engine.package.Package',
                     node: {
@@ -1094,7 +1103,7 @@ describe('legacy-xml-parser', () => {
                         },
                     },
                 },
-            };
+            });
 
             const result = parse(parsed);
             const page = result.pages.find(p => p.id === 'node-1');
@@ -1102,7 +1111,7 @@ describe('legacy-xml-parser', () => {
         });
 
         it('should preserve content when converting to text', () => {
-            const parsed: LegacyInstanceXmlDocument = {
+            const parsed = legacyTree({
                 instance: {
                     '@_class': 'exe.engine.package.Package',
                     node: {
@@ -1122,7 +1131,7 @@ describe('legacy-xml-parser', () => {
                         },
                     },
                 },
-            };
+            });
 
             const result = parse(parsed);
             const page = result.pages.find(p => p.id === 'node-1');
@@ -1134,7 +1143,7 @@ describe('legacy-xml-parser', () => {
         });
 
         it('should preserve title when converting to text', () => {
-            const parsed: LegacyInstanceXmlDocument = {
+            const parsed = legacyTree({
                 instance: {
                     '@_class': 'exe.engine.package.Package',
                     node: {
@@ -1155,7 +1164,7 @@ describe('legacy-xml-parser', () => {
                         },
                     },
                 },
-            };
+            });
 
             const result = parse(parsed);
             const page = result.pages.find(p => p.id === 'node-1');
@@ -1167,7 +1176,7 @@ describe('legacy-xml-parser', () => {
         });
 
         it('should detect JsIdevice as modern format', () => {
-            const parsed: LegacyInstanceXmlDocument = {
+            const parsed = legacyTree({
                 instance: {
                     '@_class': 'exe.engine.package.Package',
                     node: {
@@ -1184,7 +1193,7 @@ describe('legacy-xml-parser', () => {
                         },
                     },
                 },
-            };
+            });
 
             const result = parse(parsed);
             const page = result.pages.find(p => p.id === 'node-1');
@@ -1193,7 +1202,7 @@ describe('legacy-xml-parser', () => {
         });
 
         it('should map TrueFalseIdevice to trueorfalse (interactive)', () => {
-            const parsed: LegacyInstanceXmlDocument = {
+            const parsed = legacyTree({
                 instance: {
                     '@_class': 'exe.engine.package.Package',
                     node: {
@@ -1210,7 +1219,7 @@ describe('legacy-xml-parser', () => {
                         },
                     },
                 },
-            };
+            });
 
             const result = parse(parsed);
             const page = result.pages.find(p => p.id === 'node-1');
@@ -1218,7 +1227,7 @@ describe('legacy-xml-parser', () => {
         });
 
         it('should map ClozeIdevice to complete (fill-in-blanks)', () => {
-            const parsed: LegacyInstanceXmlDocument = {
+            const parsed = legacyTree({
                 instance: {
                     '@_class': 'exe.engine.package.Package',
                     node: {
@@ -1235,7 +1244,7 @@ describe('legacy-xml-parser', () => {
                         },
                     },
                 },
-            };
+            });
 
             const result = parse(parsed);
             const page = result.pages.find(p => p.id === 'node-1');
@@ -1244,7 +1253,7 @@ describe('legacy-xml-parser', () => {
 
         it('should convert mixed iDevice types in a single page correctly', () => {
             // This test simulates a real legacy ELP with multiple iDevice types
-            const parsed: LegacyInstanceXmlDocument = {
+            const parsed = legacyTree({
                 instance: {
                     '@_class': 'exe.engine.package.Package',
                     node: {
@@ -1299,7 +1308,7 @@ describe('legacy-xml-parser', () => {
                         },
                     },
                 },
-            };
+            });
 
             const result = parse(parsed);
             const page = result.pages.find(p => p.id === 'node-1');
@@ -1325,7 +1334,7 @@ describe('legacy-xml-parser', () => {
         });
 
         it('should ensure converted iDevices have valid identifiers', () => {
-            const parsed: LegacyInstanceXmlDocument = {
+            const parsed = legacyTree({
                 instance: {
                     '@_class': 'exe.engine.package.Package',
                     node: {
@@ -1342,7 +1351,7 @@ describe('legacy-xml-parser', () => {
                         },
                     },
                 },
-            };
+            });
 
             const result = parse(parsed);
             const page = result.pages.find(p => p.id === 'node-1');
@@ -1357,7 +1366,7 @@ describe('legacy-xml-parser', () => {
     describe('extractMetadata edge cases', () => {
         it('should handle non-object unicode values in metadata', () => {
             // This tests the String(unicodeItem) fallback at line 176
-            const parsed: LegacyInstanceXmlDocument = {
+            const parsed = legacyTree({
                 instance: {
                     '@_class': 'exe.engine.package.Package',
                     dictionary: {
@@ -1365,7 +1374,7 @@ describe('legacy-xml-parser', () => {
                         unicode: ['Plain String Title'],
                     },
                 },
-            };
+            });
 
             const result = parse(parsed);
             expect(result.meta.title).toBe('Plain String Title');
@@ -1382,7 +1391,7 @@ describe('legacy-xml-parser', () => {
          */
 
         it('should create one block per iDevice', () => {
-            const parsed: LegacyInstanceXmlDocument = {
+            const parsed = legacyTree({
                 instance: {
                     '@_class': 'exe.engine.package.Package',
                     node: {
@@ -1424,7 +1433,7 @@ describe('legacy-xml-parser', () => {
                         },
                     },
                 },
-            };
+            });
 
             const result = parse(parsed);
 
@@ -1441,7 +1450,7 @@ describe('legacy-xml-parser', () => {
         });
 
         it('should use iDevice title as block title', () => {
-            const parsed: LegacyInstanceXmlDocument = {
+            const parsed = legacyTree({
                 instance: {
                     '@_class': 'exe.engine.package.Package',
                     node: {
@@ -1462,7 +1471,7 @@ describe('legacy-xml-parser', () => {
                         },
                     },
                 },
-            };
+            });
 
             const result = parse(parsed);
 
@@ -1472,7 +1481,7 @@ describe('legacy-xml-parser', () => {
         });
 
         it('should use empty string for iDevices without title', () => {
-            const parsed: LegacyInstanceXmlDocument = {
+            const parsed = legacyTree({
                 instance: {
                     '@_class': 'exe.engine.package.Package',
                     node: {
@@ -1490,7 +1499,7 @@ describe('legacy-xml-parser', () => {
                         },
                     },
                 },
-            };
+            });
 
             const result = parse(parsed);
 
@@ -1505,7 +1514,7 @@ describe('legacy-xml-parser', () => {
              * be shown as the block name. Only custom, user-defined titles should
              * appear as block names.
              */
-            const parsed: LegacyInstanceXmlDocument = {
+            const parsed = legacyTree({
                 instance: {
                     '@_class': 'exe.engine.package.Package',
                     node: {
@@ -1526,7 +1535,7 @@ describe('legacy-xml-parser', () => {
                         },
                     },
                 },
-            };
+            });
 
             const result = parse(parsed);
 
@@ -1538,7 +1547,7 @@ describe('legacy-xml-parser', () => {
         });
 
         it('should preserve custom title even if similar to default', () => {
-            const parsed: LegacyInstanceXmlDocument = {
+            const parsed = legacyTree({
                 instance: {
                     '@_class': 'exe.engine.package.Package',
                     node: {
@@ -1559,7 +1568,7 @@ describe('legacy-xml-parser', () => {
                         },
                     },
                 },
-            };
+            });
 
             const result = parse(parsed);
 
@@ -1570,7 +1579,7 @@ describe('legacy-xml-parser', () => {
         });
 
         it('should preserve iDevice order', () => {
-            const parsed: LegacyInstanceXmlDocument = {
+            const parsed = legacyTree({
                 instance: {
                     '@_class': 'exe.engine.package.Package',
                     node: {
@@ -1609,7 +1618,7 @@ describe('legacy-xml-parser', () => {
                         },
                     },
                 },
-            };
+            });
 
             const result = parse(parsed);
 
@@ -1623,7 +1632,7 @@ describe('legacy-xml-parser', () => {
         });
 
         it('should create separate blocks in RealOdeNavStructures output', () => {
-            const parsed: LegacyInstanceXmlDocument = {
+            const parsed = legacyTree({
                 instance: {
                     '@_class': 'exe.engine.package.Package',
                     node: {
@@ -1654,7 +1663,7 @@ describe('legacy-xml-parser', () => {
                         },
                     },
                 },
-            };
+            });
 
             const result = parse(parsed);
 
@@ -1665,22 +1674,23 @@ describe('legacy-xml-parser', () => {
             const pageNav = Array.isArray(navStructures) ? navStructures[0] : navStructures;
 
             // Should have 2 blocks (odePagStructure entries)
-            const pagStructures = pageNav.odePagStructures?.odePagStructure;
+            const pagStructures = pageNav?.odePagStructures?.odePagStructure;
             expect(Array.isArray(pagStructures)).toBe(true);
-            expect(pagStructures.length).toBe(2);
+            const blocks = Array.isArray(pagStructures) ? pagStructures : [];
+            expect(blocks.length).toBe(2);
 
             // Each block should have exactly one iDevice
-            expect(pagStructures[0].blockName).toBe('Block A');
-            const componentsA = pagStructures[0].odeComponents?.odeComponent;
+            expect(blocks[0].blockName).toBe('Block A');
+            const componentsA = blocks[0].odeComponents?.odeComponent;
             expect(Array.isArray(componentsA) ? componentsA.length : 1).toBe(1);
 
-            expect(pagStructures[1].blockName).toBe('Block B');
-            const componentsB = pagStructures[1].odeComponents?.odeComponent;
+            expect(blocks[1].blockName).toBe('Block B');
+            const componentsB = blocks[1].odeComponents?.odeComponent;
             expect(Array.isArray(componentsB) ? componentsB.length : 1).toBe(1);
         });
 
         it('should NOT group multiple iDevices into single block', () => {
-            const parsed: LegacyInstanceXmlDocument = {
+            const parsed = legacyTree({
                 instance: {
                     '@_class': 'exe.engine.package.Package',
                     node: {
@@ -1711,17 +1721,18 @@ describe('legacy-xml-parser', () => {
                         },
                     },
                 },
-            };
+            });
 
             const result = parse(parsed);
 
             // Get the raw structure
             const navStructures = result.raw?.ode?.odeNavStructures?.odeNavStructure;
             const pageNav = Array.isArray(navStructures) ? navStructures[0] : navStructures;
-            const pagStructures = pageNav.odePagStructures?.odePagStructure;
+            const pagStructures = pageNav?.odePagStructures?.odePagStructure;
 
             // Verify no block contains more than one iDevice
-            const blocks = Array.isArray(pagStructures) ? pagStructures : [pagStructures];
+            const blocks = Array.isArray(pagStructures) ? pagStructures : pagStructures ? [pagStructures] : [];
+            expect(blocks.length).toBeGreaterThan(0);
             for (const block of blocks) {
                 const components = block.odeComponents?.odeComponent;
                 const componentCount = Array.isArray(components) ? components.length : 1;

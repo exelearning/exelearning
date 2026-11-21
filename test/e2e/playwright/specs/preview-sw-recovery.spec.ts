@@ -1,4 +1,5 @@
-import { test, expect, type Page } from '../fixtures/auth.fixture';
+import type { Page } from '@playwright/test';
+import { test, expect } from '../fixtures/auth.fixture';
 import { gotoWorkarea, waitForAppReady, getPreviewFrame } from '../helpers/workarea-helpers';
 
 /**

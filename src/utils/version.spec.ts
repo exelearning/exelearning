@@ -2,7 +2,10 @@
  * Tests for version utility
  */
 import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
-import { getAppVersion, configure, resetDependencies } from './version';
+import { getAppVersion, configure, resetDependencies, type VersionDependencies } from './version';
+
+/** A readFileSync stand-in returning `text`; the real one is overloaded, the code only reads utf-8. */
+const readsText = (text: string) => (() => text) as unknown as VersionDependencies['readFileSync'];
 
 describe('version utility', () => {
     const originalEnv = process.env.APP_VERSION;
@@ -73,7 +76,7 @@ describe('version utility', () => {
         it('should return v0.0.0 when package.json contains invalid JSON', () => {
             configure({
                 existsSync: () => true,
-                readFileSync: () => 'not valid json {{{',
+                readFileSync: readsText('not valid json {{{'),
                 dirname: '/test',
             });
 
@@ -84,7 +87,7 @@ describe('version utility', () => {
         it('should return version from mock package.json', () => {
             configure({
                 existsSync: () => true,
-                readFileSync: () => JSON.stringify({ version: '1.2.3' }),
+                readFileSync: readsText(JSON.stringify({ version: '1.2.3' })),
                 dirname: '/test',
             });
 
@@ -100,7 +103,7 @@ describe('version utility', () => {
                     // Return true only on the 3rd call (simulating finding package.json 2 dirs up)
                     return callCount === 3;
                 },
-                readFileSync: () => JSON.stringify({ version: '2.0.0' }),
+                readFileSync: readsText(JSON.stringify({ version: '2.0.0' })),
                 dirname: '/a/b/c',
             });
 

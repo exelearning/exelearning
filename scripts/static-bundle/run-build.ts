@@ -67,8 +67,8 @@ export async function buildStaticBundle() {
                 const code = (err as NodeJS.ErrnoException).code;
                 if (code !== 'EBUSY' && code !== 'EPERM' && code !== 'ENOTEMPTY') throw err;
                 // Wait and retry: another process (Explorer, AV) may be scanning the dir
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                (globalThis as any).Bun?.sleepSync(attempt * 200);
+                const bunGlobal = (globalThis as { Bun?: { sleepSync(ms: number): void } }).Bun;
+                bunGlobal?.sleepSync(attempt * 200);
             }
         }
         if (lastError) throw lastError;
@@ -129,8 +129,10 @@ export async function buildStaticBundle() {
     copyDirRecursive(path.join(projectRoot, 'public/app'), path.join(outputDir, 'app'), ['test', 'spec']);
     console.log('  Copied app/');
 
-    // Copy libs folder
-    copyDirRecursive(path.join(projectRoot, 'public/libs'), path.join(outputDir, 'libs'));
+    // Copy libs folder, without the mind map editor's TS source (only its built bundle is loaded)
+    copyDirRecursive(path.join(projectRoot, 'public/libs'), path.join(outputDir, 'libs'), [
+        'tinymce_5/js/tinymce/plugins/exemindmap/editor/src',
+    ]);
 
     console.log('  Copied libs/');
 
