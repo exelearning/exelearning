@@ -4,7 +4,7 @@
  */
 
 import { describe, it, expect, beforeEach } from 'bun:test';
-import { ComponentExporter } from './ComponentExporter';
+import { ComponentExporter, type ComponentExportOptions } from './ComponentExporter';
 import type {
     ExportDocument,
     ExportMetadata,
@@ -13,6 +13,10 @@ import type {
     AssetProvider,
     ZipProvider,
     ExportAsset,
+    ExportBlock,
+    ExportBlockProperties,
+    ExportComponent,
+    ZipArchive,
 } from '../interfaces';
 import { unzipSync } from '../providers/FflateZipProvider';
 
@@ -86,6 +90,10 @@ class MockResourceProvider implements ResourceProvider {
     async fetchI18nTranslations(_language: string): Promise<Map<string, string>> {
         return new Map();
     }
+
+    async fetchGlobalFontFiles(_fontName: string): Promise<Map<string, Uint8Array> | null> {
+        return null;
+    }
 }
 
 // Mock asset provider
@@ -96,17 +104,25 @@ class MockAssetProvider implements AssetProvider {
         this.assets = assets;
     }
 
-    async getAsset(_path: string): Promise<Uint8Array | null> {
+    async getAsset(_path: string): Promise<ExportAsset | null> {
         return null;
     }
 
     async getAllAssets(): Promise<ExportAsset[]> {
         return this.assets;
     }
+
+    async getProjectAssets(): Promise<ExportAsset[]> {
+        return this.getAllAssets();
+    }
 }
 
 // Mock zip provider
 class MockZipProvider implements ZipProvider {
+    createZip(): ZipArchive {
+        throw new Error('createZip is not used by the exporters under test');
+    }
+
     files = new Map<string, Uint8Array>();
 
     addFile(path: string, content: Uint8Array | string): void {
@@ -151,7 +167,9 @@ const samplePages: ExportPage[] = [
                 id: 'block-1',
                 name: 'Content Block',
                 order: 0,
-                properties: { layout: 'default' },
+                // odePagStructureProperties serializes the whole object, so keys outside
+                // ExportBlockProperties (like layout) still reach content.xml.
+                properties: { layout: 'default' } as ExportBlockProperties,
                 components: [
                     {
                         id: 'idevice-1',
@@ -187,6 +205,7 @@ const samplePages: ExportPage[] = [
                         type: 'FreeTextIdevice',
                         order: 0,
                         content: '<p>This is chapter 1.</p>',
+                        properties: {},
                     },
                 ],
             },
@@ -228,14 +247,16 @@ describe('ComponentExporter', () => {
         });
 
         it('should succeed when blockId is provided', async () => {
-            const result = await exporter.export({ blockId: 'block-1' });
+            const options: ComponentExportOptions = { blockId: 'block-1' };
+            const result = await exporter.export(options);
 
             expect(result.success).toBe(true);
             expect(result.data).toBeDefined();
         });
 
         it('should export specific idevice when ideviceId is provided', async () => {
-            const result = await exporter.export({ blockId: 'block-1', ideviceId: 'idevice-1' });
+            const options: ComponentExportOptions = { blockId: 'block-1', ideviceId: 'idevice-1' };
+            const result = await exporter.export(options);
 
             expect(result.success).toBe(true);
             expect(result.data).toBeDefined();
@@ -602,9 +623,8 @@ describe('ComponentExporter', () => {
                 {
                     id: SAMPLE_ASSET_UUID,
                     filename: 'image.png',
-                    path: `content/resources/${SAMPLE_ASSET_UUID}/image.png`,
                     originalPath: `content/resources/${SAMPLE_ASSET_UUID}/image.png`,
-                    mimeType: 'image/png',
+                    mime: 'image/png',
                     data: new Uint8Array([0x89, 0x50, 0x4e, 0x47]), // PNG header
                     // No folderPath - export path will be just filename
                 },
@@ -621,9 +641,8 @@ describe('ComponentExporter', () => {
                 {
                     id: 'xyz-999',
                     filename: 'unused.jpg',
-                    path: 'content/resources/xyz-999/unused.jpg',
                     originalPath: 'content/resources/xyz-999/unused.jpg',
-                    mimeType: 'image/jpeg',
+                    mime: 'image/jpeg',
                     data: new Uint8Array([0xff, 0xd8]),
                 },
             ]);
@@ -702,6 +721,7 @@ describe('ComponentExporter', () => {
                                     type: 'FreeTextIdevice',
                                     order: 0,
                                     content: '',
+                                    properties: {},
                                 },
                             ],
                         },
@@ -725,6 +745,7 @@ describe('ComponentExporter', () => {
                     parentId: null,
                     order: 0,
                     blocks: [
+                        // name deliberately missing
                         {
                             id: 'block-noname',
                             order: 0,
@@ -734,9 +755,10 @@ describe('ComponentExporter', () => {
                                     type: 'FreeTextIdevice',
                                     order: 0,
                                     content: '<p>Test</p>',
+                                    properties: {},
                                 },
                             ],
-                        },
+                        } as ExportBlock,
                     ],
                 },
             ];
@@ -765,11 +787,12 @@ describe('ComponentExporter', () => {
                             name: 'Block',
                             order: 0,
                             components: [
+                                // type deliberately missing
                                 {
                                     id: 'idevice-notype',
                                     order: 0,
                                     content: '<p>Test</p>',
-                                },
+                                } as ExportComponent,
                             ],
                         },
                     ],
@@ -805,6 +828,7 @@ describe('ComponentExporter', () => {
                                     type: 'FreeTextIdevice',
                                     order: 0,
                                     content: '<p>Content with <tags> & "quotes"</p>',
+                                    properties: {},
                                 },
                             ],
                         },
@@ -878,6 +902,7 @@ describe('ComponentExporter', () => {
                                     type: 'FreeTextIdevice',
                                     order: 0,
                                     content: '<p>Nested content</p>',
+                                    properties: {},
                                 },
                             ],
                         },
@@ -917,6 +942,7 @@ describe('ComponentExporter', () => {
                                     type: 'ImageGalleryIdevice',
                                     order: 0,
                                     content: `<img src="asset://${asset1Id}"/><img src="asset://${asset2Id}"/>`,
+                                    properties: {},
                                 },
                             ],
                         },
@@ -931,18 +957,16 @@ describe('ComponentExporter', () => {
                 {
                     id: asset1Id,
                     filename: 'img1.png',
-                    path: `content/resources/${asset1Id}/img1.png`,
                     originalPath: `content/resources/${asset1Id}/img1.png`,
-                    mimeType: 'image/png',
+                    mime: 'image/png',
                     data: new Uint8Array([1, 2, 3]),
                     // No folderPath - export path will be just filename
                 },
                 {
                     id: asset2Id,
                     filename: 'img2.jpg',
-                    path: `content/resources/${asset2Id}/img2.jpg`,
                     originalPath: `content/resources/${asset2Id}/img2.jpg`,
-                    mimeType: 'image/jpeg',
+                    mime: 'image/jpeg',
                     data: new Uint8Array([4, 5, 6]),
                     // No folderPath - export path will be just filename
                 },
@@ -999,9 +1023,8 @@ describe('ComponentExporter - preprocessBlockForExport()', () => {
                 {
                     id: assetId,
                     filename: 'image.png',
-                    path: `content/resources/${assetId}/image.png`,
                     originalPath: `content/resources/${assetId}/image.png`,
-                    mimeType: 'image/png',
+                    mime: 'image/png',
                     data: new Uint8Array([1, 2, 3]),
                 },
             ]);
@@ -1016,6 +1039,7 @@ describe('ComponentExporter - preprocessBlockForExport()', () => {
                         type: 'FreeTextIdevice',
                         order: 0,
                         content: `<p>Image: <img src="asset://${assetId}" /></p>`,
+                        properties: {},
                     },
                 ],
             };
@@ -1032,9 +1056,8 @@ describe('ComponentExporter - preprocessBlockForExport()', () => {
                 {
                     id: assetId,
                     filename: 'background.jpg',
-                    path: `content/resources/${assetId}/background.jpg`,
                     originalPath: `content/resources/${assetId}/background.jpg`,
-                    mimeType: 'image/jpeg',
+                    mime: 'image/jpeg',
                     data: new Uint8Array([4, 5, 6]),
                 },
             ]);
@@ -1071,17 +1094,15 @@ describe('ComponentExporter - preprocessBlockForExport()', () => {
                 {
                     id: assetId1,
                     filename: 'file1.png',
-                    path: `content/resources/${assetId1}/file1.png`,
                     originalPath: `content/resources/${assetId1}/file1.png`,
-                    mimeType: 'image/png',
+                    mime: 'image/png',
                     data: new Uint8Array([1]),
                 },
                 {
                     id: assetId2,
                     filename: 'file2.png',
-                    path: `content/resources/${assetId2}/file2.png`,
                     originalPath: `content/resources/${assetId2}/file2.png`,
-                    mimeType: 'image/png',
+                    mime: 'image/png',
                     data: new Uint8Array([2]),
                 },
             ]);
@@ -1123,9 +1144,8 @@ describe('ComponentExporter - preprocessBlockForExport()', () => {
                 {
                     id: assetId,
                     filename: 'test.png',
-                    path: `content/resources/${assetId}/test.png`,
                     originalPath: `content/resources/${assetId}/test.png`,
-                    mimeType: 'image/png',
+                    mime: 'image/png',
                     data: new Uint8Array([1]),
                 },
             ]);
@@ -1164,9 +1184,8 @@ describe('ComponentExporter - preprocessBlockForExport()', () => {
                 {
                     id: assetId,
                     filename: 'img.png',
-                    path: `content/resources/${assetId}/img.png`,
                     originalPath: `content/resources/${assetId}/img.png`,
-                    mimeType: 'image/png',
+                    mime: 'image/png',
                     data: new Uint8Array([1]),
                 },
             ]);
@@ -1181,12 +1200,14 @@ describe('ComponentExporter - preprocessBlockForExport()', () => {
                         type: 'FreeTextIdevice',
                         order: 0,
                         content: `<img src="asset://${assetId}" />`,
+                        properties: {},
                     },
                     {
                         id: 'idevice-2',
                         type: 'FreeTextIdevice',
                         order: 1,
                         content: `<img src="asset://${assetId}" />`,
+                        properties: {},
                     },
                 ],
             };
@@ -1206,9 +1227,8 @@ describe('ComponentExporter - preprocessBlockForExport()', () => {
                 {
                     id: assetId,
                     filename: 'img.png',
-                    path: `content/resources/${assetId}/img.png`,
                     originalPath: `content/resources/${assetId}/img.png`,
-                    mimeType: 'image/png',
+                    mime: 'image/png',
                     data: new Uint8Array([1]),
                 },
             ]);
@@ -1223,12 +1243,14 @@ describe('ComponentExporter - preprocessBlockForExport()', () => {
                         type: 'FreeTextIdevice',
                         order: 0,
                         content: `<img src="asset://${assetId}" />`,
+                        properties: {},
                     },
                     {
                         id: 'idevice-2',
                         type: 'FreeTextIdevice',
                         order: 1,
                         content: `<img src="asset://${assetId}" />`,
+                        properties: {},
                     },
                 ],
             };
@@ -1254,6 +1276,7 @@ describe('ComponentExporter - preprocessBlockForExport()', () => {
                         type: 'FreeTextIdevice',
                         order: 0,
                         content: '',
+                        properties: {},
                     },
                 ],
             };
@@ -1269,18 +1292,19 @@ describe('ComponentExporter - preprocessBlockForExport()', () => {
                 name: 'Test Block',
                 order: 0,
                 components: [
+                    // content deliberately missing
                     {
                         id: 'idevice-no-content',
                         type: 'FreeTextIdevice',
                         order: 0,
-                    },
+                    } as ExportComponent,
                 ],
             };
 
             const result = await exporter.testPreprocessBlockForExport(block, null);
 
             // Should not throw, content should remain undefined
-            expect(result.success !== false).toBe(true);
+            expect(result.components![0].content).toBeUndefined();
         });
 
         it('should handle empty properties', async () => {
@@ -1310,19 +1334,20 @@ describe('ComponentExporter - preprocessBlockForExport()', () => {
                 name: 'Test Block',
                 order: 0,
                 components: [
+                    // properties deliberately missing
                     {
                         id: 'idevice-no-props',
                         type: 'FreeTextIdevice',
                         order: 0,
                         content: '<p>Hello</p>',
-                    },
+                    } as ExportComponent,
                 ],
             };
 
             const result = await exporter.testPreprocessBlockForExport(block, null);
 
             // Should not throw, properties should remain undefined
-            expect(result.success !== false).toBe(true);
+            expect(result.components![0].properties).toBeUndefined();
         });
     });
 });
@@ -1349,9 +1374,8 @@ describe('ComponentExporter - addComponentAssetsToZip with buildAssetExportPathM
                 {
                     id: assetId,
                     filename: 'document.pdf',
-                    path: `content/resources/${assetId}/document.pdf`,
                     originalPath: `content/resources/${assetId}/document.pdf`,
-                    mimeType: 'application/pdf',
+                    mime: 'application/pdf',
                     data: new Uint8Array([0x25, 0x50, 0x44, 0x46]), // %PDF header
                     // No folderPath means path will just be filename
                 },
@@ -1367,6 +1391,7 @@ describe('ComponentExporter - addComponentAssetsToZip with buildAssetExportPathM
                         type: 'FreeTextIdevice',
                         order: 0,
                         content: `<a href="asset://${assetId}">Download PDF</a>`,
+                        properties: {},
                     },
                 ],
             };
@@ -1383,9 +1408,8 @@ describe('ComponentExporter - addComponentAssetsToZip with buildAssetExportPathM
                 {
                     id: assetId,
                     filename: 'icon.svg',
-                    path: `content/resources/${assetId}/icon.svg`,
                     originalPath: `content/resources/${assetId}/icon.svg`,
-                    mimeType: 'image/svg+xml',
+                    mime: 'image/svg+xml',
                     data: new Uint8Array([0x3c, 0x73, 0x76, 0x67]), // <svg
                     // No folderPath means path will just be filename
                 },
@@ -1421,9 +1445,8 @@ describe('ComponentExporter - addComponentAssetsToZip with buildAssetExportPathM
                 {
                     id: assetId,
                     filename: 'photo.jpg',
-                    path: `content/resources/images/${assetId}/photo.jpg`,
                     originalPath: `content/resources/images/${assetId}/photo.jpg`,
-                    mimeType: 'image/jpeg',
+                    mime: 'image/jpeg',
                     data: new Uint8Array([0xff, 0xd8, 0xff, 0xe0]), // JPEG header
                     folderPath: 'images',
                 },
@@ -1439,6 +1462,7 @@ describe('ComponentExporter - addComponentAssetsToZip with buildAssetExportPathM
                         type: 'FreeTextIdevice',
                         order: 0,
                         content: `<img src="asset://${assetId}" />`,
+                        properties: {},
                     },
                 ],
             };
@@ -1460,18 +1484,16 @@ describe('ComponentExporter - addComponentAssetsToZip with buildAssetExportPathM
                 {
                     id: usedAssetId,
                     filename: 'used.png',
-                    path: `content/resources/${usedAssetId}/used.png`,
                     originalPath: `content/resources/${usedAssetId}/used.png`,
-                    mimeType: 'image/png',
+                    mime: 'image/png',
                     data: new Uint8Array([0x89, 0x50, 0x4e, 0x47]),
                     // No folderPath - export path will be just filename
                 },
                 {
                     id: unusedAssetId,
                     filename: 'unused.png',
-                    path: `content/resources/${unusedAssetId}/unused.png`,
                     originalPath: `content/resources/${unusedAssetId}/unused.png`,
-                    mimeType: 'image/png',
+                    mime: 'image/png',
                     data: new Uint8Array([0x89, 0x50, 0x4e, 0x47]),
                     // No folderPath - export path will be just filename
                 },
@@ -1487,6 +1509,7 @@ describe('ComponentExporter - addComponentAssetsToZip with buildAssetExportPathM
                         type: 'FreeTextIdevice',
                         order: 0,
                         content: `<img src="asset://${usedAssetId}" />`,
+                        properties: {},
                     },
                 ],
             };
@@ -1506,18 +1529,16 @@ describe('ComponentExporter - addComponentAssetsToZip with buildAssetExportPathM
                 {
                     id: asset1Id,
                     filename: 'comp1.png',
-                    path: `content/resources/${asset1Id}/comp1.png`,
                     originalPath: `content/resources/${asset1Id}/comp1.png`,
-                    mimeType: 'image/png',
+                    mime: 'image/png',
                     data: new Uint8Array([1]),
                     // No folderPath - export path will be just filename
                 },
                 {
                     id: asset2Id,
                     filename: 'comp2.png',
-                    path: `content/resources/${asset2Id}/comp2.png`,
                     originalPath: `content/resources/${asset2Id}/comp2.png`,
-                    mimeType: 'image/png',
+                    mime: 'image/png',
                     data: new Uint8Array([2]),
                     // No folderPath - export path will be just filename
                 },
@@ -1528,6 +1549,7 @@ describe('ComponentExporter - addComponentAssetsToZip with buildAssetExportPathM
                 type: 'FreeTextIdevice',
                 order: 0,
                 content: `<img src="asset://${asset1Id}" />`,
+                properties: {},
             };
 
             const block: import('../interfaces').ExportBlock = {
@@ -1541,6 +1563,7 @@ describe('ComponentExporter - addComponentAssetsToZip with buildAssetExportPathM
                         type: 'FreeTextIdevice',
                         order: 1,
                         content: `<img src="asset://${asset2Id}" />`,
+                        properties: {},
                     },
                 ],
             };

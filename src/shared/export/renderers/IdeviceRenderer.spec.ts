@@ -1983,7 +1983,7 @@ describe('IdeviceRenderer', () => {
 
         it('names the node and its export path after the 3dmol folder', () => {
             const html = renderer.render(
-                { id: 'mol-1', type: '3dmol', order: 0, content: '<div class="dmole-IDevice"></div>' },
+                { id: 'mol-1', type: '3dmol', order: 0, content: '<div class="dmole-IDevice"></div>', properties: {} },
                 { basePath: '../', includeDataAttributes: true },
             );
 
@@ -2008,7 +2008,7 @@ describe('IdeviceRenderer', () => {
 
         it('keeps resolving a legacy alias to the folder it names', () => {
             const html = renderer.render(
-                { id: 'dl-1', type: 'download-package', order: 0, content: '<p>x</p>' },
+                { id: 'dl-1', type: 'download-package', order: 0, content: '<p>x</p>', properties: {} },
                 { basePath: '', includeDataAttributes: true },
             );
 

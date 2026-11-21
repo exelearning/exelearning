@@ -56,9 +56,6 @@ export async function createUser(db: Kysely<Database>, data: NewUser): Promise<U
     const timestamp = now();
     const values = {
         ...data,
-        roles: typeof data.roles === 'string' ? data.roles : stringifyRoles((data.roles as string[]) || []),
-        is_lopd_accepted: data.is_lopd_accepted ?? 0,
-        is_active: data.is_active ?? 1,
         created_at: timestamp,
         updated_at: timestamp,
     };
@@ -108,8 +105,6 @@ export async function findOrCreateExternalUser(
         password,
         roles: stringifyRoles(roles),
         external_identifier: externalIdentifier,
-        is_lopd_accepted: 0,
-        is_active: 1,
     });
 }
 

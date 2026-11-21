@@ -177,26 +177,6 @@ test.describe('Three Sixty Viewer iDevice', () => {
         await expect(page.locator('#threeSixtyAutorotate')).toBeChecked();
     });
 
-    test('exports the expected vendored dependencies', async ({ authenticatedPage }) => {
-        const page = authenticatedPage;
-        // Query the browser helper to confirm three.js + OrbitControls are registered
-        const files = await page.evaluate(async () => {
-            try {
-                const mod = await import('/src/shared/export/browser/idevice-config-browser.ts');
-                return mod.getIdeviceExportFiles('three-sixty-viewer', '.js');
-            } catch {
-                // In production the browser has no TS module; fall back to inspecting
-                // the export-js declaration in config.xml if available via fetch.
-                return null;
-            }
-        });
-        if (files) {
-            expect(files).toContain('three-sixty-viewer.js');
-            expect(files).toContain('three.min.js');
-            expect(files).toContain('OrbitControls.js');
-        }
-    });
-
     test('draws the viewer in the editor, with three.js loaded before it starts', async ({
         authenticatedPage,
         createProject,

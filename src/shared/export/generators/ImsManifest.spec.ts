@@ -4,7 +4,7 @@
 
 import { describe, it, expect, beforeEach } from 'bun:test';
 import { ImsManifestGenerator } from './ImsManifest';
-import type { ExportPage } from '../interfaces';
+import type { ExportPage, ImsManifestOptions } from '../interfaces';
 
 describe('ImsManifestGenerator', () => {
     let generator: ImsManifestGenerator;
@@ -21,7 +21,7 @@ describe('ImsManifestGenerator', () => {
             description: 'A test course for IMS CP',
             author: 'Test Author',
             language: 'en',
-        });
+        } as ImsManifestOptions);
     });
 
     describe('generate', () => {
@@ -101,7 +101,7 @@ describe('ImsManifestGenerator', () => {
         it('should not include lifecycle when no author', () => {
             const noAuthorGen = new ImsManifestGenerator('test', createTestPages(), {
                 title: 'No Author Course',
-            });
+            } as ImsManifestOptions);
             const xml = noAuthorGen.generate();
 
             expect(xml).not.toContain('<imsmd:lifecycle>');
@@ -114,7 +114,9 @@ describe('ImsManifestGenerator', () => {
             // would make the package schema-invalid.
             const pages = createTestPages();
             pages.push({ id: 'page-2', title: 'Chapter 1 again', parentId: null, order: 3, blocks: [] });
-            const duplicated = new ImsManifestGenerator('test-project-123', pages, { title: 'Test Course' });
+            const duplicated = new ImsManifestGenerator('test-project-123', pages, {
+                title: 'Test Course',
+            } as ImsManifestOptions);
 
             const originalWarn = console.warn;
             console.warn = () => {};
@@ -208,7 +210,7 @@ describe('ImsManifestGenerator', () => {
             const generatorWithSpecialChars = new ImsManifestGenerator('test', [], {
                 title: 'Test & Course <1>',
                 description: 'Description with "quotes"',
-            });
+            } as ImsManifestOptions);
             const xml = generatorWithSpecialChars.generate();
 
             expect(xml).toContain('Test &amp; Course &lt;1&gt;');
@@ -229,7 +231,7 @@ describe('ImsManifestGenerator', () => {
 
     describe('empty project', () => {
         it('should handle empty pages array', () => {
-            const emptyGenerator = new ImsManifestGenerator('empty', [], { title: 'Empty' });
+            const emptyGenerator = new ImsManifestGenerator('empty', [], { title: 'Empty' } as ImsManifestOptions);
             const xml = emptyGenerator.generate();
 
             expect(xml).toContain('<organizations');

@@ -475,27 +475,15 @@ export function createExportRoutes(deps: ExportDependencies = {}) {
                     const project = await findProjectByUuid(db, session.odeId);
                     if (project) {
                         const yjsDoc = await reconstructDocument(project.id);
-                        if (yjsDoc) {
-                            // Check if document has content
-                            yjsDocWrapper = new ServerYjsDocumentWrapper(yjsDoc, session.odeId);
-                            if (yjsDocWrapper.hasContent()) {
-                                console.log('[Export] Using Yjs document from database');
-                                document = new YjsDocumentAdapter(yjsDocWrapper);
-                            } else {
-                                console.log('[Export] Yjs document empty, falling back to ELP import');
-                                yjsDocWrapper.destroy();
-                                yjsDocWrapper = null;
-                                // Try to import from ELP file
-                                const imported = await importElpFromTempDir();
-                                if (imported) {
-                                    document = imported.document;
-                                    yjsDocWrapper = imported.wrapper;
-                                } else {
-                                    return { success: false, error: 'No project structure found' };
-                                }
-                            }
+                        // Check if document has content
+                        yjsDocWrapper = new ServerYjsDocumentWrapper(yjsDoc, session.odeId);
+                        if (yjsDocWrapper.hasContent()) {
+                            console.log('[Export] Using Yjs document from database');
+                            document = new YjsDocumentAdapter(yjsDocWrapper);
                         } else {
-                            console.log('[Export] No Yjs document in database, falling back to ELP import');
+                            console.log('[Export] Yjs document empty, falling back to ELP import');
+                            yjsDocWrapper.destroy();
+                            yjsDocWrapper = null;
                             // Try to import from ELP file
                             const imported = await importElpFromTempDir();
                             if (imported) {

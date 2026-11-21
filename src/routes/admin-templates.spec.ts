@@ -52,8 +52,8 @@ const mockTemplate: Template = {
     file_size: 54321,
     preview_image: null,
     uploaded_by: 1,
-    created_at: '2024-01-01T00:00:00.000Z',
-    updated_at: '2024-01-01T00:00:00.000Z',
+    created_at: Date.parse('2024-01-01T00:00:00.000Z'),
+    updated_at: Date.parse('2024-01-01T00:00:00.000Z'),
 };
 
 // Create mock dependencies
@@ -98,7 +98,7 @@ async function generateAdminToken(): Promise<string> {
     await app
         .get('/generate', async ({ jwt }) => {
             token = await jwt.sign({
-                sub: 1,
+                sub: '1',
                 email: 'admin@test.com',
                 roles: ['ROLE_ADMIN'],
                 isGuest: false,
@@ -621,7 +621,7 @@ describe('Admin Templates Routes', () => {
             await tokenApp
                 .get('/generate', async ({ jwt }) => {
                     userToken = await jwt.sign({
-                        sub: 2,
+                        sub: '2',
                         email: 'user@test.com',
                         roles: ['ROLE_USER'],
                         isGuest: false,
