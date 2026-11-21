@@ -4,6 +4,24 @@
  */
 import { describe, it, expect, beforeEach } from 'bun:test';
 import { execute, printHelp, runCli, type CreateUserDependencies } from './create-user';
+import type { User } from '../../db/types';
+
+/** A complete `users` row; tests override only what they assert on. */
+const userRow = (overrides: Partial<User> = {}): User => ({
+    id: 1,
+    email: 'user@test.com',
+    user_id: null,
+    password: 'hashed',
+    roles: '["ROLE_USER"]',
+    is_lopd_accepted: 1,
+    quota_mb: null,
+    external_identifier: null,
+    api_token: null,
+    is_active: 1,
+    created_at: null,
+    updated_at: null,
+    ...overrides,
+});
 
 describe('Create User Command', () => {
     let createUserCalls: any[];
@@ -16,11 +34,7 @@ describe('Create User Command', () => {
             queries: {
                 findUserByEmail: async (_db: any, email: string) => {
                     if (email === 'existing@test.com') {
-                        return {
-                            id: 1,
-                            email: 'existing@test.com',
-                            roles: '["ROLE_USER"]',
-                        };
+                        return userRow({ id: 1, email: 'existing@test.com', roles: '["ROLE_USER"]' });
                     }
                     return undefined;
                 },
@@ -388,7 +402,7 @@ describe('Create User Command', () => {
                     findUserByEmail: async () => {
                         throw new Error('DB error');
                     },
-                    createUser: async () => ({ id: 1, email: '', username: '', roles: '[]' }),
+                    createUser: async () => userRow({ id: 1, email: '', roles: '[]' }),
                 },
             };
             let exitCode = -1;
@@ -408,7 +422,7 @@ describe('Create User Command', () => {
                     findUserByEmail: async () => {
                         throw 'String error';
                     },
-                    createUser: async () => ({ id: 1, email: '', username: '', roles: '[]' }),
+                    createUser: async () => userRow({ id: 1, email: '', roles: '[]' }),
                 },
             };
             let exitCode = -1;

@@ -6,12 +6,13 @@ import { Elysia } from 'elysia';
 import { SignJWT, jwtVerify } from 'jose';
 import { createYjsDebugRoutes, type YjsDebugDependencies } from './yjs-debug';
 import { getJwtSecret } from '../utils/jwt-secret';
+import type { YjsSocket } from '../websocket/types';
 
 const TEST_SECRET = getJwtSecret();
 
 async function signToken(sub: number, roles: string[]): Promise<string> {
     const secret = new TextEncoder().encode(TEST_SECRET);
-    return new SignJWT({ sub, email: `u${sub}@test.local`, roles })
+    return new SignJWT({ sub: String(sub), email: `u${sub}@test.local`, roles })
         .setProtectedHeader({ alg: 'HS256' })
         .setIssuedAt()
         .setExpirationTime('1h')
@@ -42,6 +43,8 @@ function makeDeps(): YjsDebugDependencies {
                         project_id: 1,
                         snapshot_data: new Uint8Array([1, 2, 3, 4, 5, 6, 7, 8]),
                         snapshot_version: 'v-123',
+                        created_at: Date.now(),
+                        updated_at: Date.now(),
                     };
                 }
                 return undefined;
@@ -56,7 +59,10 @@ function makeDeps(): YjsDebugDependencies {
             if (docName === 'project-uuid-owned') {
                 return {
                     name: docName,
-                    conns: new Set([{} as any, {} as any]),
+                    conns: new Map<string, YjsSocket>([
+                        ['conn-1', {} as YjsSocket],
+                        ['conn-2', {} as YjsSocket],
+                    ]),
                     projectUuid: 'uuid-owned',
                 };
             }
@@ -75,7 +81,7 @@ describe('Yjs debug routes', () => {
     let ownerToken: string;
     let strangerToken: string;
     let adminToken: string;
-    let app: Elysia;
+    let app: Pick<Elysia, 'handle'>;
 
     beforeAll(async () => {
         ownerToken = await signToken(42, ['ROLE_USER']);
@@ -182,7 +188,7 @@ describe('Yjs debug routes', () => {
 
         it('never outlives the caller token, so it cannot renew a session', async () => {
             const callerExp = Math.floor(Date.now() / 1000) + 60;
-            const shortLived = await new SignJWT({ sub: 42, email: 'u42@test.local', roles: ['ROLE_USER'] })
+            const shortLived = await new SignJWT({ sub: '42', email: 'u42@test.local', roles: ['ROLE_USER'] })
                 .setProtectedHeader({ alg: 'HS256' })
                 .setIssuedAt()
                 .setExpirationTime(callerExp)
@@ -202,7 +208,7 @@ describe('Yjs debug routes', () => {
 
         it("copies the caller's identity claims instead of upgrading them", async () => {
             const guest = await new SignJWT({
-                sub: 42,
+                sub: '42',
                 email: 'u42@test.local',
                 roles: ['ROLE_GUEST'],
                 isGuest: true,

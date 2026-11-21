@@ -3,7 +3,7 @@
  * Type-safe queries for admin operations
  * All functions accept db as first parameter for dependency injection
  */
-import type { Kysely } from 'kysely';
+import type { Kysely, Selectable } from 'kysely';
 import { sql } from 'kysely';
 import type { Database, User, Project } from '../types';
 import { now, stringifyRoles, parseRoles } from '../types';
@@ -364,4 +364,4 @@ export async function setSetting(
 // TYPES
 // ============================================================================
 
-export type AppSetting = Database['app_settings'];
+export type AppSetting = Selectable<Database['app_settings']>;

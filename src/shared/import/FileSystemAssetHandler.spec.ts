@@ -320,8 +320,10 @@ describe('FileSystemAssetHandler', () => {
         it('should handle null/undefined input', () => {
             const handler = new FileSystemAssetHandler(testDir);
 
-            expect(handler.convertContextPathToAssetRefs(null as unknown as string, new Map())).toBe(null);
-            expect(handler.convertContextPathToAssetRefs(undefined as unknown as string, new Map())).toBe(undefined);
+            expect(handler.convertContextPathToAssetRefs(null as unknown as string, new Map()) as unknown).toBe(null);
+            expect(handler.convertContextPathToAssetRefs(undefined as unknown as string, new Map()) as unknown).toBe(
+                undefined,
+            );
         });
 
         it('should handle empty string', () => {
