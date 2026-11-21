@@ -92,7 +92,7 @@ describe('project activity service', () => {
                     insertProjectActivity: async () => {
                         throw new Error('disk full');
                     },
-                },
+                } as any,
             });
             await failing.record(db, { projectId, userId: ownerId, type: 'access.visibility_changed' });
             await failing.recordSave(db, {
@@ -429,7 +429,7 @@ describe('project activity service', () => {
                         calls++;
                         throw new Error('boom');
                     },
-                },
+                } as any,
             });
             const result = await flaky.recordClientEvents(
                 db,

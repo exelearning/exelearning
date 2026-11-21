@@ -29,25 +29,25 @@ process.env.JWT_SECRET = TEST_JWT_SECRET;
 async function tokenFor(user: User): Promise<string> {
     const secret = new TextEncoder().encode(TEST_JWT_SECRET);
     const roles = Array.isArray(user.roles) ? user.roles : JSON.parse(user.roles);
-    return new SignJWT({ sub: user.id, email: user.email, roles })
+    return new SignJWT({ sub: String(user.id), email: user.email, roles })
         .setProtectedHeader({ alg: 'HS256' })
         .setIssuedAt()
         .setExpirationTime('1h')
         .sign(secret);
 }
 
-function encodeDoc(title: string): Uint8Array {
+function encodeDoc(title: string): BodyInit {
     const doc = new Y.Doc();
     doc.getMap('metadata').set('title', title);
     doc.getArray('navigation').push([new Y.Map()]);
     const state = Y.encodeStateAsUpdate(doc);
     doc.destroy();
-    return state;
+    return state as unknown as BodyInit;
 }
 
 describe('Project activity integration', () => {
     let db: Kysely<Database>;
-    let app: Elysia;
+    let app: any;
     let owner: User;
     let editor: User;
     let stranger: User;

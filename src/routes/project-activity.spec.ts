@@ -25,7 +25,7 @@ const TEST_SECRET = getJwtSecret();
 
 async function signToken(sub: number, roles: string[] = ['ROLE_USER']): Promise<string> {
     const secret = new TextEncoder().encode(TEST_SECRET);
-    return new SignJWT({ sub, email: `u${sub}@test.local`, roles })
+    return new SignJWT({ sub: String(sub), email: `u${sub}@test.local`, roles })
         .setProtectedHeader({ alg: 'HS256' })
         .setIssuedAt()
         .setExpirationTime('1h')
@@ -34,7 +34,7 @@ async function signToken(sub: number, roles: string[] = ['ROLE_USER']): Promise<
 
 describe('project activity routes', () => {
     let db: Kysely<Database>;
-    let app: Elysia;
+    let app: any;
     let clock: number;
     let config: ProjectActivityConfig;
     let ownerId: number;

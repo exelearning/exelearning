@@ -796,7 +796,11 @@ describe('Yjs Document Routes', () => {
 
         async function post(url: string, extraHeaders: Record<string, string> = {}, body: Uint8Array = stateWith('x')) {
             return app.handle(
-                new Request(url, { method: 'POST', body, headers: { ...authHeaders(ownerToken), ...extraHeaders } }),
+                new Request(url, {
+                    method: 'POST',
+                    body: body as unknown as BodyInit,
+                    headers: { ...authHeaders(ownerToken), ...extraHeaders },
+                }),
             );
         }
 
@@ -861,7 +865,7 @@ describe('Yjs Document Routes', () => {
             const forbidden = await app.handle(
                 new Request(`${URL}?markSaved=true`, {
                     method: 'POST',
-                    body: stateWith('x'),
+                    body: stateWith('x') as unknown as BodyInit,
                     headers: authHeaders(strangerToken),
                 }),
             );
@@ -875,7 +879,7 @@ describe('Yjs Document Routes', () => {
             const failed = await failingApp.handle(
                 new Request(`${URL}?markSaved=true`, {
                     method: 'POST',
-                    body: stateWith('x'),
+                    body: stateWith('x') as unknown as BodyInit,
                     headers: authHeaders(ownerToken),
                 }),
             );
