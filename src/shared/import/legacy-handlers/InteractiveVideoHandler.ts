@@ -429,7 +429,7 @@ export class InteractiveVideoHandler extends BaseLegacyHandler {
         const jsonMatch = html.match(
             /<script[^>]*id="exe-interactive-video-contents"[^>]*type="application\/json"[^>]*>([\s\S]*?)<\/script>/i,
         );
-        if (!jsonMatch || !jsonMatch[1]) {
+        if (!jsonMatch?.[1]) {
             // Try extracting from legacy format if transform failed
             return this.extractLegacyProperties(html);
         }
@@ -463,7 +463,7 @@ export class InteractiveVideoHandler extends BaseLegacyHandler {
     private extractLegacyProperties(html: string): Record<string, unknown> {
         // Try to extract from var InteractiveVideo = {...}
         const legacyMatch = html.match(/var\s+InteractiveVideo\s*=\s*(\{[\s\S]*?\});?\s*(?:\/\/|<\/script>)/i);
-        if (!legacyMatch || !legacyMatch[1]) {
+        if (!legacyMatch?.[1]) {
             return {};
         }
 
