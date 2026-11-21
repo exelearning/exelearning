@@ -309,7 +309,7 @@ describe('PageExporter', () => {
     it.each([false, true])('preserves single-page diagrams when rendering fails: %s', async fails => {
         const pages = structuredClone(samplePages);
         const component = pages[0].blocks[0].components[0];
-        delete component.htmlContent;
+        delete (component as Record<string, any>).htmlContent;
         component.content = '<pre class="mermaid">graph TD; A--&gt;B</pre>';
         const tested = new PageExporter(new MockDocument({}, pages), resources, assets, zip);
         const result = await tested.export({
