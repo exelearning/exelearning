@@ -11,6 +11,9 @@ import type {
     ResourceProvider,
     AssetProvider,
     ZipProvider,
+    ZipArchive,
+    ExportAsset,
+    ExportComponent,
     ExportResult,
 } from '../interfaces';
 
@@ -89,6 +92,10 @@ class MockResourceProvider implements ResourceProvider {
         return new Map();
     }
 
+    async fetchGlobalFontFiles(_fontName: string): Promise<Map<string, Uint8Array> | null> {
+        return null;
+    }
+
     setLibraryFiles(files: Map<string, Buffer>): void {
         this.libraryFiles = files;
     }
@@ -96,77 +103,57 @@ class MockResourceProvider implements ResourceProvider {
 
 // Mock asset provider
 class MockAssetProvider implements AssetProvider {
-    private assets: Array<{
-        id: string;
-        filename: string;
-        path: string;
-        folderPath: string;
-        mimeType: string;
-        mime: string;
-        data: Buffer;
-    }> = [];
+    private assets: ExportAsset[] = [];
 
     addAsset(id: string, filename: string, mimeType: string, data: Buffer, folderPath = ''): void {
         this.assets.push({
             id,
             filename,
-            path: `${id}/${filename}`,
+            originalPath: `${id}/${filename}`,
             folderPath,
-            mimeType,
             mime: mimeType,
             data,
         });
     }
 
-    async getAsset(path: string): Promise<Buffer | null> {
-        const asset = this.assets.find(a => a.path === path);
-        return asset ? asset.data : null;
+    async getAsset(path: string): Promise<ExportAsset | null> {
+        return this.assets.find(a => a.originalPath === path) ?? null;
     }
 
-    async getAllAssets(): Promise<
-        Array<{
-            id: string;
-            filename: string;
-            path: string;
-            folderPath: string;
-            mimeType: string;
-            mime: string;
-            data: Buffer;
-        }>
-    > {
+    async getAllAssets(): Promise<ExportAsset[]> {
+        return this.assets;
+    }
+
+    async getProjectAssets(): Promise<ExportAsset[]> {
         return this.assets;
     }
 }
 
 // Mock asset provider with forEachAsset support (for memory-efficient export tests)
 class MockAssetProviderWithForEach extends MockAssetProvider {
-    async forEachAsset(
-        callback: (asset: {
-            id: string;
-            filename: string;
-            originalPath: string;
-            folderPath?: string;
-            mime: string;
-            data: Uint8Array | Blob;
-        }) => void | Promise<void>,
-    ): Promise<void> {
+    async forEachAsset(callback: (asset: ExportAsset) => Promise<void>): Promise<number> {
         const assets = await this.getAllAssets();
         for (const asset of assets) {
             await callback({
                 id: asset.id,
                 filename: asset.filename,
-                originalPath: asset.path,
+                originalPath: asset.originalPath,
                 folderPath: asset.folderPath,
                 mime: asset.mime,
                 data: asset.data,
             });
         }
+        return assets.length;
     }
 }
 
 // Mock zip provider
 class MockZipProvider implements ZipProvider {
-    files = new Map<string, string | Buffer>();
+    files = new Map<string, string | Uint8Array>();
+
+    createZip(): ZipArchive {
+        throw new Error('createZip is not used by the exporters under test');
+    }
 
     addFile(path: string, content: string | Buffer): void {
         this.files.set(path, content);
@@ -335,12 +322,14 @@ describe('BaseExporter', () => {
                                     type: 'FreeTextIdevice',
                                     order: 0,
                                     content: '<p>Hello</p>',
+                                    properties: {},
                                 },
                                 {
                                     id: 'c2',
                                     type: 'MultipleChoiceIdevice',
                                     order: 1,
                                     content: '<div>Quiz</div>',
+                                    properties: {},
                                 },
                             ],
                         },
@@ -593,6 +582,7 @@ describe('BaseExporter', () => {
                                     type: 'FreeTextIdevice',
                                     order: 0,
                                     content: '<p>Test content</p>',
+                                    properties: {},
                                 },
                             ],
                         },
@@ -672,6 +662,7 @@ describe('BaseExporter', () => {
                                     type: 'FreeTextIdevice',
                                     order: 0,
                                     content: '<p>Content 1</p>',
+                                    properties: {},
                                 },
                             ],
                         },
@@ -693,6 +684,7 @@ describe('BaseExporter', () => {
                                     type: 'FreeTextIdevice',
                                     order: 0,
                                     content: '<p>Content 2</p>',
+                                    properties: {},
                                 },
                             ],
                         },
@@ -1059,8 +1051,8 @@ describe('BaseExporter', () => {
 
             // Override forEachAsset to also yield an unknown asset not in the export path map
             const origForEach = customForEachAssets.forEachAsset.bind(customForEachAssets);
-            customForEachAssets.forEachAsset = async (callback: (asset: any) => void | Promise<void>) => {
-                await origForEach(callback);
+            customForEachAssets.forEachAsset = async (callback: (asset: ExportAsset) => Promise<void>) => {
+                const count = await origForEach(callback);
                 // Yield an extra asset that has no metadata (won't be in export path map)
                 await callback({
                     id: 'uuid-orphan',
@@ -1069,6 +1061,7 @@ describe('BaseExporter', () => {
                     mime: 'text/plain',
                     data: Buffer.from('orphan'),
                 });
+                return count + 1;
             };
 
             const forEachZip = new MockZipProvider();
@@ -1105,7 +1098,7 @@ describe('BaseExporter', () => {
                 result.push({
                     id: 'uuid-orphan2',
                     filename: 'orphan2.txt',
-                    path: 'orphan2.txt',
+                    originalPath: 'uuid-orphan2/orphan2.txt',
                     mime: 'text/plain',
                     data: Buffer.from('orphan2'),
                 });
@@ -1441,6 +1434,8 @@ describe('BaseExporter', () => {
             const pageWithDownload: ExportPage = {
                 id: 'p1',
                 title: 'Page',
+                parentId: null,
+                order: 0,
                 blocks: [
                     {
                         id: 'b1',
@@ -1452,6 +1447,7 @@ describe('BaseExporter', () => {
                                 type: 'download-source-file',
                                 order: 0,
                                 content: '<a href="exe-package:elp">Download</a>',
+                                properties: {},
                             },
                         ],
                     },
@@ -1461,12 +1457,14 @@ describe('BaseExporter', () => {
             const pageWithoutDownload: ExportPage = {
                 id: 'p2',
                 title: 'Normal',
+                parentId: null,
+                order: 1,
                 blocks: [
                     {
                         id: 'b2',
                         name: 'Block',
                         order: 0,
-                        components: [{ id: 'c2', type: 'text', order: 0, content: '<p>Hello</p>' }],
+                        components: [{ id: 'c2', type: 'text', order: 0, content: '<p>Hello</p>', properties: {} }],
                     },
                 ],
             };
@@ -1839,7 +1837,7 @@ describe('BaseExporter', () => {
 
             const processed = await exporter.testPreprocessPagesForExport(pages);
 
-            const images = processed[0].blocks[0].components[0].properties.images;
+            const images = processed[0].blocks[0].components[0].properties.images as Array<{ img: string }>;
             expect(images[0].img).toBe('{{context_path}}/content/resources/gallery/img1.jpg');
             expect(images[1].img).toBe('{{context_path}}/content/resources/gallery/img2.png');
         });
@@ -1936,12 +1934,13 @@ describe('BaseExporter', () => {
                             name: 'Block',
                             order: 0,
                             components: [
+                                // properties deliberately missing
                                 {
                                     id: 'comp-1',
                                     type: 'text',
                                     order: 0,
                                     content: '<p>No properties</p>',
-                                },
+                                } as ExportComponent,
                             ],
                         },
                     ],
@@ -2140,6 +2139,8 @@ describe('resolveMaterialIconDataUris', () => {
         {
             id: 'p1',
             title: 'Page',
+            parentId: null,
+            order: 0,
             blocks: iconNames.map((iconName, i) => ({
                 id: `b${i}`,
                 name: 'Block',
@@ -2147,7 +2148,7 @@ describe('resolveMaterialIconDataUris', () => {
                 components: [],
                 iconName,
             })),
-        } as ExportPage,
+        },
     ];
 
     const spriteResources = (): ResourceProvider => {

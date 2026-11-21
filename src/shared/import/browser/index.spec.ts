@@ -31,12 +31,18 @@ async function buildElpx(payloadBytes: number, entryName = 'content/resources/vi
 }
 
 function makeFile(bytes: Uint8Array): File {
-    return new File([bytes], 'project.elpx');
+    return new File([new Uint8Array(bytes)], 'project.elpx');
 }
 
-function makeManager(): { manager: { getDoc: () => Y.Doc; projectId: string }; ydoc: Y.Doc } {
+function makeManager(): { manager: Parameters<typeof createBrowserImporter>[0]; ydoc: Y.Doc } {
     const ydoc = new Y.Doc();
-    return { manager: { getDoc: () => ydoc, projectId: 'test' }, ydoc };
+    const manager = {
+        getDoc: () => ydoc,
+        getNavigation: () => ydoc.getArray('navigation'),
+        getMetadata: () => ydoc.getMap('metadata'),
+        projectId: 'test',
+    };
+    return { manager, ydoc };
 }
 
 describe('BrowserElpxImporter runtime policy', () => {
@@ -71,7 +77,7 @@ describe('BrowserElpxImporter runtime policy', () => {
         const { manager, ydoc } = makeManager();
         const importer = createBrowserImporter(manager, null);
 
-        let confirmInfo: { entryName: string; entryBytes: number } | null = null;
+        let confirmInfo = null as { entryName: string; entryBytes: number } | null; // set in the callback
         let beforeImportRan = false;
         const result = await importer.importFromFile(makeFile(zip), {
             zipLimits: { maxEntryBytes: 4 * MiB, maxTotalBytes: 8 * MiB },

@@ -13,6 +13,7 @@ import type {
     ResourceProvider,
     AssetProvider,
     ZipProvider,
+    ExportAsset,
 } from '../interfaces';
 
 // Mock document adapter
@@ -44,7 +45,7 @@ class MockDocument implements ExportDocument {
 
 // Mock resource provider
 class MockResourceProvider implements ResourceProvider {
-    async fetchTheme(_name: string): Promise<Map<string, Buffer>> {
+    async fetchTheme(_name: string): Promise<Map<string, Uint8Array>> {
         const files = new Map<string, Buffer>();
         // PageExporter uses original names (style.css, style.js)
         files.set('style.css', Buffer.from('/* theme css */'));
@@ -52,17 +53,17 @@ class MockResourceProvider implements ResourceProvider {
         return files;
     }
 
-    async fetchIdeviceResources(_type: string): Promise<Map<string, Buffer>> {
+    async fetchIdeviceResources(_type: string): Promise<Map<string, Uint8Array>> {
         return new Map();
     }
 
-    async fetchBaseLibraries(): Promise<Map<string, Buffer>> {
+    async fetchBaseLibraries(): Promise<Map<string, Uint8Array>> {
         const files = new Map<string, Buffer>();
         files.set('jquery/jquery.min.js', Buffer.from('// jquery'));
         return files;
     }
 
-    async fetchLibraryFiles(_files: string[]): Promise<Map<string, Buffer>> {
+    async fetchLibraryFiles(_files: string[]): Promise<Map<string, Uint8Array>> {
         const files = new Map<string, Buffer>();
         if (_files.includes('material-icons/material-icons.svg')) {
             files.set(
@@ -82,7 +83,7 @@ class MockResourceProvider implements ResourceProvider {
         return files;
     }
 
-    async fetchScormFiles(_version: string): Promise<Map<string, Buffer>> {
+    async fetchScormFiles(_version: string): Promise<Map<string, Uint8Array>> {
         return new Map();
     }
 
@@ -90,15 +91,15 @@ class MockResourceProvider implements ResourceProvider {
         return ideviceType.toLowerCase().replace(/idevice$/i, '');
     }
 
-    async fetchExeLogo(): Promise<Buffer | null> {
+    async fetchExeLogo(): Promise<Uint8Array | null> {
         return null;
     }
 
-    async fetchGlobalFontFiles(_font: string): Promise<Map<string, Buffer> | null> {
+    async fetchGlobalFontFiles(_font: string): Promise<Map<string, Uint8Array> | null> {
         return null;
     }
 
-    async fetchContentCss(): Promise<Map<string, Buffer>> {
+    async fetchContentCss(): Promise<Map<string, Uint8Array>> {
         const files = new Map<string, Buffer>();
         files.set('content/css/base.css', Buffer.from('/* base css */'));
         return files;
@@ -121,15 +122,7 @@ class MockAssetProvider implements AssetProvider {
         return null;
     }
 
-    async getAllAssets(): Promise<
-        Array<{
-            id: string;
-            filename: string;
-            originalPath: string;
-            mime: string;
-            data: Buffer;
-        }>
-    > {
+    async getAllAssets(): Promise<ExportAsset[]> {
         return [];
     }
 
@@ -140,7 +133,7 @@ class MockAssetProvider implements AssetProvider {
 
 // Mock zip provider
 class MockZipProvider implements ZipProvider {
-    files = new Map<string, string | Buffer>();
+    files = new Map<string, string | Uint8Array>();
 
     addFile(path: string, content: string | Buffer): void {
         this.files.set(path, content);
@@ -1087,6 +1080,7 @@ const internalLinkPages: ExportPage[] = [
                         order: 0,
                         content:
                             '<p>Go to <a href="exe-node:page-2">About</a> and <a href="exe-node:page-2#sec">a section</a>.</p>',
+                        properties: {},
                     },
                 ],
             },
@@ -1108,6 +1102,7 @@ const internalLinkPages: ExportPage[] = [
                         type: 'FreeTextIdevice',
                         order: 0,
                         content: '<p>Back to <a href="exe-node:page-1">Home</a>.</p>',
+                        properties: {},
                     },
                 ],
             },

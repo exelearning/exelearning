@@ -51,7 +51,10 @@ describe('print-to-pdf', () => {
 
     describe('savePrintPreviewAsPdf', () => {
         const deps = (overrides: Record<string, unknown> = {}) => ({
-            showSaveDialog: mock(async () => ({ canceled: false, filePath: 'C:/docs/Unidad.pdf' })),
+            showSaveDialog: mock(async (_options: { defaultPath: string }) => ({
+                canceled: false,
+                filePath: 'C:/docs/Unidad.pdf',
+            })),
             writeFile: mock(async () => {}),
             defaultDir: 'C:/docs',
             countryCode: 'ES',

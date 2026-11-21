@@ -5,15 +5,9 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'bun:test';
 import { loadIdeviceConfigs, resetIdeviceConfigCache } from '../../../services/idevice-config';
 import { Scorm2004Exporter } from './Scorm2004Exporter';
-import { zipSync, unzipSync, strToU8 } from 'fflate';
-import type {
-    ExportDocument,
-    ExportMetadata,
-    ExportPage,
-    ResourceProvider,
-    AssetProvider,
-    ZipProvider,
-} from '../interfaces';
+import { unzipSync } from 'fflate';
+import type { ExportDocument, ExportMetadata, ExportPage, ResourceProvider } from '../interfaces';
+import { MockAssetProvider, MockZipProvider } from '../../../../test/helpers/export-providers';
 
 // Mock document adapter
 class MockDocument implements ExportDocument {
@@ -52,7 +46,7 @@ class MockDocumentWithSource extends MockDocument {
 
 // Mock resource provider
 class MockResourceProvider implements ResourceProvider {
-    async fetchTheme(_name: string): Promise<Map<string, Buffer>> {
+    async fetchTheme(_name: string): Promise<Map<string, Uint8Array>> {
         const files = new Map<string, Buffer>();
         // Theme files keep their original names (style.css, style.js)
         files.set('style.css', Buffer.from('/* theme css */'));
@@ -60,17 +54,17 @@ class MockResourceProvider implements ResourceProvider {
         return files;
     }
 
-    async fetchIdeviceResources(_type: string): Promise<Map<string, Buffer>> {
+    async fetchIdeviceResources(_type: string): Promise<Map<string, Uint8Array>> {
         return new Map();
     }
 
-    async fetchBaseLibraries(): Promise<Map<string, Buffer>> {
+    async fetchBaseLibraries(): Promise<Map<string, Uint8Array>> {
         const files = new Map<string, Buffer>();
         files.set('jquery/jquery.min.js', Buffer.from('// jquery'));
         return files;
     }
 
-    async fetchLibraryFiles(_files: string[]): Promise<Map<string, Buffer>> {
+    async fetchLibraryFiles(_files: string[]): Promise<Map<string, Uint8Array>> {
         const files = new Map<string, Buffer>();
         if (_files.includes('material-icons/material-icons.svg')) {
             files.set(
@@ -90,7 +84,7 @@ class MockResourceProvider implements ResourceProvider {
         return files;
     }
 
-    async fetchScormFiles(_version: string): Promise<Map<string, Buffer>> {
+    async fetchScormFiles(_version: string): Promise<Map<string, Uint8Array>> {
         const files = new Map<string, Buffer>();
         files.set('SCORM_API_wrapper.js', Buffer.from('// SCORM 2004 API'));
         files.set('SCOFunctions.js', Buffer.from('// SCO 2004 Functions'));
@@ -101,11 +95,11 @@ class MockResourceProvider implements ResourceProvider {
         return ideviceType.toLowerCase().replace(/idevice$/i, '');
     }
 
-    async fetchExeLogo(): Promise<Buffer | null> {
+    async fetchExeLogo(): Promise<Uint8Array | null> {
         return null;
     }
 
-    async fetchContentCss(): Promise<Map<string, Buffer>> {
+    async fetchContentCss(): Promise<Map<string, Uint8Array>> {
         const files = new Map<string, Buffer>();
         files.set('content/css/base.css', Buffer.from('/* base css */'));
         return files;
@@ -118,55 +112,9 @@ class MockResourceProvider implements ResourceProvider {
     async fetchI18nTranslations(_language: string): Promise<Map<string, string>> {
         return new Map();
     }
-}
 
-// Mock asset provider
-class MockAssetProvider implements AssetProvider {
-    async getAsset(_path: string): Promise<Buffer | null> {
+    async fetchGlobalFontFiles(_fontName: string): Promise<Map<string, Uint8Array> | null> {
         return null;
-    }
-
-    async getAllAssets(): Promise<
-        Array<{
-            id: string;
-            filename: string;
-            path: string;
-            mimeType: string;
-            data: Buffer;
-        }>
-    > {
-        return [];
-    }
-}
-
-// Mock zip provider
-class MockZipProvider implements ZipProvider {
-    files = new Map<string, string | Buffer>();
-
-    addFile(path: string, content: string | Buffer): void {
-        this.files.set(path, content);
-    }
-
-    hasFile(path: string): boolean {
-        return this.files.has(path);
-    }
-
-    getFilePaths(): string[] {
-        return Array.from(this.files.keys());
-    }
-
-    async generateAsync(): Promise<Buffer> {
-        // Create actual ZIP for realistic testing using fflate
-        const zipData: Record<string, Uint8Array> = {};
-        for (const [path, content] of this.files) {
-            if (typeof content === 'string') {
-                zipData[path] = strToU8(content);
-            } else {
-                zipData[path] = new Uint8Array(content);
-            }
-        }
-        const zipped = zipSync(zipData);
-        return Buffer.from(zipped);
     }
 }
 
@@ -187,7 +135,8 @@ const samplePages: ExportPage[] = [
                         id: 'comp-1',
                         type: 'FreeTextIdevice',
                         order: 0,
-                        htmlContent: '<p>SCORM 2004 Introduction</p>',
+                        content: '<p>SCORM 2004 Introduction</p>',
+                        properties: {},
                     },
                 ],
             },
@@ -208,7 +157,8 @@ const samplePages: ExportPage[] = [
                         id: 'comp-2',
                         type: 'FreeTextIdevice',
                         order: 0,
-                        htmlContent: '<p>Module content</p>',
+                        content: '<p>Module content</p>',
+                        properties: {},
                     },
                 ],
             },

@@ -12,6 +12,7 @@
  */
 
 import type { AssetHandler, AssetMetadata, AssetProgressCallback, Logger } from '../interfaces';
+import { blobFromBytes } from '../../utils/blob';
 
 /**
  * Browser AssetManager interface (from public/app/yjs/AssetManager.js)
@@ -94,8 +95,7 @@ export class BrowserAssetHandler implements AssetHandler {
     async storeAsset(id: string, data: Uint8Array, metadata: AssetMetadata): Promise<string> {
         await this.ensureInitialized();
 
-        // Convert Uint8Array to Blob
-        const blob = new Blob([data], { type: metadata.mimeType });
+        const blob = blobFromBytes(data, metadata.mimeType);
 
         // Store blob in IndexedDB
         await this.assetManager.storeBlob(id, blob);

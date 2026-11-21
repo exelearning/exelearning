@@ -150,8 +150,8 @@ describe('External URL Preservation - Integration Tests', () => {
             for (const page of structure.pages) {
                 if (page.components) {
                     for (const component of page.components) {
-                        // Try different content keys used by different parser modes
-                        const content = component.content || component.htmlContent || component.htmlView || '';
+                        // The parser puts the component HTML in `content` (taken from htmlView)
+                        const content = typeof component.content === 'string' ? component.content : '';
                         if (content.includes('<iframe') && content.includes('cedec.intef.es')) {
                             foundIframeComponent = true;
                             // Verify the external URL is intact in the parsed content

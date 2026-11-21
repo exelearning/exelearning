@@ -36,9 +36,6 @@ const createMockDocumentWithIdeviceProperties = (structureProperties: ExportComp
         license: 'CC-BY-SA',
         keywords: '',
         theme: 'default',
-        version: '4.0',
-        created: new Date().toISOString(),
-        modified: new Date().toISOString(),
     }),
     getNavigation: (): ExportPage[] => [
         {
@@ -78,9 +75,6 @@ const createMockDocumentWithMultipleIdevices = (): ExportDocument => ({
         license: 'CC-BY-SA',
         keywords: '',
         theme: 'default',
-        version: '4.0',
-        created: new Date().toISOString(),
-        modified: new Date().toISOString(),
     }),
     getNavigation: (): ExportPage[] => [
         {
@@ -151,7 +145,7 @@ const createMockAssetProvider = (): AssetProvider => ({
 });
 
 // Helper to extract HTML from preview files
-const getHtmlFromPreviewFiles = (files: Map<string, Uint8Array | string>, filename: string): string => {
+const getHtmlFromPreviewFiles = (files: Map<string, ArrayBuffer | Uint8Array | string>, filename: string): string => {
     const content = files.get(filename);
     if (!content) return '';
     if (typeof content === 'string') return content;
