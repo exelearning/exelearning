@@ -16,7 +16,9 @@ import { projectsRoutes } from './projects';
 import { createAuthRoutes } from '../../auth';
 import { findUserByEmail, findUserById, createUser } from '../../../db/queries';
 import { configureDocManager, resetDocManager, configureBroadcaster, resetBroadcaster } from '../../../yjs';
+import { noopDocManagerRuntime } from '../../../../test/helpers/doc-manager-fakes';
 import * as Y from 'yjs';
+import type { Kysely } from 'kysely';
 
 let originalEnv: Record<string, string | undefined>;
 
@@ -87,8 +89,8 @@ describe('Projects API v1', () => {
         // Run migrations on the global db. createProject writes public_view_enabled,
         // which the initial schema does not have.
         await up(db);
-        await up008(db);
-        await up009(db);
+        await up008(db as unknown as Kysely<unknown>);
+        await up009(db as unknown as Kysely<unknown>);
 
         // Mock Y.Doc for ensureDocument
         mockYDoc = new Y.Doc();
@@ -116,29 +118,7 @@ describe('Projects API v1', () => {
                 saveFullState: async () => {},
                 loadDocument: async () => Y.encodeStateAsUpdate(mockYDoc),
             },
-            cache: {
-                getDocument: () => undefined,
-                createEntry: (uuid, projectId, ydoc) => ({
-                    projectUuid: uuid,
-                    projectId,
-                    ydoc,
-                    isDirty: false,
-                    lastAccessedAt: Date.now(),
-                    loadedAt: Date.now(),
-                }),
-                markDirty: () => {},
-                markClean: () => {},
-                removeDocument: () => false,
-                hasDocument: () => false,
-                getStats: () => ({ size: 0, maxSize: 50, entries: [] }),
-            },
-            lock: {
-                acquireLock: async () => () => {},
-                getStats: () => ({ activeLocks: 0, waitingCount: 0 }),
-            },
-            broadcaster: {
-                broadcastUpdate: () => true,
-            },
+            ...noopDocManagerRuntime(),
         });
 
         // Configure broadcaster to use mock room manager

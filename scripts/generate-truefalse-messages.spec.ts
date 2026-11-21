@@ -185,6 +185,6 @@ describe('committed catalogue', () => {
             langs,
         );
 
-        expect(TRUE_FALSE_MESSAGE_TRANSLATIONS).toEqual(fromCatalogues);
+        expect(fromCatalogues).toEqual(TRUE_FALSE_MESSAGE_TRANSLATIONS);
     });
 });

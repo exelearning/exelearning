@@ -47,7 +47,7 @@ describe('Legacy True/False iDevice language (issue #2252)', () => {
 
         expect(idevice).toBeDefined();
 
-        const msgs = (idevice as { properties: { msgs: Record<string, string> } }).properties.msgs;
+        const msgs = idevice?.properties?.msgs as Record<string, string>;
         expect(msgs.msgTrue).toBe('Verdadero');
         expect(msgs.msgFalse).toBe('Falso');
         expect(msgs.msgSuggestion).toBe('Sugerencia');
@@ -61,8 +61,7 @@ describe('Legacy True/False iDevice language (issue #2252)', () => {
             .flatMap(page => page.blocks.flatMap(block => block.idevices))
             .find(item => item.type === 'trueorfalse');
 
-        const questions = (idevice as { properties: { questionsGame: { question: string; suggestion: string }[] } })
-            .properties.questionsGame;
+        const questions = idevice?.properties?.questionsGame as { question: string; suggestion: string }[];
 
         expect(questions).toHaveLength(1);
         expect(questions[0].question).toContain('El protón es una partícula elemental.');

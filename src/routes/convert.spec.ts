@@ -13,13 +13,14 @@ import type { Kysely } from 'kysely';
 import { zipSync, strToU8 } from 'fflate';
 
 import { createConvertRoutes, type ConvertDependencies } from './convert';
-import type { Database } from '../db/types';
+import type { Database, User } from '../db/types';
 import { getJwtSecret } from '../utils/jwt-secret';
+import { blobFromBytes } from '../shared/utils/blob';
 
 const testDir = path.join(process.cwd(), 'test', 'temp', 'convert-test');
 
 // Sample test user
-const testUser = {
+const testUser: User = {
     id: 1,
     email: 'test@exelearning.net',
     user_id: 'test-user',
@@ -28,8 +29,10 @@ const testUser = {
     is_active: 1,
     is_lopd_accepted: 1,
     password: 'hashed',
-    created_at: '2025-01-01 00:00:00',
-    updated_at: '2025-01-01 00:00:00',
+    external_identifier: null,
+    api_token: null,
+    created_at: Date.parse('2025-01-01T00:00:00Z'),
+    updated_at: Date.parse('2025-01-01T00:00:00Z'),
 };
 
 // Resolve the same process-local/configured secret used by the route.
@@ -39,7 +42,7 @@ const JWT_SECRET = getJwtSecret();
 function createMockQueries() {
     return {
         findUserById: async (_db: any, id: number) => {
-            return id === 1 ? testUser : null;
+            return id === 1 ? testUser : undefined;
         },
     };
 }
@@ -106,7 +109,7 @@ function createMockDependencies(): ConvertDependencies {
 // Generate test JWT token
 async function generateToken(userId: number): Promise<string> {
     const payload = {
-        sub: userId,
+        sub: String(userId),
         email: testUser.email,
         roles: ['ROLE_USER'],
         isGuest: false,
@@ -123,7 +126,7 @@ async function generateToken(userId: number): Promise<string> {
 }
 
 describe('Convert Routes', () => {
-    let app: Elysia;
+    let app: Pick<Elysia, 'handle'>;
     let mockDeps: ConvertDependencies;
     let authToken: string;
 
@@ -206,7 +209,7 @@ describe('Convert Routes', () => {
         it('should require authentication', async () => {
             const elpBuffer = await createTestElpBuffer();
             const formData = new FormData();
-            formData.append('file', new Blob([elpBuffer], { type: 'application/zip' }), 'test.elp');
+            formData.append('file', blobFromBytes(elpBuffer, 'application/zip'), 'test.elp');
 
             const res = await app.handle(
                 new Request('http://localhost/api/convert/elp', {
@@ -236,10 +239,28 @@ describe('Convert Routes', () => {
             expect(body.code).toBe('MISSING_FILE');
         });
 
+        it('should reject a file field that is not a file, on both convert routes', async () => {
+            for (const url of ['/api/convert/elp', '/api/convert/export/html5']) {
+                const formData = new FormData();
+                formData.append('file', 'not a file');
+
+                const res = await app.handle(
+                    new Request(`http://localhost${url}`, {
+                        method: 'POST',
+                        headers: { Authorization: `Bearer ${authToken}` },
+                        body: formData,
+                    }),
+                );
+
+                // The body schema rejects it; the app's global onError answers 400.
+                expect(res.status).toBe(422);
+            }
+        });
+
         it('should convert ELP file and return metadata', async () => {
             const elpBuffer = await createTestElpBuffer();
             const formData = new FormData();
-            formData.append('file', new Blob([elpBuffer], { type: 'application/zip' }), 'test.elp');
+            formData.append('file', blobFromBytes(elpBuffer, 'application/zip'), 'test.elp');
 
             const res = await app.handle(
                 new Request('http://localhost/api/convert/elp', {
@@ -258,7 +279,7 @@ describe('Convert Routes', () => {
         it('should return file directly when download=1 is set', async () => {
             const elpBuffer = await createTestElpBuffer();
             const formData = new FormData();
-            formData.append('file', new Blob([elpBuffer], { type: 'application/zip' }), 'test.elp');
+            formData.append('file', blobFromBytes(elpBuffer, 'application/zip'), 'test.elp');
 
             const res = await app.handle(
                 new Request('http://localhost/api/convert/elp?download=1', {
@@ -283,7 +304,7 @@ describe('Convert Routes', () => {
         it('should require authentication', async () => {
             const elpBuffer = await createTestElpBuffer();
             const formData = new FormData();
-            formData.append('file', new Blob([elpBuffer], { type: 'application/zip' }), 'test.elp');
+            formData.append('file', blobFromBytes(elpBuffer, 'application/zip'), 'test.elp');
 
             const res = await app.handle(
                 new Request('http://localhost/api/convert/export/html5', {
@@ -298,7 +319,7 @@ describe('Convert Routes', () => {
         it('should return error for invalid format', async () => {
             const elpBuffer = await createTestElpBuffer();
             const formData = new FormData();
-            formData.append('file', new Blob([elpBuffer], { type: 'application/zip' }), 'test.elp');
+            formData.append('file', blobFromBytes(elpBuffer, 'application/zip'), 'test.elp');
 
             const res = await app.handle(
                 new Request('http://localhost/api/convert/export/invalid-format', {
@@ -337,7 +358,7 @@ describe('Convert Routes', () => {
         it('should accept html5 format', async () => {
             const elpBuffer = await createTestElpBuffer();
             const formData = new FormData();
-            formData.append('file', new Blob([elpBuffer], { type: 'application/zip' }), 'test.elp');
+            formData.append('file', blobFromBytes(elpBuffer, 'application/zip'), 'test.elp');
 
             const res = await app.handle(
                 new Request('http://localhost/api/convert/export/html5', {
@@ -356,7 +377,7 @@ describe('Convert Routes', () => {
         it('should accept scorm12 format', async () => {
             const elpBuffer = await createTestElpBuffer();
             const formData = new FormData();
-            formData.append('file', new Blob([elpBuffer], { type: 'application/zip' }), 'test.elp');
+            formData.append('file', blobFromBytes(elpBuffer, 'application/zip'), 'test.elp');
 
             const res = await app.handle(
                 new Request('http://localhost/api/convert/export/scorm12', {
@@ -374,7 +395,7 @@ describe('Convert Routes', () => {
         it('should accept epub3 format', async () => {
             const elpBuffer = await createTestElpBuffer();
             const formData = new FormData();
-            formData.append('file', new Blob([elpBuffer], { type: 'application/zip' }), 'test.elp');
+            formData.append('file', blobFromBytes(elpBuffer, 'application/zip'), 'test.elp');
 
             const res = await app.handle(
                 new Request('http://localhost/api/convert/export/epub3', {
@@ -392,7 +413,7 @@ describe('Convert Routes', () => {
         it('should accept elpx format', async () => {
             const elpBuffer = await createTestElpBuffer();
             const formData = new FormData();
-            formData.append('file', new Blob([elpBuffer], { type: 'application/zip' }), 'test.elp');
+            formData.append('file', blobFromBytes(elpBuffer, 'application/zip'), 'test.elp');
 
             const res = await app.handle(
                 new Request('http://localhost/api/convert/export/elpx', {
@@ -410,7 +431,7 @@ describe('Convert Routes', () => {
         it('should return file directly with download=1 query param', async () => {
             const elpBuffer = await createTestElpBuffer();
             const formData = new FormData();
-            formData.append('file', new Blob([elpBuffer], { type: 'application/zip' }), 'test.elp');
+            formData.append('file', blobFromBytes(elpBuffer, 'application/zip'), 'test.elp');
 
             const res = await app.handle(
                 new Request('http://localhost/api/convert/export/html5?download=1', {
@@ -435,7 +456,7 @@ describe('Convert Routes', () => {
         it('should accept html5-sp (single page) format', async () => {
             const elpBuffer = await createTestElpBuffer();
             const formData = new FormData();
-            formData.append('file', new Blob([elpBuffer], { type: 'application/zip' }), 'test.elp');
+            formData.append('file', blobFromBytes(elpBuffer, 'application/zip'), 'test.elp');
 
             const res = await app.handle(
                 new Request('http://localhost/api/convert/export/html5-sp', {
@@ -453,7 +474,7 @@ describe('Convert Routes', () => {
         it('should accept scorm2004 format', async () => {
             const elpBuffer = await createTestElpBuffer();
             const formData = new FormData();
-            formData.append('file', new Blob([elpBuffer], { type: 'application/zip' }), 'test.elp');
+            formData.append('file', blobFromBytes(elpBuffer, 'application/zip'), 'test.elp');
 
             const res = await app.handle(
                 new Request('http://localhost/api/convert/export/scorm2004', {
@@ -471,7 +492,7 @@ describe('Convert Routes', () => {
         it('should accept ims format', async () => {
             const elpBuffer = await createTestElpBuffer();
             const formData = new FormData();
-            formData.append('file', new Blob([elpBuffer], { type: 'application/zip' }), 'test.elp');
+            formData.append('file', blobFromBytes(elpBuffer, 'application/zip'), 'test.elp');
 
             const res = await app.handle(
                 new Request('http://localhost/api/convert/export/ims', {
@@ -489,7 +510,7 @@ describe('Convert Routes', () => {
         it('should accept elp format (legacy)', async () => {
             const elpBuffer = await createTestElpBuffer();
             const formData = new FormData();
-            formData.append('file', new Blob([elpBuffer], { type: 'application/zip' }), 'test.elp');
+            formData.append('file', blobFromBytes(elpBuffer, 'application/zip'), 'test.elp');
 
             const res = await app.handle(
                 new Request('http://localhost/api/convert/export/elp', {
@@ -556,7 +577,7 @@ describe('Convert Routes', () => {
             // base.css is already created in beforeEach at the correct path
             const elpBuffer = await createTestElpBuffer();
             const formData = new FormData();
-            formData.append('file', new Blob([elpBuffer], { type: 'application/zip' }), 'test.elp');
+            formData.append('file', blobFromBytes(elpBuffer, 'application/zip'), 'test.elp');
 
             const res = await app.handle(
                 new Request('http://localhost/api/convert/elp', {
@@ -580,7 +601,7 @@ describe('Convert Routes', () => {
         it('should not leak extract-* temp directories after a conversion', async () => {
             const elpBuffer = await createTestElpBuffer();
             const formData = new FormData();
-            formData.append('file', new Blob([elpBuffer], { type: 'application/zip' }), 'test.elp');
+            formData.append('file', blobFromBytes(elpBuffer, 'application/zip'), 'test.elp');
 
             const res = await app.handle(
                 new Request('http://localhost/api/convert/elp', {
@@ -602,7 +623,7 @@ describe('Convert Routes', () => {
             // base.css is already created in beforeEach at the correct path
             const elpBuffer = await createTestElpBuffer();
             const formData = new FormData();
-            formData.append('file', new Blob([elpBuffer], { type: 'application/zip' }), 'test.elp');
+            formData.append('file', blobFromBytes(elpBuffer, 'application/zip'), 'test.elp');
 
             const res = await app.handle(
                 new Request('http://localhost/api/convert/elp?download=1', {
@@ -628,7 +649,7 @@ describe('Convert Routes', () => {
             // base.css is already created in beforeEach at the correct path
             const elpBuffer = await createTestElpBuffer();
             const formData = new FormData();
-            formData.append('file', new Blob([elpBuffer], { type: 'application/zip' }), 'test.elp');
+            formData.append('file', blobFromBytes(elpBuffer, 'application/zip'), 'test.elp');
 
             const res = await app.handle(
                 new Request('http://localhost/api/convert/export/elpx?download=1', {
@@ -654,7 +675,7 @@ describe('Convert Routes', () => {
             // base.css is already created in beforeEach at the correct path
             const elpBuffer = await createTestElpBuffer();
             const formData = new FormData();
-            formData.append('file', new Blob([elpBuffer], { type: 'application/zip' }), 'test.elp');
+            formData.append('file', blobFromBytes(elpBuffer, 'application/zip'), 'test.elp');
 
             const res = await app.handle(
                 new Request('http://localhost/api/convert/export/elpx', {
@@ -681,7 +702,7 @@ describe('Convert Routes', () => {
         it('should accept authentication via cookie', async () => {
             const elpBuffer = await createTestElpBuffer();
             const formData = new FormData();
-            formData.append('file', new Blob([elpBuffer], { type: 'application/zip' }), 'test.elp');
+            formData.append('file', blobFromBytes(elpBuffer, 'application/zip'), 'test.elp');
 
             const res = await app.handle(
                 new Request('http://localhost/api/convert/elp', {
@@ -700,7 +721,7 @@ describe('Convert Routes', () => {
         it('should reject invalid JWT token', async () => {
             const elpBuffer = await createTestElpBuffer();
             const formData = new FormData();
-            formData.append('file', new Blob([elpBuffer], { type: 'application/zip' }), 'test.elp');
+            formData.append('file', blobFromBytes(elpBuffer, 'application/zip'), 'test.elp');
 
             const res = await app.handle(
                 new Request('http://localhost/api/convert/elp', {
@@ -726,7 +747,7 @@ describe('Convert Routes', () => {
 
             const elpBuffer = await createTestElpBuffer();
             const formData = new FormData();
-            formData.append('file', new Blob([elpBuffer], { type: 'application/zip' }), 'test.elp');
+            formData.append('file', blobFromBytes(elpBuffer, 'application/zip'), 'test.elp');
 
             const res = await app.handle(
                 new Request('http://localhost/api/convert/elp', {
@@ -746,7 +767,7 @@ describe('Convert Routes', () => {
             // This tests line 275 - the catch block in derive
             const elpBuffer = await createTestElpBuffer();
             const formData = new FormData();
-            formData.append('file', new Blob([elpBuffer], { type: 'application/zip' }), 'test.elp');
+            formData.append('file', blobFromBytes(elpBuffer, 'application/zip'), 'test.elp');
 
             // Create a malformed but parseable token that will cause verify to fail
             // Using a token with wrong algorithm hint
@@ -769,7 +790,7 @@ describe('Convert Routes', () => {
         it('should reject user not found', async () => {
             // Create token for non-existent user (id 999)
             const secret = new TextEncoder().encode(JWT_SECRET);
-            const invalidToken = await new SignJWT({ sub: 999, email: 'nobody@test.com', roles: [] })
+            const invalidToken = await new SignJWT({ sub: '999', email: 'nobody@test.com', roles: [] })
                 .setProtectedHeader({ alg: 'HS256', typ: 'JWT' })
                 .setIssuedAt()
                 .setExpirationTime('1h')
@@ -777,7 +798,7 @@ describe('Convert Routes', () => {
 
             const elpBuffer = await createTestElpBuffer();
             const formData = new FormData();
-            formData.append('file', new Blob([elpBuffer], { type: 'application/zip' }), 'test.elp');
+            formData.append('file', blobFromBytes(elpBuffer, 'application/zip'), 'test.elp');
 
             const res = await app.handle(
                 new Request('http://localhost/api/convert/elp', {
@@ -812,7 +833,7 @@ describe('Convert Routes', () => {
 
             const elpBuffer = await createTestElpBuffer();
             const formData = new FormData();
-            formData.append('file', new Blob([elpBuffer], { type: 'application/zip' }), 'test.elp');
+            formData.append('file', blobFromBytes(elpBuffer, 'application/zip'), 'test.elp');
 
             const res = await brokenApp.handle(
                 new Request('http://localhost/api/convert/elp', {
@@ -846,7 +867,7 @@ describe('Convert Routes', () => {
 
             const elpBuffer = await createTestElpBuffer();
             const formData = new FormData();
-            formData.append('file', new Blob([elpBuffer], { type: 'application/zip' }), 'test.elp');
+            formData.append('file', blobFromBytes(elpBuffer, 'application/zip'), 'test.elp');
 
             const res = await brokenApp.handle(
                 new Request('http://localhost/api/convert/export/html5', {
@@ -980,7 +1001,7 @@ describe('Convert Routes', () => {
 
                 const elpBuffer = await createTestElpBuffer();
                 const formData = new FormData();
-                formData.append('file', new Blob([elpBuffer], { type: 'application/zip' }), traversalName);
+                formData.append('file', blobFromBytes(elpBuffer, 'application/zip'), traversalName);
 
                 await spiedApp.handle(
                     new Request(url, {

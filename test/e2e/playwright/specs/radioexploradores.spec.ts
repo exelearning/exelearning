@@ -30,7 +30,7 @@ async function getIdeviceDataFromYjs(page: Page, ideviceType: string) {
 
         // Search through navigation -> pages -> blocks -> components
         const navigation = yDoc.getArray('navigation');
-        let comp = null;
+        let comp: any = null;
         let pageName = '';
 
         const searchInPage = (pageMap: any, depth: number): boolean => {

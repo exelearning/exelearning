@@ -2,7 +2,7 @@
  * Auth Routes for Elysia
  * Handles login, logout, session checks, and guest access
  */
-import { Elysia, t } from 'elysia';
+import { Elysia, t, type Static } from 'elysia';
 import { isProductionEnv } from '../utils/env';
 import { jwt } from '@elysiajs/jwt';
 import type { Kysely } from 'kysely';
@@ -20,7 +20,7 @@ import * as bcrypt from 'bcryptjs';
 import { isValidReturnUrl, getSafeRedirectUrl } from '../utils/redirect-validator.util';
 import { getBasePath, prefixPath } from '../utils/basepath.util';
 import { getPublicCallbackUrl, type ServerContext } from '../utils/proxy-url.util';
-import { castRequestBody, type LoginRequest, type GuestLoginRequest } from './types/request-payloads';
+import { castRequestBody } from './types/request-payloads';
 import { getAuthMethods, getSettingString, getDefaultQuotaMb } from '../services/app-settings';
 import { getPostLoginTarget } from '../services/maintenance';
 import { logActivity } from '../services/activity-logger';
@@ -158,6 +158,21 @@ export async function verifyUserPassword(
     const matches = await verifyPassword(password, hash);
     return Boolean(user) && matches;
 }
+
+// Form-login bodies. Every field is an optional string and the body itself is
+// optional: a real login form only ever sends strings, so these never reject it,
+// and a missing field still gets the handler's redirect with an error message.
+// They stop a JSON client from handing objects to the user lookup and bcrypt.
+const LoginBody = t.Optional(
+    t.Object({
+        _username: t.Optional(t.String()),
+        email: t.Optional(t.String()),
+        _password: t.Optional(t.String()),
+        password: t.Optional(t.String()),
+        returnUrl: t.Optional(t.String()),
+    }),
+);
+const GuestLoginBody = t.Optional(t.Object({ returnUrl: t.Optional(t.String()) }));
 
 /**
  * Factory function to create auth routes with dependency injection
@@ -393,103 +408,107 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
             // =====================================================
 
             // POST /login_check - Symfony-compatible form login
-            .post('/login_check', async ({ jwt, cookie, body, request }) => {
-                const typedBody = castRequestBody<LoginRequest>(body);
-                const email = typedBody?._username || typedBody?.email;
-                const password = typedBody?._password || typedBody?.password;
+            .post(
+                '/login_check',
+                async ({ jwt, cookie, body, request }) => {
+                    const typedBody = castRequestBody<Static<typeof LoginBody>>(body);
+                    const email = typedBody?._username || typedBody?.email;
+                    const password = typedBody?._password || typedBody?.password;
 
-                // Build base path from request URL
-                const url = new URL(request.url);
-                // Normalize basePath: strip trailing slash, treat '/' as empty
-                let basePath = (process.env.BASE_PATH || '').replace(/\/+$/, '');
-                if (basePath === '/') basePath = '';
-                const loginUrl = `${basePath}/login`;
+                    // Build base path from request URL
+                    const url = new URL(request.url);
+                    // Normalize basePath: strip trailing slash, treat '/' as empty
+                    let basePath = (process.env.BASE_PATH || '').replace(/\/+$/, '');
+                    if (basePath === '/') basePath = '';
+                    const loginUrl = `${basePath}/login`;
 
-                // Origin/Referer guard: this endpoint sets the auth cookie on
-                // form POST. SameSite=Lax cookies allow top-level form posts
-                // from any site, so without this check an attacker page could
-                // submit credentials and silently sign the visitor in as the
-                // attacker (session fixation). When an Origin or Referer is
-                // present, require it to match the request host.
-                const origin = request.headers.get('origin');
-                const referer = request.headers.get('referer');
-                const headerHost = origin || referer;
-                if (headerHost) {
-                    try {
-                        const headerUrl = new URL(headerHost);
-                        if (headerUrl.host !== url.host) {
+                    // Origin/Referer guard: this endpoint sets the auth cookie on
+                    // form POST. SameSite=Lax cookies allow top-level form posts
+                    // from any site, so without this check an attacker page could
+                    // submit credentials and silently sign the visitor in as the
+                    // attacker (session fixation). When an Origin or Referer is
+                    // present, require it to match the request host.
+                    const origin = request.headers.get('origin');
+                    const referer = request.headers.get('referer');
+                    const headerHost = origin || referer;
+                    if (headerHost) {
+                        try {
+                            const headerUrl = new URL(headerHost);
+                            if (headerUrl.host !== url.host) {
+                                return Response.redirect(
+                                    `${url.origin}${loginUrl}?error=${encodeURIComponent('Invalid request origin')}`,
+                                    302,
+                                );
+                            }
+                        } catch {
                             return Response.redirect(
                                 `${url.origin}${loginUrl}?error=${encodeURIComponent('Invalid request origin')}`,
                                 302,
                             );
                         }
-                    } catch {
+                    }
+
+                    if (!email || !password) {
+                        // Redirect back to login with error
                         return Response.redirect(
-                            `${url.origin}${loginUrl}?error=${encodeURIComponent('Invalid request origin')}`,
+                            `${url.origin}${loginUrl}?error=${encodeURIComponent('Email and password required')}`,
                             302,
                         );
                     }
-                }
 
-                if (!email || !password) {
-                    // Redirect back to login with error
-                    return Response.redirect(
-                        `${url.origin}${loginUrl}?error=${encodeURIComponent('Email and password required')}`,
-                        302,
-                    );
-                }
+                    const user = await findUserByEmail(db, email);
+                    // Always run one verifyPassword (see verifyUserPassword) so an
+                    // unknown email and a wrong password take the same time and
+                    // cannot be distinguished via response latency.
+                    const passwordValid = await verifyUserPassword(user, password);
+                    if (!user || !passwordValid) {
+                        // Redirect back to login with error
+                        return Response.redirect(
+                            `${url.origin}${loginUrl}?error=${encodeURIComponent('Invalid credentials')}`,
+                            302,
+                        );
+                    }
 
-                const user = await findUserByEmail(db, email);
-                // Always run one verifyPassword (see verifyUserPassword) so an
-                // unknown email and a wrong password take the same time and
-                // cannot be distinguished via response latency.
-                const passwordValid = await verifyUserPassword(user, password);
-                if (!user || !passwordValid) {
-                    // Redirect back to login with error
-                    return Response.redirect(
-                        `${url.origin}${loginUrl}?error=${encodeURIComponent('Invalid credentials')}`,
-                        302,
-                    );
-                }
+                    if (!user.is_active) {
+                        return Response.redirect(
+                            `${url.origin}${loginUrl}?error=${encodeURIComponent('Account deactivated')}`,
+                            302,
+                        );
+                    }
 
-                if (!user.is_active) {
-                    return Response.redirect(
-                        `${url.origin}${loginUrl}?error=${encodeURIComponent('Account deactivated')}`,
-                        302,
-                    );
-                }
+                    const payload: Omit<JwtPayload, 'iat' | 'exp'> = {
+                        sub: String(user.id),
+                        email: user.email,
+                        roles: parseRoles(user.roles),
+                        isGuest: false,
+                        authMethod: 'local',
+                        pwh: passwordFingerprint(user.password),
+                    };
 
-                const payload: Omit<JwtPayload, 'iat' | 'exp'> = {
-                    sub: String(user.id),
-                    email: user.email,
-                    roles: parseRoles(user.roles),
-                    isGuest: false,
-                    authMethod: 'local',
-                    pwh: passwordFingerprint(user.password),
-                };
+                    const token = await jwt.sign(payload);
 
-                const token = await jwt.sign(payload);
+                    cookie.auth.set({
+                        value: token,
+                        httpOnly: true,
+                        secure: isProductionEnv(),
+                        sameSite: 'lax',
+                        maxAge: 7 * 24 * 60 * 60,
+                        path: '/',
+                    });
 
-                cookie.auth.set({
-                    value: token,
-                    httpOnly: true,
-                    secure: isProductionEnv(),
-                    sameSite: 'lax',
-                    maxAge: 7 * 24 * 60 * 60,
-                    path: '/',
-                });
+                    logActivity(db, {
+                        eventType: 'auth.login',
+                        userId: user.id,
+                    });
 
-                logActivity(db, {
-                    eventType: 'auth.login',
-                    userId: user.id,
-                });
-
-                // Redirect to returnUrl if valid, otherwise to workarea (or /admin during maintenance)
-                const returnUrl = typedBody?.returnUrl;
-                const defaultTarget = await getPostLoginTarget(db, parseRoles(user.roles));
-                const targetUrl = getSafeRedirectUrl(returnUrl, defaultTarget);
-                return Response.redirect(targetUrl, 302);
-            })
+                    // Redirect to returnUrl if valid, otherwise to workarea (or /admin during maintenance)
+                    const returnUrl = typedBody?.returnUrl;
+                    const defaultTarget = await getPostLoginTarget(db, parseRoles(user.roles));
+                    const targetUrl = getSafeRedirectUrl(returnUrl, defaultTarget);
+                    return Response.redirect(targetUrl, 302);
+                },
+                { body: LoginBody },
+            )
 
             // GET /logout - Logout and redirect to login page (SSO-aware)
             .get('/logout', async ({ cookie, request, identity }) => {
@@ -1153,62 +1172,66 @@ export function createAuthRoutes(deps: AuthDependencies = defaultDeps) {
             })
 
             // POST /login/guest - Guest login
-            .post('/login/guest', async ({ jwt, cookie, set, body }) => {
-                const authMethods = await getAuthMethods(db, process.env.APP_AUTH_METHODS || 'password,guest');
-                if (!authMethods.includes('guest')) {
-                    set.status = 403;
-                    return { error: 'Forbidden', message: 'Guest login is not enabled' };
-                }
+            .post(
+                '/login/guest',
+                async ({ jwt, cookie, set, body }) => {
+                    const authMethods = await getAuthMethods(db, process.env.APP_AUTH_METHODS || 'password,guest');
+                    if (!authMethods.includes('guest')) {
+                        set.status = 403;
+                        return { error: 'Forbidden', message: 'Guest login is not enabled' };
+                    }
 
-                const guestId = randomBytes(16).toString('hex');
-                const guestEmail = `${guestId.slice(0, 8)}@${TEMP_EMAIL_DOMAIN}`;
+                    const guestId = randomBytes(16).toString('hex');
+                    const guestEmail = `${guestId.slice(0, 8)}@${TEMP_EMAIL_DOMAIN}`;
 
-                let user = await findUserByEmail(db, guestEmail);
-                if (!user) {
-                    const hashedPassword = await bcrypt.hash(randomBytes(16).toString('hex'), 10);
-                    const defaultQuota = await getDefaultQuotaMb(db);
-                    user = await createUser(db, {
-                        email: guestEmail,
-                        // user_id: not set for guest users (null) - they're not SSO
-                        password: hashedPassword,
-                        roles: JSON.stringify(['ROLE_GUEST']),
-                        is_lopd_accepted: 1,
-                        quota_mb: defaultQuota,
-                        is_active: 1,
+                    let user = await findUserByEmail(db, guestEmail);
+                    if (!user) {
+                        const hashedPassword = await bcrypt.hash(randomBytes(16).toString('hex'), 10);
+                        const defaultQuota = await getDefaultQuotaMb(db);
+                        user = await createUser(db, {
+                            email: guestEmail,
+                            // user_id: not set for guest users (null) - they're not SSO
+                            password: hashedPassword,
+                            roles: JSON.stringify(['ROLE_GUEST']),
+                            is_lopd_accepted: 1,
+                            quota_mb: defaultQuota,
+                            is_active: 1,
+                        });
+                    }
+
+                    const payload: Omit<JwtPayload, 'iat' | 'exp'> = {
+                        sub: String(user.id),
+                        email: user.email,
+                        roles: parseRoles(user.roles),
+                        isGuest: true,
+                        authMethod: 'guest',
+                        pwh: passwordFingerprint(user.password),
+                    };
+
+                    const token = await jwt.sign(payload);
+
+                    cookie.auth.set({
+                        value: token,
+                        httpOnly: true,
+                        secure: isProductionEnv(),
+                        sameSite: 'lax',
+                        maxAge: 24 * 60 * 60,
+                        path: '/',
                     });
-                }
 
-                const payload: Omit<JwtPayload, 'iat' | 'exp'> = {
-                    sub: String(user.id),
-                    email: user.email,
-                    roles: parseRoles(user.roles),
-                    isGuest: true,
-                    authMethod: 'guest',
-                    pwh: passwordFingerprint(user.password),
-                };
+                    logActivity(db, {
+                        eventType: 'auth.login',
+                        userId: user.id,
+                    });
 
-                const token = await jwt.sign(payload);
-
-                cookie.auth.set({
-                    value: token,
-                    httpOnly: true,
-                    secure: isProductionEnv(),
-                    sameSite: 'lax',
-                    maxAge: 24 * 60 * 60,
-                    path: '/',
-                });
-
-                logActivity(db, {
-                    eventType: 'auth.login',
-                    userId: user.id,
-                });
-
-                // Redirect to returnUrl if valid, otherwise to workarea
-                const guestBody = castRequestBody<GuestLoginRequest>(body);
-                const returnUrl = guestBody?.returnUrl;
-                const targetUrl = getSafeRedirectUrl(returnUrl, '/workarea');
-                return Response.redirect(targetUrl, 302);
-            })
+                    // Redirect to returnUrl if valid, otherwise to workarea
+                    const guestBody = castRequestBody<Static<typeof GuestLoginBody>>(body);
+                    const returnUrl = guestBody?.returnUrl;
+                    const targetUrl = getSafeRedirectUrl(returnUrl, '/workarea');
+                    return Response.redirect(targetUrl, 302);
+                },
+                { body: GuestLoginBody },
+            )
     );
 }
 

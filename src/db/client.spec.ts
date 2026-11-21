@@ -79,8 +79,7 @@ describe('Kysely ORM Client', () => {
             const config = getDbConfig();
 
             expect(config).toBeDefined();
-            expect(config.dialect).toBe('sqlite');
-            expect(typeof config.sqlitePath).toBe('string');
+            expect(config).toMatchObject({ dialect: 'sqlite', sqlitePath: expect.any(String) });
         });
     });
 
@@ -112,7 +111,7 @@ describe('Kysely ORM Client', () => {
                 const info = getDbInfo();
 
                 // Password should be masked
-                expect(info.config.password).toBe('***');
+                expect(info.config).toMatchObject({ password: '***' });
             } finally {
                 // Restore original env
                 process.env.DB_DRIVER = originalDriver;
@@ -133,7 +132,7 @@ describe('Kysely ORM Client', () => {
                 const info = getDbInfo();
 
                 // Empty password should remain empty
-                expect(info.config.password).toBe('');
+                expect(info.config).toMatchObject({ password: '' });
             } finally {
                 // Restore original env
                 process.env.DB_DRIVER = originalDriver;

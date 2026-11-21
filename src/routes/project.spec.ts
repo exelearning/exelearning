@@ -19,11 +19,11 @@ import {
     type ProjectDependencies,
     type SessionManagerDeps,
     type FileHelperDeps,
-    type ZipDeps,
     type QueriesDeps,
     type UtilsDeps,
 } from './project';
 import type { Theme } from '../db/types';
+import type { Map as YMap } from 'yjs';
 
 const testDir = path.join(process.cwd(), 'test', 'temp', 'project-test');
 
@@ -40,7 +40,7 @@ async function createAuthToken(userId: number = 1): Promise<string> {
     });
     const tempApp = new Elysia().use(jwtInstance);
     return tempApp.decorator.jwt.sign({
-        sub: userId,
+        sub: String(userId),
         email: mockUsers.get(userId)?.email || 'test@test.com',
         roles: ['ROLE_USER'],
         isGuest: false,
@@ -88,23 +88,10 @@ function createMockSessionManager(): SessionManagerDeps {
 function createMockFileHelper(): FileHelperDeps {
     return {
         getOdeSessionTempDir: (sessionId: string) => path.join(testDir, 'tmp', sessionId),
-        getOdeSessionDistDir: (sessionId: string) => path.join(testDir, 'dist', sessionId),
-        createSessionDirectories: async (sessionId: string) => {
-            await fs.ensureDir(path.join(testDir, 'tmp', sessionId));
-            await fs.ensureDir(path.join(testDir, 'dist', sessionId));
-        },
-        cleanupSessionDirectories: async (sessionId: string) => {
-            await fs.remove(path.join(testDir, 'tmp', sessionId)).catch(() => {});
-            await fs.remove(path.join(testDir, 'dist', sessionId)).catch(() => {});
-        },
         getContentXmlPath: (sessionId: string) => path.join(testDir, 'tmp', sessionId, 'content.xml'),
         fileExists: async (filePath: string) => fs.pathExists(filePath),
         readFileAsString: async (filePath: string) => fs.readFile(filePath, 'utf-8'),
-        writeFile: async (filePath: string, content: string | Buffer) => {
-            await fs.ensureDir(path.dirname(filePath));
-            await fs.writeFile(filePath, content);
-        },
-        appendFile: async (filePath: string, content: Buffer) => {
+        appendFile: async (filePath: string, content: string | Buffer) => {
             await fs.ensureDir(path.dirname(filePath));
             await fs.appendFile(filePath, content);
         },
@@ -114,28 +101,6 @@ function createMockFileHelper(): FileHelperDeps {
         // relative paths resolve under testDir/assets/<shard>/<uuid>/.
         resolveAssetStoragePath: (storagePath: string) => resolveAssetStoragePathPure(testDir, storagePath),
         tryResolveAssetStoragePath: (storagePath: string) => tryResolveAssetStoragePathPure(testDir, storagePath),
-    };
-}
-
-/**
- * Create mock zip service dependency
- */
-function createMockZip(): ZipDeps {
-    return {
-        extractZip: async (_zipPath: string, destDir: string) => {
-            await fs.ensureDir(destDir);
-            await fs.writeFile(path.join(destDir, 'content.xml'), '<?xml version="1.0"?><ode></ode>');
-            return ['content.xml'];
-        },
-        extractZipFromBuffer: async (_buffer: Buffer, destDir: string) => {
-            await fs.ensureDir(destDir);
-            await fs.writeFile(path.join(destDir, 'content.xml'), '<?xml version="1.0"?><ode></ode>');
-            return ['content.xml'];
-        },
-        createZip: async (_srcDir: string, destPath: string) => {
-            await fs.writeFile(destPath, 'PK fake zip');
-        },
-        readFileFromZipAsString: async () => '<?xml version="1.0"?><ode></ode>',
     };
 }
 
@@ -336,8 +301,17 @@ function createMockQueries(): QueriesDeps {
             return { hasAccess: false, reason: 'Access denied' };
         },
         findSnapshotByProjectId: async (_db: any, projectId: number) => mockSnapshots.get(projectId),
-        upsertSnapshot: async (_db: any, projectId: number, data: Buffer, version: string) => {
-            mockSnapshots.set(projectId, { project_id: projectId, snapshot_data: data, version });
+        upsertSnapshot: async (_db: any, projectId: number, data: Uint8Array, version: string) => {
+            const row = {
+                id: projectId,
+                project_id: projectId,
+                snapshot_data: data,
+                snapshot_version: version,
+                created_at: Date.now(),
+                updated_at: Date.now(),
+            };
+            mockSnapshots.set(projectId, row);
+            return row;
         },
         findAllAssetsForProject: async (_db: any, projectId: number) => {
             return mockAssets.get(projectId) || [];
@@ -363,7 +337,7 @@ function createMockQueries(): QueriesDeps {
  */
 function createMockUtils(): UtilsDeps {
     return {
-        createGravatarUrl: (email: string) => `https://gravatar.com/avatar/${email}`,
+        createGravatarUrl: (email?: string | null) => `https://gravatar.com/avatar/${email}`,
     };
 }
 
@@ -377,7 +351,6 @@ function createMockDependencies(): ProjectDependencies {
         path: path,
         sessionManager: createMockSessionManager(),
         fileHelper: createMockFileHelper(),
-        zip: createMockZip(),
         queries: createMockQueries(),
         utils: createMockUtils(),
         settings: { isPublicViewFeatureEnabled: async () => publicViewFeatureEnabled },
@@ -388,7 +361,7 @@ function createMockDependencies(): ProjectDependencies {
 let publicViewFeatureEnabled = true;
 
 describe('Project Routes', () => {
-    let app: Elysia;
+    let app: Pick<Elysia, 'handle'>;
     let mockDeps: ProjectDependencies;
     const originalEnv = { ...process.env };
 
@@ -843,6 +816,72 @@ describe('Project Routes', () => {
         });
     });
 
+    describe('body schemas', () => {
+        const O = { a: 1 };
+        async function send(method: string, url: string, body: unknown) {
+            const token = await createAuthToken(1);
+            return app.handle(
+                new Request(`http://localhost${url}`, {
+                    method,
+                    headers: { 'Content-Type': 'application/json', Cookie: `auth=${token}` },
+                    body: JSON.stringify(body),
+                }),
+            );
+        }
+
+        // Measured before the schemas: each of these answered 500, crashed the SSE stream, stored a
+        // non-string title, or answered 200 with an internal error. The schema rejects them first;
+        // the app's global onError answers 400.
+        it.each([
+            ['POST', '/api/project/upload-chunk', { odeFilePart: 'x', odeFileName: O, odeSessionId: 's' }],
+            ['POST', '/api/project/upload-chunk', { odeFilePart: O, odeFileName: 'a.elp', odeSessionId: 's' }],
+            ['POST', '/api/project/create-quick', { title: O }],
+            ['PATCH', '/api/projects/uuid/probe-uuid/metadata', { title: O }],
+            ['POST', '/api/odes/current-users', { odeSessionId: O }],
+            ['POST', '/api/odes/check-before-leave', { odeSessionId: O }],
+            ['POST', '/api/odes/session/close', { odeSessionId: O }],
+            ['POST', '/api/ode-management/odes/session/brokenlinks', { idevices: O }],
+            ['POST', '/api/ode-management/odes/session/brokenlinks/extract', { idevices: [{ html: O }] }],
+            ['POST', '/api/ode-management/odes/session/brokenlinks/validate-stream', { links: O }],
+            ['POST', '/api/ode-management/odes/session/brokenlinks/validate-stream', { links: [{ url: O }] }],
+            ['POST', '/api/ode-management/odes/session/usedfiles', { idevices: [{ html: O }] }],
+            ['POST', '/api/nav-structure-management/nav-structures/duplicate', { navStructureId: O }],
+            ['PUT', '/api/nav-structure-management/nav-structures/reorder/save', { odeSessionId: O }],
+            ['PUT', '/api/pag-structure-management/pag-structures/reorder/save', { pageId: O }],
+            ['PUT', '/api/idevice-management/idevices/reorder/save', { blockId: O }],
+        ])('rejects a wrong-typed body on %s %s', async (method, url, body) => {
+            expect((await send(method, url, body)).status).toBe(422);
+        });
+
+        it('still accepts the link-check payloads the workarea sends', async () => {
+            const idevices = [
+                {
+                    html: '<a href="https://example.com">x</a>',
+                    pageName: 'P',
+                    blockName: 'B',
+                    ideviceType: 'text',
+                    order: 0,
+                },
+            ];
+            const assetMetadata = { 'abc-123': { filename: null, size: 0, mime: 'image/png' } };
+            const common = { csv: false, odeSessionId: 's1' };
+            const extract = await send('POST', '/api/ode-management/odes/session/brokenlinks/extract', {
+                ...common,
+                idevices,
+            });
+            expect(extract.status).toBe(200);
+            const { links } = await extract.json();
+            expect(links).toHaveLength(1);
+            const used = await send('POST', '/api/ode-management/odes/session/usedfiles', {
+                ...common,
+                resourceReport: true,
+                idevices,
+                assetMetadata,
+            });
+            expect(used.status).toBe(200);
+        });
+    });
+
     describe('POST /api/project/create-quick', () => {
         it('should require authentication', async () => {
             const res = await app.handle(
@@ -1024,7 +1063,7 @@ describe('Project Routes', () => {
             });
             const tempApp = new Elysia().use(jwtInstance);
             return tempApp.decorator.jwt.sign({
-                sub: userId,
+                sub: String(userId),
                 email: mockUsers.get(userId)?.email || 'test@test.com',
                 roles: ['ROLE_USER'],
                 isGuest: false,
@@ -1114,7 +1153,8 @@ describe('Project Routes', () => {
                     }),
                 );
 
-                expect(res.status).toBe(400);
+                // The body schema rejects it before the handler; the app's global onError answers 400.
+                expect(res.status).toBe(422);
             });
 
             it('should return 404 for non-existent project', async () => {
@@ -1379,7 +1419,8 @@ describe('Project Routes', () => {
                             'Content-Type': 'application/json',
                             'Cookie': `auth=${token}`,
                         },
-                        body: JSON.stringify({ email: 'collaborator@test.com' }),
+                        // The share modal sends `role` too; the schema must not reject it.
+                        body: JSON.stringify({ email: 'collaborator@test.com', role: 'editor' }),
                     }),
                 );
 
@@ -1441,7 +1482,22 @@ describe('Project Routes', () => {
                     }),
                 );
 
-                expect(res.status).toBe(400);
+                // The body schema rejects it before the handler; the app's global onError answers 400.
+                expect(res.status).toBe(422);
+            });
+
+            it('should reject a non-string email before it reaches the user lookup', async () => {
+                createTestProject(207, 1);
+                const token = await createAuthToken(1);
+
+                const res = await app.handle(
+                    new Request('http://localhost/api/projects/207/collaborators', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'Cookie': `auth=${token}` },
+                        body: JSON.stringify({ email: { $ne: '' } }),
+                    }),
+                );
+                expect(res.status).toBe(422);
             });
 
             it('should not add owner as collaborator', async () => {
@@ -1651,7 +1707,25 @@ describe('Project Routes', () => {
                     }),
                 );
 
-                expect(res.status).toBe(400);
+                // The body schema rejects it before the handler; the app's global onError answers 400.
+                expect(res.status).toBe(422);
+            });
+
+            it('should reject a newOwnerId that is not a positive integer', async () => {
+                createTestProject(406, 1);
+                const token = await createAuthToken(1);
+
+                // Numeric strings such as '2' are coerced by Elysia and reach the handler as numbers.
+                for (const newOwnerId of ['abc', 0, -1, 1.5]) {
+                    const res = await app.handle(
+                        new Request('http://localhost/api/projects/406/owner', {
+                            method: 'PATCH',
+                            headers: { 'Content-Type': 'application/json', 'Cookie': `auth=${token}` },
+                            body: JSON.stringify({ newOwnerId }),
+                        }),
+                    );
+                    expect(res.status).toBe(422);
+                }
             });
         });
     });
@@ -1665,7 +1739,7 @@ describe('Project Routes', () => {
             });
             const tempApp = new Elysia().use(jwtInstance);
             return tempApp.decorator.jwt.sign({
-                sub: userId,
+                sub: String(userId),
                 email: mockUsers.get(userId)?.email || 'test@test.com',
                 roles: ['ROLE_USER'],
                 isGuest: false,
@@ -1721,7 +1795,8 @@ describe('Project Routes', () => {
                     }),
                 );
 
-                expect(res.status).toBe(400);
+                // The body schema rejects it before the handler; the app's global onError answers 400.
+                expect(res.status).toBe(422);
             });
 
             it('should only update the specified project (regression test for stale UUID bug)', async () => {
@@ -1793,7 +1868,8 @@ describe('Project Routes', () => {
                     }),
                 );
 
-                expect(res.status).toBe(400);
+                // The body schema rejects it before the handler; the app's global onError answers 400.
+                expect(res.status).toBe(422);
             });
         });
 
@@ -1885,7 +1961,8 @@ describe('Project Routes', () => {
                     }),
                 );
 
-                expect(res.status).toBe(400);
+                // The body schema rejects it before the handler; the app's global onError answers 400.
+                expect(res.status).toBe(422);
             });
         });
 
@@ -1924,6 +2001,22 @@ describe('Project Routes', () => {
                 expect(res.status).toBe(200);
                 const body = await res.json();
                 expect(body.publicViewEnabled).toBe(false);
+            });
+
+            it('should answer 400, not 500, when the body is missing', async () => {
+                createTestProject(903, 'uuid-903', 1);
+                const token = await createAuthToken(1);
+
+                for (const url of ['/api/projects/903/public-view', '/api/projects/uuid/uuid-903/public-view']) {
+                    const res = await app.handle(
+                        new Request(`http://localhost${url}`, {
+                            method: 'PATCH',
+                            headers: { Cookie: `auth=${token}` },
+                        }),
+                    );
+                    expect(res.status).toBe(400);
+                    expect((await res.json()).responseMessage).toBe('INVALID_PAYLOAD');
+                }
             });
 
             it('should reject a non-boolean enabled value', async () => {
@@ -2419,11 +2512,11 @@ describe('Project Routes', () => {
             const newYdoc = new Y.Doc();
             Y.applyUpdate(newYdoc, new Uint8Array(newSnapshot.snapshot_data));
             const newPages = newYdoc.getMap('pages');
-            const newPage = newPages.get('page-1') as Y.Map<unknown>;
-            const newBlocks = newPage?.get('blocks') as Y.Map<unknown>;
-            const newBlock = newBlocks?.get('block-1') as Y.Map<unknown>;
-            const newIdevices = newBlock?.get('idevices') as Y.Map<unknown>;
-            const newIdevice = newIdevices?.get('idevice-456') as Y.Map<unknown>;
+            const newPage = newPages.get('page-1') as YMap<unknown>;
+            const newBlocks = newPage?.get('blocks') as YMap<unknown>;
+            const newBlock = newBlocks?.get('block-1') as YMap<unknown>;
+            const newIdevices = newBlock?.get('idevices') as YMap<unknown>;
+            const newIdevice = newIdevices?.get('idevice-456') as YMap<unknown>;
             const newInnerHtml = newIdevice?.get('innerHtml') as string;
 
             expect(newInnerHtml).toContain(newClientId);
@@ -2506,7 +2599,7 @@ describe('Project Routes', () => {
             });
             const tempApp = new Elysia().use(jwtInstance);
             return tempApp.decorator.jwt.sign({
-                sub: userId,
+                sub: String(userId),
                 email: mockUsers.get(userId)?.email || 'test@test.com',
                 roles: ['ROLE_USER'],
                 isGuest: false,
@@ -2581,7 +2674,7 @@ describe('Project Routes', () => {
             });
             const tempApp = new Elysia().use(jwtInstance);
             return tempApp.decorator.jwt.sign({
-                sub: userId,
+                sub: String(userId),
                 email: mockUsers.get(userId)?.email || 'test@test.com',
                 roles: ['ROLE_USER'],
                 isGuest: false,
@@ -3151,7 +3244,7 @@ describe('Project Routes', () => {
             });
             const tempApp = new Elysia().use(jwtInstance);
             return tempApp.decorator.jwt.sign({
-                sub: userId,
+                sub: String(userId),
                 email: mockUsers.get(userId)?.email || 'test@test.com',
                 roles: ['ROLE_USER'],
                 isGuest: false,
@@ -3331,7 +3424,7 @@ describe('Project Routes', () => {
             });
             const tempApp = new Elysia().use(jwtInstance);
             const token = await tempApp.decorator.jwt.sign({
-                sub: 1,
+                sub: '1',
                 email: 'test@test.com',
                 roles: ['ROLE_USER'],
                 isGuest: false,
@@ -3392,7 +3485,7 @@ describe('Project Routes', () => {
             });
             const tempApp = new Elysia().use(jwtInstance);
             const token = await tempApp.decorator.jwt.sign({
-                sub: 2, // User 2 is a collaborator
+                sub: '2', // User 2 is a collaborator
                 email: 'user2@test.com',
                 roles: ['ROLE_USER'],
                 isGuest: false,
@@ -3577,7 +3670,7 @@ describe('Project Routes', () => {
             });
             const tempApp = new Elysia().use(jwtInstance);
             return tempApp.decorator.jwt.sign({
-                sub: userId,
+                sub: String(userId),
                 email: mockUsers.get(userId)?.email || 'test@test.com',
                 roles: ['ROLE_USER'],
                 isGuest: false,
@@ -3701,7 +3794,7 @@ describe('Project Routes', () => {
             });
             const tempApp = new Elysia().use(jwtInstance);
             return tempApp.decorator.jwt.sign({
-                sub: userId,
+                sub: String(userId),
                 email: mockUsers.get(userId)?.email || 'test@test.com',
                 roles: ['ROLE_USER'],
                 isGuest: false,
@@ -3753,7 +3846,7 @@ describe('Project Routes', () => {
             });
             const tempApp = new Elysia().use(jwtInstance);
             return tempApp.decorator.jwt.sign({
-                sub: userId,
+                sub: String(userId),
                 email: mockUsers.get(userId)?.email || 'test@test.com',
                 roles: ['ROLE_USER'],
                 isGuest: false,
@@ -3814,7 +3907,7 @@ describe('Project Routes', () => {
             });
             const tempApp = new Elysia().use(jwtInstance);
             return tempApp.decorator.jwt.sign({
-                sub: userId,
+                sub: String(userId),
                 email: mockUsers.get(userId)?.email || 'test@test.com',
                 roles: ['ROLE_USER'],
                 isGuest: false,
@@ -3906,7 +3999,7 @@ describe('Project Routes', () => {
             });
             const tempApp = new Elysia().use(jwtInstance);
             return tempApp.decorator.jwt.sign({
-                sub: userId,
+                sub: String(userId),
                 email: mockUsers.get(userId)?.email || 'test@test.com',
                 roles: ['ROLE_USER'],
                 isGuest: false,
@@ -4099,7 +4192,7 @@ describe('Project Routes', () => {
             });
             const tempApp = new Elysia().use(jwtInstance);
             return tempApp.decorator.jwt.sign({
-                sub: userId,
+                sub: String(userId),
                 email: mockUsers.get(userId)?.email || 'test@test.com',
                 roles: ['ROLE_USER'],
                 isGuest: false,
@@ -4173,7 +4266,7 @@ describe('Project Routes', () => {
             });
             const tempApp = new Elysia().use(jwtInstance);
             const token = await tempApp.decorator.jwt.sign({
-                sub: 1,
+                sub: '1',
                 email: mockUsers.get(1)?.email || 'test@test.com',
                 roles: ['ROLE_USER'],
                 isGuest: false,
@@ -4223,7 +4316,7 @@ describe('Project Routes', () => {
             });
             const tempApp = new Elysia().use(jwtInstance);
             return tempApp.decorator.jwt.sign({
-                sub: userId,
+                sub: String(userId),
                 email: mockUsers.get(userId)?.email || 'test@test.com',
                 roles: ['ROLE_USER'],
                 isGuest: false,
@@ -4247,7 +4340,7 @@ describe('Project Routes', () => {
             expect(res.status).toBe(400);
         });
 
-        it('should return 400 for invalid visibility value', async () => {
+        it('should reject an invalid visibility value', async () => {
             const token = await createAuthToken(1);
             const project = {
                 id: 1900,
@@ -4271,7 +4364,8 @@ describe('Project Routes', () => {
                 }),
             );
 
-            expect(res.status).toBe(400);
+            // The body schema rejects it before the handler; the app's global onError answers 400.
+            expect(res.status).toBe(422);
         });
     });
 
@@ -4284,7 +4378,7 @@ describe('Project Routes', () => {
             });
             const tempApp = new Elysia().use(jwtInstance);
             return tempApp.decorator.jwt.sign({
-                sub: userId,
+                sub: String(userId),
                 email: mockUsers.get(userId)?.email || 'test@test.com',
                 roles: ['ROLE_USER'],
                 isGuest: false,
@@ -4350,7 +4444,7 @@ describe('Project Routes', () => {
             });
             const tempApp = new Elysia().use(jwtInstance);
             return tempApp.decorator.jwt.sign({
-                sub: userId,
+                sub: String(userId),
                 email: mockUsers.get(userId)?.email || 'test@test.com',
                 roles: ['ROLE_USER'],
                 isGuest: false,
@@ -4433,7 +4527,7 @@ describe('Project Routes', () => {
             });
             const tempApp = new Elysia().use(jwtInstance);
             return tempApp.decorator.jwt.sign({
-                sub: userId,
+                sub: String(userId),
                 email: mockUsers.get(userId)?.email || 'test@test.com',
                 roles: ['ROLE_USER'],
                 isGuest: false,
@@ -4522,7 +4616,7 @@ describe('Project Routes', () => {
             });
             const tempApp = new Elysia().use(jwtInstance);
             return tempApp.decorator.jwt.sign({
-                sub: userId,
+                sub: String(userId),
                 email: mockUsers.get(userId)?.email || 'test@test.com',
                 roles: ['ROLE_USER'],
                 isGuest: false,
@@ -4646,7 +4740,7 @@ describe('Project Routes', () => {
             });
             const tempApp = new Elysia().use(jwtInstance);
             return tempApp.decorator.jwt.sign({
-                sub: userId,
+                sub: String(userId),
                 email: mockUsers.get(userId)?.email || 'test@test.com',
                 roles: ['ROLE_USER'],
                 isGuest: false,
@@ -4737,7 +4831,7 @@ describe('Project Routes', () => {
             });
             const tempApp = new Elysia().use(jwtInstance);
             return tempApp.decorator.jwt.sign({
-                sub: userId,
+                sub: String(userId),
                 email: mockUsers.get(userId)?.email || 'test@test.com',
                 roles: ['ROLE_USER'],
                 isGuest: false,
@@ -5099,7 +5193,7 @@ describe('Project Routes', () => {
             });
             const tempApp = new Elysia().use(jwtInstance);
             return tempApp.decorator.jwt.sign({
-                sub: userId,
+                sub: String(userId),
                 email: mockUsers.get(userId)?.email || 'test@test.com',
                 roles: ['ROLE_USER'],
                 isGuest: false,
@@ -5179,7 +5273,7 @@ describe('Project Routes', () => {
             });
             const tempApp = new Elysia().use(jwtInstance);
             const token = await tempApp.decorator.jwt.sign({
-                sub: 1,
+                sub: '1',
                 email: 'owner@test.com',
                 roles: ['ROLE_USER'],
                 isGuest: false,
@@ -5209,7 +5303,7 @@ describe('Project Routes', () => {
             });
             const tempApp = new Elysia().use(jwtInstance);
             const token = await tempApp.decorator.jwt.sign({
-                sub: 1,
+                sub: '1',
                 email: 'owner@test.com',
                 roles: ['ROLE_USER'],
                 isGuest: false,
@@ -5237,7 +5331,7 @@ describe('Project Routes', () => {
             });
             const tempApp = new Elysia().use(jwtInstance);
             const token = await tempApp.decorator.jwt.sign({
-                sub: 1,
+                sub: '1',
                 email: 'owner@test.com',
                 roles: ['ROLE_USER'],
                 isGuest: false,
@@ -5269,7 +5363,7 @@ describe('Project Routes', () => {
             });
             const tempApp = new Elysia().use(jwtInstance);
             return tempApp.decorator.jwt.sign({
-                sub: userId,
+                sub: String(userId),
                 email: mockUsers.get(userId)?.email || 'test@test.com',
                 roles: ['ROLE_USER'],
                 isGuest: false,
@@ -5349,7 +5443,7 @@ describe('Project Routes', () => {
             });
             const tempApp = new Elysia().use(jwtInstance);
             return tempApp.decorator.jwt.sign({
-                sub: userId,
+                sub: String(userId),
                 email: mockUsers.get(userId)?.email || 'test@test.com',
                 roles: ['ROLE_USER'],
                 isGuest: false,
@@ -5398,7 +5492,7 @@ describe('Project Routes', () => {
             });
             const tempApp = new Elysia().use(jwtInstance);
             return tempApp.decorator.jwt.sign({
-                sub: userId,
+                sub: String(userId),
                 email: mockUsers.get(userId)?.email || 'test@test.com',
                 roles: ['ROLE_USER'],
                 isGuest: false,
@@ -5742,7 +5836,7 @@ describe('Project Routes', () => {
             });
             const tempApp = new Elysia().use(jwtInstance);
             return tempApp.decorator.jwt.sign({
-                sub: userId,
+                sub: String(userId),
                 email: mockUsers.get(userId)?.email || 'test@test.com',
                 roles: ['ROLE_USER'],
                 isGuest: false,
