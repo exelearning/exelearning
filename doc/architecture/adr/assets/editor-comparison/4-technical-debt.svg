@@ -17,14 +17,14 @@
 <rect x="290" y="155" width="333.33333333333337" height="18" fill="#d97b4a"/>
 <text x="631.3333333333334" y="168" font-size="13" fill="#1f2328" font-weight="600">20</text>
 <text x="20" y="198" font-size="13" fill="#1f2328" >with .tox-* UI selectors</text>
-<rect x="290" y="185" width="283.33333333333337" height="18" fill="#d97b4a"/>
-<text x="581.3333333333334" y="198" font-size="13" fill="#1f2328" font-weight="600">17</text>
+<rect x="290" y="185" width="266.66666666666663" height="18" fill="#d97b4a"/>
+<text x="564.6666666666666" y="198" font-size="13" fill="#1f2328" font-weight="600">16</text>
 <text x="20" y="228" font-size="13" fill="#1f2328" >with APIs removed in TinyMCE 6</text>
 <rect x="290" y="215" width="233.33333333333334" height="18" fill="#d97b4a"/>
 <text x="531.3333333333334" y="228" font-size="13" fill="#1f2328" font-weight="600">14</text>
 <text x="20" y="258" font-size="13" fill="#1f2328" >with TinyMCE internal markers</text>
-<rect x="290" y="245" width="116.66666666666667" height="18" fill="#d97b4a"/>
-<text x="414.6666666666667" y="258" font-size="13" fill="#1f2328" font-weight="600">7</text>
+<rect x="290" y="245" width="133.33333333333331" height="18" fill="#d97b4a"/>
+<text x="431.3333333333333" y="258" font-size="13" fill="#1f2328" font-weight="600">8</text>
 <text x="20" y="288" font-size="13" fill="#1f2328" >using parser / schema / serializer</text>
 <rect x="290" y="275" width="50" height="18" fill="#d97b4a"/>
 <text x="348" y="288" font-size="13" fill="#1f2328" font-weight="600">3</text>
