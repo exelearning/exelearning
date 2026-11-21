@@ -185,11 +185,18 @@ describe('prepareUserHtmlForPreview', () => {
         disableActivePreviewContent('project-b');
     });
 
-    it('does not authorize active content in Electron', () => {
+    it('does not authorize active content in an Electron build without the preview scheme', () => {
         window.electronAPI = {};
         expect(canEnableActivePreviewContent()).toBe(false);
         expect(enableActivePreviewContent('electron-project')).toBe(false);
         expect(isActivePreviewContentEnabled('electron-project')).toBe(false);
+    });
+
+    it('authorizes it when the Electron preload exposes the preview:// snapshot bridge', () => {
+        window.electronAPI = { previewSnapshot: { replace() {}, dispose() {} } };
+        expect(canEnableActivePreviewContent()).toBe(true);
+        expect(enableActivePreviewContent('electron-project')).toBe(true);
+        expect(isActivePreviewContentEnabled('electron-project')).toBe(true);
     });
 
     it('keeps same-origin surfaces FILTERED even while the grant is in effect', () => {
@@ -261,14 +268,17 @@ describe('transport matrix', () => {
         expect(resolvePreviewTransport(runtimeConfig)).toBe(expected);
     });
 
-    it('resolves Electron to blocked regardless of the mode flags', () => {
+    it('resolves Electron to the main-process preview:// snapshot regardless of the mode flags', () => {
+        window.electronAPI = { previewSnapshot: { replace() {}, dispose() {} } };
+        expect(resolvePreviewTransport({ mode: 'static', isEmbedded: false })).toBe(PREVIEW_TRANSPORTS.ELECTRON_OPAQUE);
+        expect(resolvePreviewTransport({ mode: 'server', isEmbedded: true })).toBe(PREVIEW_TRANSPORTS.ELECTRON_OPAQUE);
+    });
+
+    it('fails closed to blocked when the Electron preload lacks the preview scheme', () => {
         window.electronAPI = {};
-        expect(resolvePreviewTransport({ mode: 'static', isEmbedded: false })).toBe(
-            PREVIEW_TRANSPORTS.ELECTRON_BLOCKED,
-        );
-        expect(resolvePreviewTransport({ mode: 'server', isEmbedded: false })).toBe(
-            PREVIEW_TRANSPORTS.ELECTRON_BLOCKED,
-        );
+        expect(resolvePreviewTransport({ mode: 'static', isEmbedded: false })).toBe(PREVIEW_TRANSPORTS.ELECTRON_BLOCKED);
+        window.electronAPI = { previewSnapshot: { replace() {} } }; // half a bridge is no bridge
+        expect(resolvePreviewTransport({ mode: 'static', isEmbedded: false })).toBe(PREVIEW_TRANSPORTS.ELECTRON_BLOCKED);
     });
 
     it('fails closed to the self-hosted transport when the runtime is unknown', () => {
@@ -316,10 +326,17 @@ describe('trust state machine', () => {
         expect(getActivePreviewTrustState('p', EMBEDDED)).toBe(PREVIEW_TRUST_STATES.OPAQUE_ENABLED);
     });
 
-    it('Electron can never hold a grant', () => {
+    it('Electron without the preview scheme can never hold a grant', () => {
         window.electronAPI = {};
         expect(enableActivePreviewContent('p')).toBe(false);
         expect(getActivePreviewTrustState('p', STATIC)).toBe(PREVIEW_TRUST_STATES.FILTERED);
+    });
+
+    it('Electron with the preview scheme goes opaque-enabled like every other runtime', () => {
+        window.electronAPI = { previewSnapshot: { replace() {}, dispose() {} } };
+        enableActivePreviewContent('p');
+        expect(getActivePreviewTrustState('p', STATIC)).toBe(PREVIEW_TRUST_STATES.OPAQUE_ENABLED);
+        expect(resolvePreviewTransport(STATIC)).toBe(PREVIEW_TRANSPORTS.ELECTRON_OPAQUE);
     });
 
     it('a grant that was given before the runtime turned out to be Electron reads as filtered', () => {

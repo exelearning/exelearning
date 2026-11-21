@@ -9,7 +9,7 @@ deciders:
 related:
   prs: [1968, 2199]
   changes: []
-  adrs: [ADR-2199-02, ADR-2199-03, ADR-2199-04]
+  adrs: [ADR-2199-02, ADR-2199-03, ADR-2199-04, ADR-2620-01]
 supersedes: []
 superseded_by: []
 ai_assistance:
@@ -134,7 +134,7 @@ untouched.
 | Web / server | Same-origin SW, filtered | **Opaque snapshot** on eXe's own capability URL, iframe `sandbox` without `allow-same-origin` ([ADR-2199-02](ADR-2199-02-serve-the-enabled-preview-from-an-opaque-capability-snapshot.md)) |
 | Embedded LMS/CMS | Same-origin SW, filtered | **Opaque snapshot** on the **host's** capability routes, same client and sandbox |
 | Static bundle / PWA / PHP-WASM | Same-origin SW, filtered | **Opaque `srcdoc` document**, fully inlined, no server ([ADR-2199-04](ADR-2199-04-isolate-the-static-preview-in-a-sandboxed-srcdoc-document.md)) |
-| Electron | Same-origin SW, filtered | **Blocked**: the preview shares a renderer with the preload bridge |
+| Electron | Same-origin SW, filtered | **Opaque snapshot** on `preview://{id}`, served by the main process; same sandbox ([ADR-2620-01](ADR-2620-01-serve-the-electron-preview-from-the-main-process-on-a-preview-scheme.md)). Blocked only when the preload predates the scheme |
 
 No row runs author code with the editor's origin. There is no fallback between rows: when
 an opaque transport cannot be established the grant is dropped, the user is told, and the
@@ -190,8 +190,6 @@ deceptive content, and the trust model of published exports.
   on DOMPurify plus the policy — enforced by the adapter's unclassified-field failure, but
   a sanitizer boundary all the same.
 - Enabled previews pay a full snapshot upload or a full inlining per refresh.
-- Electron users cannot run author active content in the preview without an
-  isolated-renderer design.
 - The shipped policy remains a second implementation of the matrix until a later change
   makes it derive from the module.
 
@@ -226,7 +224,6 @@ deceptive content, and the trust model of published exports.
 ## Follow-up work
 
 - Make `previewContentPolicy.js` derive from `preview-mode-matrix.ts`.
-- Isolated-renderer design before Electron can enable author active content.
 - Deployment boundary and stale-context policy before ateeducacion/exelearning#48 stores
   any file handle.
 

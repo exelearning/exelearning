@@ -29,7 +29,7 @@ or blocked.
 | Web / server | Same-origin SW, source-filtered | Indicator + dialog | **Opaque snapshot** served by eXe's server via a capability URL; iframe `sandbox` without `allow-same-origin` |
 | Embedded LMS/CMS (Moodle, WordPress, …) | Same-origin SW, source-filtered | Indicator + dialog | **Opaque snapshot** via the **host's** capability routes; same sandbox |
 | Static bundle / PWA / PHP-WASM (no backend) | Same-origin SW, source-filtered | Indicator + dialog | **Opaque `srcdoc` document**: the snapshot page is inlined (CSS, scripts, images, fonts, local media) and loaded through `srcdoc` into the same sandbox without `allow-same-origin`; no server, no network |
-| Electron | Same-origin SW, source-filtered | Dialog explains restriction | **Blocked** (preview shares a renderer with the preload bridge) |
+| Electron | Same-origin SW, source-filtered | Indicator + dialog | **Opaque snapshot on `preview://{id}`**, served by the main process from an in-memory snapshot with the capability route's headers; same sandbox without `allow-same-origin`; the frame runs in its own renderer process. Blocked only when the preload predates the scheme |
 
 The canonical table is `src/shared/preview/preview-mode-matrix.ts`; the shipped
 browser decision is `resolvePreviewTransport()` in
@@ -42,12 +42,13 @@ and fails if the two disagree ([ADR-2199-01](../architecture/adr/ADR-2199-01-hyb
 ```mermaid
 stateDiagram-v2
     [*] --> filtered
-    filtered --> opaque_enabled: enable (web/server, embedded, static/PWA)
-    filtered --> filtered: enable blocked (Electron)
+    filtered --> opaque_enabled: enable (web/server, embedded, Electron, static/PWA)
+    filtered --> filtered: enable blocked (Electron preload without the scheme)
     opaque_enabled --> filtered: disable / revoke / session end
     note right of opaque_enabled
         Transport by runtime: capability URL
-        (eXe or host routes) or sandboxed srcdoc.
+        (eXe routes, host routes, Electron preview://)
+        or sandboxed srcdoc.
         Revocation (D1): project replacement/import,
         explicit disable, session end, and any
         update not identified as local. Local edits keep it.
@@ -57,8 +58,9 @@ stateDiagram-v2
 ```
 
 `filtered` is the default and the only other state is `opaque-enabled`; which
-opaque transport delivers it is the runtime's decision. Electron blocks the
-enable. Every exit edge returns to `filtered`: a capability-URL exit disposes the
+opaque transport delivers it is the runtime's decision. An Electron build whose
+preload lacks the preview scheme blocks the enable. Every exit edge returns to
+`filtered`: a capability-URL exit disposes the
 server snapshot (best-effort client `DELETE` + guaranteed server-side TTL expiry),
 a srcdoc exit removes the `srcdoc` attribute so the author code stops at once
 rather than at the next navigation. The same-origin content policy
@@ -130,6 +132,32 @@ sequenceDiagram
     P->>F: src = host capability URL
     Note over F: full authored content, isolated by origin
 ```
+
+## Sequence — enable → preview:// (Electron)
+
+```mermaid
+sequenceDiagram
+    participant P as PreviewPanel (app://localhost)
+    participant B as preload: electronAPI.previewSnapshot
+    participant M as main process
+    participant F as iframe (preview://{id}, opaque, own renderer process)
+
+    P->>P: generatePreviewForSW(report-only policy)  %% author bytes intact
+    P->>B: replace(previewId, files)  %% structured clone over IPC
+    B->>M: ipc app:previewSnapshot:replace (sender must be the app:// main frame)
+    M-->>P: { previewId, previewUrl: preview://{id}/index.html }
+    P->>F: sandbox without allow-same-origin, src = preview://{id}/index.html
+    F->>M: GET preview://{id}/… (protocol.handle)
+    M-->>F: bytes + nosniff/no-store + sandbox-first CSP on scriptable types
+    Note over F: no electronAPI, no parent, no storage; MathJax and PDFs served normally
+```
+
+`preview://{id}` is a different origin from `app://localhost` by scheme and by
+host; Chromium's site isolation gives the frame its own renderer process. The
+main process guards every IPC channel by sender (`app/ipc-sender-guard.js`) and
+never hands author content a window that carries the preload: "open in a new
+tab" gets a sandboxed `preview://` window created by the main process without
+one ([ADR-2620-01](../architecture/adr/ADR-2620-01-serve-the-electron-preview-from-the-main-process-on-a-preview-scheme.md)).
 
 ## Sequence — enable → opaque srcdoc (static/PWA, no backend)
 
@@ -259,9 +287,10 @@ after a full adapter pass.
   relay that overlays real players on the trusted side is the external-media
   programme, developed in its own PR. In the default filtered preview these
   embeds play inline.
-- **Electron:** custom active content cannot be enabled — the preview shares a
-  renderer with the `preload.js` bridge. Revisiting needs an isolated-renderer
-  design.
+- **Electron:** the snapshot lives in the main process's memory while enabled
+  (bounded, dropped with the window); `Range` requests are answered whole, so
+  large local video seeks re-download. A build whose preload predates the
+  `preview://` scheme keeps enabling blocked.
 - **Static bundle / PWA / PHP-WASM, while enabled** (the srcdoc transport,
   [ADR-2199-04](../architecture/adr/ADR-2199-04-isolate-the-static-preview-in-a-sandboxed-srcdoc-document.md)):
   PDF embeds render as "open in a new tab" links (an editor-minted `blob:` URL
