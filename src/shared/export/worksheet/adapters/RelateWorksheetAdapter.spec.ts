@@ -85,7 +85,7 @@ describe('RelateWorksheetAdapter', () => {
             html,
             new Map([['diagram.png', 'current-image']]),
         );
-        const activity = RelateWorksheetAdapter.build(imported);
+        const activity = RelateWorksheetAdapter.build(imported, {});
         expect(activity?.instructions).toContain('src="asset://current-image"');
         expect(activity?.instructions).not.toContain('resources/diagram.png');
     });

@@ -98,8 +98,9 @@ function buildItem(
     }
 
     if (question.type === QUESTION_TYPE_RICH_TEXT && question.eText) {
-        // Read as the runtime reads it, so both eras of stored data come out as they show.
-        const extraText = sanitizeHtml(decodeStoredText(question.eText));
+        // Read as the runtime reads it, so both eras of stored data come out as they show. Its
+        // links go: printed after them, their addresses can name the word to guess.
+        const extraText = sanitizeHtml(decodeStoredText(question.eText), { links: false });
         if (extraText) item.extraText = extraText;
     }
 

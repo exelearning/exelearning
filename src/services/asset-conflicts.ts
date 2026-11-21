@@ -231,7 +231,7 @@ export async function resolveAssetStorageConflict(
         };
     }
 
-    const { src, dest, target } = classified;
+    const { src, dest, target } = classified as Extract<RowClassification, { state: 'identical' | 'conflict' }>;
 
     if (classified.state === 'identical') {
         // Both copies have the same content: converging is decision-free and

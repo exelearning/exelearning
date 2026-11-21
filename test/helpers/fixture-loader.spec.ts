@@ -83,7 +83,6 @@ describe('fixture-loader', () => {
         it('should return null for fixture not on disk', async () => {
             // Save original FIXTURES and restore after test
             const _originalFixtures = { ...FIXTURES };
-            // @ts-expect-error - modifying for test
             FIXTURES['fake-fixture.elp'] = {
                 name: 'fake-fixture.elp',
                 category: 'small',
@@ -95,7 +94,6 @@ describe('fixture-loader', () => {
             expect(info).toBeNull();
 
             // Restore
-            // @ts-expect-error - modifying for test
             delete FIXTURES['fake-fixture.elp'];
         });
     });
