@@ -55,8 +55,8 @@ const mockTheme: Theme = {
     storage_path: 'themes/site/test-theme',
     file_size: 12345,
     uploaded_by: 1,
-    created_at: '2024-01-01T00:00:00.000Z',
-    updated_at: '2024-01-01T00:00:00.000Z',
+    created_at: Date.parse('2024-01-01T00:00:00.000Z'),
+    updated_at: Date.parse('2024-01-01T00:00:00.000Z'),
 };
 
 // Mock base theme (is_builtin=1)
@@ -75,8 +75,8 @@ const mockBaseTheme: Theme = {
     storage_path: null,
     file_size: null,
     uploaded_by: null,
-    created_at: '2024-01-01T00:00:00.000Z',
-    updated_at: '2024-01-01T00:00:00.000Z',
+    created_at: Date.parse('2024-01-01T00:00:00.000Z'),
+    updated_at: Date.parse('2024-01-01T00:00:00.000Z'),
 };
 
 // Create mock dependencies
@@ -98,8 +98,8 @@ function createMockDeps(overrides?: Partial<ThemesDependencies['queries']>): The
             themeDirNameExists: mock(() => Promise.resolve(false)),
             getNextSiteThemeSortOrder: mock(() => Promise.resolve(1)),
             getDefaultThemeRecord: mock(() => Promise.resolve(mockTheme)),
-            upsertBaseTheme: mock(() => Promise.resolve(mockBaseTheme)),
-            getDefaultTheme: mock(() => Promise.resolve({ type: 'base', dirName: 'base' })),
+            upsertBaseTheme: mock(() => Promise.resolve()),
+            getDefaultTheme: mock(() => Promise.resolve({ type: 'base' as const, dirName: 'base' })),
             setDefaultTheme: mock(() => Promise.resolve()),
             ...overrides,
         },
@@ -117,7 +117,7 @@ function createMockDeps(overrides?: Partial<ThemesDependencies['queries']>): The
                     },
                 }),
             ),
-            extractTheme: mock(() => Promise.resolve()),
+            extractTheme: mock(() => Promise.resolve([] as string[])),
             slugify: mock((name: string) => name.toLowerCase().replace(/\s+/g, '-')),
         },
         getFilesDir: () => '/tmp/test-files',
@@ -133,7 +133,7 @@ async function generateAdminToken(): Promise<string> {
     await app
         .get('/generate', async ({ jwt }) => {
             token = await jwt.sign({
-                sub: 1,
+                sub: '1',
                 email: 'admin@test.com',
                 roles: ['ROLE_ADMIN'],
                 isGuest: false,
@@ -752,7 +752,9 @@ describe('Admin Themes Routes', () => {
         });
 
         test('should reset default to base when deleting default site theme', async () => {
-            mockDeps.queries.getDefaultTheme = mock(() => Promise.resolve({ type: 'site', dirName: 'test-theme' }));
+            mockDeps.queries.getDefaultTheme = mock(() =>
+                Promise.resolve({ type: 'site' as const, dirName: 'test-theme' }),
+            );
             app = createTestApp(mockDeps);
 
             const response = await app.handle(
@@ -843,7 +845,9 @@ describe('Admin Themes Routes', () => {
 
         test('should toggle base theme enabled successfully', async () => {
             // Non-default theme
-            mockDeps.queries.getDefaultTheme = mock(() => Promise.resolve({ type: 'site', dirName: 'other-theme' }));
+            mockDeps.queries.getDefaultTheme = mock(() =>
+                Promise.resolve({ type: 'site' as const, dirName: 'other-theme' }),
+            );
             app = createTestApp(mockDeps);
 
             const response = await app.handle(
@@ -980,7 +984,7 @@ describe('Admin Themes Routes', () => {
             await tokenApp
                 .get('/generate', async ({ jwt }) => {
                     userToken = await jwt.sign({
-                        sub: 2,
+                        sub: '2',
                         email: 'user@test.com',
                         roles: ['ROLE_USER'],
                         isGuest: false,

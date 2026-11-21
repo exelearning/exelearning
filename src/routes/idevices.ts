@@ -2,14 +2,14 @@
  * iDevices Routes for Elysia
  * Handles installed iDevices listing and management
  */
-import { Elysia } from 'elysia';
+import { Elysia, t, type Static } from 'elysia';
 import * as fs from 'fs';
 import * as fse from 'fs-extra';
 import * as path from 'path';
 import { getFilesDir } from '../services/file-helper';
 import { getAppVersion } from '../utils/version';
 import { getBasePath } from '../utils/basepath.util';
-import { castRequestBody, type IdeviceFileUploadRequest } from './types/request-payloads';
+import { castRequestBody } from './types/request-payloads';
 import { withJwtAuth } from '../utils/route-auth';
 import { requireAuth } from '../utils/guards';
 import { isSafePathSegment, safeJoin, UnsafePathError } from '../utils/safe-path';
@@ -241,6 +241,25 @@ function scanIdevices(basePath: string): IdeviceConfig[] {
     return idevices;
 }
 
+// Upload bodies. Every field stays optional so a missing one keeps the
+// handlers' own 400 { code: 'error: invalid data' }; the schemas only make sure
+// a present field has the type the filesystem code assumes.
+const uploadFields = {
+    odeIdeviceId: t.Optional(t.String()),
+    filename: t.Optional(t.String()),
+    // The workarea sends `true`; a form-encoded request carries it as 'true'.
+    createThumbnail: t.Optional(t.Union([t.Boolean(), t.String()])),
+    odeSessionId: t.Optional(t.String()),
+};
+/** POST /upload/file/resources: base64 content in `base64String`, or in `file` (legacy). */
+const IdeviceBase64UploadBody = t.Object({
+    ...uploadFields,
+    file: t.Optional(t.String()),
+    base64String: t.Optional(t.String()),
+});
+/** POST /upload/large/file/resources: multipart File, or raw string content from JSON clients. */
+const IdeviceLargeUploadBody = t.Object({ ...uploadFields, file: t.Optional(t.Union([t.File(), t.String()])) });
+
 /**
  * iDevices routes
  */
@@ -393,240 +412,241 @@ export const idevicesRoutes = new Elysia({ name: 'idevices-routes' })
     })
 
     // POST /api/idevices/upload/file/resources - Upload file resource (base64)
-    .post('/api/idevices/upload/file/resources', async ({ body, cookie, set, identity }) => {
-        const authErr = requireAuth(identity);
-        if (authErr) {
-            set.status = authErr.status;
-            return { error: authErr.error, message: authErr.message };
-        }
-        const data = castRequestBody<IdeviceFileUploadRequest>(body);
-        const odeIdeviceId = data?.odeIdeviceId;
-        // Support both 'file' (legacy) and 'base64String' fields for base64 data
-        const fileAsString = typeof data?.file === 'string' ? data.file : undefined;
-        const base64String = data?.base64String || fileAsString;
-        const filename = data?.filename;
-        // Clients send a boolean or the strings 'true'/'false'
-        const createThumbnail = data?.createThumbnail === true || data?.createThumbnail === 'true';
+    .post(
+        '/api/idevices/upload/file/resources',
+        async ({ body, cookie, set, identity }) => {
+            const authErr = requireAuth(identity);
+            if (authErr) {
+                set.status = authErr.status;
+                return { error: authErr.error, message: authErr.message };
+            }
+            const data = castRequestBody<Static<typeof IdeviceBase64UploadBody>>(body);
+            const odeIdeviceId = data?.odeIdeviceId;
+            // Support both 'file' (legacy) and 'base64String' fields for base64 data
+            const fileAsString = typeof data?.file === 'string' ? data.file : undefined;
+            const base64String = data?.base64String || fileAsString;
+            const filename = data?.filename;
+            // Clients send a boolean or the strings 'true'/'false'
+            const createThumbnail = data?.createThumbnail === true || data?.createThumbnail === 'true';
 
-        // Validate required parameters
-        if (!odeIdeviceId || !base64String || !filename) {
-            set.status = 400;
-            console.log('[idevices/upload] Missing params:', {
-                odeIdeviceId: !!odeIdeviceId,
-                file: !!base64String,
-                filename: !!filename,
-            });
-            return {
-                code: 'error: invalid data',
-                details: { odeIdeviceId: !!odeIdeviceId, file: !!base64String, filename: !!filename },
-            };
-        }
-
-        // Get session ID from cookie or body
-        // In Yjs mode, we use projectId cookie instead of odeSessionId
-        let odeSessionId: string =
-            data.odeSessionId || String(cookie.odeSessionId?.value || cookie.projectId?.value || '');
-
-        // If no session ID, use a default based on the idevice ID
-        // This allows uploads to work even without a traditional session
-        if (!odeSessionId) {
-            // Extract project ID from odeIdeviceId if it contains one, or use a temp directory
-            odeSessionId = 'uploads';
-        }
-
-        // Clean filename
-        let cleanFilename = filename.replace(/ /g, '_');
-        cleanFilename = cleanFilename.replace(/[^A-Za-z0-9_\-.]/g, '');
-
-        // Ensure we have a valid filename
-        if (!cleanFilename) {
-            cleanFilename = 'file_' + Date.now();
-        }
-
-        // Get iDevice directory. odeSessionId and odeIdeviceId are attacker
-        // controlled; build the path with safeJoin so traversal segments
-        // (e.g. '../../etc') are rejected before any filesystem write.
-        const filesDir = getFilesDir();
-        let iDeviceDir: string;
-        try {
-            iDeviceDir = safeJoin(filesDir, 'tmp', odeSessionId, 'content', 'resources', odeIdeviceId);
-        } catch (err) {
-            if (err instanceof UnsafePathError) {
+            // Validate required parameters
+            if (!odeIdeviceId || !base64String || !filename) {
                 set.status = 400;
-                return { code: 'error: invalid identifier' };
-            }
-            throw err;
-        }
-
-        // Ensure directory exists
-        await fse.ensureDir(iDeviceDir);
-
-        // Generate unique filename if file already exists
-        let savedFilename = cleanFilename;
-        let counter = 0;
-        const ext = path.extname(cleanFilename);
-        const baseName = path.basename(cleanFilename, ext);
-        while (await fse.pathExists(path.join(iDeviceDir, savedFilename))) {
-            counter++;
-            savedFilename = `${baseName}_${counter}${ext}`;
-        }
-
-        const outputFile = path.join(iDeviceDir, savedFilename);
-
-        // Decode base64 and write file. Data URLs ("data:mime;base64,xxx")
-        // carry the payload in the second segment.
-        const dataParts = base64String.split(',');
-        const base64Data = dataParts.length > 1 ? dataParts[1] : dataParts[0];
-        if (!base64Data) {
-            set.status = 400;
-            return { code: 'error: invalid data', details: { file: false } };
-        }
-        const buffer = Buffer.from(base64Data, 'base64');
-
-        await fse.writeFile(outputFile, buffer);
-
-        // Get file size
-        const stats = await fse.stat(outputFile);
-        const fileSize = stats.size;
-        const fileSizeFormatted = formatFileSize(fileSize);
-
-        // Build response
-        const responseData: UploadResponseData = {
-            odeSessionId,
-            odeIdeviceId,
-            originalFilename: filename,
-            savedPath: `/files/tmp/${odeSessionId}/content/resources/${odeIdeviceId}/`,
-            savedFilename,
-            savedFileSize: fileSizeFormatted,
-        };
-
-        // Create thumbnail for images if requested
-        if (createThumbnail) {
-            // Try to detect mime type from data URL
-            let mimeType = dataParts[0]?.match(/data:([^;]+)/)?.[1] || '';
-
-            // Fallback: detect from filename extension if data URL doesn't have mime
-            if (!mimeType && filename) {
-                const ext = path.extname(filename).toLowerCase();
-                const extToMime: Record<string, string> = {
-                    '.jpg': 'image/jpeg',
-                    '.jpeg': 'image/jpeg',
-                    '.png': 'image/png',
-                    '.gif': 'image/gif',
+                console.log('[idevices/upload] Missing params:', {
+                    odeIdeviceId: !!odeIdeviceId,
+                    file: !!base64String,
+                    filename: !!filename,
+                });
+                return {
+                    code: 'error: invalid data',
+                    details: { odeIdeviceId: !!odeIdeviceId, file: !!base64String, filename: !!filename },
                 };
-                mimeType = extToMime[ext] || '';
             }
 
-            const thumbValidMimeTypes = ['image/jpeg', 'image/gif', 'image/png'];
-            if (thumbValidMimeTypes.includes(mimeType)) {
-                // Simple thumbnail: just use the same file for now
-                // TODO: Implement proper thumbnail generation with sharp or similar
-                const thumbFilename = `thumb_${savedFilename}`;
-                const thumbPath = path.join(iDeviceDir, thumbFilename);
-                await fse.copyFile(outputFile, thumbPath);
-                responseData.savedThumbnailName = thumbFilename;
-            }
-        }
+            // Get session ID from cookie or body
+            // In Yjs mode, we use projectId cookie instead of odeSessionId
+            let odeSessionId: string =
+                data.odeSessionId || String(cookie.odeSessionId?.value || cookie.projectId?.value || '');
 
-        return responseData;
-    })
+            // If no session ID, use a default based on the idevice ID
+            // This allows uploads to work even without a traditional session
+            if (!odeSessionId) {
+                // Extract project ID from odeIdeviceId if it contains one, or use a temp directory
+                odeSessionId = 'uploads';
+            }
+
+            // Clean filename
+            let cleanFilename = filename.replace(/ /g, '_');
+            cleanFilename = cleanFilename.replace(/[^A-Za-z0-9_\-.]/g, '');
+
+            // Ensure we have a valid filename
+            if (!cleanFilename) {
+                cleanFilename = 'file_' + Date.now();
+            }
+
+            // Get iDevice directory. odeSessionId and odeIdeviceId are attacker
+            // controlled; build the path with safeJoin so traversal segments
+            // (e.g. '../../etc') are rejected before any filesystem write.
+            const filesDir = getFilesDir();
+            let iDeviceDir: string;
+            try {
+                iDeviceDir = safeJoin(filesDir, 'tmp', odeSessionId, 'content', 'resources', odeIdeviceId);
+            } catch (err) {
+                if (err instanceof UnsafePathError) {
+                    set.status = 400;
+                    return { code: 'error: invalid identifier' };
+                }
+                throw err;
+            }
+
+            // Ensure directory exists
+            await fse.ensureDir(iDeviceDir);
+
+            // Generate unique filename if file already exists
+            let savedFilename = cleanFilename;
+            let counter = 0;
+            const ext = path.extname(cleanFilename);
+            const baseName = path.basename(cleanFilename, ext);
+            while (await fse.pathExists(path.join(iDeviceDir, savedFilename))) {
+                counter++;
+                savedFilename = `${baseName}_${counter}${ext}`;
+            }
+
+            const outputFile = path.join(iDeviceDir, savedFilename);
+
+            // Decode base64 and write file. Data URLs ("data:mime;base64,xxx")
+            // carry the payload in the second segment.
+            const dataParts = base64String.split(',');
+            const base64Data = dataParts.length > 1 ? dataParts[1] : dataParts[0];
+            if (!base64Data) {
+                set.status = 400;
+                return { code: 'error: invalid data', details: { file: false } };
+            }
+            const buffer = Buffer.from(base64Data, 'base64');
+
+            await fse.writeFile(outputFile, buffer);
+
+            // Get file size
+            const stats = await fse.stat(outputFile);
+            const fileSize = stats.size;
+            const fileSizeFormatted = formatFileSize(fileSize);
+
+            // Build response
+            const responseData: UploadResponseData = {
+                odeSessionId,
+                odeIdeviceId,
+                originalFilename: filename,
+                savedPath: `/files/tmp/${odeSessionId}/content/resources/${odeIdeviceId}/`,
+                savedFilename,
+                savedFileSize: fileSizeFormatted,
+            };
+
+            // Create thumbnail for images if requested
+            if (createThumbnail) {
+                // Try to detect mime type from data URL
+                let mimeType = dataParts[0]?.match(/data:([^;]+)/)?.[1] || '';
+
+                // Fallback: detect from filename extension if data URL doesn't have mime
+                if (!mimeType && filename) {
+                    const ext = path.extname(filename).toLowerCase();
+                    const extToMime: Record<string, string> = {
+                        '.jpg': 'image/jpeg',
+                        '.jpeg': 'image/jpeg',
+                        '.png': 'image/png',
+                        '.gif': 'image/gif',
+                    };
+                    mimeType = extToMime[ext] || '';
+                }
+
+                const thumbValidMimeTypes = ['image/jpeg', 'image/gif', 'image/png'];
+                if (thumbValidMimeTypes.includes(mimeType)) {
+                    // Simple thumbnail: just use the same file for now
+                    // TODO: Implement proper thumbnail generation with sharp or similar
+                    const thumbFilename = `thumb_${savedFilename}`;
+                    const thumbPath = path.join(iDeviceDir, thumbFilename);
+                    await fse.copyFile(outputFile, thumbPath);
+                    responseData.savedThumbnailName = thumbFilename;
+                }
+            }
+
+            return responseData;
+        },
+        { body: IdeviceBase64UploadBody },
+    )
 
     // POST /api/idevices/upload/large/file/resources - Upload large file resource (FormData)
-    .post('/api/idevices/upload/large/file/resources', async ({ body, cookie, set, identity }) => {
-        const authErr = requireAuth(identity);
-        if (authErr) {
-            set.status = authErr.status;
-            return { error: authErr.error, message: authErr.message };
-        }
-        const data = castRequestBody<IdeviceFileUploadRequest>(body);
-        const odeIdeviceId = data.odeIdeviceId;
-        const file = data.file;
-        const filename =
-            data.filename ||
-            (file instanceof Blob && 'name' in file && typeof file.name === 'string' ? file.name : undefined);
-
-        // Validate required parameters
-        if (!odeIdeviceId || !file || !filename) {
-            set.status = 400;
-            return { code: 'error: invalid data' };
-        }
-
-        // Get session ID from cookie or body
-        // In Yjs mode, we use projectId cookie instead of odeSessionId
-        let odeSessionId: string =
-            data.odeSessionId || String(cookie.odeSessionId?.value || cookie.projectId?.value || '');
-
-        // If no session ID, use a default
-        if (!odeSessionId) {
-            odeSessionId = 'uploads';
-        }
-
-        // Clean filename
-        let cleanFilename = filename.replace(/ /g, '_');
-        cleanFilename = cleanFilename.replace(/[^A-Za-z0-9_\-.]/g, '');
-
-        // Ensure we have a valid filename
-        if (!cleanFilename) {
-            cleanFilename = 'file_' + Date.now();
-        }
-
-        // Get iDevice directory. odeSessionId and odeIdeviceId are attacker
-        // controlled; build the path with safeJoin so traversal segments
-        // (e.g. '../../etc') are rejected before any filesystem write.
-        const filesDir = getFilesDir();
-        let iDeviceDir: string;
-        try {
-            iDeviceDir = safeJoin(filesDir, 'tmp', odeSessionId, 'content', 'resources', odeIdeviceId);
-        } catch (err) {
-            if (err instanceof UnsafePathError) {
-                set.status = 400;
-                return { code: 'error: invalid identifier' };
+    .post(
+        '/api/idevices/upload/large/file/resources',
+        async ({ body, cookie, set, identity }) => {
+            const authErr = requireAuth(identity);
+            if (authErr) {
+                set.status = authErr.status;
+                return { error: authErr.error, message: authErr.message };
             }
-            throw err;
-        }
+            const data = castRequestBody<Static<typeof IdeviceLargeUploadBody>>(body);
+            const odeIdeviceId = data.odeIdeviceId;
+            const file = data.file;
+            const filename =
+                data.filename ||
+                (file instanceof Blob && 'name' in file && typeof file.name === 'string' ? file.name : undefined);
 
-        // Ensure directory exists
-        await fse.ensureDir(iDeviceDir);
+            // Validate required parameters
+            if (!odeIdeviceId || !file || !filename) {
+                set.status = 400;
+                return { code: 'error: invalid data' };
+            }
 
-        // Generate unique filename if file already exists
-        let savedFilename = cleanFilename;
-        let counter = 0;
-        const ext = path.extname(cleanFilename);
-        const baseName = path.basename(cleanFilename, ext);
-        while (await fse.pathExists(path.join(iDeviceDir, savedFilename))) {
-            counter++;
-            savedFilename = `${baseName}_${counter}${ext}`;
-        }
+            // Get session ID from cookie or body
+            // In Yjs mode, we use projectId cookie instead of odeSessionId
+            let odeSessionId: string =
+                data.odeSessionId || String(cookie.odeSessionId?.value || cookie.projectId?.value || '');
 
-        const outputFile = path.join(iDeviceDir, savedFilename);
+            // If no session ID, use a default
+            if (!odeSessionId) {
+                odeSessionId = 'uploads';
+            }
 
-        // Get file buffer. Multipart clients send a Blob/File; JSON clients
-        // may send a plain string with the raw content.
-        let buffer: Buffer;
-        if (file instanceof Blob) {
-            buffer = Buffer.from(await file.arrayBuffer());
-        } else if (Buffer.isBuffer(file)) {
-            buffer = file;
-        } else {
-            buffer = Buffer.from(file);
-        }
+            // Clean filename
+            let cleanFilename = filename.replace(/ /g, '_');
+            cleanFilename = cleanFilename.replace(/[^A-Za-z0-9_\-.]/g, '');
 
-        await fse.writeFile(outputFile, buffer);
+            // Ensure we have a valid filename
+            if (!cleanFilename) {
+                cleanFilename = 'file_' + Date.now();
+            }
 
-        // Get file size
-        const stats = await fse.stat(outputFile);
-        const fileSize = stats.size;
-        const fileSizeFormatted = formatFileSize(fileSize);
+            // Get iDevice directory. odeSessionId and odeIdeviceId are attacker
+            // controlled; build the path with safeJoin so traversal segments
+            // (e.g. '../../etc') are rejected before any filesystem write.
+            const filesDir = getFilesDir();
+            let iDeviceDir: string;
+            try {
+                iDeviceDir = safeJoin(filesDir, 'tmp', odeSessionId, 'content', 'resources', odeIdeviceId);
+            } catch (err) {
+                if (err instanceof UnsafePathError) {
+                    set.status = 400;
+                    return { code: 'error: invalid identifier' };
+                }
+                throw err;
+            }
 
-        return {
-            odeSessionId,
-            odeIdeviceId,
-            originalFilename: filename,
-            savedPath: `/files/tmp/${odeSessionId}/content/resources/${odeIdeviceId}/`,
-            savedFilename,
-            savedFileSize: fileSizeFormatted,
-        };
-    });
+            // Ensure directory exists
+            await fse.ensureDir(iDeviceDir);
+
+            // Generate unique filename if file already exists
+            let savedFilename = cleanFilename;
+            let counter = 0;
+            const ext = path.extname(cleanFilename);
+            const baseName = path.basename(cleanFilename, ext);
+            while (await fse.pathExists(path.join(iDeviceDir, savedFilename))) {
+                counter++;
+                savedFilename = `${baseName}_${counter}${ext}`;
+            }
+
+            const outputFile = path.join(iDeviceDir, savedFilename);
+
+            // Get file buffer. Multipart clients send a Blob/File; JSON clients
+            // may send a plain string with the raw content.
+            const buffer = typeof file === 'string' ? Buffer.from(file) : Buffer.from(await file.arrayBuffer());
+
+            await fse.writeFile(outputFile, buffer);
+
+            // Get file size
+            const stats = await fse.stat(outputFile);
+            const fileSize = stats.size;
+            const fileSizeFormatted = formatFileSize(fileSize);
+
+            return {
+                odeSessionId,
+                odeIdeviceId,
+                originalFilename: filename,
+                savedPath: `/files/tmp/${odeSessionId}/content/resources/${odeIdeviceId}/`,
+                savedFilename,
+                savedFileSize: fileSizeFormatted,
+            };
+        },
+        { body: IdeviceLargeUploadBody },
+    );
 
 /**
  * Rewrite relative URLs in CSS to absolute API endpoint URLs

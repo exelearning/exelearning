@@ -187,7 +187,8 @@ describe('Yjs Collaboration Integration', () => {
             const payloadB64 = token.split('.')[1];
             const payload = JSON.parse(Buffer.from(payloadB64, 'base64url').toString('utf-8'));
 
-            expect(payload.sub).toBe(testUser.id);
+            // JWT `sub` is a string (RFC 7519), as the real logins sign it
+            expect(payload.sub).toBe(String(testUser.id));
             expect(payload.email).toBe(testUser.email);
         });
     });

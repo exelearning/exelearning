@@ -4,7 +4,7 @@
  * Stores who impersonated whom and when the impersonation started/ended.
  */
 
-import { type UntypedKysely, addAutoIncrement, getAutoIncrementType } from '../helpers';
+import { type UntypedKysely, addAutoIncrement, getAutoIncrementType, createIndexIfNotExists } from '../helpers';
 
 export async function up(db: UntypedKysely): Promise<void> {
     const idType = getAutoIncrementType();
@@ -24,26 +24,17 @@ export async function up(db: UntypedKysely): Promise<void> {
         .addColumn('ended_user_agent', 'varchar(1024)')
         .execute();
 
-    await db.schema
-        .createIndex('idx_impersonation_audit_impersonator')
-        .ifNotExists()
-        .on('impersonation_audit_logs')
-        .column('impersonator_user_id')
-        .execute();
+    await createIndexIfNotExists(db, 'idx_impersonation_audit_impersonator', 'impersonation_audit_logs', index =>
+        index.column('impersonator_user_id'),
+    );
 
-    await db.schema
-        .createIndex('idx_impersonation_audit_impersonated')
-        .ifNotExists()
-        .on('impersonation_audit_logs')
-        .column('impersonated_user_id')
-        .execute();
+    await createIndexIfNotExists(db, 'idx_impersonation_audit_impersonated', 'impersonation_audit_logs', index =>
+        index.column('impersonated_user_id'),
+    );
 
-    await db.schema
-        .createIndex('idx_impersonation_audit_started_at')
-        .ifNotExists()
-        .on('impersonation_audit_logs')
-        .column('started_at')
-        .execute();
+    await createIndexIfNotExists(db, 'idx_impersonation_audit_started_at', 'impersonation_audit_logs', index =>
+        index.column('started_at'),
+    );
 }
 
 export async function down(db: UntypedKysely): Promise<void> {

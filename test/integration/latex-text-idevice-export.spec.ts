@@ -56,7 +56,7 @@ const createMockAssetProvider = (): AssetProvider => ({
 });
 
 // Helper to extract HTML from preview files
-const getHtmlFromPreviewFiles = (files: Map<string, Uint8Array | string>, filename: string): string => {
+const getHtmlFromPreviewFiles = (files: Map<string, ArrayBuffer | Uint8Array | string>, filename: string): string => {
     const content = files.get(filename);
     if (!content) return '';
     if (typeof content === 'string') return content;
@@ -754,13 +754,6 @@ describe('LaTeX fixture import test', () => {
             for (const page of structure.pages) {
                 if (page.components && Array.isArray(page.components)) {
                     allComponents.push(...page.components);
-                }
-                if (page.blocks && Array.isArray(page.blocks)) {
-                    for (const block of page.blocks) {
-                        if (block.components && Array.isArray(block.components)) {
-                            allComponents.push(...block.components);
-                        }
-                    }
                 }
             }
 

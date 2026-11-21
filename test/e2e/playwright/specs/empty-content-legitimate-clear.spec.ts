@@ -47,7 +47,7 @@ test.describe('empty-write guard vs legitimate clear', () => {
                 nodeId => {
                     const ta = document.querySelector(`#${nodeId} textarea[id*="textTextarea"]`);
                     const ed = ta && (window as any).tinymce?.get(ta.id);
-                    return ed?.initialized && !ed.destroyed ? ta.id : null;
+                    return ed?.initialized && !ed.destroyed ? ta?.id : null;
                 },
                 ideviceId,
                 { timeout: 20000, polling: 200 },

@@ -152,11 +152,10 @@ describe('maintenance service', () => {
         it('returns true with valid admin token', async () => {
             configure({
                 verifyToken: async () => ({
-                    sub: 1,
+                    userId: 1,
                     email: 'admin@test.com',
                     roles: ['ROLE_USER', 'ROLE_ADMIN'],
-                    iat: 0,
-                    exp: 0,
+                    isGuest: false,
                 }),
             });
 
@@ -169,11 +168,10 @@ describe('maintenance service', () => {
         it('returns false with non-admin token', async () => {
             configure({
                 verifyToken: async () => ({
-                    sub: 2,
+                    userId: 2,
                     email: 'user@test.com',
                     roles: ['ROLE_USER'],
-                    iat: 0,
-                    exp: 0,
+                    isGuest: false,
                 }),
             });
 
