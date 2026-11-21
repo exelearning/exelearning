@@ -125,21 +125,21 @@ describe('discoverOidcMetadata', () => {
 
     it('rejects a document missing authorization_endpoint', async () => {
         const doc = metadataDoc();
-        delete (doc as Record<string, unknown>).authorization_endpoint;
+        delete (doc as Partial<OidcDiscoveryMetadata>).authorization_endpoint;
         const fetchMock = jsonFetch(doc);
         await expect(discoverOidcMetadata(ISSUER, { fetch: fetchMock })).rejects.toThrow(/authorization_endpoint/i);
     });
 
     it('rejects a document missing token_endpoint', async () => {
         const doc = metadataDoc();
-        delete (doc as Record<string, unknown>).token_endpoint;
+        delete (doc as Partial<OidcDiscoveryMetadata>).token_endpoint;
         const fetchMock = jsonFetch(doc);
         await expect(discoverOidcMetadata(ISSUER, { fetch: fetchMock })).rejects.toThrow(/token_endpoint/i);
     });
 
     it('rejects a document missing the issuer field', async () => {
         const doc = metadataDoc();
-        delete (doc as Record<string, unknown>).issuer;
+        delete (doc as Partial<OidcDiscoveryMetadata>).issuer;
         const fetchMock = jsonFetch(doc);
         await expect(discoverOidcMetadata(ISSUER, { fetch: fetchMock })).rejects.toThrow(/issuer/i);
     });
@@ -369,7 +369,7 @@ describe('resolveOidcEndpoints', () => {
 
     it('does not break when the provider omits end_session_endpoint', async () => {
         const doc = metadataDoc();
-        delete (doc as Record<string, unknown>).end_session_endpoint;
+        delete (doc as Partial<OidcDiscoveryMetadata>).end_session_endpoint;
         const fetchMock = jsonFetch(doc);
         const resolved = await resolveOidcEndpoints(
             {

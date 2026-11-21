@@ -328,7 +328,6 @@ describe('UploadSessionManager', () => {
             const payload = await manager.validateSession(sessionToken);
             const session = manager.getSession(payload!.sessionId);
             if (session) {
-                // @ts-expect-error - accessing private property for testing
                 session.expiresAt = Date.now() - 1000;
             }
 
@@ -389,7 +388,6 @@ describe('UploadSessionManager', () => {
             // Force the first session to be expired.
             const expiredSession = manager.getSession(expiredPayload!.sessionId);
             if (expiredSession) {
-                // @ts-expect-error - accessing private property for testing
                 expiredSession.expiresAt = Date.now() - 1000;
             }
 
@@ -438,11 +436,10 @@ describe('UploadSessionManager', () => {
                 registered++;
                 return realSetInterval(fn, ms);
             };
-            // @ts-expect-error - test override of global clearInterval
-            globalThis.clearInterval = (handle: ReturnType<typeof setInterval>) => {
+            globalThis.clearInterval = ((handle: ReturnType<typeof setInterval>) => {
                 cleared++;
                 return realClearInterval(handle);
-            };
+            }) as typeof clearInterval;
 
             try {
                 startCleanupScheduler(60000);
@@ -471,11 +468,10 @@ describe('UploadSessionManager', () => {
                 registered++;
                 return realSetInterval(fn, ms);
             };
-            // @ts-expect-error - test override of global clearInterval
-            globalThis.clearInterval = (handle: ReturnType<typeof setInterval>) => {
+            globalThis.clearInterval = ((handle: ReturnType<typeof setInterval>) => {
                 cleared++;
                 return realClearInterval(handle);
-            };
+            }) as typeof clearInterval;
 
             try {
                 startCleanupScheduler(60000);
@@ -503,7 +499,6 @@ describe('UploadSessionManager', () => {
                 capturedCallback = fn;
                 return 0 as unknown as ReturnType<typeof setInterval>;
             };
-            // @ts-expect-error - test override of global clearInterval
             globalThis.clearInterval = () => {};
 
             try {

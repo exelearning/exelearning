@@ -140,7 +140,7 @@ describe('QuickQuestionsWorksheetAdapter', () => {
             );
 
             expect(activity?.items).toHaveLength(1);
-            expect(['A', 'B']).toContain(activity?.items[0].prompt);
+            expect(['A', 'B']).toContain(activity?.items[0].prompt ?? '');
         });
     });
 

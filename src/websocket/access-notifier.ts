@@ -6,8 +6,8 @@
  * - Project visibility changes to private (kicks non-owner/non-collaborator users)
  * - A collaborator is removed from a project (kicks that specific user)
  */
-import type { ServerWebSocket } from 'bun';
 import * as roomManagerDefault from './room-manager';
+import type { YjsSocket } from './types';
 import { isDebugEnabled } from './config';
 
 /**
@@ -117,7 +117,7 @@ function createAccessRevokedMessage(projectUuid: string, reason: AccessRevokedRe
 /**
  * Send access-revoked message to a WebSocket connection and close it
  */
-function sendAndClose(ws: ServerWebSocket<unknown>, message: Uint8Array, reason: string): void {
+function sendAndClose(ws: YjsSocket, message: Uint8Array, reason: string): void {
     try {
         // Send the message first
         ws.send(message);

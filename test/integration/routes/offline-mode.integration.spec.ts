@@ -27,17 +27,17 @@ function createPagesApp(db: Kysely<Database>, isOffline: boolean) {
                 }),
             )
             .derive(async ({ jwt, cookie }) => {
-                const token = cookie.auth?.value;
+                const token = typeof cookie.auth?.value === 'string' ? cookie.auth.value : undefined;
                 if (!token) return { currentUser: null, isGuest: false, testDb: db };
 
                 try {
-                    const payload = (await jwt.verify(token)) as { sub: number } | false;
+                    const payload = (await jwt.verify(token)) as { sub: string } | false;
                     if (!payload || !payload.sub) return { currentUser: null, isGuest: false, testDb: db };
 
                     const user = await db
                         .selectFrom('users')
                         .selectAll()
-                        .where('id', '=', payload.sub)
+                        .where('id', '=', Number(payload.sub))
                         .executeTakeFirst();
 
                     return { currentUser: user || null, isGuest: false, testDb: db };
@@ -68,8 +68,8 @@ function createPagesApp(db: Kysely<Database>, isOffline: boolean) {
                                     is_lopd_accepted: 1,
                                     quota_mb: 4096,
                                     is_active: 1,
-                                    created_at: new Date().toISOString(),
-                                    updated_at: new Date().toISOString(),
+                                    created_at: Date.now(),
+                                    updated_at: Date.now(),
                                 })
                                 .returning(['id', 'email'])
                                 .executeTakeFirstOrThrow();
@@ -84,7 +84,7 @@ function createPagesApp(db: Kysely<Database>, isOffline: boolean) {
                         if (user) {
                             // Generate JWT token
                             const token = await jwt.sign({
-                                sub: user.id,
+                                sub: String(user.id),
                                 email: user.email,
                                 roles: JSON.parse(user.roles || '["ROLE_USER"]'),
                                 isGuest: false,
@@ -153,7 +153,7 @@ describe('Offline Mode Integration (APP_ONLINE_MODE=0)', () => {
     });
 
     describe('Login Behavior in Offline Mode', () => {
-        let offlineApp: Elysia;
+        let offlineApp: Pick<Elysia, 'handle'>;
 
         beforeEach(() => {
             offlineApp = createPagesApp(db, true); // isOffline = true
@@ -202,8 +202,8 @@ describe('Offline Mode Integration (APP_ONLINE_MODE=0)', () => {
                     is_lopd_accepted: 1,
                     quota_mb: 4096,
                     is_active: 1,
-                    created_at: new Date().toISOString(),
-                    updated_at: new Date().toISOString(),
+                    created_at: Date.now(),
+                    updated_at: Date.now(),
                 })
                 .execute();
 
@@ -218,7 +218,7 @@ describe('Offline Mode Integration (APP_ONLINE_MODE=0)', () => {
     });
 
     describe('Login Behavior in Online Mode', () => {
-        let onlineApp: Elysia;
+        let onlineApp: Pick<Elysia, 'handle'>;
 
         beforeEach(() => {
             onlineApp = createPagesApp(db, false); // isOffline = false
@@ -254,7 +254,7 @@ describe('Offline Mode Integration (APP_ONLINE_MODE=0)', () => {
     });
 
     describe('Workarea Config in Offline Mode', () => {
-        let offlineApp: Elysia;
+        let offlineApp: Pick<Elysia, 'handle'>;
 
         beforeEach(async () => {
             offlineApp = createPagesApp(db, true);
@@ -293,7 +293,7 @@ describe('Offline Mode Integration (APP_ONLINE_MODE=0)', () => {
     });
 
     describe('Workarea Config in Online Mode', () => {
-        let _onlineApp: Elysia;
+        let _onlineApp: Pick<Elysia, 'handle'>;
         let _authToken: string;
 
         beforeEach(async () => {
@@ -312,8 +312,8 @@ describe('Offline Mode Integration (APP_ONLINE_MODE=0)', () => {
                     is_lopd_accepted: 1,
                     quota_mb: 4096,
                     is_active: 1,
-                    created_at: new Date().toISOString(),
-                    updated_at: new Date().toISOString(),
+                    created_at: Date.now(),
+                    updated_at: Date.now(),
                 })
                 .returning(['id'])
                 .executeTakeFirstOrThrow();

@@ -30,7 +30,7 @@ const testChunksDir = path.join(process.cwd(), 'test', 'temp', 'chunks-test');
 /**
  * Create a minimal test app with chunked upload routes
  */
-function createChunkedUploadTestApp(): Elysia {
+function createChunkedUploadTestApp() {
     return (
         new Elysia({ name: 'chunked-upload-test', prefix: '/api/projects/:projectId/assets' })
             // GET /upload-chunk - Check if chunk exists
@@ -147,7 +147,7 @@ function createChunkedUploadTestApp(): Elysia {
 }
 
 describe('Chunked Upload Integration', () => {
-    let app: Elysia;
+    let app: Pick<Elysia, 'handle'>;
     const testProjectId = 'test-chunked-upload-project';
 
     beforeAll(async () => {
