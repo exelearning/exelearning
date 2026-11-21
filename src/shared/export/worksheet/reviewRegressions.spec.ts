@@ -188,7 +188,7 @@ describe('worksheet review regressions', () => {
             else {
                 expect(activity.board?.kind).toBe('wordBank');
                 if (activity.board?.kind === 'wordBank')
-                    expect(activity.board.words.toSorted()).toEqual(
+                    expect([...activity.board.words].sort()).toEqual(
                         (type === 2
                             ? ['Madrid', 'Barcelona', 'Sevilla', 'Bilbao']
                             : ['Madrid', 'Sevilla', 'Bilbao']

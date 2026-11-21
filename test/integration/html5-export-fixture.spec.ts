@@ -22,8 +22,8 @@ import {
     FflateZipProvider,
     Html5Exporter,
     unzipSync,
-    type ParsedOdeStructure,
 } from '../../src/shared/export';
+import type { ParsedOdeStructure } from '../../src/services/xml/interfaces';
 
 // Import XML parser for loading ELP
 import { parseFromString } from '../../src/services/xml/xml-parser';

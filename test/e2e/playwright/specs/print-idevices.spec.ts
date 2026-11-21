@@ -3440,7 +3440,7 @@ test.describe('Print: a folded block opens on paper', () => {
 
         // Two blocks the author folded and one left open.
         await page.evaluate(() => {
-            const binding = window.eXeLearning.app.project._yjsBridge.structureBinding;
+            const binding = (window as any).eXeLearning.app.project._yjsBridge.structureBinding;
             const parent = binding.createPage('As shown');
             const kinds: [string, boolean][] = [
                 ['ep-folded', true],

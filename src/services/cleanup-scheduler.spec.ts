@@ -41,6 +41,10 @@ describe('Cleanup Scheduler', () => {
         created_at: Date.now() - 48 * 60 * 60 * 1000,
         updated_at: Date.now() - 48 * 60 * 60 * 1000,
         platform_id: null,
+        platform_site: null,
+        platform_package_hash: null,
+        public_view_id: null,
+        public_view_enabled: 0,
         ...overrides,
     });
 
@@ -85,17 +89,17 @@ describe('Cleanup Scheduler', () => {
         let nextId = 1;
 
         return {
-            setInterval: (callback: () => void, interval: number) => {
+            setInterval: ((callback: () => void, interval: number) => {
                 const id = nextId++;
                 intervals.push({ id, callback, interval });
                 return id as unknown as ReturnType<typeof setInterval>;
-            },
-            clearInterval: (id: ReturnType<typeof setInterval>) => {
+            }) as unknown as typeof setInterval,
+            clearInterval: ((id: ReturnType<typeof setInterval>) => {
                 const index = intervals.findIndex(i => i.id === (id as unknown as number));
                 if (index >= 0) {
                     intervals.splice(index, 1);
                 }
-            },
+            }) as typeof clearInterval,
             _intervals: intervals,
             triggerInterval: (id: number) => {
                 const interval = intervals.find(i => i.id === id);
