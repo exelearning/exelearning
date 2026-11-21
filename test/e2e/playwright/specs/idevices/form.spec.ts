@@ -360,8 +360,8 @@ async function verifyFormRendered(iframe: FrameLocator): Promise<void> {
 
 test.describe('Form iDevice', () => {
     test.describe('Basic Operations', () => {
-        test('should add form iDevice to page', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should add form iDevice to page', async ({ guestSession, createProject }) => {
+            const page = guestSession;
 
             const projectUuid = await createProject(page, 'Form Basic Test');
             await gotoWorkarea(page, projectUuid);
@@ -379,8 +379,8 @@ test.describe('Form iDevice', () => {
             await expect(page.locator('#buttonHideShowQuestionsTop')).toBeVisible({ timeout: 5000 });
         });
 
-        test('should add a true/false question', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should add a true/false question', async ({ guestSession, createProject }) => {
+            const page = guestSession;
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Form TrueFalse Test');
@@ -403,8 +403,8 @@ test.describe('Form iDevice', () => {
             await workarea.save();
         });
 
-        test('should add a selection question with multiple options', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should add a selection question with multiple options', async ({ guestSession, createProject }) => {
+            const page = guestSession;
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Form Selection Test');
@@ -427,8 +427,8 @@ test.describe('Form iDevice', () => {
             await workarea.save();
         });
 
-        test('should add multiple questions of different types', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should add multiple questions of different types', async ({ guestSession, createProject }) => {
+            const page = guestSession;
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Form Multiple Questions Test');
@@ -464,8 +464,8 @@ test.describe('Form iDevice', () => {
     });
 
     test.describe('Preview Panel', () => {
-        test('should render form correctly in preview', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should render form correctly in preview', async ({ guestSession, createProject }) => {
+            const page = guestSession;
             const workarea = new WorkareaPage(page);
             const symbolOptions = ['A < B', 'a = b && c>a y & b<a', 'b<a Adias'];
 
@@ -517,8 +517,8 @@ test.describe('Form iDevice', () => {
             ).toEqual(symbolOptions);
         });
 
-        test('should have check and reset buttons in preview', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should have check and reset buttons in preview', async ({ guestSession, createProject }) => {
+            const page = guestSession;
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Form Buttons Test');
@@ -558,8 +558,8 @@ test.describe('Form iDevice', () => {
     });
 
     test.describe('Form Interaction', () => {
-        test('should allow answering true/false question', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should allow answering true/false question', async ({ guestSession, createProject }) => {
+            const page = guestSession;
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Form TF Interaction Test');
@@ -603,8 +603,8 @@ test.describe('Form iDevice', () => {
     });
 
     test.describe('Persistence', () => {
-        test('should persist after reload', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should persist after reload', async ({ guestSession, createProject }) => {
+            const page = guestSession;
             const workarea = new WorkareaPage(page);
 
             // Heavy multi-step flow (add + save + reload + edit + re-save) that runs

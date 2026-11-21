@@ -221,11 +221,11 @@ async function exportScorm12(page: import('@playwright/test').Page) {
 
 test.describe('SCORM 1.2 exported SCO runtime', () => {
     test('runs against a strict parent SCORM 1.2 API across the page lifecycle', async ({
-        authenticatedPage,
+        guestSession,
         createProject,
     }) => {
         test.setTimeout(180000);
-        const page = authenticatedPage;
+        const page = guestSession;
         const uuid = await createProject(page, 'SCORM 1.2 SCO runtime');
 
         await gotoWorkarea(page, uuid);
@@ -367,11 +367,11 @@ test.describe('SCORM 1.2 exported SCO runtime', () => {
     });
 
     test('tracks multi-activity completion through the registry, across suspension and resume', async ({
-        authenticatedPage,
+        guestSession,
         createProject,
     }) => {
         test.setTimeout(180000);
-        const page = authenticatedPage;
+        const page = guestSession;
         const uuid = await createProject(page, 'SCORM 1.2 registry runtime');
 
         await gotoWorkarea(page, uuid);
@@ -491,11 +491,11 @@ test.describe('SCORM 1.2 exported SCO runtime', () => {
     });
 
     test('fails a page whose high mark makes up for a low one when every activity must reach its own', async ({
-        authenticatedPage,
+        guestSession,
         createProject,
     }) => {
         test.setTimeout(180000);
-        const page = authenticatedPage;
+        const page = guestSession;
         const uuid = await createProject(page, 'SCORM 1.2 every activity at its own mark');
 
         await gotoWorkarea(page, uuid);
@@ -583,9 +583,9 @@ test.describe('SCORM 1.2 exported SCO runtime', () => {
         }
     });
 
-    test('drives real exported iDevices through the common.js bridge', async ({ authenticatedPage, createProject }) => {
+    test('drives real exported iDevices through the common.js bridge', async ({ guestSession, createProject }) => {
         test.setTimeout(180000);
-        const page = authenticatedPage;
+        const page = guestSession;
         const uuid = await createProject(page, 'SCORM 1.2 common.js bridge');
 
         await gotoWorkarea(page, uuid);
@@ -798,7 +798,7 @@ test.describe('SCORM 1.2 exported SCO runtime', () => {
     });
 
     test('preserves the stored Relate mark on load and reports a learner restart', async ({
-        authenticatedPage: page,
+        guestSession: page,
         createProject,
     }, testInfo) => {
         test.setTimeout(180000);
@@ -887,7 +887,7 @@ test.describe('SCORM 1.2 exported SCO runtime', () => {
     });
 
     test('judges a page by the pass mark its only activity customised, across a resumed attempt', async ({
-        authenticatedPage: page,
+        guestSession: page,
         createProject,
     }, testInfo) => {
         test.setTimeout(180000);
@@ -1001,7 +1001,7 @@ test.describe('SCORM 1.2 exported SCO runtime', () => {
     });
 
     test('reopens a verdict judged by a customised mark when the game registers after the session opens', async ({
-        authenticatedPage: page,
+        guestSession: page,
         createProject,
     }, testInfo) => {
         test.setTimeout(180000);

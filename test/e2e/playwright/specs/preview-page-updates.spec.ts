@@ -13,8 +13,8 @@ import { waitForAppReady, waitForServiceWorker, gotoWorkarea } from '../helpers/
  */
 
 test.describe('Preview Page Updates', () => {
-    test('should reflect page title changes in Preview via Yjs', async ({ authenticatedPage, createProject }) => {
-        const page = authenticatedPage;
+    test('should reflect page title changes in Preview via Yjs', async ({ guestSession, createProject }) => {
+        const page = guestSession;
 
         // Create a new project
         const projectUuid = await createProject(page, 'Preview Title Update Test');
@@ -77,8 +77,8 @@ test.describe('Preview Page Updates', () => {
         await expect(oldNavItem).toHaveCount(0);
     });
 
-    test('should update both title and pageName fields on rename', async ({ authenticatedPage, createProject }) => {
-        const page = authenticatedPage;
+    test('should update both title and pageName fields on rename', async ({ guestSession, createProject }) => {
+        const page = guestSession;
 
         // Create a new project
         const projectUuid = await createProject(page, 'Title Fields Test');
@@ -153,8 +153,8 @@ test.describe('Preview Page Updates', () => {
         expect(fields!.pageName).toBe(newName);
     });
 
-    test('should reflect page order in Preview navigation', async ({ authenticatedPage, createProject }) => {
-        const page = authenticatedPage;
+    test('should reflect page order in Preview navigation', async ({ guestSession, createProject }) => {
+        const page = guestSession;
 
         // Create a new project
         const projectUuid = await createProject(page, 'Page Order Test');
@@ -215,8 +215,8 @@ test.describe('Preview Page Updates', () => {
         }
     });
 
-    test('should maintain correct order after page movement', async ({ authenticatedPage, createProject }) => {
-        const page = authenticatedPage;
+    test('should maintain correct order after page movement', async ({ guestSession, createProject }) => {
+        const page = guestSession;
 
         // Create a new project
         const projectUuid = await createProject(page, 'Page Movement Test');

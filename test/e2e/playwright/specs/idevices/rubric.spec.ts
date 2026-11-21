@@ -179,8 +179,8 @@ async function getRubricRootInPreview(page: Page) {
 }
 test.describe('Rubric iDevice', () => {
     test.describe('Basic Operations', () => {
-        test('should add rubric iDevice and create new rubric', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should add rubric iDevice and create new rubric', async ({ guestSession, createProject }) => {
+            const page = guestSession;
 
             // Create a new project
             const projectUuid = await createProject(page, 'Rubric Add Test');
@@ -212,8 +212,8 @@ test.describe('Rubric iDevice', () => {
             await expect(tbodyTrs).toHaveCount(4, { timeout: 5000 });
         });
 
-        test('should edit rubric content and save', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should edit rubric content and save', async ({ guestSession, createProject }) => {
+            const page = guestSession;
 
             const projectUuid = await createProject(page, 'Rubric Edit Test');
             await gotoWorkarea(page, projectUuid);
@@ -249,8 +249,8 @@ test.describe('Rubric iDevice', () => {
             });
         });
 
-        test('should edit a descriptor through the cell dialog', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should edit a descriptor through the cell dialog', async ({ guestSession, createProject }) => {
+            const page = guestSession;
 
             const projectUuid = await createProject(page, 'Rubric Cell Dialog Test');
             await gotoWorkarea(page, projectUuid);
@@ -305,10 +305,10 @@ test.describe('Rubric iDevice', () => {
         });
 
         test('should block the rubric controls but leave the rest of the app usable', async ({
-            authenticatedPage,
+            guestSession,
             createProject,
         }) => {
-            const page = authenticatedPage;
+            const page = guestSession;
 
             const projectUuid = await createProject(page, 'Rubric Dialog Scope Test');
             await gotoWorkarea(page, projectUuid);
@@ -359,10 +359,10 @@ test.describe('Rubric iDevice', () => {
         });
 
         test('should keep the rubric out of reach of the keyboard while a dialog is open', async ({
-            authenticatedPage,
+            guestSession,
             createProject,
         }) => {
-            const page = authenticatedPage;
+            const page = guestSession;
 
             const projectUuid = await createProject(page, 'Rubric Dialog Inert Test');
             await gotoWorkarea(page, projectUuid);
@@ -405,10 +405,10 @@ test.describe('Rubric iDevice', () => {
         });
 
         test('should return the focus to the control that opened the dialog', async ({
-            authenticatedPage,
+            guestSession,
             createProject,
         }) => {
-            const page = authenticatedPage;
+            const page = guestSession;
 
             const projectUuid = await createProject(page, 'Rubric Dialog Focus Test');
             await gotoWorkarea(page, projectUuid);
@@ -435,10 +435,10 @@ test.describe('Rubric iDevice', () => {
         });
 
         test('should keep the edits pending in a dialog when the iDevice is saved', async ({
-            authenticatedPage,
+            guestSession,
             createProject,
         }) => {
-            const page = authenticatedPage;
+            const page = guestSession;
 
             const projectUuid = await createProject(page, 'Rubric Save With Dialog Test');
             await gotoWorkarea(page, projectUuid);
@@ -463,10 +463,10 @@ test.describe('Rubric iDevice', () => {
         });
 
         test('should show the unsaved-changes confirmation above the row dialog', async ({
-            authenticatedPage,
+            guestSession,
             createProject,
         }) => {
-            const page = authenticatedPage;
+            const page = guestSession;
 
             const projectUuid = await createProject(page, 'Rubric Row Dialog Confirm Test');
             await gotoWorkarea(page, projectUuid);
@@ -504,10 +504,10 @@ test.describe('Rubric iDevice', () => {
 
         for (const exit of ['save', 'discard', 'delete'] as const) {
             test(`should leave no dialog behind when leaving edition through ${exit}`, async ({
-                authenticatedPage,
+                guestSession,
                 createProject,
             }) => {
-                const page = authenticatedPage;
+                const page = guestSession;
 
                 const projectUuid = await createProject(page, `Rubric Dialog Cleanup ${exit}`);
                 await gotoWorkarea(page, projectUuid);
@@ -550,8 +550,8 @@ test.describe('Rubric iDevice', () => {
             });
         }
 
-        test('should persist rubric after reload', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should persist rubric after reload', async ({ guestSession, createProject }) => {
+            const page = guestSession;
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Rubric Persistence Test');
@@ -603,10 +603,10 @@ test.describe('Rubric iDevice', () => {
 
     test.describe('Preview', () => {
         test('should display rubric table correctly in preview with Download button', async ({
-            authenticatedPage,
+            guestSession,
             createProject,
         }) => {
-            const page = authenticatedPage;
+            const page = guestSession;
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Rubric Preview Test');

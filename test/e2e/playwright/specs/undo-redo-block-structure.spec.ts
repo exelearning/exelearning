@@ -214,10 +214,10 @@ test.describe('Undo/Redo Block Structure - Issue #1129', () => {
     });
 
     test('undo should immediately remove a just-created block in current page', async ({
-        authenticatedPage,
+        guestSession,
         createProject,
     }) => {
-        const page = authenticatedPage;
+        const page = guestSession;
         const projectUuid = await createProject(page, 'Undo Block Create');
         await gotoWorkarea(page, projectUuid);
         await waitForAppReady(page);
@@ -241,11 +241,8 @@ test.describe('Undo/Redo Block Structure - Issue #1129', () => {
         expect(countAfterUndo).not.toBe(countBeforeUndo);
     });
 
-    test('undo should immediately restore a deleted block in current page', async ({
-        authenticatedPage,
-        createProject,
-    }) => {
-        const page = authenticatedPage;
+    test('undo should immediately restore a deleted block in current page', async ({ guestSession, createProject }) => {
+        const page = guestSession;
         const projectUuid = await createProject(page, 'Undo Block Delete');
         await gotoWorkarea(page, projectUuid);
         await waitForAppReady(page);
@@ -282,10 +279,10 @@ test.describe('Undo/Redo Block Structure - Issue #1129', () => {
     });
 
     test('undo should immediately restore block moved to another page without navigation', async ({
-        authenticatedPage,
+        guestSession,
         createProject,
     }) => {
-        const page = authenticatedPage;
+        const page = guestSession;
         const projectUuid = await createProject(page, 'Undo Block Move Page');
         await gotoWorkarea(page, projectUuid);
         await waitForAppReady(page);

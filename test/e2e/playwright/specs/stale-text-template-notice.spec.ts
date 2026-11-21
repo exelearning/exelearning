@@ -16,11 +16,11 @@ const FIXTURE = path.resolve(__dirname, '../../../fixtures/stale-text-template-r
 
 test.describe('Missing asset notice with a stale eXe 3 text template', () => {
     test('reports the file the activity references and not the one only its stale template knew', async ({
-        authenticatedPage,
+        guestSession,
         createProject,
     }) => {
         test.setTimeout(120000);
-        const page = authenticatedPage;
+        const page = guestSession;
 
         const projectUuid = await createProject(page, 'Stale text template notice');
         await gotoWorkarea(page, projectUuid);

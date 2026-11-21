@@ -385,8 +385,8 @@ async function clonePage(page: Page): Promise<void> {
 
 test.describe('Cloning Functionality', () => {
     test.describe('Clone iDevice', () => {
-        test('should clone iDevice with text content preserved', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should clone iDevice with text content preserved', async ({ guestSession, createProject }) => {
+            const page = guestSession;
 
             // Create project
             const projectUuid = await createProject(page, 'Clone iDevice Test');
@@ -432,11 +432,8 @@ test.describe('Cloning Functionality', () => {
     });
 
     test.describe('Clone Block', () => {
-        test('should clone block with all iDevices and content preserved', async ({
-            authenticatedPage,
-            createProject,
-        }) => {
-            const page = authenticatedPage;
+        test('should clone block with all iDevices and content preserved', async ({ guestSession, createProject }) => {
+            const page = guestSession;
 
             const projectUuid = await createProject(page, 'Clone Block Test');
             await gotoWorkarea(page, projectUuid);
@@ -476,11 +473,8 @@ test.describe('Cloning Functionality', () => {
     });
 
     test.describe('Clone Page', () => {
-        test('should clone page with all blocks and iDevices preserved', async ({
-            authenticatedPage,
-            createProject,
-        }) => {
-            const page = authenticatedPage;
+        test('should clone page with all blocks and iDevices preserved', async ({ guestSession, createProject }) => {
+            const page = guestSession;
 
             const projectUuid = await createProject(page, 'Clone Page Test');
             await gotoWorkarea(page, projectUuid);

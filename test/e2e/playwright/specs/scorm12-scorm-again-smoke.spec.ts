@@ -499,11 +499,11 @@ function assertExitContract({ journal, state }: LmsSnapshot, expected: { status:
 
 test.describe('SCORM 1.2 exported package against scorm-again (smoke)', () => {
     test('an unscored page drives an independent LMS API end to end and completes on exit', async ({
-        authenticatedPage,
+        guestSession,
         createProject,
     }) => {
         test.setTimeout(180_000);
-        const page = authenticatedPage;
+        const page = guestSession;
         const projectUuid = await createProject(page, 'SCORM 1.2 scorm-again smoke');
         await gotoWorkarea(page, projectUuid);
         await waitForAppReady(page);
@@ -527,11 +527,11 @@ test.describe('SCORM 1.2 exported package against scorm-again (smoke)', () => {
     });
 
     test('a scored page left unanswered stays incomplete and suspends on exit', async ({
-        authenticatedPage,
+        guestSession,
         createProject,
     }) => {
         test.setTimeout(180_000);
-        const page = authenticatedPage;
+        const page = guestSession;
         const projectUuid = await createProject(page, 'SCORM 1.2 scorm-again smoke (scored)');
         await gotoWorkarea(page, projectUuid);
         await waitForAppReady(page);

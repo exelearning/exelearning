@@ -141,8 +141,8 @@ test.describe('Preview Service Worker recovery', () => {
         expect(previewErrors).toEqual([]);
     });
 
-    test('removes an orphaned root-scope preview worker registration', async ({ authenticatedPage, createProject }) => {
-        const page = authenticatedPage;
+    test('removes an orphaned root-scope preview worker registration', async ({ guestSession, createProject }) => {
+        const page = guestSession;
         const projectUuid = await createProject(page, 'Preview SW orphan cleanup');
         await gotoWorkarea(page, projectUuid);
         await waitForAppReady(page);

@@ -22,10 +22,10 @@ import { waitForAppReady, gotoWorkarea, addTextIdeviceWithContent } from '../hel
 
 test.describe('SCORM 1.2 export runtime', () => {
     test('packages the vendored pipwerks wrapper and the assembled runtime', async ({
-        authenticatedPage,
+        guestSession,
         createProject,
     }) => {
-        const page = authenticatedPage;
+        const page = guestSession;
         const uuid = await createProject(page, 'SCORM 1.2 Runtime Export');
 
         await gotoWorkarea(page, uuid);

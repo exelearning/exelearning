@@ -56,11 +56,11 @@ test.describe('Theme navigation and search togglers', () => {
     // at every width; base: nav uses display:none (control case).
     for (const themeId of ['neo', 'flux', 'educablue', 'base']) {
         test(`${themeId}: togglers announce and enforce the real menu/search state`, async ({
-            authenticatedPage,
+            guestSession,
             createProject,
         }) => {
             test.setTimeout(90000);
-            const page = authenticatedPage;
+            const page = guestSession;
 
             const projectUuid = await createProject(page, `Togglers a11y ${themeId}`);
             await gotoWorkarea(page, projectUuid);
@@ -134,11 +134,11 @@ test.describe('Theme navigation and search togglers', () => {
     }
 
     test('search disabled: no search toggler is injected, so no aria-controls points at nothing', async ({
-        authenticatedPage,
+        guestSession,
         createProject,
     }) => {
         test.setTimeout(60000);
-        const page = authenticatedPage;
+        const page = guestSession;
 
         const projectUuid = await createProject(page, 'Togglers a11y no search');
         await gotoWorkarea(page, projectUuid);

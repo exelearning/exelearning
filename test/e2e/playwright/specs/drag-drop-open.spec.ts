@@ -49,8 +49,8 @@ async function dropFileDeep(page: Page, fixturePath: string): Promise<boolean> {
 }
 
 test.describe('Drag-and-drop open', () => {
-    test('dropping an .elp file opens the project', async ({ authenticatedPage, createProject }) => {
-        const page = authenticatedPage;
+    test('dropping an .elp file opens the project', async ({ guestSession, createProject }) => {
+        const page = guestSession;
 
         const projectUuid = await createProject(page, 'Drag Drop Open Test');
         await gotoWorkarea(page, projectUuid);
@@ -79,14 +79,14 @@ test.describe('Drag-and-drop open', () => {
     });
 
     test('dropping a file with unsaved changes prompts to save first', async ({
-        authenticatedPage,
+        guestSession,
         createProject,
     }, testInfo) => {
         if (testInfo.project.name === 'static') {
             test.skip(true, 'Dirty-state setup mirrors open-project-clean-state, skipped in static');
         }
 
-        const page = authenticatedPage;
+        const page = guestSession;
 
         const projectUuid = await createProject(page, 'Drag Drop Save Prompt Test');
         await gotoWorkarea(page, projectUuid);

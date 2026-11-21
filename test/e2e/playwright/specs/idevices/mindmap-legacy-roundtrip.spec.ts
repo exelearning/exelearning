@@ -183,7 +183,7 @@ test.describe('Legacy mind maps in the Mind Elixir editor', () => {
     });
 
     test('opens the large legacy map and the map made with the legacy UI', async ({
-        authenticatedPage: page,
+        guestSession: page,
         createProject,
     }) => {
         const projectUuid = await createProject(page, 'Legacy mind maps large');

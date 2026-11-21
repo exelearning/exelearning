@@ -13,8 +13,8 @@ import * as path from 'path';
 test.describe('Save Detection - ELPX Upload', () => {
     const FIXTURE_PATH = path.resolve(__dirname, '../../../fixtures/really-simple-test-project.elpx');
 
-    test('opening ELPX should start with saved status', async ({ authenticatedPage, createProject }) => {
-        const page = authenticatedPage;
+    test('opening ELPX should start with saved status', async ({ guestSession, createProject }) => {
+        const page = guestSession;
 
         // Create a new project first
         const projectUuid = await createProject(page, 'ELPX Import Test');
@@ -65,8 +65,8 @@ test.describe('Save Detection - ELPX Upload', () => {
         await expect(saveButtonAfterOpen).toHaveClass(/saved/);
     });
 
-    test('changes after opening ELPX should show unsaved status', async ({ authenticatedPage, createProject }) => {
-        const page = authenticatedPage;
+    test('changes after opening ELPX should show unsaved status', async ({ guestSession, createProject }) => {
+        const page = guestSession;
 
         // Create a new project first
         const projectUuid = await createProject(page, 'ELPX Open Change Test');
@@ -121,8 +121,8 @@ test.describe('Save Detection - ELPX Upload', () => {
         await expect(saveButton).toHaveClass(/unsaved/);
     });
 
-    test('hasUnsavedChangesForUI reflects changes after opening ELPX', async ({ authenticatedPage, createProject }) => {
-        const page = authenticatedPage;
+    test('hasUnsavedChangesForUI reflects changes after opening ELPX', async ({ guestSession, createProject }) => {
+        const page = guestSession;
 
         // Create a new project first
         const projectUuid = await createProject(page, 'ELPX Unsaved Navigation Test');

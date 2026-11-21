@@ -49,8 +49,8 @@ test.describe('home_is_where_art_is.elp Import Tests', () => {
         // Skip: Multi-page preview navigation is unreliable in SW-based preview
         // The gallery is on a subpage and clicking navigation links in multi-page export
         // requires actual iframe navigation which is complex to test reliably
-        test.skip('should show gallery images in preview', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test.skip('should show gallery images in preview', async ({ guestSession, createProject }) => {
+            const page = guestSession;
 
             const projectUuid = await createProject(page, 'Gallery Preview Test');
             await gotoWorkarea(page, projectUuid);
@@ -170,8 +170,8 @@ test.describe('home_is_where_art_is.elp Import Tests', () => {
             }
         });
 
-        test('should import gallery with correct type and 10 images', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should import gallery with correct type and 10 images', async ({ guestSession, createProject }) => {
+            const page = guestSession;
 
             // Create project and navigate
             const projectUuid = await createProject(page, 'Gallery Test');
@@ -229,10 +229,10 @@ test.describe('home_is_where_art_is.elp Import Tests', () => {
 
     test.describe('Flipcards', () => {
         test('should import flipcards with correct type and enabled Edit button', async ({
-            authenticatedPage,
+            guestSession,
             createProject,
         }) => {
-            const page = authenticatedPage;
+            const page = guestSession;
 
             const projectUuid = await createProject(page, 'Flipcards Test');
             await gotoWorkarea(page, projectUuid);
@@ -287,10 +287,10 @@ test.describe('home_is_where_art_is.elp Import Tests', () => {
 
     test.describe('Selecciona (quick-questions-multiple-choice)', () => {
         test('should import selecciona with decrypted data and correct type', async ({
-            authenticatedPage,
+            guestSession,
             createProject,
         }) => {
-            const page = authenticatedPage;
+            const page = guestSession;
 
             const projectUuid = await createProject(page, 'Selecciona Test');
             await gotoWorkarea(page, projectUuid);
@@ -359,8 +359,8 @@ test.describe('home_is_where_art_is.elp Import Tests', () => {
     });
 
     test.describe('Map (Learning Pathway)', () => {
-        test('should import map with correct type and points data', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should import map with correct type and points data', async ({ guestSession, createProject }) => {
+            const page = guestSession;
 
             const projectUuid = await createProject(page, 'Map Test');
             await gotoWorkarea(page, projectUuid);

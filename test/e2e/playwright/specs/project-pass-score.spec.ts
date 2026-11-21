@@ -48,8 +48,8 @@ function readStoredPassScore(page: import('@playwright/test').Page): Promise<unk
 }
 
 test.describe('Project pass score', () => {
-    test('defaults to 5 and stores what the author types', async ({ authenticatedPage, createProject }) => {
-        const page = authenticatedPage;
+    test('defaults to 5 and stores what the author types', async ({ guestSession, createProject }) => {
+        const page = guestSession;
         const projectUuid = await createProject(page, 'Pass Score Default');
 
         await gotoWorkarea(page, projectUuid);
@@ -76,8 +76,8 @@ test.describe('Project pass score', () => {
             .toBe(7.5);
     });
 
-    test('reaches the previewed page as a META the runtime can read', async ({ authenticatedPage, createProject }) => {
-        const page = authenticatedPage;
+    test('reaches the previewed page as a META the runtime can read', async ({ guestSession, createProject }) => {
+        const page = guestSession;
         const projectUuid = await createProject(page, 'Pass Score Preview');
 
         await gotoWorkarea(page, projectUuid);
@@ -107,8 +107,8 @@ test.describe('Project pass score', () => {
         expect(runtimeValue).toBe(7.5);
     });
 
-    test('clamps a value typed outside the 0-10 range', async ({ authenticatedPage, createProject }) => {
-        const page = authenticatedPage;
+    test('clamps a value typed outside the 0-10 range', async ({ guestSession, createProject }) => {
+        const page = guestSession;
         const projectUuid = await createProject(page, 'Pass Score Clamp');
 
         await gotoWorkarea(page, projectUuid);
@@ -128,10 +128,10 @@ test.describe('Project pass score', () => {
     });
 
     test('the every-activity rule is off by default and, once checked, reaches the previewed page', async ({
-        authenticatedPage,
+        guestSession,
         createProject,
     }) => {
-        const page = authenticatedPage;
+        const page = guestSession;
         const projectUuid = await createProject(page, 'Pass Score Every Activity');
 
         await gotoWorkarea(page, projectUuid);
@@ -183,7 +183,7 @@ test.describe('Project pass score', () => {
         });
 
         test('updates inherited notices after a collaborator changes the mark without resetting answers', async ({
-            authenticatedPage: page,
+            guestSession: page,
             secondAuthenticatedPage: peer,
             createProject,
             getShareUrl,

@@ -64,9 +64,9 @@ async function openGlobalSearchModal(page: import('@playwright/test').Page): Pro
 
 test.describe('Global Search Modal', () => {
     test.describe('Modal Opening', () => {
-        test('should open global search modal with keyboard shortcut', async ({ authenticatedPage, createProject }) => {
+        test('should open global search modal with keyboard shortcut', async ({ guestSession, createProject }) => {
             test.setTimeout(90000);
-            const page = authenticatedPage;
+            const page = guestSession;
 
             // Create a new project
             const projectUuid = await createProject(page, 'Global Search Test');
@@ -85,9 +85,9 @@ test.describe('Global Search Modal', () => {
             await expect(searchInput).toBeFocused();
         });
 
-        test('should open global search modal via menu item', async ({ authenticatedPage, createProject }) => {
+        test('should open global search modal via menu item', async ({ guestSession, createProject }) => {
             test.setTimeout(90000);
-            const page = authenticatedPage;
+            const page = guestSession;
 
             const projectUuid = await createProject(page, 'Global Search Menu Test');
             await gotoWorkarea(page, projectUuid);
@@ -109,9 +109,9 @@ test.describe('Global Search Modal', () => {
             expect(await modal.isVisible()).toBeTruthy();
         });
 
-        test('should close modal with Escape key', async ({ authenticatedPage, createProject }) => {
+        test('should close modal with Escape key', async ({ guestSession, createProject }) => {
             test.setTimeout(90000);
-            const page = authenticatedPage;
+            const page = guestSession;
 
             const projectUuid = await createProject(page, 'Global Search Escape Test');
             await gotoWorkarea(page, projectUuid);
@@ -131,9 +131,9 @@ test.describe('Global Search Modal', () => {
     });
 
     test.describe('Search Functionality', () => {
-        test('should find pages by title', async ({ authenticatedPage, createProject }) => {
+        test('should find pages by title', async ({ guestSession, createProject }) => {
             test.setTimeout(90000);
-            const page = authenticatedPage;
+            const page = guestSession;
 
             const projectUuid = await createProject(page, 'Page Search Test');
             await gotoWorkarea(page, projectUuid);
@@ -163,9 +163,9 @@ test.describe('Global Search Modal', () => {
             await expect(resultTitle).toContainText(uniquePageName);
         });
 
-        test('should find iDevice content', async ({ authenticatedPage, createProject }) => {
+        test('should find iDevice content', async ({ guestSession, createProject }) => {
             test.setTimeout(90000);
-            const page = authenticatedPage;
+            const page = guestSession;
 
             const projectUuid = await createProject(page, 'iDevice Search Test');
             await gotoWorkarea(page, projectUuid);
@@ -196,9 +196,9 @@ test.describe('Global Search Modal', () => {
             await expect(snippet).toBeVisible();
         });
 
-        test('should show empty state when no results found', async ({ authenticatedPage, createProject }) => {
+        test('should show empty state when no results found', async ({ guestSession, createProject }) => {
             test.setTimeout(90000);
-            const page = authenticatedPage;
+            const page = guestSession;
 
             const projectUuid = await createProject(page, 'No Results Test');
             await gotoWorkarea(page, projectUuid);
@@ -222,9 +222,9 @@ test.describe('Global Search Modal', () => {
     });
 
     test.describe('Keyboard Navigation', () => {
-        test('should navigate results with arrow keys', async ({ authenticatedPage, createProject }) => {
+        test('should navigate results with arrow keys', async ({ guestSession, createProject }) => {
             test.setTimeout(90000);
-            const page = authenticatedPage;
+            const page = guestSession;
 
             const projectUuid = await createProject(page, 'Keyboard Nav Test');
             await gotoWorkarea(page, projectUuid);
@@ -269,9 +269,9 @@ test.describe('Global Search Modal', () => {
             await expect(results.first()).toHaveClass(/selected/);
         });
 
-        test('should navigate to result with Enter key', async ({ authenticatedPage, createProject }) => {
+        test('should navigate to result with Enter key', async ({ guestSession, createProject }) => {
             test.setTimeout(90000);
-            const page = authenticatedPage;
+            const page = guestSession;
 
             const projectUuid = await createProject(page, 'Enter Key Nav Test');
             await gotoWorkarea(page, projectUuid);
@@ -312,9 +312,9 @@ test.describe('Global Search Modal', () => {
     });
 
     test.describe('Result Click Navigation', () => {
-        test('should navigate to page when clicking result', async ({ authenticatedPage, createProject }) => {
+        test('should navigate to page when clicking result', async ({ guestSession, createProject }) => {
             test.setTimeout(90000);
-            const page = authenticatedPage;
+            const page = guestSession;
 
             const projectUuid = await createProject(page, 'Click Nav Test');
             await gotoWorkarea(page, projectUuid);
@@ -350,9 +350,9 @@ test.describe('Global Search Modal', () => {
     });
 
     test.describe('Browser Find Not Blocked', () => {
-        test('should not intercept Ctrl+F (browser find)', async ({ authenticatedPage, createProject }) => {
+        test('should not intercept Ctrl+F (browser find)', async ({ guestSession, createProject }) => {
             test.setTimeout(90000);
-            const page = authenticatedPage;
+            const page = guestSession;
 
             const projectUuid = await createProject(page, 'Browser Find Test');
             await gotoWorkarea(page, projectUuid);

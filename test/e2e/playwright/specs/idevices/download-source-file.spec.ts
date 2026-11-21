@@ -269,8 +269,8 @@ async function verifyDownloadLinkInPreview(
 
 test.describe('Download Source File iDevice', () => {
     test.describe('Basic Operations', () => {
-        test('should add download-source-file iDevice to page', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should add download-source-file iDevice to page', async ({ guestSession, createProject }) => {
+            const page = guestSession;
 
             const projectUuid = await createProject(page, 'Download Source File Add Test');
             await gotoWorkarea(page, projectUuid);
@@ -296,8 +296,8 @@ test.describe('Download Source File iDevice', () => {
             await expect(fontSizeSelect).toBeVisible({ timeout: 5000 });
         });
 
-        test('should save iDevice with default values', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should save iDevice with default values', async ({ guestSession, createProject }) => {
+            const page = guestSession;
 
             const projectUuid = await createProject(page, 'Download Source File Save Test');
             await gotoWorkarea(page, projectUuid);
@@ -313,8 +313,8 @@ test.describe('Download Source File iDevice', () => {
             await expect(downloadLink).toBeAttached({ timeout: 10000 });
         });
 
-        test('should persist after reload', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should persist after reload', async ({ guestSession, createProject }) => {
+            const page = guestSession;
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Download Source File Persist Test');
@@ -364,8 +364,8 @@ test.describe('Download Source File iDevice', () => {
     });
 
     test.describe('Customization', () => {
-        test('should set custom button text', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should set custom button text', async ({ guestSession, createProject }) => {
+            const page = guestSession;
 
             const projectUuid = await createProject(page, 'Download Source File Custom Text Test');
             await gotoWorkarea(page, projectUuid);
@@ -385,8 +385,8 @@ test.describe('Download Source File iDevice', () => {
             expect(buttonText?.trim()).toBe(TEST_DATA.customButtonText);
         });
 
-        test('should set custom background color', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should set custom background color', async ({ guestSession, createProject }) => {
+            const page = guestSession;
 
             const projectUuid = await createProject(page, 'Download Source File Custom Color Test');
             await gotoWorkarea(page, projectUuid);
@@ -406,8 +406,8 @@ test.describe('Download Source File iDevice', () => {
             expect(style).toContain(TEST_DATA.customBgColor);
         });
 
-        test('should set custom font size', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should set custom font size', async ({ guestSession, createProject }) => {
+            const page = guestSession;
 
             const projectUuid = await createProject(page, 'Download Source File Font Size Test');
             await gotoWorkarea(page, projectUuid);
@@ -429,8 +429,8 @@ test.describe('Download Source File iDevice', () => {
     });
 
     test.describe('Preview Panel', () => {
-        test('should display download link correctly in preview', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should display download link correctly in preview', async ({ guestSession, createProject }) => {
+            const page = guestSession;
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Download Source File Preview Test');
@@ -460,10 +460,10 @@ test.describe('Download Source File iDevice', () => {
         });
 
         test('should have ELPX download functionality in preview via postMessage', async ({
-            authenticatedPage,
+            guestSession,
             createProject,
         }) => {
-            const page = authenticatedPage;
+            const page = guestSession;
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Download Source File Manifest Test');
@@ -512,8 +512,8 @@ test.describe('Download Source File iDevice', () => {
             expect(onclick).toContain('downloadElpx');
         });
 
-        test('should show project info table in preview', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should show project info table in preview', async ({ guestSession, createProject }) => {
+            const page = guestSession;
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Download Source File Info Table Test');
@@ -548,8 +548,8 @@ test.describe('Download Source File iDevice', () => {
     });
 
     test.describe('Edit Mode', () => {
-        test('should load previous values when editing', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should load previous values when editing', async ({ guestSession, createProject }) => {
+            const page = guestSession;
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Download Source File Edit Test');
@@ -588,13 +588,13 @@ test.describe('Download Source File iDevice', () => {
 
     test.describe('Properties Sync', () => {
         test('should sync project properties to iDevice read-only cells', async ({
-            authenticatedPage,
+            guestSession,
             createProject,
         }, testInfo) => {
             if (testInfo.project.name === 'static') {
                 test.skip(); // Skip in static mode
             }
-            const page = authenticatedPage;
+            const page = guestSession;
 
             const projectUuid = await createProject(page, 'Sync Test Init');
             await gotoWorkarea(page, projectUuid);

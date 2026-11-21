@@ -58,10 +58,10 @@ test.describe('Component Export/Import', () => {
     });
 
     test('should export block and iDevice, then import them to different pages', async ({
-        authenticatedPage,
+        guestSession,
         createProject,
     }) => {
-        const page = authenticatedPage;
+        const page = guestSession;
 
         // 1. Create a new project
         const projectUuid = await createProject(page, 'Component Export Import Test');
@@ -171,9 +171,9 @@ test.describe('Component Export/Import', () => {
         console.log('Test completed successfully - export and import working correctly');
     });
 
-    test('should undo imported block and imported iDevice', async ({ authenticatedPage, createProject }, testInfo) => {
+    test('should undo imported block and imported iDevice', async ({ guestSession, createProject }, testInfo) => {
         skipInStaticMode(test, testInfo, 'Requires Yjs undo manager in dynamic mode');
-        const page = authenticatedPage;
+        const page = guestSession;
         const localTempDir = fs.mkdtempSync(path.join('/tmp', 'exelearning-e2e-undo-import-'));
 
         // Source project: create one text iDevice and export block + iDevice files.
@@ -248,8 +248,8 @@ test.describe('Component Export/Import', () => {
         }
     });
 
-    test('should export block and verify file format', async ({ authenticatedPage, createProject }) => {
-        const page = authenticatedPage;
+    test('should export block and verify file format', async ({ guestSession, createProject }) => {
+        const page = guestSession;
 
         // Create project with text iDevice
         const projectUuid = await createProject(page, 'Block Export Format Test');
@@ -283,8 +283,8 @@ test.describe('Component Export/Import', () => {
         console.log(`Block file verified: ${fileName}`);
     });
 
-    test('should export iDevice and verify file format', async ({ authenticatedPage, createProject }) => {
-        const page = authenticatedPage;
+    test('should export iDevice and verify file format', async ({ guestSession, createProject }) => {
+        const page = guestSession;
 
         // Create project with text iDevice
         const projectUuid = await createProject(page, 'iDevice Export Format Test');
@@ -319,7 +319,7 @@ test.describe('Component Export/Import', () => {
     });
 
     test('should import iDevice with images and display them immediately without refresh', async ({
-        authenticatedPage,
+        guestSession,
         createProject,
     }) => {
         /**
@@ -332,7 +332,7 @@ test.describe('Component Export/Import', () => {
          * recognizing UUID-style folder paths like "{uuid}/{filename}" that
          * are used in exported .idevice files.
          */
-        const page = authenticatedPage;
+        const page = guestSession;
 
         // 1. Create a new project
         const projectUuid = await createProject(page, 'iDevice Image Import Test');
@@ -904,7 +904,7 @@ test.describe('Block Icon Preservation during Export/Import', () => {
     });
 
     test('should preserve block icon during export and verify iconName in ZIP content.xml', async ({
-        authenticatedPage,
+        guestSession,
         createProject,
     }) => {
         /**
@@ -914,7 +914,7 @@ test.describe('Block Icon Preservation during Export/Import', () => {
          * Previously, the iconName was hardcoded as empty: <iconName></iconName>
          * After the fix, it should contain the actual block iconName value.
          */
-        const page = authenticatedPage;
+        const page = guestSession;
 
         // 1. Create a new project
         const projectUuid = await createProject(page, 'Block Icon Export Test');
@@ -989,7 +989,7 @@ test.describe('Block Icon Preservation during Export/Import', () => {
         console.log('Block icon preserved in exported content.xml');
     });
 
-    test('should preserve block icon during import to new project', async ({ authenticatedPage, createProject }) => {
+    test('should preserve block icon during import to new project', async ({ guestSession, createProject }) => {
         test.setTimeout(90000);
         /**
          * This test verifies the full export/import cycle for block icons:
@@ -998,7 +998,7 @@ test.describe('Block Icon Preservation during Export/Import', () => {
          * 3. Import to new project
          * 4. Verify icon is preserved
          */
-        const page = authenticatedPage;
+        const page = guestSession;
 
         // 1. Create first project and add block with icon
         const projectUuid1 = await createProject(page, 'Block Icon Export Source');
@@ -1103,14 +1103,14 @@ test.describe('Block Icon Preservation during Export/Import', () => {
     });
 
     test('should handle block without icon (empty iconName) during export/import', async ({
-        authenticatedPage,
+        guestSession,
         createProject,
     }) => {
         /**
          * This test verifies that blocks without icons are correctly handled:
          * Empty iconName should remain empty after export/import cycle.
          */
-        const page = authenticatedPage;
+        const page = guestSession;
 
         // 1. Create project and add block WITHOUT setting an icon
         const projectUuid1 = await createProject(page, 'Block No Icon Export');
@@ -1222,10 +1222,10 @@ test.describe('iDevice Structure Property Preservation during Export/Import (iss
     });
 
     test('should include iDevice structure properties in exported .block content.xml', async ({
-        authenticatedPage,
+        guestSession,
         createProject,
     }) => {
-        const page = authenticatedPage;
+        const page = guestSession;
 
         const projectUuid = await createProject(page, 'Struct Props Block Export');
         await gotoWorkarea(page, projectUuid);
@@ -1265,11 +1265,11 @@ test.describe('iDevice Structure Property Preservation during Export/Import (iss
     });
 
     test('should preserve structure properties through a full export → import round-trip', async ({
-        authenticatedPage,
+        guestSession,
         createProject,
     }) => {
         test.setTimeout(90000);
-        const page = authenticatedPage;
+        const page = guestSession;
 
         // Source project: text iDevice marked teacher-only, hidden, with custom CSS classes.
         const sourceUuid = await createProject(page, 'Struct Props Roundtrip Source');

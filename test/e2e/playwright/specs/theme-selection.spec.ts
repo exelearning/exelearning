@@ -8,10 +8,10 @@ test.describe('Theme Selection on ELP Import', () => {
      * This ensures the fix for the bug where theme was applied but UI wasn't updated
      */
     test('should show correct theme selected in styles panel after opening elpx file', async ({
-        authenticatedPage,
+        guestSession,
         createProject,
     }) => {
-        const page = authenticatedPage;
+        const page = guestSession;
 
         // 1. Create a new project first
         const projectUuid = await createProject(page, 'Theme Test Project');
@@ -92,8 +92,8 @@ test.describe('Theme Selection on ELP Import', () => {
     /**
      * Test that ThemesManager.selected is correctly set after import
      */
-    test('should have correct theme in ThemesManager after import', async ({ authenticatedPage, createProject }) => {
-        const page = authenticatedPage;
+    test('should have correct theme in ThemesManager after import', async ({ guestSession, createProject }) => {
+        const page = guestSession;
 
         // Create a project
         const projectUuid = await createProject(page, 'Theme Check Project');

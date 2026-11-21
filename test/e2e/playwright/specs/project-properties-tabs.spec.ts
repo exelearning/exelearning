@@ -14,8 +14,8 @@ import { waitForAppReady, gotoWorkarea } from '../helpers/workarea-helpers';
  */
 
 test.describe('Project properties tabs', () => {
-    test('mark the active and focused tabs in forced colors mode', async ({ authenticatedPage, createProject }) => {
-        const page = authenticatedPage;
+    test('mark the active and focused tabs in forced colors mode', async ({ guestSession, createProject }) => {
+        const page = guestSession;
         const projectUuid = await createProject(page, 'Properties Tabs Forced Colors');
 
         await gotoWorkarea(page, projectUuid);

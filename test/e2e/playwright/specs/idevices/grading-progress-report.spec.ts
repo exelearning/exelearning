@@ -16,7 +16,7 @@ for (const device of [
     { name: 'electrical-circuits', form: '#electricalCircuitsIdeviceForm' },
 ]) {
     test(`${device.name} opens progress report help without changing report settings`, async ({
-        authenticatedPage: page,
+        guestSession: page,
         createProject,
     }) => {
         const uuid = await createProject(page, `${device.name} progress report help`);
@@ -57,7 +57,7 @@ for (const device of [
 }
 
 test('rubric reports its custom pass mark in the workarea and preview', async ({
-    authenticatedPage: page,
+    guestSession: page,
     createProject,
 }) => {
     test.setTimeout(120000);
@@ -150,7 +150,7 @@ test('rubric reports its custom pass mark in the workarea and preview', async ({
 });
 
 test('scrambled-list shows the learner their score outside the editor', async ({
-    authenticatedPage: page,
+    guestSession: page,
     createProject,
 }) => {
     test.setTimeout(120000);
@@ -206,10 +206,7 @@ test('scrambled-list shows the learner their score outside the editor', async ({
     await expect(icon.locator('img')).toHaveAttribute('src', /exequexthits\.svg$/);
 });
 
-test('new true-or-false activities offer a report only in test mode', async ({
-    authenticatedPage: page,
-    createProject,
-}) => {
+test('new true-or-false activities offer a report only in test mode', async ({ guestSession: page, createProject }) => {
     test.setTimeout(120000);
     const uuid = await createProject(page, 'True or false report availability');
     await gotoWorkarea(page, uuid);
@@ -265,7 +262,7 @@ test('new true-or-false activities offer a report only in test mode', async ({
 });
 
 test('true-or-false tells the learner its minimum score, in quiz mode only', async ({
-    authenticatedPage: page,
+    guestSession: page,
     createProject,
 }) => {
     test.setTimeout(150000);

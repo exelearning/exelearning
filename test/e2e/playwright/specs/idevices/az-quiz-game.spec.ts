@@ -266,8 +266,8 @@ async function verifyRoscoInPreview(iframe: FrameLocator): Promise<void> {
 
 test.describe('A-Z Quiz Game iDevice', () => {
     test.describe('Basic Operations', () => {
-        test('should add az-quiz-game iDevice to page', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should add az-quiz-game iDevice to page', async ({ guestSession, createProject }) => {
+            const page = guestSession;
 
             // Create a new project
             const projectUuid = await createProject(page, 'AZ Quiz Add Test');
@@ -290,8 +290,8 @@ test.describe('A-Z Quiz Game iDevice', () => {
             expect(wordBlockCount).toBeGreaterThanOrEqual(26); // A-Z = 26 letters
         });
 
-        test('should fill words and definitions for multiple letters', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should fill words and definitions for multiple letters', async ({ guestSession, createProject }) => {
+            const page = guestSession;
 
             const projectUuid = await createProject(page, 'AZ Quiz Fill Test');
             await gotoWorkarea(page, projectUuid);
@@ -314,11 +314,8 @@ test.describe('A-Z Quiz Game iDevice', () => {
             expect(bgColor).toContain('rgb'); // Just check it's a color value
         });
 
-        test('should save iDevice and verify content displays correctly', async ({
-            authenticatedPage,
-            createProject,
-        }) => {
-            const page = authenticatedPage;
+        test('should save iDevice and verify content displays correctly', async ({ guestSession, createProject }) => {
+            const page = guestSession;
 
             const projectUuid = await createProject(page, 'AZ Quiz Save Test');
             await gotoWorkarea(page, projectUuid);
@@ -345,8 +342,8 @@ test.describe('A-Z Quiz Game iDevice', () => {
             await expect(gameStart.or(statsArea).first()).toBeAttached({ timeout: 5000 });
         });
 
-        test('should persist after reload', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should persist after reload', async ({ guestSession, createProject }) => {
+            const page = guestSession;
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'AZ Quiz Persist Test');
@@ -445,8 +442,8 @@ test.describe('A-Z Quiz Game iDevice', () => {
             await verifyRoscoInPreview(iframe);
         });
 
-        test('should display canvas with rosco letters in preview', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should display canvas with rosco letters in preview', async ({ guestSession, createProject }) => {
+            const page = guestSession;
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'AZ Quiz Canvas Test');
@@ -494,10 +491,10 @@ test.describe('A-Z Quiz Game iDevice', () => {
         });
 
         test('should display letter indicators with correct colors in preview', async ({
-            authenticatedPage,
+            guestSession,
             createProject,
         }) => {
-            const page = authenticatedPage;
+            const page = guestSession;
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'AZ Quiz Letters Test');
@@ -539,8 +536,8 @@ test.describe('A-Z Quiz Game iDevice', () => {
             expect(letterABgColor).not.toContain('rgb(249, 249, 249)'); // Not gray/black (empty)
         });
 
-        test('should show start game button in preview', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should show start game button in preview', async ({ guestSession, createProject }) => {
+            const page = guestSession;
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'AZ Quiz Start Test');
@@ -576,8 +573,8 @@ test.describe('A-Z Quiz Game iDevice', () => {
     });
 
     test.describe('Game Interaction', () => {
-        test('should start game and show question interface', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should start game and show question interface', async ({ guestSession, createProject }) => {
+            const page = guestSession;
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'AZ Quiz Game Start Test');
@@ -626,8 +623,8 @@ test.describe('A-Z Quiz Game iDevice', () => {
             await expect(submitBtn).toBeVisible({ timeout: 5000 });
         });
 
-        test('should answer question and update score', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should answer question and update score', async ({ guestSession, createProject }) => {
+            const page = guestSession;
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'AZ Quiz Answer Test');
@@ -683,8 +680,8 @@ test.describe('A-Z Quiz Game iDevice', () => {
             expect(newHits).toBe('1');
         });
 
-        test('should track errors for wrong answers', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should track errors for wrong answers', async ({ guestSession, createProject }) => {
+            const page = guestSession;
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'AZ Quiz Error Test');
@@ -739,8 +736,8 @@ test.describe('A-Z Quiz Game iDevice', () => {
             expect(newErrors).toBe('1');
         });
 
-        test('should allow skipping questions with Move On button', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should allow skipping questions with Move On button', async ({ guestSession, createProject }) => {
+            const page = guestSession;
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'AZ Quiz Skip Test');
@@ -792,8 +789,8 @@ test.describe('A-Z Quiz Game iDevice', () => {
     });
 
     test.describe('Configuration', () => {
-        test('should respect game duration setting', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should respect game duration setting', async ({ guestSession, createProject }) => {
+            const page = guestSession;
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'AZ Quiz Duration Test');
@@ -849,11 +846,11 @@ test.describe('A-Z Quiz Game iDevice', () => {
         }
 
         test('tells the learner a minimum score other than 5, in the workarea and the preview', async ({
-            authenticatedPage,
+            guestSession,
             createProject,
         }) => {
             test.setTimeout(120000);
-            const page = authenticatedPage;
+            const page = guestSession;
             const workarea = new WorkareaPage(page);
             const projectUuid = await createProject(page, 'AZ Quiz minimum score notice');
             await gotoWorkarea(page, projectUuid);

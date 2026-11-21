@@ -78,8 +78,8 @@ test.describe('Theme Import from ELPX', () => {
      * Note: Full theme import verification requires manual testing
      * as it depends on a confirmation dialog interaction
      */
-    test('ELPX import completes with theme metadata', async ({ authenticatedPage, createProject }) => {
-        const page = authenticatedPage;
+    test('ELPX import completes with theme metadata', async ({ guestSession, createProject }) => {
+        const page = guestSession;
 
         // Create a new project
         const projectUuid = await createProject(page, 'Theme Import Test');
@@ -165,8 +165,8 @@ test.describe('Theme Import from ELPX', () => {
      * Test that the styles panel UI can show user themes
      * Note: This verifies the UI elements exist, not the full import flow
      */
-    test('styles panel has user themes tab', async ({ authenticatedPage, createProject }) => {
-        const page = authenticatedPage;
+    test('styles panel has user themes tab', async ({ guestSession, createProject }) => {
+        const page = guestSession;
 
         // Create and navigate to project
         const projectUuid = await createProject(page, 'Styles Panel Test');

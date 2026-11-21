@@ -86,13 +86,13 @@ test.describe('Hype bundle de-duplication (#1951 / #1954)', () => {
     });
 
     test('extracting a ZIP with byte-identical bundle runtimes keeps both bundles intact', async ({
-        authenticatedPage,
+        guestSession,
         createProject,
     }, testInfo) => {
         // Extraction + per-asset inspection relies on the online AssetManager/IndexedDB flow.
         skipInStaticMode(test, testInfo, 'Hype bundle ZIP extraction de-dup');
 
-        const page = authenticatedPage;
+        const page = guestSession;
 
         // 1. Create and open a fresh project (online-mode aware helper).
         const projectUuid = await createProject(page, 'Hype Bundle Dedup Test');

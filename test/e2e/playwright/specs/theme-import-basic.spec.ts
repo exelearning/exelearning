@@ -9,8 +9,8 @@ import { test, expect, navigateToProject } from '../fixtures/auth.fixture';
 
 test.describe('Theme Selection - Basic', () => {
     test.describe('Bundled Theme Selection', () => {
-        test('should display bundled themes in styles panel', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should display bundled themes in styles panel', async ({ guestSession, createProject }) => {
+            const page = guestSession;
 
             // Create a project and navigate
             const projectUuid = await createProject(page, 'Theme Basic Test');
@@ -38,8 +38,8 @@ test.describe('Theme Selection - Basic', () => {
             await expect(baseTheme).toBeVisible({ timeout: 5000 });
         });
 
-        test('should select a bundled theme and apply it', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should select a bundled theme and apply it', async ({ guestSession, createProject }) => {
+            const page = guestSession;
 
             // Create a project and navigate
             const projectUuid = await createProject(page, 'Theme Selection Test');
@@ -71,8 +71,8 @@ test.describe('Theme Selection - Basic', () => {
             expect(selectedTheme).toBe('base');
         });
 
-        test('should have theme in ThemesManager after project load', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should have theme in ThemesManager after project load', async ({ guestSession, createProject }) => {
+            const page = guestSession;
 
             // Create a project and navigate
             const projectUuid = await createProject(page, 'Theme Manager Test');
@@ -98,8 +98,8 @@ test.describe('Theme Selection - Basic', () => {
     });
 
     test.describe('Theme Styles Application', () => {
-        test('should apply theme CSS to preview', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should apply theme CSS to preview', async ({ guestSession, createProject }) => {
+            const page = guestSession;
 
             // Create a project and navigate
             const projectUuid = await createProject(page, 'Theme CSS Test');

@@ -160,8 +160,8 @@ async function saveDigcompeduIdevice(page: Page): Promise<void> {
 
 test.describe('DigCompEdu iDevice', () => {
     test.describe('Basic Operations', () => {
-        test('should add digcompedu iDevice and load framework data', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should add digcompedu iDevice and load framework data', async ({ guestSession, createProject }) => {
+            const page = guestSession;
 
             // Create a new project
             const projectUuid = await createProject(page, 'DigCompEdu Add Test');
@@ -187,8 +187,8 @@ test.describe('DigCompEdu iDevice', () => {
             await expect(counter).toContainText(/No items selected|Ningún elemento/i, { timeout: 5000 });
         });
 
-        test('should select indicators and update selection counter', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should select indicators and update selection counter', async ({ guestSession, createProject }) => {
+            const page = guestSession;
 
             const projectUuid = await createProject(page, 'DigCompEdu Selection Test');
             await gotoWorkarea(page, projectUuid);
@@ -204,8 +204,8 @@ test.describe('DigCompEdu iDevice', () => {
             await expect(counter).toContainText(/Selected items: 3|Elementos seleccionados: 3/i, { timeout: 5000 });
         });
 
-        test('should filter indicators by level', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should filter indicators by level', async ({ guestSession, createProject }) => {
+            const page = guestSession;
 
             const projectUuid = await createProject(page, 'DigCompEdu Filter Test');
             await gotoWorkarea(page, projectUuid);
@@ -235,8 +235,8 @@ test.describe('DigCompEdu iDevice', () => {
             expect(filteredRowCount).toBeGreaterThan(0);
         });
 
-        test('should preview summary in modal', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should preview summary in modal', async ({ guestSession, createProject }) => {
+            const page = guestSession;
 
             const projectUuid = await createProject(page, 'DigCompEdu Preview Test');
             await gotoWorkarea(page, projectUuid);
@@ -269,8 +269,8 @@ test.describe('DigCompEdu iDevice', () => {
             await expect(modal).toBeHidden({ timeout: 5000 });
         });
 
-        test('should save iDevice and persist selection', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should save iDevice and persist selection', async ({ guestSession, createProject }) => {
+            const page = guestSession;
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'DigCompEdu Save Test');
@@ -318,8 +318,8 @@ test.describe('DigCompEdu iDevice', () => {
     });
 
     test.describe('Selection Granularity', () => {
-        test('should change selection granularity to level', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should change selection granularity to level', async ({ guestSession, createProject }) => {
+            const page = guestSession;
 
             const projectUuid = await createProject(page, 'DigCompEdu Granularity Test');
             await gotoWorkarea(page, projectUuid);
@@ -347,8 +347,8 @@ test.describe('DigCompEdu iDevice', () => {
     });
 
     test.describe('Preview Rendering', () => {
-        test('should display summary table in preview panel', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should display summary table in preview panel', async ({ guestSession, createProject }) => {
+            const page = guestSession;
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'DigCompEdu Preview Panel Test');
@@ -393,10 +393,10 @@ test.describe('DigCompEdu iDevice', () => {
         });
 
         test('should display textual summary when table+summary mode is selected', async ({
-            authenticatedPage,
+            guestSession,
             createProject,
         }) => {
-            const page = authenticatedPage;
+            const page = guestSession;
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'DigCompEdu Summary Mode Test');
@@ -447,8 +447,8 @@ test.describe('DigCompEdu iDevice', () => {
     });
 
     test.describe('Reset and Search', () => {
-        test('should reset selection when reset button is clicked', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should reset selection when reset button is clicked', async ({ guestSession, createProject }) => {
+            const page = guestSession;
 
             const projectUuid = await createProject(page, 'DigCompEdu Reset Test');
             await gotoWorkarea(page, projectUuid);
@@ -472,8 +472,8 @@ test.describe('DigCompEdu iDevice', () => {
             await expect(counter).toContainText(/No items selected|Ningún elemento/i, { timeout: 5000 });
         });
 
-        test('should filter indicators using search input', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should filter indicators using search input', async ({ guestSession, createProject }) => {
+            const page = guestSession;
 
             const projectUuid = await createProject(page, 'DigCompEdu Search Test');
             await gotoWorkarea(page, projectUuid);

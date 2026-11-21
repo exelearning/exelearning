@@ -209,10 +209,10 @@ function findVttEntry(zip: Record<string, Uint8Array>): string | undefined {
 
 test.describe('Text iDevice video subtitles (issue #2034)', () => {
     test('allows attaching a local .srt subtitle to a video and renders cues in the Preview panel', async ({
-        authenticatedPage,
+        guestSession,
         createProject,
     }) => {
-        const page = authenticatedPage;
+        const page = guestSession;
 
         const projectUuid = await createProject(page, 'Text Video Subtitles Preview Test');
         await gotoWorkarea(page, projectUuid);
@@ -286,10 +286,10 @@ test.describe('Text iDevice video subtitles (issue #2034)', () => {
     });
 
     test('renders subtitle cues in the workarea edition view (native <track>, issue #2034)', async ({
-        authenticatedPage,
+        guestSession,
         createProject,
     }) => {
-        const page = authenticatedPage;
+        const page = guestSession;
 
         const projectUuid = await createProject(page, 'Text Video Subtitles Edition Test');
         await gotoWorkarea(page, projectUuid);
@@ -333,8 +333,8 @@ test.describe('Text iDevice video subtitles (issue #2034)', () => {
         expect(cue?.endTime).toBeCloseTo(CUE_END_SECONDS, 1);
     });
 
-    test('ships a valid .vtt subtitle track in the Web Site export', async ({ authenticatedPage, createProject }) => {
-        const page = authenticatedPage;
+    test('ships a valid .vtt subtitle track in the Web Site export', async ({ guestSession, createProject }) => {
+        const page = guestSession;
 
         const projectUuid = await createProject(page, 'Text Video Subtitles Website Export Test');
         await gotoWorkarea(page, projectUuid);
@@ -377,8 +377,8 @@ test.describe('Text iDevice video subtitles (issue #2034)', () => {
         expect(vttContent).not.toMatch(/\d{2}:\d{2}:\d{2},\d{3}/);
     });
 
-    test('ships a valid .vtt subtitle track in the SCORM export', async ({ authenticatedPage, createProject }) => {
-        const page = authenticatedPage;
+    test('ships a valid .vtt subtitle track in the SCORM export', async ({ guestSession, createProject }) => {
+        const page = guestSession;
 
         const projectUuid = await createProject(page, 'Text Video Subtitles SCORM Export Test');
         await gotoWorkarea(page, projectUuid);

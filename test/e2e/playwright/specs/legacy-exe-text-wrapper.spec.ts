@@ -12,10 +12,10 @@ test.describe('Legacy ELP Import - exe-text wrapper removal', () => {
     });
 
     test('should remove legacy div.exe-text wrappers from imported html content', async ({
-        authenticatedPage,
+        guestSession,
         createProject,
     }) => {
-        const page = authenticatedPage;
+        const page = guestSession;
 
         const projectUuid = await createProject(page, 'Legacy exe-text unwrap test');
         await gotoWorkarea(page, projectUuid);

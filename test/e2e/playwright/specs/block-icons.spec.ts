@@ -18,13 +18,13 @@ import {
  */
 test.describe('Block Icon Selection Modal', () => {
     test('should display icons correctly in the block icon selection modal', async ({
-        authenticatedPage,
+        guestSession,
         createProject,
     }, testInfo) => {
         // Skip in static mode - requires server to create projects and add iDevices
         skipInStaticMode(test, testInfo, 'Requires server to create projects and add iDevices');
 
-        const page = authenticatedPage;
+        const page = guestSession;
 
         // Create a new project
         const projectUuid = await createProject(page, 'Test Block Icons');
@@ -135,13 +135,13 @@ test.describe('Block Icon Selection Modal', () => {
     });
 
     test('should render an applied Material icon as a self-contained data: URI tinted by the style', async ({
-        authenticatedPage,
+        guestSession,
         createProject,
     }, testInfo) => {
         // Skip in static mode - requires server to create projects and add iDevices
         skipInStaticMode(test, testInfo, 'Requires server to create projects and add iDevices');
 
-        const page = authenticatedPage;
+        const page = guestSession;
 
         const projectUuid = await createProject(page, 'Test Applied Material Icon');
         expect(projectUuid).toBeDefined();

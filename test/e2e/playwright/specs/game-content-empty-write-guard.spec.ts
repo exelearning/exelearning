@@ -21,9 +21,9 @@ import { waitForAppReady, gotoWorkarea, openElpFile } from '../helpers/workarea-
 const FIXTURE = path.resolve(__dirname, '../../../fixtures/todos-los-idevices_dos_informes.elpx');
 
 test.describe('Game iDevice content is never wiped by an empty write', () => {
-    test('empty htmlContent update preserves a game iDevice content', async ({ authenticatedPage, createProject }) => {
+    test('empty htmlContent update preserves a game iDevice content', async ({ guestSession, createProject }) => {
         test.setTimeout(180000);
-        const page = authenticatedPage;
+        const page = guestSession;
 
         const uuid = await createProject(page, 'Game Content Guard');
         await gotoWorkarea(page, uuid);

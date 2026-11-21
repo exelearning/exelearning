@@ -39,8 +39,8 @@ async function openLinkValidationModal(page: Page): Promise<void> {
 }
 
 test.describe('Link Validation', () => {
-    test('should progressively validate links showing status', async ({ authenticatedPage, createProject }) => {
-        const page = authenticatedPage;
+    test('should progressively validate links showing status', async ({ guestSession, createProject }) => {
+        const page = guestSession;
         const uuid = await createProject(page, 'Link Validation Test');
 
         // Navigate to workarea
@@ -162,8 +162,8 @@ test.describe('Link Validation', () => {
         await expect(csvButton).toBeEnabled();
     });
 
-    test('should show progress bar during validation', async ({ authenticatedPage, createProject }) => {
-        const page = authenticatedPage;
+    test('should show progress bar during validation', async ({ guestSession, createProject }) => {
+        const page = guestSession;
         const uuid = await createProject(page, 'Progress Bar Test');
 
         // Navigate to workarea
@@ -226,8 +226,8 @@ test.describe('Link Validation', () => {
         await expect(progressText).toContainText(completionText);
     });
 
-    test('should show "No links found" for empty content', async ({ authenticatedPage, createProject }) => {
-        const page = authenticatedPage;
+    test('should show "No links found" for empty content', async ({ guestSession, createProject }) => {
+        const page = guestSession;
         const uuid = await createProject(page, 'Empty Content Test');
 
         // Navigate to workarea (project starts with no content)
@@ -244,8 +244,8 @@ test.describe('Link Validation', () => {
         await expect(modal.locator('text=No links found')).toBeVisible({ timeout: 10000 });
     });
 
-    test('should disable CSV button while validating', async ({ authenticatedPage, createProject }) => {
-        const page = authenticatedPage;
+    test('should disable CSV button while validating', async ({ guestSession, createProject }) => {
+        const page = guestSession;
         const uuid = await createProject(page, 'CSV Button Test');
 
         // Navigate to workarea

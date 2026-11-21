@@ -57,10 +57,10 @@ async function waitForPageSelected(
 
 test.describe('Anchor Link Navigation', () => {
     test('enableInternalLinks wires exe-node link to navigate to the correct page', async ({
-        authenticatedPage,
+        guestSession,
         createProject,
     }) => {
-        const page = authenticatedPage;
+        const page = guestSession;
         const uuid = await createProject(page, 'Anchor Link Test');
 
         await gotoWorkarea(page, uuid);
@@ -107,10 +107,10 @@ test.describe('Anchor Link Navigation', () => {
     });
 
     test('enableInternalLinks correctly parses exe-node:pageId#anchor links', async ({
-        authenticatedPage,
+        guestSession,
         createProject,
     }) => {
-        const page = authenticatedPage;
+        const page = guestSession;
         const uuid = await createProject(page, 'Anchor Deep-Link Test');
 
         await gotoWorkarea(page, uuid);
@@ -168,10 +168,10 @@ test.describe('Anchor Link Navigation', () => {
     });
 
     test('single-page export resolves exe-node:pageId#anchor to #anchor (not double-#)', async ({
-        authenticatedPage,
+        guestSession,
         createProject,
     }) => {
-        const page = authenticatedPage;
+        const page = guestSession;
         const uuid = await createProject(page, 'Single Page Export Anchor Test');
 
         await gotoWorkarea(page, uuid);
@@ -253,8 +253,8 @@ test.describe('Anchor Link Navigation', () => {
         }
     });
 
-    test('getAllPageAnchors returns anchors from other pages', async ({ authenticatedPage, createProject }) => {
-        const page = authenticatedPage;
+    test('getAllPageAnchors returns anchors from other pages', async ({ guestSession, createProject }) => {
+        const page = guestSession;
         const uuid = await createProject(page, 'Get All Page Anchors Test');
 
         await gotoWorkarea(page, uuid);
@@ -290,11 +290,8 @@ test.describe('Anchor Link Navigation', () => {
         expect(page2Entry.anchors).toContain('ancla1');
     });
 
-    test('multi-page export preserves anchor fragment in resolved URL', async ({
-        authenticatedPage,
-        createProject,
-    }) => {
-        const page = authenticatedPage;
+    test('multi-page export preserves anchor fragment in resolved URL', async ({ guestSession, createProject }) => {
+        const page = guestSession;
         const uuid = await createProject(page, 'Multi Page Anchor Export Test');
 
         await gotoWorkarea(page, uuid);

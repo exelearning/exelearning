@@ -235,8 +235,8 @@ authTest.describe('Project Duplicate', () => {
 
     authTest(
         'duplicated project opened from Open dialog should keep linked and renderable images',
-        async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        async ({ guestSession, createProject }) => {
+            const page = guestSession;
             const imageName = 'sample-2.jpg';
 
             const projectUuid = await createProject(page, `Duplicate Image Test ${Date.now()}`);

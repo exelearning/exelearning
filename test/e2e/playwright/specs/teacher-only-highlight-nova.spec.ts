@@ -11,12 +11,12 @@ import { waitForAppReady, gotoWorkarea, changeTheme, addTextIdeviceWithContent }
  */
 test.describe('Teacher-only highlight (Nova theme)', () => {
     test('shows the yellow border on a teacher-only iDevice in the editor', async ({
-        authenticatedPage,
+        guestSession,
         createProject,
     }, testInfo) => {
         skipInStaticMode(test, testInfo, 'Requires server to create projects and add iDevices');
 
-        const page = authenticatedPage;
+        const page = guestSession;
 
         const projectUuid = await createProject(page, 'Teacher Highlight Nova');
         expect(projectUuid).toBeDefined();

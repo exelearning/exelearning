@@ -33,8 +33,8 @@ const expectedAbcjsVersion = JSON.parse(
 ).version as string;
 
 test.describe('ABC music notation', () => {
-    test('renders the score and the audio controls in preview', async ({ authenticatedPage, createProject }) => {
-        const page = authenticatedPage;
+    test('renders the score and the audio controls in preview', async ({ guestSession, createProject }) => {
+        const page = guestSession;
 
         const projectUuid = await createProject(page, 'ABC Music Test');
         await gotoWorkarea(page, projectUuid);
@@ -96,10 +96,10 @@ test.describe('ABC music notation', () => {
     });
 
     test('previews the tune from the TinyMCE dialog like the exported content', async ({
-        authenticatedPage,
+        guestSession,
         createProject,
     }) => {
-        const page = authenticatedPage;
+        const page = guestSession;
 
         const projectUuid = await createProject(page, 'ABC Music Dialog Test');
         await gotoWorkarea(page, projectUuid);

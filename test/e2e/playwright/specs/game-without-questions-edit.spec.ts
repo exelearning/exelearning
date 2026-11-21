@@ -46,9 +46,9 @@ const renderedHtml = (id: string) => `<div class="exe-trueorfalse-container">
 </div>`;
 
 test.describe('Editing a game iDevice saved without questions', () => {
-    test('the editor opens and the activity can be saved again', async ({ authenticatedPage, createProject }) => {
+    test('the editor opens and the activity can be saved again', async ({ guestSession, createProject }) => {
         test.setTimeout(120000);
-        const page = authenticatedPage;
+        const page = guestSession;
 
         const projectUuid = await createProject(page, 'Game without questions');
         await gotoWorkarea(page, projectUuid);

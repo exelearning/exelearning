@@ -173,10 +173,10 @@ test.describe('Block reorder stability — issue #1665', () => {
     });
 
     test('arrow moves on blocks must produce a stable order across page navigation', async ({
-        authenticatedPage,
+        guestSession,
         createProject,
     }) => {
-        const page = authenticatedPage;
+        const page = guestSession;
         const projectUuid = await createProject(page, 'Block Reorder #1665');
         await gotoWorkarea(page, projectUuid);
         await waitForAppReady(page);
@@ -276,10 +276,10 @@ test.describe('Block reorder stability — issue #1665', () => {
     // not move. After the fix, A must end up after B in both the DOM
     // and the Y.Doc.
     test('block A down-arrow after adding block B (arrows.elpx) — regression #1667', async ({
-        authenticatedPage,
+        guestSession,
         createProject,
     }) => {
-        const page = authenticatedPage;
+        const page = guestSession;
         const projectUuid = await createProject(page, 'Block Reorder #1667');
 
         // arrows.elpx is a self-contained project with a single page and a

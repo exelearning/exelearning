@@ -227,8 +227,8 @@ async function verifyIframeInPreview(
 
 test.describe('External Website iDevice', () => {
     test.describe('Basic Operations', () => {
-        test('should add external-website iDevice to page', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should add external-website iDevice to page', async ({ guestSession, createProject }) => {
+            const page = guestSession;
 
             const projectUuid = await createProject(page, 'External Website Add Test');
             await gotoWorkarea(page, projectUuid);
@@ -253,8 +253,8 @@ test.describe('External Website iDevice', () => {
             expect(selectedOption).toBe('2'); // medium = 2
         });
 
-        test('should set URL and save iDevice', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should set URL and save iDevice', async ({ guestSession, createProject }) => {
+            const page = guestSession;
 
             const projectUuid = await createProject(page, 'External Website URL Test');
             await gotoWorkarea(page, projectUuid);
@@ -278,8 +278,8 @@ test.describe('External Website iDevice', () => {
             expect(src).toBe(TEST_DATA.validUrl);
         });
 
-        test('should persist after reload', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should persist after reload', async ({ guestSession, createProject }) => {
+            const page = guestSession;
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'External Website Persist Test');
@@ -331,8 +331,8 @@ test.describe('External Website iDevice', () => {
     });
 
     test.describe('Frame Height Options', () => {
-        test('should set small frame height', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should set small frame height', async ({ guestSession, createProject }) => {
+            const page = guestSession;
 
             const projectUuid = await createProject(page, 'External Website Small Height Test');
             await gotoWorkarea(page, projectUuid);
@@ -353,8 +353,8 @@ test.describe('External Website iDevice', () => {
             expect(height).toBe('200');
         });
 
-        test('should set large frame height', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should set large frame height', async ({ guestSession, createProject }) => {
+            const page = guestSession;
 
             const projectUuid = await createProject(page, 'External Website Large Height Test');
             await gotoWorkarea(page, projectUuid);
@@ -375,8 +375,8 @@ test.describe('External Website iDevice', () => {
             expect(height).toBe('500');
         });
 
-        test('should set super-size frame height', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should set super-size frame height', async ({ guestSession, createProject }) => {
+            const page = guestSession;
 
             const projectUuid = await createProject(page, 'External Website SuperSize Height Test');
             await gotoWorkarea(page, projectUuid);
@@ -399,8 +399,8 @@ test.describe('External Website iDevice', () => {
     });
 
     test.describe('URL Validation', () => {
-        test('should show error for empty URL', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should show error for empty URL', async ({ guestSession, createProject }) => {
+            const page = guestSession;
 
             const projectUuid = await createProject(page, 'External Website Empty URL Test');
             await gotoWorkarea(page, projectUuid);
@@ -424,8 +424,8 @@ test.describe('External Website iDevice', () => {
             await closeAlertModals(page);
         });
 
-        test('should show error for invalid URL', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should show error for invalid URL', async ({ guestSession, createProject }) => {
+            const page = guestSession;
 
             const projectUuid = await createProject(page, 'External Website Invalid URL Test');
             await gotoWorkarea(page, projectUuid);
@@ -452,8 +452,8 @@ test.describe('External Website iDevice', () => {
             await closeAlertModals(page);
         });
 
-        test('should accept valid HTTPS URL', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should accept valid HTTPS URL', async ({ guestSession, createProject }) => {
+            const page = guestSession;
 
             const projectUuid = await createProject(page, 'External Website HTTPS URL Test');
             await gotoWorkarea(page, projectUuid);
@@ -477,8 +477,8 @@ test.describe('External Website iDevice', () => {
     });
 
     test.describe('Preview Panel', () => {
-        test('should display iframe correctly in preview', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should display iframe correctly in preview', async ({ guestSession, createProject }) => {
+            const page = guestSession;
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'External Website Preview Test');
@@ -506,8 +506,8 @@ test.describe('External Website iDevice', () => {
             await verifyIframeInPreview(iframe, TEST_DATA.validUrl);
         });
 
-        test('should display iframe with correct height in preview', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should display iframe with correct height in preview', async ({ guestSession, createProject }) => {
+            const page = guestSession;
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'External Website Preview Height Test');
@@ -538,8 +538,8 @@ test.describe('External Website iDevice', () => {
     });
 
     test.describe('Edit Mode', () => {
-        test('should load previous URL when editing', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should load previous URL when editing', async ({ guestSession, createProject }) => {
+            const page = guestSession;
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'External Website Edit Test');
@@ -574,8 +574,8 @@ test.describe('External Website iDevice', () => {
             expect(selectedOption).toBe('3'); // large = 3
         });
 
-        test('should update URL when re-editing', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should update URL when re-editing', async ({ guestSession, createProject }) => {
+            const page = guestSession;
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'External Website Update Test');

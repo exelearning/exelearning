@@ -395,10 +395,10 @@ async function importElpFile(page: Page, fixturePath: string): Promise<void> {
 test.describe('File Manager', () => {
     test.describe('Import File Formats', () => {
         test('should show assets from new .elpx format (content.xml) with folder structure', async ({
-            authenticatedPage,
+            guestSession,
             createProject,
         }) => {
-            const page = authenticatedPage;
+            const page = guestSession;
             const fixturePath = 'test/fixtures/un-contenido-de-ejemplo-para-probar-estilos-y-catalogacion.elpx';
 
             // Create a new project
@@ -444,10 +444,10 @@ test.describe('File Manager', () => {
         });
 
         test('should show assets from legacy .elp format (contentv3.xml) at root level', async ({
-            authenticatedPage,
+            guestSession,
             createProject,
         }) => {
-            const page = authenticatedPage;
+            const page = guestSession;
             const fixturePath = 'test/fixtures/old_el_cid.elp';
 
             // Create a new project
@@ -503,8 +503,8 @@ test.describe('File Manager', () => {
     });
 
     test.describe('Folder Operations', () => {
-        test('should create a new folder', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should create a new folder', async ({ guestSession, createProject }) => {
+            const page = guestSession;
 
             const projectUuid = await createProject(page, 'File Manager - Create Folder Test');
             await gotoWorkarea(page, projectUuid);
@@ -519,8 +519,8 @@ test.describe('File Manager', () => {
             await expect(folder).toBeVisible({ timeout: 5000 });
         });
 
-        test('should navigate into folder and back using breadcrumbs', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should navigate into folder and back using breadcrumbs', async ({ guestSession, createProject }) => {
+            const page = guestSession;
 
             const projectUuid = await createProject(page, 'File Manager - Navigation Test');
             await gotoWorkarea(page, projectUuid);
@@ -549,8 +549,8 @@ test.describe('File Manager', () => {
             await expect(folderItem).toBeVisible({ timeout: 5000 });
         });
 
-        test('should upload file to folder', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should upload file to folder', async ({ guestSession, createProject }) => {
+            const page = guestSession;
 
             const projectUuid = await createProject(page, 'File Manager - Upload to Folder Test');
             await gotoWorkarea(page, projectUuid);
@@ -580,8 +580,8 @@ test.describe('File Manager', () => {
     });
 
     test.describe('Duplicate Operations', () => {
-        test('should duplicate a file with (copy) suffix', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should duplicate a file with (copy) suffix', async ({ guestSession, createProject }) => {
+            const page = guestSession;
 
             const projectUuid = await createProject(page, 'File Manager - Duplicate Test');
             await gotoWorkarea(page, projectUuid);
@@ -604,10 +604,10 @@ test.describe('File Manager', () => {
         });
 
         test('should duplicate with incremented suffix when copy already exists', async ({
-            authenticatedPage,
+            guestSession,
             createProject,
         }) => {
-            const page = authenticatedPage;
+            const page = guestSession;
 
             const projectUuid = await createProject(page, 'File Manager - Duplicate Increment Test');
             await gotoWorkarea(page, projectUuid);
@@ -633,8 +633,8 @@ test.describe('File Manager', () => {
     });
 
     test.describe('Rename Operations', () => {
-        test('should rename a file', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should rename a file', async ({ guestSession, createProject }) => {
+            const page = guestSession;
 
             const projectUuid = await createProject(page, 'File Manager - Rename File Test');
             await gotoWorkarea(page, projectUuid);
@@ -682,8 +682,8 @@ test.describe('File Manager', () => {
             expect(updatedName).toContain(newName.replace('.jpg', ''));
         });
 
-        test('should rename a folder', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should rename a folder', async ({ guestSession, createProject }) => {
+            const page = guestSession;
 
             const projectUuid = await createProject(page, 'File Manager - Rename Folder Test');
             await gotoWorkarea(page, projectUuid);
@@ -746,8 +746,8 @@ test.describe('File Manager', () => {
     });
 
     test.describe('Delete Operations', () => {
-        test('should delete a file', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should delete a file', async ({ guestSession, createProject }) => {
+            const page = guestSession;
 
             const projectUuid = await createProject(page, 'File Manager - Delete File Test');
             await gotoWorkarea(page, projectUuid);
@@ -793,8 +793,8 @@ test.describe('File Manager', () => {
             expect(fileCount).toBe(0);
         });
 
-        test('should delete a folder', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should delete a folder', async ({ guestSession, createProject }) => {
+            const page = guestSession;
 
             const projectUuid = await createProject(page, 'File Manager - Delete Folder Test');
             await gotoWorkarea(page, projectUuid);
@@ -841,8 +841,8 @@ test.describe('File Manager', () => {
             expect(folderCount).toBe(0);
         });
 
-        test('should delete folder with contents', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should delete folder with contents', async ({ guestSession, createProject }) => {
+            const page = guestSession;
 
             const projectUuid = await createProject(page, 'File Manager - Delete Folder Contents Test');
             await gotoWorkarea(page, projectUuid);
@@ -894,8 +894,8 @@ test.describe('File Manager', () => {
     });
 
     test.describe('Integration', () => {
-        test('should maintain folder structure after page reload', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should maintain folder structure after page reload', async ({ guestSession, createProject }) => {
+            const page = guestSession;
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'File Manager - Persistence Test');
@@ -973,10 +973,10 @@ test.describe('File Manager', () => {
          * insertImage() now stores blob for current project if needed.
          */
         test('should upload same image content to different projects and show thumbnails in both', async ({
-            authenticatedPage,
+            guestSession,
             createProject,
         }) => {
-            const page = authenticatedPage;
+            const page = guestSession;
 
             // Create first project and upload image
             const projectUuidA = await createProject(page, 'Cross-Project Test A');
@@ -1113,10 +1113,10 @@ test.describe('File Manager', () => {
          * to explicitly add data-asset-id as HTML attribute on images with blob URLs.
          */
         test('should NOT duplicate image when inserting existing asset from file manager', async ({
-            authenticatedPage,
+            guestSession,
             createProject,
         }) => {
-            const page = authenticatedPage;
+            const page = guestSession;
 
             const projectUuid = await createProject(page, 'File Manager - No Duplicate Test');
             await gotoWorkarea(page, projectUuid);
@@ -1205,10 +1205,10 @@ test.describe('File Manager', () => {
          * Insert must become enabled and actually insert the selected file.
          */
         test('disables Insert without an edited iDevice and enables it once editing starts', async ({
-            authenticatedPage,
+            guestSession,
             createProject,
         }) => {
-            const page = authenticatedPage;
+            const page = guestSession;
 
             const projectUuid = await createProject(page, 'File Manager - Insert Button iDevice State Test');
             await gotoWorkarea(page, projectUuid);
@@ -1254,8 +1254,8 @@ test.describe('File Manager', () => {
             await page.waitForTimeout(500);
         }
 
-        test('should search files recursively across all subfolders', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should search files recursively across all subfolders', async ({ guestSession, createProject }) => {
+            const page = guestSession;
             const projectUuid = await createProject(page, 'File Manager - Recursive Search Test');
             await gotoWorkarea(page, projectUuid);
             await waitForAppReady(page);
@@ -1284,8 +1284,8 @@ test.describe('File Manager', () => {
             await expect(folderItem).toHaveCount(0);
         });
 
-        test('should show search indicator instead of breadcrumbs', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should show search indicator instead of breadcrumbs', async ({ guestSession, createProject }) => {
+            const page = guestSession;
             const projectUuid = await createProject(page, 'File Manager - Search Indicator Test');
             await gotoWorkarea(page, projectUuid);
             await waitForAppReady(page);
@@ -1313,8 +1313,8 @@ test.describe('File Manager', () => {
             await expect(clearBtn).toBeVisible();
         });
 
-        test('should display path badge in grid view during search', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should display path badge in grid view during search', async ({ guestSession, createProject }) => {
+            const page = guestSession;
             const projectUuid = await createProject(page, 'File Manager - Path Badge Test');
             await gotoWorkarea(page, projectUuid);
             await waitForAppReady(page);
@@ -1336,8 +1336,8 @@ test.describe('File Manager', () => {
             await expect(pathBadge).toContainText(folderName);
         });
 
-        test('should navigate to folder when clicking path badge', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should navigate to folder when clicking path badge', async ({ guestSession, createProject }) => {
+            const page = guestSession;
             const projectUuid = await createProject(page, 'File Manager - Path Navigation Test');
             await gotoWorkarea(page, projectUuid);
             await waitForAppReady(page);
@@ -1366,11 +1366,8 @@ test.describe('File Manager', () => {
             await expect(breadcrumbs).toContainText(folderName);
         });
 
-        test('should show location in sidebar with open folder button', async ({
-            authenticatedPage,
-            createProject,
-        }) => {
-            const page = authenticatedPage;
+        test('should show location in sidebar with open folder button', async ({ guestSession, createProject }) => {
+            const page = guestSession;
             const projectUuid = await createProject(page, 'File Manager - Sidebar Location Test');
             await gotoWorkarea(page, projectUuid);
             await waitForAppReady(page);
@@ -1406,8 +1403,8 @@ test.describe('File Manager', () => {
             await expect(breadcrumbs).toContainText(folderName);
         });
 
-        test('should clear search when clicking X button', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should clear search when clicking X button', async ({ guestSession, createProject }) => {
+            const page = guestSession;
             const projectUuid = await createProject(page, 'File Manager - Clear Search Test');
             await gotoWorkarea(page, projectUuid);
             await waitForAppReady(page);
@@ -1445,11 +1442,8 @@ test.describe('File Manager', () => {
             await expect(folder).toBeVisible();
         });
 
-        test('should go to root when clicking home icon during search', async ({
-            authenticatedPage,
-            createProject,
-        }) => {
-            const page = authenticatedPage;
+        test('should go to root when clicking home icon during search', async ({ guestSession, createProject }) => {
+            const page = guestSession;
             const projectUuid = await createProject(page, 'File Manager - Home Icon Test');
             await gotoWorkarea(page, projectUuid);
             await waitForAppReady(page);

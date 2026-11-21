@@ -72,11 +72,8 @@ async function checkImageAndDialog(scope: Scope): Promise<void> {
 }
 
 test.describe('prettyPhoto (exe_lightbox) content lightbox', () => {
-    test('opens images, inline dialogs and YouTube links in the preview', async ({
-        authenticatedPage,
-        createProject,
-    }) => {
-        const page = authenticatedPage;
+    test('opens images, inline dialogs and YouTube links in the preview', async ({ guestSession, createProject }) => {
+        const page = guestSession;
         const projectUuid = await createProject(page, 'exe_lightbox preview');
         await gotoWorkarea(page, projectUuid);
         await waitForAppReady(page);
@@ -108,10 +105,10 @@ test.describe('prettyPhoto (exe_lightbox) content lightbox', () => {
     });
 
     test('ships prettyPhoto in the Web Site export and works offline from file://', async ({
-        authenticatedPage,
+        guestSession,
         createProject,
     }) => {
-        const page = authenticatedPage;
+        const page = guestSession;
         const projectUuid = await createProject(page, 'exe_lightbox export');
         await gotoWorkarea(page, projectUuid);
         await waitForAppReady(page);

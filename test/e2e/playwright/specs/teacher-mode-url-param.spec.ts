@@ -18,10 +18,10 @@ import { waitForAppReady, waitForServiceWorker, gotoWorkarea } from '../helpers/
  */
 test.describe('Teacher Mode toggle (preview/export runtime)', () => {
     test('the preview makes the Teacher Mode toggle available only via ?exe-teacher=1', async ({
-        authenticatedPage,
+        guestSession,
         createProject,
     }) => {
-        const page = authenticatedPage;
+        const page = guestSession;
 
         const uuid = await createProject(page, 'Teacher Mode Toggle Test');
         await gotoWorkarea(page, uuid);

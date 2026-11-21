@@ -22,8 +22,8 @@ import {
 
 test.describe('Text iDevice Advanced Features', () => {
     test.describe('Duration and Participants', () => {
-        test('should display duration in preview when set in editor', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should display duration in preview when set in editor', async ({ guestSession, createProject }) => {
+            const page = guestSession;
 
             const projectUuid = await createProject(page, 'Text Duration Test');
             await gotoWorkarea(page, projectUuid);
@@ -110,10 +110,10 @@ test.describe('Text iDevice Advanced Features', () => {
 
     test.describe('exe-dl Definition Lists', () => {
         test('should render exe-dl with exactly ONE icon per definition term', async ({
-            authenticatedPage,
+            guestSession,
             createProject,
         }) => {
-            const page = authenticatedPage;
+            const page = guestSession;
 
             const projectUuid = await createProject(page, 'exe-dl Single Icon Test');
             await gotoWorkarea(page, projectUuid);
@@ -195,8 +195,8 @@ test.describe('Text iDevice Advanced Features', () => {
             expect(iconCheck.togglerCounts).toEqual([1, 1, 1]);
         });
 
-        test('should toggle exe-dl definition on click', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should toggle exe-dl definition on click', async ({ guestSession, createProject }) => {
+            const page = guestSession;
 
             const projectUuid = await createProject(page, 'exe-dl Toggle Test');
             await gotoWorkarea(page, projectUuid);
@@ -270,8 +270,8 @@ test.describe('Text iDevice Advanced Features', () => {
     });
 
     test.describe('Text iDevice Click Interactions', () => {
-        test('should handle click on text iDevice content in preview', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should handle click on text iDevice content in preview', async ({ guestSession, createProject }) => {
+            const page = guestSession;
 
             const projectUuid = await createProject(page, 'Text Click Test');
             await gotoWorkarea(page, projectUuid);
@@ -322,8 +322,8 @@ test.describe('Text iDevice Advanced Features', () => {
     });
 
     test.describe('Text iDevice JSON Data Preservation', () => {
-        test('should preserve iDevice JSON data in preview iframe', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should preserve iDevice JSON data in preview iframe', async ({ guestSession, createProject }) => {
+            const page = guestSession;
 
             const projectUuid = await createProject(page, 'Text JSON Preservation Test');
             await gotoWorkarea(page, projectUuid);

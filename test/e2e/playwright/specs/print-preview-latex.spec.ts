@@ -9,7 +9,7 @@ import { gotoWorkarea, waitForAppReady } from '../helpers/workarea-helpers';
 test.describe('Print preview formulas', () => {
     for (const addMathJax of [false, true]) {
         test(`prints LaTeX as formulas when the project ${addMathJax ? 'includes' : 'does not include'} MathJax`, async ({
-            authenticatedPage: page,
+            guestSession: page,
             createProject,
         }) => {
             test.setTimeout(120000);
@@ -40,7 +40,7 @@ test.describe('Print preview formulas', () => {
         // Games keep their questions encrypted in a hidden DataGame div, which the page's own LaTeX
         // pass cannot see: the preview decrypts it, renders the formulas and encrypts it again.
         test(`prints LaTeX in a game's encrypted data when the project ${addMathJax ? 'includes' : 'does not include'} MathJax`, async ({
-            authenticatedPage: page,
+            guestSession: page,
             createProject,
         }) => {
             test.setTimeout(120000);

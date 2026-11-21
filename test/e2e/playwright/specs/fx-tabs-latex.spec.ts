@@ -203,12 +203,12 @@ test.describe('FX Tabs LaTeX rendering (#2191)', () => {
     });
 
     test('HTML5 export ships pre-rendered FX-tabs LaTeX and bundles exe_effects.js', async ({
-        authenticatedPage,
+        guestSession,
         createProject,
     }, testInfo) => {
         skipInStaticMode(test, testInfo, 'Requires server to create projects, add iDevices, and export');
 
-        const page = authenticatedPage;
+        const page = guestSession;
 
         const projectUuid = await createProject(page, 'FX Tabs LaTeX export #2191');
         await gotoWorkarea(page, projectUuid);

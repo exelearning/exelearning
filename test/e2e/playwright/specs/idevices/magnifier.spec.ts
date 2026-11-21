@@ -149,8 +149,8 @@ async function selectImageForMagnifier(page: Page, fixturePath: string): Promise
 
 test.describe('Magnifier iDevice', () => {
     test.describe('Basic Operations', () => {
-        test('should add magnifier iDevice to blank document', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should add magnifier iDevice to blank document', async ({ guestSession, createProject }) => {
+            const page = guestSession;
 
             // Create a new project
             const projectUuid = await createProject(page, 'Magnifier Basic Test');
@@ -174,10 +174,10 @@ test.describe('Magnifier iDevice', () => {
 
     test.describe('Image Configuration', () => {
         test('should select custom image from file picker and display correctly', async ({
-            authenticatedPage,
+            guestSession,
             createProject,
         }) => {
-            const page = authenticatedPage;
+            const page = guestSession;
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Magnifier Custom Image Test');
@@ -251,8 +251,8 @@ test.describe('Magnifier iDevice', () => {
             await workarea.save();
         });
 
-        test('should save with default image and display correctly', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should save with default image and display correctly', async ({ guestSession, createProject }) => {
+            const page = guestSession;
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Magnifier Image Test');
@@ -313,8 +313,8 @@ test.describe('Magnifier iDevice', () => {
     });
 
     test.describe('Magnifier Effect', () => {
-        test('should have magnifier data attributes after save', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should have magnifier data attributes after save', async ({ guestSession, createProject }) => {
+            const page = guestSession;
 
             const projectUuid = await createProject(page, 'Magnifier Hover Test');
             await gotoWorkarea(page, projectUuid);
@@ -375,8 +375,8 @@ test.describe('Magnifier iDevice', () => {
     });
 
     test.describe('Preview Panel', () => {
-        test('should display correctly in preview panel', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should display correctly in preview panel', async ({ guestSession, createProject }) => {
+            const page = guestSession;
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Magnifier Preview Test');

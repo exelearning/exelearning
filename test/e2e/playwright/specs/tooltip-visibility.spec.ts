@@ -4,7 +4,7 @@ import { gotoWorkarea, waitForAppReady } from '../helpers/workarea-helpers';
 test.describe('Tooltip visibility (#2335)', () => {
     for (const mode of ['trigger', 'parent', 'detached', 'click'] as const) {
         test(`cancels delayed tooltips after ${mode} changes and still supports keyboard focus`, async ({
-            authenticatedPage: page,
+            guestSession: page,
             createProject,
         }) => {
             const projectId = await createProject(page, 'Tooltip visibility');

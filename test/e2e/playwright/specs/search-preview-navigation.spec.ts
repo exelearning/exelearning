@@ -65,11 +65,11 @@ async function getIframeUrl(page: import('@playwright/test').Page): Promise<stri
 
 test.describe('Search in preview - subpage navigation', () => {
     test('should navigate correctly when clicking search results from a subpage', async ({
-        authenticatedPage,
+        guestSession,
         createProject,
     }) => {
         test.setTimeout(90000);
-        const page = authenticatedPage;
+        const page = guestSession;
 
         // Create a new project
         const projectUuid = await createProject(page, 'Search Navigation Test');

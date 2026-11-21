@@ -155,10 +155,10 @@ async function addMagnifierWithFx(page: Page): Promise<void> {
 
 test.describe('Form iDevice FX export', () => {
     test('bundles and initializes FX content stored in question properties', async ({
-        authenticatedPage,
+        guestSession,
         createProject,
     }) => {
-        const page = authenticatedPage;
+        const page = guestSession;
         const projectUuid = await createProject(page, 'Form FX export');
         await gotoWorkarea(page, projectUuid);
         await waitForAppReady(page);
@@ -186,8 +186,8 @@ test.describe('Form iDevice FX export', () => {
         await expect(panels.nth(1)).toHaveClass(/fx-current/);
     });
 
-    test('initializes FX content stored in magnifier properties', async ({ authenticatedPage, createProject }) => {
-        const page = authenticatedPage;
+    test('initializes FX content stored in magnifier properties', async ({ guestSession, createProject }) => {
+        const page = guestSession;
         const projectUuid = await createProject(page, 'Magnifier FX export');
         await gotoWorkarea(page, projectUuid);
         await waitForAppReady(page);

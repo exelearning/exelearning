@@ -62,8 +62,8 @@ async function openFieldset(page: Page, ideviceId: string, fieldsetId: string): 
 }
 
 test.describe('Markdown Text iDevice', () => {
-    test('persists main markdown content through save and reload', async ({ authenticatedPage, createProject }) => {
-        const page = authenticatedPage;
+    test('persists main markdown content through save and reload', async ({ guestSession, createProject }) => {
+        const page = guestSession;
         const projectUuid = await createProject(page, 'Markdown Persistence');
         await gotoWorkarea(page, projectUuid);
         await waitForAppReady(page);
@@ -86,8 +86,8 @@ test.describe('Markdown Text iDevice', () => {
         await expect(page.locator(IDEVICE_ARTICLE)).toContainText(unique, { timeout: 15000 });
     });
 
-    test('preview tab renders authored markdown as HTML', async ({ authenticatedPage, createProject }) => {
-        const page = authenticatedPage;
+    test('preview tab renders authored markdown as HTML', async ({ guestSession, createProject }) => {
+        const page = guestSession;
         const projectUuid = await createProject(page, 'Markdown Preview Tab');
         await gotoWorkarea(page, projectUuid);
         await waitForAppReady(page);
@@ -106,10 +106,10 @@ test.describe('Markdown Text iDevice', () => {
     });
 
     test('feedback section renders in preview and escapes attribute values', async ({
-        authenticatedPage,
+        guestSession,
         createProject,
     }) => {
-        const page = authenticatedPage;
+        const page = guestSession;
         const projectUuid = await createProject(page, 'Markdown Feedback');
         await gotoWorkarea(page, projectUuid);
         await waitForAppReady(page);
@@ -141,11 +141,8 @@ test.describe('Markdown Text iDevice', () => {
         await expect(iframe.locator('.feedback.js-feedback')).toContainText('Feedback body');
     });
 
-    test('feedback toggle button shows and hides feedback panel on click', async ({
-        authenticatedPage,
-        createProject,
-    }) => {
-        const page = authenticatedPage;
+    test('feedback toggle button shows and hides feedback panel on click', async ({ guestSession, createProject }) => {
+        const page = guestSession;
         const projectUuid = await createProject(page, 'Markdown Feedback Toggle');
         await gotoWorkarea(page, projectUuid);
         await waitForAppReady(page);
