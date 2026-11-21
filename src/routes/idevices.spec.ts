@@ -14,7 +14,7 @@ const TEST_JWT_SECRET = getJwtSecret();
 
 async function signTestToken(sub: number, roles: string[] = ['ROLE_USER']): Promise<string> {
     const secret = new TextEncoder().encode(TEST_JWT_SECRET);
-    return new SignJWT({ sub, email: `u${sub}@test.local`, roles })
+    return new SignJWT({ sub: String(sub), email: `u${sub}@test.local`, roles })
         .setProtectedHeader({ alg: 'HS256' })
         .setIssuedAt()
         .setExpirationTime('1h')
@@ -22,7 +22,7 @@ async function signTestToken(sub: number, roles: string[] = ['ROLE_USER']): Prom
 }
 
 describe('iDevices Routes', () => {
-    let app: Elysia;
+    let app: Pick<Elysia, 'handle'>;
     let ownerToken: string;
 
     /** Inject the owner JWT into every request unless one is already supplied. */

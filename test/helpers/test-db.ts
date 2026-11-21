@@ -106,7 +106,6 @@ export async function seedTestProject(
             owner_id: ownerId,
             status: overrides.status ?? 'active',
             visibility: overrides.visibility ?? 'private',
-            public_view_enabled: 0, // migration 009 column default
             saved_once: overrides.saved_once ?? 1, // Default to saved for tests
             created_at: now,
             updated_at: now,
