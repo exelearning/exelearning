@@ -747,7 +747,7 @@ export class LegacyXmlParser {
         const rootPage = rootPages[0];
         const hasDirectChildren = rootPage.children && rootPage.children.length > 0;
 
-        return { shouldFlatten: hasDirectChildren, rootPage };
+        return { shouldFlatten: Boolean(hasDirectChildren), rootPage };
     }
 
     /**
@@ -1024,7 +1024,7 @@ export class LegacyXmlParser {
      * Convert exe-node: links from path-based to ID-based
      */
     private convertInternalLinks(html: string, fullPathMap: Map<string, string>): string {
-        if (!html || !html.includes('exe-node:')) return html;
+        if (!html?.includes('exe-node:')) return html;
 
         const EXE_NODE_PREFIX = 'exe-node:';
 
@@ -1545,7 +1545,7 @@ export class LegacyXmlParser {
                 if (typeof handler.getBlockProperties === 'function') {
                     const blockProps = handler.getBlockProperties();
                     if (blockProps && Object.keys(blockProps).length > 0) {
-                        idevice.blockProperties = blockProps;
+                        idevice.blockProperties = blockProps as LegacyBlockProperties;
                         this.logger.log(`[LegacyXmlParser] Handler block properties:`, blockProps);
                     }
                 }
@@ -1598,7 +1598,7 @@ export class LegacyXmlParser {
                     const pblTaskData = this.extractPblTaskMetadata(idevice.htmlView);
                     if (pblTaskData) {
                         if (pblTaskData.rebuiltHtmlView) {
-                            idevice.htmlView = pblTaskData.rebuiltHtmlView;
+                            idevice.htmlView = String(pblTaskData.rebuiltHtmlView);
                             delete pblTaskData.rebuiltHtmlView;
                         }
                         idevice.properties = { ...idevice.properties, ...pblTaskData };

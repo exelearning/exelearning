@@ -164,7 +164,7 @@ describe('DiscoverWorksheetAdapter', () => {
 
     it('does not interpret a malformed current payload as a legacy one', () => {
         expect(
-            DiscoverWorksheetAdapter.build(discoverHtml({ version: 4, words: [{ eText0: 'A', eText1: 'B' }] })),
+            DiscoverWorksheetAdapter.build(discoverHtml({ version: 4, words: [{ eText0: 'A', eText1: 'B' }] }), {}),
         ).toBeNull();
     });
 

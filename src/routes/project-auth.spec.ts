@@ -35,7 +35,7 @@ function createTestProjectApp(db: Kysely<Database>) {
 
                 if (authHeader?.startsWith('Bearer ')) {
                     token = authHeader.slice(7);
-                } else if (cookie.auth?.value) {
+                } else if (typeof cookie.auth?.value === 'string' && cookie.auth.value) {
                     token = cookie.auth.value;
                 }
 
@@ -44,14 +44,14 @@ function createTestProjectApp(db: Kysely<Database>) {
                 }
 
                 try {
-                    const payload = (await jwtPlugin.verify(token)) as { sub: number } | false;
-                    if (!payload || !payload.sub) {
+                    const payload = (await jwtPlugin.verify(token)) as { sub: string } | false;
+                    if (payload === false || !payload.sub) {
                         return { currentUser: null };
                     }
                     const user = await db
                         .selectFrom('users')
                         .selectAll()
-                        .where('id', '=', payload.sub)
+                        .where('id', '=', Number(payload.sub))
                         .executeTakeFirst();
                     return { currentUser: user || null };
                 } catch {
@@ -251,7 +251,7 @@ describe('Project Owner Assignment', () => {
         const tempApp = new Elysia()
             .use(jwt({ name: 'jwt', secret: 'test-secret-key-for-testing-only', exp: '7d' }))
             .get('/token/:userId', async ({ jwt, params }) => {
-                return jwt.sign({ sub: parseInt(params.userId, 10) });
+                return jwt.sign({ sub: String(parseInt(params.userId, 10)) });
             });
 
         const res = await tempApp.handle(new Request(`http://localhost/token/${userId}`));
@@ -402,7 +402,7 @@ describe('Project Sharing Authorization', () => {
         const tempApp = new Elysia()
             .use(jwt({ name: 'jwt', secret: 'test-secret-key-for-testing-only', exp: '7d' }))
             .get('/token/:userId', async ({ jwt, params }) => {
-                return jwt.sign({ sub: parseInt(params.userId, 10) });
+                return jwt.sign({ sub: String(parseInt(params.userId, 10)) });
             });
 
         const res = await tempApp.handle(new Request(`http://localhost/token/${userId}`));

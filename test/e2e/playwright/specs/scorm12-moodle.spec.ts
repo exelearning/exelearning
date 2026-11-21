@@ -4,7 +4,7 @@
  * Skipped in CI unless MOODLE_URL is set. Against erseco/alpine-moodle:
  *
  *   MOODLE_URL=http://localhost MOODLE_USERNAME=user MOODLE_PASSWORD=1234 \
- *     bun x playwright test --project=chromium test/e2e/playwright/specs/scorm12-moodle.spec.ts
+ *     bun x --bun playwright test --project=chromium test/e2e/playwright/specs/scorm12-moodle.spec.ts
  */
 import * as fs from 'node:fs';
 

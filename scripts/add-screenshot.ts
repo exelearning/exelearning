@@ -17,7 +17,7 @@
 
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
-import { createCanvas, GlobalFonts } from '@napi-rs/canvas';
+import { createCanvas } from '@napi-rs/canvas';
 import { unzipSync, zipSync } from 'fflate';
 
 const WIDTH = 1280;
@@ -25,7 +25,7 @@ const HEIGHT = 720;
 
 function extractTitle(contentXml: string, fallback: string): string {
     const m = contentXml.match(/<key>pp_title<\/key>\s*<value>([^<]*)<\/value>/);
-    if (m && m[1]?.trim()) return m[1].trim();
+    if (m?.[1]?.trim()) return m[1].trim();
     return fallback;
 }
 

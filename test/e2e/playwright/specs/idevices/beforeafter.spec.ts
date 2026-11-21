@@ -479,7 +479,7 @@ test.describe('BeforeAfter iDevice', () => {
             await expect(overlay).toBeVisible({ timeout: 5000 });
 
             // Verify the overlay has some width (slider functionality is initialized)
-            const overlayWidth = await overlay.evaluate(el => el.offsetWidth);
+            const overlayWidth = await overlay.evaluate((el: HTMLElement) => el.offsetWidth);
             expect(overlayWidth).toBeGreaterThan(0);
         });
     });

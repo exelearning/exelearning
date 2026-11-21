@@ -92,7 +92,7 @@ Common knobs (all supported by the example files):
 * **Files:** `FILES_DIR` (default: `/mnt/data/`)
 * **Auth:** `APP_AUTH_METHODS`, `AUTH_CREATE_USERS`
 * **Admin user:** `ADMIN_EMAIL`, `ADMIN_PASSWORD` (see [Admin User Setup](#admin-user-setup))
-* **Platform integration (Moodle, etc.):** `PROVIDER_URLS`, `PROVIDER_TOKENS`, `PROVIDER_IDS` (see [Platform integration](#platform-integration-moodle-and-other-lms))
+* **Platform integration (Moodle, etc.):** `PROVIDER_URLS`, `PROVIDER_ALLOW_PRIVATE_NETWORK`, `PROVIDER_TOKENS`, `PROVIDER_IDS` (see [Platform integration](#platform-integration-moodle-and-other-lms))
 * **Real-time (Yjs WebSocket):** Uses the main server port, no additional configuration needed
 * **Post-configure hooks:** `POST_CONFIGURE_COMMANDS` (e.g., run custom scripts)
 
@@ -200,6 +200,44 @@ every provider — list only hosts you are willing to let the server contact.
 `PROVIDER_TOKENS` / `PROVIDER_IDS` are optional: platforms signing with `APP_SECRET`
 only need `PROVIDER_URLS`.
 
+**Platforms on a private network.** Outbound platform callbacks (`get_ode.php` /
+`set_ode.php`) go through the SSRF egress guard, which refuses any destination that
+resolves to a loopback, RFC1918 (`10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`) or
+IPv6 unique-local (`fc00::/7`) address. That also refuses a legitimate Moodle on an
+intranet, behind a VPN, reached through private DNS, on the same Docker network, or at
+`http://localhost` in development, even when its host is listed in `PROVIDER_URLS`.
+Saving or sending a package to the platform then fails with:
+
+```text
+Failed to forward package to platform:
+Blocked address for host moodle.example.org: 172.16.37.61
+```
+
+Opt in with `PROVIDER_ALLOW_PRIVATE_NETWORK` (default `false`; `true` or `1` enables it):
+
+```env
+PROVIDER_URLS=https://moodle.intranet.example.org:443
+PROVIDER_ALLOW_PRIVATE_NETWORK=true
+```
+
+Keep it `false` unless an authorized platform really lives on a private network. When
+it is enabled:
+
+- The exception applies **only** to URLs that already match `PROVIDER_URLS`. Any other
+  destination is still refused.
+- Link-local addresses (including the cloud metadata endpoint `169.254.169.254` and
+  `fe80::/10`), CGNAT (`100.64.0.0/10`), multicast, reserved and unspecified addresses
+  stay blocked.
+- Give those entries an explicit port: an entry without one authorizes **every** port
+  on that host.
+- Avoid wildcard entries. `PROVIDER_URLS` is global (see above), so every entry, and
+  every subdomain a `*.` entry covers, may reach your private network on behalf of any
+  configured provider.
+- Callbacks do not follow HTTP redirects. Moodle must answer `get_ode.php` /
+  `set_ode.php` directly, so use the final scheme and host in `PROVIDER_URLS` and in
+  Moodle's `wwwroot` (an HTTP-to-HTTPS redirect in front of them makes the callback
+  fail).
+
 Troubleshooting:
 
 - `Invalid token or unauthorized provider` with the server log line
@@ -207,7 +245,16 @@ Troubleshooting:
   correctly but `<url>` is not covered. Add its host to `PROVIDER_URLS` and restart.
 - `[PlatformJWT] Unsafe return URL rejected: <url>` is different: the URL uses a
   non-http(s) scheme, or its host is an IP literal in a private, loopback or
-  link-local range. Give the platform a public hostname instead.
+  link-local range. Give the platform a hostname instead; if that host is a trusted
+  platform on a private network, list it in `PROVIDER_URLS` and set
+  `PROVIDER_ALLOW_PRIVATE_NETWORK=true` (link-local addresses are never accepted).
+- `Failed to forward package to platform: Blocked address for host <host>: <ip>`
+  means the host is allowed but resolves to a private address. If the platform is
+  meant to be on a private network, set `PROVIDER_ALLOW_PRIVATE_NETWORK=true` (see
+  *Platforms on a private network* above) and restart; otherwise fix its DNS.
+- `Too many redirects` on a callback means the platform answered with a `3xx`.
+  Callbacks do not follow redirects, so put the final URL (scheme included) in
+  `PROVIDER_URLS` and in Moodle's `wwwroot`.
 - Upgrading from **v4.0.1 or earlier**: an empty `PROVIDER_URLS` used to mean
   *allow everything*. Since v4.0.2 it means *allow nothing*, so a previously working
   deployment that left it empty must now list its platforms.
