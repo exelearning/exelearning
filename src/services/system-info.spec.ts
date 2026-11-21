@@ -13,7 +13,13 @@ import {
     getDockerInfo,
     getDiskInfo,
     getSystemInfo,
+    type SystemInfoDependencies,
 } from './system-info';
+
+/** The fakes implement only the call shape the service uses, not every overload of the real fs/process functions. */
+function configureFakes(fakes: { [K in keyof SystemInfoDependencies]?: unknown }): void {
+    configure(fakes as Partial<SystemInfoDependencies>);
+}
 
 describe('system-info', () => {
     beforeEach(() => {
@@ -50,7 +56,7 @@ describe('system-info', () => {
         });
 
         it('should return SQLite info by default', () => {
-            configure({
+            configureFakes({
                 getDbConfig: () => ({ dialect: 'sqlite', sqlitePath: '/data/test.db' }),
             });
 
@@ -67,7 +73,7 @@ describe('system-info', () => {
             process.env.DB_NAME = 'mydb';
             process.env.DB_SERVER_VERSION = '15.2';
 
-            configure({
+            configureFakes({
                 getDbConfig: () => ({ dialect: 'sqlite', sqlitePath: '' }),
             });
 
@@ -87,7 +93,7 @@ describe('system-info', () => {
             process.env.DB_NAME = 'exelearning';
             process.env.DB_SERVER_VERSION = '8.0';
 
-            configure({
+            configureFakes({
                 getDbConfig: () => ({ dialect: 'sqlite', sqlitePath: '' }),
             });
 
@@ -112,7 +118,7 @@ describe('system-info', () => {
             process.env.APP_PORT = '3000';
             process.env.FILES_DIR = '/tmp/files';
 
-            configure({
+            configureFakes({
                 getAppVersion: () => 'v3.1.0',
             });
 
@@ -129,7 +135,7 @@ describe('system-info', () => {
             delete process.env.APP_PORT;
             delete process.env.FILES_DIR;
 
-            configure({
+            configureFakes({
                 getAppVersion: () => 'v1.0.0',
             });
 
@@ -143,7 +149,7 @@ describe('system-info', () => {
 
     describe('getMemoryInfo', () => {
         it('should return memory information', () => {
-            configure({
+            configureFakes({
                 osTotalmem: () => 16 * 1024 * 1024 * 1024, // 16GB
                 osFreemem: () => 8 * 1024 * 1024 * 1024, // 8GB
                 processMemoryUsage: () => ({
@@ -167,7 +173,7 @@ describe('system-info', () => {
 
     describe('getOsInfo', () => {
         it('should return OS information', () => {
-            configure({
+            configureFakes({
                 osPlatform: () => 'linux',
                 osRelease: () => '5.15.0',
                 osHostname: () => 'server01',
@@ -187,7 +193,7 @@ describe('system-info', () => {
 
     describe('getDockerInfo', () => {
         it('should detect Docker via /.dockerenv', () => {
-            configure({
+            configureFakes({
                 existsSync: (path: string) => path === '/.dockerenv',
                 readFileSync: () => '',
             });
@@ -198,7 +204,7 @@ describe('system-info', () => {
         });
 
         it('should detect Docker via cgroup', () => {
-            configure({
+            configureFakes({
                 existsSync: (path: string) => path === '/proc/1/cgroup',
                 readFileSync: () => '1:name=systemd:/docker/abc123',
             });
@@ -209,7 +215,7 @@ describe('system-info', () => {
         });
 
         it('should detect Kubernetes via cgroup', () => {
-            configure({
+            configureFakes({
                 existsSync: (path: string) => path === '/proc/1/cgroup',
                 readFileSync: () => '1:name=systemd:/kubepods/pod-abc123',
             });
@@ -220,7 +226,7 @@ describe('system-info', () => {
         });
 
         it('should return false when not in Docker', () => {
-            configure({
+            configureFakes({
                 existsSync: () => false,
                 readFileSync: () => '',
             });
@@ -235,7 +241,7 @@ describe('system-info', () => {
             const originalHostname = process.env.HOSTNAME;
             process.env.HOSTNAME = 'container-abc123';
 
-            configure({
+            configureFakes({
                 existsSync: (path: string) => path === '/.dockerenv',
                 readFileSync: () => '',
             });
@@ -259,7 +265,7 @@ describe('system-info', () => {
         it('should return disk information', async () => {
             process.env.FILES_DIR = '/data';
 
-            configure({
+            configureFakes({
                 statfs: async () => ({
                     bsize: 4096,
                     blocks: 1000000,
@@ -283,7 +289,7 @@ describe('system-info', () => {
         it('should handle errors gracefully', async () => {
             process.env.FILES_DIR = '/nonexistent';
 
-            configure({
+            configureFakes({
                 statfs: async () => {
                     throw new Error('ENOENT');
                 },
@@ -300,7 +306,7 @@ describe('system-info', () => {
 
     describe('getSystemInfo', () => {
         it('should aggregate all system information', async () => {
-            configure({
+            configureFakes({
                 osTotalmem: () => 16 * 1024 * 1024 * 1024,
                 osFreemem: () => 8 * 1024 * 1024 * 1024,
                 osPlatform: () => 'linux',

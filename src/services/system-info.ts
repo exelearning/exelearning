@@ -173,7 +173,7 @@ export function getDatabaseInfo(): DatabaseInfo {
     if (engine === 'SQLite') {
         return {
             ...baseInfo,
-            path: config.sqlitePath,
+            path: (config as { sqlitePath?: string }).sqlitePath,
         };
     }
 

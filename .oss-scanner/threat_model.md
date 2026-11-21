@@ -63,7 +63,7 @@ whoever hands a teacher a crafted project file.
   admin could not already do.
 - **Out of scope:**
   - vendored third-party code: `public/libs/`, and in `public/app/common/` only `mermaid/`, `edicuatex/`,
-    `exe_math/`, `mindmaps/`, `fix_webm_duration/` and the `*.min.js` files; the rest of `public/app/common/` is
+    `exe_math/`, `fix_webm_duration/` and the `*.min.js` files; the rest of `public/app/common/` is
     first-party and in scope;
   - minified third-party libraries under `public/files/perm/idevices/`;
   - generated bundles (`public/bundles/`, `public/app/*.bundle.js`, `public/app/yjs/*.bundle.js`, `dist/`): report

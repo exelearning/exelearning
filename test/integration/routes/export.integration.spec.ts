@@ -8,7 +8,7 @@ import { testRequest, parseJsonResponse } from '../helpers/integration-app';
 import { ExportFormatType } from '../../../src/shared/export/interfaces';
 
 describe('Export Routes Integration', () => {
-    let app: Elysia;
+    let app: Pick<Elysia, 'handle'>;
 
     beforeAll(async () => {
         // Create export routes for testing

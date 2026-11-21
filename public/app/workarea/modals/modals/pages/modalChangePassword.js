@@ -162,6 +162,12 @@ export default class ModalChangePassword extends Modal {
             const response = await this.requestChange(currentPassword, newPassword);
 
             if (response.ok) {
+                // The old editor token is revoked with the old password.
+                const token = response.body?.token;
+                if (token) {
+                    eXeLearning.config.token = token;
+                    eXeLearning.app?.project?._yjsBridge?.updateAuthToken?.(token);
+                }
                 this.reset();
                 this.showSuccess(_('Password changed successfully'));
                 return;

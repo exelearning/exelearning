@@ -17,7 +17,8 @@ let domParser: DOMParser;
 
 beforeAll(() => {
     const window = new Window();
-    domParser = new window.DOMParser();
+    // happy-dom stands in for the browser DOMParser the helpers are typed against.
+    domParser = new window.DOMParser() as unknown as DOMParser;
 });
 
 describe('MEDIA_MIME_TYPES', () => {
@@ -106,7 +107,7 @@ describe('needsTypeAttribute', () => {
 describe('addMediaTypes', () => {
     it('should return empty/null input unchanged', () => {
         expect(addMediaTypes('')).toBe('');
-        expect(addMediaTypes(null as unknown as string)).toBe(null);
+        expect(addMediaTypes(null as unknown as string) as unknown).toBe(null);
     });
 
     it('should add type to source element without type', () => {
@@ -178,7 +179,7 @@ describe('addMediaTypes', () => {
 describe('simplifyMediaElements', () => {
     it('should return empty/null input unchanged', () => {
         expect(simplifyMediaElements('')).toBe('');
-        expect(simplifyMediaElements(null as unknown as string)).toBe(null);
+        expect(simplifyMediaElements(null as unknown as string) as unknown).toBe(null);
     });
 
     it('should simplify video with mediaelement class and source child', () => {
