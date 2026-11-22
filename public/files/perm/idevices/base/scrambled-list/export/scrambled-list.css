@@ -27,16 +27,18 @@
     border-radius: 4px;
 }
 
-.exe-sortableList .first .up,
+/* Only the playable list: the instructions and the text after the activity
+   may hold lists of their own, whose links must not turn into arrows (#2777). */
+.exe-sortableList-options .first .up,
 .exe-sortableList-options .last .down {
     visibility: hidden;
 }
 
-.exe-sortableList li {
+.exe-sortableList-options li {
     position: relative;
 }
 
-.exe-sortableList li a {
+.exe-sortableList-options li a {
     display: block;
     width: 21px;
     height: 21px;
@@ -47,18 +49,18 @@
     margin-top: -10px;
 }
 
-.exe-sortableList li a:hover,
-.exe-sortableList li a:focus {
+.exe-sortableList-options li a:hover,
+.exe-sortableList-options li a:focus {
     background-position: 0 -21px;
 }
 
-.exe-sortableList li .down {
+.exe-sortableList-options li .down {
     background-position: -21px 0;
     right: 13px;
 }
 
-.exe-sortableList li .down:hover,
-.exe-sortableList li .down:focus {
+.exe-sortableList-options li .down:hover,
+.exe-sortableList-options li .down:focus {
     background-position: -21px -21px;
 }
 

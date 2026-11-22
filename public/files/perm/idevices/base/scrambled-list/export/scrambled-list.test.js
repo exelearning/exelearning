@@ -918,6 +918,165 @@ describe('scrambled-list iDevice export', () => {
     });
   });
 
+  // Issue #2777: a bulleted list in the instructions or in the text after the
+  // activity made it unplayable, because only an activity with exactly one
+  // <ul> was enabled.
+  describe('enableList with lists in the author texts', () => {
+    let originalSortable;
+
+    beforeEach(() => {
+      originalSortable = $.fn.sortable;
+      // jQuery UI is not loaded here; enableList() only needs the call to chain.
+      $.fn.sortable = function () {
+        return this;
+      };
+    });
+
+    afterEach(() => {
+      $.fn.sortable = originalSortable;
+      document.body.innerHTML = '';
+    });
+
+    const activityWithLists = (listClass = ' class="exe-sortableList-list"') => `
+      <div class="exe-sortableList">
+        <div class="exe-sortableList-instructions">
+          <ul><li>Read <a href="#a">this</a></li><li>Then sort</li></ul>
+          <ol><li>Numbered</li><li>Too</li></ol>
+        </div>
+        <ul${listClass}><li>One</li><li>Two</li><li>Three</li></ul>
+        <p class="exe-sortableList-buttonText">Check</p>
+        <div class="exe-sortableList-textAfter">
+          <ul><li>Video 1: <a href="#v1">song</a></li><li>Video 2</li></ul>
+        </div>
+      </div>`;
+
+    const playableTexts = (listOrder) =>
+      Array.from(document.querySelectorAll(`#exe-sortableList-${listOrder} > li`)).map(
+        (li) => li.firstChild.textContent,
+      );
+
+    it('builds the playable list from the options only', () => {
+      document.body.innerHTML = activityWithLists();
+      const activity = document.querySelector('.exe-sortableList');
+
+      $scrambledlist.enableList(activity, 3);
+
+      expect(playableTexts(3).sort()).toEqual(['One', 'Three', 'Two']);
+      expect(document.getElementById('exe-sortableListResults-3').classList.contains('exe-sortableList-list')).toBe(
+        true,
+      );
+      // The author's lists are left exactly as they were.
+      expect(activity.querySelectorAll('.exe-sortableList-instructions li')).toHaveLength(4);
+      expect(activity.querySelectorAll('.exe-sortableList-textAfter li')).toHaveLength(2);
+      expect(activity.querySelectorAll('.exe-sortableList-instructions [data-orig-index]')).toHaveLength(0);
+      expect(activity.querySelectorAll('.exe-sortableList-textAfter .exe-sortableList-controls')).toHaveLength(0);
+    });
+
+    it('finds the list in content whose list carries no class', () => {
+      document.body.innerHTML = activityWithLists('');
+      const activity = document.querySelector('.exe-sortableList');
+
+      $scrambledlist.enableList(activity, 4);
+
+      expect(playableTexts(4).sort()).toEqual(['One', 'Three', 'Two']);
+    });
+
+    it('does not enable the same activity twice', () => {
+      document.body.innerHTML = activityWithLists();
+      const activity = document.querySelector('.exe-sortableList');
+
+      $scrambledlist.enableList(activity, 5);
+      $scrambledlist.enableList(activity, 5);
+
+      expect(activity.querySelectorAll('.exe-sortableList-options')).toHaveLength(1);
+      expect(activity.querySelectorAll('#exe-sortableList-5 > li')).toHaveLength(3);
+    });
+
+    it('leaves an activity with no list to sort alone', () => {
+      document.body.innerHTML = `
+        <div class="exe-sortableList">
+          <div class="exe-sortableList-instructions"><ul><li>Only text</li></ul></div>
+        </div>`;
+      const activity = document.querySelector('.exe-sortableList');
+
+      $scrambledlist.enableList(activity, 6);
+
+      expect(activity.querySelector('.exe-sortableList-options')).toBeNull();
+      expect(activity.querySelector('.exe-sortableList-instructions ul').id).toBe('');
+    });
+
+    it('turns the saved activity into a playable one through renderBehaviour', () => {
+      const previousIsInExe = eXe.app.isInExe;
+      eXe.app.isInExe = vi.fn(() => false);
+      const gamification = global.$exeDevices.iDevice.gamification;
+      const originalReport = gamification.report;
+      const originalMath = gamification.math;
+      gamification.math = { hasLatex: () => false, updateLatex: () => {} };
+      gamification.report = Object.assign({}, originalReport, {
+        showPassScoreNotice: () => null,
+        updateEvaluationIcon: () => {},
+      });
+      vi.useFakeTimers();
+
+      try {
+        const data = {
+          options: ['First', 'Second', 'Third'],
+          instructions: '<ul><li>Watch the song</li><li>Sort the habits</li></ul>',
+          afterElement:
+            '<div class="exe-sortableList-textAfter"><ul><li>Video 1: <a href="#v">song</a></li></ul></div>',
+          buttonText: 'Check',
+          rightText: 'Right',
+          wrongText: 'Wrong',
+          isScorm: 0,
+          msgs: $scrambledlist.getMessages(),
+        };
+        const template = readFileSync(join(__dirname, 'scrambled-list.html'), 'utf-8');
+        document.body.innerHTML = $scrambledlist.renderView(data, 0, template, 'list2777');
+
+        $scrambledlist.renderBehaviour(data, 0, 'list2777');
+
+        const activity = document.getElementById('sllist2777');
+        expect(activity.querySelectorAll('.exe-sortableList-options > li')).toHaveLength(3);
+        expect(activity.querySelector('.exe-sortableList-list').style.display).toBe('none');
+        expect(activity.querySelectorAll('.exe-sortableList-instructions li')).toHaveLength(2);
+        expect(activity.querySelector('.exe-sortableList-textAfter a').getAttribute('href')).toBe('#v');
+      } finally {
+        vi.clearAllTimers();
+        vi.useRealTimers();
+        gamification.report = originalReport;
+        gamification.math = originalMath;
+        eXe.app.isInExe = previousIsInExe;
+      }
+    });
+  });
+
+  // The arrows are links inside the playable list's items. The rules drawing
+  // them used to match every <li> in the activity, so a link in a list in the
+  // instructions or the text after it became a 21px arrow (#2777).
+  describe('stylesheet scope', () => {
+    afterEach(() => {
+      document.head.innerHTML = '';
+      document.body.innerHTML = '';
+    });
+
+    it('draws the sorter arrows in the playable list only', () => {
+      const style = document.createElement('style');
+      style.textContent = readFileSync(join(__dirname, 'scrambled-list.css'), 'utf-8');
+      document.head.appendChild(style);
+      document.body.innerHTML = `
+        <div class="exe-sortableList">
+          <div class="exe-sortableList-instructions"><ul><li><a id="in-instructions" href="#">a</a></li></ul></div>
+          <ul class="exe-sortableList-options"><li><a id="sorter" class="up" href="#"></a></li></ul>
+          <div class="exe-sortableList-textAfter"><ol><li><a id="in-text-after" href="#">b</a></li></ol></div>
+        </div>`;
+
+      const position = (id) => getComputedStyle(document.getElementById(id)).position;
+      expect(position('sorter')).toBe('absolute');
+      expect(position('in-instructions')).not.toBe('absolute');
+      expect(position('in-text-after')).not.toBe('absolute');
+    });
+  });
+
   describe('renderView', () => {
     const template =
       '<div id="sl{idList}">{instructions}<ul class="exe-sortableList-list">{optionsText}</ul>' +
