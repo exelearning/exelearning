@@ -1,7 +1,7 @@
 /**
  * Tests for Translations Command
  */
-import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
+import { describe, it, expect, beforeEach, afterEach, afterAll } from 'bun:test';
 import * as fs from 'fs-extra';
 import * as path from 'path';
 
@@ -48,8 +48,12 @@ describe('Translations Command', () => {
         if (await fs.pathExists(testDir)) {
             await fs.remove(testDir);
         }
+    });
 
-        // Reload translations with correct paths to avoid polluting other tests
+    afterAll(async () => {
+        // Reload translations with correct paths to avoid polluting other tests.
+        // Once per file, not per test: no test here reads the reloaded state, and
+        // parsing every locale after each of them was 12 of this file's 12.6 s.
         const { reloadTranslations } = await import('../../services/translation');
         reloadTranslations();
     });

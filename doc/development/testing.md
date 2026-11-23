@@ -37,6 +37,11 @@ Coverage reports are generated in the terminal. Files below 90% should be priori
 
 Unit tests validate individual components in isolation. They are located **next to the source files** they test.
 
+`make test-unit` and `make test-integration` run `bun test --parallel`: spec files are spread over worker
+processes, and each file gets a fresh global object and module registry. A spec must not depend on state
+left behind by another file, and one that binds a fixed port or writes outside its own temporary directory
+can collide with a file running at the same time.
+
 ### Naming Convention
 
 ```
