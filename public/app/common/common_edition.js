@@ -163,13 +163,30 @@ var $exeDevicesEdition = {
              * imported file, and parsed in the page its images would load and
              * their handlers run.
              *
+             * Reading decodes character references, so markup written as
+             * entities (&lt;img …&gt;) would come out as a real tag, and run
+             * wherever the text is later shown as HTML. The text is read
+             * again until there is nothing left to decode: what is returned
+             * reads as the same text in HTML.
+             *
              * @param {*} html
              * @returns {string}
              */
             removeTags: function (html) {
-                const template = document.createElement('template');
-                template.innerHTML = html == null ? '' : String(html);
-                return template.content.textContent;
+                const read = (value) => {
+                    const template = document.createElement('template');
+                    template.innerHTML = value;
+                    return template.content.textContent;
+                };
+                let text = html == null ? '' : String(html);
+                // One or two passes are enough for real text; the limit only guards
+                // against a fragment encoded more times than any real use needs.
+                for (let pass = 0; pass < 32; pass++) {
+                    const next = read(text);
+                    if (next === text) return text;
+                    text = next;
+                }
+                return text.replace(/</g, '');
             }
         },
         // Gamification

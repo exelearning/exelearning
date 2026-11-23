@@ -1750,9 +1750,18 @@ var $exeDevice = {
             );
             return;
         }
+        // Every import (text file, Moodle XML, glossary and Create with AI)
+        // ends here. Its texts are read as text, so no markup reaches the card
+        // preview, and stored encoded as the form stores them, so a %-encoded
+        // tag is not decoded into one there.
+        const removeTags = $exeDevicesEdition.iDevice.common.removeTags;
         for (let i = 0; i < cards.length; i++) {
             let card = cards[i];
-            if (card.eTextBk && card.eText) {
+            const eText = removeTags(card.eText),
+                eTextBk = removeTags(card.eTextBk);
+            if (eTextBk && eText) {
+                card.eText = $exeDevice.encodeURIComponentSafe(eText);
+                card.eTextBk = $exeDevice.encodeURIComponentSafe(eTextBk);
                 $exeDevice.cardsGame.push(card);
             }
         }

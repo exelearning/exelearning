@@ -188,6 +188,20 @@ describe('common_edition.js', () => {
           'Capital of France?'
         );
       });
+
+      it('does not turn markup written as entities into a tag', () => {
+        expect(removeTags('Paris &lt;img src="x" onerror="window.ran = true"&gt;')).toBe('Paris ');
+        expect(removeTags('&amp;lt;b&amp;gt;bold&amp;lt;/b&amp;gt;')).toBe('bold');
+      });
+
+      it('returns text that reads as the same text in HTML', () => {
+        for (const html of ['a < b & c', '5 &gt; 3', 'Tom &amp; Jerry', '&lt;p&gt;Hi&lt;/p&gt;', '100%']) {
+          const text = removeTags(html);
+          expect(removeTags(text)).toBe(text);
+        }
+        expect(removeTags('a < b & c')).toBe('a < b & c');
+        expect(removeTags('5 &gt; 3')).toBe('5 > 3');
+      });
     });
   });
 

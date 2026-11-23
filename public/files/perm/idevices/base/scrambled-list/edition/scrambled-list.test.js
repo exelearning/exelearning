@@ -68,6 +68,23 @@ describe('scrambled-list iDevice', () => {
     it('exists as a function', () => {
       expect(typeof $exeDevice.addQuestions).toBe('function');
     });
+
+    it('sets imported elements as the values of the fields, not as markup', () => {
+      document.body.innerHTML = '<div id="sortableListFormList"><ol></ol></div>';
+      const imported = [
+        'First" autofocus onfocus="window.ran = true',
+        'Second"><img src="x" onerror="window.ran = true">',
+        'Third',
+      ];
+
+      $exeDevice.addQuestions(imported);
+
+      const fields = document.querySelectorAll('#sortableListFormList input');
+      expect(fields).toHaveLength($exeDevice.items_no);
+      expect(Array.from(fields, (field) => field.value).slice(0, 3)).toEqual(imported);
+      expect(fields[0].hasAttribute('onfocus')).toBe(false);
+      expect(document.querySelector('#sortableListFormList img')).toBeNull();
+    });
   });
 
   describe('normalizeOptions', () => {

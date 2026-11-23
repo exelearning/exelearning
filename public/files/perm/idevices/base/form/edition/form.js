@@ -518,12 +518,12 @@ var $exeDevice = {
             eXe.app.alert(msg);
         }
     },
+    // Imported and AI text is read with the shared removeTags, which runs
+    // nothing: parsed in the page, its images would load and their handlers run.
     clearText(text) {
         if (!text || typeof text !== 'string') return '';
         let sinCdata = text.replace(/<!\[CDATA\[/, '').replace(/]]$/, '');
-        const container = document.createElement('div');
-        container.innerHTML = sinCdata;
-        let cleartext = container.textContent || container.innerText || '';
+        const cleartext = $exeDevicesEdition.iDevice.common.removeTags(sinCdata);
         return cleartext.replace(/\n/g, ' ').trim();
     },
 

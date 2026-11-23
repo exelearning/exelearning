@@ -116,6 +116,22 @@ describe('form iDevice edition', () => {
       const result = $exeDevice.clearText('<p>&amp; &lt; &gt;</p>');
       expect(result).toBe('& < >');
     });
+
+    it('does not turn markup written as entities into a tag', () => {
+      expect($exeDevice.clearText('Is the sky blue? &lt;img src="x" onerror="window.ran = true"&gt;')).toBe(
+        'Is the sky blue?'
+      );
+    });
+
+    it('reads the text with the shared removeTags, which runs nothing', () => {
+      const spy = vi.spyOn(global.$exeDevicesEdition.iDevice.common, 'removeTags');
+      try {
+        $exeDevice.clearText('<p>Hello</p>');
+        expect(spy).toHaveBeenCalledWith('<p>Hello</p>');
+      } finally {
+        spy.mockRestore();
+      }
+    });
   });
 
   describe('getTrueFalseQuestion', () => {

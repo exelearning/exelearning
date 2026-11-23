@@ -1405,13 +1405,22 @@ global.$exeDevices = {
  * Mirrors $exeDevicesEdition.iDevice.common in public/app/common/common_edition.js.
  * removeTags is the real implementation, not a mock: the iDevices strip tags
  * through it when they validate, import or save, and their tests check what
- * it leaves.
+ * it leaves. Keep it identical to the library's.
  */
 const mockIdeviceCommon = {
   removeTags: html => {
-    const template = document.createElement('template');
-    template.innerHTML = html == null ? '' : String(html);
-    return template.content.textContent;
+    const read = value => {
+      const template = document.createElement('template');
+      template.innerHTML = value;
+      return template.content.textContent;
+    };
+    let text = html == null ? '' : String(html);
+    for (let pass = 0; pass < 32; pass++) {
+      const next = read(text);
+      if (next === text) return text;
+      text = next;
+    }
+    return text.replace(/</g, '');
   },
 };
 
