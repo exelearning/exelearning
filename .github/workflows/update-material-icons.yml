@@ -1,0 +1,58 @@
+name: Update Material Icons
+
+# The icon sprite and catalog are vendored; only `bun run icons:generate` refreshes them.
+# Regenerate after a dependency change lands on main. The generator is deterministic, so
+# unrelated package.json/bun.lock changes produce no diff and no pull request.
+on:
+  push:
+    branches: [main]
+    paths:
+      - package.json
+      - bun.lock
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: update-material-icons
+  cancel-in-progress: true
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: main
+          persist-credentials: false
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Regenerate icons
+        run: |
+          bun install --frozen-lockfile --ignore-scripts
+          bun run icons:generate
+
+      - name: Open pull request
+        uses: peter-evans/create-pull-request@v8
+        with:
+          base: main
+          branch: feature/update-material-icons
+          delete-branch: true
+          add-paths: |
+            public/libs/material-icons/material-icons.svg
+            public/app/workarea/project/idevices/content/materialIconCatalog.js
+          commit-message: 'chore(deps): regenerate Material icons'
+          title: 'chore(deps): regenerate Material icons'
+          labels: enhancement
+          body: |
+            Regenerates the Material icon sprite and catalog with `bun run icons:generate`
+            after an `@material-symbols/svg-400` change.
+            Blocks that use a removed icon fall back to `help` in the editor and exports.
+            Default-token PRs do not trigger CI automatically.
