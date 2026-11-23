@@ -1,5 +1,5 @@
 /**
- * Unit tests for Drag and drop iDevice export helpers.
+ * Unit tests for the Drag and drop iDevice edition.
  */
 
 /* eslint-disable no-undef */
@@ -7,42 +7,11 @@
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
+import { unzipSync, strFromU8 } from 'fflate';
+import { openingHelps } from '../../../../../../../test/helpers/help-buttons.ts';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-
-describe('dragdrop iDevice export helpers', () => {
-    let $exeDevice;
-    let downloadBlob;
-
-    beforeEach(() => {
-        global.$exeDevice = undefined;
-        $exeDevice = global.loadIdevice(join(__dirname, 'dragdrop.js'));
-        downloadBlob = vi.fn(() => true);
-        global.$exeDevicesEdition.iDevice.gamification.share = { downloadBlob };
-    });
-
-    it('exports question text with the dragdrop filename and container', () => {
-        vi.spyOn($exeDevice, 'validateData').mockReturnValue({
-            wordsGame: [{ word: 'Source', definition: 'Target' }],
-        });
-
-        expect($exeDevice.exportQuestions()).toBe(true);
-        expect(downloadBlob).toHaveBeenCalledTimes(1);
-        expect(downloadBlob.mock.calls[0][1]).toBe('words-dragdrop.txt');
-        expect(downloadBlob.mock.calls[0][2]).toBe('dragdropQIdeviceForm');
-    });
-
-    it('exports game JSON with the dragdrop filename and container', () => {
-        const dataGame = { wordsGame: [{ word: 'Source', definition: 'Target' }] };
-        vi.spyOn($exeDevice, 'validateData').mockReturnValue(dataGame);
-
-        expect($exeDevice.exportGame()).toBe(true);
-        expect(downloadBlob).toHaveBeenCalledTimes(1);
-        expect(downloadBlob.mock.calls[0][1]).toBe('Activity-DragDrop.json');
-        expect(downloadBlob.mock.calls[0][2]).toBe('dragdropQIdeviceForm');
-    });
-});
 
 // Handlers whose callback is a single guarded call: [selector, event, method]
 const guardedEditionHandlers = [
@@ -55,20 +24,13 @@ const guardedEditionHandlers = [
     ['#dadEPreviousC', 'click', 'previousCard'],
     ['#dadENextC', 'click', 'nextCard'],
     ['#dadELastC', 'click', 'lastCard'],
-    ['#eXeGameExportQuestions', 'click', 'exportQuestions'],
     ['#dadEPercentajeCards', 'keyup', 'updateCardsNumber'],
     ['#dadEPercentajeCards', 'click', 'updateCardsNumber'],
     ['#dadEPercentajeCards', 'focusout', 'updateCardsNumber'],
-    ['#dadEURLAudioDefinition', 'change', 'loadAudio'],
     ['#dadEURLImage', 'change', 'loadImage'],
     ['#dadEPlayImage', 'click', 'loadImage'],
-    ['#dadEURLImageBack', 'change', 'loadImage'],
-    ['#dadEPlayImageBack', 'click', 'loadImage'],
     ['#dadEURLAudio', 'change', 'loadAudio'],
     ['#dadEPlayAudio', 'click', 'loadAudio'],
-    ['#dadEPlayAudioBack', 'click', 'loadAudio'],
-    ['#dadEImage', 'click', 'clickImage'],
-    ['#dadEImageBack', 'click', 'clickImageBack'],
 ];
 
 function buildEditionForm() {
@@ -83,24 +45,14 @@ function buildEditionForm() {
             <a href="#" id="dadEPreviousC"></a>
             <a href="#" id="dadENextC"></a>
             <a href="#" id="dadELastC"></a>
-            <div id="eXeGameExportImport">
-                <p class="exe-field-instructions"></p>
-                <input id="eXeGameImportGame" type="file" />
-                <a href="#" id="eXeGameExportQuestions"></a>
-            </div>
             <input id="dadEPercentajeCards" type="text" value="50" />
-            <input id="dadEURLAudioDefinition" type="text" value="sound.mp3" />
             <input id="dadEURLImage" type="text" value="picture.png" />
             <a href="#" id="dadEPlayImage"></a>
-            <input id="dadEURLImageBack" type="text" value="picture.png" />
-            <a href="#" id="dadEPlayImageBack"></a>
             <input id="dadEURLAudio" type="text" value="sound.mp3" />
             <a href="#" id="dadEPlayAudio"></a>
-            <a href="#" id="dadEPlayAudioBack"></a>
             <img id="dadEImage" alt="" />
-            <img id="dadEImageBack" alt="" />
             <input id="dadENumberCard" type="text" value="2" />
-            <span class="toggle-item" role="switch">
+            <span class="toggle-item">
                 <input class="toggle-input" type="checkbox" data-target="#dadEToggleTarget" />
             </span>
             <div id="dadEToggleTarget"></div>
@@ -109,25 +61,29 @@ function buildEditionForm() {
 
 describe('dragdrop edition: $exeDevice guards (#2271)', () => {
     let $exeDevice;
+    let previousItinerary;
 
     beforeEach(() => {
         global.$exeDevice = undefined;
         buildEditionForm();
-        global.$exeDevicesEdition.iDevice.gamification.itinerary = {
-            getTab: vi.fn(() => ''),
+        // The itinerary block has its own tests; here it is a stand-in, and
+        // afterEach puts the real one back.
+        previousItinerary = global.$exeIDevicesEdition.iDevice.gamification.itinerary;
+        global.$exeIDevicesEdition.iDevice.gamification.itinerary = {
+            getContents: vi.fn(() => ''),
             addEvents: vi.fn(),
             getValues: vi.fn(() => ({})),
             setValues: vi.fn(),
         };
         $exeDevice = global.loadIdevice(join(__dirname, 'dragdrop.js'));
         $exeDevice.addEvents();
-        $exeDevice.addEventCard();
     });
 
     afterEach(() => {
         // Close the edition as the workarea does, so handlers this test bound
         // on shared targets such as `document` cannot reach the next one.
         $exeDevice.$lifecycle.destroy();
+        global.$exeIDevicesEdition.iDevice.gamification.itinerary = previousItinerary;
         global.$exeDevice = undefined;
         document.body.innerHTML = '';
     });
@@ -206,7 +162,7 @@ describe('dragdrop edition: $exeDevice guards (#2271)', () => {
             // so rendering them again would show each control twice.
             expect(source).not.toContain('passScore.getContents(');
             expect(source).not.toContain('progressBar.getContents(');
-            expect(source).toContain('gamification.scorm.getTab(');
+            expect(source).toMatch(/tabs\.getHtml\([\s\S]*grading:\s*true/);
         });
 
         it('restores the control when the iDevice is reopened', () => {
@@ -231,7 +187,7 @@ describe('dragdrop edition: $exeDevice guards (#2271)', () => {
 
     describe('edition lifecycle teardown (#2293)', () => {
         it('releases the toggle handler delegated on document', () => {
-            const item = document.querySelector('.toggle-item');
+            const target = document.getElementById('dadEToggleTarget');
             const input = document.querySelector('.toggle-input');
             const unrelated = vi.fn();
             $(document).on('change.dragdropUnrelated', '.toggle-input', unrelated);
@@ -239,88 +195,17 @@ describe('dragdrop edition: $exeDevice guards (#2271)', () => {
             try {
                 input.checked = true;
                 $(input).trigger('change');
-                expect(item.getAttribute('aria-checked')).toBe('true');
+                expect(target.style.display).toBe('flex');
                 expect(unrelated).toHaveBeenCalledTimes(1);
 
-                item.setAttribute('aria-checked', 'untouched');
                 $exeDevice.$lifecycle.destroy();
+                input.checked = false;
                 $(input).trigger('change');
 
-                expect(item.getAttribute('aria-checked')).toBe('untouched');
+                expect(target.style.display).toBe('flex');
                 expect(unrelated).toHaveBeenCalledTimes(2);
             } finally {
                 $(document).off('change.dragdropUnrelated');
-            }
-        });
-
-        it('aborts an in-flight game import when the edition closes', () => {
-            const reader = {
-                readyState: 1,
-                abort: vi.fn(),
-                readAsText: vi.fn(),
-                onload: null,
-            };
-            const readerSpy = vi.spyOn(global, 'FileReader').mockImplementation(function () {
-                return reader;
-            });
-
-            try {
-                const file = new File(['{}'], 'game.json', {
-                    type: 'application/json',
-                });
-                const input = document.getElementById('eXeGameImportGame');
-                Object.defineProperty(input, 'files', { value: [file] });
-
-                $(input).trigger('change');
-                expect(reader.readAsText).toHaveBeenCalledWith(file);
-
-                const importGame = vi.spyOn($exeDevice, 'importGame').mockImplementation(() => {});
-                reader.onload({ target: { result: '{}' } });
-                expect(importGame).toHaveBeenCalledTimes(1);
-
-                $exeDevice.$lifecycle.destroy();
-                expect(reader.abort).toHaveBeenCalledTimes(1);
-
-                reader.onload({ target: { result: '{}' } });
-                expect(importGame).toHaveBeenCalledTimes(1);
-            } finally {
-                readerSpy.mockRestore();
-            }
-        });
-
-        it('stops the preview audio when the edition closes', () => {
-            const audio = {
-                play: vi.fn(),
-                pause: vi.fn(),
-                load: vi.fn(),
-                removeAttribute: vi.fn(),
-                addEventListener: vi.fn(),
-                removeEventListener: vi.fn(),
-            };
-            const audioSpy = vi.spyOn(global, 'Audio').mockImplementation(function () {
-                return audio;
-            });
-            global.$exeDevices.iDevice.gamification.media = {
-                ...global.$exeDevices.iDevice.gamification.media,
-                extractURLGD: vi.fn(url => url),
-            };
-
-            try {
-                $exeDevice.playSound('sound.mp3');
-                const [type, handler] = audio.addEventListener.mock.calls[0];
-                expect(type).toBe('canplaythrough');
-
-                handler();
-                expect(audio.play).toHaveBeenCalledTimes(1);
-
-                $exeDevice.$lifecycle.destroy();
-                expect(audio.pause).toHaveBeenCalledTimes(1);
-                expect(audio.removeAttribute).toHaveBeenCalledWith('src');
-
-                handler();
-                expect(audio.play).toHaveBeenCalledTimes(1);
-            } finally {
-                audioSpy.mockRestore();
             }
         });
     });
@@ -333,5 +218,499 @@ describe('dragdrop minimum score text', () => {
         device.refreshTranslations();
 
         expect(device.ci18n.msgPassScore).toBe('Minimum score needed to pass this activity: %s');
+    });
+});
+
+describe('dragdrop edition: shared form tabs, options tooltips, and saving', () => {
+    const PATH = 'files/perm/idevices/base/dragdrop/edition/';
+    const jq = window.jQuery;
+    let savedGlobals;
+    let device;
+    let previousApp;
+
+    function panel(tab) {
+        return document.getElementById(`dragdropQIdeviceForm-panel-${tab}`);
+    }
+
+    function tabNames() {
+        return [...document.querySelectorAll('#dragdropQIdeviceForm-tabs [data-exe-tab]')].map(
+            (tab) => tab.getAttribute('data-exe-tab')
+        );
+    }
+
+    beforeEach(() => {
+        savedGlobals = {
+            $: global.$,
+            jQuery: global.jQuery,
+            exeDevices: global.$exeDevices,
+        };
+        global.$ = jq;
+        global.jQuery = jq;
+        global.$exeDevices = {
+            ...global.$exeDevices,
+            iDevice: {
+                ...global.$exeDevices?.iDevice,
+                gamification: {
+                    ...global.$exeDevices?.iDevice?.gamification,
+                    helpers: {
+                        ...global.$exeDevices?.iDevice?.gamification?.helpers,
+                        encrypt: (t) => t,
+                        decrypt: (t) => t,
+                        isJsonString: (t) => {
+                            try {
+                                return JSON.parse(t);
+                            } catch {
+                                return false;
+                            }
+                        },
+                    },
+                    media: {
+                        extractURLGD: (url) => url,
+                    },
+                },
+            },
+        };
+        global.$exeDevice = undefined;
+        previousApp = global.eXeLearning?.app;
+        global.eXeLearning = {
+            ...global.eXeLearning,
+            app: {
+                ...previousApp,
+                common: {
+                    initTooltips: vi.fn(),
+                },
+            },
+        };
+
+        device = global.loadIdevice(join(__dirname, 'dragdrop.js'));
+        document.body.innerHTML = '<div id="dragdropBody"></div>';
+        device.init(document.getElementById('dragdropBody'), {}, PATH);
+    });
+
+    afterEach(() => {
+        device.$lifecycle?.destroy();
+        document.body.innerHTML = '';
+        global.$ = savedGlobals.$;
+        global.jQuery = savedGlobals.jQuery;
+        global.$exeDevices = savedGlobals.exeDevices;
+        if (global.eXeLearning) {
+            global.eXeLearning.app = previousApp;
+        }
+        vi.unstubAllGlobals();
+    });
+
+    it('leaves the state of each switch to its native checkbox', () => {
+        document.querySelectorAll('.toggle-input:not(:disabled)').forEach((input) => input.click());
+
+        expect(document.querySelectorAll('[role="switch"], [aria-checked]')).toHaveLength(0);
+    });
+
+    it('leaves no empty placeholder of the old report at the end of Options', () => {
+        expect(document.querySelector('.Games-Reportdiv')).toBeNull();
+    });
+
+    it('organises the edition form into shared WAI-ARIA tabs', () => {
+        expect(tabNames()).toEqual([
+            'instructions',
+            'options',
+            'contents',
+            'grading',
+            'passwords',
+            'texts',
+            'after',
+        ]);
+        expect(document.getElementById('dragdropQIdeviceForm-tab-contents').textContent.trim()).toBe('Cards');
+
+        expect(panel('instructions').querySelector('#eXeGameInstructions')).not.toBeNull();
+        expect(panel('options').querySelector('#dragdropEOptions')).not.toBeNull();
+        expect(panel('contents').querySelector('#dadEPanel')).not.toBeNull();
+        expect(panel('passwords').querySelector('#eXeGameShowClue')).not.toBeNull();
+        expect(panel('after').querySelector('#eXeIdeviceTextAfter')).not.toBeNull();
+        expect(panel('grading').querySelector('.exe-progress-report-wrapper')).not.toBeNull();
+        expect(panel('texts').querySelector('#ci18n_msgSubmit')).not.toBeNull();
+    });
+
+    it('starts a new card without the alternative text of the previous one', () => {
+        vi.spyOn(device, 'validateCard').mockReturnValue(true);
+        document.getElementById('dadEAlt').value = 'A red apple';
+
+        device.addCard();
+
+        expect(document.getElementById('dadEAlt').value).toBe('');
+    });
+
+    it('offers no import, export or AI windows', () => {
+        expect(document.querySelectorAll('[data-exe-share]')).toHaveLength(0);
+        expect(document.getElementById('eXeGameImportGame')).toBeNull();
+        expect(document.getElementById('eXeEQuestionsArea')).toBeNull();
+    });
+
+    it('provides accessible help tooltips for option rows', () => {
+        const optionHelps = [...panel('options').querySelectorAll('#dragdropEOptions .exe-idevice-help')];
+        expect(optionHelps.length).toBe(5);
+
+        for (const help of optionHelps) {
+            expect(help.tagName).toBe('BUTTON');
+            expect(help.type).toBe('button');
+            expect(help.title).toBe(help.getAttribute('aria-label'));
+            const targetId = help.getAttribute('aria-controls');
+            expect(targetId).toBeTruthy();
+            expect(document.getElementById(targetId)?.textContent.length).toBeGreaterThan(10);
+        }
+    });
+
+    it('does not toggle switches when clicking help icons inside toggle-items', () => {
+        const minimizeInput = document.getElementById('dadEShowMinimize');
+        const minimizeHelp = minimizeInput.closest('div').querySelector('.exe-idevice-help');
+        expect(minimizeHelp).not.toBeNull();
+        expect(minimizeInput.checked).toBe(false);
+        minimizeHelp.click();
+        expect(minimizeInput.checked).toBe(false);
+    });
+
+    it('starts every help once and releases them when the edition closes', () => {
+        const helps = document.querySelectorAll('.exe-idevice-help');
+        expect(helps.length).toBeGreaterThanOrEqual(5);
+        expect(openingHelps()).toHaveLength(helps.length);
+        device.$lifecycle.destroy();
+        expect(openingHelps()).toHaveLength(0);
+    });
+
+    it('switches tabs when one is clicked', () => {
+        document.getElementById('dragdropQIdeviceForm-tab-options').click();
+
+        expect(panel('options').classList.contains('active')).toBe(true);
+        expect(panel('instructions').classList.contains('active')).toBe(false);
+    });
+
+    it('restores form values and updates gamification modules on updateFieldGame', () => {
+        device.updateFieldGame({
+            showMinimize: true,
+            percentajeCards: 80,
+            author: 'Test Author',
+            showSolution: true,
+            timeShowSolution: 5,
+            time: 25,
+            type: 2,
+            typeDrag: 1,
+            itinerary: {},
+            evaluation: true,
+            evaluationID: 'eval-drag-1',
+            passScoreMode: 1,
+            passScoreCustom: 7,
+            isScorm: 1,
+            textButtonScorm: 'Submit',
+            repeatActivity: true,
+            weighted: 50,
+            cardsGame: [{ eText: 'card1', definition: 'def1' }],
+        });
+
+        expect(document.getElementById('dadEShowMinimize').checked).toBe(true);
+        expect(document.getElementById('dadEPercentajeCards').value).toBe('80');
+        expect(document.getElementById('dadEAuthory').value).toBe('Test Author');
+        expect(document.getElementById('dadEShowSolution').checked).toBe(true);
+        expect(document.getElementById('dadETimeShowSolution').value).toBe('5');
+        expect(document.getElementById('dadETime').value).toBe('25');
+        expect(document.getElementById('dadEDragDefintion').checked).toBe(true);
+        expect(document.getElementById('dadETypeIdentify').checked).toBe(true);
+        expect(document.getElementById('dadETimeDiv').classList.contains('d-flex')).toBe(true);
+    });
+
+    it('pastes after a card left incomplete on screen, without its warning', () => {
+        const before = eXe.app._alertHistory.length;
+        device.typeEdit = 0;
+        device.clipBoard = { ...device.cardsGame[0] };
+
+        device.pasteCard();
+
+        expect(device.cardsGame).toHaveLength(2);
+        expect(eXe.app._alertHistory.slice(before)).toEqual([]);
+    });
+
+    describe('saving and validation', () => {
+        let editors;
+        let tinymceGet;
+
+        beforeEach(() => {
+            editors = {
+                eXeGameInstructions: '<p>Drag each item</p>',
+                eXeIdeviceTextAfter: '<p>Extra dragdrop info</p>',
+            };
+            tinymceGet = vi.spyOn(global.tinymce, 'get').mockImplementation((id) =>
+                id in editors
+                    ? {
+                          initialized: true,
+                          getContent: () => editors[id],
+                          setContent: (html) => (editors[id] = html),
+                          hide: vi.fn(),
+                          show: vi.fn(),
+                      }
+                    : null
+            );
+        });
+
+        afterEach(() => {
+            tinymceGet.mockRestore();
+        });
+
+        // A valid activity, with its card on screen; or the given cards, with the first one on screen.
+        const loadGame = (cardsGame) => {
+            device.updateFieldGame({
+                showMinimize: true,
+                percentajeCards: 100,
+                author: 'Author Name',
+                showSolution: true,
+                timeShowSolution: 3,
+                time: 0,
+                type: 0,
+                typeDrag: 0,
+                itinerary: {},
+                evaluation: false,
+                evaluationID: '',
+                passScoreMode: 0,
+                passScoreCustom: 5,
+                isScorm: 0,
+                textButtonScorm: '',
+                repeatActivity: false,
+                weighted: 100,
+                cardsGame: cardsGame || [
+                    {
+                        definition: 'target definition',
+                        url: 'images/heart.png',
+                        author: '',
+                        alt: '',
+                        audio: '',
+                    },
+                ],
+            });
+            if (cardsGame) {
+                device.showCard(0);
+                return;
+            }
+            $('#dadEDefinition').val('target definition');
+            $('#dadEURLImage').val('images/heart.png');
+        };
+
+        it('saves valid data and outputs expected HTML structure', () => {
+            loadGame();
+
+            const data = device.validateData();
+            expect(data).not.toBe(false);
+            expect(data.showMinimize).toBe(true);
+            expect(data.instructions).toBe('<p>Drag each item</p>');
+            expect(unescape(data.textAfter)).toBe('<p>Extra dragdrop info</p>');
+
+            const savedHtml = device.save();
+            expect(savedHtml).toContain('dragdrop-IDevice');
+            expect(savedHtml).toContain('dragdrop-instructions');
+            expect(savedHtml).toContain('dragdrop-DataGame');
+            expect(savedHtml).toContain('dragdrop-extra-content');
+        });
+
+        it('saves an emptied Instructions or After editor as empty', () => {
+            loadGame();
+            // TinyMCE does not write back to its textarea, which keeps what the form was loaded with.
+            $('#eXeGameInstructions').val('<p>Old instructions</p>');
+            $('#eXeIdeviceTextAfter').val('<p>Old extra info</p>');
+            editors.eXeGameInstructions = '';
+            editors.eXeIdeviceTextAfter = '';
+
+            const data = device.validateData();
+
+            expect(data.instructions).toBe('');
+            expect(data.textAfter).toBe('');
+            expect(device.save()).not.toContain('Old');
+        });
+
+        it('round-trips the cards in the existing legacy project fixture', () => {
+            const archive = unzipSync(readFileSync(join(
+                __dirname, '../../../../../../../test/fixtures/todos-los-idevices_dos_informes.elpx'
+            )));
+            const xml = strFromU8(archive['content.xml']);
+            const stored = xml.match(/<div class="dragdrop-DataGame js-hidden">(.*?)<\/div>/s)[1];
+            const legacy = JSON.parse(stored);
+            device.idevicePreviousData = `<div class="dragdrop-DataGame js-hidden">${stored}</div>`;
+            device.loadPreviousValues();
+            device.showCard(0);
+
+            const saved = document.createElement('div');
+            saved.innerHTML = device.save();
+            const data = JSON.parse(saved.querySelector('.dragdrop-DataGame').textContent);
+            expect(data.cardsGame).toEqual(legacy.cardsGame);
+            device.idevicePreviousData = saved.innerHTML;
+            device.loadPreviousValues();
+            device.showCard(0);
+            expect(device.cardsGame).toEqual(legacy.cardsGame);
+            expect(device.save()).toContain('dragdrop-DataGame');
+        });
+
+        describe('the card on screen', () => {
+            const message = 'Add a text and an image or a sound to the card';
+
+            it('needs an image or a sound besides its text', () => {
+                loadGame();
+                $('#dadEURLImage').val('');
+
+                expect(device.save()).toBe(false);
+                expect(eXe.app.getLastAlert()).toBe(message);
+            });
+
+            it('needs its text besides its image', () => {
+                loadGame();
+                $('#dadEDefinition').val('');
+
+                expect(device.save()).toBe(false);
+                expect(eXe.app.getLastAlert()).toBe(message);
+            });
+
+            it('is complete with a sound instead of an image', () => {
+                loadGame();
+                $('#dadEURLImage').val('');
+                $('#dadEURLAudio').val('audio/heart.mp3');
+
+                expect(device.save()).toContain('dragdrop-DataGame');
+            });
+
+            it('does not count a sound address made of spaces', () => {
+                loadGame();
+                $('#dadEURLImage').val('');
+                $('#dadEURLAudio').val('     ');
+
+                expect(device.save()).toBe(false);
+                expect(eXe.app.getLastAlert()).toBe(message);
+            });
+        });
+
+        // Before the card asked for an image or a sound, an activity could be saved with cards of text only.
+        describe('the cards saved without an image or a sound', () => {
+            const message = 'Add a text and an image or a sound to the card';
+            const card = (definition) => ({ definition, url: '', author: '', alt: '', audio: '' });
+            const loadOldCards = () => loadGame([card('Heart'), card('Lungs')]);
+
+            it('can still be left, edited and saved', () => {
+                loadOldCards();
+                const before = eXe.app._alertHistory.length;
+                $('#dadEDefinition').val('Big heart');
+
+                device.nextCard();
+                expect(device.active).toBe(1);
+                device.previousCard();
+                expect(device.active).toBe(0);
+
+                expect(device.save()).toContain('dragdrop-DataGame');
+                expect(eXe.app._alertHistory.slice(before)).toEqual([]);
+                expect(device.cardsGame.map((item) => item.definition)).toEqual(['Big heart', 'Lungs']);
+            });
+
+            it('still need their text', () => {
+                loadOldCards();
+                $('#dadEDefinition').val('');
+
+                expect(device.save()).toBe(false);
+                expect(eXe.app.getLastAlert()).toBe(message);
+            });
+
+            it('keep working when cut and pasted somewhere else', () => {
+                loadOldCards();
+                // As common.js moves it; the test helpers have no arrayMove.
+                const helpers = global.$exeDevices.iDevice.gamification.helpers;
+                helpers.arrayMove = (list, from, to) => list.splice(to, 0, list.splice(from, 1)[0]);
+                try {
+                    device.cutCard();
+                    device.lastCard();
+                    device.pasteCard();
+                    device.showCard(device.active);
+
+                    expect(device.cardsGame.map((item) => item.definition)).toEqual(['Lungs', 'Heart']);
+                    expect(device.save()).toContain('dragdrop-DataGame');
+                } finally {
+                    delete helpers.arrayMove;
+                }
+            });
+
+            it('do not let a card added now go without one', () => {
+                loadOldCards();
+                device.addCard();
+                $('#dadEDefinition').val('Kidney');
+
+                device.previousCard();
+
+                expect(device.active).toBe(2);
+                expect(eXe.app.getLastAlert()).toBe(message);
+            });
+
+            it('do not let a copy of theirs go without one', () => {
+                loadOldCards();
+                device.copyCard();
+                device.pasteCard();
+                expect(device.active).toBe(1);
+
+                device.nextCard();
+
+                expect(device.active).toBe(1);
+                expect(eXe.app.getLastAlert()).toBe(message);
+            });
+
+            it('checks a copy left behind after pasting twice and deleting the last copy', () => {
+                loadOldCards();
+                device.copyCard();
+                device.pasteCard();
+                device.pasteCard();
+                device.removeCard();
+                expect(device.active).toBe(2);
+                $('#dadEDefinition').val('Edited lungs');
+                document.getElementById('dragdropQIdeviceForm-tab-options').click();
+
+                expect(device.save()).toBe(false);
+
+                expect(eXe.app.getLastAlert()).toBe(message);
+                expect(device.active).toBe(1);
+                expect($('#dadEDefinition').val()).toBe('Heart');
+                expect(panel('contents').classList.contains('active')).toBe(true);
+                expect(device.cardsGame[2].definition).toBe('Edited lungs');
+                expect(device.savedWithoutMedia.has(device.cardsGame[1])).toBe(false);
+
+                $('#dadEURLAudio').val('audio/heart.mp3');
+                const saved = document.createElement('div');
+                saved.innerHTML = device.save();
+                const data = JSON.parse(saved.querySelector('.dragdrop-DataGame').textContent);
+                expect(data.cardsGame.map((item) => [item.definition, item.audio])).toEqual([
+                    ['Heart', ''],
+                    ['Heart', 'audio/heart.mp3'],
+                    ['Edited lungs', ''],
+                ]);
+                device.updateFieldGame(data);
+                device.showCard(0);
+                expect(device.save()).toContain('dragdrop-DataGame');
+            });
+
+            it('rejects a missing text on a card other than the one on screen', () => {
+                loadGame([card('Heart'), card('   ')]);
+
+                expect(device.save()).toBe(false);
+                expect(device.active).toBe(1);
+                expect(eXe.app.getLastAlert()).toBe(message);
+            });
+
+            it('does not treat whitespace media on a new off-screen card as complete', () => {
+                loadOldCards();
+                device.cardsGame.push({ ...card('Kidney'), url: '    ', audio: '    ' });
+
+                expect(device.save()).toBe(false);
+                expect(device.active).toBe(2);
+                expect(eXe.app.getLastAlert()).toBe(message);
+            });
+        });
+    });
+
+    it('keeps the changes made to the card on screen after copying it', () => {
+        document.getElementById('dadEURLImage').value = 'images/heart.png';
+        document.getElementById('dadEDefinition').value = 'Heart';
+        device.copyCard();
+        document.getElementById('dadEDefinition').value = 'Lungs';
+
+        device.pasteCard();
+
+        expect(device.cardsGame.map((card) => card.definition)).toEqual(['Lungs', 'Heart']);
     });
 });

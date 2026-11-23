@@ -17,20 +17,18 @@ var $exeDevice = {
     msgs: {},
     classIdevice: 'challenge',
     active: 0,
-    numberId: 0,
     typeActive: 0,
     challengesGame: [],
     desafioTitle: '',
     desafioTime: 40,
+    desafioType: 0,
     desafioSolution: '',
     desafioDescription: '',
     typeEdit: -1,
     numberCutCuestion: -1,
-    desafioFeedBacks: [],
     desafioVersion: 1,
     clipBoard: '',
     desafioID: 0,
-    id: false,
     ci18n: {},
 
     init: function (element, previousData, path) {
@@ -131,9 +129,6 @@ var $exeDevice = {
 
     setMessagesInfo: function () {
         const msgs = this.msgs;
-        msgs.msgESelectFile = _(
-            'The selected file does not contain a valid game'
-        );
         msgs.msgTitleDesafio = _('Please write the challenge title.');
         msgs.msgDescriptionDesafio = _(
             'Please write the challenge description.'
@@ -149,27 +144,17 @@ var $exeDevice = {
         msgs.msgNoSuportBrowser = _(
             'Your browser is not compatible with this tool.'
         );
-        msgs.msgClue = _('Help');
-        msgs.msgTitleAltImageWarning = _('Accessibility warning');
-        msgs.msgAltImageWarning = _(
-            'At least one image has no description, are you sure you want to continue without including it? Without it the image may not be accessible to some users with disabilities, or to those using a text browser, or browsing the Web with images turned off.'
-        );
-    },
-
-    showMessage: function (msg) {
-        eXe.app.alert(msg);
     },
 
     addChallenge: function () {
         $exeDevice.saveChallenge();
 
         if ($exeDevice.challengesGame.length === 10) {
-            $exeDevice.showMessage($exeDevice.msgs.msgTenChallenges);
+            $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgTenChallenges);
             return;
         }
 
         $exeDevice.typeEdit = -1;
-        $exeDevice.numberId++;
         $exeDevice.clearChallenge();
         $exeDevice.challengesGame.push($exeDevice.getChallengeDefault());
         $exeDevice.active = $exeDevice.challengesGame.length - 1;
@@ -185,20 +170,26 @@ var $exeDevice = {
                 .get('desafioEChallenge-' + $exeDevice.active)
                 .setContent('');
         } else {
-            $('desafioEChallenge-' + $exeDevice.active).val('');
+            $('#desafioEChallenge-' + $exeDevice.active).val('');
         }
     },
 
     clearChallenge: function () {
         $('#desafioECTitle').val('');
         $('#desafioECSolution').val('');
-        $('#desafioECMessage').val('');
-        $('#desafioECTime').val(5);
+        $exeDevice.clearClues();
+    },
+
+    clearClues: function () {
+        $('#desafioEClue1, #desafioEClue2, #desafioEClue3').val('');
+        $('#desafioECTime1').val(5);
+        $('#desafioECTime2').val(10);
+        $('#desafioECTime3').val(5);
     },
 
     removeChallenge: function () {
         if ($exeDevice.challengesGame.length < 2) {
-            $exeDevice.showMessage($exeDevice.msgs.msgOneChallenge);
+            $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgOneChallenge);
             return;
         }
 
@@ -226,7 +217,7 @@ var $exeDevice = {
             if (tinyMCE.get('desafioEChallenge-' + i)) {
                 tinyMCE.get('desafioEChallenge-' + i).setContent(text);
             } else {
-                $('desafioEChallenge-' + i).val(text);
+                $('#desafioEChallenge-' + i).val(text);
             }
         }
     },
@@ -248,9 +239,10 @@ var $exeDevice = {
     },
 
     pasteChallenge: function () {
+        $exeDevice.saveChallenge();
         if ($exeDevice.challengesGame.length > 9 + $exeDevice.typeEdit) {
             $('#desafioEPaste').hide();
-            $exeDevice.showMessage($exeDevice.msgs.msgTenChallenges);
+            $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgTenChallenges);
             return;
         }
 
@@ -350,133 +342,141 @@ var $exeDevice = {
             $('#desafioECTime1').val(c.clues[0].time);
             $('#desafioECTime2').val(c.clues[1].time);
             $('#desafioECTime3').val(c.clues[2].time);
+        } else {
+            $exeDevice.clearClues();
         }
     },
 
     createForm: function () {
         const path = $exeDevice.idevicePath,
-            html = `
-        <div id="desafioIdeviceForm">
-            ${$exeDevicesEdition.iDevice.common.getIdeviceDescription(
-                _('Create escape room type activities in which players will have to complete trials before solving the final challenge.'),
-                'https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe40/html/desafio.html',
-            )}
-            <div class="exe-form-tab" title="${_('General settings')}">
-                ${$exeDevicesEdition.iDevice.gamification.instructions.getFieldset(c_('Solve all the trials and complete the final challenge.'))}
-                <fieldset class="exe-fieldset exe-fieldset-closed">
-                    <legend><a href="#">${_('Options')}</a></legend>
-                    <div>
-                        <div class="mb-3">
-                            <span class="toggle-item" role="switch" aria-checked="false">
-                                <span class="toggle-control">
-                                    <input type="checkbox" class="toggle-input" id="desafioEShowMinimize" aria-label="${_('Show minimized.')}" />
-                                    <span class="toggle-visual"></span>
-                                </span>
-                                <label class="toggle-label" for="desafioEShowMinimize">${_('Show minimized.')}</label>
+            edition = $exeIDevicesEdition.iDevice,
+            options = `
+                <div id="desafioEOptions">
+                    <div class="d-flex align-items-center gap-2 flex-nowrap mb-3">
+                        <span class="toggle-item">
+                            <span class="toggle-control">
+                                <input type="checkbox" class="toggle-input" id="desafioEShowMinimize" />
+                                <span class="toggle-visual" aria-hidden="true"></span>
                             </span>
+                            <label class="toggle-label mb-0" for="desafioEShowMinimize">${_('Show minimized.')}</label>
+                        </span>
+                        ${edition.common.getHelpTooltip(_('Start with the game collapsed. Learners can expand it when they are ready to play.'))}
+                    </div>
+                </div>`,
+            contents = `
+                <div class="desafio-EPanel" id="desafioEPanel">
+                    <div class="desafioToggle d-flex align-items-center mb-3">
+                        <div class="m-0">
+                            <input class="desafio-Type" checked="checked" id="desafioEDesafio" type="radio" name="dsfDesRet" value="0" />
+                            <label id="labelDesafio" for="desafioEDesafio">${_('Challenge')}</label>
                         </div>
-                        <div class="Games-Reportdiv  d-flex align-items-center gap-2 flex-nowrap">
+                        <div class="m-0">
+                            <input class="desafio-Type" id="desafioEReto" type="radio" name="dsfDesRet" value="1" />
+                            <label id="labelReto"  for="desafioEReto">${_('Trials')}</label>
                         </div>
                     </div>
-                </fieldset>
-                <fieldset class="exe-fieldset">
-                    <legend><a href="#">${_('Questions')}</a></legend>
-                    <div class="desafio-EPanel" id="desafioEPanel">
-                        <div class="desafioToggle d-flex align-items-center mb-3">
-                            <div class="m-0">
-                                <input class="desafio-Type" checked="checked" id="desafioEDesafio" type="radio" name="dsfDesRet" value="0" />
-                                <label id="labelDesafio" for="desafioEDesafio">${_('Challenge')}</label>
+                    <div class="desafio-EDAtaGame">
+                        <div class="desafio-EDataChallenger">
+                            <div class="desafio-DataDesafio mb-3 gap-2">
+                                <label for="desafioEDTitle">${_('Title')}:</label><input type="text" id="desafioEDTitle" class="form-control form-control-sm" />
+                                <label for="desafioEDSolution">${_('Solution')}:</label><input type="text" id="desafioEDSolution" class="form-control form-control-sm" />
+                                <label for="desafioECTitle">${_('Title')}:</label><input type="text" id="desafioECTitle" class="form-control form-control-sm" />
+                                <label for="desafioECSolution">${_('Solution')}:</label><input type="text" id="desafioECSolution" class="form-control form-control-sm" />
                             </div>
-                            <div class="m-0">
-                                <input class="desafio-Type" id="desafioEReto" type="radio" name="dsfDesRet" value="1" />
-                                <label id="labelReto"  for="desafioEReto">${_('Trials')}</label>
-                            </div>
-                            </div>
-                        <div class="desafio-EDAtaGame">
-                            <div class="desafio-EDataChallenger">
-                                <div class="desafio-DataDesafio mb-3 gap-2">
-                                    <label for="desafioEDTitle">${_('Title')}:</label><input type="text" id="desafioEDTitle" class="form-control form-control-sm" />
-                                    <label for="desafioEDSolution">${_('Solution')}:</label><input type="text" id="desafioEDSolution" class="form-control form-control-sm" />
-                                    <label for="desafioECTitle">${_('Title')}:</label><input type="text" id="desafioECTitle" class="form-control form-control-sm" />
-                                    <label for="desafioECSolution">${_('Solution')}:</label><input type="text" id="desafioECSolution" class="form-control form-control-sm" />
-                                </div>
-                                <div id="desafioSelects" class="align-items-center gap-2 flex-nowrap justify-flex-start mb-3">
-                                    <label id="desafiolblEDType" for="desafioEDType">${_('Type')}: </label>
-                                    <select id="desafioEDType" class="form-select form-select-sm">
-                                        <option value="0" selected>Lineal</option>
-                                        <option value="1">Libre</option>
-                                    </select>
-                                    <label id="desafiolblEDTime" for="desafioEDTime">${_('Max time')}: </label>
-                                    <select id="desafioEDTime" class="form-select form-select-sm">
-                                        <option value="1">1m</option>
-                                        <option value="10">10m</option>
-                                        <option value="15">15m</option>
-                                        <option value="20">20m</option>
-                                        <option value="25">25m</option>
-                                        <option value="30">30m</option>
-                                        <option value="35">35m</option>
-                                        <option value="40" selected>40m</option>
-                                        <option value="45">45m</option>
-                                        <option value="50">50m</option>
-                                        <option value="55">55m</option>
-                                        <option value="60">60m</option>
-                                        <option value="70">70m</option>
-                                        <option value="80">80m</option>
-                                        <option value="90">90m</option>
-                                        <option value="120">120m</option>
-                                        <option value="150">150m</option>
-                                        <option value="180">180m</option>
-                                        <option value="210">210m</option>
-                                        <option value="240">240m</option>
-                                    </select>
-                                </div>
-                            </div>
-                            <div class="desafio-EInputMedias">
-                                <span>${_('Description')}:</span>
-                                <div id="divDesafioEDescription">
-                                    <label for="desafioEDescription" class="sr-av">${_('Instructions')}:</label>
-                                    <textarea id="desafioEDescription" class="exe-html-editor"></textarea>
-                                </div>
-                                <div id="desafioEChallenges" class="mb-3">
-                                    ${this.getDivChallenges(10)}
-                                </div>
-                                <div class="desafio-EClues" id="desafioEClues">
-                                    ${this.getDivClues()}
-                                </div>
+                            <div id="desafioSelects" class="align-items-center gap-2 flex-nowrap justify-flex-start mb-3">
+                                <label id="desafiolblEDType" for="desafioEDType" class="mb-0">${_('Type')}:</label>
+                                <select id="desafioEDType" class="form-select form-select-sm">
+                                    <option value="0" selected>${_('Linear')}</option>
+                                    <option value="1">${_('Free')}</option>
+                                </select>
+                                ${edition.common.getHelpTooltip(_('Linear: the trials open one after another. Free: they can be solved in any order.'))}
+                                <label id="desafiolblEDTime" for="desafioEDTime" class="mb-0 ms-3">${_('Max time')}:</label>
+                                <select id="desafioEDTime" class="form-select form-select-sm">
+                                    <option value="1">1m</option>
+                                    <option value="10">10m</option>
+                                    <option value="15">15m</option>
+                                    <option value="20">20m</option>
+                                    <option value="25">25m</option>
+                                    <option value="30">30m</option>
+                                    <option value="35">35m</option>
+                                    <option value="40" selected>40m</option>
+                                    <option value="45">45m</option>
+                                    <option value="50">50m</option>
+                                    <option value="55">55m</option>
+                                    <option value="60">60m</option>
+                                    <option value="70">70m</option>
+                                    <option value="80">80m</option>
+                                    <option value="90">90m</option>
+                                    <option value="120">120m</option>
+                                    <option value="150">150m</option>
+                                    <option value="180">180m</option>
+                                    <option value="210">210m</option>
+                                    <option value="240">240m</option>
+                                </select>
+                                ${edition.common.getHelpTooltip(_('Time to complete the trials and the final challenge. When it runs out, the game has to be restarted.'))}
                             </div>
                         </div>
-                        <div class="desafio-ENavigationButtons gap-2" id="desafioENavigationButtons">
-                            <a href="#" id="desafioEAdd" class="desafio-ENavigationButton" title="${_('Add question')}"><img src="${path}quextIEAdd.png" alt="${_('Add question')}" class="desafio-EButtonImage b-add" /></a>
-                            <a href="#" id="desafioEFirst" class="desafio-ENavigationButton" title="${_('First question')}"><img src="${path}quextIEFirst.png" alt="${_('First question')}" class="desafio-EButtonImage b-first" /></a>
-                            <a href="#" id="desafioEPrevious" class="desafio-ENavigationButton" title="${_('Previous question')}"><img src="${path}quextIEPrev.png" alt="${_('Previous question')}" class="desafio-EButtonImage b-prev" /></a>
-                            <span class="sr-av">${_('Question number:')}</span><span class="desafio-NumberQuestion" id="desafioENumberChallenge">1</span>
-                            <a href="#" id="desafioENext" class="desafio-ENavigationButton" title="${_('Next question')}"><img src="${path}quextIENext.png" alt="${_('Next question')}" class="desafio-EButtonImage b-next" /></a>
-                            <a href="#" id="desafioELast" class="desafio-ENavigationButton" title="${_('Last question')}"><img src="${path}quextIELast.png" alt="${_('Last question')}" class="desafio-EButtonImage b-last" /></a>
-                            <a href="#" id="desafioEDelete" class="desafio-ENavigationButton" title="${_('Delete question')}"><img src="${path}quextIEDelete.png" alt="${_('Delete question')}" class="desafio-EButtonImage b-delete" /></a>
-                            <a href="#" id="desafioECopy" class="desafio-ENavigationButton" title="${_('Copy question')}"><img src="${path}quextIECopy.png" alt="${_('Copy question')}" class="desafio-EButtonImage b-copy" /></a>
-                            <a href="#" id="desafioECut" class="desafio-ENavigationButton" title="${_('Cut question')}"><img src="${path}quextIECut.png" alt="${_('Cut question')}" class="desafio-EButtonImage b-cut" /></a>
-                            <a href="#" id="desafioEPaste" class="desafio-ENavigationButton" title="${_('Paste question')}"><img src="${path}quextIEPaste.png" alt="${_('Paste question')}" class="desafio-EButtonImage b-paste" /></a>
-                        </div>
-                        <div class="desafio-ENumQuestionDiv" id="desafioENumQuestionDiv">
-                            <div class="desafio-ENumQ"><span class="sr-av">${_('Number of questions:')}</span></div>
-                            <span class="desafio-ENumQuestions" id="desafioENumChallenges">0</span>
+                        <div class="desafio-EInputMedias">
+                            <span>${_('Description')}:</span>
+                            <div id="divDesafioEDescription">
+                                <label for="desafioEDescription" class="sr-av">${_('Description')}:</label>
+                                <textarea id="desafioEDescription" class="exe-html-editor"></textarea>
+                            </div>
+                            <div id="desafioEChallenges" class="mb-3">
+                                ${this.getDivChallenges(10)}
+                            </div>
+                            <div class="desafio-EClues" id="desafioEClues">
+                                ${this.getDivClues()}
+                            </div>
                         </div>
                     </div>
-                </fieldset>
+                    <div class="desafio-ENavigationButtons gap-2" id="desafioENavigationButtons">
+                        <a href="#" id="desafioEAdd" class="desafio-ENavigationButton" title="${_('Add question')}"><img src="${path}quextIEAdd.png" alt="${_('Add question')}" class="desafio-EButtonImage b-add" /></a>
+                        <a href="#" id="desafioEFirst" class="desafio-ENavigationButton" title="${_('First question')}"><img src="${path}quextIEFirst.png" alt="${_('First question')}" class="desafio-EButtonImage b-first" /></a>
+                        <a href="#" id="desafioEPrevious" class="desafio-ENavigationButton" title="${_('Previous question')}"><img src="${path}quextIEPrev.png" alt="${_('Previous question')}" class="desafio-EButtonImage b-prev" /></a>
+                        <span class="sr-av">${_('Question number:')}</span><span class="desafio-NumberQuestion" id="desafioENumberChallenge">1</span>
+                        <a href="#" id="desafioENext" class="desafio-ENavigationButton" title="${_('Next question')}"><img src="${path}quextIENext.png" alt="${_('Next question')}" class="desafio-EButtonImage b-next" /></a>
+                        <a href="#" id="desafioELast" class="desafio-ENavigationButton" title="${_('Last question')}"><img src="${path}quextIELast.png" alt="${_('Last question')}" class="desafio-EButtonImage b-last" /></a>
+                        <a href="#" id="desafioEDelete" class="desafio-ENavigationButton" title="${_('Delete question')}"><img src="${path}quextIEDelete.png" alt="${_('Delete question')}" class="desafio-EButtonImage b-delete" /></a>
+                        <a href="#" id="desafioECopy" class="desafio-ENavigationButton" title="${_('Copy question')}"><img src="${path}quextIECopy.png" alt="${_('Copy question')}" class="desafio-EButtonImage b-copy" /></a>
+                        <a href="#" id="desafioECut" class="desafio-ENavigationButton" title="${_('Cut question')}"><img src="${path}quextIECut.png" alt="${_('Cut question')}" class="desafio-EButtonImage b-cut" /></a>
+                        <a href="#" id="desafioEPaste" class="desafio-ENavigationButton" title="${_('Paste question')}"><img src="${path}quextIEPaste.png" alt="${_('Paste question')}" class="desafio-EButtonImage b-paste" /></a>
+                    </div>
+                    <div class="desafio-ENumQuestionDiv" id="desafioENumQuestionDiv">
+                        <div class="desafio-ENumQ"><span class="sr-av">${_('Number of questions:')}</span></div>
+                        <span class="desafio-ENumQuestions" id="desafioENumChallenges">0</span>
+                    </div>
+                </div>`,
+            html = `
+            <div id="desafioIdeviceForm">
+                ${edition.common.getIdeviceDescription(
+                    _('Create escape room type activities in which players will have to complete trials before solving the final challenge.'),
+                    'https://descargas.intef.es/cedec/exe_learning/Manuales/manual_exe40/html/desafio.html',
+                )}
+                ${edition.tabs.getHtml('desafioIdeviceForm', {
+                    titles: { contents: _('Trials') },
+                    path: path,
+                    instructions: c_('Solve all the trials and complete the final challenge.'),
+                    options: options,
+                    contents: contents,
+                    grading: true,
+                    texts: this.ci18n,
+                    share: false,
+                    info: {
+                        contents: _('Write the final challenge, add its trials and edit them one by one.'),
+                    },
+                })}
             </div>
-            ${$exeDevicesEdition.iDevice.gamification.common.getLanguageTab(this.ci18n)}
-            ${$exeDevicesEdition.iDevice.gamification.scorm.getTab(path)}
-        </div>
-    `;
+        `;
         this.ideviceBody.innerHTML = html;
-        $exeDevicesEdition.iDevice.tabs.init('desafioIdeviceForm');
-
-        $exeDevicesEdition.iDevice.gamification.scorm.init();
+        edition.tabs.bind('desafioIdeviceForm');
+        edition.gamification.scorm.init();
 
         $exeDevice.loadPreviousValues();
         $exeDevice.addEvents();
         $exeDevice.showDesafio();
     },
+
     addEvents: function () {
         if ($exeDevice.challengesGame.length == 0) {
             $exeDevice.active = 0;
@@ -486,45 +486,6 @@ var $exeDevice = {
         $('#desafioENavigationButtons').hide();
         $('#desafioEPaste').hide();
         $('#desafioENumQuestionDiv').hide();
-
-        // Toggle switches: sync aria-checked and optional target visibility
-        $('#desafioIdeviceForm').on('change', '.toggle-input', function () {
-            const $toggle = $(this).closest('.toggle-item');
-            const checked = $(this).is(':checked');
-            $toggle.attr('aria-checked', checked ? 'true' : 'false');
-            const target = $toggle.data('target');
-            if (target) {
-                $('#' + target).toggle(checked);
-            }
-        });
-        // Initialize toggle states
-        const initToggle = function (inputSelector) {
-            const $input = $(inputSelector);
-            const $toggle = $input.closest('.toggle-item');
-            const checked = $input.is(':checked');
-            $toggle.attr('aria-checked', checked ? 'true' : 'false');
-            const target = $toggle.data('target');
-            if (target) {
-                $('#' + target).toggle(checked);
-            }
-        };
-        initToggle('#desafioEShowMinimize');
-
-        $('#desafioEUseLives').on('change', function () {
-            const marcado = $(this).is(':checked');
-            $('#desafioENumberLives').prop('disabled', !marcado);
-        });
-
-        $('#desafioShowSolutions').on('change', function () {
-            const marcado = $(this).is(':checked');
-            $('#desafioTimeShowSolutions').prop('disabled', !marcado);
-        });
-
-        $('#desafioShowCodeAccess').on('change', function () {
-            const marcado = $(this).is(':checked');
-            $('#desafioCodeAccess').prop('disabled', !marcado);
-            $('#desafioMessageCodeAccess').prop('disabled', !marcado);
-        });
 
         $('#desafioEAdd').on('click', function (e) {
             e.preventDefault();
@@ -589,35 +550,9 @@ var $exeDevice = {
             }
         });
 
-        $exeDevicesEdition.iDevice.gamification.progressBar.addEvents();
+        $exeIDevicesEdition.iDevice.gamification.progressBar.addEvents();
 
-        $exeDevicesEdition.iDevice.gamification.passScore.addEvents();
-
-        if (
-            window.File &&
-            window.FileReader &&
-            window.FileList &&
-            window.Blob
-        ) {
-            $('#eXeGameExportImport').show();
-            $('#eXeGameImportGame').on('change', function (e) {
-                const file = e.target.files[0];
-                if (!file) {
-                    return;
-                }
-                const reader = new FileReader();
-                $exeDevice.$lifecycle.ownFileReader(reader);
-                reader.onload = $exeDevice.$lifecycle.bind(function (e) {
-                    this.importGame(e.target.result);
-                });
-                reader.readAsText(file);
-            });
-            $('#eXeGameExportQuestions').on('click', function () {
-                $exeDevice.exportGame();
-            });
-        } else {
-            $('#eXeGameExportImport').hide();
-        }
+        $exeIDevicesEdition.iDevice.gamification.passScore.addEvents();
     },
 
     getDivChallenges: function (num) {
@@ -625,7 +560,7 @@ var $exeDevice = {
         for (let j = 0; j < num; j++) {
             const ch = `
             <div class="desafio-EDivFeebBack" id="desafioEDivFeebBack-${j}">
-                <label for="desafioEChallenge-${j}" class="sr-av">${_('Feedback')}</label>
+                <label for="desafioEChallenge-${j}" class="sr-av">${_('Description')}</label>
                 <textarea id="desafioEChallenge-${j}" class="exe-html-editor desafio-EFeedBack"></textarea>
             </div>
         `;
@@ -768,7 +703,7 @@ var $exeDevice = {
             $exeDevice.desafioTitle = dataGame.desafioTitle;
             $exeDevice.active = 0;
             $exeDevice.desafioSolution = dataGame.desafioSolution;
-            $exeDevice.desafioType = dataGame.desafioType;
+            $exeDevice.desafioType = dataGame.desafioType === 1 ? 1 : 0;
             $exeDevice.desafioTime = dataGame.desafioTime;
             $exeDevice.desafioDescription = '';
 
@@ -804,7 +739,7 @@ var $exeDevice = {
                 $('#eXeGameInstructions').val(instructions.html());
             }
 
-            $exeDevicesEdition.iDevice.gamification.common.setLanguageTabValues(
+            $exeIDevicesEdition.iDevice.gamification.common.setLanguageTabValues(
                 dataGame.msgs
             );
             $exeDevice.updateFieldGame(dataGame);
@@ -818,33 +753,23 @@ var $exeDevice = {
                 : game.desafioID;
         game.weighted =
             typeof game.weighted !== 'undefined' ? game.weighted : 100;
-        $exeDevice.id = $exeDevice.getIdeviceID();
 
         $('#desafioEShowMinimize').prop('checked', game.showMinimize);
-        $exeDevicesEdition.iDevice.gamification.progressBar.setValues({
+        $exeIDevicesEdition.iDevice.gamification.progressBar.setValues({
             evaluation: game.evaluation,
             evaluationID: game.evaluationID,
         });
-        $exeDevicesEdition.iDevice.gamification.passScore.setValues({
+        $exeIDevicesEdition.iDevice.gamification.passScore.setValues({
             passScoreMode: game.passScoreMode,
             passScoreCustom: game.passScoreCustom,
         });
-        $exeDevicesEdition.iDevice.gamification.scorm.setValues(
+        $exeIDevicesEdition.iDevice.gamification.scorm.setValues(
             game.isScorm,
             game.textButtonScorm,
             game.repeatActivity,
             game.weighted
         );
         $exeDevice.showDesafio();
-    },
-
-    escapeHtml: function (string) {
-        return String(string)
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;')
-            .replace(/'/g, '&#39;');
     },
 
     save: function () {
@@ -904,7 +829,7 @@ var $exeDevice = {
         if (tinyMCE.get(`desafioEChallenge-${i}`)) {
             p.description = tinyMCE.get(`desafioEChallenge-${i}`).getContent();
         } else {
-            p.description = $(`desafioEChallenge-${i}`).val();
+            p.description = $(`#desafioEChallenge-${i}`).val();
         }
 
         p.title = $('#desafioECTitle').val();
@@ -950,47 +875,6 @@ var $exeDevice = {
         }
     },
 
-    exportGame: function () {
-        const dataGame = this.validateData();
-        if (!dataGame) {
-            return false;
-        }
-
-        const newBlob = new Blob([JSON.stringify(dataGame)], { type: 'text/plain' });
-        return $exeDevicesEdition.iDevice.gamification.share.downloadBlob(
-            newBlob,
-            `${_('Game')}desafio.json`,
-            'desafioIdeviceForm'
-        );
-    },
-
-    importGame: function (content) {
-        const game =
-            $exeDevices.iDevice.gamification.helpers.isJsonString(content);
-
-        if (!game || typeof game.typeGame === 'undefined') {
-            $exeDevice.showMessage($exeDevice.msgs.msgESelectFile);
-            return;
-        } else if (game.typeGame !== 'desafio') {
-            $exeDevice.showMessage($exeDevice.msgs.msgESelectFile);
-            return;
-        }
-
-        game.id = $exeDevice.getIdeviceID();
-        $exeDevice.active = 0;
-        $exeDevice.desafioTitle = game.desafioTitle;
-        $exeDevice.desafioSolution = game.desafioSolution;
-        $exeDevice.desafioDescription = game.desafioDescription;
-        $exeDevice.desafioType = game.desafioType;
-        $exeDevice.desafioTime = game.desafioTime;
-
-        $exeDevice.challengesGame = game.challengesGame;
-        $exeDevice.updateFieldGame(game);
-        const instructions = game.instructionsExe || game.instructions;
-        tinymce.editors[0].setContent(instructions);
-        //$('.exe-form-tabs li:first-child a').click();
-    },
-
     getIdeviceID: function () {
         const ideviceid =
             $('#desafioIdeviceForm')
@@ -1008,21 +892,21 @@ var $exeDevice = {
             instructionsExe = tinyMCE.get('eXeGameInstructions').getContent(),
             showMinimize = $('#desafioEShowMinimize').is(':checked'),
             progressBar =
-                $exeDevicesEdition.iDevice.gamification.progressBar.getValues(),
+                $exeIDevicesEdition.iDevice.gamification.progressBar.getValues(),
             passScore =
-                $exeDevicesEdition.iDevice.gamification.passScore.getValues(),
+                $exeIDevicesEdition.iDevice.gamification.passScore.getValues(),
             id = $exeDevice.getIdeviceID();
 
         if (!progressBar) return false;
 
         if ($exeDevice.desafioTitle.length === 0) {
-            $exeDevice.showMessage($exeDevice.msgs.msgTitleDesafio);
+            $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgTitleDesafio);
             return false;
         } else if ($exeDevice.desafioSolution.length === 0) {
-            $exeDevice.showMessage($exeDevice.msgs.msgSolutionDesafio);
+            $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgSolutionDesafio);
             return false;
         } else if ($exeDevice.desafioDescription.length === 0) {
-            $exeDevice.showMessage($exeDevice.msgs.msgDescriptionDesafio);
+            $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgDescriptionDesafio);
             return false;
         }
 
@@ -1034,12 +918,12 @@ var $exeDevice = {
                 mChallenge.solution.length === 0 ||
                 mChallenge.description.length === 0
             ) {
-                $exeDevice.showMessage($exeDevice.msgs.msgDataChanllenge);
+                $exeIDevicesEdition.iDevice.common.showMessage($exeDevice.msgs.msgDataChanllenge);
                 return false;
             }
         }
 
-        const scorm = $exeDevicesEdition.iDevice.gamification.scorm.getValues();
+        const scorm = $exeIDevicesEdition.iDevice.gamification.scorm.getValues();
 
         return {
             asignatura: '',

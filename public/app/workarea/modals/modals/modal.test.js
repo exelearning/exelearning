@@ -407,6 +407,20 @@ describe('Modal', () => {
       vi.useRealTimers();
     });
 
+    it('counts each request, even one closed before it opens', () => {
+      vi.useFakeTimers();
+      const modal = new Modal(mockManager, 'test-modal', 'Default Title', true);
+      expect(modal.showRequests).toBe(0);
+
+      modal.show({ body: 'first' });
+      modal.close();
+      modal.show({ body: 'second' });
+      vi.advanceTimersByTime(200);
+
+      expect(modal.showRequests).toBe(2);
+      vi.useRealTimers();
+    });
+
     it('calls Bootstrap modal.show()', async () => {
       vi.useFakeTimers();
       const modal = new Modal(mockManager, 'test-modal', 'Default Title', false);

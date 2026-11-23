@@ -1,6 +1,4 @@
 import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
-import { readFileSync, readdirSync, existsSync } from 'node:fs';
-import { join } from 'node:path';
 
 // Setup globals needed BEFORE the script is loaded
 globalThis._ = vi.fn((key) => key);
@@ -1410,6 +1408,35 @@ describe('common_edition.js', () => {
       globalThis.$exeDevicesEdition.iDevice.gamification.scorm.setValues(2, 'My Button', false, 50);
       expect($('#eXeGameSCORMButtonSave').is(':checked')).toBe(true);
       expect($('#eXeGameSCORMbuttonText').val()).toBe('My Button');
+    });
+
+    // getValues reads the text in every mode: a game saved from a Spanish interface in mode 0
+    // or 1 must not come back as the English default after a save without changes.
+    it.each([0, 1])('setValues keeps the stored button text in mode %i', (isScorm) => {
+      document.body.innerHTML = `
+        <input type="radio" name="eXeGameSCORM" id="eXeGameSCORMNoSave" value="0" />
+        <input type="radio" name="eXeGameSCORM" id="eXeGameSCORMAutoSave" value="1" />
+        <input type="radio" name="eXeGameSCORM" id="eXeGameSCORMButtonSave" value="2" />
+        <input type="text" id="eXeGameSCORMbuttonText" value="Save score" />
+        <input type="number" id="eXeGameSCORMWeight" />
+      `;
+      const scorm = globalThis.$exeDevicesEdition.iDevice.gamification.scorm;
+
+      scorm.setValues(isScorm, 'Guardar puntuación', true, 100);
+
+      expect(scorm.getValues()).toMatchObject({ isScorm, textButtonScorm: 'Guardar puntuación' });
+    });
+
+    it('setValues leaves the default button text when none is stored', () => {
+      document.body.innerHTML = `
+        <input type="radio" name="eXeGameSCORM" id="eXeGameSCORMNoSave" value="0" />
+        <input type="text" id="eXeGameSCORMbuttonText" value="Save score" />
+        <input type="number" id="eXeGameSCORMWeight" />
+      `;
+
+      globalThis.$exeDevicesEdition.iDevice.gamification.scorm.setValues(0, undefined, true, 100);
+
+      expect($('#eXeGameSCORMbuttonText').val()).toBe('Save score');
     });
 
     it('setValues only shows weighted when saving score', () => {
@@ -2936,52 +2963,6 @@ describe('common_edition.js', () => {
   });
 
   /**
-   * progressBar.getValues() has two return shapes: the values, or `false` after
-   * it has warned about a report identifier shorter than five characters. Every
-   * caller has to honour the second one.
-   *
-   * Reading `.evaluation` off `false` yields undefined instead of throwing, so a
-   * caller that forgets carries on and saves the activity with the report
-   * silently switched off -- the author sees the warning, presses save, and the
-   * form accepts it. That is exactly what happened to two iDevices when their
-   * forms moved to this shared block, and nothing failed to tell us.
-   *
-   * Scanning the callers is the only check that covers all of them at once, and
-   * the only one that catches the next iDevice to adopt the block.
-   */
-  describe('progress report guard across every iDevice', () => {
-    const IDEVICES_DIR = join(__dirname, '..', '..', 'files', 'perm', 'idevices', 'base');
-
-    const callers = readdirSync(IDEVICES_DIR)
-      .map((name) => ({ name, dir: join(IDEVICES_DIR, name, 'edition') }))
-      .filter(({ dir }) => existsSync(dir))
-      .flatMap(({ name, dir }) =>
-        readdirSync(dir)
-          .filter((file) => file.endsWith('.js') && !file.endsWith('.test.js'))
-          .map((file) => ({ name, source: readFileSync(join(dir, file), 'utf-8') }))
-      )
-      .filter(({ source }) => source.includes('gamification.progressBar.getValues()'));
-
-    it('finds the iDevices that read the shared progress report', () => {
-      // A guard rail for the scan itself: a rename that made the filter match
-      // nothing would leave every assertion below vacuously green.
-      expect(callers.length).toBeGreaterThan(30);
-    });
-
-    it.each(callers.map(({ name }) => name))('%s rejects an invalid report identifier', (name) => {
-      const { source } = callers.find((caller) => caller.name === name);
-      // The iDevices do not agree on a name for the result -- most call it
-      // `progressBar`, interactive-video calls it `progressBarValues` -- so the
-      // guard is looked up by whatever each one assigned it to.
-      const assignment = source.match(
-        /(\w+)\s*=\s*\$exeDevicesEdition\.iDevice\.gamification\.progressBar\.getValues\(\)/
-      );
-      expect(assignment).not.toBeNull();
-      expect(source).toMatch(new RegExp(`if\\s*\\(!${assignment[1]}\\)\\s*return false;`));
-    });
-  });
-
-  /**
    * These helpers create resources that live outside the edition form —
    * handlers on `document` and `window`, timers, object URLs, audio and a
    * microphone stream. They belong to the edition that created them, which
@@ -3690,5 +3671,64 @@ describe('common_edition.js', () => {
         }
       });
     });
+  });
+});
+
+/*
+ * The file goes in v4.0.8 (ADR-2700-01). Each test loads a fresh copy, as a
+ * page does, since the warning is given once per load.
+ */
+describe('common_edition.js deprecation', () => {
+  const load = () => {
+    delete require.cache[require.resolve('./common_edition.js')];
+    return require('./common_edition.js');
+  };
+  let warn;
+
+  beforeEach(() => {
+    warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    warn.mockRestore();
+  });
+
+  it('says nothing while no iDevice uses it', () => {
+    load();
+
+    expect(warn).not.toHaveBeenCalled();
+  });
+
+  it('says once, on the first call an iDevice makes, when it goes and what to use instead', () => {
+    const edition = load();
+
+    edition.iDevice.gamification.scorm.getTab();
+    edition.iDevice.common.getTextFieldset('after');
+
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(warn.mock.calls[0][0]).toBe(
+      '$exeDevicesEdition (common_edition.js) is deprecated and will be removed in eXeLearning v4.0.8. ' +
+        'Use $exeIDevicesEdition (common_idevices_edition.js) instead.'
+    );
+  });
+
+  it('does not count the application stopping its sound on saving', () => {
+    const edition = load();
+
+    edition.iDevice.gamification.helpers.stopSound();
+
+    expect(warn).not.toHaveBeenCalled();
+  });
+
+  it('leaves each function its object and its result', () => {
+    const edition = load();
+    const recorder = edition.iDevice.voiceRecorder;
+    recorder._cleanupBound = true;
+
+    // On its object, it finds its handlers bound already, and stops there.
+    recorder.bindCleanupHandlers();
+    expect(globalThis._cleanupBound).toBeUndefined();
+    expect(edition.iDevice.gamification.scorm.getTab()).toContain('eXeGameSCORM');
+    expect(warn).toHaveBeenCalledTimes(1);
   });
 });

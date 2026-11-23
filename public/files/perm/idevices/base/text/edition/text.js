@@ -191,7 +191,10 @@ var $exeDevice = {
     },
 
     /**
-     * Escape HTML special characters for safe text content
+     * Escape HTML special characters for safe text content. Its own, not the
+     * escapeHtml of the edition library, which also escapes quotes: the
+     * stored HTML keeps ' and " as they were written, and text, which is not
+     * a game, does not depend on that library.
      */
     escapeHtml: function (str) {
         if (!str) return '';

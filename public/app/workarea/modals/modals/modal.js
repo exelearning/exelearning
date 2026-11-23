@@ -34,6 +34,9 @@ export default class Modal {
         // cancel it (otherwise a show()+close() in quick succession pops up a
         // blank, never-hidden modal — see close()).
         this.pendingShowTimeout = null;
+        // How many times show() was called, so a caller can tell whether the
+        // window was asked for since a given moment, even if already closed.
+        this.showRequests = 0;
         this.modal = new bootstrap.Modal(this.modalElement, {});
         this.timeMax = 500;
         this.timeMin = 50;
@@ -280,6 +283,7 @@ export default class Modal {
      * @param {*} data
      */
     show(data) {
+        this.showRequests++;
         let time = this.manager.closeModals() ? this.timeMax : this.timeMin;
         // A previous show() may still be waiting on its deferred timer (the
         // shared info/alert modal is a singleton and can be reused in quick

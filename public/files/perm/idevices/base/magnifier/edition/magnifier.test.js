@@ -52,12 +52,6 @@ describe('magnifier iDevice', () => {
     });
   });
 
-  describe('showMessage', () => {
-    it('exists as a function', () => {
-      expect(typeof $exeDevice.showMessage).toBe('function');
-    });
-  });
-
   describe('setMessagesInfo', () => {
     it('exists as a function', () => {
       expect(typeof $exeDevice.setMessagesInfo).toBe('function');

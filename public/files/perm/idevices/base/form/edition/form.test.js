@@ -4,13 +4,13 @@
  * Tests pure functions that don't depend on DOM manipulation:
  * - checkQuestions: Validates and parses questions input
  * - clearText: Cleans HTML/CDATA from text
- * - removeTags: Removes HTML tags from string
  */
 
 /* eslint-disable no-undef */
 import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
+import { openingHelps } from '../../../../../../../test/helpers/help-buttons.ts';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -116,24 +116,6 @@ describe('form iDevice edition', () => {
     it('handles HTML entities', () => {
       const result = $exeDevice.clearText('<p>&amp; &lt; &gt;</p>');
       expect(result).toBe('& < >');
-    });
-  });
-
-  describe('removeTags', () => {
-    it('removes HTML tags using jQuery', () => {
-      expect($exeDevice.removeTags('<p>Hello</p>')).toBe('Hello');
-    });
-
-    it('handles nested tags', () => {
-      expect($exeDevice.removeTags('<div><span>Test</span></div>')).toBe('Test');
-    });
-
-    it('handles empty string', () => {
-      expect($exeDevice.removeTags('')).toBe('');
-    });
-
-    it('handles plain text', () => {
-      expect($exeDevice.removeTags('Plain text')).toBe('Plain text');
     });
   });
 
@@ -418,12 +400,6 @@ describe('form iDevice edition', () => {
       expect($exeDevice.iconTrueFalse).toBe('rule');
       expect($exeDevice.iconDropdown).toBe('expand_more');
       expect($exeDevice.iconFill).toBe('horizontal_rule');
-    });
-  });
-
-  describe('iDeviceId', () => {
-    it('has correct iDevice identifier', () => {
-      expect($exeDevice.iDeviceId).toBe('formIdevice');
     });
   });
 
@@ -787,18 +763,10 @@ describe('form iDevice edition', () => {
             <textarea class="small-textarea"></textarea>
           </div>
         `;
-        const root = document.getElementById('body');
-        // `setDataFromSelectionQuestion` builds one attribute selector without
-        // its closing bracket (`TEXTAREA[id^=formPreview`), which every engine
-        // rejects. That defect is out of scope here — the shim keeps the
-        // selector usable so the teardown behaviour can be observed.
-        $exeDevice.ideviceBody = {
-          querySelector: (selector) =>
-            root.querySelector(
-              selector.includes('[') && !selector.includes(']') ? `${selector}]` : selector
-            ),
-          querySelectorAll: (selector) => root.querySelectorAll(selector),
-        };
+        // The question textarea used to be looked up with an attribute selector
+        // missing its closing bracket, which only a browser's error recovery
+        // accepted: this suite had to patch every selector to run.
+        $exeDevice.ideviceBody = document.getElementById('body');
         $exeDevice.formPreviewId = 'formPreview';
         $exeDevice.questionsForm = [
           {
@@ -894,8 +862,8 @@ describe('form iDevice edition', () => {
   });
 
   /**
-   * The pass-score control is a shared block in common_edition.js, exercised by
-   * its own tests. What is specific to this iDevice -- and what silently breaks
+   * The pass-score control is a shared block in common_idevices_edition.js,
+   * exercised by its own tests. What is specific to this iDevice -- and what silently breaks
    * if someone edits the form -- is the wiring: all four call sites have to be
    * present, and the two saved fields have to reach the stored data. Reading
    * the source is how that is checked without standing up the whole edition
@@ -914,7 +882,7 @@ describe('form iDevice edition', () => {
         // so rendering them again would show each control twice.
         expect(source).not.toContain('passScore.getContents(');
         expect(source).not.toContain('progressBar.getContents(');
-        expect(source).toContain('gamification.scorm.getTab(');
+        expect(source).toMatch(/tabs\.getHtml\([\s\S]*grading: true/);
     });
 
     it('restores the control when the iDevice is reopened', () => {
@@ -959,4 +927,222 @@ describe('form minimum score text', () => {
 
     expect(device.ci18n.msgPassScore).toBe('Minimum score needed to pass this activity: %s');
   });
+});
+
+describe('form edition: shared form tabs', () => {
+    const PATH = '/files/perm/idevices/base/form/edition/';
+    const panel = (name) => document.getElementById(`formIdeviceForm-panel-${name}`);
+    const editors = {};
+    let device;
+    let previousApp;
+    let previousEditors;
+
+    beforeEach(() => {
+        global.$exeDevice = undefined;
+        previousApp = global.eXeLearning.app;
+        global.eXeLearning.app = {
+            ...previousApp,
+            common: {
+                initTooltips: vi.fn(),
+            },
+        };
+        // save() reads the instructions and the text after through tinyMCE.editors.
+        previousEditors = global.tinymce.editors;
+        global.tinymce.editors = {
+            eXeGameInstructions: { getContent: () => editors.eXeGameInstructions ?? '' },
+            eXeIdeviceTextAfter: { getContent: () => editors.eXeIdeviceTextAfter ?? '' },
+        };
+        document.body.innerHTML = '<div id="formBody" idevice-id="form-1"></div>';
+        device = global.loadIdevice(join(__dirname, 'form.js'));
+    });
+
+    afterEach(() => {
+        device.$lifecycle?.destroy();
+        global.tinymce.editors = previousEditors;
+        global.eXeLearning.app = previousApp;
+        vi.unstubAllGlobals();
+        vi.restoreAllMocks();
+        global.$exeDevice = undefined;
+        document.body.innerHTML = '';
+    });
+
+    const open = (previousData = {}) => device.init(document.getElementById('formBody'), previousData, PATH);
+
+    it('lays the form out in the shared tabs, and opens on the questions', () => {
+        open();
+        const tabNames = [...document.querySelectorAll('#formIdeviceForm-tabs [data-exe-tab]')].map((tab) =>
+            tab.getAttribute('data-exe-tab')
+        );
+
+        expect(tabNames).toEqual(['instructions', 'options', 'contents', 'grading', 'texts', 'after']);
+        expect(document.getElementById('formIdeviceForm-tab-contents').textContent.trim()).toBe('Questions');
+        expect(panel('contents').classList.contains('active')).toBe(true);
+    });
+
+    it('puts each part of the form in its tab', () => {
+        open();
+
+        expect(panel('instructions').querySelector('#eXeGameInstructions').value).toBe(
+            'Complete the questions in the following quiz'
+        );
+        for (const id of ['frmEShowSlider', 'frmEQuestionsRandom', 'frmETime', 'frmEPercentageQuestions', 'checkAddBtnAnswers']) {
+            expect(panel('options').querySelector(`#${id}`)).not.toBeNull();
+        }
+        expect(panel('contents').querySelector('#formPreview')).not.toBeNull();
+        expect(panel('contents').querySelector('#buttonAddTrueFalseQuestionTop')).not.toBeNull();
+        expect(panel('contents').querySelector('#msgNoQuestions')).not.toBeNull();
+        expect(panel('after').querySelector('#eXeIdeviceTextAfter')).not.toBeNull();
+        expect(panel('grading').querySelector('.exe-progress-report-wrapper')).not.toBeNull();
+        expect(panel('texts').querySelector('#ci18n_msgCheck').value).toBe('Check');
+    });
+
+    it('offers Import and Create with AI on the Questions tab, but not Export, as main did', () => {
+        open();
+        const links = [...panel('contents').querySelectorAll('[data-exe-share]')];
+
+        expect(links.map((link) => link.getAttribute('data-exe-share'))).toEqual(['import', 'ai']);
+        expect(document.querySelector('body > #eXeShareModal-import #eXeGameImportGame').getAttribute('accept')).toBe(
+            '.txt, .xml'
+        );
+        expect(document.getElementById('eXeEPromptArea').value.length).toBeGreaterThan(0);
+        expect(panel('contents').querySelector('.exe-share-tools + p').textContent).toContain('Add true-false, fill-in, dropdown and selection');
+    });
+
+    it('provides one accessible information button at the end of each options row', () => {
+        open();
+        const helpButtons = [...panel('options').querySelectorAll('.exe-idevice-help')];
+
+        expect(helpButtons).toHaveLength(5);
+        for (const help of helpButtons) {
+            const row = help.closest('#frmEOptions > div');
+            expect(row.lastElementChild.contains(help)).toBe(true);
+            expect(help.getAttribute('aria-label')).toMatch(/^Information about \S/);
+            expect(document.getElementById(help.getAttribute('aria-controls')).textContent.length).toBeGreaterThan(30);
+            const input = row.querySelector('input');
+            const value = `${input.checked}${input.value}`;
+            help.click();
+            document.getElementById(help.getAttribute('aria-controls')).click();
+            expect(`${input.checked}${input.value}`).toBe(value);
+        }
+    });
+
+    it('starts every help once and releases them when the edition closes', () => {
+        open();
+
+        const helps = document.querySelectorAll('.exe-idevice-help');
+        expect(helps.length).toBeGreaterThanOrEqual(5);
+        expect(openingHelps()).toHaveLength(helps.length);
+        device.$lifecycle.destroy();
+        expect(openingHelps()).toHaveLength(0);
+    });
+
+    it('leaves the state of each switch to its native checkbox', () => {
+        open();
+
+        document.querySelectorAll('.toggle-input:not(:disabled)').forEach((input) => input.click());
+
+        expect(document.querySelectorAll('[role="switch"], [aria-checked]')).toHaveLength(0);
+    });
+
+    it('reopens and saves the questions with their options', () => {
+        const question = {
+            id: 'q1',
+            activityType: 'true-false',
+            baseText: '<p>The Sun is a star</p>',
+            answer: '1',
+            feedbackRight: '',
+            feedbackWrong: '',
+            suggestion: '',
+        };
+        open({
+            eXeFormInstructions: '<p>Answer them</p>',
+            questionsData: [question],
+            showSlider: true,
+            questionsRandom: true,
+            percentageQuestions: 50,
+            time: 5,
+            addBtnAnswers: false,
+            msgs: { msgCheck: 'Go' },
+        });
+        expect(document.getElementById('frmEShowSlider').checked).toBe(true);
+        expect(document.getElementById('frmEQuestionsRandom').checked).toBe(true);
+        expect(document.getElementById('frmEPercentageQuestions').value).toBe('50');
+        expect(document.getElementById('frmETime').value).toBe('5');
+        expect(document.getElementById('checkAddBtnAnswers').checked).toBe(false);
+        expect(document.getElementById('ci18n_msgCheck').value).toBe('Go');
+        expect(document.querySelectorAll('#formPreview > li')).toHaveLength(1);
+        expect(document.getElementById('msgNoQuestions').style.display).toBe('none');
+        editors.eXeGameInstructions = '<p>Answer them</p>';
+
+        expect(device.save()).toMatchObject({
+            eXeFormInstructions: '<p>Answer them</p>',
+            questionsData: [expect.objectContaining({ id: 'q1', activityType: 'true-false' })],
+            showSlider: true,
+            questionsRandom: true,
+            percentageQuestions: '50',
+            time: '5',
+            addBtnAnswers: false,
+        });
+    });
+
+    it('closes the paragraph of every imported question', () => {
+        open();
+
+        // A second <p> used to stand where the closing tag belonged, so each
+        // imported question carried an empty paragraph after its text.
+        expect(device.getTrueFalseQuestion('1#The Sun is a star').baseText).toBe('<p>The Sun is a star</p>');
+        expect(device.getTrueFalseQuestionExe('v-f#The Sun is a star#1#a#b').baseText).toBe('<p>The Sun is a star</p>');
+        expect(device.getTrueFalseQuestionExeSv('The Sun is a star#1#a#b').baseText).toBe('<p>The Sun is a star</p>');
+        expect(device.getTestQuestion('0#Which is a star?#Sun#Moon').baseText).toBe('<p>Which is a star?</p>');
+        device.importCuestionaryXML(
+            '<quiz><question type="truefalse"><questiontext><text>The Moon is a planet</text></questiontext>' +
+                '<answer fraction="100"><text>false</text></answer><answer fraction="0"><text>true</text></answer>' +
+                '</question><question type="multichoice"><questiontext><text>Pick the star</text></questiontext>' +
+                '<answer fraction="100"><text>Sun</text></answer><answer fraction="0"><text>Moon</text></answer>' +
+                '</question></quiz>'
+        );
+        expect(device.questionsForm.map((question) => question.baseText)).toEqual([
+            '<p>The Moon is a planet</p>',
+            '<p>Pick the star</p>',
+        ]);
+    });
+
+    it('tells the author when a text file holds binary content', () => {
+        open();
+        eXe.app.alert.mockClear();
+
+        // The message it showed was never defined, so the import failed in
+        // silence with a ReferenceError.
+        expect(() => device.importActivity('Sun\u0000Moon', 'text/plain')).not.toThrow();
+        expect(eXe.app.alert).toHaveBeenCalledWith(
+            'Sorry, the selected file does not contain any questions that are compatible with this activity.'
+        );
+    });
+
+    it('gives the icon of each new question an id of its own', () => {
+        open();
+        const iconId = (html) => {
+            const holder = document.createElement('div');
+            holder.innerHTML = html;
+            return holder.querySelector('.inline-icon').id;
+        };
+
+        // The id used to embed the source code of generateRandomId, the same
+        // for every question.
+        expect(iconId(device.createTrueFalseQuestion())).toMatch(/^iconActivity_\d+-[A-Z0-9]+$/);
+        expect(iconId(device.createSelectionQuestion())).toMatch(/^iconActivity_\d+-[A-Z0-9]+$/);
+    });
+
+    it('says the form is empty again when the question being added is removed', () => {
+        open();
+        vi.spyOn(eXe.app, 'confirm').mockImplementation((title, message, onConfirm) => onConfirm());
+        const empty = document.getElementById('msgNoQuestions');
+
+        document.getElementById('buttonAddTrueFalseQuestionTop').click();
+        expect(empty.style.display).toBe('none');
+        document.getElementById('removeQuestion').click();
+
+        expect(document.querySelector('#formPreview > li')).toBeNull();
+        expect(empty.style.display).toBe('');
+    });
 });

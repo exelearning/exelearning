@@ -1422,9 +1422,20 @@ global.$exeDevicesEdition = {
   },
 };
 
+// Refactored iDevices use $exeIDevicesEdition (common_idevices_edition.js).
+// Their tests get the real object, not a mock: it only renders and wires the
+// shared form blocks, and a mock of it would drift as the refactor changes it.
+// eslint-disable-next-line no-eval
+(0, eval)(
+  `${readFileSync(join(__vitest_setup_dirname, 'app/common/common_idevices_edition.js'), 'utf-8')}
+//# sourceURL=common_idevices_edition.js`
+);
+global.$exeIDevicesEdition = globalThis.$exeIDevicesEdition;
+
 if (typeof window !== 'undefined') {
   window.$exeDevices = global.$exeDevices;
   window.$exeDevicesEdition = global.$exeDevicesEdition;
+  window.$exeIDevicesEdition = global.$exeIDevicesEdition;
 }
 
 // ============================================================================

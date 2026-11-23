@@ -7,9 +7,9 @@ import { lookup } from 'mime-types';
 import type { Page } from '@playwright/test';
 import { test, expect, isStaticProject } from '../../fixtures/auth.fixture';
 import {
+    addIdevice,
     addPage,
     downloadProject,
-    expandIdeviceCategory,
     gotoWorkarea,
     saveIdevice,
     selectNavNode,
@@ -21,9 +21,7 @@ const runFile = promisify(execFile);
 const ORIGIN = 'http://3dmol-cli-export.test';
 
 async function addMolecule(page: Page): Promise<void> {
-    await expandIdeviceCategory(page, /Science|Ciencia/i);
-    // A leading digit is valid in an HTML class, but not in a native CSS selector.
-    await page.locator('.idevice_item[id="3dmol"]').click();
+    await addIdevice(page, '3dmol');
     const form = page.locator('#dMoleIdeviceForm');
     await expect(form).toBeVisible();
     // Use the actual edition lifecycle and its bundled molecule instead of an empty runtime container.

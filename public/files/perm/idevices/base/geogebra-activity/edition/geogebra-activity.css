@@ -1,21 +1,10 @@
 /* GeoGebra activity iDevice (edition CSS) */
-#geogebraActivitySCORMoptions {
-    display: none;
-    margin-left: 1.5em
-}
-
-#geogebraActivityInstructions {
-    width: 500px
-}
 
 #geogebraActivityURL {
     width: 300px;
     margin-right: .2em
 }
 
-
-
-#eXeAutoGeogebraForm #geogebraActivityWeight, 
 #eXeAutoGeogebraForm #geogebraActivityScale {
     width: 9.5ch !important;
     max-width: 9.5ch !important;
@@ -43,7 +32,7 @@
     }
 }
 
-label[for=geogebraActivityHeight] {
+#eXeAutoGeogebraActivity label[for=geogebraActivityHeight] {
     margin-left: 1.5em
 }
 
@@ -51,38 +40,8 @@ label[for=geogebraActivityHeight] {
     margin: 1em 0 .5em 0
 }
 
-#eXeAutoGeogebraForm p {
-    margin-bottom: 1.5em
-}
-
-#eXeAutoGeogebraAdvancedOptions p {
-    margin: .7em 0
-}
-
-#eXeAutoGeogebraAdvancedOptions #geogebraActivityLangWrapper {
-    margin-top: 1em
-}
-
 .input-instructions {
     color: #999;
-    margin-right: 1.5em
-}
-
-#geogebraActivitySCORMinstructions {
-    display: none;
-    color: #777;
-    margin: 10px 0 0 25px
-}
-
-#geogebraActivitySCORMinstructions ul {
-    padding: 0;
-    list-style: none
-}
-
-#geogebraActivitySCORMinstructions ul li {
-    margin: 0 0 .5em 0;
-    padding: 0;
-    list-style-image: none
 }
 
 #geogebraActivityURL.loading {
@@ -96,13 +55,9 @@ label[for=geogebraActivityHeight] {
     visibility: hidden
 }
 
-#geogebraActivityScale,
-#geogebraActivityWeight {
+#geogebraActivityScale {
     width: 55px;
-    margin-right: 1.5em
 }
-
-
 
 #geogebraActivityPlayButton {
     display: inline-block;
@@ -111,10 +66,6 @@ label[for=geogebraActivityHeight] {
     background-image: url(geogegra-activity-playbutton.png);
     margin-right: 1em;
     background-size: 100% 100%
-}
-
-.exe-feedback-fieldset #eXeAutoGeogebraCheckOptions p:last-child {
-    margin: 0
 }
 
 #geogebraActivityURLS {
@@ -127,27 +78,3 @@ label[for=geogebraActivityHeight] {
     margin-right: 0.15em;
 }
 
-label[for=geogebraActivityScale] {
-    margin-left: 1.5em
-}
-
-.geogebractivityTypeGameHelp {
-    display: none;
-    margin-bottom: 2em;
-    font-size: .95em;
-}
-
-.geogebractivityModeHelpLink {
-    margin: 0 2px;
-    vertical-align: middle;
-}
-
-.geogebractivityModeLabel {
-    font-weight: normal;
-}
-
-.exe-block-close {
-    position: absolute;
-    top: 6px;
-    right: 5px;
-}

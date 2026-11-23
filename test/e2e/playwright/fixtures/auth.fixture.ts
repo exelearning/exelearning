@@ -1,8 +1,27 @@
-import { test as base, expect, Page, TestInfo } from '@playwright/test';
+import { test as base, BrowserContext, expect, Page, TestInfo } from '@playwright/test';
 import { promises as fs } from 'fs';
 import os from 'os';
 import path from 'path';
 import { gotoWorkarea } from '../helpers/workarea-helpers';
+
+/**
+ * Makes the pages of `context` scroll at once. The workarea scrolls smoothly (`scroll-behavior: smooth`) to an
+ * iDevice that is added, saved, edited or cloned. A click while it scrolls starts on a button and ends beside
+ * it, and the browser gives it to their common container, so the button never gets it: Firefox does this when
+ * the machine is busy, as its scrolling then stops and goes. Scrolling at once, nothing moves under a click
+ * once Playwright has seen its target still.
+ *
+ * Only the top document, where the workarea scrolls, and with an adopted style sheet: the frames and the
+ * `<style>` elements the specs inspect stay as the application makes them.
+ */
+export async function scrollInstantly(context: BrowserContext): Promise<void> {
+    await context.addInitScript(() => {
+        if (window !== window.top) return;
+        const sheet = new CSSStyleSheet();
+        sheet.replaceSync('*, *::before, *::after { scroll-behavior: auto !important; }');
+        document.adoptedStyleSheets = [...document.adoptedStyleSheets, sheet];
+    });
+}
 
 /**
  * Detect static mode from project name
@@ -107,6 +126,7 @@ export const test = base.extend<AuthFixtures, AuthWorkerFixtures>({
                 ? contextOptions.storageState
                 : (guestStorageStatePath ?? undefined),
         });
+        await scrollInstantly(context);
         await use(context);
         await context.close();
     },

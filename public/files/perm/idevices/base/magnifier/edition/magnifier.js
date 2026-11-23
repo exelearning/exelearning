@@ -48,10 +48,6 @@ var $exeDevice = {
         );
     },
 
-    showMessage: function (msg) {
-        eXe.app.alert(msg);
-    },
-
     createForm: function () {
         const path = $exeDevice.idevicePath;
         const zoomOptions = [
@@ -192,7 +188,7 @@ var $exeDevice = {
             const selectedFile = $(this).val().trim();
             const ext = selectedFile.split('.').pop().toLowerCase();
             if (selectedFile.startsWith('files') && !validExt.includes(ext)) {
-                $exeDevice.showMessage(
+                $exeIDevicesEdition.iDevice.common.showMessage(
                     `${_('Supported formats')}: jpg, jpeg, gif, png, svg, webp`
                 );
                 return;

@@ -20,6 +20,9 @@ export default class ModalConfirm extends Modal {
      * @param {*} data
      */
     show(data) {
+        // Counted as Modal.show() counts: IdeviceNode.save() reads it to know
+        // that an iDevice which refused to save asked the author something.
+        this.showRequests++;
         // Set title
         this.titleDefault = _('Confirm');
         let time = this.manager.closeModals() ? this.timeMax : this.timeMin;
