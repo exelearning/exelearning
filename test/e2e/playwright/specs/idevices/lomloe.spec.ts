@@ -118,6 +118,8 @@ test.describe('LOMLOE iDevice', () => {
         const dialog = page.locator('.lomloe-modal-overlay');
         await expect(dialog).toBeVisible();
         await expect(dialog.locator('.lomloe-export-table')).toBeVisible();
+        await expect(dialog.getByRole('columnheader')).toHaveCount(3);
+        await expect(dialog.getByRole('cell')).toHaveCount(3);
         await expect(dialog).toContainText(criterion);
         await expect(dialog).toContainText(knowledge);
         await dialog.locator('.lomloe-modal-close').click();
@@ -204,6 +206,8 @@ test.describe('LOMLOE iDevice', () => {
         const content = getPreviewFrame(page).locator('.lomloeIdeviceContent');
         await expect(content).toBeVisible();
         await expect(content.locator('.lomloe-export-table')).toBeVisible();
+        await expect(content.getByRole('columnheader')).toHaveCount(3);
+        await expect(content.getByRole('cell')).toHaveCount(3);
         await expect(content).toContainText(criterion);
         await expect(content).toContainText(knowledge);
     });

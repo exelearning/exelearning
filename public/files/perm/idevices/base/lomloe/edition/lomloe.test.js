@@ -12,6 +12,7 @@
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import esPvDataset from '../data/lomloe-ES-PV.json';
+import exportSource from '../export/lomloe.js?raw';
 
 // ── Mock eXeLearning globals ─────────────────────────────────────
 globalThis._ = (str) => str;  // i18n passthrough
@@ -402,6 +403,42 @@ describe('Operational descriptor checkboxes (issue #1832)', () => {
         byCc('CCL1').dispatchEvent(new Event('change', { bubbles: true }));
         saved = $exeDevice.save();
         expect(saved.lomloeSelections[0].competenciasClave).toEqual(['CD2']);
+    });
+
+    it.each([[undefined], [[]]])('omits the descriptor column for an empty selection (%j)', async competenciasClave => {
+        await initWithCriterio('ES', makeSel('ES', {
+            competenciasClave,
+            descriptorOptions: ['CCL1'],
+        }));
+        const { lomloeSummaryHtml, ...data } = $exeDevice.save();
+        const renderer = new Function(exportSource + '\nreturn $Lomloe;')();
+        const container = document.createElement('div');
+        for (const html of [lomloeSummaryHtml, renderer.getHTMLView(data)]) {
+            container.innerHTML = html;
+            expect(container.querySelectorAll('thead th')).toHaveLength(2);
+            expect(container.querySelectorAll('tbody td')).toHaveLength(2);
+            expect(container.querySelector('.lomloe-criterio-code-badge').textContent).toBe('BIG01CE1.1');
+        }
+    });
+
+    it('keeps the descriptor column for every row when a later criterion has a descriptor', () => {
+        $exeDevice.init(el, {
+            lomloeDataset: 'ES',
+            lomloeSelections: [
+                makeSel('ES', { competenciasClave: [] }),
+                makeSel('ES', { id: 'other', codigoCriterio: 'BIG01CE1.2', competenciasClave: ['CCL1'] }),
+            ],
+        });
+        const { lomloeSummaryHtml, ...data } = $exeDevice.save();
+        const renderer = new Function(exportSource + '\nreturn $Lomloe;')();
+        const container = document.createElement('div');
+        for (const html of [lomloeSummaryHtml, renderer.getHTMLView(data)]) {
+            container.innerHTML = html;
+            expect(container.querySelectorAll('thead th')).toHaveLength(3);
+            const [first, second] = container.querySelectorAll('tbody tr');
+            expect(first.lastElementChild.textContent).toBe('');
+            expect(second.lastElementChild.textContent).toBe('CCL1');
+        }
     });
 
     it('summary reflects only the chosen descriptors', async () => {
