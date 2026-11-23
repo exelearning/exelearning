@@ -14,7 +14,10 @@
     // CRITICAL: Lock height to viewport for flex children to work
     height: 100vh;
     max-height: 100vh;
-    overflow: hidden;
+    // Not hidden: WebKit clips fixed-position descendants (the page options menu)
+    // to an overflow-hidden ancestor that is also a stacking context (z-index below).
+    // The scrolling children (#menus_content, #nav_list…) clip their own content.
+    overflow: visible;
     z-index: 1;
 
     // Flex layout to keep iDevices panel always visible at bottom
@@ -184,6 +187,7 @@
         height: 100dvh; // Dynamic viewport height (modern browsers)
         max-height: 100vh;
         max-height: 100dvh;
+        overflow: hidden;
         z-index: 1050;
         padding-top: 64px;
         background: var(--white);
