@@ -878,9 +878,9 @@ html:not(.mode-teacher) .js .teacher-only {
 /* Skip navigation link */
 #skipNav {
     position: fixed;
-    top: -50px;
+    top: 0;
     left: 50%;
-    transform: translateX(-50%);
+    transform: translate(-50%, -100%);
     background-color: #000;
     color: #fff;
     text-align: center;
@@ -893,11 +893,11 @@ html:not(.mode-teacher) .js .teacher-only {
     box-shadow: 0 2px 5px rgba(0,0,0,0.3);
     outline: 3px solid #fff;
     outline-offset: -3px;
-    transition: top 0.3s ease, opacity 0.3s ease;
+    transition: transform 0.3s ease, opacity 0.3s ease;
 }
 
 #skipNav:focus {
-    top: 5px;
+    transform: translate(-50%, 5px);
 }
 
 /* Print styles for header elements */
