@@ -60,19 +60,19 @@ const buildNavbarDOM = ({ withFolderEntries = true } = {}) => {
     navbar.appendChild(recent);
 
     if (withFolderEntries) {
-        const wrapOpen = document.createElement('li');
-        wrapOpen.classList.add('d-none', 'exe-folder-project-action');
-        const openBtn = document.createElement('a');
-        openBtn.id = 'navbar-button-open-folder-offline';
-        wrapOpen.appendChild(openBtn);
-        navbar.appendChild(wrapOpen);
-
-        const wrapSave = document.createElement('li');
-        wrapSave.classList.add('d-none', 'exe-folder-project-action');
-        const saveBtn = document.createElement('a');
-        saveBtn.id = 'navbar-button-save-folder-offline';
-        wrapSave.appendChild(saveBtn);
-        navbar.appendChild(wrapSave);
+        // File > Advanced submenu holding both folder-project entries.
+        const advanced = document.createElement('li');
+        advanced.classList.add('d-none', 'exe-folder-project-action');
+        const submenu = document.createElement('ul');
+        for (const id of ['navbar-button-open-folder-offline', 'navbar-button-save-folder-offline']) {
+            const item = document.createElement('li');
+            const btn = document.createElement('a');
+            btn.id = id;
+            item.appendChild(btn);
+            submenu.appendChild(item);
+        }
+        advanced.appendChild(submenu);
+        navbar.appendChild(advanced);
     }
 
     document.body.appendChild(navbar);
@@ -182,71 +182,37 @@ describe('NavbarFile — folder project actions', () => {
             }
         });
 
-        it('toggles visibility on Alt key down/up when a backing runtime is available', () => {
+        it('shows the Advanced submenu without Alt when the Electron bridge is available', () => {
             window.electronAPI = { openProjectFolder: vi.fn() };
             const nav = new NavbarFile({ navbar });
             nav.setFolderProjectActionsEvents();
-
-            // Initially hidden.
-            for (const item of nav.folderProjectActionItems) {
-                expect(item.classList.contains('d-none')).toBe(true);
-            }
-
-            // Alt down → visible.
-            document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Alt', altKey: true }));
-            for (const item of nav.folderProjectActionItems) {
-                expect(item.classList.contains('d-none')).toBe(false);
-            }
-
-            // Alt up → hidden.
-            document.dispatchEvent(new KeyboardEvent('keyup', { key: 'Alt', altKey: false }));
-            for (const item of nav.folderProjectActionItems) {
-                expect(item.classList.contains('d-none')).toBe(true);
-            }
-        });
-
-        it('reveals entries on Alt keydown even when altKey is unset (Linux regression)', () => {
-            // Some Linux builds of Chromium/Firefox dispatch the keydown for
-            // Alt itself with `altKey === false`. The reveal must still trigger
-            // on the key name alone.
-            window.electronAPI = { openProjectFolder: vi.fn() };
-            const nav = new NavbarFile({ navbar });
-            nav.setFolderProjectActionsEvents();
-
-            document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Alt', altKey: false }));
+            expect(nav.folderProjectActionItems).toHaveLength(1);
             for (const item of nav.folderProjectActionItems) {
                 expect(item.classList.contains('d-none')).toBe(false);
             }
         });
 
-        it('hides entries when the File dropdown closes', () => {
+        it('shows the Advanced submenu when the browser can pick folders', () => {
+            window.showDirectoryPicker = vi.fn();
+            const nav = new NavbarFile({ navbar });
+            nav.setFolderProjectActionsEvents();
+            for (const item of nav.folderProjectActionItems) {
+                expect(item.classList.contains('d-none')).toBe(false);
+            }
+        });
+
+        it('keeps the Advanced submenu visible across Alt presses and menu closes', () => {
             window.electronAPI = { openProjectFolder: vi.fn() };
             const nav = new NavbarFile({ navbar });
             nav.setFolderProjectActionsEvents();
 
-            // Reveal first.
-            document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Alt' }));
-            for (const item of nav.folderProjectActionItems) {
-                expect(item.classList.contains('d-none')).toBe(false);
-            }
-
-            // Bootstrap fires `hide.bs.dropdown` on the toggle when the menu
-            // closes. The previous `window.blur` listener mis-fired on Linux
-            // when Alt briefly grabbed focus; this assertion guards against a
-            // regression to that approach.
+            const altDown = new KeyboardEvent('keydown', { key: 'Alt', cancelable: true });
+            document.dispatchEvent(altDown);
+            document.dispatchEvent(new KeyboardEvent('keyup', { key: 'Alt' }));
             nav.button.dispatchEvent(new Event('hide.bs.dropdown'));
-            for (const item of nav.folderProjectActionItems) {
-                expect(item.classList.contains('d-none')).toBe(true);
-            }
-        });
 
-        it('does not hide entries when the window blurs (Linux Alt-tap)', () => {
-            window.electronAPI = { openProjectFolder: vi.fn() };
-            const nav = new NavbarFile({ navbar });
-            nav.setFolderProjectActionsEvents();
-
-            document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Alt' }));
-            window.dispatchEvent(new Event('blur'));
+            // Alt keeps its native behaviour: nothing in the menu depends on it any more.
+            expect(altDown.defaultPrevented).toBe(false);
             for (const item of nav.folderProjectActionItems) {
                 expect(item.classList.contains('d-none')).toBe(false);
             }

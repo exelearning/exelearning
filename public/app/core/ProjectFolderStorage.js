@@ -173,7 +173,7 @@ export function zipToElpxFile(zipBytes, suggestedName = 'project.elpx') {
 
 /**
  * Feature-detect the File System Access API. Used to decide whether to
- * surface the "Open from folder" / "Save to folder" entries in static
+ * surface the File > Advanced folder entries in static
  * browser builds.
  */
 export function supportsFileSystemAccess() {
