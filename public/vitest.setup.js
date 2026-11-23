@@ -1401,8 +1401,23 @@ global.$exeDevices = {
   },
 };
 
+/**
+ * Mirrors $exeDevicesEdition.iDevice.common in public/app/common/common_edition.js.
+ * removeTags is the real implementation, not a mock: the iDevices strip tags
+ * through it when they validate, import or save, and their tests check what
+ * it leaves.
+ */
+const mockIdeviceCommon = {
+  removeTags: html => {
+    const template = document.createElement('template');
+    template.innerHTML = html == null ? '' : String(html);
+    return template.content.textContent;
+  },
+};
+
 global.$exeDevicesEdition = {
   iDevice: {
+    common: mockIdeviceCommon,
     // Wires the form's tab strip. Every iDevice with more than one tab calls
     // it from createForm, so a stub has to exist for those forms to render.
     tabs: {

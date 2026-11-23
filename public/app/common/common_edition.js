@@ -156,6 +156,20 @@ var $exeDevicesEdition = {
                                     </p>\
                                 <div>\
                         </fieldset>";
+            },
+            /**
+             * The text of an HTML fragment, without its tags. The fragment is
+             * read in a template, which runs nothing: it can come from an
+             * imported file, and parsed in the page its images would load and
+             * their handlers run.
+             *
+             * @param {*} html
+             * @returns {string}
+             */
+            removeTags: function (html) {
+                const template = document.createElement('template');
+                template.innerHTML = html == null ? '' : String(html);
+                return template.content.textContent;
             }
         },
         // Gamification
@@ -1739,8 +1753,8 @@ var $exeDevicesEdition = {
                             });
                             if (word && questionText) {
                                 let wd = {
-                                    word: $exeDevice.removeTags(word),
-                                    definition: $exeDevice.removeTags(questionText)
+                                    word: $exeDevicesEdition.iDevice.common.removeTags(word),
+                                    definition: $exeDevicesEdition.iDevice.common.removeTags(questionText)
                                 }
                                 words.push(wd);
                             }

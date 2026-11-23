@@ -663,7 +663,7 @@ var $exeDevice = {
     },
     updateQuestionsNumber: function () {
         let percentaje = parseInt(
-            $exeDevice.removeTags($('#vquextEPercentajeQuestions').val())
+            $exeDevicesEdition.iDevice.common.removeTags($('#vquextEPercentajeQuestions').val())
         );
         if (isNaN(percentaje)) return;
         percentaje = Math.min(Math.max(percentaje, 1), 100);
@@ -1681,7 +1681,7 @@ var $exeDevice = {
     },
 
     validateData: function () {
-        const clear = $exeDevice.removeTags,
+        const clear = $exeDevicesEdition.iDevice.common.removeTags,
             instructionsExe = escape(
                 tinyMCE.get('eXeGameInstructions').getContent()
             ),
@@ -1863,10 +1863,6 @@ var $exeDevice = {
         } else {
             $('.VDQXTE-EOrders').slideUp();
         }
-    },
-
-    removeTags: function (str) {
-        return $('<div>').html(str).text();
     },
 
     addEvents: function () {

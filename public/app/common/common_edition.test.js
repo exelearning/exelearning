@@ -161,6 +161,58 @@ describe('common_edition.js', () => {
       expect(globalThis.$exeDevicesEdition.iDevice.common.getIdeviceDescription(null, 'https://example.com')).toBe('');
       expect(globalThis.$exeDevicesEdition.iDevice.common.getIdeviceDescription(42, 'https://example.com')).toBe('');
     });
+
+    describe('removeTags', () => {
+      const removeTags = (html) => globalThis.$exeDevicesEdition.iDevice.common.removeTags(html);
+
+      it('keeps the text of an HTML fragment, nested or with attributes, without its tags', () => {
+        expect(removeTags('<div class="x"><p>Hello <strong>World</strong></p></div>')).toBe('Hello World');
+        expect(removeTags('<a href="http://example.com">Link</a> &amp; more')).toBe('Link & more');
+      });
+
+      it('leaves plain text and an empty string as they are', () => {
+        expect(removeTags('Plain text')).toBe('Plain text');
+        expect(removeTags('')).toBe('');
+      });
+
+      it('reads no text from a missing value, and a number as its digits', () => {
+        expect(removeTags(undefined)).toBe('');
+        expect(removeTags(null)).toBe('');
+        expect(removeTags(5)).toBe('5');
+      });
+
+      // That the image is neither loaded nor its handler run is checked in a real browser, in
+      // quick-questions-moodle-import.spec.ts: happy-dom loads no images.
+      it('keeps the text around an image with a handler', () => {
+        expect(removeTags('<p>Capital<img src="x" onerror="window.ran = true"> of France?</p>')).toBe(
+          'Capital of France?'
+        );
+      });
+    });
+  });
+
+  describe('gamification.share.import.cuestionaryxml', () => {
+    it('strips the tags of the imported words with the shared removeTags, not the iDevice copy', () => {
+      const addWords = vi.fn();
+      const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<quiz>
+  <question type="shortanswer">
+    <questiontext format="html"><text>&lt;p&gt;Capital of &lt;strong&gt;France&lt;/strong&gt;?&lt;/p&gt;</text></questiontext>
+    <answer fraction="100"><text>&lt;b&gt;Paris&lt;/b&gt;</text></answer>
+  </question>
+</quiz>`;
+      const previousDevice = globalThis.$exeDevice;
+      const iDeviceCopy = vi.fn((text) => text);
+      globalThis.$exeDevice = { ...previousDevice, removeTags: iDeviceCopy };
+      try {
+        globalThis.$exeDevicesEdition.iDevice.gamification.share.import.cuestionaryxml(xml, addWords);
+      } finally {
+        globalThis.$exeDevice = previousDevice;
+      }
+
+      expect(addWords).toHaveBeenCalledWith([{ word: 'Paris', definition: 'Capital of France?' }]);
+      expect(iDeviceCopy).not.toHaveBeenCalled();
+    });
   });
 
   describe('gamification', () => {

@@ -912,7 +912,7 @@ var $exeDevice = {
 
     updateQuestionsNumber: function () {
         let percentaje = parseInt(
-            $exeDevice.removeTags(
+            $exeDevicesEdition.iDevice.common.removeTags(
                 $('#seleccionaEPercentajeQuestionsValue').val()
             ),
             10
@@ -2405,7 +2405,7 @@ var $exeDevice = {
     },
 
     validateData: function () {
-        const clear = $exeDevice.removeTags,
+        const clear = $exeDevicesEdition.iDevice.common.removeTags,
             instructions = $('#eXeGameInstructions').text(),
             instructionsExe = escape(
                 tinyMCE.get('eXeGameInstructions').getContent()
@@ -2566,10 +2566,6 @@ var $exeDevice = {
             id: id,
             globalTime: globalTime,
         };
-    },
-
-    removeTags: function (str) {
-        return $('<div></div>').html(str).text();
     },
 
     showTypeQuestion: function (type) {
@@ -3362,7 +3358,7 @@ var $exeDevice = {
             if (typeSelect === 0) {
                 for (let j = 0; j < answers.length; j++) {
                     const answer = answers[j],
-                        answerHtml = $exeDevice.removeTags(
+                        answerHtml = $exeDevicesEdition.iDevice.common.removeTags(
                             $(answer).find('text').eq(0).text().trim()
                         ),
                         answerText = answerHtml.split('\n')[0].trim();
@@ -3389,7 +3385,7 @@ var $exeDevice = {
 
             questionsJson.push({
                 typeSelect,
-                question: $exeDevice.removeTags(questionText.trim()),
+                question: $exeDevicesEdition.iDevice.common.removeTags(questionText.trim()),
                 options,
                 solution,
                 solutionQuestion,

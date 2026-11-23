@@ -4,7 +4,6 @@
  * Tests pure functions that don't depend on DOM manipulation:
  * - checkQuestions: Validates and parses questions input
  * - clearText: Cleans HTML/CDATA from text
- * - removeTags: Removes HTML tags from string
  */
 
 /* eslint-disable no-undef */
@@ -116,24 +115,6 @@ describe('form iDevice edition', () => {
     it('handles HTML entities', () => {
       const result = $exeDevice.clearText('<p>&amp; &lt; &gt;</p>');
       expect(result).toBe('& < >');
-    });
-  });
-
-  describe('removeTags', () => {
-    it('removes HTML tags using jQuery', () => {
-      expect($exeDevice.removeTags('<p>Hello</p>')).toBe('Hello');
-    });
-
-    it('handles nested tags', () => {
-      expect($exeDevice.removeTags('<div><span>Test</span></div>')).toBe('Test');
-    });
-
-    it('handles empty string', () => {
-      expect($exeDevice.removeTags('')).toBe('');
-    });
-
-    it('handles plain text', () => {
-      expect($exeDevice.removeTags('Plain text')).toBe('Plain text');
     });
   });
 

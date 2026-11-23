@@ -386,7 +386,7 @@ var $exeDevice = {
 
     updateQuestionsNumber: function () {
         const percentInput = parseInt(
-            $exeDevice.removeTags($('#ccgmEPercentajeQuestions').val())
+            $exeDevicesEdition.iDevice.common.removeTags($('#ccgmEPercentajeQuestions').val())
         );
 
         if (isNaN(percentInput)) return;
@@ -705,7 +705,7 @@ var $exeDevice = {
     validateData() {
         $exeDevicesEdition.iDevice.gamification.helpers.stopSound();
 
-        const clear = $exeDevice.removeTags,
+        const clear = $exeDevicesEdition.iDevice.common.removeTags,
             instructions = tinyMCE.get('eXeGameInstructions').getContent(),
             textFeedBack = tinyMCE.get('ccgmEFeedBackEditor').getContent(),
             textAfter = tinyMCE.get('eXeIdeviceTextAfter').getContent(),
@@ -1592,8 +1592,8 @@ var $exeDevice = {
             });
             if (word && questionText) {
                 let wd = {
-                    word: $exeDevice.removeTags(word),
-                    definition: $exeDevice.removeTags(questionText),
+                    word: $exeDevicesEdition.iDevice.common.removeTags(word),
+                    definition: $exeDevicesEdition.iDevice.common.removeTags(questionText),
                 };
                 words.push(wd);
             }
@@ -1682,11 +1682,5 @@ var $exeDevice = {
             'z-index': 3,
         });
         $cursor.show();
-    },
-
-    removeTags: function (str) {
-        const wrapper = $('<div></div>');
-        wrapper.html(str);
-        return wrapper.text();
     },
 };

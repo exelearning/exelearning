@@ -754,7 +754,7 @@ var $exeDevice = {
     validateAlt: function () {
         $exeDevice.accesibilityIsOk = true;
 
-        const clear = $exeDevice.removeTags;
+        const clear = $exeDevicesEdition.iDevice.common.removeTags;
         let words = [],
             alts = [],
             urls = [];
@@ -824,10 +824,6 @@ var $exeDevice = {
             html += linkAudio;
         });
         return html;
-    },
-
-    removeTags: function (str) {
-        return $('<div></div>').html(str).text();
     },
 
     startContains: function (letter, word, type) {
@@ -949,7 +945,7 @@ var $exeDevice = {
     },
 
     validateData: function () {
-        const clear = $exeDevice.removeTags,
+        const clear = $exeDevicesEdition.iDevice.common.removeTags,
             msgs = $exeDevice.msgs,
             instructions = tinymce.editors[0].getContent(),
             textAfter = tinymce.editors[1].getContent(),
@@ -1187,7 +1183,7 @@ var $exeDevice = {
             });
             if (word && questionText) {
                 words.push(
-                    `${$exeDevice.removeTags(word)}#${$exeDevice.removeTags(questionText)}`
+                    `${$exeDevicesEdition.iDevice.common.removeTags(word)}#${$exeDevicesEdition.iDevice.common.removeTags(questionText)}`
                 );
             }
         });

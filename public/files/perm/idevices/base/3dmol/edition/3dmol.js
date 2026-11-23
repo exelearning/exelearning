@@ -356,7 +356,7 @@ var $exeDevice = {
 
     updateQuestionsNumber: function () {
         let percentaje = parseInt(
-            $exeDevice.removeTags(
+            $exeDevicesEdition.iDevice.common.removeTags(
                 $('#dmolePercentajeQuestionsValue').val()
             ),
             10
@@ -2013,7 +2013,7 @@ var $exeDevice = {
     },
 
     validateData: function () {
-        const clear = $exeDevice.removeTags,
+        const clear = $exeDevicesEdition.iDevice.common.removeTags,
             activityMode = $('input[name="slcactivitymode"]:checked').val() || 'test',
             instructions = $('#eXeGameInstructions').text(),
             instructionsExe = escape(
@@ -2148,10 +2148,6 @@ var $exeDevice = {
             globalTime: globalTime,
             modelStyle: $exeDevice.normalizeModelStyle($exeDevice.modelStyle),
         };
-    },
-
-    removeTags: function (str) {
-        return $('<div></div>').html(str).text();
     },
 
     showTypeQuestion: function (type) {

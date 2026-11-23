@@ -649,7 +649,7 @@ var $exeDevice = {
 
     updateQuestionsNumber: function () {
         let percentage = parseInt(
-            $exeDevice.removeTags($('#quextEPercentajeQuestions').val())
+            $exeDevicesEdition.iDevice.common.removeTags($('#quextEPercentajeQuestions').val())
         );
         if (isNaN(percentage)) return;
 
@@ -1995,7 +1995,7 @@ var $exeDevice = {
             let solution = 0;
             answers.each(function (index) {
                 const answer = $(this),
-                    answerHtml = $exeDevice.removeTags(answer.text().trim()),
+                    answerHtml = $exeDevicesEdition.iDevice.common.removeTags(answer.text().trim()),
                     answerText = answerHtml.split('\n')[0].trim();
                 options.push(answerText);
                 if (parseInt(answer.attr('fraction')) === 100) {
@@ -2003,7 +2003,7 @@ var $exeDevice = {
                 }
             });
             questionsJson.push({
-                question: $exeDevice.removeTags(questionText.trim()),
+                question: $exeDevicesEdition.iDevice.common.removeTags(questionText.trim()),
                 options: options,
                 solution: solution,
             });
@@ -2126,7 +2126,7 @@ var $exeDevice = {
     },
 
     validateData: function () {
-        const clear = $exeDevice.removeTags,
+        const clear = $exeDevicesEdition.iDevice.common.removeTags,
             instructions = $('#eXeGameInstructions').text(),
             instructionsExe = escape(
                 tinyMCE.get('eXeGameInstructions').getContent()
@@ -2271,12 +2271,6 @@ var $exeDevice = {
             id: id,
         };
         return data;
-    },
-
-    removeTags: function (str) {
-        const wrapper = $('<div></div>');
-        wrapper.html(str);
-        return wrapper.text();
     },
 
     addEvents: function () {

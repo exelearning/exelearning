@@ -2473,7 +2473,7 @@ var $exeDevice = {
     },
 
     validateData: function () {
-        const clear = $exeDevice.removeTags,
+        const clear = $exeDevicesEdition.iDevice.common.removeTags,
             instructions = tinyMCE.get('eXeGameInstructions').getContent(),
             textAfter = tinyMCE.get('eXeIdeviceTextAfter').getContent(),
             showMinimize = $('#mapaEShowMinimize').is(':checked'),
@@ -4014,7 +4014,7 @@ var $exeDevice = {
 
     updateQuestionsNumber: function () {
         let percentaje = parseInt(
-            $exeDevice.removeTags($('#mapaPercentajeIdentify').val())
+            $exeDevicesEdition.iDevice.common.removeTags($('#mapaPercentajeIdentify').val())
         );
         if (isNaN(percentaje)) return;
 
@@ -4033,7 +4033,7 @@ var $exeDevice = {
 
     updateShowQ: function () {
         let percentaje = parseInt(
-            $exeDevice.removeTags($('#mapaPercentajeShowQ').val())
+            $exeDevicesEdition.iDevice.common.removeTags($('#mapaPercentajeShowQ').val())
         );
         if (isNaN(percentaje)) return;
         percentaje = Math.max(1, Math.min(percentaje, 100));
@@ -4050,7 +4050,7 @@ var $exeDevice = {
 
     updateNumberQuestions: function () {
         let percentaje = parseInt(
-                $exeDevice.removeTags($('#mapaPercentajeQuestions').val())
+                $exeDevicesEdition.iDevice.common.removeTags($('#mapaPercentajeQuestions').val())
             ),
             nq = $exeDevice.selectsGame.length;
         if (isNaN(percentaje)) return;
@@ -4061,7 +4061,7 @@ var $exeDevice = {
 
     updateNumberPointQuestions: function () {
         let percentaje = parseInt(
-                $exeDevice.removeTags($('#mapaPercentajeQuestions1').val())
+                $exeDevicesEdition.iDevice.common.removeTags($('#mapaPercentajeQuestions1').val())
             ),
             nq = $exeDevice.tests.length;
 
@@ -5701,11 +5701,5 @@ var $exeDevice = {
             'z-index': 9,
         });
         $area.show();
-    },
-
-    removeTags: function (str) {
-        const wrapper = $('<div></div>');
-        wrapper.html(str);
-        return wrapper.text();
     },
 };

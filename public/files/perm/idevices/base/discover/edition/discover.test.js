@@ -78,21 +78,6 @@ const $exeDevice = {
     },
 
     /**
-     * Remove HTML tags from string
-     */
-    removeTags: function (str) {
-        const wrapper = { 
-            html: function(content) { this.content = content; },
-            text: function() { 
-                if (!this.content) return '';
-                return this.content.replace(/<[^>]*>/g, '');
-            }
-        };
-        wrapper.html(str);
-        return wrapper.text();
-    },
-
-    /**
      * Escape quotes in text
      */
     escapeQuotes: function(str) {
@@ -268,32 +253,6 @@ describe('Discover Edition Functions', () => {
             expect(question.data[1].url).toBe('');
             expect(question.data[2].url).toBe('');
             expect(question.data[3].url).toBe('');
-        });
-    });
-
-    describe('removeTags', () => {
-        it('should remove simple HTML tags', () => {
-            expect($exeDevice.removeTags('<p>Hello</p>')).toBe('Hello');
-            expect($exeDevice.removeTags('<div>World</div>')).toBe('World');
-            expect($exeDevice.removeTags('<span>Test</span>')).toBe('Test');
-        });
-
-        it('should remove nested HTML tags', () => {
-            expect($exeDevice.removeTags('<div><p>Hello <strong>World</strong></p></div>')).toBe('Hello World');
-            expect($exeDevice.removeTags('<ul><li>Item 1</li><li>Item 2</li></ul>')).toBe('Item 1Item 2');
-        });
-
-        it('should handle empty string', () => {
-            expect($exeDevice.removeTags('')).toBe('');
-        });
-
-        it('should handle text without tags', () => {
-            expect($exeDevice.removeTags('Plain text')).toBe('Plain text');
-        });
-
-        it('should handle attributes in tags', () => {
-            expect($exeDevice.removeTags('<div class="test" id="myDiv">Content</div>')).toBe('Content');
-            expect($exeDevice.removeTags('<a href="http://example.com" target="_blank">Link</a>')).toBe('Link');
         });
     });
 

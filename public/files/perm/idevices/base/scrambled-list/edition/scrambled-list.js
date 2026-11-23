@@ -230,9 +230,9 @@ var $exeDevice = {
             afterElement: this.afterElement,
             options: this.options,
             time: 0,
-            buttonText: this.removeTags(this.buttonText),
-            rightText: this.removeTags(this.rightText),
-            wrongText: this.removeTags(this.wrongText),
+            buttonText: $exeDevicesEdition.iDevice.common.removeTags(this.buttonText),
+            rightText: $exeDevicesEdition.iDevice.common.removeTags(this.rightText),
+            wrongText: $exeDevicesEdition.iDevice.common.removeTags(this.wrongText),
             isScorm: scorm.isScorm,
             textButtonScorm: scorm.textButtonScorm,
             repeatActivity: scorm.repeatActivity,
@@ -699,17 +699,5 @@ var $exeDevice = {
                 </p>
                 <ol>${inputList}</ol>
             </div>`;
-    },
-
-    /**
-     * Function to remove HTML tags
-     *
-     * @param {*} str
-     * @returns string
-     */
-    removeTags: function (str) {
-        var wrapper = $('<div></div>');
-        wrapper.html(str);
-        return wrapper.text();
     },
 };

@@ -780,7 +780,7 @@ var $exeDevice = {
 
     updateQuestionsNumber: function () {
         let percentage = parseInt(
-            $exeDevice.removeTags($('#frmEPercentageQuestions').val())
+            $exeDevicesEdition.iDevice.common.removeTags($('#frmEPercentageQuestions').val())
         );
         if (isNaN(percentage)) return;
         percentage = Math.min(Math.max(percentage, 1), 100);
@@ -788,12 +788,6 @@ var $exeDevice = {
         const totalQuestions = numq || 1;
         let num = Math.max(Math.round((percentage * totalQuestions) / 100), 1);
         $('#frmENumeroPercentaje').text(`${num}/${totalQuestions}`);
-    },
-
-    removeTags: function (str) {
-        const wrapper = $('<div></div>');
-        wrapper.html(str);
-        return wrapper.text();
     },
 
     setMessagesInfo: function () {

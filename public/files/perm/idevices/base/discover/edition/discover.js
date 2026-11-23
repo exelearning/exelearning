@@ -442,7 +442,7 @@ var $exeDevice = {
 
     updateQuestionsNumber: function () {
         const percentInput = parseInt(
-            $exeDevice.removeTags($('#descubreEPercentajeQuestions').val())
+            $exeDevicesEdition.iDevice.common.removeTags($('#descubreEPercentajeQuestions').val())
         );
 
         if (isNaN(percentInput)) return;
@@ -1011,7 +1011,7 @@ var $exeDevice = {
     },
 
     validateData: function () {
-        const clear = $exeDevice.removeTags,
+        const clear = $exeDevicesEdition.iDevice.common.removeTags,
             instructions = tinyMCE.get('eXeGameInstructions').getContent(),
             textFeedBack = tinyMCE.get('descubreEFeedBackEditor').getContent(),
             textAfter = tinyMCE.get('eXeIdeviceTextAfter').getContent(),
@@ -1713,10 +1713,10 @@ var $exeDevice = {
                     }
                 });
                 const bktext = {
-                    eTextBk: $exeDevice.removeTags(
+                    eTextBk: $exeDevicesEdition.iDevice.common.removeTags(
                         $question.find('questiontext').first().text().trim()
                     ),
-                    eText: $exeDevice.removeTags(eText),
+                    eText: $exeDevicesEdition.iDevice.common.removeTags(eText),
                 };
                 return eText ? bktext : null;
             })
@@ -2269,11 +2269,5 @@ var $exeDevice = {
             'z-index': 3,
         });
         $cursor.show();
-    },
-
-    removeTags: function (str) {
-        const wrapper = $('<div></div>');
-        wrapper.html(str);
-        return wrapper.text();
     },
 };
