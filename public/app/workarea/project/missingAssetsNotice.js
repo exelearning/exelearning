@@ -37,6 +37,37 @@ export function escapeHtml(value) {
 }
 
 /**
+ * Build the dialog content for references the export could not resolve (#2681).
+ *
+ * The importer's notice reaches whoever opens the package, which is too late:
+ * by then the files are gone from the project that could still have them. The
+ * exporter knows the same thing while the author is the one holding the file.
+ *
+ * @param {string[]} unresolvedAssets Asset references the export left dangling.
+ * @returns {{title: string, body: string}|null} null when nothing is missing
+ */
+export function buildUnresolvedExportNotice(unresolvedAssets) {
+    if (!Array.isArray(unresolvedAssets)) return null;
+
+    const refs = unresolvedAssets.filter((ref) => typeof ref === 'string' && ref.length > 0);
+    if (refs.length === 0) return null;
+
+    const shown = refs.slice(0, MAX_PATHS_PER_ACTIVITY);
+    const hidden = refs.length - shown.length;
+    let files = shown.map(escapeHtml).join(', ');
+    if (hidden > 0) {
+        files += `, ${_('and %1 more').replace('%1', hidden)}`;
+    }
+
+    return {
+        title: _('Missing files'),
+        body: `<p>${_(
+            'This project refers to files it no longer contains, so they are missing from the file you just saved. Add them again to restore the content before sharing it.'
+        )}</p><ul><li>${files}</li></ul>`,
+    };
+}
+
+/**
  * Build the dialog content for the activities that reference missing files.
  *
  * @param {Array<{componentId: string, ideviceType: string, paths: string[]}>} missingAssets
