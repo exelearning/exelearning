@@ -17,6 +17,9 @@ describe('NavbarHelp', () => {
           assistant: {
             show: vi.fn(),
           },
+          connectmcp: {
+            show: vi.fn(),
+          },
           releasenotes: {
             show: vi.fn(),
           },
@@ -33,6 +36,7 @@ describe('NavbarHelp', () => {
     // Mock buttons
     mockButtons = {
       assistant: { addEventListener: vi.fn() },
+      connectMcp: { addEventListener: vi.fn() },
       tutorial: { addEventListener: vi.fn() },
       apiDocs: { addEventListener: vi.fn() },
       releaseNotes: { addEventListener: vi.fn() },
@@ -47,6 +51,7 @@ describe('NavbarHelp', () => {
       querySelector: vi.fn((selector) => {
         if (selector === '#dropdownHelp') return { id: 'dropdownHelp' };
         if (selector === '#navbar-button-assistant') return mockButtons.assistant;
+        if (selector === '#navbar-button-connect-mcp') return mockButtons.connectMcp;
         if (selector === '#navbar-button-exe-tutorial') return mockButtons.tutorial;
         if (selector === '#navbar-button-api-docs') return mockButtons.apiDocs;
         if (selector === '#navbar-button-release-notes') return mockButtons.releaseNotes;
@@ -83,6 +88,10 @@ describe('NavbarHelp', () => {
       expect(mockNavbar.querySelector).toHaveBeenCalledWith('#navbar-button-assistant');
     });
 
+    it('should query connect MCP button', () => {
+      expect(mockNavbar.querySelector).toHaveBeenCalledWith('#navbar-button-connect-mcp');
+    });
+
     it('should query tutorial button', () => {
       expect(mockNavbar.querySelector).toHaveBeenCalledWith('#navbar-button-exe-tutorial');
     });
@@ -113,6 +122,7 @@ describe('NavbarHelp', () => {
 
     it('should store button references', () => {
       expect(navbarHelp.assistantButton).toBe(mockButtons.assistant);
+      expect(navbarHelp.connectMcpButton).toBe(mockButtons.connectMcp);
       expect(navbarHelp.tutorialButton).toBe(mockButtons.tutorial);
       expect(navbarHelp.apiDocsButton).toBe(mockButtons.apiDocs);
       expect(navbarHelp.releaseNotesButton).toBe(mockButtons.releaseNotes);
@@ -127,6 +137,7 @@ describe('NavbarHelp', () => {
     it('should call all set event methods', () => {
       const spies = {
         assistant: vi.spyOn(navbarHelp, 'setAssistantEvent'),
+        connectMcp: vi.spyOn(navbarHelp, 'setConnectMcpEvent'),
         tutorial: vi.spyOn(navbarHelp, 'setTutorialEvent'),
         apiDocs: vi.spyOn(navbarHelp, 'setApiDocsEvent'),
         releaseNotes: vi.spyOn(navbarHelp, 'setReleaseNotesEvent'),
@@ -174,6 +185,24 @@ describe('NavbarHelp', () => {
       navbarHelp.setTutorialEvent();
 
       const clickHandler = mockButtons.tutorial.addEventListener.mock.calls[0][1];
+      clickHandler();
+
+      expect(spy).toHaveBeenCalled();
+    });
+  });
+
+  describe('setConnectMcpEvent', () => {
+    it('should add click event listener to connect MCP button', () => {
+      navbarHelp.setConnectMcpEvent();
+
+      expect(mockButtons.connectMcp.addEventListener).toHaveBeenCalledWith('click', expect.any(Function));
+    });
+
+    it('should call connectMcpEvent when button is clicked', () => {
+      const spy = vi.spyOn(navbarHelp, 'connectMcpEvent');
+      navbarHelp.setConnectMcpEvent();
+
+      const clickHandler = mockButtons.connectMcp.addEventListener.mock.calls[0][1];
       clickHandler();
 
       expect(spy).toHaveBeenCalled();
@@ -310,6 +339,14 @@ describe('NavbarHelp', () => {
       navbarHelp.tutorialEvent();
 
       expect(mockFocus).toHaveBeenCalled();
+    });
+  });
+
+  describe('connectMcpEvent', () => {
+    it('should show connect MCP modal', () => {
+      navbarHelp.connectMcpEvent();
+
+      expect(window.eXeLearning.app.modals.connectmcp.show).toHaveBeenCalled();
     });
   });
 
