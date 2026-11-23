@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>asset:// harness (TinyMCE 8 / HugeRTE)</title>
+<script src="store.js"></script>
+</head>
+<body>
+<textarea id="ed"></textarea>
+<script>
+(async () => {
+    const which = new URLSearchParams(location.search).get('ed') || 'tinymce';
+    await new Promise((res, rej) => {
+        const s = document.createElement('script');
+        s.src = which === 'hugerte' ? 'node_modules/hugerte/hugerte.min.js' : 'node_modules/tinymce/tinymce.min.js';
+        s.onload = res; s.onerror = rej;
+        document.head.appendChild(s);
+    });
+    const E = which === 'hugerte' ? window.hugerte : window.tinymce;
+    const S = window.AssetStore;
+    await S.seed();
+    document.getElementById('ed').value = window.FIXTURE;
+
+    // ?off=2,4 disables hooks for the ablation runs.
+    const off = new Set((new URLSearchParams(location.search).get('off') || '').split(','));
+    const on = (n) => !off.has(String(n));
+
+    // HOOK 1: parser attribute filter (load, setContent, insertContent, paste).
+    // DOM src = display blob:, data-mce-src = canonical asset://; TinyMCE's own
+    // serializer writes data-mce-src back as src.
+    function assetFilter(nodes, name) {
+        for (const node of nodes) {
+            const v = node.attr(name);
+            if (S.isAsset(v)) {
+                if (name === 'href') continue; // links stay asset:// in the editor, like eXe today
+                const blob = S.resolveSync(v);
+                if (blob) {
+                    node.attr('data-mce-' + name, v);
+                    node.attr(name, blob);
+                }
+            } else if (S.isBlob(v)) {
+                const a = S.blobToAsset(v); // foreign paste carrying a display blob
+                if (a) node.attr('data-mce-' + name, a);
+            }
+        }
+    }
+    // Re-resolve any asset:// that reached the DOM outside the parser (dialogs
+    // writing via dom.setAttrib). Visual only, so kept out of the undo stack.
+    function resolveDom(ed) {
+        ed.undoManager.ignore(() => {
+            for (const el of ed.getBody().querySelectorAll('[src^="asset://"]')) {
+                const blob = S.resolveSync(el.getAttribute('src'));
+                if (blob) { el.setAttribute('data-mce-src', el.getAttribute('src')); el.setAttribute('src', blob); }
+            }
+        });
+    }
+
+    const cfg = {
+        target: document.getElementById('ed'),
+        plugins: 'image link',
+        toolbar: 'undo redo | insertasset image link',
+        menubar: false,
+        convert_urls: false, // same as eXe
+        valid_elements: '*[*]', // same as eXe
+        entity_encoding: 'raw',
+        promotion: false,
+        branding: false,
+        setup(ed) {
+            ed.on('PreInit', () => {
+                if (on(1)) ed.parser.addAttributeFilter('src,href', assetFilter);
+                // HOOK 2: keep EditorUpload's image scanner off our display blobs;
+                // otherwise it re-wraps them in a new blob URI, drops data-mce-src and
+                // GetContent emits data:image/...;base64 (measured).
+                if (on(2)) ed.editorUpload.addFilter((img) => !S.blobToAsset(img.getAttribute('src')));
+                // HOOK 4: serializer filter. insertContent/paste re-parse the fragment and
+                // the core data-mce-src strip filter drops our canonical attr (measured),
+                // so map any known display blob back at serialization.
+                if (on(4)) ed.serializer.addAttributeFilter('src', (nodes) => {
+                    for (const n of nodes) {
+                        const a = S.isBlob(n.attr('src')) && S.blobToAsset(n.attr('src'));
+                        if (a) n.attr('src', a);
+                    }
+                });
+            });
+            // HOOK 5: after SetContent (load, insertContent, paste) restore data-mce-src
+            // on display blobs so editor.dom.getAttrib(el, 'src') returns asset://
+            // (what eXe's own plugins would read).
+            if (on(5)) ed.on('SetContent', () => {
+                for (const el of ed.getBody().querySelectorAll('[src^="blob:"]:not([data-mce-src])')) {
+                    const a = S.blobToAsset(el.getAttribute('src'));
+                    if (a) el.setAttribute('data-mce-src', a);
+                }
+            });
+            // HOOK 6: public OpenWindow event instead of monkey-patching windowManager.open:
+            // the stock image dialog reads the raw DOM src (blob:), so swap it for asset://.
+            if (on(6)) ed.on('OpenWindow', (e) => {
+                const d = e.dialog, data = d && d.getData && d.getData();
+                const a = data && data.src && S.isBlob(data.src.value) && S.blobToAsset(data.src.value);
+                if (a) d.setData({ src: { ...data.src, value: a } });
+            });
+            // HOOK 7: the dialog then writes src=asset:// into the DOM; re-resolve it.
+            if (on(7)) ed.on('NodeChange ExecCommand', () => resolveDom(ed));
+            // Measurement point (and optional ?net=1 rewrite). html format only:
+            // raw (undo levels) legitimately holds display blobs.
+            ed.on('GetContent', (e) => { if (e.format === 'html') e.content = S.safetyNet(e.content); });
+            ed.ui.registry.addButton('insertasset', { text: 'Insert asset', onAction: () => H.insertAsset() });
+        },
+    };
+    // HOOK 3: TinyMCE 8 / HugeRTE add sandbox="" to every iframe (measured).
+    if (on(3)) cfg.sandbox_iframes = false;
+    if (which === 'tinymce') cfg.license_key = 'gpl';
+    const [ed] = await E.init(cfg);
+
+    window.H = {
+        which,
+        version: E.majorVersion + '.' + E.minorVersion,
+        frameSelector: 'iframe[id$="_ifr"]',
+        getStored: () => ed.getContent(),
+        hasUndo: () => ed.undoManager.hasUndo(),
+        async insertAsset() {
+            // Custom dialog/command: the file manager returns asset://; the parser hook resolves it.
+            const url = await S.newImageAsset();
+            ed.insertContent('<img src="' + url + '" alt="inserted">');
+            return url;
+        },
+        openImageDialog() { ed.execCommand('mceImage'); },
+        reload(html) { ed.setContent(html); },
+        safetyNetHits: () => S.safetyNetHits,
+    };
+    window.HREADY = true;
+})().catch((e) => { window.HERROR = String(e && e.stack || e); });
+</script>
+</body>
+</html>
