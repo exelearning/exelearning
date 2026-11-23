@@ -2,6 +2,7 @@ import { test, expect } from '../fixtures/auth.fixture';
 import { waitForAppReady, waitForLoadingScreen, reloadPage, gotoWorkarea } from '../helpers/workarea-helpers';
 import { WorkareaPage } from '../pages/workarea.page';
 import type { Page } from '@playwright/test';
+import { truncate, writeFile } from 'node:fs/promises';
 
 /**
  * E2E Tests for File Manager (Media Library)
@@ -1240,6 +1241,68 @@ test.describe('File Manager', () => {
             // clicking Insert actually inserted into the editor.
             await insertBtn.click();
             await page.waitForSelector('#modalFileManager[data-open="false"]', { state: 'attached', timeout: 10000 });
+        });
+    });
+
+    test.describe('Upload size limits (#2794)', () => {
+        test('rejects a file above FILE_UPLOAD_MAX_SIZE with a clear message', async ({
+            authenticatedPage,
+            createProject,
+        }, testInfo) => {
+            const page = authenticatedPage;
+            // A 10 KB limit stands in for the configured maximum, so a small fixture exceeds it.
+            await page.route('**/api/config/upload-limits', route =>
+                route.fulfill({ json: { maxFileSize: 10 * 1024, maxFileSizeFormatted: '10.00 KB' } }),
+            );
+
+            const projectUuid = await createProject(page, 'File Manager - Upload Limit Test');
+            await gotoWorkarea(page, projectUuid);
+            await waitForAppReady(page);
+            await openFileManagerFromUtilitiesMenu(page);
+
+            await page
+                .locator('#modalFileManager .media-library-upload-input')
+                .setInputFiles('test/fixtures/sample-2.jpg');
+
+            const toast = page.locator('#modalFileManager .modal-toasts-container .toast').last();
+
+            // Static mode has no server, so there is no FILE_UPLOAD_MAX_SIZE to enforce:
+            // the file is added and no size toast appears.
+            if (testInfo.project.name === 'static') {
+                await expect.poll(() => getFileCount(page), { timeout: 15000 }).toBe(1);
+                await expect(page.locator('#modalFileManager .modal-toasts-container .toast')).toHaveCount(0);
+                return;
+            }
+
+            // The message is a toast inside the media library, which stays open.
+            await expect(toast).toContainText('sample-2.jpg', { timeout: 10000 });
+            await expect(toast).toContainText('10.00 KB');
+            await expect(page.locator('#modalFileManager')).toHaveAttribute('data-open', 'true');
+            expect(await getFileCount(page)).toBe(0);
+        });
+
+        test('uploads a large 3D model but warns that it may not display everywhere', async ({
+            authenticatedPage,
+            createProject,
+        }, testInfo) => {
+            const page = authenticatedPage;
+            const projectUuid = await createProject(page, 'File Manager - Large 3D Model Test');
+            await gotoWorkarea(page, projectUuid);
+            await waitForAppReady(page);
+            await openFileManagerFromUtilitiesMenu(page);
+
+            // Just over the 50 MB warning threshold; content does not matter for the warning.
+            // Playwright refuses in-memory buffers above 50 MB, so use a sparse file on disk.
+            const modelPath = testInfo.outputPath('volcano.glb');
+            await writeFile(modelPath, '');
+            await truncate(modelPath, 51 * 1024 * 1024);
+            await page.locator('#modalFileManager .media-library-upload-input').setInputFiles(modelPath);
+
+            const toast = page.locator('#modalFileManager .modal-toasts-container .toast').last();
+            await expect(toast).toContainText('volcano.glb', { timeout: 30000 });
+            await expect(toast).toContainText('3D model');
+            await expect(page.locator('#modalFileManager')).toHaveAttribute('data-open', 'true');
+            await expect.poll(() => getFileCount(page), { timeout: 15000 }).toBe(1);
         });
     });
 
