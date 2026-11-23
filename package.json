@@ -116,7 +116,7 @@
     "@codecov/bundle-analyzer": "^2.0.1",
     "@electron/notarize": "^3.1.2",
     "@erseco/mind-elixir-export-svg": "0.3.0",
-    "@material-symbols/svg-400": "^0.48.3",
+    "@material-symbols/svg-400": "^0.49.0",
     "@playwright/test": "~1.65.0",
     "@types/bun": "^1.4.0",
     "@types/css-tree": "^3.2.0",
