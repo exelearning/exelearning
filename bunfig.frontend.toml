@@ -1,0 +1,39 @@
+# Frontend suite: the browser code under public/, tested under happy-dom.
+#
+# Used through `bun run test:frontend` (`make test-frontend`), which passes this file with
+# `--config`. The root bunfig.toml drives the backend suites and leaves public/ alone.
+#
+# The specs are written against the Vitest API (`vi.*`, `from 'vitest'`), which bun:test
+# provides. They need one global per file: run them with `--parallel` or `--isolate`.
+
+[test]
+root = "./public"
+
+# The DOM first, then the shared mocks (jQuery, TinyMCE, Yjs, eXe).
+preload = ["./test/happy-dom.preload.ts", "./public/vitest.setup.js"]
+
+pathIgnorePatterns = ["node_modules/**", "public/files/perm/themes/**"]
+
+# Coverage counts the application code under public/app. Left out: the specs' own helpers,
+# what they load from outside public/app, and generated or vendored code (never edited
+# here, see THIRD-PARTY-NOTICES.md).
+coveragePathIgnorePatterns = [
+    "node_modules/**",
+    "test/**",
+    "public/vitest.setup.js",
+    "public/preview-sw.js",
+    "public/files/**",
+    "public/libs/**",
+    "**/*.test-util.js",
+    "**/*.min.js",
+    "**/*.bundle.js",
+    "public/app/common/scorm/scorm12/vendor/**",
+    "public/app/common/mermaid/**",
+    "public/app/common/fix_webm_duration/**",
+    "public/app/common/exe_media/**",
+    "public/app/common/exe_math/**",
+    "public/app/common/exe_magnify/**",
+    "public/app/common/exe_lightbox/**",
+    "public/app/common/exe_highlighter/**",
+    "public/app/common/edicuatex/**",
+]

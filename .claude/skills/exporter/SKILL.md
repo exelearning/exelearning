@@ -31,6 +31,6 @@ Read `src/shared/export/exporters/`, `renderers/`, `generators/`, `providers/`, 
 - SCORM changes must preserve both the exported runtime and manifest contract; use independent package
   fixtures and LMS contract tests where present, not only assertions against the generator's own output.
 
-Run affected Bun exporter/provider/renderer specs and relevant Vitest preview/import tests. For visible
+Run affected Bun exporter/provider/renderer specs and relevant frontend preview/import tests. For visible
 export changes, add/update Playwright verification of browser output and the server/CLI path, plus static
 E2E. Apply `verify-change` final gates. Read [profiling](../../../doc/development/profiling.md) for existing diagnostics.

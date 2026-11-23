@@ -80,7 +80,7 @@ The image has every dependency installed and every bundle built (`bun run build:
   - Two of them, `elp:convert … output directory cannot be created` and `Convert Routes … internal error in
     export/:format`, depend on file permissions and fail when run as root. Ignore them.
 - **Integration tests:** `bun test ./test/integration`.
-- **Browser and iDevice tests:** `bunx vitest run --config vitest.config.mts` (happy-dom).
+- **Browser and iDevice tests:** `bun run test:frontend` (`bun test` under happy-dom, configured in `bunfig.frontend.toml`).
 - **Server:** `bun run dist/index.js` listens on <http://localhost:8080>.
   - Configuration comes from `/src/.env` (a copy of `.env.dist`), with the database and files under
     `/tmp/exelearning/`. `doc/development/environment.md` documents every variable.

@@ -104,7 +104,7 @@ The project provides a Makefile for common tasks:
 | `make test` | Run all tests |
 | `make test-unit` | Run unit tests with coverage |
 | `make test-integration` | Run integration tests |
-| `make test-frontend` | Run frontend tests (Vitest) |
+| `make test-frontend` | Run frontend tests (bun test + happy-dom) |
 | `make test-e2e` | Run E2E tests (Playwright) |
 | `make test-e2e-firefox` | Run E2E tests with Firefox (Playwright) |
 | `make test-e2e-mariadb` | Run E2E tests with MariaDB (Playwright) |

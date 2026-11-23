@@ -49,13 +49,13 @@ Current state:
 - **Backend**: Elysia framework running on Bun runtime
 - **Database**: Multi-database support via Kysely (SQLite, PostgreSQL, MySQL)
 - **Real-time**: Yjs-based collaborative editing with WebSocket
-- **Testing**: 90%+ coverage requirement with Bun test, Vitest, Playwright
+- **Testing**: 90%+ coverage requirement with Bun test and Playwright
 - **Legacy code**: Available in `symfony_legacy/` and `nestjs_legacy/` for reference
 
 ## Development Practices
 
 - **Git workflow**: Feature branches merged via Pull Requests
-- **Testing**: Unit (Bun), Integration, Frontend (Vitest), E2E (Playwright)
+- **Testing**: Unit (Bun), Integration, Frontend (Bun + happy-dom), E2E (Playwright)
 - **Coverage**: Minimum 90% for new code
 - **CI/CD**: GitHub Actions for testing and deployment
 

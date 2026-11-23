@@ -140,7 +140,7 @@ make up-local         # Start development server (installs deps + hot reload)
 make up               # Start with Docker
 make test-unit        # Run unit tests
 make test-integration # Run integration tests
-make test-frontend    # Run frontend tests (Vitest)
+make test-frontend    # Run frontend tests (bun test + happy-dom)
 make test-e2e         # Run E2E tests (Playwright)
 make lint             # Run linter
 make fix              # Auto-fix linting issues

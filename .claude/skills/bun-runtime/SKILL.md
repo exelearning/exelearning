@@ -12,8 +12,10 @@ Use the installed version and [Bun documentation](https://bun.sh/docs) for API d
   Redis, password and UUID abstractions unless changing that contract is the task.
 - `bun.lock` is the text lockfile here. Preserve it during verification; `bun install --frozen-lockfile`
   checks reproducibility. Use `make deps` for the full project setup, not an invented install sequence.
-- Backend tests import `bun:test`; browser/iDevice tests use Vitest + happy-dom. Run a focused spec
-  explicitly; `bun test` at the root is not a substitute for the configured test groups.
+- Backend tests import `bun:test`. Browser/iDevice tests run on `bun test` as well, under happy-dom
+  through `bunfig.frontend.toml` (`bun run test:frontend <file>`), and are written against the Vitest
+  API (`vi.*`). Run a focused spec explicitly; `bun test` at the root is not a substitute for the
+  configured test groups.
 - Follow existing injectable dependencies and reset them after tests. Do not introduce `mock.module()`
   or new global state to make a test pass; include a suite-level run when diagnosing pollution.
 - Keep runtime-specific code out of `src/shared/` browser bundles. Backend builds target Bun and leave

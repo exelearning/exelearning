@@ -795,7 +795,8 @@ export const CONTRACT_SCENARIOS = [
             // boundary as strings (scorm-again coerces silently, real LMS API
             // adapters have not always been so forgiving).
             for (const call of lms.callsSince(observations.afterLaunch).filter(c => c.method === 'LMSSetValue')) {
-                expect(call.argTypes, `${call.args[0]} argument types`).toEqual(['string', 'string']);
+                // Keyed by element, so a failure names it and still reads as a failed matcher.
+                expect({ [call.args[0]]: call.argTypes }).toEqual({ [call.args[0]]: ['string', 'string'] });
             }
         },
         deviations: {
@@ -1681,8 +1682,9 @@ export function runContractSuite({ variant, describe, it, createContext }) {
                     } catch (error) {
                         // Only an assertion failure proves the deviation still
                         // exists; a harness/driver crash must fail the test.
-                        const isAssertion =
-                            error && (error.name === 'AssertionError' || error.matcherResult !== undefined);
+                        // bun:test raises a plain Error for a failed matcher, with a
+                        // message that opens with the matcher call.
+                        const isAssertion = error instanceof Error && /^expect\(/.test(error.message);
                         if (!isAssertion) throw error;
                         contractError = error;
                     }

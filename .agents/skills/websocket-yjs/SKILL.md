@@ -36,7 +36,7 @@ Use [Yjs shared types](https://docs.yjs.dev/getting-started/working-with-shared-
 - Unobserve listeners and destroy temporary documents/providers when their owner is disposed. Avoid retaining
   document references after cleanup; test reconnect without duplicate listeners or orphan awareness.
 
-Run focused Bun server specs and Vitest client specs, then final gates in `verify-change`.
+Run focused Bun server specs and client specs (`bun run test:frontend <path>`), then final gates in `verify-change`.
 Use the collaboration fixture with separate users for simultaneous edits, late join, disconnect/reconnect,
 and an active editor while a peer changes the page. Check persisted content after reload, not only DOM text.
 Use valid hex project UUIDs in fixtures; test asset JSON messages separately from binary sync.

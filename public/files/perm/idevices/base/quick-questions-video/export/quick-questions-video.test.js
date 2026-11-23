@@ -45,7 +45,8 @@ describe('quick-questions-video iDevice export', () => {
     });
 
     afterEach(() => {
-        vi.clearAllTimers();
+        // Only some blocks install fake timers, and clearing them without is an error.
+        if (vi.isFakeTimers()) vi.clearAllTimers();
         vi.useRealTimers();
         document.body.innerHTML = '';
         vi.restoreAllMocks();

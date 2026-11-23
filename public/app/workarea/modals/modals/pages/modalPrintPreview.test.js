@@ -800,6 +800,17 @@ describe('ModalPrintPreview and its options panel', () => {
 
         modal = new ModalPrintPreview({});
         modal.behaviour();
+
+        // loaded() says when the frame has loaded. Left to itself happy-dom fetches the
+        // blob URL and fires `load` on its own, in the middle of a test.
+        let frameSrc = '';
+        Object.defineProperty(modal.iframe, 'src', {
+            configurable: true,
+            get: () => frameSrc,
+            set: (value) => {
+                frameSrc = value;
+            },
+        });
     });
 
     afterEach(() => {

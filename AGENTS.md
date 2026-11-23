@@ -41,7 +41,7 @@ make build-static          # static distribution
 make fix                   # Biome code autofix/check, then tsc --noEmit
 make typecheck             # tsc --noEmit for src, then tsconfig.test.json specs (in make lint / make fix)
 make test-unit             # Bun backend/scripts/app suite and coverage
-make test-frontend         # Vitest browser/iDevice suite and coverage (separate)
+make test-frontend         # bun test + happy-dom browser/iDevice suite and coverage (separate)
 make test-integration
 make test-e2e              # Chromium; Firefox has its own target
 make test-e2e-static       # static/embedding/export changes
@@ -50,7 +50,7 @@ make architecture-check
 ```
 
 Read [verify-change](.agents/skills/verify-change/SKILL.md) to select focused checks while editing.
-`make test-unit` does not run Vitest; `make test-frontend` (or `make test-coverage`) does.
+`make test-unit` does not run the frontend suite; `make test-frontend` (or `make test-coverage`) does.
 
 ### Definition of Done (code changes)
 
