@@ -994,13 +994,6 @@ export default class MenuStructureBehaviour {
                 if (node.properties?.titleNode) {
                     node.properties.titleNode.value = newTitle;
                 }
-                // Only update page title h1 if "Título diferente en la página" is NOT active
-                const editableInPage = node.properties?.editableInPage?.value;
-                const isEditableInPage = editableInPage === true || editableInPage === 'true';
-                const pageTitle = document.querySelector('#page-title-node-content');
-                if (pageTitle && !isEditableInPage) {
-                    pageTitle.textContent = newTitle;
-                }
                 if (textElement) {
                     textElement.setAttribute('title', newTitle);
                 }
@@ -1009,11 +1002,9 @@ export default class MenuStructureBehaviour {
                 if (propInput) {
                     propInput.value = newTitle;
                 }
-                // Typeset LaTeX in both page title and nav span
+                // Typeset LaTeX in the nav span
                 if (typeof MathJax !== 'undefined' && MathJax.typesetPromise) {
-                    const elementsToTypeset = [textSpan];
-                    if (pageTitle && !isEditableInPage) elementsToTypeset.push(pageTitle);
-                    MathJax.typesetPromise(elementsToTypeset).catch(() => {});
+                    MathJax.typesetPromise([textSpan]).catch(() => {});
                 }
             },
             onCancel: () => {
