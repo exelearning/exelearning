@@ -75,6 +75,72 @@ describe('flipcards iDevice', () => {
     });
   });
 
+  describe('text file export and import', () => {
+    const stored = (text) => $exeDevice.encodeURIComponentSafe(text);
+    const texts = () =>
+      $exeDevice.cardsGame.map((card) => [
+        $exeDevice.decodeURIComponentSafe(card.eText),
+        $exeDevice.decodeURIComponentSafe(card.eTextBk),
+      ]);
+
+    beforeEach(() => {
+      $exeDevice.cardsGame = [];
+      vi.spyOn($exeDevice, 'postImportProcessing').mockImplementation(() => {});
+    });
+
+    it('writes the text of each card, not its stored form', () => {
+      const lines = $exeDevice.getLinesQuestions([
+        { eText: stored('New York'), eTextBk: stored('50% off') },
+      ]);
+
+      expect(lines).toEqual(['New York#50% off']);
+    });
+
+    it('reads an exported file back into the same cards', () => {
+      const cards = [
+        { eText: stored('New York'), eTextBk: stored('Nueva York') },
+        { eText: stored('50% off'), eTextBk: stored('café, 100%') },
+      ];
+
+      $exeDevice.insertCards($exeDevice.getLinesQuestions(cards));
+
+      expect(texts()).toEqual([
+        ['New York', 'Nueva York'],
+        ['50% off', 'café, 100%'],
+      ]);
+    });
+
+    it('reads a file exported by earlier versions, which held the stored form', () => {
+      $exeDevice.insertCards([
+        `${stored('New York')}#${stored('Nueva York')}`,
+        `${stored('50% off')}#${stored('café')}`,
+      ]);
+
+      expect(texts()).toEqual([
+        ['New York', 'Nueva York'],
+        ['50% off', 'café'],
+      ]);
+    });
+
+    it('keeps as written a side that is not only in the stored form', () => {
+      $exeDevice.insertCards(['Vitamin%B12#100%', 'Capital %3Cimg%3E#Paris']);
+
+      expect(texts()).toEqual([
+        ['Vitamin%B12', '100%'],
+        ['Capital %3Cimg%3E', 'Paris'],
+      ]);
+    });
+
+    it('still reads a decoded tag as text', () => {
+      $exeDevice.insertCards([
+        `${encodeURIComponent('<img src="x" onerror="window.ran = true">')}#Back`,
+        `${encodeURIComponent('Paris<img src="x" onerror="window.ran = true">')}#Capital`,
+      ]);
+
+      expect(texts()).toEqual([['Paris', 'Capital']]);
+    });
+  });
+
   describe('escapeHtml', () => {
     it('escapes ampersand', () => {
       expect($exeDevice.escapeHtml('foo & bar')).toBe('foo &amp; bar');

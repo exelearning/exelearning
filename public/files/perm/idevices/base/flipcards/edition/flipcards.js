@@ -1474,7 +1474,9 @@ var $exeDevice = {
         let linequestions = [];
         for (let i = 0; i < cards.length; i++) {
             let c = cards[i];
-            let card = `${c.eText}#${c.eTextBk}`;
+            // Cards are stored encoded; the file holds their text, which is
+            // what the import reads.
+            let card = `${$exeDevice.decodeURIComponentSafe(c.eText)}#${$exeDevice.decodeURIComponentSafe(c.eTextBk)}`;
             linequestions.push(card);
         }
         return linequestions;
@@ -1635,12 +1637,29 @@ var $exeDevice = {
             let p = $exeDevice.getCardDefault();
             if (lineFormat.test(line)) {
                 const linarray = line.trim().split('#');
-                p.eText = linarray[0];
-                p.eTextBk = linarray[1];
+                p.eText = $exeDevice.readExportedText(linarray[0]);
+                p.eTextBk = $exeDevice.readExportedText(linarray[1]);
                 cards.push(p);
             }
         });
         $exeDevice.addCards(cards);
+    },
+
+    /**
+     * Text files exported by earlier versions hold each side as the card
+     * stores it, %-encoded ("New%20York"). A side written only in that form is
+     * read back as its text; any other side is kept as written. addCards still
+     * reads the result as text, so a decoded tag goes no further than before.
+     */
+    readExportedText: function (text) {
+        if (!/^[\w.!~*'()%-]+$/.test(text) || !/%[0-9A-Fa-f]{2}/.test(text)) {
+            return text;
+        }
+        try {
+            return $exeDevice.decodeURIComponentSafe(text);
+        } catch (error) {
+            return text;
+        }
     },
 
     importMoodle(xmlString) {
