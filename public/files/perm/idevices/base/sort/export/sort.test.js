@@ -822,6 +822,12 @@ describe('sort iDevice export', () => {
             expect($eXeOrdena.sendScore).not.toHaveBeenCalled();
         });
 
+        it('does not throw when starting a type 1 game without phrase', () => {
+            setupGame({ type: 1, phrase: undefined, gameStarted: false });
+
+            expect(() => $eXeOrdena.startGame(0)).not.toThrow();
+        });
+
         // Phrase boards with no timer are opened by loadGame() as the page
         // loads. The board has to be laid out and playable, but the learner has
         // not acted, and publishing here would overwrite the mark the LMS holds
@@ -985,6 +991,30 @@ describe('sort iDevice export', () => {
             // One argument, not two: reportScorm stays false.
             expect($eXeOrdena.startGame).toHaveBeenCalledWith(0);
             expect($('#ordenaStartGame-0').css('display')).toBe('none');
+        });
+
+        it('initializes phrase and starts a type 1 board without throwing', () => {
+            setupLoad({
+                startAutomatically: true,
+                type: 1,
+                phrasesGame: [
+                    {
+                        definition: 'Test definition',
+                        cards: [],
+                    },
+                ],
+            });
+            $exeDevices.iDevice.gamification.helpers.shuffleAds = vi.fn(
+                (items) => items
+            );
+            $eXeOrdena.startGame.mockRestore();
+            $eXeOrdena.showPhrase.mockRestore();
+            vi.spyOn($eXeOrdena, 'showMessage').mockImplementation(() => {});
+            vi.spyOn($eXeOrdena, 'initCards').mockImplementation(() => {});
+
+            expect(() => $eXeOrdena.loadGame()).not.toThrow();
+            expect($eXeOrdena.options[0].gameStarted).toBe(true);
+            expect($eXeOrdena.options[0].phrase.definition).toBe('Test definition');
         });
 
         it('keeps a running board and files a new one under its own index', () => {

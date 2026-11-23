@@ -90,6 +90,10 @@ var $eXeOrdena = {
 
             $('#ordenaDivFeedBack-' + i).hide();
 
+            $('#ordenaMainContainer-' + i).show();
+
+            $eXeOrdena.showPhrase(0, i);
+
             if (mOption.type == 0) $('#ordenaPhrasesContainer-' + i).hide();
             if (
                 !mOption.itinerary.showCodeAccess &&
@@ -104,10 +108,6 @@ var $eXeOrdena = {
                 $eXeOrdena.startGame(i);
                 $('#ordenaStartGame-' + i).hide();
             }
-
-            $('#ordenaMainContainer-' + i).show();
-
-            $eXeOrdena.showPhrase(0, i);
         });
 
         $exeDevices.iDevice.gamification.math.updateLatex('.ordena-IDevice');
@@ -286,17 +286,23 @@ var $eXeOrdena = {
 
     showPhrase: function (num, instance) {
         const mOptions = $eXeOrdena.options[instance];
+        if (!mOptions) return;
 
         mOptions.active = num;
 
-        mOptions.phrase = mOptions.phrasesGame[num];
+        mOptions.phrase =
+            (Array.isArray(mOptions.phrasesGame) && mOptions.phrasesGame[num]) || {
+                cards: [],
+                definition: '',
+                phrase: '',
+            };
         if (mOptions.type === 0) {
             $eXeOrdena.showPhraseText(num, instance);
             return;
         }
 
         $eXeOrdena.randomPhrase(instance);
-        $exeDevices.iDevice.gamification.media.stopSound();
+        $exeDevices?.iDevice?.gamification?.media?.stopSound?.();
         $eXeOrdena.addCards(mOptions.phrase.cards, instance);
         $eXeOrdena.initCards(instance);
 
@@ -445,6 +451,7 @@ var $eXeOrdena = {
 
     randomPhrase: function (instance) {
         const mOptions = $eXeOrdena.options[instance];
+        if (!mOptions?.phrase || !Array.isArray(mOptions.phrase.cards)) return;
 
         if (mOptions.orderedColumns) {
             const order = $eXeOrdena.getFixedOrder(
@@ -827,7 +834,7 @@ var $eXeOrdena = {
         }
 
         $('#ordenaMultimedia-' + instance).append(cards);
-        if (mOptions.imgCard.length > 4) {
+        if (typeof mOptions.imgCard === 'string' && mOptions.imgCard.length > 4) {
             $('#ordenaMultimedia-' + instance)
                 .find('.ODNP-CardContainer')
                 .each(function () {
@@ -961,7 +968,8 @@ var $eXeOrdena = {
     },
     getNumberCards: function (instance) {
         const mOptions = $eXeOrdena.options[instance];
-        return mOptions.phrasesGame[mOptions.active].cards.length;
+        const active = mOptions?.active ?? 0;
+        return mOptions?.phrasesGame?.[active]?.cards?.length || 0;
     },
 
     setFontSizeMath($text, instance) {
@@ -1901,7 +1909,11 @@ var $eXeOrdena = {
         if (mOptions.gameStarted) return;
         if (mOptions.type == 0) $('#ordenaPhrasesContainer-' + instance).show();
         if (mOptions.type == 1)
-            $eXeOrdena.showMessage(3, mOptions.phrase.definition, instance);
+            $eXeOrdena.showMessage(
+                3,
+                mOptions.phrase?.definition || '',
+                instance
+            );
 
         mOptions.hits = 0;
         mOptions.errors = 0;
@@ -1972,7 +1984,7 @@ var $eXeOrdena = {
                 });
 
             if (
-                typeof mOptions.phrase.audioDefinition != 'undefined' &&
+                typeof mOptions.phrase?.audioDefinition != 'undefined' &&
                 mOptions.phrase.audioDefinition.length > 4
             ) {
                 $exeDevices.iDevice.gamification.media.playSound(
