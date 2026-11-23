@@ -1,0 +1,384 @@
+/* Start screen: create, open or pick a project. A page online, a modal dialog in static and desktop. */
+.exe-start {
+    --exe-start-accent: var(--brand-primary-700);
+    --exe-start-line: var(--gray-500);
+    --exe-start-error: #b42318;
+
+    position: relative;
+    box-sizing: border-box;
+    width: min(960px, calc(100% - 32px));
+    padding: 0;
+    border: 0;
+    border-radius: var(--radius-lg);
+    background: var(--white);
+    color: var(--gray-800);
+    font-family: var(--body-text-font);
+    box-shadow: 0 24px 64px rgba(17, 24, 39, 0.28);
+}
+
+/* `display` is scoped to the open state so a closed dialog stays hidden. */
+.exe-start--page,
+.exe-start--modal[open] {
+    display: flex;
+    flex-wrap: wrap;
+}
+
+.exe-start--page {
+    margin: 32px auto;
+}
+
+.exe-start--modal {
+    max-height: calc(100% - 32px);
+    overflow: auto;
+}
+
+/* Scroll gestures over the dialog or its backdrop must not move the page behind. */
+.exe-start--modal:modal {
+    overscroll-behavior: contain;
+}
+
+.exe-start--modal::backdrop {
+    overflow: hidden;
+    overscroll-behavior: contain;
+    background: rgba(17, 24, 39, 0.5);
+}
+
+/* The editor's own layout rules (no page scroll, a main beside the sidebar) do not apply to this page. */
+body.exe-start-page {
+    margin: 0;
+    min-height: 100vh;
+    overflow: auto;
+    background: var(--gray-100);
+
+    main {
+        width: auto;
+    }
+}
+
+.exe-start__side {
+    flex: 1 1 280px;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding: 32px;
+    border-radius: var(--radius-lg);
+    background: var(--gray-50);
+}
+
+.exe-start__heading {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.exe-start__brand {
+    margin: 0;
+    color: var(--exe-start-accent);
+    font-size: 1.625rem;
+    font-weight: 700;
+    line-height: 1.1;
+}
+
+.exe-start__title {
+    margin: 0;
+    color: var(--gray-700);
+    font-size: 1rem;
+    font-weight: 500;
+    line-height: 1.4;
+}
+
+.exe-start__button {
+    min-height: 48px;
+    padding: 0 16px;
+    border: 1px solid var(--exe-start-line);
+    border-radius: var(--radius);
+    background: var(--white);
+    color: var(--gray-800);
+    font: inherit;
+    font-weight: 600;
+    text-align: left;
+    cursor: pointer;
+}
+
+.exe-start__button--primary {
+    border-color: var(--exe-start-accent);
+    background: var(--exe-start-accent);
+    color: var(--white);
+}
+
+.exe-start__button:hover:not(:disabled) {
+    border-color: var(--brand-primary-800);
+}
+
+.exe-start__button--primary:hover:not(:disabled) {
+    background: var(--brand-primary-800);
+}
+
+.exe-start button:disabled {
+    opacity: 0.6;
+    cursor: progress;
+}
+
+.exe-start :focus-visible {
+    outline: 3px solid var(--gray-900);
+    outline-offset: 2px;
+}
+
+.exe-start__drop {
+    flex-grow: 1;
+    min-height: 120px;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    padding: 20px;
+    border: 2px dashed var(--exe-start-line);
+    border-radius: var(--radius);
+    color: var(--gray-600);
+    font-size: 0.875rem;
+    text-align: center;
+}
+
+.exe-start__drop-title {
+    color: var(--gray-800);
+    font-weight: 600;
+}
+
+.exe-start__error {
+    margin: 0;
+    color: var(--exe-start-error);
+    font-size: 0.875rem;
+    font-weight: 600;
+}
+
+.exe-start__error:empty {
+    display: none;
+}
+
+.exe-start__skip {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--gray-700);
+    font-size: 0.875rem;
+    cursor: pointer;
+}
+
+.exe-start__skip input {
+    width: 18px;
+    height: 18px;
+    margin: 0;
+    accent-color: var(--exe-start-accent);
+}
+
+.exe-start__main {
+    flex: 999 1 420px;
+    min-width: 0;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding: 32px;
+}
+
+.exe-start__toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+}
+
+.exe-start__tabs {
+    flex-grow: 1;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+.exe-start__tab {
+    min-height: 44px;
+    padding: 0 14px;
+    border: 0;
+    border-bottom: 3px solid transparent;
+    background: transparent;
+    color: var(--gray-600);
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.exe-start__tab[aria-pressed='true'] {
+    border-bottom-color: var(--exe-start-accent);
+    color: var(--exe-start-accent);
+}
+
+.exe-start__list-title {
+    flex-grow: 1;
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+.exe-start__search {
+    flex: 1 1 200px;
+    min-height: 44px;
+    box-sizing: border-box;
+    padding: 0 12px;
+    border: 1px solid var(--exe-start-line);
+    border-radius: var(--radius);
+    font: inherit;
+}
+
+.exe-start__list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    max-height: 336px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.exe-start__item {
+    width: 100%;
+    min-height: 56px;
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 8px 12px;
+    border: 0;
+    border-radius: var(--radius);
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+.exe-start__item:hover:not(:disabled) {
+    background: var(--brand-primary-50);
+}
+
+.exe-start__item-text {
+    flex-grow: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.exe-start__item-title,
+.exe-start__item-meta {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.exe-start__item-title {
+    font-weight: 500;
+}
+
+.exe-start__item-meta,
+.exe-start__item-when {
+    color: var(--gray-600);
+    font-size: 0.8125rem;
+}
+
+.exe-start__item-when {
+    flex-shrink: 0;
+}
+
+.exe-start__status {
+    margin: 0;
+    color: var(--gray-600);
+    font-size: 0.875rem;
+}
+
+.exe-start__status:empty {
+    display: none;
+}
+
+.exe-start__close {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 44px;
+    height: 44px;
+    border: 0;
+    border-radius: var(--radius);
+    background: transparent;
+    color: var(--gray-700);
+    font-size: 1.5rem;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.exe-start__overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 1;
+    display: none;
+    box-sizing: border-box;
+    padding: 16px;
+    background: rgba(16, 114, 117, 0.94);
+    pointer-events: none;
+}
+
+.exe-start--dragging .exe-start__overlay {
+    display: flex;
+}
+
+.exe-start__overlay-message {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 24px;
+    border: 3px dashed var(--white);
+    border-radius: 16px;
+    color: var(--white);
+    text-align: center;
+}
+
+.exe-start__overlay-message strong {
+    font-size: 2rem;
+    line-height: 1.1;
+}
+
+/* Online start page chrome */
+.exe-start-page__bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 16px;
+    padding: 12px 24px;
+    border-bottom: 1px solid var(--gray-border);
+    background: var(--white);
+    font-family: var(--body-text-font);
+}
+
+.exe-start-page__logo {
+    height: 32px;
+    margin-right: auto;
+}
+
+.exe-start-page__user {
+    color: var(--gray-700);
+    font-size: 0.875rem;
+}
+
+.exe-start-page__logout {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    color: var(--brand-primary-700);
+    font-weight: 600;
+}

@@ -98,14 +98,15 @@ export const test = base.extend<AuthFixtures, AuthWorkerFixtures>({
      * Override context so all tests in dynamic mode start already authenticated.
      * Keeps normal per-test isolation while skipping repeated login calls.
      */
-    context: async ({ browser, contextOptions, guestStorageStatePath }, use, testInfo) => {
+    context: async ({ browser, contextOptions, storageState, guestStorageStatePath }, use, testInfo) => {
         const baseURL = String(testInfo.project.use.baseURL || process.env.E2E_BASE_URL || 'http://localhost:3001');
         const context = await browser.newContext({
             ...contextOptions,
             baseURL,
-            storageState: isStaticProject(testInfo)
-                ? contextOptions.storageState
-                : (guestStorageStatePath ?? undefined),
+            // Static: the project's own storage state (it carries the start-screen
+            // "skip" preference, see playwright.config.ts). `contextOptions` does not
+            // include it: `storageState` is a separate option.
+            storageState: isStaticProject(testInfo) ? storageState : (guestStorageStatePath ?? undefined),
         });
         await use(context);
         await context.close();
@@ -132,7 +133,7 @@ export const test = base.extend<AuthFixtures, AuthWorkerFixtures>({
         }
 
         // Server mode: guest auth already loaded via worker storage state
-        await page.goto('/workarea');
+        await page.goto('/workarea?new=1');
 
         // Wait for workarea to load
         await page.waitForURL(/\/workarea/, { timeout: 30000 });

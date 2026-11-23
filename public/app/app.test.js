@@ -1071,6 +1071,16 @@ describe('App utility methods', () => {
   });
 
   describe('openFileFromPath', () => {
+    it('closes the start screen when the OS opens a file', async () => {
+      appInstance.modals = {};
+      appInstance.startScreen = { close: vi.fn() };
+
+      await appInstance.openFileFromPath('/test/from-os.elpx');
+
+      expect(appInstance.startScreen.close).toHaveBeenCalled();
+      window.sessionStorage.removeItem('exe-start-screen-seen');
+    });
+
     it('queues file when modal upload handler is not ready', async () => {
       appInstance.modals = {};
       window.electronAPI = {
@@ -1214,6 +1224,31 @@ describe('App utility methods', () => {
   });
 
   describe('openStaticFile', () => {
+    it('closes the start screen when a file arrives', async () => {
+      appInstance.runtimeConfig = { isStaticMode: () => true };
+      appInstance.project = { _yjsBridge: null };
+      appInstance.startScreen = { close: vi.fn() };
+
+      await appInstance.openStaticFile(new File(['test'], 'test.elpx'));
+
+      expect(appInstance.startScreen.close).toHaveBeenCalled();
+      expect(window.sessionStorage.getItem('exe-start-screen-seen')).toBe('1');
+      window.sessionStorage.removeItem('exe-start-screen-seen');
+    });
+
+    it('closes the start screen when queued launch files are flushed', async () => {
+      appInstance.runtimeConfig = { isStaticMode: () => false };
+      appInstance.startScreen = { close: vi.fn() };
+      appInstance.modals = { openuserodefiles: { largeFilesUpload: vi.fn() } };
+      appInstance.pendingStaticOpenFiles = [new File(['test'], 'launch.elpx')];
+
+      await appInstance.flushPendingStaticOpenFilesWhenReady();
+
+      expect(appInstance.startScreen.close).toHaveBeenCalled();
+      expect(appInstance.modals.openuserodefiles.largeFilesUpload).toHaveBeenCalledTimes(1);
+      window.sessionStorage.removeItem('exe-start-screen-seen');
+    });
+
     it('queues file when static mode bridge is not ready', async () => {
       appInstance.runtimeConfig = { isStaticMode: () => true };
       appInstance.project = { _yjsBridge: null };

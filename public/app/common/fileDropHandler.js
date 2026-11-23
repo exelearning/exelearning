@@ -40,10 +40,13 @@ export default class FileDropHandler {
      * @param {Object} options
      * @param {Object} options.app - The App instance (window.eXeLearning.app)
      * @param {EventTarget} [options.target] - Drop target (defaults to window)
+     * @param {(dataTransfer: DataTransfer) => void} [options.rememberDropped] - Keeps a dropped project
+     *     file for the list of recent files (static app in the browser)
      */
     constructor(options = {}) {
         this.app = options.app;
         this.target = options.target || window;
+        this.rememberDropped = options.rememberDropped;
         this._bound = false;
         this._dragDepth = 0;
         this._overlay = null;
@@ -91,6 +94,7 @@ export default class FileDropHandler {
      * a project. This is the case when:
      *   - any modal is open (e.g. the File Manager has its own file dropzone for
      *     uploading assets), or
+     *   - the start screen is open — it takes the drop itself, or
      *   - the Styles or Preview side panel is open — those have their own UI and
      *     the full-window "drop to open" overlay must not cover them.
      * @param {EventTarget} target
@@ -101,6 +105,8 @@ export default class FileDropHandler {
             return true;
         }
         if (document.querySelector('.modal.show')) return true;
+        // The start screen has its own drop zone and inline error message.
+        if (document.querySelector('dialog.exe-start[open]')) return true;
         return this._isPanelOpen();
     }
 
@@ -170,7 +176,20 @@ export default class FileDropHandler {
         this._dragDepth = 0;
         this._hideOverlay();
         if (this._isHandledElsewhere(event.target)) return;
+        this._rememberDropped(event.dataTransfer);
         this.handleFiles(event.dataTransfer?.files);
+    }
+
+    /**
+     * Static app in the browser: remember the dropped project file so the start
+     * screen can list it. Its handle is only available while the drop event is
+     * being dispatched, hence here and not in openFile().
+     * @param {DataTransfer} dataTransfer
+     */
+    _rememberDropped(dataTransfer) {
+        if (!this.app?.runtimeConfig?.isStaticMode?.()) return;
+        if (!isOpenableProjectFile(dataTransfer?.files?.[0]?.name)) return;
+        this.rememberDropped?.(dataTransfer);
     }
 
     /**
