@@ -58,6 +58,28 @@ jobs:
       - name: Publish unified Spanish plugin manual
         run: python -m zipfile -e doc/plugins/manual.es.elpx site-docs/plugins/manual-es
 
+      # ---- Build the user manuals (doc/manual/<lang>/) ----
+      # Exported with the exporter of this checkout (the release tag on a release),
+      # so the web manual and the files attached to the release by manual.yml come
+      # from the same source revision. Published at /manual/<lang>/, with the
+      # editable project at the stable URL /manual/exelearning-manual-<lang>.elpx.
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Build user manuals
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          set -euo pipefail
+          bun install
+          bun run build:all
+          if [ -n "${RELEASE_TAG:-}" ]; then export APP_VERSION="$RELEASE_TAG"; fi
+          bun run scripts/build-manual.ts
+          cp -R dist/manual/site/. site-docs/manual/
+          cp dist/manual/*.elpx site-docs/manual/
+
       # ---- Tools for repo metadata ----
       - name: Install repo tools
         run: |

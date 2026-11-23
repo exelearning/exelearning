@@ -182,6 +182,22 @@ describe('ServerMermaidPreRenderer', () => {
             }
         });
 
+        it('draws a Gantt chart with a width, although jsdom cannot measure its container', async () => {
+            const result = await renderer.preRender(
+                '<pre class="mermaid">gantt\n    title A Gantt Diagram\n    dateFormat YYYY-MM-DD\n' +
+                    '    section Section\n    A task :a1, 2014-01-01, 30d\n    Another task :after a1, 20d</pre>',
+            );
+
+            expect(result.mermaidRendered).toBe(true);
+            // Mermaid sizes a Gantt chart from its container, which has no width here: the chart
+            // came out 0px wide, with bars of negative width, and was invisible in the export.
+            const [, , width, height] = (result.html.match(/viewBox="([^"]+)"/)?.[1] ?? '').split(' ').map(Number);
+            expect(width).toBe(1200);
+            expect(height).toBeGreaterThan(50);
+            expect(result.html).not.toMatch(/width="-/);
+            expect(result.html).toContain('Another task');
+        });
+
         it('should handle multiple mermaid diagrams', async () => {
             const html = `
                 <pre class="mermaid">graph TD; A-->B</pre>

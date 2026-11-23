@@ -10,6 +10,9 @@ exclude_docs: |
   architecture/adr/
   architecture/changes/
   architecture/migration-map.md
+  # User manual sources (eXeLearning projects, one folder per language). The
+  # release workflow exports them and publishes the result under /manual/<lang>/.
+  manual/*/
 repo_url: https://github.com/exelearning/exelearning
 edit_uri: edit/main/doc/
 
@@ -33,6 +36,9 @@ nav:
   - Home: index.md
   - Overview: overview.md
   - Install: install.md
+  - User Manual:
+      - Overview: manual/index.md
+      - Español: manual/index.es.md
   - Plugins:
       - Overview: plugins/index.md
       - Moodle: plugins/moodle.md
@@ -70,6 +76,7 @@ nav:
       - Customization: development/customization.md
       - Styles: development/styles.md
       - Installers: development/installers.md
+      - User Manual: development/user-manual.md
       - REST API: development/rest-api.md
       - Authentication: development/authentication.md
       - SCORM 1.2 Runtime Contract: development/scorm12-runtime-contract.md

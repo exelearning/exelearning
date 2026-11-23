@@ -222,6 +222,12 @@ build-static: check-bun deps css bundle
 	@$(if $(VERSION),VERSION=$(VERSION) ,)$(if $(OUTPUT_DIR),OUTPUT_DIR=$(OUTPUT_DIR) ,)bun run build:static
 	@echo "Static distribution built at $${OUTPUT_DIR:-dist/static/}"
 
+# Build and validate the user manuals in doc/manual/<lang>/ (see doc/development/user-manual.md)
+# Usage: make build-manual [MANUAL_LANG=es] [VERSION=v4.0.6]
+.PHONY: build-manual
+build-manual: check-bun bundle ## Build and validate the user manuals (.elpx + HTML) into dist/manual/
+	@bun run build:manual $(if $(MANUAL_LANG),--lang=$(MANUAL_LANG) ,)$(if $(VERSION),--version=$(VERSION),)
+
 # Build static distribution and serve it
 # Usage: make up-static [PORT=8080]
 .PHONY: up-static
