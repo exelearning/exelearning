@@ -82,8 +82,8 @@ test.describe('Damaged iDevice JSON', () => {
      * way older builds left it in the document: written straight through the
      * structure binding, bypassing the write-boundary validation.
      */
-    test('malformed properties are preserved and cannot be edited', async ({ authenticatedPage, createProject }) => {
-        const page = authenticatedPage;
+    test('malformed properties are preserved and cannot be edited', async ({ guestSession, createProject }) => {
+        const page = guestSession;
         const projectUuid = await createProject(page, 'Malformed iDevice JSON');
         await gotoWorkarea(page, projectUuid);
         await waitForAppReady(page);

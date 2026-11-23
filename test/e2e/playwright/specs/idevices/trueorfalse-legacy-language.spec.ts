@@ -59,8 +59,8 @@ async function getTrueOrFalseProperties(page: Page) {
 }
 
 test.describe('True/False legacy import language (issue #2252)', () => {
-    test('should store the interface texts in the package language', async ({ authenticatedPage, createProject }) => {
-        const page = authenticatedPage;
+    test('should store the interface texts in the package language', async ({ guestSession, createProject }) => {
+        const page = guestSession;
 
         const projectUuid = await createProject(page, 'True/False legacy language');
         await gotoWorkarea(page, projectUuid);
@@ -76,8 +76,8 @@ test.describe('True/False legacy import language (issue #2252)', () => {
         expect(result.properties.msgs.msgSuggestion).toBe('Sugerencia');
     });
 
-    test('should render the answer labels in the package language', async ({ authenticatedPage, createProject }) => {
-        const page = authenticatedPage;
+    test('should render the answer labels in the package language', async ({ guestSession, createProject }) => {
+        const page = guestSession;
 
         const projectUuid = await createProject(page, 'True/False legacy render');
         await gotoWorkarea(page, projectUuid);

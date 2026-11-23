@@ -120,10 +120,10 @@ async function injectLeftoverFullscreenState(page: Page): Promise<boolean> {
 
 test.describe('Focused iDevice edit mode (experiment)', () => {
     test('entering edit mode applies focused state and disables global controls', async ({
-        authenticatedPage,
+        guestSession,
         createProject,
     }) => {
-        const page = authenticatedPage;
+        const page = guestSession;
         const projectUuid = await createProject(page, 'Focused Edit - enter');
         await gotoWorkarea(page, projectUuid);
         await waitForAppReady(page);
@@ -152,8 +152,8 @@ test.describe('Focused iDevice edit mode (experiment)', () => {
         await expect(live).not.toBeEmpty();
     });
 
-    test('the focused editor fills the content workarea', async ({ authenticatedPage, createProject }) => {
-        const page = authenticatedPage;
+    test('the focused editor fills the content workarea', async ({ guestSession, createProject }) => {
+        const page = guestSession;
         const projectUuid = await createProject(page, 'Focused Edit - layout');
         await gotoWorkarea(page, projectUuid);
         await waitForAppReady(page);
@@ -174,11 +174,8 @@ test.describe('Focused iDevice edit mode (experiment)', () => {
         expect(ratio).toBeGreaterThan(0.8);
     });
 
-    test('saving the iDevice exits focused mode and re-enables controls', async ({
-        authenticatedPage,
-        createProject,
-    }) => {
-        const page = authenticatedPage;
+    test('saving the iDevice exits focused mode and re-enables controls', async ({ guestSession, createProject }) => {
+        const page = guestSession;
         const projectUuid = await createProject(page, 'Focused Edit - save');
         await gotoWorkarea(page, projectUuid);
         await waitForAppReady(page);
@@ -196,8 +193,8 @@ test.describe('Focused iDevice edit mode (experiment)', () => {
         await expect(page.locator(`.idevice_node[id="${ideviceId}"]`)).not.toHaveClass(new RegExp(NODE_CLASS));
     });
 
-    test('discarding changes exits focused mode', async ({ authenticatedPage, createProject }) => {
-        const page = authenticatedPage;
+    test('discarding changes exits focused mode', async ({ guestSession, createProject }) => {
+        const page = guestSession;
         const projectUuid = await createProject(page, 'Focused Edit - discard');
         await gotoWorkarea(page, projectUuid);
         await waitForAppReady(page);
@@ -221,8 +218,8 @@ test.describe('Focused iDevice edit mode (experiment)', () => {
         await waitForFocusInactive(page);
     });
 
-    test('deleting the iDevice exits focused mode', async ({ authenticatedPage, createProject }) => {
-        const page = authenticatedPage;
+    test('deleting the iDevice exits focused mode', async ({ guestSession, createProject }) => {
+        const page = guestSession;
         const projectUuid = await createProject(page, 'Focused Edit - delete');
         await gotoWorkarea(page, projectUuid);
         await waitForAppReady(page);
@@ -241,7 +238,7 @@ test.describe('Focused iDevice edit mode (experiment)', () => {
     });
 
     test('recovers from leftover TinyMCE fullscreen state so the next edit stays usable', async ({
-        authenticatedPage,
+        guestSession,
         createProject,
     }) => {
         // Regression for #1871 (pabloamayab). Saving an iDevice from TinyMCE
@@ -251,7 +248,7 @@ test.describe('Focused iDevice edit mode (experiment)', () => {
         // layout for the NEXT edit — the editor looked blank and "an iDevice is
         // already being edited" blocked every other action. Entering edit mode
         // must strip the stale class and lay the overlay out on-screen.
-        const page = authenticatedPage;
+        const page = guestSession;
         const projectUuid = await createProject(page, 'Focused Edit - leftover state recovery');
         await gotoWorkarea(page, projectUuid);
         await waitForAppReady(page);
@@ -287,8 +284,8 @@ test.describe('Focused iDevice edit mode (experiment)', () => {
         expect(state.boxHeight).toBeGreaterThan(0);
     });
 
-    test('locks the outer workarea scroll while editing', async ({ authenticatedPage, createProject }) => {
-        const page = authenticatedPage;
+    test('locks the outer workarea scroll while editing', async ({ guestSession, createProject }) => {
+        const page = guestSession;
         const projectUuid = await createProject(page, 'Focused Edit - scroll lock');
         await gotoWorkarea(page, projectUuid);
         await waitForAppReady(page);
@@ -307,10 +304,10 @@ test.describe('Focused iDevice edit mode (experiment)', () => {
     });
 
     test('hides non-edited sibling iDevices in the same block while focused', async ({
-        authenticatedPage,
+        guestSession,
         createProject,
     }) => {
-        const page = authenticatedPage;
+        const page = guestSession;
         const projectUuid = await createProject(page, 'Focused Edit - block siblings');
         await gotoWorkarea(page, projectUuid);
         await waitForAppReady(page);

@@ -91,8 +91,8 @@ test.describe('Theme Persistence Across Projects', () => {
      * Test that uploaded themes persist across different projects
      * This is the key test case: upload theme in project A, verify it appears in project B
      */
-    test('uploaded theme persists in new project', async ({ authenticatedPage, createProject }) => {
-        const page = authenticatedPage;
+    test('uploaded theme persists in new project', async ({ guestSession, createProject }) => {
+        const page = guestSession;
 
         // 1. Create first project
         console.log('[Test] Creating first project...');
@@ -197,8 +197,8 @@ test.describe('Theme Persistence Across Projects', () => {
      * Test that IndexedDB correctly stores themes
      * This verifies the storage layer is working
      */
-    test('IndexedDB stores and retrieves themes', async ({ authenticatedPage, createProject }) => {
-        const page = authenticatedPage;
+    test('IndexedDB stores and retrieves themes', async ({ guestSession, createProject }) => {
+        const page = guestSession;
 
         // Create and navigate to project
         const projectUuid = await createProject(page, 'IndexedDB Theme Test');
@@ -233,8 +233,8 @@ test.describe('Theme Persistence Across Projects', () => {
     /**
      * Test that loadUserThemesFromIndexedDB is called during project initialization
      */
-    test('themes are loaded from IndexedDB on project init', async ({ authenticatedPage, createProject }) => {
-        const page = authenticatedPage;
+    test('themes are loaded from IndexedDB on project init', async ({ guestSession, createProject }) => {
+        const page = guestSession;
 
         // First, create a project and upload a theme
         const projectA = await createProject(page, 'Theme Init Test A');
@@ -269,11 +269,8 @@ test.describe('Theme Persistence Across Projects', () => {
      * Test that imported theme icons display correctly in icon selection modal
      * This verifies the fix for GitHub issue #1010 - missing style icons
      */
-    test('imported theme icons display correctly in icon selection modal', async ({
-        authenticatedPage,
-        createProject,
-    }) => {
-        const page = authenticatedPage;
+    test('imported theme icons display correctly in icon selection modal', async ({ guestSession, createProject }) => {
+        const page = guestSession;
 
         // Create project
         const projectUuid = await createProject(page, 'Theme Icons Test');

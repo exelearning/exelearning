@@ -25,12 +25,12 @@ test.describe('Empty site footer', () => {
     // flux repaints #siteFooterContent, so it covers the other theme family.
     for (const themeId of ['universal', 'flux']) {
         test(`hides the footer in ${themeId} when there is no license and no footer content`, async ({
-            authenticatedPage,
+            guestSession,
             createProject,
         }, testInfo) => {
             skipInStaticMode(test, testInfo, 'Requires server to create projects and render preview');
 
-            const page = authenticatedPage;
+            const page = guestSession;
 
             const projectUuid = await createProject(page, `Empty Footer ${themeId}`);
             expect(projectUuid).toBeDefined();
@@ -65,12 +65,12 @@ test.describe('Empty site footer', () => {
     }
 
     test('keeps the footer visible when the project has footer content', async ({
-        authenticatedPage,
+        guestSession,
         createProject,
     }, testInfo) => {
         skipInStaticMode(test, testInfo, 'Requires server to create projects and render preview');
 
-        const page = authenticatedPage;
+        const page = guestSession;
 
         const projectUuid = await createProject(page, 'Footer With Content');
         expect(projectUuid).toBeDefined();

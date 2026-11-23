@@ -101,8 +101,8 @@ async function saveIdeviceInPage(page: Page): Promise<void> {
 }
 
 test.describe('Three Sixty Viewer iDevice', () => {
-    test('adds three-sixty-viewer and shows all configuration fields', async ({ authenticatedPage, createProject }) => {
-        const page = authenticatedPage;
+    test('adds three-sixty-viewer and shows all configuration fields', async ({ guestSession, createProject }) => {
+        const page = guestSession;
         const projectUuid = await createProject(page, 'Three Sixty Add Test');
         await gotoWorkarea(page, projectUuid);
 
@@ -123,8 +123,8 @@ test.describe('Three Sixty Viewer iDevice', () => {
         await expect(page.locator('#threeSixtyFov')).toHaveValue('75');
     });
 
-    test('persists configuration across save + reload', async ({ authenticatedPage, createProject }) => {
-        const page = authenticatedPage;
+    test('persists configuration across save + reload', async ({ guestSession, createProject }) => {
+        const page = guestSession;
         const workarea = new WorkareaPage(page);
         const projectUuid = await createProject(page, 'Three Sixty Persist Test');
         await gotoWorkarea(page, projectUuid);
@@ -216,8 +216,8 @@ test.describe('Three Sixty Viewer iDevice', () => {
         await expect(viewer.locator('.three-sixty-viewer-fallback')).toHaveCount(0);
     });
 
-    test('exposes scene list and hotspot list controls', async ({ authenticatedPage, createProject }) => {
-        const page = authenticatedPage;
+    test('exposes scene list and hotspot list controls', async ({ guestSession, createProject }) => {
+        const page = guestSession;
         const projectUuid = await createProject(page, 'Three Sixty Tour Test');
         await gotoWorkarea(page, projectUuid);
 
@@ -246,10 +246,10 @@ test.describe('Three Sixty Viewer iDevice', () => {
 
     test.describe('Flat (non-360) scenes', () => {
         test('toggling off the panorama checkbox switches a scene to flat mode', async ({
-            authenticatedPage,
+            guestSession,
             createProject,
         }) => {
-            const page = authenticatedPage;
+            const page = guestSession;
             const projectUuid = await createProject(page, 'Three Sixty Flat Toggle');
             await gotoWorkarea(page, projectUuid);
 
@@ -278,8 +278,8 @@ test.describe('Three Sixty Viewer iDevice', () => {
             await expect(page.locator('#threeSixtyHotspotList .hotspot-yaw')).toHaveCount(0);
         });
 
-        test('flat projection persists through save + reload', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('flat projection persists through save + reload', async ({ guestSession, createProject }) => {
+            const page = guestSession;
             const workarea = new WorkareaPage(page);
             const projectUuid = await createProject(page, 'Three Sixty Flat Persist');
             await gotoWorkarea(page, projectUuid);
@@ -332,8 +332,8 @@ test.describe('Three Sixty Viewer iDevice', () => {
     });
 
     test.describe('Link hotspot', () => {
-        test('link action type shows URL and new-tab checkbox', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('link action type shows URL and new-tab checkbox', async ({ guestSession, createProject }) => {
+            const page = guestSession;
             const projectUuid = await createProject(page, 'Three Sixty Link Hotspot Fields');
             await gotoWorkarea(page, projectUuid);
 
@@ -363,11 +363,8 @@ test.describe('Three Sixty Viewer iDevice', () => {
             await expect(page.locator('#threeSixtyHotspotList .hotspot-payload-newTab').first()).toBeChecked();
         });
 
-        test('link hotspot URL and newTab persist through save + reload', async ({
-            authenticatedPage,
-            createProject,
-        }) => {
-            const page = authenticatedPage;
+        test('link hotspot URL and newTab persist through save + reload', async ({ guestSession, createProject }) => {
+            const page = guestSession;
             const workarea = new WorkareaPage(page);
             const projectUuid = await createProject(page, 'Three Sixty Link Hotspot Persist');
             await gotoWorkarea(page, projectUuid);

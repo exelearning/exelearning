@@ -11,8 +11,8 @@ import { changeTheme, waitForAppReady, gotoWorkarea } from '../helpers/workarea-
  * - editableInPage + titlePage: Shows a different title in the page content
  */
 test.describe('Page Properties', () => {
-    test('visibility property should hide page from navigation', async ({ authenticatedPage, createProject }) => {
-        const page = authenticatedPage;
+    test('visibility property should hide page from navigation', async ({ guestSession, createProject }) => {
+        const page = guestSession;
 
         // Create a new project
         const projectUuid = await createProject(page, 'Page Visibility Test');
@@ -76,10 +76,10 @@ test.describe('Page Properties', () => {
     });
 
     test('first page should always be visible regardless of visibility setting', async ({
-        authenticatedPage,
+        guestSession,
         createProject,
     }) => {
-        const page = authenticatedPage;
+        const page = guestSession;
 
         // Create a new project
         const projectUuid = await createProject(page, 'First Page Always Visible Test');
@@ -122,11 +122,8 @@ test.describe('Page Properties', () => {
         await expect(firstLink).toBeVisible();
     });
 
-    test('highlight property should add highlighted-link class to nav', async ({
-        authenticatedPage,
-        createProject,
-    }) => {
-        const page = authenticatedPage;
+    test('highlight property should add highlighted-link class to nav', async ({ guestSession, createProject }) => {
+        const page = guestSession;
 
         // Create a new project
         const projectUuid = await createProject(page, 'Page Highlight Test');
@@ -190,8 +187,8 @@ test.describe('Page Properties', () => {
         await expect(normalLink).not.toHaveClass(/highlighted-link/);
     });
 
-    test('hidePageTitle property should hide page title in preview', async ({ authenticatedPage, createProject }) => {
-        const page = authenticatedPage;
+    test('hidePageTitle property should hide page title in preview', async ({ guestSession, createProject }) => {
+        const page = guestSession;
 
         // Create a new project
         const projectUuid = await createProject(page, 'Hide Title Test');
@@ -276,8 +273,8 @@ test.describe('Page Properties', () => {
         await expect(pageTitle).toContainText('Visible Title Page');
     });
 
-    test('hidePageTitle should work with flux, neo, and nova themes', async ({ authenticatedPage, createProject }) => {
-        const page = authenticatedPage;
+    test('hidePageTitle should work with flux, neo, and nova themes', async ({ guestSession, createProject }) => {
+        const page = guestSession;
 
         // Create a new project
         const projectUuid = await createProject(page, 'Hide Title Theme Test');
@@ -354,10 +351,10 @@ test.describe('Page Properties', () => {
     });
 
     test('titlePage property should show custom title when editableInPage is true', async ({
-        authenticatedPage,
+        guestSession,
         createProject,
     }) => {
-        const page = authenticatedPage;
+        const page = guestSession;
 
         // Create a new project
         const projectUuid = await createProject(page, 'Custom Title Test');
@@ -443,11 +440,8 @@ test.describe('Page Properties', () => {
         await expect(pageTitle).toContainText('Normal Page');
     });
 
-    test('child pages should be hidden when parent visibility is false', async ({
-        authenticatedPage,
-        createProject,
-    }) => {
-        const page = authenticatedPage;
+    test('child pages should be hidden when parent visibility is false', async ({ guestSession, createProject }) => {
+        const page = guestSession;
 
         // Create a new project
         const projectUuid = await createProject(page, 'Parent Visibility Test');
@@ -521,10 +515,10 @@ test.describe('Page Properties', () => {
     });
 
     test('visibility and highlight can be combined - page hidden but second page highlighted', async ({
-        authenticatedPage,
+        guestSession,
         createProject,
     }) => {
-        const page = authenticatedPage;
+        const page = guestSession;
 
         // Create a new project
         const projectUuid = await createProject(page, 'Combined Properties Test');
@@ -597,11 +591,8 @@ test.describe('Page Properties', () => {
         await expect(highlightedLink).toBeVisible();
     });
 
-    test('addMathJax metadata property should be stored and retrieved', async ({
-        authenticatedPage,
-        createProject,
-    }) => {
-        const page = authenticatedPage;
+    test('addMathJax metadata property should be stored and retrieved', async ({ guestSession, createProject }) => {
+        const page = guestSession;
 
         // Create a new project
         const projectUuid = await createProject(page, 'MathJax Property Persistence Test');
@@ -649,11 +640,8 @@ test.describe('Page Properties', () => {
         expect(valueAfterUnset).toBe('false');
     });
 
-    test('addMathJax property should affect preview MathJax inclusion', async ({
-        authenticatedPage,
-        createProject,
-    }) => {
-        const page = authenticatedPage;
+    test('addMathJax property should affect preview MathJax inclusion', async ({ guestSession, createProject }) => {
+        const page = guestSession;
 
         // Create a new project
         const projectUuid = await createProject(page, 'MathJax Preview Effect Test');

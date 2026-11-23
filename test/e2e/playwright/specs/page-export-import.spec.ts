@@ -540,7 +540,7 @@ test.describe('Block Icon Preservation during Page Export/Import', () => {
     });
 
     test('should preserve block icon during page export and verify iconName in content.xml', async ({
-        authenticatedPage,
+        guestSession,
         createProject,
     }) => {
         /**
@@ -549,7 +549,7 @@ test.describe('Block Icon Preservation during Page Export/Import', () => {
          * 2. Export the page as .elpx
          * 3. Verify the content.xml contains the correct iconName
          */
-        const page = authenticatedPage;
+        const page = guestSession;
 
         // 1. Create a new project
         const projectUuid = await createProject(page, 'Page Icon Export Test');
@@ -633,10 +633,7 @@ test.describe('Block Icon Preservation during Page Export/Import', () => {
         console.log('Block icon preserved in page export content.xml');
     });
 
-    test('should preserve block icon when importing page to new project', async ({
-        authenticatedPage,
-        createProject,
-    }) => {
+    test('should preserve block icon when importing page to new project', async ({ guestSession, createProject }) => {
         /**
          * This test verifies the full page export/import cycle for block icons:
          * 1. Create page with block that has an icon
@@ -644,7 +641,7 @@ test.describe('Block Icon Preservation during Page Export/Import', () => {
          * 3. Import to new project
          * 4. Verify icon is preserved
          */
-        const page = authenticatedPage;
+        const page = guestSession;
 
         // 1. Create first project
         const projectUuid1 = await createProject(page, 'Page Icon Export Source');

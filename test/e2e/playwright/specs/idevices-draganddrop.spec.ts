@@ -268,10 +268,10 @@ test.describe('iDevice Drag and Drop', () => {
     test.describe('Basic Movement', () => {
         for (const availabilityDelay of [0, 1000]) {
             test(`should move iDevice between blocks with ${availabilityDelay}ms availability latency`, async ({
-                authenticatedPage,
+                guestSession,
                 createProject,
             }) => {
-                const page = authenticatedPage;
+                const page = guestSession;
 
                 // Create project
                 const projectUuid = await createProject(page, 'Drag Drop Move Test');
@@ -335,10 +335,10 @@ test.describe('iDevice Drag and Drop', () => {
         }
 
         test('should allow moving iDevice back to original block after moving out', async ({
-            authenticatedPage,
+            guestSession,
             createProject,
         }) => {
-            const page = authenticatedPage;
+            const page = guestSession;
 
             const projectUuid = await createProject(page, 'Drag Drop Return Test');
             await gotoWorkarea(page, projectUuid);
@@ -424,8 +424,8 @@ test.describe('iDevice Drag and Drop', () => {
     });
 
     test.describe('Invalid Drop Targets', () => {
-        test('should NOT allow dropping iDevice on block title', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should NOT allow dropping iDevice on block title', async ({ guestSession, createProject }) => {
+            const page = guestSession;
 
             const projectUuid = await createProject(page, 'Invalid Drop Test');
             await gotoWorkarea(page, projectUuid);
@@ -463,8 +463,8 @@ test.describe('iDevice Drag and Drop', () => {
             expect(finalIdevicesInBlock2).toBe(initialIdevicesInBlock2);
         });
 
-        test('should NOT allow dropping iDevice on block header', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should NOT allow dropping iDevice on block header', async ({ guestSession, createProject }) => {
+            const page = guestSession;
 
             const projectUuid = await createProject(page, 'Header Drop Test');
             await gotoWorkarea(page, projectUuid);
@@ -509,10 +509,10 @@ test.describe('iDevice Drag and Drop', () => {
 
     test.describe('Empty Block Handling', () => {
         test('should prompt to delete empty block when iDevice is moved out', async ({
-            authenticatedPage,
+            guestSession,
             createProject,
         }) => {
-            const page = authenticatedPage;
+            const page = guestSession;
 
             const projectUuid = await createProject(page, 'Empty Block Test');
             await gotoWorkarea(page, projectUuid);
@@ -549,10 +549,10 @@ test.describe('iDevice Drag and Drop', () => {
         });
 
         test('should create new block when iDevice is moved outside all blocks', async ({
-            authenticatedPage,
+            guestSession,
             createProject,
         }) => {
-            const page = authenticatedPage;
+            const page = guestSession;
 
             const projectUuid = await createProject(page, 'New Block Test');
             await gotoWorkarea(page, projectUuid);
@@ -603,10 +603,10 @@ test.describe('iDevice Drag and Drop', () => {
 
     test.describe('Cascading Deletion Prevention', () => {
         test('deleting one block should NOT delete iDevices in other blocks', async ({
-            authenticatedPage,
+            guestSession,
             createProject,
         }) => {
-            const page = authenticatedPage;
+            const page = guestSession;
             test.setTimeout(60000);
 
             const projectUuid = await createProject(page, 'Cascade Delete Test');
@@ -666,10 +666,10 @@ test.describe('iDevice Drag and Drop', () => {
         });
 
         test('moving iDevice between blocks should not corrupt block references', async ({
-            authenticatedPage,
+            guestSession,
             createProject,
         }) => {
-            const page = authenticatedPage;
+            const page = guestSession;
 
             const projectUuid = await createProject(page, 'Reference Integrity Test');
             await gotoWorkarea(page, projectUuid);

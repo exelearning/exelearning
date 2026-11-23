@@ -188,8 +188,8 @@ const ATTRIBUTION = {
 
 test.describe('Image Gallery iDevice', () => {
     test.describe('Basic Operations', () => {
-        test('should add image-gallery iDevice to blank document', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should add image-gallery iDevice to blank document', async ({ guestSession, createProject }) => {
+            const page = guestSession;
 
             // Create a new project
             const projectUuid = await createProject(page, 'Image Gallery Basic Test');
@@ -216,8 +216,8 @@ test.describe('Image Gallery iDevice', () => {
     });
 
     test.describe('Image Upload', () => {
-        test('should upload single image and display in gallery', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should upload single image and display in gallery', async ({ guestSession, createProject }) => {
+            const page = guestSession;
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Image Gallery Upload Test');
@@ -283,8 +283,8 @@ test.describe('Image Gallery iDevice', () => {
             await workarea.save();
         });
 
-        test('should upload multiple images and display in gallery', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should upload multiple images and display in gallery', async ({ guestSession, createProject }) => {
+            const page = guestSession;
 
             const projectUuid = await createProject(page, 'Image Gallery Multiple Test');
             await gotoWorkarea(page, projectUuid);
@@ -307,8 +307,8 @@ test.describe('Image Gallery iDevice', () => {
     });
 
     test.describe('Image Controls', () => {
-        test('should have working control buttons for images', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should have working control buttons for images', async ({ guestSession, createProject }) => {
+            const page = guestSession;
 
             const projectUuid = await createProject(page, 'Image Gallery Controls Test');
             await gotoWorkarea(page, projectUuid);
@@ -345,8 +345,8 @@ test.describe('Image Gallery iDevice', () => {
     });
 
     test.describe('Preview Panel', () => {
-        test('should display correctly in preview panel', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should display correctly in preview panel', async ({ guestSession, createProject }) => {
+            const page = guestSession;
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Image Gallery Preview Test');
@@ -409,8 +409,8 @@ test.describe('Image Gallery iDevice', () => {
     });
 
     test.describe('Lightbox Functionality', () => {
-        test('should open lightbox when clicking image in view mode', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should open lightbox when clicking image in view mode', async ({ guestSession, createProject }) => {
+            const page = guestSession;
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Image Gallery Lightbox Test');
@@ -481,11 +481,8 @@ test.describe('Image Gallery iDevice', () => {
             await expect(lightboxOverlay).toBeHidden({ timeout: 5000 });
         });
 
-        test('should open lightbox when clicking image in preview panel', async ({
-            authenticatedPage,
-            createProject,
-        }) => {
-            const page = authenticatedPage;
+        test('should open lightbox when clicking image in preview panel', async ({ guestSession, createProject }) => {
+            const page = guestSession;
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Image Gallery Preview Lightbox Test');
@@ -576,10 +573,10 @@ test.describe('Image Gallery iDevice', () => {
         });
 
         test('presentation mode keys stay inactive while the lightbox is open, and work again once closed', async ({
-            authenticatedPage,
+            guestSession,
             createProject,
         }) => {
-            const page = authenticatedPage;
+            const page = guestSession;
 
             const projectUuid = await createProject(page, 'Image Gallery Keyboard Suppression Test');
             await gotoWorkarea(page, projectUuid);
@@ -1430,11 +1427,8 @@ test.describe('Image Gallery iDevice', () => {
             }
         }
 
-        test('should load images from different folder depths in preview', async ({
-            authenticatedPage,
-            createProject,
-        }) => {
-            const page = authenticatedPage;
+        test('should load images from different folder depths in preview', async ({ guestSession, createProject }) => {
+            const page = guestSession;
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Image Gallery Folder Depth Test');

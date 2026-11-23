@@ -103,8 +103,8 @@ async function waitForObjectCountAtLeast(page: Page, expected: number, timeoutMs
 
 test.describe('Slide iDevice', () => {
     test.describe('Insertion and editor mount', () => {
-        test('adds the slide iDevice and mounts the Fabric editor', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('adds the slide iDevice and mounts the Fabric editor', async ({ guestSession, createProject }) => {
+            const page = guestSession;
             const projectUuid = await createProject(page, 'Slide iDevice Mount');
             await gotoWorkarea(page, projectUuid);
             await waitForAppReady(page);
@@ -125,8 +125,8 @@ test.describe('Slide iDevice', () => {
     });
 
     test.describe('Toolbar tools', () => {
-        test('inserts text + several shapes through the toolbar', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('inserts text + several shapes through the toolbar', async ({ guestSession, createProject }) => {
+            const page = guestSession;
             const projectUuid = await createProject(page, 'Slide iDevice Tools');
             await gotoWorkarea(page, projectUuid);
             await waitForAppReady(page);
@@ -161,10 +161,10 @@ test.describe('Slide iDevice', () => {
 
     test.describe('Save / reopen round-trip', () => {
         test('persists the slide payload (version 3, fabric scene + svg snapshot)', async ({
-            authenticatedPage,
+            guestSession,
             createProject,
         }) => {
-            const page = authenticatedPage;
+            const page = guestSession;
             const projectUuid = await createProject(page, 'Slide iDevice Roundtrip');
             await gotoWorkarea(page, projectUuid);
             await waitForAppReady(page);
@@ -197,10 +197,10 @@ test.describe('Slide iDevice', () => {
 
     test.describe('Static preview rendering', () => {
         test('renders sanitized SVG in the preview frame without loading the editor bundle', async ({
-            authenticatedPage,
+            guestSession,
             createProject,
         }) => {
-            const page = authenticatedPage;
+            const page = guestSession;
             const projectUuid = await createProject(page, 'Slide iDevice Preview');
             await gotoWorkarea(page, projectUuid);
             await waitForAppReady(page);
@@ -232,10 +232,10 @@ test.describe('Slide iDevice', () => {
 
     test.describe('Visual / Code toggle', () => {
         test('exposes the JSON in a textarea and round-trips edits back to the canvas', async ({
-            authenticatedPage,
+            guestSession,
             createProject,
         }) => {
-            const page = authenticatedPage;
+            const page = guestSession;
             const projectUuid = await createProject(page, 'Slide iDevice Code View');
             await gotoWorkarea(page, projectUuid);
             await waitForAppReady(page);
@@ -278,10 +278,10 @@ test.describe('Slide iDevice', () => {
         });
 
         test('shows an inline error and stays in code mode when the JSON is invalid', async ({
-            authenticatedPage,
+            guestSession,
             createProject,
         }) => {
-            const page = authenticatedPage;
+            const page = guestSession;
             const projectUuid = await createProject(page, 'Slide iDevice Code Invalid');
             await gotoWorkarea(page, projectUuid);
             await waitForAppReady(page);
@@ -305,10 +305,10 @@ test.describe('Slide iDevice', () => {
         });
 
         test('does not save code edits until they have been applied in Visual mode', async ({
-            authenticatedPage,
+            guestSession,
             createProject,
         }) => {
-            const page = authenticatedPage;
+            const page = guestSession;
             const projectUuid = await createProject(page, 'Slide iDevice Code Save Guard');
             await gotoWorkarea(page, projectUuid);
             await waitForAppReady(page);
@@ -348,10 +348,10 @@ test.describe('Slide iDevice', () => {
 
     test.describe('Compatibility and history', () => {
         test('preserves future payloads and disables editing when the mounted bundle cannot read them', async ({
-            authenticatedPage,
+            guestSession,
             createProject,
         }) => {
-            const page = authenticatedPage;
+            const page = guestSession;
             const projectUuid = await createProject(page, 'Slide iDevice Future Payload');
             await gotoWorkarea(page, projectUuid);
             await waitForAppReady(page);
@@ -396,10 +396,10 @@ test.describe('Slide iDevice', () => {
         });
 
         test('undoes a newly inserted object before a preceding canvas resize', async ({
-            authenticatedPage,
+            guestSession,
             createProject,
         }) => {
-            const page = authenticatedPage;
+            const page = guestSession;
             const projectUuid = await createProject(page, 'Slide iDevice Dimension Undo');
             await gotoWorkarea(page, projectUuid);
             await waitForAppReady(page);
@@ -446,10 +446,10 @@ test.describe('Slide iDevice', () => {
         }
 
         test('Ctrl+Z / Ctrl+Shift+Z / Ctrl+Y drive the editor history without the unsaved-changes modal', async ({
-            authenticatedPage,
+            guestSession,
             createProject,
         }) => {
-            const page = authenticatedPage;
+            const page = guestSession;
             const projectUuid = await createProject(page, 'Slide Keyboard Undo');
             await gotoWorkarea(page, projectUuid);
             await waitForAppReady(page);
@@ -488,10 +488,10 @@ test.describe('Slide iDevice', () => {
         });
 
         test('project-level undo/redo buttons are disabled while the editor is open and never pop the modal', async ({
-            authenticatedPage,
+            guestSession,
             createProject,
         }) => {
-            const page = authenticatedPage;
+            const page = guestSession;
             const projectUuid = await createProject(page, 'Slide Navbar Undo Guard');
             await gotoWorkarea(page, projectUuid);
             await waitForAppReady(page);
@@ -511,10 +511,10 @@ test.describe('Slide iDevice', () => {
         });
 
         test('arrow keys nudge the selected object by 1px, Shift+arrow by 10px', async ({
-            authenticatedPage,
+            guestSession,
             createProject,
         }) => {
-            const page = authenticatedPage;
+            const page = guestSession;
             const projectUuid = await createProject(page, 'Slide Keyboard Nudge');
             await gotoWorkarea(page, projectUuid);
             await waitForAppReady(page);
@@ -546,8 +546,8 @@ test.describe('Slide iDevice', () => {
             expect(after!.top - before!.top).toBeCloseTo(-9); // +1 -10
         });
 
-        test('Ctrl+D duplicates the selected object', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('Ctrl+D duplicates the selected object', async ({ guestSession, createProject }) => {
+            const page = guestSession;
             const projectUuid = await createProject(page, 'Slide Keyboard Duplicate');
             await gotoWorkarea(page, projectUuid);
             await waitForAppReady(page);
@@ -558,10 +558,10 @@ test.describe('Slide iDevice', () => {
         });
 
         test('Ctrl+drag draws a marquee over a full-bleed background instead of moving it', async ({
-            authenticatedPage,
+            guestSession,
             createProject,
         }) => {
-            const page = authenticatedPage;
+            const page = guestSession;
             const projectUuid = await createProject(page, 'Slide Marquee Selection');
             await gotoWorkarea(page, projectUuid);
             await waitForAppReady(page);
@@ -788,10 +788,10 @@ test.describe('Slide iDevice', () => {
         }
 
         test('keeps the caret aligned with rendered glyphs while typing below 32px', async ({
-            authenticatedPage,
+            guestSession,
             createProject,
         }) => {
-            const page = authenticatedPage;
+            const page = guestSession;
             const projectUuid = await createProject(page, 'Slide iDevice Caret Alignment');
             await gotoWorkarea(page, projectUuid);
             await waitForAppReady(page);
@@ -919,7 +919,7 @@ test.describe('Slide iDevice', () => {
         });
 
         test('keeps per-character styled sizes from corrupting other objects', async ({
-            authenticatedPage,
+            guestSession,
             createProject,
         }) => {
             // Serialized scenes (and the Code view) can carry Fabric
@@ -927,7 +927,7 @@ test.describe('Slide iDevice', () => {
             // a styled span must be stored/scaled for the span's size, and
             // must never leak wrong-size advances into the shared width
             // cache used by other objects.
-            const page = authenticatedPage;
+            const page = guestSession;
             const projectUuid = await createProject(page, 'Slide iDevice Styled Spans');
             await gotoWorkarea(page, projectUuid);
             await waitForAppReady(page);
@@ -1006,7 +1006,7 @@ test.describe('Slide iDevice', () => {
         });
 
         test('keeps Fabric shared state intact: per-family cache invalidation still works', async ({
-            authenticatedPage,
+            guestSession,
             createProject,
         }) => {
             // The Slide editor runs against the app-global window.fabric
@@ -1014,7 +1014,7 @@ test.describe('Slide iDevice', () => {
             // corrections must not mutate shared defaults nor break the
             // documented `cache.clearFontCache(fontFamily)` invalidation
             // used after lazy webfont loads.
-            const page = authenticatedPage;
+            const page = guestSession;
             const projectUuid = await createProject(page, 'Slide iDevice Fabric State');
             await gotoWorkarea(page, projectUuid);
             await waitForAppReady(page);
@@ -1067,11 +1067,8 @@ test.describe('Slide iDevice', () => {
     });
 
     test.describe('Security', () => {
-        test('strips <script> and javascript: URLs from the saved SVG', async ({
-            authenticatedPage,
-            createProject,
-        }) => {
-            const page = authenticatedPage;
+        test('strips <script> and javascript: URLs from the saved SVG', async ({ guestSession, createProject }) => {
+            const page = guestSession;
             const projectUuid = await createProject(page, 'Slide iDevice Security');
             await gotoWorkarea(page, projectUuid);
             await waitForAppReady(page);

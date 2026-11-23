@@ -167,10 +167,10 @@ async function collapseSelectionToEnd(page: Page): Promise<void> {
 
 test.describe('Text iDevice — multiple image insertion (issues #1664, #1668)', () => {
     test('inserting a second image keeps the first image canonical and visible', async ({
-        authenticatedPage,
+        guestSession,
         createProject,
     }) => {
-        const page = authenticatedPage;
+        const page = guestSession;
         const projectUuid = await createProject(page, 'Multi-image regression #1664');
         await gotoWorkarea(page, projectUuid);
         await waitForAppReady(page);

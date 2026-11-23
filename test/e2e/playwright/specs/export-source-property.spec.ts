@@ -68,11 +68,11 @@ async function exportPackage(page: Page, format: string, exportSource: boolean):
 
 test.describe('Editable export project property (exportSource, #2415)', () => {
     test('publication formats ship the editable source only when it is enabled', async ({
-        authenticatedPage,
+        guestSession,
         createProject,
     }) => {
         test.setTimeout(180_000);
-        const page = authenticatedPage;
+        const page = guestSession;
         const projectUuid = await createProject(page, 'exportSource property');
         await gotoWorkarea(page, projectUuid);
         await waitForAppReady(page);

@@ -20,10 +20,10 @@ import {
 test.describe('Markdown and Code Block Rendering', () => {
     test.describe('Code Blocks', () => {
         test('should render code blocks with highlighted-code class in preview', async ({
-            authenticatedPage,
+            guestSession,
             createProject,
         }) => {
-            const page = authenticatedPage;
+            const page = guestSession;
 
             const projectUuid = await createProject(page, 'Code Block Test');
             await gotoWorkarea(page, projectUuid);
@@ -105,10 +105,10 @@ test.describe('Markdown and Code Block Rendering', () => {
         });
 
         test('should preserve code block structure with multiple languages', async ({
-            authenticatedPage,
+            guestSession,
             createProject,
         }) => {
-            const page = authenticatedPage;
+            const page = guestSession;
 
             const projectUuid = await createProject(page, 'Multi-Language Code Test');
             await gotoWorkarea(page, projectUuid);
@@ -195,11 +195,8 @@ print(greeting)</code></pre>
             expect(multiCodeCheck.hasHtml).toBe(true);
         });
 
-        test('should handle code blocks inserted via TinyMCE CodeMagic', async ({
-            authenticatedPage,
-            createProject,
-        }) => {
-            const page = authenticatedPage;
+        test('should handle code blocks inserted via TinyMCE CodeMagic', async ({ guestSession, createProject }) => {
+            const page = guestSession;
 
             const projectUuid = await createProject(page, 'CodeMagic Test');
             await gotoWorkarea(page, projectUuid);
@@ -309,8 +306,8 @@ print(greeting)</code></pre>
     });
 
     test.describe('Inline Code', () => {
-        test('should render inline code elements in preview', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should render inline code elements in preview', async ({ guestSession, createProject }) => {
+            const page = guestSession;
 
             const projectUuid = await createProject(page, 'Inline Code Test');
             await gotoWorkarea(page, projectUuid);

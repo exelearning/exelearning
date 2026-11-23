@@ -122,8 +122,8 @@ test.describe('Save Legacy ELP - Database Compatibility', () => {
         expect(projectAfterSave.pageCount).toBeGreaterThanOrEqual(projectInfo.pageCount);
     });
 
-    test('should save project and verify data persists after reload', async ({ authenticatedPage, createProject }) => {
-        const page = authenticatedPage;
+    test('should save project and verify data persists after reload', async ({ guestSession, createProject }) => {
+        const page = guestSession;
 
         // Create a new project
         const projectUuid = await createProject(page, 'Save Persistence Test');

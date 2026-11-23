@@ -112,8 +112,8 @@ async function buildNestedProjectAndExport(page: Page): Promise<Record<string, s
 }
 
 test.describe('SCORM/IMS manifest navigation structure', () => {
-    test('wraps nested pages in a single non-launchable root item', async ({ authenticatedPage, createProject }) => {
-        const page = authenticatedPage;
+    test('wraps nested pages in a single non-launchable root item', async ({ guestSession, createProject }) => {
+        const page = guestSession;
         const projectUuid = await createProject(page, 'Nested pages SCORM test');
         await gotoWorkarea(page, projectUuid);
         await waitForAppReady(page);

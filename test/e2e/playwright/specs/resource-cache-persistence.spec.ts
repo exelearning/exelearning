@@ -1,11 +1,8 @@
 import { test, expect } from '../fixtures/auth.fixture';
 import { gotoWorkarea, waitForAppReady } from '../helpers/workarea-helpers';
 
-test('startup preserves current resource cache entries across reloads', async ({
-    authenticatedPage,
-    createProject,
-}) => {
-    const page = authenticatedPage;
+test('startup preserves current resource cache entries across reloads', async ({ guestSession, createProject }) => {
+    const page = guestSession;
     const projectId = await createProject(page, 'Resource cache persistence');
     await gotoWorkarea(page, projectId);
 
@@ -51,8 +48,8 @@ test('startup preserves current resource cache entries across reloads', async ({
     });
 });
 
-test('startup keeps only the newest cache entry per resource', async ({ authenticatedPage, createProject }) => {
-    const page = authenticatedPage;
+test('startup keeps only the newest cache entry per resource', async ({ guestSession, createProject }) => {
+    const page = guestSession;
     const projectId = await createProject(page, 'Resource cache pruning');
     await gotoWorkarea(page, projectId);
 

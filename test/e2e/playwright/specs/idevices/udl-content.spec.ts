@@ -201,8 +201,8 @@ async function addBlock(page: Page): Promise<void> {
 
 test.describe('UDL Content iDevice', () => {
     test.describe('Basic Operations', () => {
-        test('should add UDL Content iDevice and edit main content', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should add UDL Content iDevice and edit main content', async ({ guestSession, createProject }) => {
+            const page = guestSession;
 
             // Create a new project
             const projectUuid = await createProject(page, 'UDL Content Basic Test');
@@ -247,8 +247,8 @@ test.describe('UDL Content iDevice', () => {
             await expect(page.locator('#node-content')).toContainText(TEST_DATA.buttonText, { timeout: 10000 });
         });
 
-        test('should save and persist UDL content after reload', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should save and persist UDL content after reload', async ({ guestSession, createProject }) => {
+            const page = guestSession;
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'UDL Content Persistence Test');
@@ -293,10 +293,10 @@ test.describe('UDL Content iDevice', () => {
         });
 
         test('should keep code inserted as text and the button text when edited again', async ({
-            authenticatedPage,
+            guestSession,
             createProject,
         }) => {
-            const page = authenticatedPage;
+            const page = guestSession;
 
             const projectUuid = await createProject(page, 'UDL Content Re-edit Test');
             await gotoWorkarea(page, projectUuid);
@@ -339,8 +339,8 @@ test.describe('UDL Content iDevice', () => {
     });
 
     test.describe('UDL Types', () => {
-        test('should apply correct CSS class for representation type', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should apply correct CSS class for representation type', async ({ guestSession, createProject }) => {
+            const page = guestSession;
 
             const projectUuid = await createProject(page, 'UDL Types Test');
             await gotoWorkarea(page, projectUuid);
@@ -365,8 +365,8 @@ test.describe('UDL Content iDevice', () => {
     });
 
     test.describe('Multiple Blocks', () => {
-        test('should add multiple blocks with different content', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should add multiple blocks with different content', async ({ guestSession, createProject }) => {
+            const page = guestSession;
 
             const projectUuid = await createProject(page, 'UDL Multiple Blocks Test');
             await gotoWorkarea(page, projectUuid);
@@ -416,8 +416,8 @@ test.describe('UDL Content iDevice', () => {
     });
 
     test.describe('Alternative Content Tabs', () => {
-        test('should display all 4 content tabs in editor', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should display all 4 content tabs in editor', async ({ guestSession, createProject }) => {
+            const page = guestSession;
 
             const projectUuid = await createProject(page, 'UDL Alt Content Test');
             await gotoWorkarea(page, projectUuid);
@@ -444,8 +444,8 @@ test.describe('UDL Content iDevice', () => {
     });
 
     test.describe('Preview', () => {
-        test('should render correctly in preview', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should render correctly in preview', async ({ guestSession, createProject }) => {
+            const page = guestSession;
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'UDL Preview Test');
@@ -499,11 +499,8 @@ test.describe('UDL Content iDevice', () => {
     });
 
     test.describe('Audio Player', () => {
-        test('should render audio element with type attribute in preview', async ({
-            authenticatedPage,
-            createProject,
-        }) => {
-            const page = authenticatedPage;
+        test('should render audio element with type attribute in preview', async ({ guestSession, createProject }) => {
+            const page = guestSession;
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'UDL Audio Test');
@@ -590,10 +587,10 @@ test.describe('UDL Content iDevice', () => {
         });
 
         test('should not have double MEJS initialization (mejs-audio and mejs-video classes)', async ({
-            authenticatedPage,
+            guestSession,
             createProject,
         }) => {
-            const page = authenticatedPage;
+            const page = guestSession;
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'UDL MEJS Double Init Test');

@@ -100,10 +100,10 @@ test.describe('IndexedDB Tab-Close Cleanup', () => {
     // clear happen on the next initialize() in a fresh tab session
     // ---------------------------------------------------------------------------
     test('cleanup sets flag; next navigation deletes IndexedDB and clears dirty state', async ({
-        authenticatedPage,
+        guestSession,
         createProject,
     }) => {
-        const page = authenticatedPage;
+        const page = guestSession;
         const projectUuid = await createProject(page, 'IDB Cleanup Test');
 
         await gotoWorkarea(page, projectUuid);
@@ -164,8 +164,8 @@ test.describe('IndexedDB Tab-Close Cleanup', () => {
     // ---------------------------------------------------------------------------
     // Test 2: Page refresh (F5) preserves IndexedDB and unsaved edits
     // ---------------------------------------------------------------------------
-    test('page refresh preserves IndexedDB and unsaved edits', async ({ authenticatedPage, createProject }) => {
-        const page = authenticatedPage;
+    test('page refresh preserves IndexedDB and unsaved edits', async ({ guestSession, createProject }) => {
+        const page = guestSession;
         const projectUuid = await createProject(page, 'IDB Refresh Preserve Test');
 
         await gotoWorkarea(page, projectUuid);
@@ -210,8 +210,8 @@ test.describe('IndexedDB Tab-Close Cleanup', () => {
     // ---------------------------------------------------------------------------
     // Test 3: Cache API is cleared alongside IndexedDB on last-tab close
     // ---------------------------------------------------------------------------
-    test('Cache API exe-assets-{uuid} is deleted on last-tab close', async ({ authenticatedPage, createProject }) => {
-        const page = authenticatedPage;
+    test('Cache API exe-assets-{uuid} is deleted on last-tab close', async ({ guestSession, createProject }) => {
+        const page = guestSession;
         const projectUuid = await createProject(page, 'Cache API Cleanup Test');
 
         await gotoWorkarea(page, projectUuid);

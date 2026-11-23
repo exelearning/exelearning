@@ -112,7 +112,7 @@ async function readEditionGlobals(page: Page): Promise<{ device: string; lifecyc
 
 test.describe('iDevice edition lifecycle (#2293)', () => {
     test('releases grading help handlers and restores them on reopening', async ({
-        authenticatedPage: page,
+        guestSession: page,
         createProject,
     }) => {
         const uuid = await createProject(page, 'Grading help lifecycle');

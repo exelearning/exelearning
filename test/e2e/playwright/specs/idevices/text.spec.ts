@@ -15,8 +15,8 @@ import { addTextIdevice } from '../../helpers/workarea-helpers';
 
 test.describe('Text iDevice', () => {
     test.describe('Basic Operations', () => {
-        test('should add text iDevice and edit content', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should add text iDevice and edit content', async ({ guestSession, createProject }) => {
+            const page = guestSession;
             const workarea = new WorkareaPage(page);
 
             // Create a new project
@@ -48,8 +48,8 @@ test.describe('Text iDevice', () => {
             );
         });
 
-        test('should save and persist text content', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should save and persist text content', async ({ guestSession, createProject }) => {
+            const page = guestSession;
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Text Persistence Test');
@@ -87,8 +87,8 @@ test.describe('Text iDevice', () => {
     });
 
     test.describe('TinyMCE Advanced Editor (CodeMagic)', () => {
-        test('should open advanced HTML editor without blank window', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should open advanced HTML editor without blank window', async ({ guestSession, createProject }) => {
+            const page = guestSession;
             const _workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'CodeMagic Test');
@@ -158,8 +158,8 @@ test.describe('Text iDevice', () => {
             await expect(dialog).not.toBeVisible({ timeout: 5000 });
         });
 
-        test('should edit HTML source and apply changes', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should edit HTML source and apply changes', async ({ guestSession, createProject }) => {
+            const page = guestSession;
             const _workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'CodeMagic Edit Test');
@@ -275,8 +275,8 @@ test.describe('Text iDevice', () => {
     });
 
     test.describe('TinyMCE Mind Map Editor (exemindmap)', () => {
-        test('should open mind map editor without blank window', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should open mind map editor without blank window', async ({ guestSession, createProject }) => {
+            const page = guestSession;
             const _workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'MindMap Test');
@@ -354,8 +354,8 @@ test.describe('Text iDevice', () => {
     });
 
     test.describe('Text Formatting', () => {
-        test('should apply bold formatting and persist after save', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should apply bold formatting and persist after save', async ({ guestSession, createProject }) => {
+            const page = guestSession;
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Text Formatting Test');
@@ -399,10 +399,10 @@ test.describe('Text iDevice', () => {
 
     test.describe('TinyMCE Mermaid Diagram (exemermaid)', () => {
         test('should insert mermaid diagram and render correctly in editor and preview', async ({
-            authenticatedPage,
+            guestSession,
             createProject,
         }) => {
-            const page = authenticatedPage;
+            const page = guestSession;
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Mermaid Diagram Test');
@@ -595,8 +595,8 @@ test.describe('Text iDevice', () => {
             }
         });
 
-        test('should update existing mermaid diagram', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should update existing mermaid diagram', async ({ guestSession, createProject }) => {
+            const page = guestSession;
             const _workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Mermaid Update Test');
@@ -734,10 +734,10 @@ test.describe('Text iDevice', () => {
         });
 
         test('should pre-render mermaid to SVG in preview (no mermaid.min.js library)', async ({
-            authenticatedPage,
+            guestSession,
             createProject,
         }) => {
-            const page = authenticatedPage;
+            const page = guestSession;
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Mermaid PreRender Test');
@@ -892,10 +892,10 @@ test.describe('Text iDevice', () => {
         });
 
         test('should preserve unrelated inline styles when updating max-size', async ({
-            authenticatedPage,
+            guestSession,
             createProject,
         }) => {
-            const page = authenticatedPage;
+            const page = guestSession;
 
             const projectUuid = await createProject(page, 'Mermaid Style Survival Test');
             await gotoWorkarea(page, projectUuid);
@@ -997,11 +997,8 @@ test.describe('Text iDevice', () => {
     });
 
     test.describe('TinyMCE Audio Recorder (exeaudio)', () => {
-        test('should open audio recorder dialog with correct UI elements', async ({
-            authenticatedPage,
-            createProject,
-        }) => {
-            const page = authenticatedPage;
+        test('should open audio recorder dialog with correct UI elements', async ({ guestSession, createProject }) => {
+            const page = guestSession;
             const _workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Audio Recorder Test');
@@ -1114,10 +1111,10 @@ test.describe('Text iDevice', () => {
         });
 
         test('should resolve asset:// URLs to blob:// for playback in TinyMCE editor', async ({
-            authenticatedPage,
+            guestSession,
             createProject,
         }) => {
-            const page = authenticatedPage;
+            const page = guestSession;
             const _workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Audio Asset URL Resolution Test');
@@ -1246,7 +1243,7 @@ test.describe('Text iDevice', () => {
 
     test.describe('TinyMCE PDF/Multimedia Insertion (exemedia)', () => {
         test('should preserve asset:// URLs for PDF iframes in TinyMCE editor content', async ({
-            authenticatedPage,
+            guestSession,
             createProject,
         }) => {
             // NOTE: TinyMCE does NOT render iframes in the DOM for security/performance.
@@ -1254,7 +1251,7 @@ test.describe('Text iDevice', () => {
             // iframes are only stored in TinyMCE's internal model and getContent().
             // This test verifies that asset:// URLs are preserved correctly when saving.
 
-            const page = authenticatedPage;
+            const page = guestSession;
             const _workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'PDF Asset URL Resolution Test');
@@ -1316,10 +1313,10 @@ test.describe('Text iDevice', () => {
         });
 
         test('should save asset:// URL (not blob://) when persisting PDF content', async ({
-            authenticatedPage,
+            guestSession,
             createProject,
         }) => {
-            const page = authenticatedPage;
+            const page = guestSession;
             const _workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'PDF Persistence Test');
@@ -1407,8 +1404,8 @@ test.describe('Text iDevice', () => {
     });
 
     test.describe('PDF Preview', () => {
-        test('should render PDF inline in preview', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should render PDF inline in preview', async ({ guestSession, createProject }) => {
+            const page = guestSession;
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'PDF Preview Test');
@@ -1581,8 +1578,8 @@ test.describe('Text iDevice', () => {
     });
 
     test.describe('Image Persistence', () => {
-        test('should persist image after save and reload', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should persist image after save and reload', async ({ guestSession, createProject }) => {
+            const page = guestSession;
             const workarea = new WorkareaPage(page);
 
             // 1. Create project
@@ -1724,8 +1721,8 @@ test.describe('Text iDevice', () => {
             expect(naturalWidth).toBeGreaterThan(0);
         });
 
-        test('should show image in preview after insert', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should show image in preview after insert', async ({ guestSession, createProject }) => {
+            const page = guestSession;
             const workarea = new WorkareaPage(page);
 
             // 1. Create project
@@ -1854,8 +1851,8 @@ test.describe('Text iDevice', () => {
     });
 
     test.describe('Internal Links (exe-node)', () => {
-        test('should create internal link and navigate in preview', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should create internal link and navigate in preview', async ({ guestSession, createProject }) => {
+            const page = guestSession;
             const workarea = new WorkareaPage(page);
 
             // Create project
@@ -2057,10 +2054,10 @@ test.describe('Text iDevice', () => {
         });
 
         test('internal link works in editor mode (clicking navigates to page)', async ({
-            authenticatedPage,
+            guestSession,
             createProject,
         }) => {
-            const page = authenticatedPage;
+            const page = guestSession;
             const _workarea = new WorkareaPage(page);
 
             // Create project
@@ -2259,8 +2256,8 @@ test.describe('Text iDevice', () => {
     });
 
     test.describe('ELPX Download Links (exe-package:elp)', () => {
-        test('should handle exe-package:elp links in preview', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should handle exe-package:elp links in preview', async ({ guestSession, createProject }) => {
+            const page = guestSession;
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Text iDevice ELPX Link Test');
@@ -2407,10 +2404,10 @@ test.describe('Text iDevice', () => {
      */
     test.describe('HTML iframe asset resolution', () => {
         test('should handle iframe with asset URL pattern in TinyMCE content', async ({
-            authenticatedPage,
+            guestSession,
             createProject,
         }) => {
-            const page = authenticatedPage;
+            const page = guestSession;
 
             // 1. Create project and navigate to workarea
             const projectUuid = await createProject(page, 'HTML Iframe Test');
@@ -2562,10 +2559,10 @@ test.describe('Text iDevice', () => {
          * The iframe resolution approach changed with the service worker implementation.
          */
         test.skip('should display embedded HTML from ZIP with CSS in editor, preview, and standalone', async ({
-            authenticatedPage,
+            guestSession,
             createProject,
         }) => {
-            const page = authenticatedPage;
+            const page = guestSession;
 
             // 1. Create project and navigate to workarea
             const projectUuid = await createProject(page, 'ZIP HTML Embed Test');

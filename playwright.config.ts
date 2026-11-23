@@ -174,6 +174,11 @@ export default defineConfig({
 
         /* Navigation timeout */
         navigationTimeout: 15000,
+
+        /* Ask the app for reduced motion. The workarea then drops the one-second fade of its
+           loading screen (LoadingScreen.hideTime) and Bootstrap its transitions, so no test
+           waits on decoration. Every workarea load used to pay that second. */
+        contextOptions: { reducedMotion: 'reduce' },
     },
 
     /* Configure projects for major browsers */

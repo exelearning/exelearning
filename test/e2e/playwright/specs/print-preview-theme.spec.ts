@@ -68,7 +68,7 @@ function styleZip(name: string, css: string, files: Record<string, Uint8Array>):
 }
 
 test.describe('Print preview: the style', () => {
-    test('loads the icons of a base style', async ({ authenticatedPage: page, createProject }) => {
+    test('loads the icons of a base style', async ({ guestSession: page, createProject }) => {
         const uuid = await createProject(page, 'Print a base style');
         await gotoWorkarea(page, uuid);
         await waitForAppReady(page);
@@ -122,7 +122,7 @@ test.describe('Print preview: the style', () => {
     });
 
     test('loads a style the user imported: its stylesheet, what the stylesheet refers to, and its icons', async ({
-        authenticatedPage: page,
+        guestSession: page,
         createProject,
     }) => {
         const uuid = await createProject(page, 'Print an imported style');
@@ -184,7 +184,7 @@ test.describe('Print preview: the style', () => {
     });
 
     test('loads an older style the user imported, whose files are content.css and default.js', async ({
-        authenticatedPage: page,
+        guestSession: page,
         createProject,
     }) => {
         const uuid = await createProject(page, 'Print an older imported style');

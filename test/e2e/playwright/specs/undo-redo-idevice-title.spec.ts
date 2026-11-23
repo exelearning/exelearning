@@ -192,10 +192,10 @@ test.describe('Undo/Redo iDevice Title - Issue #956', () => {
     });
 
     test('should visually update block title after undo without page reload', async ({
-        authenticatedPage,
+        guestSession,
         createProject,
     }) => {
-        const page = authenticatedPage;
+        const page = guestSession;
 
         // Create project
         const projectUuid = await createProject(page, 'Undo Title Test');
@@ -230,10 +230,10 @@ test.describe('Undo/Redo iDevice Title - Issue #956', () => {
     });
 
     test('should visually update block title after redo without page reload', async ({
-        authenticatedPage,
+        guestSession,
         createProject,
     }) => {
-        const page = authenticatedPage;
+        const page = guestSession;
 
         // Create project
         const projectUuid = await createProject(page, 'Redo Title Test');
@@ -274,8 +274,8 @@ test.describe('Undo/Redo iDevice Title - Issue #956', () => {
         expect(await getBlockTitleText(page, 0)).toBe(newTitle);
     });
 
-    test('should handle multiple undo/redo cycles correctly', async ({ authenticatedPage, createProject }) => {
-        const page = authenticatedPage;
+    test('should handle multiple undo/redo cycles correctly', async ({ guestSession, createProject }) => {
+        const page = guestSession;
 
         // Create project
         const projectUuid = await createProject(page, 'Multi Undo Test');
@@ -328,8 +328,8 @@ test.describe('Undo/Redo iDevice Title - Issue #956', () => {
         expect(await getBlockTitleText(page, 0)).toBe(title2);
     });
 
-    test('should sync multiple block titles on undo', async ({ authenticatedPage, createProject }) => {
-        const page = authenticatedPage;
+    test('should sync multiple block titles on undo', async ({ guestSession, createProject }) => {
+        const page = guestSession;
 
         // Create project
         const projectUuid = await createProject(page, 'Multi Block Undo Test');
@@ -368,10 +368,10 @@ test.describe('Undo/Redo Page Title - Issue #956', () => {
     });
 
     test('should visually update page title after undo without page reload', async ({
-        authenticatedPage,
+        guestSession,
         createProject,
     }) => {
-        const page = authenticatedPage;
+        const page = guestSession;
 
         // Create project
         const projectUuid = await createProject(page, 'Page Title Undo Test');
@@ -401,10 +401,10 @@ test.describe('Undo/Redo Page Title - Issue #956', () => {
     });
 
     test('should visually update page title after redo without page reload', async ({
-        authenticatedPage,
+        guestSession,
         createProject,
     }) => {
-        const page = authenticatedPage;
+        const page = guestSession;
 
         // Create project
         const projectUuid = await createProject(page, 'Page Title Redo Test');
@@ -436,8 +436,8 @@ test.describe('Undo/Redo Page Title - Issue #956', () => {
         expect(await getPageNameText(page, 0)).toBe(newTitle);
     });
 
-    test('should update page title in content area header after undo', async ({ authenticatedPage, createProject }) => {
-        const page = authenticatedPage;
+    test('should update page title in content area header after undo', async ({ guestSession, createProject }) => {
+        const page = guestSession;
 
         // Create project
         const projectUuid = await createProject(page, 'Page Title Content Header Test');
@@ -475,10 +475,10 @@ test.describe('Undo/Redo iDevice Icon - Issue #956', () => {
     });
 
     test('should visually update block icon after undo without page reload', async ({
-        authenticatedPage,
+        guestSession,
         createProject,
     }) => {
-        const page = authenticatedPage;
+        const page = guestSession;
 
         // Create project
         const projectUuid = await createProject(page, 'Icon Undo Test');
@@ -537,10 +537,10 @@ test.describe('Undo/Redo iDevice Icon - Issue #956', () => {
     });
 
     test('should visually update block icon after redo without page reload', async ({
-        authenticatedPage,
+        guestSession,
         createProject,
     }) => {
-        const page = authenticatedPage;
+        const page = guestSession;
 
         // Create project
         const projectUuid = await createProject(page, 'Icon Redo Test');
@@ -617,11 +617,8 @@ test.describe('Undo/Redo iDevice Icon - Issue #956', () => {
         expect(normalizeIconPath(iconSrcAfterRedo!)).toBe(normalizeIconPath(iconSrcAfterChange!));
     });
 
-    test('should handle multiple icon change undo/redo cycles correctly', async ({
-        authenticatedPage,
-        createProject,
-    }) => {
-        const page = authenticatedPage;
+    test('should handle multiple icon change undo/redo cycles correctly', async ({ guestSession, createProject }) => {
+        const page = guestSession;
 
         // Create project
         const projectUuid = await createProject(page, 'Multi Icon Undo Test');

@@ -214,8 +214,8 @@ async function exportHtml5Website(page: Page): Promise<Download> {
 
 test.describe('LaTeX Rendering', () => {
     test.describe('Editor View', () => {
-        test('should render LaTeX content from fixture in editor', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should render LaTeX content from fixture in editor', async ({ guestSession, createProject }) => {
+            const page = guestSession;
 
             // Create a new project
             const projectUuid = await createProject(page, 'LaTeX Editor Test');
@@ -332,8 +332,8 @@ test.describe('LaTeX Rendering', () => {
             expect(hasMathRendering).toBe(true);
         });
 
-        test('should have MathJax available with required methods', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should have MathJax available with required methods', async ({ guestSession, createProject }) => {
+            const page = guestSession;
 
             const projectUuid = await createProject(page, 'MathJax Check');
             await gotoWorkarea(page, projectUuid);
@@ -360,8 +360,8 @@ test.describe('LaTeX Rendering', () => {
     });
 
     test.describe('Preview View', () => {
-        test('should render LaTeX in preview with pre-rendering', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should render LaTeX in preview with pre-rendering', async ({ guestSession, createProject }) => {
+            const page = guestSession;
 
             const projectUuid = await createProject(page, 'LaTeX Preview Test');
             await gotoWorkarea(page, projectUuid);
@@ -396,10 +396,10 @@ test.describe('LaTeX Rendering', () => {
         });
 
         test('renders inline formulas with several break opportunities as one complete SVG (issue #2440)', async ({
-            authenticatedPage,
+            guestSession,
             createProject,
         }) => {
-            const page = authenticatedPage;
+            const page = guestSession;
 
             const projectUuid = await createProject(page, 'LaTeX Inline Breaks Test');
             await gotoWorkarea(page, projectUuid);
@@ -441,8 +441,8 @@ test.describe('LaTeX Rendering', () => {
             expect(rendered[2].glyphs).toBe('𝑃(𝐴∣𝐵)=1');
         });
 
-        test('should not have rendering errors in preview', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should not have rendering errors in preview', async ({ guestSession, createProject }) => {
+            const page = guestSession;
 
             const projectUuid = await createProject(page, 'LaTeX Error Check');
             await gotoWorkarea(page, projectUuid);
@@ -488,10 +488,10 @@ test.describe('LaTeX Rendering', () => {
         });
 
         test('should render Delimitadores page with LaTeX formulas and syntax-highlighted code', async ({
-            authenticatedPage,
+            guestSession,
             createProject,
         }) => {
-            const page = authenticatedPage;
+            const page = guestSession;
 
             const projectUuid = await createProject(page, 'Delimitadores Page Test');
             await gotoWorkarea(page, projectUuid);
@@ -712,10 +712,10 @@ test.describe('LaTeX Rendering', () => {
         });
 
         test('should render pending span formulas in preview for mixed pre-rendered table content', async ({
-            authenticatedPage,
+            guestSession,
             createProject,
         }) => {
-            const page = authenticatedPage;
+            const page = guestSession;
 
             const projectUuid = await createProject(page, 'LaTeX Span Mixed Preview');
             await gotoWorkarea(page, projectUuid);
@@ -837,10 +837,10 @@ test.describe('LaTeX Rendering', () => {
         });
 
         test('should export website with mixed span formulas rendered (no raw inline delimiters)', async ({
-            authenticatedPage,
+            guestSession,
             createProject,
         }) => {
-            const page = authenticatedPage;
+            const page = guestSession;
 
             const projectUuid = await createProject(page, 'LaTeX Span Mixed Export');
             await gotoWorkarea(page, projectUuid);
@@ -940,10 +940,10 @@ test.describe('LaTeX Rendering', () => {
         // `vertical-align: middle` on the wrapper, and (b) the SVG to keep its own inline
         // `vertical-align: -X.XXXex` produced by MathJax through the whole export pipeline.
         test('keeps the SVG inline vertical-align and ships no vertical-align:middle CSS', async ({
-            authenticatedPage,
+            guestSession,
             createProject,
         }) => {
-            const page = authenticatedPage;
+            const page = guestSession;
 
             const projectUuid = await createProject(page, 'LaTeX Baseline Align Export');
             await gotoWorkarea(page, projectUuid);
@@ -1015,10 +1015,10 @@ test.describe('LaTeX Rendering', () => {
 
     test.describe('MathJax Runtime Option (addMathJax)', () => {
         test('should include MathJax script in preview when addMathJax option is enabled via UI', async ({
-            authenticatedPage,
+            guestSession,
             createProject,
         }) => {
-            const page = authenticatedPage;
+            const page = guestSession;
 
             const projectUuid = await createProject(page, 'MathJax Option Test');
             await gotoWorkarea(page, projectUuid);
@@ -1076,10 +1076,10 @@ test.describe('LaTeX Rendering', () => {
         });
 
         test('should configure MathJax with typeset:false for preview when enabled via UI', async ({
-            authenticatedPage,
+            guestSession,
             createProject,
         }) => {
-            const page = authenticatedPage;
+            const page = guestSession;
 
             const projectUuid = await createProject(page, 'MathJax Config Test');
             await gotoWorkarea(page, projectUuid);
@@ -1301,7 +1301,7 @@ test.describe('LaTeX Rendering', () => {
         });
 
         test('renders formulas whose text uses characters from unvendored font ranges', async ({
-            authenticatedPage,
+            guestSession,
             createProject,
         }) => {
             // Regression guard for the blocker @ignaciogros found. MathJax 4 keeps most
@@ -1317,7 +1317,7 @@ test.describe('LaTeX Rendering', () => {
             // existing tests missed it twice over: they use \mathbb and \mathcal, whose
             // ranges *are* vendored, and they look at the first render, which is the
             // case that works.
-            const page = authenticatedPage;
+            const page = guestSession;
             const projectUuid = await createProject(page, 'LaTeX Unvendored Glyphs');
             await gotoWorkarea(page, projectUuid);
             await waitForAppReady(page);
@@ -1374,10 +1374,10 @@ test.describe('LaTeX Rendering', () => {
         });
 
         test('should NOT corrupt data-latex when same LaTeX appears multiple times', async ({
-            authenticatedPage,
+            guestSession,
             createProject,
         }) => {
-            const page = authenticatedPage;
+            const page = guestSession;
 
             const projectUuid = await createProject(page, 'LaTeX Duplicate Test');
             await gotoWorkarea(page, projectUuid);
@@ -1454,10 +1454,10 @@ test.describe('LaTeX Rendering', () => {
         });
 
         test('should render multiple identical LaTeX expressions correctly', async ({
-            authenticatedPage,
+            guestSession,
             createProject,
         }) => {
-            const page = authenticatedPage;
+            const page = guestSession;
 
             const projectUuid = await createProject(page, 'LaTeX Multiple Identical Test');
             await gotoWorkarea(page, projectUuid);
@@ -1610,10 +1610,10 @@ test.describe('LaTeX Rendering', () => {
             });
 
             test('should render LaTeX in project title and show it in Open dialog after save', async ({
-                authenticatedPage,
+                guestSession,
                 createProject,
             }) => {
-                const page = authenticatedPage;
+                const page = guestSession;
 
                 // Create a new project
                 const projectUuid = await createProject(page, 'LaTeX Title Test');
@@ -1913,8 +1913,8 @@ test.describe('LaTeX Rendering', () => {
             });
         });
 
-        test('should preserve LaTeX title after reload', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should preserve LaTeX title after reload', async ({ guestSession, createProject }) => {
+            const page = guestSession;
 
             // Create a new project with LaTeX title directly via API/metadata
             const projectUuid = await createProject(page, 'LaTeX Persistence Test');

@@ -147,8 +147,8 @@ function exportContentType(p: string): string {
 
 test.describe('3D Viewer iDevice', () => {
     test.describe('Basic Operations', () => {
-        test('should add 3D viewer iDevice to page', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should add 3D viewer iDevice to page', async ({ guestSession, createProject }) => {
+            const page = guestSession;
 
             const projectUuid = await createProject(page, '3D Viewer Add Test');
             await gotoWorkarea(page, projectUuid);
@@ -181,8 +181,8 @@ test.describe('3D Viewer iDevice', () => {
             await expect(emptyState).toBeVisible();
         });
 
-        test('should have file picker button for model selection', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should have file picker button for model selection', async ({ guestSession, createProject }) => {
+            const page = guestSession;
 
             const projectUuid = await createProject(page, '3D Viewer File Picker Test');
             await gotoWorkarea(page, projectUuid);
@@ -203,8 +203,8 @@ test.describe('3D Viewer iDevice', () => {
     });
 
     test.describe('Model Upload', () => {
-        test('should upload GLB model and display in preview', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should upload GLB model and display in preview', async ({ guestSession, createProject }) => {
+            const page = guestSession;
 
             const projectUuid = await createProject(page, '3D Viewer GLB Upload Test');
             await gotoWorkarea(page, projectUuid);
@@ -238,10 +238,10 @@ test.describe('3D Viewer iDevice', () => {
         });
 
         test('should upload STL model and keep it as STL (rendered natively with Three.js)', async ({
-            authenticatedPage,
+            guestSession,
             createProject,
         }) => {
-            const page = authenticatedPage;
+            const page = guestSession;
 
             const projectUuid = await createProject(page, '3D Viewer STL Upload Test');
             await gotoWorkarea(page, projectUuid);
@@ -270,8 +270,8 @@ test.describe('3D Viewer iDevice', () => {
             expect(inputValue.endsWith('.stl')).toBe(true);
         });
 
-        test('should upload both GLB and STL models in sequence', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should upload both GLB and STL models in sequence', async ({ guestSession, createProject }) => {
+            const page = guestSession;
 
             const projectUuid = await createProject(page, '3D Viewer Multi-Format Test');
             await gotoWorkarea(page, projectUuid);
@@ -331,8 +331,8 @@ test.describe('3D Viewer iDevice', () => {
             expect(ideviceCount).toBe(2);
         });
 
-        test('should update model input value after file selection', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should update model input value after file selection', async ({ guestSession, createProject }) => {
+            const page = guestSession;
 
             const projectUuid = await createProject(page, '3D Viewer Input Update Test');
             await gotoWorkarea(page, projectUuid);
@@ -357,8 +357,8 @@ test.describe('3D Viewer iDevice', () => {
     });
 
     test.describe('Customization Options', () => {
-        test('should have camera controls checkbox', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should have camera controls checkbox', async ({ guestSession, createProject }) => {
+            const page = guestSession;
 
             const projectUuid = await createProject(page, '3D Viewer Camera Controls Test');
             await gotoWorkarea(page, projectUuid);
@@ -374,8 +374,8 @@ test.describe('3D Viewer iDevice', () => {
             expect(isChecked).toBe(true);
         });
 
-        test('should have auto-rotate checkbox and speed input', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should have auto-rotate checkbox and speed input', async ({ guestSession, createProject }) => {
+            const page = guestSession;
 
             const projectUuid = await createProject(page, '3D Viewer Auto Rotate Test');
             await gotoWorkarea(page, projectUuid);
@@ -393,8 +393,8 @@ test.describe('3D Viewer iDevice', () => {
             await expect(autoRotateSpeed).toBeVisible();
         });
 
-        test('should have background color input', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should have background color input', async ({ guestSession, createProject }) => {
+            const page = guestSession;
 
             const projectUuid = await createProject(page, '3D Viewer Background Test');
             await gotoWorkarea(page, projectUuid);
@@ -412,8 +412,8 @@ test.describe('3D Viewer iDevice', () => {
             expect(bgColor).toBe('#f5f5f5');
         });
 
-        test('should have alt text input', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should have alt text input', async ({ guestSession, createProject }) => {
+            const page = guestSession;
 
             const projectUuid = await createProject(page, '3D Viewer Alt Text Test');
             await gotoWorkarea(page, projectUuid);
@@ -438,8 +438,8 @@ test.describe('3D Viewer iDevice', () => {
     });
 
     test.describe('Save and Persist', () => {
-        test('should save iDevice with model and settings', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should save iDevice with model and settings', async ({ guestSession, createProject }) => {
+            const page = guestSession;
 
             const projectUuid = await createProject(page, '3D Viewer Save Test');
             await gotoWorkarea(page, projectUuid);
@@ -477,8 +477,8 @@ test.describe('3D Viewer iDevice', () => {
             await saveProject(page);
         });
 
-        test('should persist 3D viewer after reload', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should persist 3D viewer after reload', async ({ guestSession, createProject }) => {
+            const page = guestSession;
 
             const projectUuid = await createProject(page, '3D Viewer Persistence Test');
             await gotoWorkarea(page, projectUuid);
@@ -518,8 +518,8 @@ test.describe('3D Viewer iDevice', () => {
     });
 
     test.describe('Model Color', () => {
-        test('should enable threeDModelColor field for STL files', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should enable threeDModelColor field for STL files', async ({ guestSession, createProject }) => {
+            const page = guestSession;
             const projectUuid = await createProject(page, '3D Viewer STL Color Enabled');
             await gotoWorkarea(page, projectUuid);
             await waitForAppReady(page);
@@ -540,8 +540,8 @@ test.describe('3D Viewer iDevice', () => {
             await expect(colorInput).toBeEnabled({ timeout: 5000 });
         });
 
-        test('should disable threeDModelColor field for GLB files', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should disable threeDModelColor field for GLB files', async ({ guestSession, createProject }) => {
+            const page = guestSession;
             const projectUuid = await createProject(page, '3D Viewer GLB Color Disabled');
             await gotoWorkarea(page, projectUuid);
             await waitForAppReady(page);
@@ -562,8 +562,8 @@ test.describe('3D Viewer iDevice', () => {
             await expect(colorInput).toBeDisabled({ timeout: 5000 });
         });
 
-        test('should persist a custom STL color through save+reload', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should persist a custom STL color through save+reload', async ({ guestSession, createProject }) => {
+            const page = guestSession;
             const projectUuid = await createProject(page, '3D Viewer STL Color Persist');
             await gotoWorkarea(page, projectUuid);
             await waitForAppReady(page);
@@ -602,10 +602,10 @@ test.describe('3D Viewer iDevice', () => {
 
     test.describe('Persisted DOM Discipline', () => {
         test('saved wrapper carries flat data-* attributes (no data-config base64)', async ({
-            authenticatedPage,
+            guestSession,
             createProject,
         }) => {
-            const page = authenticatedPage;
+            const page = guestSession;
             const projectUuid = await createProject(page, '3D Viewer No Base64');
             await gotoWorkarea(page, projectUuid);
             await waitForAppReady(page);
@@ -643,10 +643,10 @@ test.describe('3D Viewer iDevice', () => {
         });
 
         test('saved iDevice carries data-model-asset-ref so AssetManager can recover the source', async ({
-            authenticatedPage,
+            guestSession,
             createProject,
         }) => {
-            const page = authenticatedPage;
+            const page = guestSession;
             const projectUuid = await createProject(page, '3D Viewer Asset Ref');
             await gotoWorkarea(page, projectUuid);
             await waitForAppReady(page);
@@ -685,8 +685,8 @@ test.describe('3D Viewer iDevice', () => {
     });
 
     test.describe('Preview Panel', () => {
-        test('should display 3D model correctly in preview panel', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should display 3D model correctly in preview panel', async ({ guestSession, createProject }) => {
+            const page = guestSession;
 
             const projectUuid = await createProject(page, '3D Viewer Preview Test');
             await gotoWorkarea(page, projectUuid);
@@ -747,10 +747,10 @@ test.describe('3D Viewer iDevice', () => {
         });
 
         test('hides the empty-state overlay in a real HTML5 export (#1957)', async ({
-            authenticatedPage,
+            guestSession,
             createProject,
         }) => {
-            const page = authenticatedPage;
+            const page = guestSession;
 
             const projectUuid = await createProject(page, '3D Viewer Export Overlay Test');
             await gotoWorkarea(page, projectUuid);
@@ -822,11 +822,8 @@ test.describe('3D Viewer iDevice', () => {
     });
 
     test.describe('File Manager Integration', () => {
-        test('should open file manager modal when clicking browse button', async ({
-            authenticatedPage,
-            createProject,
-        }) => {
-            const page = authenticatedPage;
+        test('should open file manager modal when clicking browse button', async ({ guestSession, createProject }) => {
+            const page = guestSession;
 
             const projectUuid = await createProject(page, '3D Viewer File Manager Test');
             await gotoWorkarea(page, projectUuid);

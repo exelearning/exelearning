@@ -250,8 +250,8 @@ async function verifyFirstImageRendered(iframe: FrameLocator): Promise<void> {
 
 test.describe('BeforeAfter iDevice', () => {
     test.describe('Basic Operations', () => {
-        test('should add beforeafter iDevice to page', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should add beforeafter iDevice to page', async ({ guestSession, createProject }) => {
+            const page = guestSession;
 
             // Create a new project
             const projectUuid = await createProject(page, 'BeforeAfter Basic Test');
@@ -270,8 +270,8 @@ test.describe('BeforeAfter iDevice', () => {
             await expect(page.locator('#bfafEURLImage')).toBeVisible({ timeout: 5000 });
         });
 
-        test('should add multiple image pairs and save', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should add multiple image pairs and save', async ({ guestSession, createProject }) => {
+            const page = guestSession;
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'BeforeAfter Multiple Pairs Test');
@@ -316,8 +316,8 @@ test.describe('BeforeAfter iDevice', () => {
     });
 
     test.describe('Preview Panel', () => {
-        test('should render first image correctly on preview open', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should render first image correctly on preview open', async ({ guestSession, createProject }) => {
+            const page = guestSession;
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'BeforeAfter Preview First Image Test');
@@ -363,11 +363,8 @@ test.describe('BeforeAfter iDevice', () => {
             await expect(numberInfo).toContainText(/1.*2/, { timeout: 5000 });
         });
 
-        test('should navigate between images with Next/Previous buttons', async ({
-            authenticatedPage,
-            createProject,
-        }) => {
-            const page = authenticatedPage;
+        test('should navigate between images with Next/Previous buttons', async ({ guestSession, createProject }) => {
+            const page = guestSession;
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'BeforeAfter Navigation Test');
@@ -438,8 +435,8 @@ test.describe('BeforeAfter iDevice', () => {
             await expect(numberInfo).toContainText(/2.*3/, { timeout: 5000 });
         });
 
-        test('should display comparison slider', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should display comparison slider', async ({ guestSession, createProject }) => {
+            const page = guestSession;
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'BeforeAfter Slider Test');
@@ -485,8 +482,8 @@ test.describe('BeforeAfter iDevice', () => {
     });
 
     test.describe('Persistence', () => {
-        test('should persist after reload', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should persist after reload', async ({ guestSession, createProject }) => {
+            const page = guestSession;
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'BeforeAfter Persistence Test');

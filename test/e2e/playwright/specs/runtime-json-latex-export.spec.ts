@@ -92,8 +92,8 @@ async function exportWithJsonLatex(
 const ALL_TARGETS = ['preview', 'html5', 'page', 'scorm12', 'scorm2004', 'ims', 'elpx'];
 
 test.describe('Runtime JSON iDevice LaTeX exports', () => {
-    test('pre-renders LaTeX (no MathJax) for form', async ({ authenticatedPage, createProject }) => {
-        const page = authenticatedPage;
+    test('pre-renders LaTeX (no MathJax) for form', async ({ guestSession, createProject }) => {
+        const page = guestSession;
         const projectUuid = await createProject(page, 'Runtime JSON LaTeX (form)');
         await gotoWorkarea(page, projectUuid);
         await waitForAppReady(page);
@@ -125,8 +125,8 @@ test.describe('Runtime JSON iDevice LaTeX exports', () => {
         }
     });
 
-    test('pre-renders LaTeX (no MathJax) for adaptative-quiz', async ({ authenticatedPage, createProject }) => {
-        const page = authenticatedPage;
+    test('pre-renders LaTeX (no MathJax) for adaptative-quiz', async ({ guestSession, createProject }) => {
+        const page = guestSession;
         const projectUuid = await createProject(page, 'Runtime JSON LaTeX (pre-render)');
         await gotoWorkarea(page, projectUuid);
         await waitForAppReady(page);
@@ -145,8 +145,8 @@ test.describe('Runtime JSON iDevice LaTeX exports', () => {
         }
     });
 
-    test('pre-renders LaTeX (no MathJax) for scrambled-list', async ({ authenticatedPage, createProject }) => {
-        const page = authenticatedPage;
+    test('pre-renders LaTeX (no MathJax) for scrambled-list', async ({ guestSession, createProject }) => {
+        const page = guestSession;
         const projectUuid = await createProject(page, 'Runtime JSON LaTeX (scrambled-list)');
         await gotoWorkarea(page, projectUuid);
         await waitForAppReady(page);

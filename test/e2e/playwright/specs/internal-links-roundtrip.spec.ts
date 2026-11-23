@@ -43,11 +43,8 @@ async function getFirstPageId(page: import('@playwright/test').Page): Promise<st
 }
 
 test.describe('Internal link export → re-import round trip (#1927)', () => {
-    test('content.xml keeps exe-node: links and they survive re-import', async ({
-        authenticatedPage,
-        createProject,
-    }) => {
-        const page = authenticatedPage;
+    test('content.xml keeps exe-node: links and they survive re-import', async ({ guestSession, createProject }) => {
+        const page = guestSession;
         const uuid = await createProject(page, 'Internal Link Round Trip');
 
         await gotoWorkarea(page, uuid);

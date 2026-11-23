@@ -21,13 +21,13 @@ import { gotoWorkarea, waitForAppReady, selectFirstPage, addIdevice } from '../h
  */
 test.describe('empty-write guard vs legitimate clear', () => {
     test('the real save pipeline stores a non-blank wrapper, and the guard applies a wrapper clear across reload', async ({
-        authenticatedPage,
+        guestSession,
         createProject,
     }, testInfo) => {
         test.skip(testInfo.project.name === 'static', 'Reload persistence is disabled in static mode');
         test.setTimeout(120000);
 
-        const page = authenticatedPage;
+        const page = guestSession;
         const projectUuid = await createProject(page, 'Empty-write guard');
         await gotoWorkarea(page, projectUuid);
         await waitForAppReady(page);

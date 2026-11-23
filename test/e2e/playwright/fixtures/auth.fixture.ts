@@ -117,6 +117,10 @@ export const test = base.extend<AuthFixtures, AuthWorkerFixtures>({
      *
      * In static mode: no login needed, navigates directly to root
      * In server mode: performs guest login and navigates to workarea
+     *
+     * That first load is a whole app boot, on a project the server creates for it. A test
+     * that opens a project of its own (createProject + gotoWorkarea) should take
+     * `guestSession` instead, or it boots the app twice.
      */
     authenticatedPage: async ({ page }, use, testInfo) => {
         if (isStaticProject(testInfo)) {
@@ -155,11 +159,11 @@ export const test = base.extend<AuthFixtures, AuthWorkerFixtures>({
     },
 
     /**
-     * Provides a page with guest session established via API
-     * Use this when you need session but will navigate yourself
+     * Provides a page with the guest session in place and nothing loaded yet.
+     * Use this when the test navigates by itself, typically createProject + gotoWorkarea.
      *
      * In static mode: no login needed, just use the page
-     * In server mode: performs guest login via API
+     * In server mode: the session comes from the worker's storage state
      */
     guestSession: async ({ page }, use, testInfo) => {
         if (isStaticProject(testInfo)) {
@@ -233,7 +237,8 @@ export async function closeModal(page: Page, modalId: string): Promise<void> {
 
 /**
  * Helper function to wait for the loading screen to be completely hidden
- * The loading screen has a fade animation (~1250ms total) before it's fully hidden
+ * The app fades it out for a second, or hides it at once under the reduced motion
+ * that playwright.config.ts asks for.
  * This waits for the data-visible attribute to be "false", which indicates
  * the loading screen is no longer blocking pointer events
  */

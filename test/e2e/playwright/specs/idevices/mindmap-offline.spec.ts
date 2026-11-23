@@ -12,7 +12,7 @@ import { editTextIdevice, openMindmapEditor, renameTopic, saveMindmap, topic } f
  */
 test.describe('Mind map editor offline contract', () => {
     test('requests nothing from another origin while editing and saving', async ({
-        authenticatedPage: page,
+        guestSession: page,
         createProject,
     }) => {
         const uuid = await createProject(page, 'Mind map offline');
@@ -62,10 +62,7 @@ test.describe('Mind map editor offline contract', () => {
         ]);
     });
 
-    test('loads no jQuery or legacy mindmaps code into the editor', async ({
-        authenticatedPage: page,
-        createProject,
-    }) => {
+    test('loads no jQuery or legacy mindmaps code into the editor', async ({ guestSession: page, createProject }) => {
         const uuid = await createProject(page, 'Mind map no jQuery');
         await gotoWorkarea(page, uuid);
         await waitForAppReady(page);

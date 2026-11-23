@@ -143,8 +143,8 @@ async function expectModelAtomCount(page: Page, expected: number): Promise<void>
 }
 
 test.describe('3Dmol iDevice — molecule upload via file manager', () => {
-    test('model picker opts into the molecule file-manager filter', async ({ authenticatedPage, createProject }) => {
-        const page = authenticatedPage;
+    test('model picker opts into the molecule file-manager filter', async ({ guestSession, createProject }) => {
+        const page = guestSession;
 
         const projectUuid = await createProject(page, '3Dmol Molecule Filter Test');
         await gotoWorkarea(page, projectUuid);
@@ -165,10 +165,10 @@ test.describe('3Dmol iDevice — molecule upload via file manager', () => {
     });
 
     test('uploaded molecule appears in the file manager and can be selected', async ({
-        authenticatedPage,
+        guestSession,
         createProject,
     }) => {
-        const page = authenticatedPage;
+        const page = guestSession;
 
         const projectUuid = await createProject(page, '3Dmol Molecule Upload Test');
         await gotoWorkarea(page, projectUuid);
@@ -184,8 +184,8 @@ test.describe('3Dmol iDevice — molecule upload via file manager', () => {
         expect(value).toMatch(/^asset:\/\/.*\.sdf$/);
     });
 
-    test('renders an SDF whose title line is empty (OpenBabel style)', async ({ authenticatedPage, createProject }) => {
-        const page = authenticatedPage;
+    test('renders an SDF whose title line is empty (OpenBabel style)', async ({ guestSession, createProject }) => {
+        const page = guestSession;
 
         const projectUuid = await createProject(page, '3Dmol Empty-Title SDF Test');
         await gotoWorkarea(page, projectUuid);
@@ -204,10 +204,10 @@ test.describe('3Dmol iDevice — molecule upload via file manager', () => {
     });
 
     test('switching to a second molecule loads the new model, not the previous one', async ({
-        authenticatedPage,
+        guestSession,
         createProject,
     }) => {
-        const page = authenticatedPage;
+        const page = guestSession;
 
         const projectUuid = await createProject(page, '3Dmol Molecule Switch Test');
         await gotoWorkarea(page, projectUuid);

@@ -62,8 +62,8 @@ async function addFileViaMediaLibrary(page: Page, fixturePath: string): Promise<
 }
 
 test.describe('File attachment iDevice', () => {
-    test('renders the authoring form with an empty state', async ({ authenticatedPage, createProject }) => {
-        const page = authenticatedPage;
+    test('renders the authoring form with an empty state', async ({ guestSession, createProject }) => {
+        const page = guestSession;
 
         const projectUuid = await createProject(page, 'File Attachment Form Test');
         await gotoWorkarea(page, projectUuid);
@@ -79,10 +79,10 @@ test.describe('File attachment iDevice', () => {
     });
 
     test('uploads a file via the Media Library and renders a download link', async ({
-        authenticatedPage,
+        guestSession,
         createProject,
     }) => {
-        const page = authenticatedPage;
+        const page = guestSession;
 
         const projectUuid = await createProject(page, 'File Attachment Upload Test');
         await gotoWorkarea(page, projectUuid);
@@ -110,10 +110,10 @@ test.describe('File attachment iDevice', () => {
     });
 
     test('reflects renaming and deleting a referenced asset in the Media Library', async ({
-        authenticatedPage,
+        guestSession,
         createProject,
     }) => {
-        const page = authenticatedPage;
+        const page = guestSession;
 
         const projectUuid = await createProject(page, 'File Attachment Sync Test');
         await gotoWorkarea(page, projectUuid);

@@ -19,12 +19,12 @@ import {
 test.describe('License font with global font', () => {
     for (const themeId of ['flux', 'nova']) {
         test(`keeps the CC license legible in ${themeId} when Playwrite ES is selected`, async ({
-            authenticatedPage,
+            guestSession,
             createProject,
         }, testInfo) => {
             skipInStaticMode(test, testInfo, 'Requires server to create projects and render preview');
 
-            const page = authenticatedPage;
+            const page = guestSession;
 
             const projectUuid = await createProject(page, `License Font ${themeId}`);
             expect(projectUuid).toBeDefined();

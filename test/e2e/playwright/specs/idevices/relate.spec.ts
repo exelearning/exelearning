@@ -265,8 +265,8 @@ async function createConnection(iframe: FrameLocator, wordIndex: number, definit
 
 test.describe('Relate iDevice', () => {
     test.describe('Basic Operations', () => {
-        test('should add relate iDevice to page', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should add relate iDevice to page', async ({ guestSession, createProject }) => {
+            const page = guestSession;
 
             const projectUuid = await createProject(page, 'Relate Basic Test');
             await gotoWorkarea(page, projectUuid);
@@ -285,8 +285,8 @@ test.describe('Relate iDevice', () => {
             await expect(page.locator('#rclEURLImageBack')).toBeVisible({ timeout: 5000 });
         });
 
-        test('should add multiple pairs and save', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should add multiple pairs and save', async ({ guestSession, createProject }) => {
+            const page = guestSession;
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Relate Multiple Pairs Test');
@@ -322,10 +322,10 @@ test.describe('Relate iDevice', () => {
 
     test.describe('Preview Panel', () => {
         test('should render canvas with correct dimensions on preview open', async ({
-            authenticatedPage,
+            guestSession,
             createProject,
         }) => {
-            const page = authenticatedPage;
+            const page = guestSession;
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Relate Canvas Test');
@@ -359,8 +359,8 @@ test.describe('Relate iDevice', () => {
             await verifyCanvasInitialized(iframe);
         });
 
-        test('should display words and definitions for matching', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should display words and definitions for matching', async ({ guestSession, createProject }) => {
+            const page = guestSession;
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Relate Display Test');
@@ -403,8 +403,8 @@ test.describe('Relate iDevice', () => {
             await expect(definitions).toHaveCount(2, { timeout: 10000 });
         });
 
-        test('should have images displayed correctly in preview', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should have images displayed correctly in preview', async ({ guestSession, createProject }) => {
+            const page = guestSession;
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Relate Images Test');
@@ -445,8 +445,8 @@ test.describe('Relate iDevice', () => {
     });
 
     test.describe('Game Interaction', () => {
-        test('should allow creating connections between pairs', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should allow creating connections between pairs', async ({ guestSession, createProject }) => {
+            const page = guestSession;
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Relate Connection Test');
@@ -492,8 +492,8 @@ test.describe('Relate iDevice', () => {
     });
 
     test.describe('Persistence', () => {
-        test('should persist after reload', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should persist after reload', async ({ guestSession, createProject }) => {
+            const page = guestSession;
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Relate Persistence Test');

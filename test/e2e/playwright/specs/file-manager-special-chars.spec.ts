@@ -218,10 +218,10 @@ async function openFileManagerViaTinyMCE(page: Page): Promise<void> {
 test.describe('File Manager - Special Characters', () => {
     test.describe('Upload Operations - Unicode Languages', () => {
         test('should upload file with Spanish characters (archivo_espanol.jpg)', async ({
-            authenticatedPage,
+            guestSession,
             createProject,
         }) => {
-            const page = authenticatedPage;
+            const page = guestSession;
             const projectUuid = await createProject(page, 'Special Chars - Spanish');
             await gotoWorkarea(page, projectUuid);
             await waitForAppReady(page);
@@ -253,11 +253,8 @@ test.describe('File Manager - Special Characters', () => {
             await saveProject(page);
         });
 
-        test('should upload file with Chinese characters (中文文件.jpg)', async ({
-            authenticatedPage,
-            createProject,
-        }) => {
-            const page = authenticatedPage;
+        test('should upload file with Chinese characters (中文文件.jpg)', async ({ guestSession, createProject }) => {
+            const page = guestSession;
             const projectUuid = await createProject(page, 'Special Chars - Chinese');
             await gotoWorkarea(page, projectUuid);
             await waitForAppReady(page);
@@ -290,10 +287,10 @@ test.describe('File Manager - Special Characters', () => {
         });
 
         test('should upload file with Japanese characters (日本語ファイル.jpg)', async ({
-            authenticatedPage,
+            guestSession,
             createProject,
         }) => {
-            const page = authenticatedPage;
+            const page = guestSession;
             const projectUuid = await createProject(page, 'Special Chars - Japanese');
             await gotoWorkarea(page, projectUuid);
             await waitForAppReady(page);
@@ -325,11 +322,8 @@ test.describe('File Manager - Special Characters', () => {
             await saveProject(page);
         });
 
-        test('should upload file with Korean characters (한국어파일.jpg)', async ({
-            authenticatedPage,
-            createProject,
-        }) => {
-            const page = authenticatedPage;
+        test('should upload file with Korean characters (한국어파일.jpg)', async ({ guestSession, createProject }) => {
+            const page = guestSession;
             const projectUuid = await createProject(page, 'Special Chars - Korean');
             await gotoWorkarea(page, projectUuid);
             await waitForAppReady(page);
@@ -362,10 +356,10 @@ test.describe('File Manager - Special Characters', () => {
         });
 
         test('should upload file with mixed unicode (Test_日本語_中文.jpg)', async ({
-            authenticatedPage,
+            guestSession,
             createProject,
         }) => {
-            const page = authenticatedPage;
+            const page = guestSession;
             const projectUuid = await createProject(page, 'Special Chars - Mixed Unicode');
             await gotoWorkarea(page, projectUuid);
             await waitForAppReady(page);
@@ -399,8 +393,8 @@ test.describe('File Manager - Special Characters', () => {
     });
 
     test.describe('Upload Operations - Spaces and Symbols', () => {
-        test('should upload file with spaces in name', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should upload file with spaces in name', async ({ guestSession, createProject }) => {
+            const page = guestSession;
             const projectUuid = await createProject(page, 'Special Chars - Spaces');
             await gotoWorkarea(page, projectUuid);
             await waitForAppReady(page);
@@ -432,8 +426,8 @@ test.describe('File Manager - Special Characters', () => {
             await saveProject(page);
         });
 
-        test('should upload file with multiple consecutive spaces', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should upload file with multiple consecutive spaces', async ({ guestSession, createProject }) => {
+            const page = guestSession;
             const projectUuid = await createProject(page, 'Special Chars - Multiple Spaces');
             await gotoWorkarea(page, projectUuid);
             await waitForAppReady(page);
@@ -465,8 +459,8 @@ test.describe('File Manager - Special Characters', () => {
             await saveProject(page);
         });
 
-        test('should upload file with underscores and hyphens', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should upload file with underscores and hyphens', async ({ guestSession, createProject }) => {
+            const page = guestSession;
             const projectUuid = await createProject(page, 'Special Chars - Underscores Hyphens');
             await gotoWorkarea(page, projectUuid);
             await waitForAppReady(page);
@@ -498,8 +492,8 @@ test.describe('File Manager - Special Characters', () => {
             await saveProject(page);
         });
 
-        test('should upload file with numbers and symbols', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should upload file with numbers and symbols', async ({ guestSession, createProject }) => {
+            const page = guestSession;
             const projectUuid = await createProject(page, 'Special Chars - Numbers Symbols');
             await gotoWorkarea(page, projectUuid);
             await waitForAppReady(page);
@@ -533,8 +527,8 @@ test.describe('File Manager - Special Characters', () => {
     });
 
     test.describe('Upload Operations - Edge Cases', () => {
-        test('should upload file with multiple dots in name', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should upload file with multiple dots in name', async ({ guestSession, createProject }) => {
+            const page = guestSession;
             const projectUuid = await createProject(page, 'Special Chars - Multiple Dots');
             await gotoWorkarea(page, projectUuid);
             await waitForAppReady(page);
@@ -566,8 +560,8 @@ test.describe('File Manager - Special Characters', () => {
             await saveProject(page);
         });
 
-        test('should upload file with very short name (a.jpg)', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should upload file with very short name (a.jpg)', async ({ guestSession, createProject }) => {
+            const page = guestSession;
             const projectUuid = await createProject(page, 'Special Chars - Short Name');
             await gotoWorkarea(page, projectUuid);
             await waitForAppReady(page);
@@ -599,8 +593,8 @@ test.describe('File Manager - Special Characters', () => {
             await saveProject(page);
         });
 
-        test('should upload file with diacritics (naïve_résumé.jpg)', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should upload file with diacritics (naïve_résumé.jpg)', async ({ guestSession, createProject }) => {
+            const page = guestSession;
             const projectUuid = await createProject(page, 'Special Chars - Diacritics');
             await gotoWorkarea(page, projectUuid);
             await waitForAppReady(page);
@@ -634,11 +628,8 @@ test.describe('File Manager - Special Characters', () => {
 
         // Note: DataTransfer API for programmatic file uploads doesn't work reliably
         // for consecutive uploads. Single-file unicode uploads are validated by other tests.
-        test.skip('should upload multiple unicode files in succession', async ({
-            authenticatedPage,
-            createProject,
-        }) => {
-            const page = authenticatedPage;
+        test.skip('should upload multiple unicode files in succession', async ({ guestSession, createProject }) => {
+            const page = guestSession;
             const projectUuid = await createProject(page, 'Special Chars - Multiple Files');
             await gotoWorkarea(page, projectUuid);
             await waitForAppReady(page);
@@ -665,8 +656,8 @@ test.describe('File Manager - Special Characters', () => {
     });
 
     test.describe('Folder Operations', () => {
-        test('should create folder with valid alphanumeric name', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should create folder with valid alphanumeric name', async ({ guestSession, createProject }) => {
+            const page = guestSession;
             const projectUuid = await createProject(page, 'Folder - Alphanumeric');
             await gotoWorkarea(page, projectUuid);
             await waitForAppReady(page);
@@ -680,8 +671,8 @@ test.describe('File Manager - Special Characters', () => {
             expect(exists).toBe(true);
         });
 
-        test('should create folder with hyphen and underscore', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should create folder with hyphen and underscore', async ({ guestSession, createProject }) => {
+            const page = guestSession;
             const projectUuid = await createProject(page, 'Folder - Hyphen Underscore');
             await gotoWorkarea(page, projectUuid);
             await waitForAppReady(page);
@@ -695,11 +686,8 @@ test.describe('File Manager - Special Characters', () => {
             expect(exists).toBe(true);
         });
 
-        test('should handle unicode folder name (sanitized or rejected)', async ({
-            authenticatedPage,
-            createProject,
-        }) => {
-            const page = authenticatedPage;
+        test('should handle unicode folder name (sanitized or rejected)', async ({ guestSession, createProject }) => {
+            const page = guestSession;
             const projectUuid = await createProject(page, 'Folder - Unicode');
             await gotoWorkarea(page, projectUuid);
             await waitForAppReady(page);
@@ -724,8 +712,8 @@ test.describe('File Manager - Special Characters', () => {
             }
         });
 
-        test('should navigate into folder and back using breadcrumbs', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should navigate into folder and back using breadcrumbs', async ({ guestSession, createProject }) => {
+            const page = guestSession;
             const projectUuid = await createProject(page, 'Folder - Navigation');
             await gotoWorkarea(page, projectUuid);
             await waitForAppReady(page);
@@ -750,8 +738,8 @@ test.describe('File Manager - Special Characters', () => {
             expect(exists).toBe(true);
         });
 
-        test('should upload unicode file inside folder', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should upload unicode file inside folder', async ({ guestSession, createProject }) => {
+            const page = guestSession;
             const projectUuid = await createProject(page, 'Folder - Upload Unicode');
             await gotoWorkarea(page, projectUuid);
             await waitForAppReady(page);
@@ -806,11 +794,8 @@ test.describe('File Manager - Special Characters', () => {
             await saveProject(page);
         });
 
-        test('should create nested folders and navigate with breadcrumbs', async ({
-            authenticatedPage,
-            createProject,
-        }) => {
-            const page = authenticatedPage;
+        test('should create nested folders and navigate with breadcrumbs', async ({ guestSession, createProject }) => {
+            const page = guestSession;
             const projectUuid = await createProject(page, 'Folder - Nested');
             await gotoWorkarea(page, projectUuid);
             await waitForAppReady(page);
@@ -841,8 +826,8 @@ test.describe('File Manager - Special Characters', () => {
     });
 
     test.describe('Rename Operations', () => {
-        test('should rename file to unicode name', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should rename file to unicode name', async ({ guestSession, createProject }) => {
+            const page = guestSession;
             const projectUuid = await createProject(page, 'Rename - To Unicode');
             await gotoWorkarea(page, projectUuid);
             await waitForAppReady(page);
@@ -882,8 +867,8 @@ test.describe('File Manager - Special Characters', () => {
             await saveProject(page);
         });
 
-        test('should rename unicode file to normal name', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should rename unicode file to normal name', async ({ guestSession, createProject }) => {
+            const page = guestSession;
             const projectUuid = await createProject(page, 'Rename - From Unicode');
             await gotoWorkarea(page, projectUuid);
             await waitForAppReady(page);
@@ -920,8 +905,8 @@ test.describe('File Manager - Special Characters', () => {
             await saveProject(page);
         });
 
-        test('should rename file with spaces to file with spaces', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should rename file with spaces to file with spaces', async ({ guestSession, createProject }) => {
+            const page = guestSession;
             const projectUuid = await createProject(page, 'Rename - Spaces');
             await gotoWorkarea(page, projectUuid);
             await waitForAppReady(page);
@@ -957,8 +942,8 @@ test.describe('File Manager - Special Characters', () => {
             await saveProject(page);
         });
 
-        test('should preserve extension when renaming', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should preserve extension when renaming', async ({ guestSession, createProject }) => {
+            const page = guestSession;
             const projectUuid = await createProject(page, 'Rename - Preserve Ext');
             await gotoWorkarea(page, projectUuid);
             await waitForAppReady(page);
@@ -995,8 +980,8 @@ test.describe('File Manager - Special Characters', () => {
             await saveProject(page);
         });
 
-        test('should update sidebar after rename', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should update sidebar after rename', async ({ guestSession, createProject }) => {
+            const page = guestSession;
             const projectUuid = await createProject(page, 'Rename - Sidebar Update');
             await gotoWorkarea(page, projectUuid);
             await waitForAppReady(page);
@@ -1033,8 +1018,8 @@ test.describe('File Manager - Special Characters', () => {
             await saveProject(page);
         });
 
-        test('should rename file with multiple dots', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should rename file with multiple dots', async ({ guestSession, createProject }) => {
+            const page = guestSession;
             const projectUuid = await createProject(page, 'Rename - Multiple Dots');
             await gotoWorkarea(page, projectUuid);
             await waitForAppReady(page);
@@ -1072,8 +1057,8 @@ test.describe('File Manager - Special Characters', () => {
     });
 
     test.describe('Search Operations', () => {
-        test('should search by unicode characters', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should search by unicode characters', async ({ guestSession, createProject }) => {
+            const page = guestSession;
             const projectUuid = await createProject(page, 'Search - Unicode');
             await gotoWorkarea(page, projectUuid);
             await waitForAppReady(page);
@@ -1095,8 +1080,8 @@ test.describe('File Manager - Special Characters', () => {
             expect(allFiles).toContain(chineseFile);
         });
 
-        test('should search partial unicode match', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should search partial unicode match', async ({ guestSession, createProject }) => {
+            const page = guestSession;
             const projectUuid = await createProject(page, 'Search - Partial Unicode');
             await gotoWorkarea(page, projectUuid);
             await waitForAppReady(page);
@@ -1112,8 +1097,8 @@ test.describe('File Manager - Special Characters', () => {
             expect(results.some(f => f.includes('日本語'))).toBe(true);
         });
 
-        test('should search case-insensitive for ASCII', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should search case-insensitive for ASCII', async ({ guestSession, createProject }) => {
+            const page = guestSession;
             const projectUuid = await createProject(page, 'Search - Case Insensitive');
             await gotoWorkarea(page, projectUuid);
             await waitForAppReady(page);
@@ -1128,8 +1113,8 @@ test.describe('File Manager - Special Characters', () => {
             expect(results.length).toBeGreaterThanOrEqual(1);
         });
 
-        test('should search across subfolders', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should search across subfolders', async ({ guestSession, createProject }) => {
+            const page = guestSession;
             const projectUuid = await createProject(page, 'Search - Subfolders');
             await gotoWorkarea(page, projectUuid);
             await waitForAppReady(page);
@@ -1152,8 +1137,8 @@ test.describe('File Manager - Special Characters', () => {
             expect(results.some(f => f.includes('中文'))).toBe(true);
         });
 
-        test('should show search indicator and clear button', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should show search indicator and clear button', async ({ guestSession, createProject }) => {
+            const page = guestSession;
             const projectUuid = await createProject(page, 'Search - Indicator');
             await gotoWorkarea(page, projectUuid);
             await waitForAppReady(page);
@@ -1178,8 +1163,8 @@ test.describe('File Manager - Special Characters', () => {
     });
 
     test.describe('Preview Operations', () => {
-        test('should show unicode file in preview after insertion', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should show unicode file in preview after insertion', async ({ guestSession, createProject }) => {
+            const page = guestSession;
             const projectUuid = await createProject(page, 'Preview - Unicode');
             await gotoWorkarea(page, projectUuid);
             await waitForAppReady(page);
@@ -1229,8 +1214,8 @@ test.describe('File Manager - Special Characters', () => {
             await expect(img).toBeVisible({ timeout: 10000 });
         });
 
-        test('should preserve unicode filename after save and reload', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should preserve unicode filename after save and reload', async ({ guestSession, createProject }) => {
+            const page = guestSession;
             const projectUuid = await createProject(page, 'Preview - Save Reload');
             await gotoWorkarea(page, projectUuid);
             await waitForAppReady(page);
@@ -1267,8 +1252,8 @@ test.describe('File Manager - Special Characters', () => {
             expect(files).toContain(filename);
         });
 
-        test('should insert file with spaces and show in editor', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should insert file with spaces and show in editor', async ({ guestSession, createProject }) => {
+            const page = guestSession;
             const projectUuid = await createProject(page, 'Preview - Spaces');
             await gotoWorkarea(page, projectUuid);
             await waitForAppReady(page);
@@ -1322,10 +1307,10 @@ test.describe('File Manager - Special Characters', () => {
         // Note: These tests verify full round-trip: upload → insert → editor → save → download → reopen → verify
         // The download button (#navbar-button-download-project) has exe-advanced class.
         test('should download project with unicode files and verify round-trip', async ({
-            authenticatedPage,
+            guestSession,
             createProject,
         }) => {
-            const page = authenticatedPage;
+            const page = guestSession;
             const projectUuid = await createProject(page, 'Download - Unicode Files');
             await gotoWorkarea(page, projectUuid);
             await waitForAppReady(page);
@@ -1379,10 +1364,10 @@ test.describe('File Manager - Special Characters', () => {
         });
 
         test('should download project with space-containing files and verify round-trip', async ({
-            authenticatedPage,
+            guestSession,
             createProject,
         }) => {
-            const page = authenticatedPage;
+            const page = guestSession;
             const projectUuid = await createProject(page, 'Download - Space Files');
             await gotoWorkarea(page, projectUuid);
             await waitForAppReady(page);
@@ -1436,10 +1421,10 @@ test.describe('File Manager - Special Characters', () => {
         });
 
         test('should preserve folder structure in download and verify round-trip', async ({
-            authenticatedPage,
+            guestSession,
             createProject,
         }) => {
-            const page = authenticatedPage;
+            const page = guestSession;
             const projectUuid = await createProject(page, 'Export - Folder Structure');
             await gotoWorkarea(page, projectUuid);
             await waitForAppReady(page);
@@ -1507,8 +1492,8 @@ test.describe('File Manager - Special Characters', () => {
     });
 
     test.describe('Delete Operations', () => {
-        test('should delete file with unicode name', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should delete file with unicode name', async ({ guestSession, createProject }) => {
+            const page = guestSession;
             const projectUuid = await createProject(page, 'Delete - Unicode');
             await gotoWorkarea(page, projectUuid);
             await waitForAppReady(page);
@@ -1530,8 +1515,8 @@ test.describe('File Manager - Special Characters', () => {
             expect(files).not.toContain(filename);
         });
 
-        test('should delete file with spaces in name', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should delete file with spaces in name', async ({ guestSession, createProject }) => {
+            const page = guestSession;
             const projectUuid = await createProject(page, 'Delete - Spaces');
             await gotoWorkarea(page, projectUuid);
             await waitForAppReady(page);
@@ -1555,8 +1540,8 @@ test.describe('File Manager - Special Characters', () => {
     });
 
     test.describe('Persistence', () => {
-        test('should persist unicode files after page reload', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should persist unicode files after page reload', async ({ guestSession, createProject }) => {
+            const page = guestSession;
             const projectUuid = await createProject(page, 'Persist - Unicode');
             await gotoWorkarea(page, projectUuid);
             await waitForAppReady(page);
@@ -1590,10 +1575,10 @@ test.describe('File Manager - Special Characters', () => {
         });
 
         test('should persist folder structure with unicode files after reload', async ({
-            authenticatedPage,
+            guestSession,
             createProject,
         }) => {
-            const page = authenticatedPage;
+            const page = guestSession;
             const projectUuid = await createProject(page, 'Persist - Folder Unicode');
             await gotoWorkarea(page, projectUuid);
             await waitForAppReady(page);

@@ -110,11 +110,8 @@ async function fittedFontSizes(page: Page): Promise<number[]> {
 }
 
 test.describe('Memory cards text fit', () => {
-    test('shrinks a word too long to break so it stays inside the card', async ({
-        authenticatedPage,
-        createProject,
-    }) => {
-        const page = authenticatedPage;
+    test('shrinks a word too long to break so it stays inside the card', async ({ guestSession, createProject }) => {
+        const page = guestSession;
         const projectUuid = await createProject(page, 'Flipcards long word');
         await gotoWorkarea(page, projectUuid);
         await waitForAppReady(page);
@@ -152,10 +149,10 @@ test.describe('Memory cards text fit', () => {
     });
 
     test('sizes a card the mode is holding back the same as the one on screen', async ({
-        authenticatedPage,
+        guestSession,
         createProject,
     }) => {
-        const page = authenticatedPage;
+        const page = guestSession;
         const projectUuid = await createProject(page, 'Flipcards hidden card');
         await gotoWorkarea(page, projectUuid);
         await waitForAppReady(page);

@@ -17,8 +17,8 @@ test.describe('Open Project Clean State', () => {
         }
     });
 
-    test('opening an existing saved project should show saved status', async ({ authenticatedPage, createProject }) => {
-        const page = authenticatedPage;
+    test('opening an existing saved project should show saved status', async ({ guestSession, createProject }) => {
+        const page = guestSession;
 
         // Create a new project
         const projectUuid = await createProject(page, 'Clean State Test');
@@ -95,8 +95,8 @@ test.describe('Open Project Clean State', () => {
         expect(isDirty).toBe(false);
     });
 
-    test('persisted dirty state should be restored after page reload', async ({ authenticatedPage, createProject }) => {
-        const page = authenticatedPage;
+    test('persisted dirty state should be restored after page reload', async ({ guestSession, createProject }) => {
+        const page = guestSession;
 
         // Create a new project
         const projectUuid = await createProject(page, 'Dirty State Persistence Test');
@@ -166,8 +166,8 @@ test.describe('Open Project Clean State', () => {
         expect(isDirtyAfterReload).toBe(true);
     });
 
-    test('saving should clear persisted dirty state', async ({ authenticatedPage, createProject }) => {
-        const page = authenticatedPage;
+    test('saving should clear persisted dirty state', async ({ guestSession, createProject }) => {
+        const page = guestSession;
 
         // Create a new project
         const projectUuid = await createProject(page, 'Clear Dirty State Test');

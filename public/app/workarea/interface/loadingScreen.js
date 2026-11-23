@@ -3,7 +3,12 @@ export default class LoadingScreen {
         this.loadingScreenNode = document.querySelector(
             '#main > #load-screen-main'
         );
-        this.hideTime = 1000;
+        // The fade is decoration: skip it, and the wait for it, when the user
+        // asks for reduced motion.
+        this.hideTime = window.matchMedia?.('(prefers-reduced-motion: reduce)')
+            .matches
+            ? 0
+            : 1000;
     }
 
     /**

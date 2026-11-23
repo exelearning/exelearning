@@ -56,11 +56,8 @@ test.describe('Electrical Circuits iDevice — AI generation flow', () => {
     // the AI save, which now renders every circuit before inserting it.
     test.describe.configure({ timeout: 120000 });
 
-    test('loads AI-generated questions into the editor and normalizes Ω', async ({
-        authenticatedPage,
-        createProject,
-    }) => {
-        const page = authenticatedPage;
+    test('loads AI-generated questions into the editor and normalizes Ω', async ({ guestSession, createProject }) => {
+        const page = guestSession;
         const projectUuid = await createProject(page, 'Electrical Circuits AI E2E');
         await gotoWorkarea(page, projectUuid);
         await waitForAppReady(page);
@@ -121,10 +118,10 @@ test.describe('Electrical Circuits iDevice — AI generation flow', () => {
     });
 
     test('renders a circuit with an ohm label as vector paths in the preview', async ({
-        authenticatedPage,
+        guestSession,
         createProject,
     }) => {
-        const page = authenticatedPage;
+        const page = guestSession;
         const projectUuid = await createProject(page, 'Electrical Circuits Preview E2E');
         await gotoWorkarea(page, projectUuid);
         await waitForAppReady(page);
@@ -150,10 +147,10 @@ test.describe('Electrical Circuits iDevice — AI generation flow', () => {
     });
 
     test('renders an AI logic-gate circuit after the sanitizer rewrites it to circuitikz ports', async ({
-        authenticatedPage,
+        guestSession,
         createProject,
     }) => {
-        const page = authenticatedPage;
+        const page = guestSession;
         const projectUuid = await createProject(page, 'Electrical Circuits Gate E2E');
         await gotoWorkarea(page, projectUuid);
         await waitForAppReady(page);

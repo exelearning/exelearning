@@ -64,10 +64,10 @@ async function seedComponentAndRejectMalformedSave(page: Page, componentId: stri
 
 test.describe('iDevice JSON save validation', () => {
     test('rejects a malformed JSON save and preserves the last valid component', async ({
-        authenticatedPage,
+        guestSession,
         createProject,
     }) => {
-        const page = authenticatedPage;
+        const page = guestSession;
         const projectUuid = await createProject(page, 'iDevice JSON save validation');
 
         await gotoWorkarea(page, projectUuid);
@@ -81,17 +81,14 @@ test.describe('iDevice JSON save validation', () => {
         expect(JSON.parse(result.afterJson)).toEqual(VALID_JSON_PROPERTIES);
     });
 
-    test('keeps the preserved component after a page reload', async ({
-        authenticatedPage,
-        createProject,
-    }, testInfo) => {
+    test('keeps the preserved component after a page reload', async ({ guestSession, createProject }, testInfo) => {
         // Static builds run fully offline: saveToServer() is a no-op and a page
         // reload boots a fresh project, so project persistence across reloads
         // cannot be exercised there. open-project-clean-state.spec.ts skips
         // static for the same reason.
         test.skip(testInfo.project.name === 'static', 'Project persistence across reload is disabled in static mode');
 
-        const page = authenticatedPage;
+        const page = guestSession;
         const projectUuid = await createProject(page, 'iDevice JSON save validation reload');
 
         await gotoWorkarea(page, projectUuid);

@@ -128,7 +128,7 @@ test.describe('Print iDevices', () => {
 
     for (const mode of ['idevices', 'in-place', 'appendix']) {
         test(`reports multimedia requirements when every question needs video in ${mode} mode`, async ({
-            authenticatedPage: page,
+            guestSession: page,
             createProject,
         }) => {
             const uuid = await createProject(page, 'Video-only print regression');
@@ -162,7 +162,7 @@ test.describe('Print iDevices', () => {
         });
 
         test(`prints literal legacy quiz prompts, case-sensitive hints and wrapped lists in ${mode} mode`, async ({
-            authenticatedPage: page,
+            guestSession: page,
             createProject,
         }) => {
             const uuid = await createProject(page, 'Legacy worksheet text');
@@ -290,7 +290,7 @@ test.describe('Print iDevices', () => {
 
     for (const mode of ['idevices', 'in-place', 'appendix']) {
         test(`prints safe form labels, selected card images and stored element groups in ${mode} mode`, async ({
-            authenticatedPage: page,
+            guestSession: page,
             createProject,
         }) => {
             const uuid = await createProject(page, 'Printed adapter regressions');
@@ -446,7 +446,7 @@ test.describe('Print iDevices', () => {
 
     for (const mode of ['idevices', 'in-place', 'appendix']) {
         test(`prints rubric identity fields and current instruction images in ${mode} mode`, async ({
-            authenticatedPage: page,
+            guestSession: page,
             createProject,
         }) => {
             const uuid = await createProject(page, 'Rubric and instruction regressions');
@@ -529,7 +529,7 @@ test.describe('Print iDevices', () => {
 
     for (const mode of ['idevices', 'in-place', 'appendix']) {
         test(`prints a checklist as a list to fill in by hand in ${mode} mode`, async ({
-            authenticatedPage: page,
+            guestSession: page,
             createProject,
         }) => {
             const uuid = await createProject(page, 'Printable checklist');
@@ -659,7 +659,7 @@ test.describe('Print iDevices', () => {
     }
 
     test('prints where to find what a challenge embedded, and where each of its links goes', async ({
-        authenticatedPage: page,
+        guestSession: page,
         createProject,
     }) => {
         // Issue #2634: each challenge pointed at a Genially, and the paper showed a blank instead.
@@ -733,10 +733,7 @@ test.describe('Print iDevices', () => {
         await expect(linkUrls).not.toBeChecked();
     });
 
-    test('keeps linked answers hidden when an embed precedes a gap', async ({
-        authenticatedPage: page,
-        createProject,
-    }) => {
+    test('keeps linked answers hidden when an embed precedes a gap', async ({ guestSession: page, createProject }) => {
         const uuid = await createProject(page, 'Linked answer print regression');
         await gotoWorkarea(page, uuid);
         await waitForAppReady(page);
@@ -905,7 +902,7 @@ test.describe('Print iDevices', () => {
     ] as const) {
         for (const mode of ['idevices', 'in-place', 'appendix']) {
             test(`keeps ${idevice} illustrations inside two columns in ${mode} mode`, async ({
-                authenticatedPage: page,
+                guestSession: page,
                 createProject,
             }) => {
                 const uuid = await createProject(page, 'Two-column illustrated questions');
@@ -1090,7 +1087,7 @@ test.describe('Print iDevices', () => {
 
     for (const mode of ['idevices', 'in-place']) {
         test(`preserves sorting statements and printable clues in ${mode} mode`, async ({
-            authenticatedPage: page,
+            guestSession: page,
             createProject,
         }) => {
             const uuid = await createProject(page, 'Sorting and ring print regressions');
@@ -1276,7 +1273,7 @@ test.describe('Print iDevices', () => {
     });
 
     test('is reached from the print preview, as the File menu has no entry of its own for it', async ({
-        authenticatedPage: page,
+        guestSession: page,
         createProject,
     }) => {
         const uuid = await createProject(page, 'Worksheet from the preview');
@@ -1336,10 +1333,10 @@ test.describe('Print iDevices', () => {
      * Every crossword assertion is about the same rendered worksheet anyway.
      */
     test('prints a crossword as a grid above its illustrated, numbered clues', async ({
-        authenticatedPage,
+        guestSession,
         createProject,
     }) => {
-        const page = authenticatedPage;
+        const page = guestSession;
         const uuid = await createProject(page, 'Print iDevices Crossword');
 
         await gotoWorkarea(page, uuid);
@@ -1411,8 +1408,8 @@ test.describe('Print iDevices', () => {
         expect(mediaBox?.width ?? 0).toBeLessThanOrEqual(120);
     });
 
-    test('prints a test as questions with a box to tick per option', async ({ authenticatedPage, createProject }) => {
-        const page = authenticatedPage;
+    test('prints a test as questions with a box to tick per option', async ({ guestSession, createProject }) => {
+        const page = guestSession;
         const uuid = await createProject(page, 'Print iDevices Test activity');
 
         await gotoWorkarea(page, uuid);
@@ -1445,8 +1442,8 @@ test.describe('Print iDevices', () => {
 
     // No fixture in the repository has a video question in a Select activity, so leaving those
     // out is covered by the adapter's unit tests rather than here.
-    test('prints a select activity with its options', async ({ authenticatedPage, createProject }) => {
-        const page = authenticatedPage;
+    test('prints a select activity with its options', async ({ guestSession, createProject }) => {
+        const page = guestSession;
         const uuid = await createProject(page, 'Print iDevices Select');
 
         await gotoWorkarea(page, uuid);
@@ -1467,10 +1464,10 @@ test.describe('Print iDevices', () => {
     });
 
     test('prints a word search activity with its grid and clues in two columns', async ({
-        authenticatedPage,
+        guestSession,
         createProject,
     }) => {
-        const page = authenticatedPage;
+        const page = guestSession;
         const uuid = await createProject(page, 'Print iDevices Word Search');
 
         await gotoWorkarea(page, uuid);
@@ -1492,7 +1489,7 @@ test.describe('Print iDevices', () => {
     });
 
     test('prints an electrical circuits activity with questions and diagrams in two columns', async ({
-        authenticatedPage: page,
+        guestSession: page,
         createProject,
     }) => {
         const uuid = await createProject(page, 'Print iDevices Electrical Circuits');
@@ -1554,7 +1551,7 @@ test.describe('Print iDevices', () => {
     });
 
     test('prints electrical circuits in presentation mode in two columns', async ({
-        authenticatedPage: page,
+        guestSession: page,
         createProject,
     }) => {
         const uuid = await createProject(page, 'Print iDevices Electrical Circuits Show');
@@ -1608,7 +1605,7 @@ test.describe('Print iDevices', () => {
     });
 
     test('prints a 3D molecules activity with questions and captures in two columns', async ({
-        authenticatedPage: page,
+        guestSession: page,
         createProject,
     }) => {
         const uuid = await createProject(page, 'Print iDevices 3D Molecules');
@@ -1671,10 +1668,7 @@ test.describe('Print iDevices', () => {
         await expect(activity.locator('.worksheet-option-box')).toHaveCount(4);
     });
 
-    test('prints 3D molecules in presentation mode in two columns', async ({
-        authenticatedPage: page,
-        createProject,
-    }) => {
+    test('prints 3D molecules in presentation mode in two columns', async ({ guestSession: page, createProject }) => {
         const uuid = await createProject(page, 'Print iDevices 3D Molecules Show');
         await gotoWorkarea(page, uuid);
         await waitForAppReady(page);
@@ -1728,7 +1722,7 @@ test.describe('Print iDevices', () => {
     });
 
     test('prints a padlock activity showing only feedback and no instructions', async ({
-        authenticatedPage: page,
+        guestSession: page,
         createProject,
     }) => {
         const uuid = await createProject(page, 'Print iDevices Padlock');
@@ -1781,7 +1775,7 @@ test.describe('Print iDevices', () => {
 
     for (const mode of ['idevices', 'in-place', 'appendix']) {
         test(`says a padlock guarding no writing is not available in print, in ${mode} mode`, async ({
-            authenticatedPage: page,
+            guestSession: page,
             createProject,
         }) => {
             const uuid = await createProject(page, 'Print iDevices empty padlock');
@@ -1843,7 +1837,7 @@ test.describe('Print iDevices', () => {
     }
 
     test('prints a sort activity in sentence mode with compact writing spaces', async ({
-        authenticatedPage: page,
+        guestSession: page,
         createProject,
     }) => {
         const uuid = await createProject(page, 'Print iDevices Sort Sentences');
@@ -1888,7 +1882,7 @@ test.describe('Print iDevices', () => {
     });
 
     test('prints a math problems activity with compact writing spaces', async ({
-        authenticatedPage: page,
+        guestSession: page,
         createProject,
     }) => {
         const uuid = await createProject(page, 'Print iDevices Math Problems');
@@ -1940,7 +1934,7 @@ test.describe('Print iDevices', () => {
     // question (#2635).
     for (const mode of ['idevices', 'in-place']) {
         test(`numbers a math problem that opens with a picture level with its top in ${mode} mode`, async ({
-            authenticatedPage: page,
+            guestSession: page,
             createProject,
         }) => {
             const uuid = await createProject(page, 'Print iDevices Math Problems Table');
@@ -2097,7 +2091,7 @@ test.describe('Print iDevices', () => {
     }
 
     test('prints a challenge activity with compact writing spaces for challenge and trials', async ({
-        authenticatedPage: page,
+        guestSession: page,
         createProject,
     }) => {
         const uuid = await createProject(page, 'Print iDevices Challenge');
@@ -2158,10 +2152,7 @@ test.describe('Print iDevices', () => {
         expect(heightPx).toBeLessThan(22);
     });
 
-    test('prints an identify activity with compact writing spaces', async ({
-        authenticatedPage: page,
-        createProject,
-    }) => {
+    test('prints an identify activity with compact writing spaces', async ({ guestSession: page, createProject }) => {
         const uuid = await createProject(page, 'Print iDevices Identify');
         await gotoWorkarea(page, uuid);
         await waitForAppReady(page);
@@ -2218,10 +2209,10 @@ test.describe('Print iDevices', () => {
     });
 
     test('prints a complete activity as gapped text, with its words when they are offered', async ({
-        authenticatedPage,
+        guestSession,
         createProject,
     }) => {
-        const page = authenticatedPage;
+        const page = guestSession;
         const uuid = await createProject(page, 'Print iDevices Complete');
 
         await gotoWorkarea(page, uuid);
@@ -2253,11 +2244,8 @@ test.describe('Print iDevices', () => {
         await expect(banks.first().locator('.worksheet-word').first()).not.toBeEmpty();
     });
 
-    test('prints a classify activity as cards facing their containers', async ({
-        authenticatedPage,
-        createProject,
-    }) => {
-        const page = authenticatedPage;
+    test('prints a classify activity as cards facing their containers', async ({ guestSession, createProject }) => {
+        const page = guestSession;
         const uuid = await createProject(page, 'Print iDevices Classify');
 
         await gotoWorkarea(page, uuid);
@@ -2311,7 +2299,7 @@ test.describe('Print iDevices', () => {
 
     for (const cardCount of [1, 6]) {
         test(`keeps all nine categories with their ${cardCount} cards on printed sheets`, async ({
-            authenticatedPage: page,
+            guestSession: page,
             createProject,
         }, testInfo) => {
             const uuid = await createProject(page, 'Nine printable categories');
@@ -2399,7 +2387,7 @@ test.describe('Print iDevices', () => {
     }
 
     test('warns about JSON exercises it cannot read when printing only activities', async ({
-        authenticatedPage: page,
+        guestSession: page,
         createProject,
     }) => {
         const uuid = await createProject(page, 'JSON worksheet omissions');
@@ -2426,7 +2414,7 @@ test.describe('Print iDevices', () => {
     });
 
     test('preserves worksheet formulas, encrypted images, distractors and hidden-block visibility', async ({
-        authenticatedPage: page,
+        guestSession: page,
         createProject,
     }) => {
         const uuid = await createProject(page, 'Worksheet regression cases');
@@ -2591,10 +2579,10 @@ test.describe('Print: choosing what happens to the interactive activities', () =
     test.describe.configure({ mode: 'serial' });
 
     test('offers only the document options when the project has no interactive activity', async ({
-        authenticatedPage,
+        guestSession,
         createProject,
     }) => {
-        const page = authenticatedPage;
+        const page = guestSession;
         // A project straight off the template has prose and no games in it.
         const uuid = await createProject(page, 'Print Without Activities');
         await gotoWorkarea(page, uuid);
@@ -2619,10 +2607,10 @@ test.describe('Print: choosing what happens to the interactive activities', () =
     });
 
     test('prints an iDevice it does not know as it always has, rather than as an activity', async ({
-        authenticatedPage,
+        guestSession,
         createProject,
     }) => {
-        const page = authenticatedPage;
+        const page = guestSession;
         const uuid = await createProject(page, 'Print a custom iDevice');
         await gotoWorkarea(page, uuid);
         await waitForAppReady(page);
@@ -3010,7 +2998,7 @@ test.describe('Print: choosing which interactive activities to print', () => {
     for (const mode of ['idevices', 'in-place', 'appendix']) {
         for (const selection of ['all', 'second']) {
             test(`prints ${selection} listed activities with shared legacy ids in ${mode} mode`, async ({
-                authenticatedPage: page,
+                guestSession: page,
                 createProject,
             }) => {
                 const uuid = await createProject(page, 'Print selection regression');
@@ -3371,7 +3359,7 @@ test.describe('Print: the activities that can never be printed', () => {
 
 test.describe('Print: a folded block opens on paper', () => {
     test('prints a folded block that is visible, and leaves the hidden ones folded', async ({
-        authenticatedPage: page,
+        guestSession: page,
         createProject,
     }) => {
         const uuid = await createProject(page, 'Folded blocks');
@@ -3431,7 +3419,7 @@ test.describe('Print: a folded block opens on paper', () => {
     });
 
     test('prints the blocks as the preview shows them unless "Print the content of minimized boxes" is ticked', async ({
-        authenticatedPage: page,
+        guestSession: page,
         createProject,
     }) => {
         const uuid = await createProject(page, 'Print as shown');
@@ -3543,10 +3531,7 @@ test.describe('Print: a folded block opens on paper', () => {
         await tab.close();
     });
 
-    test('offers no choice about folded blocks for the worksheet', async ({
-        authenticatedPage: page,
-        createProject,
-    }) => {
+    test('offers no choice about folded blocks for the worksheet', async ({ guestSession: page, createProject }) => {
         const uuid = await createProject(page, 'Worksheet folds');
         await gotoWorkarea(page, uuid);
         await waitForAppReady(page);
@@ -3663,7 +3648,7 @@ test.describe('Print: every iDevice of a block', () => {
 
 test.describe('Print: teacher-only content', () => {
     test('restores activities only after hiding and showing the only activities, kept for teachers', async ({
-        authenticatedPage: page,
+        guestSession: page,
         createProject,
     }) => {
         const uuid = await createProject(page, 'Only teacher activities');
@@ -3704,7 +3689,7 @@ test.describe('Print: teacher-only content', () => {
     });
 
     test('is offered when the project has some, and prints once ticked, its activities as the others', async ({
-        authenticatedPage: page,
+        guestSession: page,
         createProject,
     }) => {
         const uuid = await createProject(page, 'Teacher notes');
@@ -3779,7 +3764,7 @@ test.describe('Print: teacher-only content', () => {
         await page.emulateMedia({ media: 'screen' });
     });
 
-    test('is not offered when the project has none', async ({ authenticatedPage: page, createProject }) => {
+    test('is not offered when the project has none', async ({ guestSession: page, createProject }) => {
         const uuid = await createProject(page, 'No teacher notes');
         await gotoWorkarea(page, uuid);
         await waitForAppReady(page);
@@ -3800,7 +3785,7 @@ test.describe('Print: feedback folds as the preview shows it', () => {
         { type: 'text', missingTranslations: true, missingTemplate: true },
     ]) {
         test(`prints ${type} feedback open and lets it fold, missing translations=${missingTranslations}, missing template=${missingTemplate}`, async ({
-            authenticatedPage: page,
+            guestSession: page,
             createProject,
         }) => {
             const uuid = await createProject(page, 'Feedback on paper');
@@ -3985,7 +3970,7 @@ test.describe('Print: when printing does not start', () => {
 
 test.describe('Print: text is laid out in the preview as on paper', () => {
     test('styles links, code and quotes, and leaves the margin, as they print', async ({
-        authenticatedPage: page,
+        guestSession: page,
         createProject,
     }) => {
         const uuid = await createProject(page, 'Text on paper');
@@ -4041,7 +4026,7 @@ test.describe('Print: text is laid out in the preview as on paper', () => {
     });
 
     test('leaves the paper margin as the only one, with a style that pads its content on screen', async ({
-        authenticatedPage: page,
+        guestSession: page,
         createProject,
     }) => {
         const uuid = await createProject(page, 'Padded style');
@@ -4083,7 +4068,7 @@ test.describe('Print: a formula shows once', () => {
         return { screen, paper };
     }
 
-    test('in the document and on the worksheet', async ({ authenticatedPage: page, createProject }) => {
+    test('in the document and on the worksheet', async ({ guestSession: page, createProject }) => {
         const uuid = await createProject(page, 'Formulas print once');
         await gotoWorkarea(page, uuid);
         await waitForAppReady(page);
@@ -4142,7 +4127,7 @@ test.describe('Print: a website whose style fixes its header', () => {
     // header, which on the first sheet covered the page title.
     for (const style of ['flux', 'neo', 'nova', 'zen']) {
         test(`keeps the ${style} page title clear of the header on paper`, async ({
-            authenticatedPage: page,
+            guestSession: page,
             createProject,
         }) => {
             const uuid = await createProject(page, `Fixed header ${style}`);
@@ -4184,7 +4169,7 @@ test.describe('Print: titles stay legible without their backgrounds', () => {
         { style: 'educablue', title: 'article.box .box-head .box-title', colour: 'rgb(0, 0, 0)' },
         { style: 'flux', title: 'section > .main-header .page-title', colour: 'rgb(40, 37, 115)' },
     ]) {
-        test(`prints the ${style} title dark rather than white`, async ({ authenticatedPage: page, createProject }) => {
+        test(`prints the ${style} title dark rather than white`, async ({ guestSession: page, createProject }) => {
             const uuid = await createProject(page, `Legible titles ${style}`);
             await gotoWorkarea(page, uuid);
             await waitForAppReady(page);
@@ -4211,7 +4196,7 @@ test.describe('Print: titles stay legible without their backgrounds', () => {
 });
 
 test.describe('Print: the link to eXe', () => {
-    test('stays out of the preview, as it stays off paper', async ({ authenticatedPage: page, createProject }) => {
+    test('stays out of the preview, as it stays off paper', async ({ guestSession: page, createProject }) => {
         const uuid = await createProject(page, 'Link to eXe');
         await gotoWorkarea(page, uuid);
         await waitForAppReady(page);
@@ -4230,7 +4215,7 @@ test.describe('Print: the link to eXe', () => {
 
 test.describe('Print: Material icons reach the paper', () => {
     test('keeps the colour of a Material block icon when printing, and of nothing around it', async ({
-        authenticatedPage: page,
+        guestSession: page,
         createProject,
     }, testInfo) => {
         const uuid = await createProject(page, 'Material icon');
@@ -4342,7 +4327,7 @@ test.describe('Print: Material icons reach the paper', () => {
     });
 
     test('respects a theme that deliberately hides block icons on paper', async ({
-        authenticatedPage: page,
+        guestSession: page,
         createProject,
     }) => {
         const uuid = await createProject(page, 'Educablue print icons');

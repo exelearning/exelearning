@@ -8,7 +8,7 @@ import { gotoWorkarea, waitForAppReady, selectFirstPage, addIdevice, changeTheme
  */
 test.describe('Print preview', () => {
     test('shows link URLs as an option and prints the preview as the user left it', async ({
-        authenticatedPage: page,
+        guestSession: page,
         createProject,
     }, testInfo) => {
         test.setTimeout(120000);
@@ -98,7 +98,7 @@ test.describe('Print preview', () => {
     });
 
     test('does not offer link URLs for the worksheet, which always prints them', async ({
-        authenticatedPage: page,
+        guestSession: page,
         createProject,
     }) => {
         const projectUuid = await createProject(page, 'Print link URLs worksheet');
@@ -114,7 +114,7 @@ test.describe('Print preview', () => {
     });
 
     test('does not write the address again after a link whose text already is it', async ({
-        authenticatedPage: page,
+        guestSession: page,
         createProject,
     }) => {
         test.setTimeout(120000);
@@ -178,7 +178,7 @@ test.describe('Print preview', () => {
     });
 
     test('writes the address after a link with words beside its picture, and not after one holding only a picture', async ({
-        authenticatedPage: page,
+        guestSession: page,
         createProject,
     }) => {
         test.setTimeout(120000);
@@ -217,7 +217,7 @@ test.describe('Print preview', () => {
     });
 
     test('keeps the preview in its frame when one of its links is followed, opening the web in a tab of its own', async ({
-        authenticatedPage: page,
+        guestSession: page,
         createProject,
     }) => {
         test.setTimeout(120000);
@@ -257,7 +257,7 @@ test.describe('Print preview', () => {
     });
 
     test('underlines external links in the colour of their text, and leaves controls built from links alone', async ({
-        authenticatedPage: page,
+        guestSession: page,
         createProject,
     }) => {
         test.setTimeout(120000);
@@ -376,7 +376,7 @@ test.describe('Print preview', () => {
     });
 
     test("prints the footer's license in the project's language, linked to the license (#2637)", async ({
-        authenticatedPage: page,
+        guestSession: page,
         createProject,
     }) => {
         test.setTimeout(120000);

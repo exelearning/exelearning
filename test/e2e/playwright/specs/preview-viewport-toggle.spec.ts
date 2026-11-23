@@ -10,11 +10,8 @@ import { waitForAppReady, gotoWorkarea } from '../helpers/workarea-helpers';
  */
 
 test.describe('Preview viewport toggle', () => {
-    test('should toggle the preview between mobile and desktop viewports', async ({
-        authenticatedPage,
-        createProject,
-    }) => {
-        const page = authenticatedPage;
+    test('should toggle the preview between mobile and desktop viewports', async ({ guestSession, createProject }) => {
+        const page = guestSession;
 
         const projectUuid = await createProject(page, 'Preview Viewport Toggle Test');
         await gotoWorkarea(page, projectUuid);

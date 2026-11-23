@@ -23,7 +23,7 @@ const games = [
 for (const game of games) {
     for (const escaped of [false, true]) {
         test(`${game.type} preserves ${escaped ? 'legacy escaped' : 'raw'} rich-text links through editing and preview`, async ({
-            authenticatedPage: page,
+            guestSession: page,
             createProject,
         }) => {
             // Two complete edition cycles and two independent previews exercise all readers of eText.

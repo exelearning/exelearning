@@ -90,11 +90,8 @@ test.describe('Workspace page title rename', () => {
         await page.keyboard.press(confirmKey);
     }
 
-    test('renames the page from the workspace, syncing the tree and model', async ({
-        authenticatedPage,
-        createProject,
-    }) => {
-        const page = authenticatedPage;
+    test('renames the page from the workspace, syncing the tree and model', async ({ guestSession, createProject }) => {
+        const page = guestSession;
         const projectUuid = await createProject(page, 'Workspace Title Rename');
         await gotoWorkarea(page, projectUuid);
         await waitForAppReady(page);
@@ -138,8 +135,8 @@ test.describe('Workspace page title rename', () => {
         await expect(page.locator('[data-testid="page-title"]')).toHaveText('Renamed from workspace');
     });
 
-    test('Escape cancels editing and keeps the previous title', async ({ authenticatedPage, createProject }) => {
-        const page = authenticatedPage;
+    test('Escape cancels editing and keeps the previous title', async ({ guestSession, createProject }) => {
+        const page = guestSession;
         const projectUuid = await createProject(page, 'Workspace Title Escape');
         await gotoWorkarea(page, projectUuid);
         await waitForAppReady(page);
@@ -156,8 +153,8 @@ test.describe('Workspace page title rename', () => {
         await expect.poll(() => getModelPageName(page, firstId)).toBe('New page');
     });
 
-    test('rejects an empty title and restores the previous value', async ({ authenticatedPage, createProject }) => {
-        const page = authenticatedPage;
+    test('rejects an empty title and restores the previous value', async ({ guestSession, createProject }) => {
+        const page = guestSession;
         const projectUuid = await createProject(page, 'Workspace Title Empty');
         await gotoWorkarea(page, projectUuid);
         await waitForAppReady(page);
@@ -173,8 +170,8 @@ test.describe('Workspace page title rename', () => {
         await expect.poll(() => getModelPageName(page, firstId)).toBe('New page');
     });
 
-    test('enters inline edit mode from the pencil edit button', async ({ authenticatedPage, createProject }) => {
-        const page = authenticatedPage;
+    test('enters inline edit mode from the pencil edit button', async ({ guestSession, createProject }) => {
+        const page = guestSession;
         const projectUuid = await createProject(page, 'Workspace Title Pencil');
         await gotoWorkarea(page, projectUuid);
         await waitForAppReady(page);

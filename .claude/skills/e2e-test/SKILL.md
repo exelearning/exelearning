@@ -93,6 +93,7 @@ make fix                                                                        
 - **NEVER `waitForTimeout()` for async** — use deterministic waits (`waitForFunction`, `waitFor`, `waitForSelector`). Acceptable: brief 200-500ms pauses for CSS animations only.
 - **Always use helpers** from `workarea-helpers.ts` — reinventing selectors leads to brittle tests.
 - **One project per test** — create via API (`/api/project/create-quick`) in server mode; reuse static specs' local/import setup in static mode, which has no API server.
+- **Take `guestSession` when the test opens its own project** — `authenticatedPage` first boots a throwaway workarea, so following it with `createProject` + `gotoWorkarea` loads the app twice. Keep `authenticatedPage` for tests that work on that default project.
 - **Validate UI state AND system state** — don't just check what the user sees. Also verify Yjs metadata, API responses, and database state where relevant.
 - **Collaboration tests need `collaboration.fixture`** — and must use `skipInStaticMode` since static mode has no server.
 - **Library loading must work** — tests should NOT accept 404 errors. All MathJax/library resources must resolve correctly.

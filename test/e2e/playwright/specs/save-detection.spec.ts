@@ -12,8 +12,8 @@ import { waitForAppReady, gotoWorkarea } from '../helpers/workarea-helpers';
  */
 
 test.describe('Save Detection', () => {
-    test('new project should start with saved status (no red dot)', async ({ authenticatedPage, createProject }) => {
-        const page = authenticatedPage;
+    test('new project should start with saved status (no red dot)', async ({ guestSession, createProject }) => {
+        const page = guestSession;
 
         // Create a new project
         const projectUuid = await createProject(page, 'Save Detection Test');
@@ -48,8 +48,8 @@ test.describe('Save Detection', () => {
         expect(isDirty).toBe(false);
     });
 
-    test('making changes should show unsaved status (red dot)', async ({ authenticatedPage, createProject }) => {
-        const page = authenticatedPage;
+    test('making changes should show unsaved status (red dot)', async ({ guestSession, createProject }) => {
+        const page = guestSession;
 
         // Create a new project
         const projectUuid = await createProject(page, 'Save Detection Changes Test');
@@ -96,8 +96,8 @@ test.describe('Save Detection', () => {
         expect(isDirty).toBe(true);
     });
 
-    test('saving should return to saved status (green dot)', async ({ authenticatedPage, createProject }) => {
-        const page = authenticatedPage;
+    test('saving should return to saved status (green dot)', async ({ guestSession, createProject }) => {
+        const page = guestSession;
 
         // Create a new project
         const projectUuid = await createProject(page, 'Save Detection Save Test');
@@ -160,10 +160,10 @@ test.describe('Save Detection', () => {
     });
 
     test('successful save with an asset should not trigger beforeunload warning', async ({
-        authenticatedPage,
+        guestSession,
         createProject,
     }, testInfo) => {
-        const page = authenticatedPage;
+        const page = guestSession;
         const projectUuid = await createProject(page, 'Save Then Close Test');
 
         await gotoWorkarea(page, projectUuid);
@@ -241,8 +241,8 @@ test.describe('Save Detection', () => {
         });
     });
 
-    test('metadata changes should trigger unsaved status', async ({ authenticatedPage, createProject }) => {
-        const page = authenticatedPage;
+    test('metadata changes should trigger unsaved status', async ({ guestSession, createProject }) => {
+        const page = guestSession;
 
         // Create a new project
         const projectUuid = await createProject(page, 'Metadata Change Test');
@@ -281,8 +281,8 @@ test.describe('Save Detection', () => {
         await expect(saveButton).toHaveClass(/unsaved/);
     });
 
-    test('hasUnsavedChangesForUI should return correct value', async ({ authenticatedPage, createProject }) => {
-        const page = authenticatedPage;
+    test('hasUnsavedChangesForUI should return correct value', async ({ guestSession, createProject }) => {
+        const page = guestSession;
 
         // Create a new project
         const projectUuid = await createProject(page, 'HasUnsavedChanges Test');

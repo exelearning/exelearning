@@ -72,8 +72,8 @@ test.describe('Theme Yjs Cleanup', () => {
      * Test that user themes are removed from Yjs when a different theme is selected
      * but remain in IndexedDB for the user
      */
-    test('user theme is removed from Yjs when base theme is selected', async ({ authenticatedPage, createProject }) => {
-        const page = authenticatedPage;
+    test('user theme is removed from Yjs when base theme is selected', async ({ guestSession, createProject }) => {
+        const page = guestSession;
 
         // 1. Create project and navigate
         console.log('[Test] Creating project...');
@@ -142,8 +142,8 @@ test.describe('Theme Yjs Cleanup', () => {
     /**
      * Test that re-selecting a user theme copies it back to Yjs
      */
-    test('re-selecting user theme copies it back to Yjs', async ({ authenticatedPage, createProject }) => {
-        const page = authenticatedPage;
+    test('re-selecting user theme copies it back to Yjs', async ({ guestSession, createProject }) => {
+        const page = guestSession;
 
         // 1. Create project and navigate
         const projectUuid = await createProject(page, 'Theme Re-select Test');
@@ -193,8 +193,8 @@ test.describe('Theme Yjs Cleanup', () => {
     /**
      * Test that switching between two user themes works correctly
      */
-    test('switching between user themes updates Yjs correctly', async ({ authenticatedPage, createProject }) => {
-        const page = authenticatedPage;
+    test('switching between user themes updates Yjs correctly', async ({ guestSession, createProject }) => {
+        const page = guestSession;
 
         // 1. Create project and navigate
         const projectUuid = await createProject(page, 'Theme Switch Test');

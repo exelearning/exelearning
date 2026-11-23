@@ -92,8 +92,8 @@ async function getDocumentSnapshot(page: Page): Promise<DocumentSnapshot> {
 }
 
 test.describe('Yjs Binary Data Integrity', () => {
-    test('should preserve all document data after save and reload', async ({ authenticatedPage, createProject }) => {
-        const page = authenticatedPage;
+    test('should preserve all document data after save and reload', async ({ guestSession, createProject }) => {
+        const page = guestSession;
 
         // Create a new project
         const projectUuid = await createProject(page, 'Binary Integrity Test');
@@ -143,10 +143,10 @@ test.describe('Yjs Binary Data Integrity', () => {
     });
 
     test('should preserve document data across multiple save/reload cycles', async ({
-        authenticatedPage,
+        guestSession,
         createProject,
     }) => {
-        const page = authenticatedPage;
+        const page = guestSession;
 
         // Create a new project
         const projectUuid = await createProject(page, 'Multi-Cycle Integrity Test');
@@ -183,8 +183,8 @@ test.describe('Yjs Binary Data Integrity', () => {
         }
     });
 
-    test('should handle complex ELP with many pages', async ({ authenticatedPage, createProject }) => {
-        const page = authenticatedPage;
+    test('should handle complex ELP with many pages', async ({ guestSession, createProject }) => {
+        const page = guestSession;
 
         // Create a new project
         const projectUuid = await createProject(page, 'Complex ELP Integrity Test');
@@ -224,10 +224,10 @@ test.describe('Yjs Binary Data Integrity', () => {
     });
 
     test('should verify Yjs document binary size is consistent after save/load', async ({
-        authenticatedPage,
+        guestSession,
         createProject,
     }) => {
-        const page = authenticatedPage;
+        const page = guestSession;
 
         // Create a new project
         const projectUuid = await createProject(page, 'Binary Size Test');

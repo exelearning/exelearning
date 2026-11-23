@@ -15,11 +15,11 @@ const FIXTURE = path.resolve(__dirname, '../../../fixtures/missing-asset-refs.el
 
 test.describe('Missing asset notice', () => {
     test('importing a package with unresolvable references names the affected activity', async ({
-        authenticatedPage,
+        guestSession,
         createProject,
     }) => {
         test.setTimeout(120000);
-        const page = authenticatedPage;
+        const page = guestSession;
 
         const projectUuid = await createProject(page, 'Missing asset notice');
         await gotoWorkarea(page, projectUuid);

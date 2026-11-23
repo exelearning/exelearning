@@ -107,10 +107,10 @@ async function getIdeviceDataFromYjs(page: Page, ideviceType: string) {
 test.describe('radioexploradores.elp Import Tests', () => {
     test.describe('Relate (Relaciona) iDevice', () => {
         test('should import relate iDevice with correct type and cardsGame data', async ({
-            authenticatedPage,
+            guestSession,
             createProject,
         }) => {
-            const page = authenticatedPage;
+            const page = guestSession;
 
             const projectUuid = await createProject(page, 'Relate Test');
             await gotoWorkarea(page, projectUuid);
@@ -140,8 +140,8 @@ test.describe('radioexploradores.elp Import Tests', () => {
             expect(firstCard.eTextBk).toBeDefined();
         });
 
-        test('should have Edit button enabled after import', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should have Edit button enabled after import', async ({ guestSession, createProject }) => {
+            const page = guestSession;
 
             const projectUuid = await createProject(page, 'Relate Edit Test');
             await gotoWorkarea(page, projectUuid);

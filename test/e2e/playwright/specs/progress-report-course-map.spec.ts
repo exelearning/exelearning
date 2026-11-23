@@ -34,7 +34,7 @@ function isNestedUnderAPage(pages: unknown, title: string): boolean {
 
 test.describe('Progress report course map in exported packages', () => {
     test('carries the page tree inside the activity, so SCORM can still build the report', async ({
-        authenticatedPage: page,
+        guestSession: page,
         createProject,
     }) => {
         test.setTimeout(180000);

@@ -39,6 +39,40 @@ describe('LoadingScreen', () => {
     it('should set hideTime to 1000ms', () => {
       expect(loadingScreen.hideTime).toBe(1000);
     });
+
+    it('should keep the fade where matchMedia is unavailable', () => {
+      vi.stubGlobal('matchMedia', undefined);
+
+      expect(new LoadingScreen().hideTime).toBe(1000);
+
+      vi.unstubAllGlobals();
+    });
+  });
+
+  describe('reduced motion', () => {
+    beforeEach(() => {
+      vi.stubGlobal('matchMedia', query => ({
+        matches: query === '(prefers-reduced-motion: reduce)',
+      }));
+      loadingScreen = new LoadingScreen();
+    });
+
+    afterEach(() => {
+      vi.unstubAllGlobals();
+    });
+
+    it('should not wait for the fade', () => {
+      expect(loadingScreen.hideTime).toBe(0);
+    });
+
+    it('should be hidden on the next tick', () => {
+      loadingScreen.hide();
+
+      vi.advanceTimersByTime(0);
+
+      expect(mockElement.classList.add).toHaveBeenCalledWith('hide');
+      expect(mockElement.setAttribute).toHaveBeenCalledWith('data-visible', 'false');
+    });
   });
 
   describe('show', () => {

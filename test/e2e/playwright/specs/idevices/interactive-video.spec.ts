@@ -513,8 +513,8 @@ async function saveAndCloseEditor(page: Page, editorIframe: FrameLocator): Promi
 
 test.describe('Interactive Video iDevice', () => {
     test.describe('Basic Operations', () => {
-        test('should add interactive-video iDevice to page', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should add interactive-video iDevice to page', async ({ guestSession, createProject }) => {
+            const page = guestSession;
 
             const projectUuid = await createProject(page, 'Interactive Video Add Test');
             await gotoWorkarea(page, projectUuid);
@@ -535,8 +535,8 @@ test.describe('Interactive Video iDevice', () => {
             await expect(fileInput).toBeVisible({ timeout: 5000 });
         });
 
-        test('should upload local video file and save iDevice', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should upload local video file and save iDevice', async ({ guestSession, createProject }) => {
+            const page = guestSession;
 
             const projectUuid = await createProject(page, 'Interactive Video Upload Test');
             await gotoWorkarea(page, projectUuid);
@@ -574,8 +574,8 @@ test.describe('Interactive Video iDevice', () => {
             'Firefox has issues with jQuery click handlers in iframes',
         );
 
-        test('should open editor, create cover, and save', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should open editor, create cover, and save', async ({ guestSession, createProject }) => {
+            const page = guestSession;
 
             const projectUuid = await createProject(page, 'Interactive Video Editor Test');
             await gotoWorkarea(page, projectUuid);
@@ -605,8 +605,8 @@ test.describe('Interactive Video iDevice', () => {
             await expect(videoContainer).toBeAttached({ timeout: 10000 });
         });
 
-        test('should persist editor changes after reload', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should persist editor changes after reload', async ({ guestSession, createProject }) => {
+            const page = guestSession;
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Interactive Video Persist Test');
@@ -691,8 +691,8 @@ test.describe('Interactive Video iDevice', () => {
             'Firefox has issues with jQuery click handlers in iframes',
         );
 
-        test('should display interactive video correctly in preview', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should display interactive video correctly in preview', async ({ guestSession, createProject }) => {
+            const page = guestSession;
             const workarea = new WorkareaPage(page);
 
             const projectUuid = await createProject(page, 'Interactive Video Preview Test');
@@ -901,8 +901,8 @@ test.describe('Interactive Video iDevice', () => {
     });
 
     test.describe('Configuration API', () => {
-        test('should have eXeLearning.config defined after page load', async ({ authenticatedPage, createProject }) => {
-            const page = authenticatedPage;
+        test('should have eXeLearning.config defined after page load', async ({ guestSession, createProject }) => {
+            const page = guestSession;
 
             const projectUuid = await createProject(page, 'Config API Test');
             await gotoWorkarea(page, projectUuid);
