@@ -4,6 +4,7 @@
 
 import { describe, it, expect, beforeEach } from 'bun:test';
 import { LomMetadataGenerator } from './LomMetadata';
+import type { LomMetadataOptions } from '../interfaces';
 
 describe('LomMetadataGenerator', () => {
     let generator: LomMetadataGenerator;
@@ -78,7 +79,7 @@ describe('LomMetadataGenerator', () => {
         });
 
         it('should use default values when not provided', () => {
-            const minimalGen = new LomMetadataGenerator('minimal-id', {});
+            const minimalGen = new LomMetadataGenerator('minimal-id', {} as LomMetadataOptions);
             const xml = minimalGen.generate();
 
             expect(xml).toContain('<catalog uniqueElementName="catalog">none</catalog>');
@@ -212,7 +213,7 @@ describe('LomMetadataGenerator', () => {
             const generatorWithSpecialChars = new LomMetadataGenerator('test', {
                 title: 'Test & Course <1>',
                 description: 'Description with "quotes"',
-            });
+            } as LomMetadataOptions);
             const xml = generatorWithSpecialChars.generate();
 
             expect(xml).toContain('Test &amp; Course &lt;1&gt;');
@@ -226,7 +227,7 @@ describe('LomMetadataGenerator', () => {
 
     describe('generateId', () => {
         it('should generate unique IDs with exe- prefix', () => {
-            const gen = new LomMetadataGenerator('', {});
+            const gen = new LomMetadataGenerator('', {} as LomMetadataOptions);
             const xml = gen.generate();
 
             expect(xml).toMatch(/ODE-exe-[a-z0-9]+/);

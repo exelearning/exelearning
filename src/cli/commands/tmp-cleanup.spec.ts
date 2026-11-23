@@ -225,9 +225,7 @@ describe('Tmp Cleanup Command', () => {
 
     describe('runCli', () => {
         const defaultDeps: TmpCleanupDependencies = {
-            fileHelper: {
-                getFilesDir: () => testDir,
-            },
+            getTempDir: () => testDir,
         };
 
         it('should show help when --help flag is passed', async () => {

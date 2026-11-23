@@ -24,7 +24,7 @@ const testAssets = new Map<number, Map<string, { id: number; filename: string; m
 
 describe('Assets Routes Integration', () => {
     let db: Kysely<Database>;
-    let app: Elysia;
+    let app: Pick<Elysia, 'handle'>;
     let testUser: User;
     let testProjectId: number;
 
@@ -44,19 +44,19 @@ describe('Assets Routes Integration', () => {
                 const authHeader = request.headers.get('authorization');
                 if (authHeader?.startsWith('Bearer ')) {
                     token = authHeader.slice(7);
-                } else if (cookie.auth?.value) {
+                } else if (typeof cookie.auth?.value === 'string' && cookie.auth.value) {
                     token = cookie.auth.value;
                 }
 
                 if (!token) return { currentUser: null, testDb: db };
 
                 try {
-                    const payload = (await jwt.verify(token)) as { sub: number } | false;
+                    const payload = (await jwt.verify(token)) as { sub: string } | false;
                     if (!payload || !payload.sub) return { currentUser: null, testDb: db };
                     const user = await db
                         .selectFrom('users')
                         .selectAll()
-                        .where('id', '=', payload.sub)
+                        .where('id', '=', Number(payload.sub))
                         .executeTakeFirst();
                     return { currentUser: user ? { ...user, roles: JSON.parse(user.roles) } : null, testDb: db };
                 } catch {

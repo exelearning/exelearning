@@ -53,7 +53,7 @@ const createMockQueries = () => ({
 });
 
 describe('Upload Session Routes', () => {
-    let app: Elysia;
+    let app: Pick<Elysia, 'handle'>;
     let mockQueries: ReturnType<typeof createMockQueries>;
     let sessionToken: string;
 
@@ -262,7 +262,7 @@ describe('Upload Session Routes - Factory', () => {
 });
 
 describe('Upload Session Routes - Integration', () => {
-    let app: Elysia;
+    let app: Pick<Elysia, 'handle'>;
     let sessionToken: string;
     const projectUuid = 'integration-test-project';
 
@@ -338,6 +338,69 @@ describe('Upload Session Routes - Integration', () => {
         expect(data.success).toBe(true);
         expect(data.uploaded).toBe(1);
         expect(data.failed).toBe(0);
+    });
+
+    describe('body schema', () => {
+        const batch = (fields: Array<[string, string | Blob]>) => {
+            const formData = new FormData();
+            for (const [k, v] of fields) formData.append(k, v);
+            return app.handle(
+                new Request(`http://localhost/api/upload-session/${sessionToken}/batch`, {
+                    method: 'POST',
+                    headers: { 'X-Upload-Session': sessionToken },
+                    body: formData,
+                }),
+            );
+        };
+        const blob = () => new Blob(['x'], { type: 'text/plain' });
+
+        // The body schema rejects these before the handler; the app's global onError answers 400.
+        it('rejects files that are not files', async () => {
+            expect(
+                (
+                    await batch([
+                        ['files', 'not a file'],
+                        ['metadata', '[]'],
+                    ])
+                ).status,
+            ).toBe(422);
+        });
+
+        it('rejects metadata entries with non-string fields', async () => {
+            const metadata = JSON.stringify([{ clientId: 'c1', filename: { x: 1 } }]);
+            expect(
+                (
+                    await batch([
+                        ['files', blob()],
+                        ['metadata', metadata],
+                    ])
+                ).status,
+            ).toBe(422);
+        });
+
+        it('answers 400, not 500, for metadata that parses to something other than an array', async () => {
+            const res = await batch([
+                ['files', blob()],
+                ['metadata', 'null'],
+            ]);
+            expect(res.status).toBe(400);
+            expect((await res.json()).error).toContain('expected an array');
+        });
+
+        it('still accepts several files with their metadata', async () => {
+            await fs.ensureDir(path.join(TEST_DIR, 'assets', getAssetShard(projectUuid), projectUuid));
+            const metadata = JSON.stringify([
+                { clientId: 'm-1', filename: 'a.txt', mimeType: 'text/plain', folderPath: '' },
+                { clientId: 'm-2', filename: 'b.txt', mimeType: 'text/plain' },
+            ]);
+            const res = await batch([
+                ['metadata', metadata],
+                ['files', blob()],
+                ['files', blob()],
+            ]);
+            expect(res.status).toBe(200);
+            expect((await res.json()).uploaded).toBe(2);
+        });
     });
 
     it('should persist a FILES_DIR-relative sharded storage_path (issue #2250)', async () => {
@@ -505,7 +568,7 @@ describe('Upload Session Routes - Integration', () => {
 });
 
 describe('Upload Session Routes - Edge Cases', () => {
-    let app: Elysia;
+    let app: Pick<Elysia, 'handle'>;
     let sessionToken: string;
     const projectUuid = 'edge-case-project';
 
@@ -753,7 +816,7 @@ describe('Upload Session Routes - Edge Cases', () => {
 });
 
 describe('Upload Session Routes - Path Traversal Security (C1)', () => {
-    let app: Elysia;
+    let app: Pick<Elysia, 'handle'>;
     let sessionToken: string;
     let mockQueries: ReturnType<typeof createMockQueries>;
     const projectUuid = 'traversal-security-project';
@@ -909,7 +972,7 @@ describe('Upload Session Routes - Path Traversal Security (C1)', () => {
 });
 
 describe('Upload Session Routes - Batch Size Limit (L1, memory DoS)', () => {
-    let app: Elysia;
+    let app: Pick<Elysia, 'handle'>;
     let sessionToken: string;
     let mockQueries: ReturnType<typeof createMockQueries>;
     const projectUuid = 'batch-size-limit-project';
@@ -1070,7 +1133,7 @@ describe('Upload Session Exports', () => {
 });
 
 describe('Upload Session Routes - Error Handling', () => {
-    let app: Elysia;
+    let app: Pick<Elysia, 'handle'>;
     let sessionToken: string;
     const projectUuid = 'error-handling-project';
 
