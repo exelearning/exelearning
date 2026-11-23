@@ -1,0 +1,157 @@
+/**
+ * Project activity log (issue #2689)
+ * Shared by the workarea Activity modal and the admin panel.
+ */
+
+#modalActivity {
+    .modal-lg {
+        max-width: 720px;
+    }
+
+    .modal-title {
+        font-size: 20px;
+        font-weight: 600;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .modal-body {
+        padding: 24px;
+    }
+
+    .activity-modal-intro {
+        font-size: 14px;
+        margin-bottom: 16px;
+    }
+}
+
+.activity-log {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.activity-log-filters {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 8px 12px;
+
+    .activity-log-filter {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        min-width: 140px;
+        flex: 1 1 140px;
+
+        label {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--bs-gray-700, #495057);
+        }
+    }
+
+    button {
+        align-self: flex-end;
+    }
+}
+
+.activity-log-notice {
+    font-size: 13px;
+    color: var(--bs-gray-700, #495057);
+    background: var(--bs-light, #f8f9fa);
+    border-radius: 8px;
+    padding: 8px 12px;
+}
+
+.activity-log-status {
+    font-size: 14px;
+    color: var(--bs-gray-700, #495057);
+    min-height: 1.5em;
+
+    &.activity-log-status-error {
+        color: var(--bs-danger, #dc3545);
+    }
+}
+
+.activity-log-list {
+    margin: 0;
+    padding: 0;
+    border-top: 1px solid var(--bs-border-color, #dee2e6);
+}
+
+.activity-log-entry {
+    padding: 10px 0;
+    border-bottom: 1px solid var(--bs-border-color, #dee2e6);
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+
+    &:focus-within,
+    &:hover {
+        background: var(--bs-light, #f8f9fa);
+    }
+}
+
+.activity-log-entry-head {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    font-size: 13px;
+
+    .activity-log-actor {
+        font-weight: 600;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .activity-log-time {
+        color: var(--bs-gray-600, #6c757d);
+        white-space: nowrap;
+    }
+}
+
+.activity-log-text {
+    font-size: 14px;
+    overflow-wrap: anywhere;
+}
+
+.activity-log-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 12px;
+    font-size: 12px;
+    color: var(--bs-gray-600, #6c757d);
+
+    .activity-log-provenance {
+        border: 1px solid var(--bs-border-color, #dee2e6);
+        border-radius: 999px;
+        padding: 0 8px;
+    }
+}
+
+.activity-log-more {
+    align-self: center;
+}
+
+@media (max-width: 575.98px) {
+    .activity-log-entry-head {
+        flex-direction: column;
+        gap: 0;
+    }
+}
+
+/* Entry point in the Share modal footer */
+#share-activity-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+
+    .auto-icon {
+        font-size: 18px;
+        line-height: 1;
+    }
+}

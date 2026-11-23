@@ -2465,6 +2465,48 @@ export default class ApiCallManager {
     }
 
     /**
+     * Read the per-project activity log (issue #2689).
+     * Accepts both numeric ID and UUID. Only owners, administrators and
+     * (when the site allows it) collaborators are authorised; the server
+     * answers 403 otherwise.
+     *
+     * @param {number|string} projectId - The project ID or UUID
+     * @param {Object} [filters]
+     * @param {number|string} [filters.userId] - Only events by this actor
+     * @param {number} [filters.since] - Inclusive lower bound (ms since epoch)
+     * @param {number} [filters.until] - Exclusive upper bound (ms since epoch)
+     * @param {number} [filters.limit] - Page size (1-100)
+     * @param {string} [filters.cursor] - Keyset cursor from a previous page
+     * @returns {Promise<Object>} { events, nextCursor, recordingEnabled, retentionDays } or an error envelope
+     */
+    async getProjectActivity(projectId, filters = {}) {
+        if (this._isStaticMode()) {
+            return { responseMessage: 'ERROR', detail: 'Activity is not available in static mode' };
+        }
+        const params = new URLSearchParams();
+        for (const key of ['userId', 'since', 'until', 'limit', 'cursor']) {
+            const value = filters[key];
+            if (value !== undefined && value !== null && value !== '') params.set(key, String(value));
+        }
+        const query = params.toString();
+        const url = this._buildProjectUrl(projectId, `/activity${query ? `?${query}` : ''}`);
+        return this._jsonRequest(url, { label: 'getProjectActivity' });
+    }
+
+    /**
+     * Distinct actors of a project's activity log, for the user filter (issue #2689).
+     * @param {number|string} projectId - The project ID or UUID
+     * @returns {Promise<Object>} { actors: [{ id, email }] } or an error envelope
+     */
+    async getProjectActivityActors(projectId) {
+        if (this._isStaticMode()) {
+            return { responseMessage: 'ERROR', detail: 'Activity is not available in static mode' };
+        }
+        const url = this._buildProjectUrl(projectId, '/activity/actors');
+        return this._jsonRequest(url, { label: 'getProjectActivityActors' });
+    }
+
+    /**
      * Get project sharing information (owner, collaborators, visibility)
      * Accepts both numeric ID and UUID
      *

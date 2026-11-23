@@ -6,7 +6,7 @@
 /** Per-connection fields: Elysia `params`/`query` plus ids written on open. */
 export interface YjsSocketData {
     params?: { docName?: string };
-    query?: { token?: string };
+    query?: { token?: string; session?: string };
     clientId?: string;
     userId?: number;
     projectUuid?: string;

@@ -65,6 +65,7 @@ nav:
       - Testing: development/testing.md
       - Internationalization: development/internationalization.md
       - Real Time: development/real-time.md
+      - Project Activity Log: development/project-activity.md
       - Embedding: development/embedding.md
       - Profiling: development/profiling.md
       - Customization: development/customization.md
