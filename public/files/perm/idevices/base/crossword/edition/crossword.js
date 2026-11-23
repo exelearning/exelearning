@@ -1003,7 +1003,6 @@ var $exeDevice = {
                     !file.type ||
                     !(
                         file.type.match('text/plain') ||
-                        file.type.match('application/json') ||
                         file.type.match('application/xml') ||
                         file.type.match('text/xml')
                     )
@@ -1420,59 +1419,19 @@ var $exeDevice = {
     },
 
     importGame: function (content, filetype) {
-        const game =
-            $exeDevices.iDevice.gamification.helpers.isJsonString(content);
-        let instructions, tAfter, textFeedBack;
-        if (content && content.includes('\u0000')) {
+        if (!content) return;
+        if (content.includes('\u0000')) {
             $exeDevice.showMessage(_('Sorry, wrong file format'));
-            return;
-        } else if (!game && content) {
-            if (filetype.match('text/plain')) {
-                $exeDevice.importText(content);
-            } else if (
-                filetype.match('application/xml') ||
-                filetype.match('text/xml')
-            ) {
-                $exeDevice.importMoodle(content);
-            } else {
-                eXe.app.alert(_('Sorry, wrong file format'));
-            }
-            return;
-        } else if (game && game.typeGame == 'Crucigrama') {
-            game.id = $exeDevice.getIdeviceID();
-            $exeDevice.updateFieldGame(game);
-            instructions = game.instructionsExe || game.instructions;
-            tAfter = game.textAfter || '';
-            textFeedBack = game.textFeedBack || '';
-            if (tinyMCE.get('eXeGameInstructions')) {
-                tinyMCE
-                    .get('eXeGameInstructions')
-                    .setContent(unescape(instructions));
-            } else {
-                $('#eXeGameInstructions').val(unescape(instructions));
-            }
-            if (tinyMCE.get('eXeIdeviceTextAfter')) {
-                tinyMCE.get('eXeIdeviceTextAfter').setContent(unescape(tAfter));
-            } else {
-                $('#eXeIdeviceTextAfter').val(unescape(tAfter));
-            }
-            if (tinyMCE.get('ccgmEFeedBackEditor')) {
-                tinyMCE
-                    .get('ccgmEFeedBackEditor')
-                    .setContent(unescape(textFeedBack));
-            } else {
-                $('#ccgmEFeedBackEditor').val(unescape(textFeedBack));
-            }
-        } else if (game && game.typeGame !== 'Crucigrama') {
-            eXe.app.alert($exeDevice.msgs.msgESelectFile);
-            return;
+        } else if (filetype.match('text/plain')) {
+            $exeDevice.importText(content);
+        } else if (
+            filetype.match('application/xml') ||
+            filetype.match('text/xml')
+        ) {
+            $exeDevice.importMoodle(content);
+        } else {
+            eXe.app.alert(_('Sorry, wrong file format'));
         }
-
-        $exeDevice.active = 0;
-        $exeDevice.showQuestion($exeDevice.active);
-        $exeDevice.deleteEmptyQuestion();
-        $exeDevice.updateQuestionsNumber();
-        //$('.exe-form-tabs li:first-child a').click();
     },
 
     deleteEmptyQuestion: function () {

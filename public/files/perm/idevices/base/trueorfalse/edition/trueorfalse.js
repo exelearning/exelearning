@@ -44,13 +44,12 @@ var $exeDevice = {
     },
 
     /**
-     * The question list reaches the editor from two places — the activity's
-     * saved properties and an imported game file — and either can hand back a
-     * missing or non-array value: `transformObject` returns an already-migrated
-     * payload untouched, and an imported file is only checked for `typeGame`.
-     * Every read below assumes an array, so normalize at both boundaries. An
-     * empty list leaves the editor in the same state as a brand-new activity,
-     * which `addEvents` then seeds with one editable question.
+     * The question list reaches the editor from the activity's saved
+     * properties, which can hand back a missing or non-array value:
+     * `transformObject` returns an already-migrated payload untouched. Every
+     * read below assumes an array, so normalize there. An empty list leaves
+     * the editor in the same state as a brand-new activity, which `addEvents`
+     * then seeds with one editable question.
      */
     toQuestionsArray: function (questions) {
         return Array.isArray(questions) ? questions : [];
@@ -727,56 +726,18 @@ var $exeDevice = {
     },
 
     importGame: function (content, filetype) {
-        const game =
-            $exeDevices.iDevice.gamification.helpers.isJsonString(content);
-        if (content && content.includes('\u0000')) {
+        if (!content || content.includes('\u0000')) {
             $exeDevice.showMessage(_('Sorry, wrong file format'));
-            return;
-        } else if (!game && content) {
-            if (filetype.match('text/plain')) {
-                $exeDevice.importText(content);
-            } else if (
-                filetype.match('application/xml') ||
-                filetype.match('text/xml')
-            ) {
-                $exeDevice.importMoodle(content);
-            } else {
-                eXe.app.alert(_('Sorry, wrong file format'));
-            }
-            return;
-        } else if (!game || typeof game.typeGame === 'undefined') {
-            $exeDevice.showMessage(_('Sorry, wrong file format'));
-            return;
-        } else if (game.typeGame === 'TrueOrFalse') {
-            $exeDevice.questionsGame = $exeDevice.toQuestionsArray(
-                game.questionsGame
-            );
-            game.id = $exeDevice.id;
-            $exeDevice.updateFieldGame(game);
-            const eXeGameInstructions = game.eXeGameInstructions || '',
-                eXeIdeviceTextAfter = game.eXeIdeviceTextAfter || '';
-            if (tinymce.get('eXeGameInstructions')) {
-                tinymce
-                    .get('eXeGameInstructions')
-                    .setContent(eXeGameInstructions);
-            }
-            $('#eXeGameInstructions').val(eXeGameInstructions);
-
-            if (tinymce.get('eXeIdeviceTextAfter')) {
-                tinymce
-                    .get('eXeIdeviceTextAfter')
-                    .setContent(eXeIdeviceTextAfter);
-            }
-            $('#eXeIdeviceTextAfter').val(eXeIdeviceTextAfter);
-        } else if (game.typeGame !== 'TrueOrFalse') {
-            $exeDevice.showMessage(_('Sorry, wrong file format'));
-            return;
+        } else if (filetype.match('text/plain')) {
+            $exeDevice.importText(content);
+        } else if (
+            filetype.match('application/xml') ||
+            filetype.match('text/xml')
+        ) {
+            $exeDevice.importMoodle(content);
+        } else {
+            eXe.app.alert(_('Sorry, wrong file format'));
         }
-        $exeDevice.active = 0;
-        $exeDevice.showQuestion($exeDevice.active);
-        $exeDevice.deleteEmptyQuestion();
-        $exeDevice.updateQuestionsNumber();
-        //$('.exe-form-tabs li:first-child a').click();
     },
 
     importMoodle: function (xmlString) {

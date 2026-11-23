@@ -2055,65 +2055,20 @@ var $exeDevice = {
     },
 
     importGame: function (content, filetype) {
-        const game =
-            $exeDevices.iDevice.gamification.helpers.isJsonString(content);
-        if (content && content.includes('\u0000')) {
+        if (!content) {
+            $exeDevice.showMessage($exeDevice.msgs.msgESelectFile);
+        } else if (content.includes('\u0000')) {
             $exeDevice.showMessage(_('Sorry, wrong file format'));
-            return;
-        } else if (!game && content) {
-            if (filetype.match('text/plain')) {
-                $exeDevice.importText(content);
-            } else if (
-                filetype.match('application/xml') ||
-                filetype.match('text/xml')
-            ) {
-                $exeDevice.importMoodle(content);
-            } else {
-                eXe.app.alert(_('Sorry, wrong file format'));
-            }
-            return;
-        } else if (!game || typeof game.typeGame === 'undefined') {
-            $exeDevice.showMessage($exeDevice.msgs.msgESelectFile);
-            return;
-        } else if (game.typeGame === 'QuExt') {
-            $exeDevice.questionsGame = game.questionsGame;
-            game.id = $exeDevice.getIdeviceID();
-            for (let i = 0; i < $exeDevice.questionsGame.length; i++) {
-                if (game.questionsGame[i].type === 3) {
-                    game.questionsGame[i].eText = $exeDevices.iDevice.gamification.helpers.decodeStoredText(
-                        game.questionsGame[i].eText
-                    );
-                }
-                let numOpt = 0;
-                const options = $exeDevice.questionsGame[i].options;
-                for (let j = 0; j < options.length; j++) {
-                    if (options[j].trim().length === 0) {
-                        $exeDevice.questionsGame[i].numberOptions = numOpt;
-                        break;
-                    }
-                    numOpt++;
-                }
-            }
-            $exeDevice.updateFieldGame(game);
-            const instructions = game.instructionsExe || game.instructions,
-                tAfter = game.textAfter || '',
-                textFeedBack = game.textFeedBack || '';
-            tinyMCE
-                .get('eXeGameInstructions')
-                .setContent(unescape(instructions));
-            tinyMCE.get('eXeIdeviceTextAfter').setContent(unescape(tAfter));
-            tinyMCE
-                .get('quextEFeedBackEditor')
-                .setContent(unescape(textFeedBack));
-        } else if (game.typeGame !== 'QuExt') {
-            $exeDevice.showMessage($exeDevice.msgs.msgESelectFile);
-            return;
+        } else if (filetype.match('text/plain')) {
+            $exeDevice.importText(content);
+        } else if (
+            filetype.match('application/xml') ||
+            filetype.match('text/xml')
+        ) {
+            $exeDevice.importMoodle(content);
+        } else {
+            eXe.app.alert(_('Sorry, wrong file format'));
         }
-        $exeDevice.active = 0;
-        $exeDevice.showQuestion($exeDevice.active);
-        $exeDevice.deleteEmptyQuestion();
-        $exeDevice.updateQuestionsNumber();
-        //$('.exe-form-tabs li:first-child a').click();
     },
 
     getIdeviceID: function () {
@@ -2470,7 +2425,7 @@ var $exeDevice = {
                 if (
                     !file.type ||
                     !file.type.match(
-                        /text\/plain|application\/json|application\/xml|text\/xml/
+                        /text\/plain|application\/xml|text\/xml/
                     )
                 ) {
                     $exeDevice.showMessage(

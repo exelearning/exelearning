@@ -1308,26 +1308,25 @@ var $exeDevice = {
         ) {
             $('#eXeGameExportImport .exe-field-instructions')
                 .eq(0)
-                .text(_('Supported formats') + ': json, txt');
+                .text(_('Supported formats') + ': txt');
             $('#eXeGameExportImport').show();
-            $('#eXeGameImportGame').attr('accept', '.txt, .json, .xml');
+            $('#eXeGameImportGame').attr('accept', '.txt, .xml');
 
             $('#eXeGameImportGame').on('change', e => {
                 const file = e.target.files[0];
                 if (!file) {
-                    eXe.app.alert(_('Select a file') + ' (txt, json)');
+                    eXe.app.alert(_('Select a file') + ' (txt)');
                     return;
                 }
                 if (
                     !file.type ||
                     !(
                         file.type.match('text/plain') ||
-                        file.type.match('application/json') ||
                         file.type.match('application/xml') ||
                         file.type.match('text/xml')
                     )
                 ) {
-                    eXe.app.alert(_('Select a file') + ' (txt, json)');
+                    eXe.app.alert(_('Select a file') + ' (txt)');
                     return;
                 }
                 const reader = new FileReader();
@@ -2088,21 +2087,6 @@ var $exeDevice = {
         $exeDevice.updateQuestionsNumber();
     },
 
-    exportGame: function () {
-        const dataGame = this.validateData();
-
-        if (!dataGame) return false;
-
-        const newBlob = new Blob([JSON.stringify(dataGame)], {
-            type: 'text/plain',
-        });
-        return $exeDevicesEdition.iDevice.gamification.share.downloadBlob(
-            newBlob,
-            _('Activity') + '-Descubre.json',
-            'descubreQEIdeviceForm'
-        );
-    },
-
     exportQuestions: function () {
         const dataGame = this.validateData();
         if (!dataGame) return false;
@@ -2172,20 +2156,15 @@ var $exeDevice = {
     },
 
     importGame(content, filetype) {
-        const game =
-            $exeDevices.iDevice.gamification.helpers.isJsonString(content);
-
         if (content && content.includes('\u0000')) {
             $exeDevice.showMessage(_('Sorry, wrong file format'));
-        } else if (!game && content) {
-            if (filetype.match('text/plain')) {
-                $exeDevice.importText(content);
-            } else if (
-                filetype.match('application/xml') ||
-                filetype.match('text/xml')
-            ) {
-                $exeDevice.importMoodle(content);
-            }
+        } else if (content && filetype.match('text/plain')) {
+            $exeDevice.importText(content);
+        } else if (
+            content &&
+            (filetype.match('application/xml') || filetype.match('text/xml'))
+        ) {
+            $exeDevice.importMoodle(content);
         } else {
             $exeDevice.showMessage($exeDevice.msgs.msgESelectFile);
         }

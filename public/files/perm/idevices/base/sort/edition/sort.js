@@ -2096,32 +2096,6 @@ var $exeDevice = {
             });
     },
 
-    importGame: function (content) {
-        const game =
-            $exeDevices.iDevice.gamification.helpers.isJsonString(content);
-
-        if (!game || typeof game.typeGame == 'undefined') {
-            eXe.app.alert($exeDevice.msgs.msgESelectFile);
-            return;
-        } else if (game.typeGame !== 'Ordena') {
-            eXe.app.alert($exeDevice.msgs.msgESelectFile);
-            return;
-        }
-
-        game.id = $exeDevice.getIdeviceID();
-
-        $exeDevice.updateFieldGame(game);
-
-        const instructions = game.instructionsExe || game.instructions,
-            tAfter = game.textAfter || '',
-            textFeedBack = game.textFeedBack || '';
-        tinyMCE.get('eXeGameInstructions').setContent(unescape(instructions));
-        tinyMCE.get('eXeIdeviceTextAfter').setContent(unescape(tAfter));
-        tinyMCE.get('ordenaEFeedBackEditor').setContent(unescape(textFeedBack));
-        //$('.exe-form-tabs li:first-child a').click();
-        $exeDevice.showPhrase(0, false);
-    },
-
     placeImageWindows: function (image, naturalWidth, naturalHeight) {
         const wDiv =
                 $(image).parent().width() > 0 ? $(image).parent().width() : 1,

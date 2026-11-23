@@ -11,39 +11,6 @@ import { dirname, join } from 'path';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-describe('dragdrop iDevice export helpers', () => {
-    let $exeDevice;
-    let downloadBlob;
-
-    beforeEach(() => {
-        global.$exeDevice = undefined;
-        $exeDevice = global.loadIdevice(join(__dirname, 'dragdrop.js'));
-        downloadBlob = vi.fn(() => true);
-        global.$exeDevicesEdition.iDevice.gamification.share = { downloadBlob };
-    });
-
-    it('exports question text with the dragdrop filename and container', () => {
-        vi.spyOn($exeDevice, 'validateData').mockReturnValue({
-            wordsGame: [{ word: 'Source', definition: 'Target' }],
-        });
-
-        expect($exeDevice.exportQuestions()).toBe(true);
-        expect(downloadBlob).toHaveBeenCalledTimes(1);
-        expect(downloadBlob.mock.calls[0][1]).toBe('words-dragdrop.txt');
-        expect(downloadBlob.mock.calls[0][2]).toBe('dragdropQIdeviceForm');
-    });
-
-    it('exports game JSON with the dragdrop filename and container', () => {
-        const dataGame = { wordsGame: [{ word: 'Source', definition: 'Target' }] };
-        vi.spyOn($exeDevice, 'validateData').mockReturnValue(dataGame);
-
-        expect($exeDevice.exportGame()).toBe(true);
-        expect(downloadBlob).toHaveBeenCalledTimes(1);
-        expect(downloadBlob.mock.calls[0][1]).toBe('Activity-DragDrop.json');
-        expect(downloadBlob.mock.calls[0][2]).toBe('dragdropQIdeviceForm');
-    });
-});
-
 // Handlers whose callback is a single guarded call: [selector, event, method]
 const guardedEditionHandlers = [
     ['#dadEAddC', 'click', 'addCard'],
@@ -55,7 +22,6 @@ const guardedEditionHandlers = [
     ['#dadEPreviousC', 'click', 'previousCard'],
     ['#dadENextC', 'click', 'nextCard'],
     ['#dadELastC', 'click', 'lastCard'],
-    ['#eXeGameExportQuestions', 'click', 'exportQuestions'],
     ['#dadEPercentajeCards', 'keyup', 'updateCardsNumber'],
     ['#dadEPercentajeCards', 'click', 'updateCardsNumber'],
     ['#dadEPercentajeCards', 'focusout', 'updateCardsNumber'],
@@ -250,41 +216,6 @@ describe('dragdrop edition: $exeDevice guards (#2271)', () => {
                 expect(unrelated).toHaveBeenCalledTimes(2);
             } finally {
                 $(document).off('change.dragdropUnrelated');
-            }
-        });
-
-        it('aborts an in-flight game import when the edition closes', () => {
-            const reader = {
-                readyState: 1,
-                abort: vi.fn(),
-                readAsText: vi.fn(),
-                onload: null,
-            };
-            const readerSpy = vi.spyOn(global, 'FileReader').mockImplementation(function () {
-                return reader;
-            });
-
-            try {
-                const file = new File(['{}'], 'game.json', {
-                    type: 'application/json',
-                });
-                const input = document.getElementById('eXeGameImportGame');
-                Object.defineProperty(input, 'files', { value: [file] });
-
-                $(input).trigger('change');
-                expect(reader.readAsText).toHaveBeenCalledWith(file);
-
-                const importGame = vi.spyOn($exeDevice, 'importGame').mockImplementation(() => {});
-                reader.onload({ target: { result: '{}' } });
-                expect(importGame).toHaveBeenCalledTimes(1);
-
-                $exeDevice.$lifecycle.destroy();
-                expect(reader.abort).toHaveBeenCalledTimes(1);
-
-                reader.onload({ target: { result: '{}' } });
-                expect(importGame).toHaveBeenCalledTimes(1);
-            } finally {
-                readerSpy.mockRestore();
             }
         });
 

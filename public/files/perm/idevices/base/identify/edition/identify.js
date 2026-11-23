@@ -1115,61 +1115,13 @@ var $exeDevice = {
     },
 
     importGame: function (content, filetype) {
-        const game =
-            $exeDevices.iDevice.gamification.helpers.isJsonString(content);
-        if (content && content.includes('\u0000')) {
+        if (!content) {
+            $exeDevice.showMessage($exeDevice.msgs.msgESelectFile);
+        } else if (content.includes('\u0000') || !filetype.match('text/plain')) {
             eXe.app.alert(_('Sorry, wrong file format'));
-            return;
-        } else if (!game && content) {
-            if (filetype.match('text/plain')) {
-                $exeDevice.importText(content);
-            } else {
-                eXe.app.alert(_('Sorry, wrong file format'));
-            }
-            return;
-        } else if (!game || typeof game.typeGame == 'undefined') {
-            $exeDevice.showMessage($exeDevice.msgs.msgESelectFile);
-            return;
-        } else if (game.typeGame === 'Identifica') {
-            game.id = $exeDevice.getIdeviceID();
-            $exeDevice.active = 0;
-            $exeDevice.questionsGame = game.questionsGame;
-            $exeDevice.questionsGame.forEach((question) => {
-                let numOpt = 0;
-                question.clues.forEach((clue) => {
-                    if (!clue.trim().length) {
-                        question.numberClues = numOpt;
-                        return;
-                    }
-                    numOpt++;
-                });
-            });
-            $exeDevice.updateFieldGame(game);
-            const instructions = game.instructionsExe || game.instructions,
-                tAfter = game.textAfter || '',
-                textFeedBack = game.textFeedBack || '';
-            if (tinyMCE.get('eXeGameInstructions'))
-                tinyMCE
-                    .get('eXeGameInstructions')
-                    .setContent(unescape(instructions));
-            else $('#eXeGameInstructions').val(unescape(instructions));
-            if (tinyMCE.get('idfEFeedBackEditor'))
-                tinyMCE
-                    .get('idfEFeedBackEditor')
-                    .setContent(unescape(textFeedBack));
-            else $('#idfEFeedBackEditor').val(unescape(textFeedBack));
-            if (tinyMCE.get('eXeIdeviceTextAfter'))
-                tinyMCE.get('eXeIdeviceTextAfter').setContent(unescape(tAfter));
-            else $('#eXeIdeviceTextAfter').val(unescape(tAfter));
         } else {
-            $exeDevice.showMessage($exeDevice.msgs.msgESelectFile);
-            return;
+            $exeDevice.importText(content);
         }
-
-        $exeDevice.showQuestion($exeDevice.active);
-        $exeDevice.deleteEmptyQuestion();
-        $exeDevice.updateQuestionsNumber();
-        //$('.exe-form-tabs li:first-child a').click();
     },
 
     importIdentifica: function (game) {
@@ -1420,10 +1372,7 @@ var $exeDevice = {
                     }
                     if (
                         !file.type ||
-                        !(
-                            file.type.match('text/plain') ||
-                            file.type.match('application/json')
-                        )
+                        !file.type.match('text/plain')
                     ) {
                         eXe.app.alert(_('Please select a text file (.txt)'));
                         return;

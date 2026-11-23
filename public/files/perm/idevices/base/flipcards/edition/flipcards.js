@@ -1308,15 +1308,15 @@ var $exeDevice = {
         ) {
             $('#eXeGameExportImport .exe-field-instructions')
                 .eq(0)
-                .text(`${_('Supported formats')}: json, txt, xml(Moodle)`);
+                .text(`${_('Supported formats')}: txt, xml(Moodle)`);
             $('#eXeGameExportImport').show();
-            $('#eXeGameImportGame').attr('accept', '.txt, .json, .xml');
+            $('#eXeGameImportGame').attr('accept', '.txt, .xml');
             $('#eXeGameImportGame').on('change', (e) => {
                 const file = e.target.files[0];
                 if (!file) {
                     eXe.app.alert(
                         _(
-                            'Please select a text file (.txt), a JSON file (.json), or an XML(Moodle) file (.xml)'
+                            'Please select a text file (.txt) or a Moodle XML file (.xml)'
                         )
                     );
                     return;
@@ -1325,14 +1325,13 @@ var $exeDevice = {
                     !file.type ||
                     !(
                         file.type.match('text/plain') ||
-                        file.type.match('application/json') ||
                         file.type.match('application/xml') ||
                         file.type.match('text/xml')
                     )
                 ) {
                     eXe.app.alert(
                         _(
-                            'Please select a text file (.txt), a JSON file (.json), or an XML(Moodle) file (.xml)'
+                            'Please select a text file (.txt) or a Moodle XML file (.xml)'
                         )
                     );
                     return;
@@ -1769,77 +1768,20 @@ var $exeDevice = {
     },
 
     importGame(content, filetype) {
-        const game =
-            $exeDevices.iDevice.gamification.helpers.isJsonString(content);
-
-        let cards = [];
-        if (content && content.includes('\u0000')) {
+        if (!content) {
+            $exeDevice.showMessage($exeDevice.msgs.msgESelectFile);
+        } else if (content.includes('\u0000')) {
             $exeDevice.showMessage(_('Sorry, wrong file format'));
-            return;
-        } else if (!game && content) {
-            if (filetype.match('text/plain')) {
-                $exeDevice.importText(content);
-            } else if (
-                filetype.match('application/xml') ||
-                filetype.match('text/xml')
-            ) {
-                $exeDevice.importMoodle(content);
-            } else {
-                eXe.app.alert(_('Sorry, wrong file format'));
-            }
-            return;
-        } else if (game && game.typeGame) {
-            switch (game.typeGame) {
-                case 'FlipCards':
-                    return this.handleGame(game);
-                case 'Rosco':
-                    cards = $exeDevice.importRosco(game);
-                    break;
-                case 'QuExt':
-                    cards = $exeDevice.importQuExt(game);
-                    break;
-                case 'Sopa':
-                    cards = $exeDevice.importSopa(game);
-                    break;
-                case 'Adivina':
-                    cards = $exeDevice.importAdivina(game);
-                    break;
-                default:
-                    return $exeDevice.showMessage(
-                        $exeDevice.msgs.msgESelectFile
-                    );
-            }
+        } else if (filetype.match('text/plain')) {
+            $exeDevice.importText(content);
+        } else if (
+            filetype.match('application/xml') ||
+            filetype.match('text/xml')
+        ) {
+            $exeDevice.importMoodle(content);
         } else {
-            return $exeDevice.showMessage($exeDevice.msgs.msgESelectFile);
+            eXe.app.alert(_('Sorry, wrong file format'));
         }
-
-        if (cards && cards.length > 0) {
-            $exeDevice.cardsGame = cards;
-        } else {
-            $exeDevice.showMessage(_('Sorry, wrong file format'));
-            return;
-        }
-
-        this.postImportProcessing();
-    },
-
-    handleGame(game) {
-        $exeDevice.active = 0;
-        game.id = $exeDevice.getIdeviceID();
-        $exeDevice.updateFieldGame(game);
-
-        const instructions = unescape(
-                game.instructionsExe || game.instructions
-            ),
-            tAfter = unescape(game.textAfter || '');
-
-        tinyMCE.get('eXeGameInstructions')
-            ? tinyMCE.get('eXeGameInstructions').setContent(instructions)
-            : $('#eXeGameInstructions').val(instructions);
-        tinyMCE.get('eXeIdeviceTextAfter')
-            ? tinyMCE.get('eXeIdeviceTextAfter').setContent(tAfter)
-            : $('#eXeIdeviceTextAfter').val(tAfter);
-        this.postImportProcessing();
     },
 
     postImportProcessing() {
@@ -1848,55 +1790,6 @@ var $exeDevice = {
         $exeDevice.deleteEmptyQuestion();
         $exeDevice.updateCardsNumber();
         //$('.exe-form-tabs li:first-child a').click();
-    },
-
-    importRosco(data) {
-        return this.importGameData(data.wordsGame, (cuestion) => ({
-            eText: cuestion.definition,
-            eTextBk: cuestion.word,
-            url: cuestion.url,
-            audio: cuestion.audio || '',
-        }));
-    },
-
-    importSopa(data) {
-        return this.importGameData(data.wordsGame, (cuestion) => ({
-            eText: cuestion.definition,
-            eTextBk: cuestion.word,
-            url: cuestion.url,
-            audio: cuestion.audio || '',
-        }));
-    },
-
-    importQuExt(data) {
-        return this.importGameData(data.questionsGame, (cuestion) => ({
-            eText: cuestion.quextion,
-            eTextBk: cuestion.options
-                ? cuestion.options[cuestion.solution]
-                : '',
-            url: cuestion.url,
-            audio: cuestion.audio || '',
-        }));
-    },
-
-    importAdivina(data) {
-        return this.importGameData(data.wordsGame, (cuestion) => ({
-            eText: cuestion.word,
-            eTextBk: cuestion.definition,
-            url: cuestion.url,
-            audio: cuestion.audio || '',
-        }));
-    },
-
-    importGameData(data, mapFn) {
-        data.forEach((item) => {
-            const cardData = mapFn(item),
-                p = Object.assign($exeDevice.getCardDefault(), cardData);
-            if (p.eText || p.url || p.audio) {
-                $exeDevice.cardsGame.push(p);
-            }
-        });
-        return $exeDevice.cardsGame;
     },
 
     deleteEmptyQuestion: function () {

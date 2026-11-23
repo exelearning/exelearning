@@ -1239,7 +1239,6 @@ var $exeDevice = {
                     !file.type ||
                     !(
                         file.type.match('text/plain') ||
-                        file.type.match('application/json') ||
                         file.type.match('application/xml') ||
                         file.type.match('text/xml')
                     )
@@ -1511,19 +1510,6 @@ var $exeDevice = {
         $exeDevice.updateCardsNumber();
     },
 
-    exportGame: function () {
-        const dataGame = this.validateData();
-
-        if (!dataGame) return false;
-
-        const newBlob = new Blob([JSON.stringify(dataGame)], { type: 'text/plain' });
-        return $exeDevicesEdition.iDevice.gamification.share.downloadBlob(
-            newBlob,
-            `${_('Activity')}-Relaciona.json`,
-            'relateQIdeviceForm'
-        );
-    },
-
     importMoodle: function (xmlString) {
         const xmlDoc = $.parseXML(xmlString),
             $xml = $(xmlDoc);
@@ -1634,27 +1620,19 @@ var $exeDevice = {
     },
 
     importGame(content, filetype) {
-        const game =
-            $exeDevices.iDevice.gamification.helpers.isJsonString(content);
-        if (content && content.includes('\u0000')) {
+        if (!content) {
+            $exeDevice.showMessage($exeDevice.msgs.msgESelectFile);
+        } else if (content.includes('\u0000')) {
             $exeDevice.showMessage(_('Sorry, wrong file format'));
-            return;
-        } else if (!game && content) {
-            if (filetype.match('text/plain')) {
-                $exeDevice.importText(content);
-            } else if (
-                filetype.match('application/xml') ||
-                filetype.match('text/xml')
-            ) {
-                $exeDevice.importMoodle(content);
-            } else {
-                eXe.app.alert(_('Sorry, wrong file format'));
-            }
-            return;
-        } else if (game && game.typeGame && game.typeGame == 'Relaciona') {
-            return this.handleGame(game);
+        } else if (filetype.match('text/plain')) {
+            $exeDevice.importText(content);
+        } else if (
+            filetype.match('application/xml') ||
+            filetype.match('text/xml')
+        ) {
+            $exeDevice.importMoodle(content);
         } else {
-            return $exeDevice.showMessage($exeDevice.msgs.msgESelectFile);
+            eXe.app.alert(_('Sorry, wrong file format'));
         }
     },
 

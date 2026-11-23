@@ -296,51 +296,6 @@ var $exeDevice = {
         //$('.exe-form-tabs li:first-child a').click();
     },
 
-    importAdivina: function (data) {
-        for (let i = 0; i < data.wordsGame.length; i++) {
-            let p = $exeDevice.getCuestionDefault(),
-                cuestion = data.wordsGame[i];
-            p.word = cuestion.word;
-            p.definition = cuestion.definition;
-            p.url = cuestion.url;
-            p.audio =
-                typeof cuestion.audio == 'undefined' ? '' : cuestion.audio;
-            p.x = cuestion.x;
-            p.y = cuestion.y;
-            p.author = cuestion.author;
-            p.alt = cuestion.alt;
-            p.solution = '';
-            $exeDevice.wordsGame.push(p);
-        }
-        return $exeDevice.wordsGame;
-    },
-
-    importRosco: function (data) {
-        for (let i = 0; i < data.wordsGame.length; i++) {
-            let p = $exeDevice.getCuestionDefault(),
-                cuestion = data.wordsGame[i];
-            p.word = cuestion.word;
-            p.definition = cuestion.definition;
-            p.url = cuestion.url;
-            p.audio =
-                typeof cuestion.audio == 'undefined' ? '' : cuestion.audio;
-            p.x = cuestion.x;
-            p.y = cuestion.y;
-            p.author = cuestion.author;
-            p.alt = cuestion.alt;
-            p.solution = '';
-            if (
-                p.word &&
-                p.word.length > 0 &&
-                p.definition &&
-                p.definition.length > 0
-            ) {
-                $exeDevice.wordsGame.push(p);
-            }
-        }
-        return $exeDevice.wordsGame;
-    },
-
     createForm: function () {
         const showSolveBtn = _('Show "Solve" button.');
         const path = $exeDevice.idevicePath,
@@ -1459,65 +1414,20 @@ var $exeDevice = {
     },
 
     importGame: function (content, filetype) {
-        const game =
-            $exeDevices.iDevice.gamification.helpers.isJsonString(content);
-        if (content && content.includes('\u0000')) {
+        if (!content) {
+            $exeDevice.showMessage($exeDevice.msgs.msgESelectFile);
+        } else if (content.includes('\u0000')) {
             $exeDevice.showMessage(_('Sorry, wrong file format'));
-            return;
-        } else if (!game && content) {
-            if (filetype.match('text/plain')) {
-                $exeDevice.importText(content);
-            } else if (
-                filetype.match('application/xml') ||
-                filetype.match('text/xml')
-            ) {
-                $exeDevice.importMoodle(content);
-            } else {
-                eXe.app.alert(_('Sorry, wrong file format'));
-            }
-            return;
-        } else if (!game || typeof game.typeGame == 'undefined') {
-            $exeDevice.showMessage($exeDevice.msgs.msgESelectFile);
-            return;
-        } else if (game.typeGame == 'Sopa') {
-            $exeDevice.active = 0;
-            game.id = $exeDevice.getIdeviceID();
-            $exeDevice.updateFieldGame(game);
-            let instructions = game.instructionsExe || game.instructions,
-                tAfter = game.textAfter || '',
-                textFeedBack = game.textFeedBack || '';
-            if (tinyMCE.get('eXeGameInstructions')) {
-                tinyMCE
-                    .get('eXeGameInstructions')
-                    .setContent(unescape(instructions));
-            } else {
-                $('#eXeGameInstructions').val(unescape(instructions));
-            }
-            if (tinyMCE.get('sopaEFeedBackEditor')) {
-                tinyMCE
-                    .get('sopaEFeedBackEditor')
-                    .setContent(unescape(textFeedBack));
-            } else {
-                $('#sopaEFeedBackEditor').val(unescape(textFeedBack));
-            }
-            if (tinyMCE.get('eXeIdeviceTextAfter')) {
-                tinyMCE.get('eXeIdeviceTextAfter').setContent(unescape(tAfter));
-            } else {
-                $('#eXeIdeviceTextAfter').val(unescape(tAfter));
-            }
-        } else if (game.typeGame == 'Adivina') {
-            $exeDevice.importAdivina(game);
-        } else if (game.typeGame == 'Rosco') {
-            $exeDevice.importRosco(game);
+        } else if (filetype.match('text/plain')) {
+            $exeDevice.importText(content);
+        } else if (
+            filetype.match('application/xml') ||
+            filetype.match('text/xml')
+        ) {
+            $exeDevice.importMoodle(content);
         } else {
-            $exeDevice.showMessage($exeDevice.msgs.msgESelectFile);
-            return;
+            eXe.app.alert(_('Sorry, wrong file format'));
         }
-        $exeDevice.active = 0;
-        $exeDevice.showQuestion($exeDevice.active);
-        $exeDevice.deleteEmptyQuestion();
-        $exeDevice.updateQuestionsNumber();
-        //$('.exe-form-tabs li:first-child a').click();
     },
 
     deleteEmptyQuestion: function () {

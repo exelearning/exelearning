@@ -1089,7 +1089,7 @@ var $exeDevice = {
                                         <input type="text" id="trivialNameTema" class="form-control w-100" />
                                     </div>
                                     <div class="d-flex align-items-center flex-wrap gap-2 mb-3">
-                                        <span>${_('Load')}:</span><input type="file" name="trivialLoadGame" id="trivialLoadGame" accept=".json" />
+                                        <span>${_('Load')}:</span><input type="file" name="trivialLoadGame" id="trivialLoadGame" accept=".txt, .xml" />
                                     </div>                                    
                                     <div class="d-flex align-items-center flex-wrap gap-2 mb-3">
                                         <span>${_('Type')}:</span>
@@ -2113,176 +2113,6 @@ var $exeDevice = {
         }
         return html;
     },
-    exportGame: function () {
-        if (!$exeDevice.validateQuestion()) return;
-
-        const dataGame = this.validateData();
-        if (!dataGame) return false;
-
-        const newBlob = new Blob([JSON.stringify(dataGame)], {
-            type: 'text/plain',
-        });
-        return $exeDevicesEdition.iDevice.gamification.share.downloadBlob(
-            newBlob,
-            `${_('Activity')}-TriviEx.json`,
-            'gameQEIdeviceForm'
-        );
-    },
-    importQuExt: function (data) {
-        for (let i = 0; i < data.questionsGame.length; i++) {
-            const p = $exeDevice.getCuestionDefault(),
-                cuestion = data.questionsGame[i],
-                solution = 'ABCD';
-
-            p.typeSelect = 0;
-            p.type = cuestion.type;
-            p.time = cuestion.time;
-            p.numberOptions = cuestion.numberOptions;
-            p.url = cuestion.url;
-            p.x = cuestion.x;
-            p.y = cuestion.y;
-            p.author = cuestion.author;
-            p.alt = cuestion.alt;
-            p.soundVideo = cuestion.soundVideo;
-            p.imageVideo = cuestion.imageVideo;
-            p.iVideo = cuestion.iVideo;
-            p.fVideo = cuestion.fVideo;
-            p.eText = cuestion.eText;
-
-            if (p.type == 3) {
-                p.eText = p.eText;
-            }
-
-            p.quextion = cuestion.quextion;
-            p.options = [];
-
-            for (var j = 0; j < cuestion.options.length; j++) {
-                p.options.push(cuestion.options[j]);
-            }
-
-            let numOpt = 0;
-            for (let j = 0; j < p.options.length; j++) {
-                if (p.options[j].trim().length == 0) {
-                    p.numberOptions = numOpt;
-                    break;
-                }
-                numOpt++;
-            }
-            if (p.type == 3) {
-                p.eText = p.eText;
-            }
-
-            p.audio =
-                typeof cuestion.audio == 'undefined' ? '' : cuestion.audio;
-            p.options = cuestion.options;
-            p.solution = solution.charAt(cuestion.solution);
-            p.silentVideo = cuestion.silentVideo;
-            p.tSilentVideo = cuestion.tSilentVideo;
-            p.solutionQuestion = '';
-            p.percentageShow = 35;
-            $exeDevice.temas[$exeDevice.activeTema].push(p);
-        }
-    },
-
-    importSelecciona: function (data) {
-        for (let i = 0; i < data.selectsGame.length; i++) {
-            const p = $exeDevice.getCuestionDefault(),
-                cuestion = data.selectsGame[i];
-            p.typeSelect = cuestion.typeSelect;
-            p.type = cuestion.type;
-            p.time = cuestion.time;
-            p.numberOptions = cuestion.numberOptions;
-            p.url = cuestion.url;
-            p.x = cuestion.x;
-            p.y = cuestion.y;
-            p.author = cuestion.author;
-            p.alt = cuestion.alt;
-            p.soundVideo = cuestion.soundVideo;
-            p.imageVideo = cuestion.imageVideo;
-            p.iVideo = cuestion.iVideo;
-            p.fVideo = cuestion.fVideo;
-            p.eText = cuestion.eText;
-            p.quextion = cuestion.quextion;
-            p.options = [];
-
-            for (let j = 0; j < cuestion.options.length; j++) {
-                p.options.push(cuestion.options[j]);
-            }
-            let numOpt = 0;
-            for (let j = 0; j < p.options.length; j++) {
-                if (p.options[j].trim().length == 0) {
-                    p.numberOptions = numOpt;
-                    break;
-                }
-                numOpt++;
-            }
-            if (p.type == 3) {
-                p.eText = p.eText;
-            }
-            p.audio =
-                typeof cuestion.audio == 'undefined' ? '' : cuestion.audio;
-            p.options = cuestion.options;
-            p.solution = cuestion.solution;
-            p.silentVideo = cuestion.silentVideo;
-            p.tSilentVideo = cuestion.tSilentVideo;
-            p.solutionQuestion = cuestion.solutionQuestion;
-            p.percentageShow = cuestion.percentageShow;
-            $exeDevice.temas[$exeDevice.activeTema].push(p);
-        }
-    },
-
-    importGame: function (content) {
-        content = $exeDevices.iDevice.gamification.helpers.sanitizeJSONString(content);
-        const game =
-            $exeDevices.iDevice.gamification.helpers.isJsonString(content);
-        if (!game || typeof game.typeGame == 'undefined') {
-            $exeDevice.showMessage($exeDevice.msgs.msgESelectFile);
-        } else if (game.typeGame == 'Trivial') {
-            game.trivialID = $exeDevice.getId();
-            game.id = $exeDevice.getIdeviceID();
-            let temas = [];
-            for (let i = 0; i < 6; i++) {
-                let tema = [];
-                const question = $exeDevice.getCuestionDefault();
-                tema.push(question);
-                if (i < game.numeroTemas) {
-                    let ntema = game.temas[i];
-                    for (let j = 0; j < ntema.length; j++) {
-                        let numOpt = 0;
-                        let p = ntema[j];
-                        for (let z = 0; z < p.options.length; z++) {
-                            if (p.options[z].trim().indexOf('<' == 0)) {
-                                p.options[z] = p.options[z].replace('<', ' ');
-                            }
-                            if (p.options[z].trim().length == 0) {
-                                p.numberOptions = numOpt;
-                                break;
-                            }
-                            numOpt++;
-                        }
-                        if (p.type == 3) {
-                            p.eText = p.eText;
-                        }
-                        ntema[j] = p;
-                    }
-                    tema = ntema;
-                }
-                temas.push(tema);
-            }
-
-            $exeDevice.temas = temas;
-            game.temas = $exeDevice.temas;
-            $exeDevice.numeroTemas = game.numeroTemas;
-            $exeDevice.nombresTemas = game.nombresTemas;
-            $exeDevice.updateFieldGame(game);
-            $exeDevice.changeNumberTemas(game.numeroTemas);
-            const instructions = game.instructionsExe || game.instructions;
-            tinymce.editors[0].setContent(unescape(instructions));
-            //$('.exe-form-tabs li:first-child a').click();
-        } else {
-            $exeDevice.showMessage($exeDevice.msgs.msgESelectFile);
-        }
-    },
 
     updateNumberTema: function (tema) {
         for (let i = 0; i < tema.length; i++) {
@@ -2298,41 +2128,6 @@ var $exeDevice = {
         return tema;
     },
 
-    importAdivina: function (data) {
-        for (let i = 0; i < data.wordsGame.length; i++) {
-            const p = $exeDevice.getCuestionDefault(),
-                cuestion = data.wordsGame[i];
-            p.typeSelect = 2;
-            p.type = cuestion.url.length > 10 ? 1 : 0;
-            p.time =
-                cuestion.time || $exeDevice.getIndexTime(data.timeQuestion);
-            p.numberOptions = 4;
-            p.url = cuestion.url;
-            p.x = cuestion.x;
-            p.y = cuestion.y;
-            p.author = cuestion.author;
-            p.alt = cuestion.alt;
-            p.soundVideo = 1;
-            p.imageVideo = 1;
-            p.iVideo = 0;
-            p.fVideo = 0;
-            p.eText = '';
-            p.quextion = cuestion.definition;
-            p.options = [];
-            p.options.push('');
-            p.options.push('');
-            p.options.push('');
-            p.options.push('');
-            p.audio =
-                typeof cuestion.audio == 'undefined' ? '' : cuestion.audio;
-            p.solution = '';
-            p.silentVideo = 0;
-            p.tSilentVideo = 0;
-            p.solutionQuestion = cuestion.word;
-            p.percentageShow = cuestion.percentageShow || data.percentageShow;
-            $exeDevice.temas[$exeDevice.activeTema].push(p);
-        }
-    },
     getIndexTime: function (time) {
         const timeIndexMap = {
             15: 0,
@@ -2344,51 +2139,6 @@ var $exeDevice = {
             900: 6,
         };
         return timeIndexMap.hasOwnProperty(time) ? timeIndexMap[time] : time;
-    },
-
-    importRosco: function (data) {
-        for (let i = 0; i < data.wordsGame.length; i++) {
-            const p = $exeDevice.getCuestionDefault(),
-                cuestion = data.wordsGame[i],
-                start = (cuestion.type = 1
-                    ? $exeDevice.msgs.msgContaint.replace('%1', cuestion.letter)
-                    : $exeDevice.msgs.msgStartWith.replace(
-                          '%1',
-                          cuestion.letter
-                      ));
-
-            p.typeSelect = 2;
-            p.type = cuestion.url.length > 10 ? 1 : 0;
-            p.time =
-                cuestion.time || $exeDevice.getIndexTime(data.timeQuestion);
-            p.numberOptions = 4;
-            p.url = cuestion.url;
-            p.x = cuestion.x;
-            p.y = cuestion.y;
-            p.author = cuestion.author;
-            p.alt = cuestion.alt;
-            p.soundVideo = 1;
-            p.imageVideo = 1;
-            p.iVideo = 0;
-            p.fVideo = 0;
-            p.eText = '';
-            p.quextion = start + ': ' + cuestion.definition;
-            p.options = [];
-            p.options.push('');
-            p.options.push('');
-            p.options.push('');
-            p.options.push('');
-            p.audio =
-                typeof cuestion.audio == 'undefined' ? '' : cuestion.audio;
-            p.solution = '';
-            p.silentVideo = 0;
-            p.tSilentVideo = 0;
-            p.solutionQuestion = cuestion.word;
-            p.percentageShow = cuestion.percentageShow || data.percentageShow;
-            if (p.solutionQuestion.trim().length > 0) {
-                $exeDevice.temas[$exeDevice.activeTema].push(p);
-            }
-        }
     },
 
     getIdeviceID: function () {
@@ -2769,37 +2519,22 @@ var $exeDevice = {
             window.FileList &&
             window.Blob
         ) {
-            $('#eXeGameExportImport').show();
-            $('#eXeGameImportGame').on('change', function (e) {
-                const file = e.target.files[0];
-                if (!file) {
-                    return;
-                }
-                const reader = new FileReader();
-                self.$lifecycle.ownFileReader(reader);
-                reader.onload = self.$lifecycle.bind(function (e) {
-                    this.importGame(e.target.result);
-                });
-                reader.readAsText(file);
-            });
-
-            $('#trivialLoadGame').attr('accept', '.txt, .json, .xml');
+            $('#trivialLoadGame').attr('accept', '.txt, .xml');
             $('#trivialLoadGame').on('change', function (e) {
                 const file = e.target.files[0];
                 if (!file) {
-                    eXe.app.alert(_('Select a file') + ' (txt, json)');
+                    eXe.app.alert(_('Select a file') + ' (txt, xml)');
                     return;
                 }
                 if (
                     !file.type ||
                     !(
                         file.type.match('text/plain') ||
-                        file.type.match('application/json') ||
                         file.type.match('application/xml') ||
                         file.type.match('text/xml')
                     )
                 ) {
-                    eXe.app.alert(_('Select a file') + ' (txt, json)');
+                    eXe.app.alert(_('Select a file') + ' (txt, xml)');
                     return;
                 }
                 const reader = new FileReader();
@@ -2809,11 +2544,6 @@ var $exeDevice = {
                 });
                 reader.readAsText(file);
             });
-            $('#eXeGameExportQuestions').on('click', function () {
-                $exeDevice.exportGame();
-            });
-        } else {
-            $('#eXeGameExportImport').hide();
         }
 
         $('#trivialEInitVideo').css('color', '#2c6d2c');
@@ -3180,46 +2910,28 @@ var $exeDevice = {
     },
 
     gameAdd: function (content, filetype) {
-        content = $exeDevices.iDevice.gamification.helpers.sanitizeJSONString(content);
-        const game =
-            $exeDevices.iDevice.gamification.helpers.isJsonString(content);
-
-        if (content && content.includes('\u0000')) {
+        if (!content) {
+            $exeDevice.showMessage($exeDevice.msgs.msgESelectFile);
+            $('#trivialLoadGame').val('');
+            return;
+        } else if (content.includes('\u0000')) {
             $exeDevice.showMessage(_('Sorry, wrong file format'));
             return;
-        } else if (!game && content) {
-            var questions = false;
-            if (filetype.match('text/plain')) {
-                questions = $exeDevice.importText(content);
-            } else if (
-                filetype.match('application/xml') ||
-                filetype.match('text/xml')
-            ) {
-                questions = $exeDevice.importMoodle(content);
-            }
-            if (questions && questions.length > 0) {
-                $exeDevice.temas[$exeDevice.activeTema] = questions;
-                $exeDevice.selectsGame =
-                    $exeDevice.temas[$exeDevice.activeTema];
-            } else {
-                $exeDevice.showMessage(_('Sorry, wrong file format'));
-                return;
-            }
-        } else if (!game || typeof game.typeGame == 'undefined') {
-            $exeDevice.showMessage($exeDevice.msgs.msgESelectFile);
-            $('#trivialLoadGame').val('');
-            return;
-        } else if (game.typeGame == 'Selecciona') {
-            $exeDevice.importSelecciona(game);
-        } else if (game.typeGame == 'QuExt') {
-            $exeDevice.importQuExt(game);
-        } else if (game.typeGame == 'Adivina') {
-            $exeDevice.importAdivina(game);
-        } else if (game.typeGame == 'Rosco') {
-            $exeDevice.importRosco(game);
+        }
+        let questions = false;
+        if (filetype.match('text/plain')) {
+            questions = $exeDevice.importText(content);
+        } else if (
+            filetype.match('application/xml') ||
+            filetype.match('text/xml')
+        ) {
+            questions = $exeDevice.importMoodle(content);
+        }
+        if (questions && questions.length > 0) {
+            $exeDevice.temas[$exeDevice.activeTema] = questions;
+            $exeDevice.selectsGame = $exeDevice.temas[$exeDevice.activeTema];
         } else {
-            $exeDevice.showMessage($exeDevice.msgs.msgESelectFile);
-            $('#trivialLoadGame').val('');
+            $exeDevice.showMessage(_('Sorry, wrong file format'));
             return;
         }
 

@@ -1687,18 +1687,6 @@ var $exeDevicesEdition = {
                     else setTimeout(release, 100);
                     return true;
                 },
-
-                exportGame: function (dataGame, idevice, name) {
-                    if (!dataGame) return false;
-                    const blob = new Blob([JSON.stringify(dataGame)], {
-                        type: 'text/plain',
-                    });
-                    return $exeDevicesEdition.iDevice.gamification.share.downloadBlob(
-                        blob,
-                        `${_('Activity')}-${name}.json`,
-                        idevice
-                    );
-                },
                 import: {
 
                     text: function (content, addWords) {

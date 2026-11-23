@@ -1897,28 +1897,6 @@ describe('common_edition.js', () => {
       expect(result).not.toContain('Invalid');
     });
 
-    it('exportGame creates download link', () => {
-      const container = document.createElement('div');
-      container.id = 'test-idevice';
-      document.body.appendChild(container);
-
-      const urlSpy = vi.spyOn(window.URL, 'createObjectURL').mockReturnValue('blob:test');
-      const revokeSpy = vi.spyOn(window.URL, 'revokeObjectURL').mockImplementation(() => {});
-
-      vi.useFakeTimers();
-      globalThis.$exeDevicesEdition.iDevice.gamification.share.exportGame({ data: 'test' }, 'test-idevice', 'TestGame');
-      vi.runAllTimers();
-      vi.useRealTimers();
-
-      urlSpy.mockRestore();
-      revokeSpy.mockRestore();
-    });
-
-    it('exportGame returns false for null data', () => {
-      const result = globalThis.$exeDevicesEdition.iDevice.gamification.share.exportGame(null, 'test', 'name');
-      expect(result).toBe(false);
-    });
-
     describe('addEvents', () => {
       let originalAlert;
       let originalExeAlert;

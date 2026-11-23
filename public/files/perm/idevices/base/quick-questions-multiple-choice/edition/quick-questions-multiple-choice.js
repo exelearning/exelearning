@@ -2841,7 +2841,6 @@ var $exeDevice = {
                         !file.type ||
                         !(
                             file.type.match('text/plain') ||
-                            file.type.match('application/json') ||
                             file.type.match('application/xml') ||
                             file.type.match('text/xml')
                         )
@@ -3264,58 +3263,20 @@ var $exeDevice = {
     },
 
     importGame: function (content, filetype) {
-        const game =
-            $exeDevices.iDevice.gamification.helpers.isJsonString(content);
-
-        if (content && content.includes('\u0000')) {
+        if (!content) {
+            $exeDevice.showMessage($exeDevice.msgs.msgESelectFile);
+        } else if (content.includes('\u0000')) {
             $exeDevice.showMessage(_('Sorry, wrong file format'));
-            return;
-        } else if (!game && content) {
-            if (filetype.match('text/plain')) {
-                $exeDevice.importText(content);
-            } else if (
-                filetype.match('application/xml') ||
-                filetype.match('text/xml')
-            ) {
-                $exeDevice.importMoodle(content);
-            } else {
-                eXe.app.alert(_('Sorry, wrong file format'));
-            }
-            return;
-        } else if (!game || typeof game.typeGame === 'undefined') {
-            $exeDevice.showMessage($exeDevice.msgs.msgESelectFile);
-            return;
-        } else if (game.typeGame === 'Selecciona') {
-            game.id = $exeDevice.getIdeviceID();
-            $exeDevice.active = 0;
-            $exeDevice.updateFieldGame(game);
-            const instructions = game.instructionsExe || game.instructions,
-                tAfter = game.textAfter || '',
-                textFeedBack = game.textFeedBack || '';
-            tinyMCE
-                .get('eXeGameInstructions')
-                .setContent(unescape(instructions));
-            tinyMCE.get('eXeIdeviceTextAfter').setContent(unescape(tAfter));
-            tinyMCE
-                .get('seleccionaEFeedBackEditor')
-                .setContent(unescape(textFeedBack));
-        } else if (game.typeGame === 'Oca') {
-            $exeDevice.selectsGame = $exeDevice.importSelecciona(game);
-        } else if (game.typeGame === 'QuExt') {
-            $exeDevice.selectsGame = $exeDevice.importQuExt(game);
-        } else if (game.typeGame === 'Rosco' || game.typeGame === 'Adivina') {
-            $exeDevice.selectsGame = $exeDevice.importRosco(game);
+        } else if (filetype.match('text/plain')) {
+            $exeDevice.importText(content);
+        } else if (
+            filetype.match('application/xml') ||
+            filetype.match('text/xml')
+        ) {
+            $exeDevice.importMoodle(content);
         } else {
-            $exeDevice.showMessage($exeDevice.msgs.msgESelectFile);
-            return;
+            eXe.app.alert(_('Sorry, wrong file format'));
         }
-
-        $exeDevice.active = 0;
-        $exeDevice.showQuestion($exeDevice.active);
-        $exeDevice.deleteEmptyQuestion();
-        $exeDevice.updateQuestionsNumber();
-        $exeDevice.updateSelectOrder();
-        //$('.exe-form-tabs li:first-child a').click();
     },
 
     importCuestionaryXML: function (xmlText) {
@@ -3539,53 +3500,6 @@ var $exeDevice = {
         //$('.exe-form-tabs li:first-child a').click();
     },
 
-    importQuExt: function (data) {
-        data.questionsGame.forEach((cuestion) => {
-            const p = $exeDevice.getCuestionDefault(),
-                solution = 'ABCD';
-            p.typeSelect = 0;
-            p.type = cuestion.type;
-            p.time = cuestion.time;
-            p.numberOptions = cuestion.numberOptions;
-            p.url = cuestion.url;
-            p.x = cuestion.x;
-            p.y = cuestion.y;
-            p.author = cuestion.author;
-            p.alt = cuestion.alt;
-            p.soundVideo = cuestion.soundVideo;
-            p.imageVideo = cuestion.imageVideo;
-            p.iVideo = cuestion.iVideo;
-            p.fVideo = cuestion.fVideo;
-            // As stored, like a question loaded with the activity: showQuestion decodes it, and
-            // decoding it here too would take one more level off.
-            p.eText = cuestion.eText;
-            p.quextion = cuestion.quextion;
-            p.options = [...cuestion.options];
-
-            let numOpt = 0;
-            for (let j = 0; j < p.options.length; j++) {
-                if (p.options[j].trim().length === 0) {
-                    p.numberOptions = numOpt;
-                    break;
-                }
-                numOpt++;
-            }
-
-            p.audio = cuestion.audio || '';
-            p.hit = cuestion.hit === undefined ? -1 : cuestion.hit;
-            p.error = cuestion.error === undefined ? -1 : cuestion.error;
-            p.msgHit = cuestion.msgHit || '';
-            p.msgError = cuestion.msgError || '';
-            p.solution = solution.charAt(cuestion.solution);
-            p.silentVideo = cuestion.silentVideo;
-            p.tSilentVideo = cuestion.tSilentVideo;
-            p.solutionQuestion = '';
-            p.percentageShow = 35;
-            $exeDevice.selectsGame.push(p);
-        });
-        return $exeDevice.selectsGame;
-    },
-
     deleteEmptyQuestion: function () {
         if ($exeDevice.selectsGame.length > 1) {
             const quextion = $('#seleccionaEQuestion').val().trim(),
@@ -3662,63 +3576,6 @@ var $exeDevice = {
             p.solutionQuestion = cuestion.word;
             p.percentageShow = cuestion.percentageShow || data.percentageShow;
             $exeDevice.selectsGame.push(p);
-        }
-        return $exeDevice.selectsGame;
-    },
-
-    importRosco: function (data) {
-        for (let i = 0; i < data.wordsGame.length; i++) {
-            const p = $exeDevice.getCuestionDefault();
-            const cuestion = data.wordsGame[i];
-            const msc = $exeDevice.msgs.msgContaint.replace(
-                '%1',
-                cuestion.letter
-            );
-            const mss = $exeDevice.msgs.msgStartWith.replace(
-                '%1',
-                cuestion.letter
-            );
-            const start = cuestion.type == 1 ? msc : mss;
-            p.typeSelect = 2;
-            p.type = cuestion.url.length > 10 ? 1 : 0;
-            p.time =
-                cuestion.time || $exeDevice.getIndexTime(data.timeQuestion);
-            p.numberOptions = 4;
-            p.url = cuestion.url;
-            p.x = cuestion.x;
-            p.y = cuestion.y;
-            p.author = cuestion.author;
-            p.alt = cuestion.alt;
-            p.soundVideo = 1;
-            p.imageVideo = 1;
-            p.iVideo = 0;
-            p.fVideo = 0;
-            p.eText = '';
-            p.quextion = start + ': ' + cuestion.definition;
-            p.options = [];
-            p.options.push('');
-            p.options.push('');
-            p.options.push('');
-            p.options.push('');
-            p.audio =
-                typeof cuestion.audio == 'undefined' ? '' : cuestion.audio;
-            p.hit = typeof cuestion.hit == 'undefined' ? -1 : cuestion.hit;
-            p.error =
-                typeof cuestion.error == 'undefined' ? -1 : cuestion.error;
-            p.msgHit =
-                typeof cuestion.msgHit == 'undefined' ? '' : cuestion.msgHit;
-            p.msgError =
-                typeof cuestion.msgError == 'undefined'
-                    ? ''
-                    : cuestion.msgError;
-            p.solution = '';
-            p.silentVideo = 0;
-            p.tSilentVideo = 0;
-            p.solutionQuestion = cuestion.word;
-            p.percentageShow = cuestion.percentageShow || data.percentageShow;
-            if (p.solutionQuestion.trim().length > 0) {
-                $exeDevice.selectsGame.push(p);
-            }
         }
         return $exeDevice.selectsGame;
     },

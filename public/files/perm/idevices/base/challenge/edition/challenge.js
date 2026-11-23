@@ -592,32 +592,6 @@ var $exeDevice = {
         $exeDevicesEdition.iDevice.gamification.progressBar.addEvents();
 
         $exeDevicesEdition.iDevice.gamification.passScore.addEvents();
-
-        if (
-            window.File &&
-            window.FileReader &&
-            window.FileList &&
-            window.Blob
-        ) {
-            $('#eXeGameExportImport').show();
-            $('#eXeGameImportGame').on('change', function (e) {
-                const file = e.target.files[0];
-                if (!file) {
-                    return;
-                }
-                const reader = new FileReader();
-                $exeDevice.$lifecycle.ownFileReader(reader);
-                reader.onload = $exeDevice.$lifecycle.bind(function (e) {
-                    this.importGame(e.target.result);
-                });
-                reader.readAsText(file);
-            });
-            $('#eXeGameExportQuestions').on('click', function () {
-                $exeDevice.exportGame();
-            });
-        } else {
-            $('#eXeGameExportImport').hide();
-        }
     },
 
     getDivChallenges: function (num) {
@@ -948,47 +922,6 @@ var $exeDevice = {
         } else {
             $exeDevice.desafioDescription = $('#desafioEDescription').val();
         }
-    },
-
-    exportGame: function () {
-        const dataGame = this.validateData();
-        if (!dataGame) {
-            return false;
-        }
-
-        const newBlob = new Blob([JSON.stringify(dataGame)], { type: 'text/plain' });
-        return $exeDevicesEdition.iDevice.gamification.share.downloadBlob(
-            newBlob,
-            `${_('Game')}desafio.json`,
-            'desafioIdeviceForm'
-        );
-    },
-
-    importGame: function (content) {
-        const game =
-            $exeDevices.iDevice.gamification.helpers.isJsonString(content);
-
-        if (!game || typeof game.typeGame === 'undefined') {
-            $exeDevice.showMessage($exeDevice.msgs.msgESelectFile);
-            return;
-        } else if (game.typeGame !== 'desafio') {
-            $exeDevice.showMessage($exeDevice.msgs.msgESelectFile);
-            return;
-        }
-
-        game.id = $exeDevice.getIdeviceID();
-        $exeDevice.active = 0;
-        $exeDevice.desafioTitle = game.desafioTitle;
-        $exeDevice.desafioSolution = game.desafioSolution;
-        $exeDevice.desafioDescription = game.desafioDescription;
-        $exeDevice.desafioType = game.desafioType;
-        $exeDevice.desafioTime = game.desafioTime;
-
-        $exeDevice.challengesGame = game.challengesGame;
-        $exeDevice.updateFieldGame(game);
-        const instructions = game.instructionsExe || game.instructions;
-        tinymce.editors[0].setContent(instructions);
-        //$('.exe-form-tabs li:first-child a').click();
     },
 
     getIdeviceID: function () {

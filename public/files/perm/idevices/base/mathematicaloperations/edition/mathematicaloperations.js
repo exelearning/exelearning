@@ -652,31 +652,6 @@ var $exeDevice = {
         lifecycle.on(document, 'change', '.toggle-input', event => {
             initToggle($(event.currentTarget));
         });
-        if (
-            window.File &&
-            window.FileReader &&
-            window.FileList &&
-            window.Blob
-        ) {
-            $('#eXeGameExportImport').show();
-            $('#eXeGameImportGame').on('change', function (e) {
-                let file = e.target.files[0];
-                if (!file) {
-                    return;
-                }
-                const reader = new FileReader();
-                lifecycle.ownFileReader(reader);
-                reader.onload = lifecycle.bind(function (e) {
-                    this.importGame(e.target.result);
-                });
-                reader.readAsText(file);
-            });
-            $('#eXeGameExportQuestions').on('click', function () {
-                $exeDevice.exportGame();
-            });
-        } else {
-            $('#eXeGameExportImport').hide();
-        }
 
         $('#eRMQHasFeedBack').on('change', function () {
             const marcado = $(this).is(':checked');
@@ -866,61 +841,6 @@ var $exeDevice = {
             $('#eRMQSolutionDiv').hide();
             $('#eRMQnegativeDiv').show();
         }
-    },
-
-    exportGame: function () {
-        const dataGame = this.validateData();
-
-        if (!dataGame) return false;
-
-        const newBlob = new Blob([JSON.stringify(dataGame)], {
-            type: 'text/plain',
-        });
-        return $exeDevicesEdition.iDevice.gamification.share.downloadBlob(
-            newBlob,
-            _('Activity') + '-MathOperations.json',
-            'gameQEIdeviceForm'
-        );
-    },
-
-    importGame: function (content) {
-        const game =
-            $exeDevices.iDevice.gamification.helpers.isJsonString(content);
-
-        if (!game || typeof game.typeGame == 'undefined') {
-            $exeDevice.showMessage($exeDevice.msgs.msgESelectFile);
-            return;
-        } else if (game.typeGame !== 'MathOperations') {
-            $exeDevice.showMessage($exeDevice.msgs.msgESelectFile);
-            return;
-        }
-
-        game.id = $exeDevice.getIdeviceID();
-        $exeDevice.updateFieldGame(game);
-
-        const instructions = game.instructionsExe || game.instructions,
-            tAfter = game.textAfter || '',
-            textFeedBack = game.textFeedBack || '';
-        if (tinyMCE.get('eXeGameInstructions')) {
-            tinyMCE
-                .get('eXeGameInstructions')
-                .setContent(unescape(instructions));
-        } else {
-            $('#eXeGameInstructions').val(unescape(instructions));
-        }
-        if (tinyMCE.get('eRMQFeedBackEditor')) {
-            tinyMCE
-                .get('eRMQFeedBackEditor')
-                .setContent(unescape(textFeedBack));
-        } else {
-            $('#eRMQFeedBackEditor').val(unescape(textFeedBack));
-        }
-        if (tinyMCE.get('eXeIdeviceTextAfter')) {
-            tinyMCE.get('eXeIdeviceTextAfter').setContent(unescape(tAfter));
-        } else {
-            $('#eXeIdeviceTextAfter').val(unescape(tAfter));
-        }
-        //$('.exe-form-tabs li:first-child a').click();
     },
 
     validTime: function (time) {

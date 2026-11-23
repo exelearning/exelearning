@@ -926,35 +926,6 @@ var $exeDevice = {
             $exeDevice.cutPuzzle();
         });
 
-        if (
-            window.File &&
-            window.FileReader &&
-            window.FileList &&
-            window.Blob
-        ) {
-            $('#eXeGameExportImport').show();
-
-            $('#eXeGameImportGame').on('change', e => {
-                const file = e.target.files[0];
-                if (!file) {
-                    return;
-                }
-                const reader = new FileReader();
-                // The read is aborted and its result discarded if the editor
-                // closes before it completes.
-                this.$lifecycle.ownFileReader(reader);
-                reader.onload = this.$lifecycle.bind(function (event) {
-                    this.importGame(event.target.result);
-                });
-                reader.readAsText(file);
-            });
-            $('#eXeGameExportQuestions').on('click', function () {
-                $exeDevice.exportGame();
-            });
-        } else {
-            $('#eXeGameExportImport').hide();
-        }
-
         $('#puzzleEHasFeedBack').on('change', function () {
             const marcado = $(this).is(':checked');
             if (marcado) {
@@ -1286,46 +1257,6 @@ var $exeDevice = {
             passScoreCustom: game.passScoreCustom,
 
         });
-    },
-
-    exportGame: function () {
-        const dataGame = this.validateData();
-
-        if (!dataGame) return false;
-
-        const newBlob = new Blob([JSON.stringify(dataGame)], { type: 'text/plain' });
-        return $exeDevicesEdition.iDevice.gamification.share.downloadBlob(
-            newBlob,
-            `${_('Activity')}-Puzzle.json`,
-            'puzzleIdeviceForm'
-        );
-    },
-
-    importGame: function (content) {
-        const game =
-            $exeDevices.iDevice.gamification.helpers.isJsonString(content);
-
-        if (!game || typeof game.typeGame === 'undefined') {
-            eXe.app.alert($exeDevice.msgs.msgESelectFile);
-            return;
-        } else if (game.typeGame !== 'Puzzle') {
-            eXe.app.alert($exeDevice.msgs.msgESelectFile);
-            return;
-        }
-
-        game.id = $exeDevice.getIdeviceID();
-        $exeDevice.updateFieldGame(game);
-
-        const instructions = game.instructionsExe || game.instructions || '',
-            tAfter = game.textAfter || '',
-            textFeedBack = game.textFeedBack || '';
-
-        $('#eXeGameInstructions').val(unescape(instructions));
-        $('#eXeIdeviceTextAfter').val(unescape(tAfter));
-        $('#puzzleEFeedBackEditor').val(unescape(textFeedBack));
-
-        //$('.exe-form-tabs li:first-child a').click();
-        $exeDevice.showPuzzle(0, false);
     },
 
     validTime: function (time) {

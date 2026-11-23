@@ -512,38 +512,6 @@ describe('select-media-files iDevice', () => {
     // Structure checks
     // -------------------------------------------------------------------------
     describe('structure', () => {
-        it('exports validated data through the edition share helper', () => {
-            const dataGame = { phrasesGame: [] };
-            const exportGame = vi.fn();
-
-            document.body.innerHTML = `
-                <div id="eXeGameExportImport">
-                    <input id="eXeGameImportGame" type="file" />
-                    <button id="eXeGameExportQuestions" type="button"></button>
-                </div>
-            `;
-            global.$exeDevicesEdition.iDevice.gamification.share = { exportGame };
-            global.$exeDevicesEdition.iDevice.gamification.itinerary = {
-                addEvents: vi.fn(),
-            };
-            global.$exeDevicesEdition.iDevice.gamification.progressBar = {
-                getContents: vi.fn(() => '<div></div>'),
-                setValues: vi.fn(),
-                getValues: vi.fn(() => ({ evaluation: false, evaluationID: '' })),
-                addEvents: vi.fn(),
-            };
-            vi.spyOn($exeDevice, 'validateData').mockReturnValue(dataGame);
-
-            $exeDevice.addEvents();
-            $('#eXeGameExportQuestions').trigger('click');
-
-            expect(exportGame).toHaveBeenCalledWith(
-                dataGame,
-                'gameQEIdeviceForm',
-                'Select media files'
-            );
-        });
-
         it('exposes i18n with name and category', () => {
             expect($exeDevice.i18n).toBeDefined();
             expect($exeDevice.i18n.name).toBeDefined();
@@ -716,73 +684,6 @@ describe('select-media-files iDevice', () => {
             });
         });
 
-        describe('game import', () => {
-            const selectFile = () => {
-                const input = document.getElementById('eXeGameImportGame');
-                Object.defineProperty(input, 'files', {
-                    value: [{ name: 'game.json', type: 'application/json' }],
-                    configurable: true,
-                });
-                $(input).trigger('change');
-            };
-
-            beforeEach(() => {
-                ['eXeGameImportGame', 'eXeGameExportQuestions', 'eXeGameExportImport'].forEach(id => {
-                    const input = document.createElement('input');
-                    input.type = 'file';
-                    input.id = id;
-                    document.body.appendChild(input);
-                });
-                $exeDevice.phrasesGame = [];
-                $exeDevice.addEvents();
-            });
-
-            it('imports the game while the edition is open', () => {
-                const importGame = vi.spyOn($exeDevice, 'importGame').mockImplementation(() => {});
-
-                selectFile();
-                FakeFileReader.instances[0].fire('{"x":1}');
-
-                expect(importGame).toHaveBeenCalledWith('{"x":1}');
-                importGame.mockRestore();
-            });
-
-            it('aborts an in-flight read when the edition closes', () => {
-                selectFile();
-                const reader = FakeFileReader.instances[0];
-                expect(reader.readyState).toBe(1);
-
-                $exeDevice.$lifecycle.destroy();
-
-                expect(reader.abort).toHaveBeenCalledTimes(1);
-            });
-
-            it('ignores a late read callback instead of importing into a closed edition', () => {
-                const importGame = vi.spyOn($exeDevice, 'importGame').mockImplementation(() => {});
-
-                selectFile();
-                const reader = FakeFileReader.instances[0];
-                $exeDevice.$lifecycle.destroy();
-                reader.fire('{"x":1}');
-
-                expect(importGame).not.toHaveBeenCalled();
-                importGame.mockRestore();
-            });
-
-            it('never imports into the iDevice that replaced this one', () => {
-                const first = $exeDevice;
-                selectFile();
-                const reader = FakeFileReader.instances[0];
-                first.$lifecycle.destroy();
-
-                const second = { importGame: vi.fn() };
-                global.$exeDevice = second;
-                reader.fire('{"x":1}');
-
-                expect(second.importGame).not.toHaveBeenCalled();
-                global.$exeDevice = first;
-            });
-        });
     });
 });
 

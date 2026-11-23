@@ -1015,31 +1015,6 @@ var $exeDevice = {
 
     addEvents: function () {
         const lifecycle = this.$lifecycle;
-        if (
-            window.File &&
-            window.FileReader &&
-            window.FileList &&
-            window.Blob
-        ) {
-            $('#eXeGameExportImport').show();
-            $('#eXeGameImportGame').on('change', function (e) {
-                let file = e.target.files[0];
-                if (!file) {
-                    return;
-                }
-                const reader = new FileReader();
-                lifecycle.ownFileReader(reader);
-                reader.onload = lifecycle.bind(function (e) {
-                    this.importGame(e.target.result);
-                });
-                reader.readAsText(file);
-            });
-            $('#eXeGameExportQuestions').on('click', function () {
-                $exeDevice.exportGame();
-            });
-        } else {
-            $('#eXeGameExportImport').hide();
-        }
 
         $('#eCQTime').on('keyup', function () {
             let v = this.value;
@@ -1328,58 +1303,6 @@ var $exeDevice = {
             game.scorm.repeatActivity,
             game.weighted
         );
-    },
-
-    exportGame: function () {
-        if (!$exeDevice.validateQuestion()) return;
-
-        const dataGame = this.validateData();
-        if (!dataGame) return false;
-
-        const newBlob = new Blob([JSON.stringify(dataGame)], {
-            type: 'text/plain',
-        });
-        return $exeDevicesEdition.iDevice.gamification.share.downloadBlob(
-            newBlob,
-            _('Activity') + '-MathProblems.json',
-            'gameQEIdeviceForm'
-        );
-    },
-
-    importGame: function (content) {
-        const game =
-            $exeDevices.iDevice.gamification.helpers.isJsonString(content);
-
-        if (!game || typeof game.typeGame == 'undefined') {
-            $exeDevice.showMessage($exeDevice.msgs.msgESelectFile);
-            return;
-        } else if (game.typeGame !== 'MathProblems') {
-            $exeDevice.showMessage($exeDevice.msgs.msgESelectFile);
-            return;
-        }
-
-        game.id = $exeDevice.getIdeviceID();
-        $exeDevice.updateFieldGame(game);
-        let instructions = game.instructionsExe || game.instructions || '',
-            tAfter = game.textAfter || '',
-            textFeedBack = game.textFeedBack || '';
-        if (tinyMCE.get('eXeGameInstructions')) {
-            tinyMCE.get('eXeGameInstructions').setContent(instructions);
-        } else {
-            $('#eXeGameInstructions').val(instructions);
-        }
-        if (tinyMCE.get('eCQFeedBackEditor')) {
-            tinyMCE.get('eCQFeedBackEditor').setContent(textFeedBack);
-        } else {
-            $('#eCQFeedBackEditor').val(textFeedBack);
-        }
-        if (tinyMCE.get('eXeIdeviceTextAfter')) {
-            tinyMCE.get('eXeIdeviceTextAfter').setContent(tAfter);
-        } else {
-            $('#eXeIdeviceTextAfter').val(tAfter);
-        }
-        //$('.exe-form-tabs li:first-child a').click();
-        $exeDevice.showQuestion(0);
     },
 
     validTime: function (time) {

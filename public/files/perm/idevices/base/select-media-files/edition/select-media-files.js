@@ -1372,37 +1372,6 @@ var $exeDevice = {
             $exeDevice.pastePhrase();
         });
 
-        if (
-            window.File &&
-            window.FileReader &&
-            window.FileList &&
-            window.Blob
-        ) {
-            $exeDevice.showFlex($('#eXeGameExportImport'));
-            $('#eXeGameImportGame').on('change', function (e) {
-                const file = e.target.files[0];
-                if (!file) {
-                    return;
-                }
-                const reader = new FileReader();
-                self.$lifecycle.ownFileReader(reader);
-                reader.onload = self.$lifecycle.bind(function (e) {
-                    this.importGame(e.target.result);
-                });
-                reader.readAsText(file);
-            });
-            $('#eXeGameExportQuestions').on('click', function () {
-                const dataGame = $exeDevice.validateData();
-                $exeDevicesEdition.iDevice.gamification.share.exportGame(
-                    dataGame,
-                    'gameQEIdeviceForm',
-                    _('Select media files')
-                );
-            });
-        } else {
-            $exeDevice.hideFlex($('#eXeGameExportImport'));
-        }
-
         $('#slcmEHasFeedBack').on('change', function () {
             const marcado = $(this).is(':checked');
             if (marcado) {
@@ -1778,32 +1747,6 @@ var $exeDevice = {
         $('#slcmEAttemptsNumber').val(game.attempsNumber);
         $('#slcmEModeTable').prop('checked', game.modeTable);
         $('#slcmEANumberMaxCard').val(game.numberMaxCards);
-    },
-
-    importGame: function (content) {
-        const game = $exeDevice.isJsonString(content);
-
-        if (!game || typeof game.typeGame == 'undefined') {
-            eXe.app.alert($exeDevice.msgs.msgESelectFile);
-            return;
-        } else if (game.typeGame !== 'SeleccionaMedias') {
-            eXe.app.alert($exeDevice.msgs.msgESelectFile);
-            return;
-        }
-
-        game.id = $exeDevice.getIdeviceID();
-
-        $exeDevice.updateFieldGame(game);
-
-        const instructions = game.instructionsExe || game.instructions,
-            tAfter = game.textAfter || '',
-            textFeedBack = game.textFeedBack || '';
-        tinyMCE.get('eXeGameInstructions').setContent(unescape(instructions));
-        tinyMCE.get('eXeIdeviceTextAfter').setContent(unescape(tAfter));
-        tinyMCE.get('slcmEFeedBackEditor').setContent(unescape(textFeedBack));
-
-        //$('.exe-form-tabs li:first-child a').click();
-        $exeDevice.showPhrase(0, false);
     },
 
     placeImageWindows: function (image, naturalWidth, naturalHeight) {
