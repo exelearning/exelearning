@@ -333,28 +333,58 @@ var $scrambledlist = {
     init: function () {},
 
     enableList: function (activity, instance) {
-        var lists = $('ul', activity);
+        // renderBehaviour walks every list on the page each time one of them
+        // renders, so an activity already enabled has to be left alone. This
+        // used to fall out of the "exactly one <ul>" rule below, since the
+        // playable list is a second one.
+        if ($(activity).find('.exe-sortableList-options').length) return;
+        var lists = $scrambledlist.getOptionsList(activity);
         if (lists.length == 1) {
             lists.css('visibility', 'hidden');
             lists.each(function () {
                 var lis = [];
-                $('li', this).each(function (index) {
-                    const origIndex = $scrambledlist.getOriginalIndexValue(
-                        this,
-                        index
-                    );
-                    this.setAttribute('data-orig-index', origIndex);
-                    // Keep the correct-position index with the content so the
-                    // shuffled playable list can still be scored by index.
-                    lis.push({
-                        origIndex,
-                        html: this.innerHTML,
+                $(this)
+                    .children('li')
+                    .each(function (index) {
+                        const origIndex =
+                            $scrambledlist.getOriginalIndexValue(this, index);
+                        this.setAttribute('data-orig-index', origIndex);
+                        // Keep the correct-position index with the content so
+                        // the shuffled playable list can still be scored by index.
+                        lis.push({
+                            origIndex,
+                            html: this.innerHTML,
+                        });
                     });
-                });
                 lis = $scrambledlist.randomizeArray(lis);
                 $scrambledlist.getListHTML(activity, lis, this, instance);
             });
         }
+    },
+
+    /**
+     * The list holding the items to sort.
+     *
+     * Every <ul> in the activity used to count, and the activity only came to
+     * life when there was exactly one: a bulleted list in the instructions or
+     * in the text after the activity left it unplayable (#2777). The list is
+     * the one the template marks; content without the class gets the first
+     * <ul> that is not part of the author's texts.
+     *
+     * @param {Element} activity The .exe-sortableList node.
+     * @returns {jQuery} The list, or an empty set.
+     */
+    getOptionsList: function (activity) {
+        const $lists = $(activity)
+            .find('ul')
+            .filter(function () {
+                return !$(this).closest(
+                    '.exe-sortableList-instructions, .exe-sortableList-textAfter',
+                    activity
+                ).length;
+            });
+        const $marked = $lists.filter('.exe-sortableList-list');
+        return ($marked.length ? $marked : $lists).first();
     },
 
     getLinksHTML: function (i, listOrder) {
