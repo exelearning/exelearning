@@ -3079,9 +3079,11 @@ var $exeDevices = {
                  * It is read in a template, where nothing loads or runs, and
                  * accepted only as one span.exe-math-rendered holding an SVG and,
                  * at most, a MathML element, with every element inside one that
-                 * MathJax writes, no event handler, and links only to a part of
-                 * the formula ("#…") or, as \href writes them, to a web or mail
-                 * address.
+                 * MathJax 4 writes for TeX, \mathtip's hidden tip included, and
+                 * no event handler. A link from \href may be a
+                 * relative path or a web, mail or project address, but never a
+                 * javascript: or data: one; any other link points to a part of
+                 * the formula ("#…").
                  *
                  * @param {string} html
                  * @returns {boolean}
@@ -3096,7 +3098,12 @@ var $exeDevices = {
                     var mathml = ['math', 'mi', 'mn', 'mo', 'ms', 'mtext', 'mspace', 'mrow', 'mfrac', 'msqrt',
                         'mroot', 'mstyle', 'merror', 'mpadded', 'mphantom', 'mfenced', 'menclose', 'msub', 'msup',
                         'msubsup', 'munder', 'mover', 'munderover', 'mmultiscripts', 'mprescripts', 'none', 'mtable',
-                        'mtr', 'mtd', 'mlabeledtr', 'semantics', 'annotation'];
+                        'mtr', 'mtd', 'mlabeledtr', 'semantics', 'annotation', 'maction', 'maligngroup', 'malignmark'];
+                    // A web, mail or project address, or one with no scheme (a
+                    // relative path), as DOMPurify checks them. javascript: and
+                    // data: have a scheme and are not in the list.
+                    var safeUri =
+                        /^(?:(?:(?:f|ht)tps?|mailto|tel|asset|exe-node|exe-package):|[^a-z]|[a-z+.\-]+(?:[^a-z+.\-:]|$))/i;
                     var allowed = {};
                     allowed[SVG] = ['svg', 'g', 'path', 'use', 'defs', 'rect', 'line', 'ellipse', 'circle', 'polygon',
                         'polyline', 'text', 'a', 'title'];
@@ -3120,19 +3127,52 @@ var $exeDevices = {
                     if (parts.length < 1 || parts.length > 2) return false;
                     if (parts[0].namespaceURI !== SVG || parts[0].localName !== 'svg') return false;
                     if (parts[1] && (parts[1].namespaceURI === SVG || parts[1].localName !== 'math')) return false;
+                    // \mathtip hides its tip, the formula as a second SVG, in
+                    // rect > foreignObject > mjx-tool > mjx-tip > svg. That
+                    // chain, and nothing else, may hold HTML elements. The two
+                    // mjx- ones are unknown, inert elements in either namespace:
+                    // some test environments leave them in the SVG one.
+                    var isTipPart = function (element) {
+                        var name = element.localName.toLowerCase();
+                        var parent = element.parentNode.localName.toLowerCase();
+                        var children = element.children;
+                        var inert = element.namespaceURI === HTML || element.namespaceURI === SVG;
+                        if (name === 'foreignobject') {
+                            return element.namespaceURI === SVG && parent === 'rect' && children.length === 1 &&
+                                children[0].localName === 'mjx-tool';
+                        }
+                        if (name === 'mjx-tool') {
+                            return inert && parent === 'foreignobject' && children.length === 1 &&
+                                children[0].localName === 'mjx-tip';
+                        }
+                        if (name === 'mjx-tip') {
+                            if (!inert || parent !== 'mjx-tool') return false;
+                            for (var k = 0; k < children.length; k++) {
+                                if (children[k].namespaceURI !== SVG || children[k].localName !== 'svg') return false;
+                            }
+                            return true;
+                        }
+                        return false;
+                    };
                     var elements = span.querySelectorAll('*');
                     for (i = 0; i < elements.length; i++) {
                         var element = elements[i];
                         var names = allowed[element.namespaceURI];
-                        if (!names || names.indexOf(element.localName) === -1) return false;
+                        var known = names && names.indexOf(element.localName) !== -1;
+                        if (!known && !isTipPart(element)) return false;
                         for (var j = 0; j < element.attributes.length; j++) {
                             var name = element.attributes[j].name.toLowerCase();
                             if (name.indexOf('on') === 0) return false;
                             if (/(^|:)href$/.test(name) || name === 'src') {
-                                var value = element.attributes[j].value.trim();
+                                // Browsers drop these characters from a URL, so
+                                // "java&#9;script:" still names javascript:.
+                                var value = element.attributes[j].value.replace(
+                                    /[\u0000-\u0020\u00A0\u1680\u180E\u2000-\u2029\u205F\u3000]/g,
+                                    ''
+                                );
                                 if (value.charAt(0) === '#') continue;
                                 var linkable = element.localName === 'a' || element.namespaceURI !== SVG;
-                                if (linkable && /^(https?:|mailto:)/i.test(value)) continue;
+                                if (linkable && safeUri.test(value)) continue;
                                 return false;
                             }
                         }

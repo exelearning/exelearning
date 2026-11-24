@@ -5307,9 +5307,49 @@ describe('common.js $exeDevices', () => {
         );
       });
 
-      it('keeps the web link of a formula written with \\href', () => {
-        const linked = formula('<svg><a href="https://example.com"><use xlink:href="#MJX-1"></use></a></svg>');
-        expect(getMath().escapeHtmlButKeepRenderedMath(linked)).toBe(linked);
+      it.each(['https://example.com', 'mailto:a@example.com', 'files/doc.pdf', '../index.html', 'page.html#top'])(
+        'keeps the link of a formula written with \\href to %s',
+        href => {
+          const linked = formula(
+            `<svg><a href="${href}"><use xlink:href="#MJX-1"></use></a></svg>`,
+            `<math><mi href="${href}">x</mi></math>`
+          );
+          expect(getMath().escapeHtmlButKeepRenderedMath(linked)).toBe(linked);
+        }
+      );
+
+      // \mathtip hides its tip in rect > foreignObject > mjx-tool > mjx-tip > svg.
+      const tip = (inner) =>
+        formula(`<svg><g data-mml-node="maction"><rect width="10" height="10">${inner}</rect></g></svg>`);
+      const tipOf = (svg) =>
+        `<foreignObject style="display: none;"><mjx-tool><mjx-tip>${svg}</mjx-tip></mjx-tool></foreignObject>`;
+
+      it('keeps a formula written with \\mathtip, whose tip MathJax hides in a foreignObject', () => {
+        const mathTip = tip(tipOf('<svg><g><use xlink:href="#MJX-2"></use></g></svg>'));
+        expect(getMath().escapeHtmlButKeepRenderedMath(mathTip)).toBe(mathTip);
+      });
+
+      it.each([
+        ['HTML other than the tip', tipOf('<img src="x" onerror="window.ran = true">')],
+        ['an image inside the tip', tipOf('<svg><image href="x" onerror="window.ran = true"></image></svg>')],
+        ['a handler on the tip', '<foreignObject><mjx-tool onclick="window.ran = true"><mjx-tip></mjx-tip></mjx-tool></foreignObject>'],
+        ['a div around the tip', '<foreignObject><div><mjx-tool><mjx-tip></mjx-tip></mjx-tool></div></foreignObject>'],
+      ])('escapes a \\mathtip tip with %s', (_, inner) => {
+        const forged = tip(inner);
+        expect(getMath().escapeHtmlButKeepRenderedMath(forged)).toBe(escaped(forged));
+      });
+
+      it('escapes a foreignObject outside the tip of \\mathtip', () => {
+        const forged = formula(`<svg>${tipOf('<svg></svg>')}</svg>`);
+        expect(getMath().escapeHtmlButKeepRenderedMath(forged)).toBe(escaped(forged));
+      });
+
+      it('keeps a formula written with \\texttip or \\toggle, which MathML writes as maction', () => {
+        const action = formula(
+          mathJaxSvg,
+          '<math><maction actiontype="tooltip"><mi>x</mi><mtext>tip</mtext></maction></math>'
+        );
+        expect(getMath().escapeHtmlButKeepRenderedMath(action)).toBe(action);
       });
 
       it.each([
@@ -5319,6 +5359,10 @@ describe('common.js $exeDevices', () => {
         ['a style block', '<svg><style>* { display: none }</style></svg>'],
         ['a javascript: link', '<svg><a href="javascript:alert(1)"><text>x</text></a></svg>'],
         ['a javascript: link written as entities', '<svg><a href="&#106;avascript:alert(1)"><text>x</text></a></svg>'],
+        ['a javascript: link split by a tab', '<svg><a href="java&#9;script:alert(1)"><text>x</text></a></svg>'],
+        ['a vbscript: link', '<svg><a href="vbscript:msgbox(1)"><text>x</text></a></svg>'],
+        ['a data: link', '<svg><a href="data:text/html,x"><text>x</text></a></svg>'],
+        ['a javascript: link in the MathML', '<svg></svg><math><mi href="javascript:alert(1)">x</mi></math>'],
         ['an outside reference from use', '<svg><use href="https://example.com/x.svg#a"></use></svg>'],
         ['HTML inside the MathML', '<svg></svg><math><mtext><img src="x" onerror="window.ran = true"></mtext></math>'],
       ])('escapes a fragment shaped like a formula with %s', (_, inner) => {
