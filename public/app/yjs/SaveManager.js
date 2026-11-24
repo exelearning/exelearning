@@ -1184,6 +1184,9 @@ class SaveManager {
       // Encode Yjs state once — reuse for both size estimation and upload
       let encodedYjsState = null;
       let yjsBytes = 0;
+      // Edits made after this point are not in the uploaded snapshot (#2615).
+      const savedChangeSeq =
+        typeof documentManager.getChangeSeq === 'function' ? documentManager.getChangeSeq() : undefined;
       try {
         await this.sampleSaveMemory('save:yjs-serialize:before');
         encodedYjsState = window.Y.encodeStateAsUpdate(documentManager.ydoc);
@@ -1298,9 +1301,9 @@ class SaveManager {
         setTimeout(() => toast.remove(), 2000);
       }
 
-      // Mark document as clean (no unsaved changes)
+      // Mark document as clean, unless it changed while saving
       if (documentManager.markClean) {
-        documentManager.markClean();
+        documentManager.markClean(savedChangeSeq);
       }
 
       // Mark project as no longer new after first save
@@ -1332,6 +1335,12 @@ class SaveManager {
       // Update save status indicator
       if (this.bridge.updateSaveStatus) {
         this.bridge.updateSaveStatus('error', error.message);
+      }
+
+      // This save cancelled any queued autosave when it started; let the
+      // autosave retry loop take over again (#2615).
+      if (reason !== 'collaborative-autosave') {
+        this.bridge.collaborativeAutosave?.notifyExternalSaveFailed?.();
       }
 
       return { success: false, error: error.message };
