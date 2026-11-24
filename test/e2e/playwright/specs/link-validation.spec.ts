@@ -38,7 +38,50 @@ async function openLinkValidationModal(page: Page): Promise<void> {
     await linkValidationBtn.click();
 }
 
+/** Host used by the specs as the example of a link that does not resolve. */
+const BROKEN_HOST = 'this-domain-definitely-does-not-exist-xyz123.com';
+
+/**
+ * Answer the server-side validation stream with fixed results.
+ *
+ * In online mode the server probes every external link from the CI runner, so
+ * the outcome depends on whether google.com and friends answer in time
+ * (#2811). These specs cover the modal; the validator and its streaming route
+ * are covered by src/services/link-validator.spec.ts and src/routes/project.spec.ts.
+ * The response mimics the route's generator output: concatenated
+ * `{event, data}` objects with JSON-encoded data.
+ */
+async function stubLinkValidationStream(page: Page): Promise<void> {
+    await page.route('**/brokenlinks/validate-stream', async route => {
+        const { links = [] } = (route.request().postDataJSON() ?? {}) as {
+            links?: Array<{ id: string; url: string }>;
+        };
+        const events = links.map(link => {
+            const broken = link.url.includes(BROKEN_HOST);
+            return {
+                event: 'link-validated',
+                data: JSON.stringify({
+                    id: link.id,
+                    url: link.url,
+                    status: broken ? 'broken' : 'valid',
+                    error: broken ? 'Domain not found' : null,
+                }),
+            };
+        });
+        events.push({ event: 'done', data: JSON.stringify({ complete: true, totalValidated: links.length }) });
+        await route.fulfill({
+            status: 200,
+            contentType: 'text/event-stream',
+            body: events.map(event => JSON.stringify(event)).join(''),
+        });
+    });
+}
+
 test.describe('Link Validation', () => {
+    test.beforeEach(async ({ authenticatedPage }) => {
+        await stubLinkValidationStream(authenticatedPage);
+    });
+
     test('should progressively validate links showing status', async ({ authenticatedPage, createProject }) => {
         const page = authenticatedPage;
         const uuid = await createProject(page, 'Link Validation Test');
