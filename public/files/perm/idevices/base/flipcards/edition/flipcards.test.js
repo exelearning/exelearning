@@ -4,7 +4,6 @@
  * Tests pure functions that don't depend on DOM manipulation:
  * - escapeHtml: HTML character escaping
  * - validTime: Time format validation
- * - removeTags: HTML tag removal (with mocked jQuery)
  * - getCardDefault: Default card object structure
  * - placeImageWindows: Image dimension calculations (with mocked jQuery)
  */
@@ -46,6 +45,95 @@ describe('flipcards iDevice', () => {
 
     // Load iDevice and get reference
     $exeDevice = loadIdevice(code);
+  });
+
+  describe('addCards', () => {
+    beforeEach(() => {
+      $exeDevice.cardsGame = [];
+      vi.spyOn($exeDevice, 'postImportProcessing').mockImplementation(() => {});
+    });
+
+    it('stores imported texts as text, encoded as the form stores them', () => {
+      $exeDevice.addCards([
+        {
+          eText: 'Paris &lt;img src="x" onerror="window.ran = true"&gt;',
+          eTextBk: 'Capital %3Cimg%20src%3Dx%3E 100%',
+        },
+      ]);
+
+      expect($exeDevice.cardsGame).toHaveLength(1);
+      const [card] = $exeDevice.cardsGame;
+      // The card shows the image written as entities as the text it was.
+      expect($exeDevice.decodeURIComponentSafe(card.eText)).toBe(
+        'Paris &lt;img src="x" onerror="window.ran = true">'
+      );
+      // A %-encoded tag stays the text it was, and a % no longer breaks the card.
+      expect($exeDevice.decodeURIComponentSafe(card.eTextBk)).toBe('Capital %3Cimg%20src%3Dx%3E 100%');
+    });
+
+    it('leaves out a card whose side was only markup', () => {
+      $exeDevice.addCards([{ eText: '<img src="x" onerror="window.ran = true">', eTextBk: 'Back' }]);
+
+      expect($exeDevice.cardsGame).toHaveLength(0);
+    });
+  });
+
+  describe('text file export and import', () => {
+    const stored = (text) => $exeDevice.encodeURIComponentSafe(text);
+    const texts = () =>
+      $exeDevice.cardsGame.map((card) => [
+        $exeDevice.decodeURIComponentSafe(card.eText),
+        $exeDevice.decodeURIComponentSafe(card.eTextBk),
+      ]);
+
+    beforeEach(() => {
+      $exeDevice.cardsGame = [];
+      vi.spyOn($exeDevice, 'postImportProcessing').mockImplementation(() => {});
+    });
+
+    it('writes each card as it stores it, so a "#" in its text is not a separator', () => {
+      const lines = $exeDevice.getLinesQuestions([
+        { eText: stored('C#language'), eTextBk: stored('Programming') },
+      ]);
+
+      expect(lines).toEqual([`${stored('C#language')}#${stored('Programming')}`]);
+      expect(lines[0].split('#')).toHaveLength(2);
+    });
+
+    it('reads an exported file back into the same cards', () => {
+      const cards = [
+        ['New York', 'Nueva York'],
+        ['C#language', 'Programming'],
+        ['100%25', 'A literal percent sequence'],
+        ['50% off', 'café, 100%'],
+        ['What does &lt;p> do?', 'It starts a paragraph'],
+      ];
+
+      $exeDevice.insertCards(
+        $exeDevice.getLinesQuestions(cards.map(([front, back]) => ({ eText: stored(front), eTextBk: stored(back) })))
+      );
+
+      expect(texts()).toEqual(cards);
+    });
+
+    it('reads text written by hand as written, a stray "%" included', () => {
+      $exeDevice.insertCards(['New York#Nueva York', '50% off#Half price', 'Vitamin%B12#100%']);
+
+      expect(texts()).toEqual([
+        ['New York', 'Nueva York'],
+        ['50% off', 'Half price'],
+        ['Vitamin%B12', '100%'],
+      ]);
+    });
+
+    it('still reads a decoded tag as text', () => {
+      $exeDevice.insertCards([
+        `${encodeURIComponent('<img src="x" onerror="window.ran = true">')}#Back`,
+        `${encodeURIComponent('Paris<img src="x" onerror="window.ran = true">')}#Capital`,
+      ]);
+
+      expect(texts()).toEqual([['Paris', 'Capital']]);
+    });
   });
 
   describe('escapeHtml', () => {
@@ -171,28 +259,6 @@ describe('flipcards iDevice', () => {
       const c1 = $exeDevice.getCardDefault();
       const c2 = $exeDevice.getCardDefault();
       expect(c1).not.toBe(c2);
-    });
-  });
-
-  describe('removeTags', () => {
-    it('removes simple HTML tags', () => {
-      const result = $exeDevice.removeTags('<p>Hello</p>');
-      expect(result).toBe('Hello');
-    });
-
-    it('removes nested HTML tags', () => {
-      const result = $exeDevice.removeTags('<div><p><strong>Text</strong></p></div>');
-      expect(result).toBe('Text');
-    });
-
-    it('handles text without tags', () => {
-      const result = $exeDevice.removeTags('Plain text');
-      expect(result).toBe('Plain text');
-    });
-
-    it('handles empty string', () => {
-      const result = $exeDevice.removeTags('');
-      expect(result).toBe('');
     });
   });
 

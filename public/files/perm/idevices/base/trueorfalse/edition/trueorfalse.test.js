@@ -268,20 +268,6 @@ describe('trueorfalse iDevice', () => {
 
       expect($exeDevice.questionsGame).toHaveLength(1);
     });
-
-    it('normalizes questionsGame when importing a game file without questions', () => {
-      const helpers = $exeDevices.iDevice.gamification.helpers;
-      const originalIsJsonString = helpers.isJsonString;
-      helpers.isJsonString = () => savedGame();
-
-      try {
-        $exeDevice.importGame(JSON.stringify(savedGame()), 'application/json');
-      } finally {
-        helpers.isJsonString = originalIsJsonString;
-      }
-
-      expect($exeDevice.questionsGame).toEqual([]);
-    });
   });
   // Issue #2263: textButtonScorm had no c_() counterpart here, so nothing ever
   // translated the SCORM send button and the export's own default — Spanish —

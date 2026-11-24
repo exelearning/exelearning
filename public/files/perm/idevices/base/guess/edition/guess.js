@@ -617,7 +617,7 @@ var $exeDevice = {
 
     updateQuestionsNumber: function () {
         const percentInput = parseInt(
-            $exeDevice.removeTags($('#adivinaEPercentajeQuestions').val())
+            $exeDevicesEdition.iDevice.common.removeTags($('#adivinaEPercentajeQuestions').val())
         );
         if (isNaN(percentInput)) return;
         const percentaje = Math.min(Math.max(percentInput, 1), 100),
@@ -1406,7 +1406,7 @@ var $exeDevice = {
     },
 
     validateData: function () {
-        const clear = $exeDevice.removeTags,
+        const clear = $exeDevicesEdition.iDevice.common.removeTags,
             instructions = tinyMCE.get('eXeGameInstructions').getContent(),
             textFeedBack = tinyMCE.get('adivinaEFeedBackEditor').getContent(),
             textAfter = tinyMCE.get('eXeIdeviceTextAfter').getContent(),
@@ -1860,7 +1860,6 @@ var $exeDevice = {
                     !file.type ||
                     !(
                         file.type.match('text/plain') ||
-                        file.type.match('application/json') ||
                         file.type.match('application/xml') ||
                         file.type.match('text/xml')
                     )
@@ -2483,62 +2482,20 @@ var $exeDevice = {
     },
 
     importGame: function (content, filetype) {
-        const game =
-            $exeDevices.iDevice.gamification.helpers.isJsonString(content);
-        if (content && content.includes('\u0000')) {
-            $exeDevice.showMessage(_('Sorry, wrong file format'));
-            return;
-        } else if (!game && content) {
-            if (filetype.match('text/plain')) {
-                $exeDevice.importText(content);
-            } else if (
-                filetype.match('application/xml') ||
-                filetype.match('text/xml')
-            ) {
-                $exeDevice.importMoodle(content);
-            } else {
-                eXe.app.alert(_('Sorry, wrong file format'));
-            }
-            return;
-        } else if (!game || typeof game.typeGame === 'undefined') {
+        if (!content) {
             $exeDevice.showMessage($exeDevice.msgs.msgESelectFile);
-            return;
-        } else if (game.typeGame === 'Adivina') {
-            game.id = $exeDevice.getIdeviceID();
-            $exeDevice.updateFieldGame(game);
-            const instructions =
-                    game.instructionsExe || game.instructions || '',
-                tAfter = game.textAfter || '',
-                textFeedBack = game.textFeedBack || '';
-            if (tinyMCE.get('eXeGameInstructions')) {
-                tinyMCE
-                    .get('eXeGameInstructions')
-                    .setContent(unescape(instructions));
-            } else {
-                $('#eXeGameInstructions').val(unescape(instructions));
-            }
-            if (tinyMCE.get('eXeIdeviceTextAfter')) {
-                tinyMCE.get('eXeIdeviceTextAfter').setContent(unescape(tAfter));
-            } else {
-                $('#eXeIdeviceTextAfter').val(unescape(tAfter));
-            }
-            if (tinyMCE.get('adivinaEFeedBackEditor')) {
-                tinyMCE
-                    .get('adivinaEFeedBackEditor')
-                    .setContent(unescape(textFeedBack));
-            } else {
-                $('#adivinaEFeedBackEditor').val(unescape(textFeedBack));
-            }
+        } else if (content.includes('\u0000')) {
+            $exeDevice.showMessage(_('Sorry, wrong file format'));
+        } else if (filetype.match('text/plain')) {
+            $exeDevice.importText(content);
+        } else if (
+            filetype.match('application/xml') ||
+            filetype.match('text/xml')
+        ) {
+            $exeDevice.importMoodle(content);
         } else {
-            eXe.app.alert($exeDevice.msgs.msgESelectFile);
-            return;
+            eXe.app.alert(_('Sorry, wrong file format'));
         }
-
-        $exeDevice.active = 0;
-        $exeDevice.showQuestion($exeDevice.active);
-        $exeDevice.deleteEmptyQuestion();
-        $exeDevice.updateQuestionsNumber();
-        //$('.exe-form-tabs li:first-child a').click();
     },
 
     importText: function (content) {
@@ -2644,8 +2601,12 @@ var $exeDevice = {
             });
             if (word && questionText) {
                 let wd = {
-                    word: $exeDevice.removeTags(word),
-                    definition: $exeDevice.removeTags(questionText),
+                    word: $exeDevicesEdition.iDevice.common.removeTags(word),
+                    // The definition is shown as HTML: its text is written for
+                    // it, so a tag written as entities shows as written.
+                    definition: $exeDevicesEdition.iDevice.common.escapeTags(
+                        $exeDevicesEdition.iDevice.common.removeTags(questionText)
+                    ),
                 };
                 words.push(wd);
             }
@@ -2752,9 +2713,5 @@ var $exeDevice = {
             'z-index': 3,
         });
         $cursor.show();
-    },
-
-    removeTags: function (str) {
-        return $('<div>').html(str).text();
     },
 };

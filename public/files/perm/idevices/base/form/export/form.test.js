@@ -58,6 +58,24 @@ describe('form iDevice export', () => {
     });
   });
 
+  describe('extractMediaElements', () => {
+    it('collects the media of the question, not of the plain-text answers', () => {
+      const html = $form.extractMediaElements([
+        {
+          baseText: '<p>Look <img src="files/map.png"></p>',
+          answers: [
+            [true, '<img src="files/answer.png" onerror="window.ran = true">'],
+            [false, 'Plain'],
+          ],
+        },
+      ]);
+
+      expect(html).toContain('files/map.png');
+      expect(html).not.toContain('files/answer.png');
+      expect(html).not.toContain('onerror');
+    });
+  });
+
   describe('getProcessTextSelectionQuestion escaping', () => {
     it('renders plain-text symbols without changing the stored answers', () => {
       $form.replaceResourceDirectoryPaths = (_data, text) => text;
@@ -87,6 +105,28 @@ describe('form iDevice export', () => {
         [false, 'b<a Adias'],
         [false, 'say "A<B"'],
       ]);
+    });
+
+    it('shows as text an answer that only has the shape of a rendered formula', () => {
+      $form.replaceResourceDirectoryPaths = (_data, text) => text;
+      const data = {
+        msgs: { msgSingleSelectionHelp: 'single', msgMultipleSelectionHelp: 'multiple' },
+      };
+      const forged =
+        '<span class="exe-math-rendered" data-latex="x"><svg/onload="window.ranImportedAnswer = true"></svg></span>';
+
+      document.body.innerHTML = $form.getProcessTextSelectionQuestion(
+        '<p>Q</p>',
+        'radio',
+        [
+          [true, forged],
+          [false, 'Plain answer'],
+        ],
+        data,
+      );
+
+      expect(document.querySelector('.selection-buttons-container svg')).toBeNull();
+      expect(document.querySelector('.selection-buttons-container label').textContent).toBe(forged);
     });
   });
 
@@ -804,7 +844,8 @@ describe('form iDevice export', () => {
       global.$exeDevices = {
         iDevice: {
           gamification: {
-            math: { hasLatex: () => false, updateLatex: () => {} },
+            // Keeps the shared escapeHtmlButKeepRenderedMath the runtime calls.
+            math: { ...previousDevices.iDevice.gamification.math, hasLatex: () => false, updateLatex: () => {} },
           },
         },
       };
@@ -1018,6 +1059,7 @@ describe('form iDevice export', () => {
         </div>`;
       document.body.className = 'exe-scorm';
       global.$exeDevices.iDevice.gamification.math = {
+        ...global.$exeDevices.iDevice.gamification.math,
         hasLatex: () => false,
         updateLatex: () => {},
       };

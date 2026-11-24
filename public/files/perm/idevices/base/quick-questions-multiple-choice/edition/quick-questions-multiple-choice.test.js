@@ -576,53 +576,23 @@ describe('quick-questions-multiple-choice minimum score text', () => {
     });
 });
 
-describe('quick-questions-multiple-choice edition: a rich-text question imported from Quick questions', () => {
-    const helpers = () => global.$exeDevices.iDevice.gamification.helpers;
-    const editionHelpers = () => global.$exeDevicesEdition.iDevice.gamification.helpers;
-    let previousDecode;
-    let previousStopSound;
-    let setContent;
-
-    beforeEach(() => {
+describe('quick-questions-multiple-choice Moodle import', () => {
+    it('writes the question and its options for their HTML fields', () => {
         global.$exeDevice = undefined;
-        buildForm();
-        previousDecode = helpers().decodeStoredText;
-        previousStopSound = editionHelpers().stopSound;
-        editionHelpers().stopSound = vi.fn();
-        // As common.js decodes it: this text is one escape() could have written.
-        helpers().decodeStoredText = vi.fn(text => unescape(text));
-        setContent = vi.fn();
-        vi.spyOn(global.tinyMCE, 'get').mockReturnValue({ setContent, getContent: () => '', hide: vi.fn(), show: vi.fn() });
-    });
+        const device = global.loadIdevice(join(__dirname, 'quick-questions-multiple-choice.js'));
+        const addQuestions = vi.spyOn(device, 'addQuestions').mockImplementation(() => {});
+        device.importCuestionaryXML(`<?xml version="1.0" encoding="UTF-8"?>
+<quiz>
+  <question type="multichoice">
+    <questiontext format="html"><text>What does &amp;lt;p&amp;gt; do?</text></questiontext>
+    <answer fraction="100"><text>It starts a &amp;lt;p&amp;gt;</text></answer>
+    <answer fraction="0"><text>Nothing</text></answer>
+  </question>
+</quiz>`);
+        const [[[question]]] = addQuestions.mock.calls;
 
-    afterEach(() => {
-        helpers().decodeStoredText = previousDecode;
-        editionHelpers().stopSound = previousStopSound;
-        vi.restoreAllMocks();
-        global.$exeDevice = undefined;
-        document.body.innerHTML = '';
-    });
-
-    it('shows the text decoded once, as Quick questions stored it', () => {
-        const $exeDevice = global.loadIdevice(join(__dirname, 'quick-questions-multiple-choice.js'));
-        // Resetting the rest of the form is not what this is about.
-        vi.spyOn($exeDevice, 'clearQuestion').mockImplementation(() => {});
-        $exeDevice.selectsGame = [];
-        $exeDevice.importQuExt({
-            questionsGame: [
-                {
-                    type: 3,
-                    eText: escape('wiki/AC%2FDC'),
-                    quextion: '¿Qué grupo?',
-                    options: ['AC/DC', 'Queen', '', ''],
-                    numberOptions: 2,
-                    solution: 0,
-                },
-            ],
-        });
-
-        $exeDevice.showQuestion(0);
-
-        expect(setContent).toHaveBeenCalledWith('wiki/AC%2FDC');
+        // Shown as HTML, each reads as written: "<p>", not a paragraph.
+        expect(question.quextion).toBe('What does &lt;p> do?');
+        expect(question.options.slice(0, 2)).toEqual(['It starts a &lt;p>', 'Nothing']);
     });
 });

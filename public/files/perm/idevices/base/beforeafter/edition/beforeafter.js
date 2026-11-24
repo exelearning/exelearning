@@ -708,7 +708,7 @@ var $exeDevice = {
     },
 
     validateData: function () {
-        const clear = $exeDevice.removeTags,
+        const clear = $exeDevicesEdition.iDevice.common.removeTags,
             instructions = tinyMCE.get('eXeGameInstructions').getContent(),
             textAfter = tinyMCE.get('eXeIdeviceTextAfter').getContent(),
             author = $('#bfafEAuthory').val(),
@@ -983,9 +983,5 @@ var $exeDevice = {
         }
 
         return { w: wImage, h: hImage, x: xImagen, y: yImagen };
-    },
-
-    removeTags: function (str) {
-        return $('<div>').html(str).text();
     },
 };

@@ -368,7 +368,7 @@ var $exeDevice = {
 
     updateQuestionsNumber: function () {
         const percentInput = parseInt(
-            $exeDevice.removeTags($('#puzzleEPercentajeQuestions').val())
+            $exeDevicesEdition.iDevice.common.removeTags($('#puzzleEPercentajeQuestions').val())
         );
 
         if (isNaN(percentInput)) return;
@@ -732,7 +732,7 @@ var $exeDevice = {
     },
 
     validateData: function () {
-        const clear = $exeDevice.removeTags,
+        const clear = $exeDevicesEdition.iDevice.common.removeTags,
             instructions = tinyMCE.get('eXeGameInstructions').getContent(),
             textFeedBack = tinyMCE.get('puzzleEFeedBackEditor').getContent(),
             textAfter = tinyMCE.get('eXeIdeviceTextAfter').getContent(),
@@ -925,35 +925,6 @@ var $exeDevice = {
             e.preventDefault();
             $exeDevice.cutPuzzle();
         });
-
-        if (
-            window.File &&
-            window.FileReader &&
-            window.FileList &&
-            window.Blob
-        ) {
-            $('#eXeGameExportImport').show();
-
-            $('#eXeGameImportGame').on('change', e => {
-                const file = e.target.files[0];
-                if (!file) {
-                    return;
-                }
-                const reader = new FileReader();
-                // The read is aborted and its result discarded if the editor
-                // closes before it completes.
-                this.$lifecycle.ownFileReader(reader);
-                reader.onload = this.$lifecycle.bind(function (event) {
-                    this.importGame(event.target.result);
-                });
-                reader.readAsText(file);
-            });
-            $('#eXeGameExportQuestions').on('click', function () {
-                $exeDevice.exportGame();
-            });
-        } else {
-            $('#eXeGameExportImport').hide();
-        }
 
         $('#puzzleEHasFeedBack').on('change', function () {
             const marcado = $(this).is(':checked');
@@ -1288,46 +1259,6 @@ var $exeDevice = {
         });
     },
 
-    exportGame: function () {
-        const dataGame = this.validateData();
-
-        if (!dataGame) return false;
-
-        const newBlob = new Blob([JSON.stringify(dataGame)], { type: 'text/plain' });
-        return $exeDevicesEdition.iDevice.gamification.share.downloadBlob(
-            newBlob,
-            `${_('Activity')}-Puzzle.json`,
-            'puzzleIdeviceForm'
-        );
-    },
-
-    importGame: function (content) {
-        const game =
-            $exeDevices.iDevice.gamification.helpers.isJsonString(content);
-
-        if (!game || typeof game.typeGame === 'undefined') {
-            eXe.app.alert($exeDevice.msgs.msgESelectFile);
-            return;
-        } else if (game.typeGame !== 'Puzzle') {
-            eXe.app.alert($exeDevice.msgs.msgESelectFile);
-            return;
-        }
-
-        game.id = $exeDevice.getIdeviceID();
-        $exeDevice.updateFieldGame(game);
-
-        const instructions = game.instructionsExe || game.instructions || '',
-            tAfter = game.textAfter || '',
-            textFeedBack = game.textFeedBack || '';
-
-        $('#eXeGameInstructions').val(unescape(instructions));
-        $('#eXeIdeviceTextAfter').val(unescape(tAfter));
-        $('#puzzleEFeedBackEditor').val(unescape(textFeedBack));
-
-        //$('.exe-form-tabs li:first-child a').click();
-        $exeDevice.showPuzzle(0, false);
-    },
-
     validTime: function (time) {
         const reg = /^(?:(?:([01]?\d|2[0-3]):)?([0-5]?\d):)?([0-5]?\d)$/;
         return time.length == 8 && reg.test(time);
@@ -1382,11 +1313,5 @@ var $exeDevice = {
             'z-index': 120,
         });
         $cursor.show();
-    },
-
-    removeTags: function (str) {
-        let wrapper = $('<div></div>');
-        wrapper.html(str);
-        return wrapper.text();
     },
 };

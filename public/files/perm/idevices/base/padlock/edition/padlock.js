@@ -420,12 +420,6 @@ var $exeDevice = {
         };
     },
 
-    removeTags: function (str) {
-        const wrapper = $('<div></div>');
-        wrapper.html(str);
-        return wrapper.text();
-    },
-
     addEvents: function () {
         $('#candadoERetro').on('click', function () {
             $('#divCandadoInstructions').hide();

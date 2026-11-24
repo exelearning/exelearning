@@ -5287,6 +5287,122 @@ describe('common.js $exeDevices', () => {
       getMath()._callbacks = [];
     });
 
+    describe('escapeHtmlButKeepRenderedMath', () => {
+      // The shape LatexPreRenderer writes: MathJax's SVG, then its MathML.
+      const formula = (svg, mathml = '<math xmlns="http://www.w3.org/1998/Math/MathML"><mi>x</mi></math>') =>
+        `<span class="exe-math-rendered" data-latex="x^2">${svg}${mathml}</span>`;
+      const mathJaxSvg =
+        '<svg style="vertical-align: -0.025ex;" xmlns="http://www.w3.org/2000/svg" width="2.24ex" height="2.047ex" ' +
+        'role="img" focusable="false" viewBox="0 -893.3 990.3 904.3" xmlns:xlink="http://www.w3.org/1999/xlink" ' +
+        'aria-hidden="true"><defs><path id="MJX-1-TEX-I-1D465" d="M52 289Q59 331"></path></defs>' +
+        '<g stroke="currentColor" fill="currentColor" stroke-width="0" transform="scale(1,-1)">' +
+        '<g data-mml-node="math"><use data-c="1D465" xlink:href="#MJX-1-TEX-I-1D465"></use>' +
+        '<rect width="60" height="60" x="120" y="220"></rect></g></g></svg>';
+      const escaped = text => text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+      it('keeps a formula as LatexPreRenderer writes it and escapes the text around it', () => {
+        const math = getMath();
+        expect(math.escapeHtmlButKeepRenderedMath(`Area <b> ${formula(mathJaxSvg)} & more`)).toBe(
+          `Area &lt;b&gt; ${formula(mathJaxSvg)} &amp; more`
+        );
+      });
+
+      it.each(['https://example.com', 'mailto:a@example.com', 'files/doc.pdf', '../index.html', 'page.html#top'])(
+        'keeps the link of a formula written with \\href to %s',
+        href => {
+          const linked = formula(
+            `<svg><a href="${href}"><use xlink:href="#MJX-1"></use></a></svg>`,
+            `<math><mi href="${href}">x</mi></math>`
+          );
+          expect(getMath().escapeHtmlButKeepRenderedMath(linked)).toBe(linked);
+        }
+      );
+
+      // \mathtip hides its tip in rect > foreignObject > mjx-tool > mjx-tip > svg.
+      const tip = (inner) =>
+        formula(`<svg><g data-mml-node="maction"><rect width="10" height="10">${inner}</rect></g></svg>`);
+      const tipOf = (svg) =>
+        `<foreignObject style="display: none;"><mjx-tool><mjx-tip>${svg}</mjx-tip></mjx-tool></foreignObject>`;
+
+      it('keeps a formula written with \\mathtip, whose tip MathJax hides in a foreignObject', () => {
+        const mathTip = tip(tipOf('<svg><g><use xlink:href="#MJX-2"></use></g></svg>'));
+        expect(getMath().escapeHtmlButKeepRenderedMath(mathTip)).toBe(mathTip);
+      });
+
+      it.each([
+        ['HTML other than the tip', tipOf('<img src="x" onerror="window.ran = true">')],
+        ['an image inside the tip', tipOf('<svg><image href="x" onerror="window.ran = true"></image></svg>')],
+        ['a handler on the tip', '<foreignObject><mjx-tool onclick="window.ran = true"><mjx-tip></mjx-tip></mjx-tool></foreignObject>'],
+        ['a div around the tip', '<foreignObject><div><mjx-tool><mjx-tip></mjx-tip></mjx-tool></div></foreignObject>'],
+      ])('escapes a \\mathtip tip with %s', (_, inner) => {
+        const forged = tip(inner);
+        expect(getMath().escapeHtmlButKeepRenderedMath(forged)).toBe(escaped(forged));
+      });
+
+      it('escapes a foreignObject outside the tip of \\mathtip', () => {
+        const forged = formula(`<svg>${tipOf('<svg></svg>')}</svg>`);
+        expect(getMath().escapeHtmlButKeepRenderedMath(forged)).toBe(escaped(forged));
+      });
+
+      it('keeps a formula written with \\texttip or \\toggle, which MathML writes as maction', () => {
+        const action = formula(
+          mathJaxSvg,
+          '<math><maction actiontype="tooltip"><mi>x</mi><mtext>tip</mtext></maction></math>'
+        );
+        expect(getMath().escapeHtmlButKeepRenderedMath(action)).toBe(action);
+      });
+
+      it.each([
+        ['a handler separated by a slash', '<svg/onload="window.ran = true"></svg>'],
+        ['an element MathJax does not write', '<svg><image href="x" onerror="window.ran = true"></image></svg>'],
+        ['a script', '<svg><script>window.ran = true</script></svg>'],
+        ['a style block', '<svg><style>* { display: none }</style></svg>'],
+        ['a javascript: link', '<svg><a href="javascript:alert(1)"><text>x</text></a></svg>'],
+        ['a javascript: link written as entities', '<svg><a href="&#106;avascript:alert(1)"><text>x</text></a></svg>'],
+        ['a javascript: link split by a tab', '<svg><a href="java&#9;script:alert(1)"><text>x</text></a></svg>'],
+        ['a vbscript: link', '<svg><a href="vbscript:msgbox(1)"><text>x</text></a></svg>'],
+        ['a data: link', '<svg><a href="data:text/html,x"><text>x</text></a></svg>'],
+        ['a javascript: link in the MathML', '<svg></svg><math><mi href="javascript:alert(1)">x</mi></math>'],
+        ['an outside reference from use', '<svg><use href="https://example.com/x.svg#a"></use></svg>'],
+        ['HTML inside the MathML', '<svg></svg><math><mtext><img src="x" onerror="window.ran = true"></mtext></math>'],
+      ])('escapes a fragment shaped like a formula with %s', (_, inner) => {
+        const forged = `<span class="exe-math-rendered" data-latex="x">${inner}</span>`;
+        expect(getMath().escapeHtmlButKeepRenderedMath(forged)).toBe(escaped(forged));
+      });
+
+      it('reads the fragment inert, without loading or running anything', () => {
+        const forged = '<span class="exe-math-rendered" data-latex="x"><svg><image href="x" onerror="window.ran = true"></image></svg></span>';
+        delete window.ran;
+        getMath().isRenderedMath(forged);
+        expect(window.ran).toBeUndefined();
+      });
+
+      // escapeHtmlButKeepRenderedMath only passes fragments its pattern
+      // matches, so these checks are reached by calling isRenderedMath itself.
+      it.each([
+        ['an empty fragment', ''],
+        ['more than the span', `${formula('<svg></svg>')}<b>x</b>`],
+        ['another element', '<div class="exe-math-rendered" data-latex="x"><svg></svg></div>'],
+        ['another class', '<span class="exe-math-rendered extra" data-latex="x"><svg></svg></span>'],
+        ['another attribute on the span', '<span class="exe-math-rendered" data-latex="x" title="x"><svg></svg></span>'],
+        ['text next to the formula', '<span class="exe-math-rendered" data-latex="x"><svg></svg>text</span>'],
+        ['no SVG', '<span class="exe-math-rendered" data-latex="x"></span>'],
+        ['a third element', formula('<svg></svg>', '<math></math><math></math>')],
+        ['MathML before the SVG', '<span class="exe-math-rendered" data-latex="x"><math></math></span>'],
+        ['a second SVG instead of MathML', formula('<svg></svg>', '<svg></svg>')],
+        ['a tip box outside a foreignObject', formula('<svg><g><mjx-tool><mjx-tip></mjx-tip></mjx-tool></g></svg>')],
+        ['a tip outside its box', formula('<svg><g><mjx-tip><svg></svg></mjx-tip></g></svg>')],
+      ])('isRenderedMath rejects %s', (_, html) => {
+        expect(getMath().isRenderedMath(html)).toBe(false);
+      });
+
+      it('treats a missing value as empty', () => {
+        expect(getMath().escapeHtmlButKeepRenderedMath(null)).toBe('');
+        expect(getMath().escapeHtmlButKeepRenderedMath(undefined)).toBe('');
+        expect(getMath().isRenderedMath(null)).toBe(false);
+      });
+    });
+
     it('hasLatex detects LaTeX syntax', () => {
       const math = getMath();
       expect(math.hasLatex('\\(x^2\\)')).toBe(true);

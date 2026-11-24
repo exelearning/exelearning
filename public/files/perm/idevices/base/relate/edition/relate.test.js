@@ -30,6 +30,37 @@ describe('relate iDevice', () => {
         });
     });
 
+    describe('addCards', () => {
+        beforeEach(() => {
+            $exeDevice.cardsGame = [];
+            vi.spyOn($exeDevice, 'postImportProcessing').mockImplementation(() => {});
+        });
+
+        it('stores imported texts as text, encoded as the form stores them', () => {
+            $exeDevice.addCards([
+                {
+                    eText: 'Paris &lt;img src="x" onerror="window.ran = true"&gt;',
+                    eTextBk: 'Capital %3Cimg%20src%3Dx%3E 100%',
+                },
+            ]);
+
+            expect($exeDevice.cardsGame).toHaveLength(1);
+            const [card] = $exeDevice.cardsGame;
+            // The card shows the image written as entities as the text it was.
+            expect($exeDevice.decodeURIComponentSafe(card.eText)).toBe(
+                'Paris &lt;img src="x" onerror="window.ran = true">'
+            );
+            // A %-encoded tag stays the text it was, and a % no longer breaks the card.
+            expect($exeDevice.decodeURIComponentSafe(card.eTextBk)).toBe('Capital %3Cimg%20src%3Dx%3E 100%');
+        });
+
+        it('leaves out a card whose side was only markup', () => {
+            $exeDevice.addCards([{ eText: '<img src="x" onerror="window.ran = true">', eTextBk: 'Back' }]);
+
+            expect($exeDevice.cardsGame).toHaveLength(0);
+        });
+    });
+
     describe('edition lifecycle', () => {
         let savedGamification;
         let savedMedia;

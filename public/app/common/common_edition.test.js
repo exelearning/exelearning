@@ -161,6 +161,116 @@ describe('common_edition.js', () => {
       expect(globalThis.$exeDevicesEdition.iDevice.common.getIdeviceDescription(null, 'https://example.com')).toBe('');
       expect(globalThis.$exeDevicesEdition.iDevice.common.getIdeviceDescription(42, 'https://example.com')).toBe('');
     });
+
+    describe('removeTags', () => {
+      const removeTags = (html) => globalThis.$exeDevicesEdition.iDevice.common.removeTags(html);
+
+      it('keeps the text of an HTML fragment, nested or with attributes, without its tags', () => {
+        expect(removeTags('<div class="x"><p>Hello <strong>World</strong></p></div>')).toBe('Hello World');
+        expect(removeTags('<a href="http://example.com">Link</a> &amp; more')).toBe('Link & more');
+      });
+
+      it('leaves plain text and an empty string as they are', () => {
+        expect(removeTags('Plain text')).toBe('Plain text');
+        expect(removeTags('')).toBe('');
+      });
+
+      it('reads no text from a missing value, and a number as its digits', () => {
+        expect(removeTags(undefined)).toBe('');
+        expect(removeTags(null)).toBe('');
+        expect(removeTags(5)).toBe('5');
+      });
+
+      // That the image is neither loaded nor its handler run is checked in a real browser, in
+      // quick-questions-moodle-import.spec.ts: happy-dom loads no images.
+      it('keeps the text around an image with a handler', () => {
+        expect(removeTags('<p>Capital<img src="x" onerror="window.ran = true"> of France?</p>')).toBe(
+          'Capital of France?'
+        );
+      });
+
+      it('returns markup written as entities as the text it stands for', () => {
+        // The text of a field shown as plain text, as main returns it: "<p>", not "&lt;p>".
+        expect(removeTags('What does &lt;p&gt; do?')).toBe('What does <p> do?');
+        expect(removeTags('a < b & c')).toBe('a < b & c');
+        expect(removeTags('5 &gt; 3')).toBe('5 > 3');
+      });
+    });
+
+    describe('escapeTags', () => {
+      const { escapeTags, removeTags } = globalThis.$exeDevicesEdition.iDevice.common;
+      const shown = (html) => {
+        const template = document.createElement('template');
+        template.innerHTML = html;
+        return { text: template.content.textContent, elements: template.content.querySelectorAll('*').length };
+      };
+
+      it('writes each "<" that would open a tag as a character reference', () => {
+        expect(escapeTags('What does <p> do?')).toBe('What does &lt;p> do?');
+        expect(escapeTags('</p> <!-- note --> <?xml?>')).toBe('&lt;/p> &lt;!-- note --> &lt;?xml?>');
+      });
+
+      it('leaves any other "<" as it is', () => {
+        expect(escapeTags('a < b & c')).toBe('a < b & c');
+        expect(escapeTags('x<5 and 5 > 3')).toBe('x<5 and 5 > 3');
+      });
+
+      it('reads no text from a missing value, and a number as its digits', () => {
+        expect(escapeTags(undefined)).toBe('');
+        expect(escapeTags(null)).toBe('');
+        expect(escapeTags(5)).toBe('5');
+      });
+
+      it('gives text that shows as written in HTML and runs nothing', () => {
+        const image = '<img src="x" onerror="window.ran = true">';
+        expect(shown(escapeTags(removeTags('What does &lt;p&gt; do?')))).toEqual({
+          text: 'What does <p> do?',
+          elements: 0,
+        });
+        expect(shown(escapeTags(removeTags(`Paris ${image.replace(/</g, '&lt;')}`)))).toEqual({
+          text: `Paris ${image}`,
+          elements: 0,
+        });
+      });
+
+      it('gives the text back when its result is read with removeTags', () => {
+        // No bare "<5" or "-->": happy-dom, unlike a browser, misreads them.
+        for (const text of ['What does <p> do?', 'a < b & c', '</p> and <b>', '100%']) {
+          expect(removeTags(escapeTags(text))).toBe(text);
+        }
+      });
+
+      it('gives the same HTML when a field is imported twice', () => {
+        for (const html of ['What does &lt;p&gt; do?', '&lt;p&gt;Hi&lt;/p&gt;', 'a < b & c', 'Tom &amp; Jerry']) {
+          const once = escapeTags(removeTags(html));
+          expect(escapeTags(removeTags(once))).toBe(once);
+        }
+      });
+    });
+  });
+
+  describe('gamification.share.import.cuestionaryxml', () => {
+    it('strips the tags of the imported words with the shared removeTags, not the iDevice copy', () => {
+      const addWords = vi.fn();
+      const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<quiz>
+  <question type="shortanswer">
+    <questiontext format="html"><text>&lt;p&gt;Capital of &lt;strong&gt;France&lt;/strong&gt;?&lt;/p&gt;</text></questiontext>
+    <answer fraction="100"><text>&lt;b&gt;Paris&lt;/b&gt;</text></answer>
+  </question>
+</quiz>`;
+      const previousDevice = globalThis.$exeDevice;
+      const iDeviceCopy = vi.fn((text) => text);
+      globalThis.$exeDevice = { ...previousDevice, removeTags: iDeviceCopy };
+      try {
+        globalThis.$exeDevicesEdition.iDevice.gamification.share.import.cuestionaryxml(xml, addWords);
+      } finally {
+        globalThis.$exeDevice = previousDevice;
+      }
+
+      expect(addWords).toHaveBeenCalledWith([{ word: 'Paris', definition: 'Capital of France?' }]);
+      expect(iDeviceCopy).not.toHaveBeenCalled();
+    });
   });
 
   describe('gamification', () => {
@@ -1829,28 +1939,6 @@ describe('common_edition.js', () => {
       const result = globalThis.$exeDevicesEdition.iDevice.gamification.share.validateQuesionsIA(0, lines);
       expect(result).toContain('Word1#Definition1');
       expect(result).not.toContain('Invalid');
-    });
-
-    it('exportGame creates download link', () => {
-      const container = document.createElement('div');
-      container.id = 'test-idevice';
-      document.body.appendChild(container);
-
-      const urlSpy = vi.spyOn(window.URL, 'createObjectURL').mockReturnValue('blob:test');
-      const revokeSpy = vi.spyOn(window.URL, 'revokeObjectURL').mockImplementation(() => {});
-
-      vi.useFakeTimers();
-      globalThis.$exeDevicesEdition.iDevice.gamification.share.exportGame({ data: 'test' }, 'test-idevice', 'TestGame');
-      vi.runAllTimers();
-      vi.useRealTimers();
-
-      urlSpy.mockRestore();
-      revokeSpy.mockRestore();
-    });
-
-    it('exportGame returns false for null data', () => {
-      const result = globalThis.$exeDevicesEdition.iDevice.gamification.share.exportGame(null, 'test', 'name');
-      expect(result).toBe(false);
     });
 
     describe('addEvents', () => {

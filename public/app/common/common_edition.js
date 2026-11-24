@@ -156,6 +156,38 @@ var $exeDevicesEdition = {
                                     </p>\
                                 <div>\
                         </fieldset>";
+            },
+            /**
+             * The text of an HTML fragment, without its tags. The fragment is
+             * read in a template, which runs nothing: it can come from an
+             * imported file, and parsed in the page its images would load and
+             * their handlers run.
+             *
+             * What is returned is text: markup written as entities
+             * (&lt;p&gt;) comes out as the characters it stands for. A field
+             * shown as plain text can take it as it is; one shown as HTML
+             * needs it through escapeTags first.
+             *
+             * @param {*} html
+             * @returns {string}
+             */
+            removeTags: function (html) {
+                const template = document.createElement('template');
+                template.innerHTML = html == null ? '' : String(html);
+                return template.content.textContent;
+            },
+            /**
+             * Plain text written for a field shown as HTML. Each "<" that
+             * would open a tag ("<p>", "</p", "<!--") is written as &lt;, so
+             * the text shows as written and runs nothing. Any other "<", as
+             * in "3 < 5", is left as it is. Reading the result with
+             * removeTags gives the text back.
+             *
+             * @param {*} text
+             * @returns {string}
+             */
+            escapeTags: function (text) {
+                return (text == null ? '' : String(text)).replace(/<(?=[A-Za-z\/!?])/g, '&lt;');
             }
         },
         // Gamification
@@ -1656,18 +1688,6 @@ var $exeDevicesEdition = {
                     else setTimeout(release, 100);
                     return true;
                 },
-
-                exportGame: function (dataGame, idevice, name) {
-                    if (!dataGame) return false;
-                    const blob = new Blob([JSON.stringify(dataGame)], {
-                        type: 'text/plain',
-                    });
-                    return $exeDevicesEdition.iDevice.gamification.share.downloadBlob(
-                        blob,
-                        `${_('Activity')}-${name}.json`,
-                        idevice
-                    );
-                },
                 import: {
 
                     text: function (content, addWords) {
@@ -1739,8 +1759,8 @@ var $exeDevicesEdition = {
                             });
                             if (word && questionText) {
                                 let wd = {
-                                    word: $exeDevice.removeTags(word),
-                                    definition: $exeDevice.removeTags(questionText)
+                                    word: $exeDevicesEdition.iDevice.common.removeTags(word),
+                                    definition: $exeDevicesEdition.iDevice.common.removeTags(questionText)
                                 }
                                 words.push(wd);
                             }

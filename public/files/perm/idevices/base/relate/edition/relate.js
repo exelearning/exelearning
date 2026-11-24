@@ -682,7 +682,7 @@ var $exeDevice = {
 
     updateCardsNumber: function () {
         let percentaje = parseInt(
-            $exeDevice.removeTags($('#rclEPercentajeCards').val())
+            $exeDevicesEdition.iDevice.common.removeTags($('#rclEPercentajeCards').val())
         );
         if (isNaN(percentaje)) return;
         percentaje = Math.min(Math.max(percentaje, 1), 100);
@@ -993,7 +993,7 @@ var $exeDevice = {
     },
 
     validateData: function () {
-        const clear = $exeDevice.removeTags,
+        const clear = $exeDevicesEdition.iDevice.common.removeTags,
             instructions = tinyMCE.get('eXeGameInstructions').getContent(),
             textAfter = tinyMCE.get('eXeIdeviceTextAfter').getContent(),
             showMinimize = $('#rclEShowMinimize').is(':checked'),
@@ -1239,7 +1239,6 @@ var $exeDevice = {
                     !file.type ||
                     !(
                         file.type.match('text/plain') ||
-                        file.type.match('application/json') ||
                         file.type.match('application/xml') ||
                         file.type.match('text/xml')
                     )
@@ -1511,19 +1510,6 @@ var $exeDevice = {
         $exeDevice.updateCardsNumber();
     },
 
-    exportGame: function () {
-        const dataGame = this.validateData();
-
-        if (!dataGame) return false;
-
-        const newBlob = new Blob([JSON.stringify(dataGame)], { type: 'text/plain' });
-        return $exeDevicesEdition.iDevice.gamification.share.downloadBlob(
-            newBlob,
-            `${_('Activity')}-Relaciona.json`,
-            'relateQIdeviceForm'
-        );
-    },
-
     importMoodle: function (xmlString) {
         const xmlDoc = $.parseXML(xmlString),
             $xml = $(xmlDoc);
@@ -1574,8 +1560,8 @@ var $exeDevice = {
             });
             if (eText && questionText) {
                 cardsJson.push({
-                    eTextBk: $exeDevice.removeTags(questionText),
-                    eText: $exeDevice.removeTags(eText),
+                    eTextBk: $exeDevicesEdition.iDevice.common.removeTags(questionText),
+                    eText: $exeDevicesEdition.iDevice.common.removeTags(eText),
                 });
             }
         });
@@ -1634,27 +1620,19 @@ var $exeDevice = {
     },
 
     importGame(content, filetype) {
-        const game =
-            $exeDevices.iDevice.gamification.helpers.isJsonString(content);
-        if (content && content.includes('\u0000')) {
+        if (!content) {
+            $exeDevice.showMessage($exeDevice.msgs.msgESelectFile);
+        } else if (content.includes('\u0000')) {
             $exeDevice.showMessage(_('Sorry, wrong file format'));
-            return;
-        } else if (!game && content) {
-            if (filetype.match('text/plain')) {
-                $exeDevice.importText(content);
-            } else if (
-                filetype.match('application/xml') ||
-                filetype.match('text/xml')
-            ) {
-                $exeDevice.importMoodle(content);
-            } else {
-                eXe.app.alert(_('Sorry, wrong file format'));
-            }
-            return;
-        } else if (game && game.typeGame && game.typeGame == 'Relaciona') {
-            return this.handleGame(game);
+        } else if (filetype.match('text/plain')) {
+            $exeDevice.importText(content);
+        } else if (
+            filetype.match('application/xml') ||
+            filetype.match('text/xml')
+        ) {
+            $exeDevice.importMoodle(content);
         } else {
-            return $exeDevice.showMessage($exeDevice.msgs.msgESelectFile);
+            eXe.app.alert(_('Sorry, wrong file format'));
         }
     },
 
@@ -1685,9 +1663,20 @@ var $exeDevice = {
             );
             return;
         }
+        // Every import (text file, Moodle XML, glossary and Create with AI)
+        // ends here. Its texts are read as text and written for the card,
+        // which is shown as HTML, so no markup reaches the card preview and a
+        // tag written as entities shows as written. They are stored encoded
+        // as the form stores them, so a %-encoded tag is not decoded into one
+        // there.
+        const { removeTags, escapeTags } = $exeDevicesEdition.iDevice.common;
         for (let i = 0; i < cards.length; i++) {
             let card = cards[i];
-            if (card.eTextBk && card.eText) {
+            const eText = escapeTags(removeTags(card.eText)),
+                eTextBk = escapeTags(removeTags(card.eTextBk));
+            if (eTextBk && eText) {
+                card.eText = $exeDevice.encodeURIComponentSafe(eText);
+                card.eTextBk = $exeDevice.encodeURIComponentSafe(eTextBk);
                 $exeDevice.cardsGame.push(card);
             }
         }
@@ -1721,11 +1710,11 @@ var $exeDevice = {
                         eText = answerText;
                     }
                 });
+                // addCards reads the texts: read here too, the text of a
+                // tag written as entities would be read again as a tag.
                 const et = {
-                    eTextBk: $exeDevice.removeTags(
-                        $question.find('questiontext').first().text().trim()
-                    ),
-                    eText: $exeDevice.removeTags(eText),
+                    eTextBk: $question.find('questiontext').first().text().trim(),
+                    eText: eText,
                 };
                 return eText ? et : null;
             })
@@ -1872,9 +1861,5 @@ var $exeDevice = {
                 'z-index': 50,
             })
             .show();
-    },
-
-    removeTags: function (str) {
-        return $('<div>').html(str).text();
     },
 };

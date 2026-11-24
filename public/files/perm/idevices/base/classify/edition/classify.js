@@ -481,7 +481,7 @@ var $exeDevice = {
 
     updateQuestionsNumber: function () {
         const percentInput = parseInt(
-            $exeDevice.removeTags($('#clasificaEPercentajeQuestions').val())
+            $exeDevicesEdition.iDevice.common.removeTags($('#clasificaEPercentajeQuestions').val())
         );
         if (isNaN(percentInput)) return;
         const percentaje = Math.min(Math.max(percentInput, 1), 100),
@@ -887,7 +887,7 @@ var $exeDevice = {
     },
 
     validateData: function () {
-        const clear = $exeDevice.removeTags,
+        const clear = $exeDevicesEdition.iDevice.common.removeTags,
             instructions = tinyMCE.get('eXeGameInstructions').getContent(),
             textFeedBack = tinyMCE.get('clasificaEFeedBackEditor').getContent(),
             textAfter = tinyMCE.get('eXeIdeviceTextAfter').getContent(),
@@ -1419,7 +1419,6 @@ var $exeDevice = {
                     !file.type ||
                     !(
                         file.type.match('text/plain') ||
-                        file.type.match('application/json') ||
                         file.type.match('application/xml') ||
                         file.type.match('text/xml')
                     )
@@ -1829,42 +1828,13 @@ var $exeDevice = {
     },
 
     importGame: function (content, filetype) {
-        const game =
-            $exeDevices.iDevice.gamification.helpers.isJsonString(content);
-
-        if (content.includes('\u0000')) {
-            eXe.app.alert(_('Sorry, wrong file format'));
-        } else if (!game && content) {
-            if (filetype.match('text/plain')) {
-                $exeDevice.importText(content);
-            } else {
-                eXe.app.alert(_('Sorry, wrong file format'));
-            }
-            return;
-        } else if (!game || game.typeGame !== 'Clasifica') {
+        if (!content) {
             eXe.app.alert($exeDevice.msgs.msgESelectFile);
+        } else if (content.includes('\u0000') || !filetype.match('text/plain')) {
+            eXe.app.alert(_('Sorry, wrong file format'));
         } else {
-            game.id = $exeDevice.getIdeviceID();
-            $exeDevice.updateFieldGame(game);
-
-            tinyMCE
-                .get('eXeGameInstructions')
-                .setContent(
-                    unescape(game.instructionsExe || game.instructions)
-                );
-            tinyMCE
-                .get('eXeIdeviceTextAfter')
-                .setContent(unescape(game.textAfter || ''));
-            tinyMCE
-                .get('clasificaEFeedBackEditor')
-                .setContent(unescape(game.textFeedBack || ''));
+            $exeDevice.importText(content);
         }
-
-        $exeDevice.active = 0;
-        $exeDevice.showQuestion($exeDevice.active);
-        $exeDevice.deleteEmptyQuestion();
-        $exeDevice.updateQuestionsNumber();
-        //$('.exe-form-tabs li:first-child a').click();
     },
 
     deleteEmptyQuestion: function () {
@@ -1931,10 +1901,5 @@ var $exeDevice = {
                 'z-index': 31,
             })
             .show();
-    },
-
-    removeTags: (str) => {
-        const wrapper = $('<div></div>').html(str);
-        return wrapper.text();
     },
 };

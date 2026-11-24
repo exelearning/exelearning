@@ -307,3 +307,22 @@ describe('word-search minimum score text', () => {
     expect(device.ci18n.msgPassScore).toBe('Minimum score needed to pass this activity: %s');
   });
 });
+
+describe('word-search Moodle import', () => {
+  it('writes the definition for its HTML field and keeps the word as text', () => {
+    global.$exeDevice = undefined;
+    const device = global.loadIdevice(join(__dirname, 'word-search.js'));
+    const addWords = vi.spyOn(device, 'addWords').mockImplementation(() => {});
+    device.importCuestionaryXML(`<?xml version="1.0" encoding="UTF-8"?>
+<quiz>
+  <question type="shortanswer">
+    <questiontext format="html"><text>What does &amp;lt;p&amp;gt; start?</text></questiontext>
+    <answer fraction="100"><text>paragraph</text></answer>
+  </question>
+</quiz>`);
+    const [[words]] = addWords.mock.calls;
+
+    // Shown as HTML, the definition reads as written: "<p>", not a paragraph.
+    expect(words).toEqual([{ word: 'paragraph', definition: 'What does &lt;p> start?' }]);
+  });
+});

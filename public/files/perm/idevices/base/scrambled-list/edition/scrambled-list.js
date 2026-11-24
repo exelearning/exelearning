@@ -230,9 +230,9 @@ var $exeDevice = {
             afterElement: this.afterElement,
             options: this.options,
             time: 0,
-            buttonText: this.removeTags(this.buttonText),
-            rightText: this.removeTags(this.rightText),
-            wrongText: this.removeTags(this.wrongText),
+            buttonText: $exeDevicesEdition.iDevice.common.removeTags(this.buttonText),
+            rightText: $exeDevicesEdition.iDevice.common.removeTags(this.rightText),
+            wrongText: $exeDevicesEdition.iDevice.common.removeTags(this.wrongText),
             isScorm: scorm.isScorm,
             textButtonScorm: scorm.textButtonScorm,
             repeatActivity: scorm.repeatActivity,
@@ -461,15 +461,20 @@ var $exeDevice = {
             const isRequired = i < this.items_min;
             const requiredAttr = isRequired ? 'required' : '';
             const requiredClass = isRequired ? 'required' : '';
-            const value = i < options.length ? options[i] : '';
             inputList += `
                 <li class="${requiredClass}">
                     <label for="sortableListFormList${i}" class="sr-av"></label>
                     <input type="text" name="sortableListFormList${i}" id="sortableListFormList${i}"
-                        class="sortableListFormList form-control ${requiredClass}" ${requiredAttr} value="${value}" />
+                        class="sortableListFormList form-control ${requiredClass}" ${requiredAttr} />
                 </li>`;
         }
         $('#sortableListFormList ol').append(inputList);
+        // Through the DOM: written in the markup, a quotation mark in an
+        // imported element would end its value and turn the rest into
+        // attributes of the field, or into markup.
+        for (let i = 0; i < this.items_no && i < options.length; i++) {
+            $(`#sortableListFormList${i}`).val(options[i]);
+        }
         //$('.exe-form-tabs li:first-child a').trigger('click');
     },
 
@@ -699,17 +704,5 @@ var $exeDevice = {
                 </p>
                 <ol>${inputList}</ol>
             </div>`;
-    },
-
-    /**
-     * Function to remove HTML tags
-     *
-     * @param {*} str
-     * @returns string
-     */
-    removeTags: function (str) {
-        var wrapper = $('<div></div>');
-        wrapper.html(str);
-        return wrapper.text();
     },
 };

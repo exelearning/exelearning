@@ -403,15 +403,13 @@ describe('trivial iDevice edition lifecycle', () => {
         });
     });
 
-    describe('game import file readers', () => {
-        /** Builds the two file inputs `addEvents` wires the readers to. */
-        const buildImportInputs = () => {
-            ['eXeGameImportGame', 'trivialLoadGame', 'eXeGameExportImport', 'eXeGameExportQuestions'].forEach(id => {
-                const input = document.createElement('input');
-                input.type = 'file';
-                input.id = id;
-                document.body.appendChild(input);
-            });
+    describe('Load file reader', () => {
+        /** Builds the Load input `addEvents` wires the reader to. */
+        const buildLoadInput = () => {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.id = 'trivialLoadGame';
+            document.body.appendChild(input);
         };
 
         const selectFile = (id, file) => {
@@ -421,25 +419,24 @@ describe('trivial iDevice edition lifecycle', () => {
         };
 
         beforeEach(() => {
-            buildImportInputs();
+            buildLoadInput();
             $exeDevice.questionsGame = [];
             $exeDevice.addEvents();
         });
 
-        it('imports a game while the edition is open', () => {
-            const importGame = vi.spyOn($exeDevice, 'importGame').mockImplementation(() => {});
+        it('adds a text file while the edition is open', () => {
+            const gameAdd = vi.spyOn($exeDevice, 'gameAdd').mockImplementation(() => {});
 
-            selectFile('eXeGameImportGame', { name: 'game.json', type: 'application/json' });
+            selectFile('trivialLoadGame', { name: 'questions.txt', type: 'text/plain' });
             const reader = FakeFileReader.instances[0];
-            expect(reader).toBeDefined();
-            reader.fire('{"a":1}');
+            reader.fire('a#Question#Answer#Other');
 
-            expect(importGame).toHaveBeenCalledWith('{"a":1}');
-            importGame.mockRestore();
+            expect(gameAdd).toHaveBeenCalledWith('a#Question#Answer#Other', 'text/plain');
+            gameAdd.mockRestore();
         });
 
-        it('aborts an in-flight import read when the edition closes', () => {
-            selectFile('eXeGameImportGame', { name: 'game.json', type: 'application/json' });
+        it('aborts an in-flight read when the edition closes', () => {
+            selectFile('trivialLoadGame', { name: 'questions.txt', type: 'text/plain' });
             const reader = FakeFileReader.instances[0];
             expect(reader.readyState).toBe(1);
 
@@ -448,41 +445,26 @@ describe('trivial iDevice edition lifecycle', () => {
             expect(reader.abort).toHaveBeenCalledTimes(1);
         });
 
-        it('ignores a late import callback instead of importing into a closed edition', () => {
-            const importGame = vi.spyOn($exeDevice, 'importGame').mockImplementation(() => {});
-
-            selectFile('eXeGameImportGame', { name: 'game.json', type: 'application/json' });
-            const reader = FakeFileReader.instances[0];
-
-            $exeDevice.$lifecycle.destroy();
-            reader.fire('{"a":1}');
-
-            expect(importGame).not.toHaveBeenCalled();
-            importGame.mockRestore();
-        });
-
-        it('adds a game file while the edition is open', () => {
-            const gameAdd = vi.spyOn($exeDevice, 'gameAdd').mockImplementation(() => {});
-
-            selectFile('trivialLoadGame', { name: 'game.json', type: 'application/json' });
-            const reader = FakeFileReader.instances[0];
-            reader.fire('{"b":2}');
-
-            expect(gameAdd).toHaveBeenCalledWith('{"b":2}', 'application/json');
-            gameAdd.mockRestore();
-        });
-
         it('ignores a late gameAdd callback once the edition is closed', () => {
             const gameAdd = vi.spyOn($exeDevice, 'gameAdd').mockImplementation(() => {});
 
-            selectFile('trivialLoadGame', { name: 'game.json', type: 'application/json' });
+            selectFile('trivialLoadGame', { name: 'questions.txt', type: 'text/plain' });
             const reader = FakeFileReader.instances[0];
 
             $exeDevice.$lifecycle.destroy();
-            reader.fire('{"b":2}');
+            reader.fire('a#Question#Answer#Other');
 
             expect(gameAdd).not.toHaveBeenCalled();
             gameAdd.mockRestore();
+        });
+
+        it('refuses a JSON game file without reading it', () => {
+            eXe.app.alert.mockClear();
+
+            selectFile('trivialLoadGame', { name: 'game.json', type: 'application/json' });
+
+            expect(FakeFileReader.instances).toHaveLength(0);
+            expect(eXe.app.alert).toHaveBeenCalledWith('Select a file (txt, xml)');
         });
     });
 });
@@ -494,5 +476,25 @@ describe('trivial minimum score text', () => {
     device.refreshTranslations();
 
     expect(device.ci18n.msgPassScore).toBe('Minimum score needed to pass this activity: %s');
+  });
+});
+
+describe('trivial Moodle import', () => {
+  it('writes the question and its options for their HTML fields', () => {
+    global.$exeDevice = undefined;
+    const device = global.loadIdevice(join(__dirname, 'trivial.js'));
+    device.selectsGame = [];
+    const [question] = device.importCuestionaryXML(`<?xml version="1.0" encoding="UTF-8"?>
+<quiz>
+  <question type="multichoice">
+    <questiontext format="html"><text>What does &amp;lt;p&amp;gt; do?</text></questiontext>
+    <answer fraction="100"><text>It starts a &amp;lt;p&amp;gt;</text></answer>
+    <answer fraction="0"><text>Nothing</text></answer>
+  </question>
+</quiz>`);
+
+    // Shown as HTML, each reads as written: "<p>", not a paragraph.
+    expect(question.quextion).toBe('What does &lt;p> do?');
+    expect(question.options.slice(0, 2)).toEqual(['It starts a &lt;p>', 'Nothing']);
   });
 });

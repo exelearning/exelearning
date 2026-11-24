@@ -4,7 +4,6 @@
  * Tests pure functions that don't depend on DOM manipulation:
  * - escapeHtml: HTML character escaping
  * - validTime: Time format validation
- * - removeTags: HTML tag removal (with mocked jQuery)
  * - getCuestionDefault: Default question object structure
  * - placeImageWindows: Image dimension calculations (with mocked jQuery)
  */
@@ -164,28 +163,6 @@ describe('guess iDevice', () => {
       const q1 = $exeDevice.getCuestionDefault();
       const q2 = $exeDevice.getCuestionDefault();
       expect(q1).not.toBe(q2);
-    });
-  });
-
-  describe('removeTags', () => {
-    it('removes simple HTML tags', () => {
-      const result = $exeDevice.removeTags('<p>Hello</p>');
-      expect(result).toBe('Hello');
-    });
-
-    it('removes nested HTML tags', () => {
-      const result = $exeDevice.removeTags('<div><p><strong>Text</strong></p></div>');
-      expect(result).toBe('Text');
-    });
-
-    it('handles text without tags', () => {
-      const result = $exeDevice.removeTags('Plain text');
-      expect(result).toBe('Plain text');
-    });
-
-    it('handles empty string', () => {
-      const result = $exeDevice.removeTags('');
-      expect(result).toBe('');
     });
   });
 
@@ -661,5 +638,24 @@ describe('guess minimum score text', () => {
     device.refreshTranslations();
 
     expect(device.ci18n.msgPassScore).toBe('Minimum score needed to pass this activity: %s');
+  });
+});
+
+describe('guess Moodle import', () => {
+  it('writes the definition for its HTML field and keeps the word as text', () => {
+    global.$exeDevice = undefined;
+    const device = global.loadIdevice(join(__dirname, 'guess.js'));
+    const addWords = vi.spyOn(device, 'addWords').mockImplementation(() => {});
+    device.importCuestionaryXML(`<?xml version="1.0" encoding="UTF-8"?>
+<quiz>
+  <question type="shortanswer">
+    <questiontext format="html"><text>What does &amp;lt;p&amp;gt; start?</text></questiontext>
+    <answer fraction="100"><text>paragraph</text></answer>
+  </question>
+</quiz>`);
+    const [[words]] = addWords.mock.calls;
+
+    // Shown as HTML, the definition reads as written: "<p>", not a paragraph.
+    expect(words).toEqual([{ word: 'paragraph', definition: 'What does &lt;p> start?' }]);
   });
 });

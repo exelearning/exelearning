@@ -754,7 +754,7 @@ var $exeDevice = {
     validateAlt: function () {
         $exeDevice.accesibilityIsOk = true;
 
-        const clear = $exeDevice.removeTags;
+        const clear = $exeDevicesEdition.iDevice.common.removeTags;
         let words = [],
             alts = [],
             urls = [];
@@ -824,10 +824,6 @@ var $exeDevice = {
             html += linkAudio;
         });
         return html;
-    },
-
-    removeTags: function (str) {
-        return $('<div></div>').html(str).text();
     },
 
     startContains: function (letter, word, type) {
@@ -949,7 +945,7 @@ var $exeDevice = {
     },
 
     validateData: function () {
-        const clear = $exeDevice.removeTags,
+        const clear = $exeDevicesEdition.iDevice.common.removeTags,
             msgs = $exeDevice.msgs,
             instructions = tinymce.editors[0].getContent(),
             textAfter = tinymce.editors[1].getContent(),
@@ -1187,7 +1183,7 @@ var $exeDevice = {
             });
             if (word && questionText) {
                 words.push(
-                    `${$exeDevice.removeTags(word)}#${$exeDevice.removeTags(questionText)}`
+                    `${$exeDevicesEdition.iDevice.common.removeTags(word)}#${$exeDevicesEdition.iDevice.common.removeTags(questionText)}`
                 );
             }
         });
@@ -1247,38 +1243,23 @@ var $exeDevice = {
     },
 
     importGame: function (content, filetype) {
-        const game =
-            $exeDevices.iDevice.gamification.helpers.isJsonString(content);
-
-        if (content && content.includes('\u0000')) {
+        if (!content) {
+            eXe.app.alert($exeDevice.msgs.msgSelectFile);
+            return;
+        } else if (content.includes('\u0000')) {
             eXe.app.alert(_('Sorry, wrong file format'));
             return;
-        } else if (!game && content) {
-            if (filetype.match('text/plain')) {
-                $exeDevice.importText(content);
-            } else if (
-                filetype.match('application/xml') ||
-                filetype.match('text/xml')
-            ) {
-                $exeDevice.importMoodle(content);
-            } else {
-                eXe.app.alert(_('Sorry, wrong file format'));
-            }
-            return;
-        } else if (!game || typeof game.typeGame === 'undefined') {
-            eXe.app.alert($exeDevice.msgs.msgSelectFile);
-            return;
-        } else if (game.typeGame !== 'Rosco') {
-            eXe.app.alert($exeDevice.msgs.msgSelectFile);
-            return;
         }
-
-        game.id = $exeDevice.getIdeviceID();
-        $exeDevice.updateFieldGame(game);
-        tinymce.editors[0].setContent(game.instructions);
-        const tAfter = game.textAfter || '';
-        tinymce.editors[1].setContent(unescape(tAfter));
-        //$('.exe-form-tabs li:first-child a').click();
+        if (filetype.match('text/plain')) {
+            $exeDevice.importText(content);
+        } else if (
+            filetype.match('application/xml') ||
+            filetype.match('text/xml')
+        ) {
+            $exeDevice.importMoodle(content);
+        } else {
+            eXe.app.alert(_('Sorry, wrong file format'));
+        }
     },
 
     addEvents: function () {
@@ -1616,7 +1597,6 @@ var $exeDevice = {
                     !file.type ||
                     !(
                         file.type.match('text/plain') ||
-                        file.type.match('application/json') ||
                         file.type.match('application/xml') ||
                         file.type.match('text/xml')
                     )
@@ -1909,17 +1889,5 @@ var $exeDevice = {
             $exeDevice.playerAudio.pause();
             $exeDevice.playerAudio.currentTime = 0;
         }
-    },
-    exportGame: function () {
-        const dataGame = this.validateData();
-        if (!dataGame) return false;
-
-        const blob = new Blob([JSON.stringify(dataGame)], {
-            type: 'text/plain',
-        });
-        return $exeDevicesEdition.iDevice.gamification.share.downloadBlob(
-            blob,
-            _('Activity') + '-Rosco.json'
-        );
     },
 };

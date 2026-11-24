@@ -610,6 +610,7 @@ describe('scrambled-list iDevice export', () => {
       };
       global.$exeDevices.iDevice.gamification.scorm.registerActivity = () => {};
       global.$exeDevices.iDevice.gamification.math = {
+        ...global.$exeDevices.iDevice.gamification.math,
         hasLatex: () => false,
         updateLatex: () => {},
       };
@@ -1140,7 +1141,7 @@ describe('scrambled-list minimum score notice', () => {
     $.fn.sortable = function () {
       return this;
     };
-    gamification.math = { hasLatex: () => false, updateLatex: () => {} };
+    gamification.math = { ...originalMath, hasLatex: () => false, updateLatex: () => {} };
     gamification.report = Object.assign({}, originalReport, {
       showPassScoreNotice: vi.fn(() => null),
       updateEvaluationIcon: () => {},

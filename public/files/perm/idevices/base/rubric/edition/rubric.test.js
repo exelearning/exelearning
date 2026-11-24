@@ -331,7 +331,9 @@ describe('rubric iDevice CSV tools (edition)', () => {
 
     const getIdeviceDescriptionSpy = vi.fn(() => '<div class="alert alert-info alert-dismissible"></div>');
     const getTextFieldsetSpy = vi.fn(() => '<fieldset class="text-after-fieldset"></fieldset>');
+    // Keep the rest of the shared helpers, such as removeTags, for the tests that follow.
     globalThis.$exeDevicesEdition.iDevice.common = {
+      ...globalThis.$exeDevicesEdition.iDevice.common,
       getIdeviceDescription: getIdeviceDescriptionSpy,
       getTextFieldset: getTextFieldsetSpy,
     };

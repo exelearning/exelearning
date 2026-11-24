@@ -955,21 +955,9 @@ var $scrambledlist = {
      * @returns {String}
      */
     escapeHtmlButKeepRenderedMath: function (str) {
-        const text = String(str ?? '');
-        const RENDERED_MATH =
-            /<span class="exe-math-rendered" data-latex="[^"]*"(?: data-display="block")?><svg\b[\s\S]*?<\/svg>(?:<math\b[\s\S]*?<\/math>)?<\/span>/g;
-        const UNSAFE = /<script|<foreignobject|<iframe|<animate|<set\b|javascript:|\son\w+\s*=/i;
-        let out = '';
-        let last = 0;
-        let match;
-        RENDERED_MATH.lastIndex = 0;
-        while ((match = RENDERED_MATH.exec(text)) !== null) {
-            out += this.escapeHtml(text.slice(last, match.index));
-            out += UNSAFE.test(match[0]) ? this.escapeHtml(match[0]) : match[0];
-            last = match.index + match[0].length;
-        }
-        out += this.escapeHtml(text.slice(last));
-        return out;
+        // The shared helper validates each fragment shaped like a formula
+        // before keeping it: answers and texts can come from imported files.
+        return $exeDevices.iDevice.gamification.math.escapeHtmlButKeepRenderedMath(str);
     },
 
     /**

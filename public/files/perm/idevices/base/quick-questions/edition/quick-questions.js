@@ -649,7 +649,7 @@ var $exeDevice = {
 
     updateQuestionsNumber: function () {
         let percentage = parseInt(
-            $exeDevice.removeTags($('#quextEPercentajeQuestions').val())
+            $exeDevicesEdition.iDevice.common.removeTags($('#quextEPercentajeQuestions').val())
         );
         if (isNaN(percentage)) return;
 
@@ -1968,6 +1968,9 @@ var $exeDevice = {
     },
 
     importCuestionaryXML: function (xmlText) {
+        // The question and its options are shown as HTML: their text is
+        // written for it, so a tag written as entities shows as written.
+        const { removeTags, escapeTags } = $exeDevicesEdition.iDevice.common;
         const parser = new DOMParser(),
             xmlDoc = parser.parseFromString(xmlText, 'text/xml');
         if ($(xmlDoc).find('parsererror').length > 0) {
@@ -1995,15 +1998,15 @@ var $exeDevice = {
             let solution = 0;
             answers.each(function (index) {
                 const answer = $(this),
-                    answerHtml = $exeDevice.removeTags(answer.text().trim()),
+                    answerHtml = $exeDevicesEdition.iDevice.common.removeTags(answer.text().trim()),
                     answerText = answerHtml.split('\n')[0].trim();
-                options.push(answerText);
+                options.push(escapeTags(answerText));
                 if (parseInt(answer.attr('fraction')) === 100) {
                     solution = index;
                 }
             });
             questionsJson.push({
-                question: $exeDevice.removeTags(questionText.trim()),
+                question: escapeTags(removeTags(questionText.trim())),
                 options: options,
                 solution: solution,
             });
@@ -2055,65 +2058,20 @@ var $exeDevice = {
     },
 
     importGame: function (content, filetype) {
-        const game =
-            $exeDevices.iDevice.gamification.helpers.isJsonString(content);
-        if (content && content.includes('\u0000')) {
+        if (!content) {
+            $exeDevice.showMessage($exeDevice.msgs.msgESelectFile);
+        } else if (content.includes('\u0000')) {
             $exeDevice.showMessage(_('Sorry, wrong file format'));
-            return;
-        } else if (!game && content) {
-            if (filetype.match('text/plain')) {
-                $exeDevice.importText(content);
-            } else if (
-                filetype.match('application/xml') ||
-                filetype.match('text/xml')
-            ) {
-                $exeDevice.importMoodle(content);
-            } else {
-                eXe.app.alert(_('Sorry, wrong file format'));
-            }
-            return;
-        } else if (!game || typeof game.typeGame === 'undefined') {
-            $exeDevice.showMessage($exeDevice.msgs.msgESelectFile);
-            return;
-        } else if (game.typeGame === 'QuExt') {
-            $exeDevice.questionsGame = game.questionsGame;
-            game.id = $exeDevice.getIdeviceID();
-            for (let i = 0; i < $exeDevice.questionsGame.length; i++) {
-                if (game.questionsGame[i].type === 3) {
-                    game.questionsGame[i].eText = $exeDevices.iDevice.gamification.helpers.decodeStoredText(
-                        game.questionsGame[i].eText
-                    );
-                }
-                let numOpt = 0;
-                const options = $exeDevice.questionsGame[i].options;
-                for (let j = 0; j < options.length; j++) {
-                    if (options[j].trim().length === 0) {
-                        $exeDevice.questionsGame[i].numberOptions = numOpt;
-                        break;
-                    }
-                    numOpt++;
-                }
-            }
-            $exeDevice.updateFieldGame(game);
-            const instructions = game.instructionsExe || game.instructions,
-                tAfter = game.textAfter || '',
-                textFeedBack = game.textFeedBack || '';
-            tinyMCE
-                .get('eXeGameInstructions')
-                .setContent(unescape(instructions));
-            tinyMCE.get('eXeIdeviceTextAfter').setContent(unescape(tAfter));
-            tinyMCE
-                .get('quextEFeedBackEditor')
-                .setContent(unescape(textFeedBack));
-        } else if (game.typeGame !== 'QuExt') {
-            $exeDevice.showMessage($exeDevice.msgs.msgESelectFile);
-            return;
+        } else if (filetype.match('text/plain')) {
+            $exeDevice.importText(content);
+        } else if (
+            filetype.match('application/xml') ||
+            filetype.match('text/xml')
+        ) {
+            $exeDevice.importMoodle(content);
+        } else {
+            eXe.app.alert(_('Sorry, wrong file format'));
         }
-        $exeDevice.active = 0;
-        $exeDevice.showQuestion($exeDevice.active);
-        $exeDevice.deleteEmptyQuestion();
-        $exeDevice.updateQuestionsNumber();
-        //$('.exe-form-tabs li:first-child a').click();
     },
 
     getIdeviceID: function () {
@@ -2126,7 +2084,7 @@ var $exeDevice = {
     },
 
     validateData: function () {
-        const clear = $exeDevice.removeTags,
+        const clear = $exeDevicesEdition.iDevice.common.removeTags,
             instructions = $('#eXeGameInstructions').text(),
             instructionsExe = escape(
                 tinyMCE.get('eXeGameInstructions').getContent()
@@ -2271,12 +2229,6 @@ var $exeDevice = {
             id: id,
         };
         return data;
-    },
-
-    removeTags: function (str) {
-        const wrapper = $('<div></div>');
-        wrapper.html(str);
-        return wrapper.text();
     },
 
     addEvents: function () {
@@ -2476,7 +2428,7 @@ var $exeDevice = {
                 if (
                     !file.type ||
                     !file.type.match(
-                        /text\/plain|application\/json|application\/xml|text\/xml/
+                        /text\/plain|application\/xml|text\/xml/
                     )
                 ) {
                     $exeDevice.showMessage(

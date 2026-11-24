@@ -4,7 +4,6 @@
  * Tests pure functions that don't depend on DOM manipulation:
  * - checkQuestions: Validates and parses questions input
  * - clearText: Cleans HTML/CDATA from text
- * - removeTags: Removes HTML tags from string
  */
 
 /* eslint-disable no-undef */
@@ -117,23 +116,60 @@ describe('form iDevice edition', () => {
       const result = $exeDevice.clearText('<p>&amp; &lt; &gt;</p>');
       expect(result).toBe('& < >');
     });
+
+    it('reads markup written as entities as text, for the answers shown as plain text', () => {
+      expect($exeDevice.clearText('What does &lt;p&gt; do?')).toBe('What does <p> do?');
+    });
+
+    it('reads the text with the shared removeTags, which runs nothing', () => {
+      const spy = vi.spyOn(global.$exeDevicesEdition.iDevice.common, 'removeTags');
+      try {
+        $exeDevice.clearText('<p>Hello</p>');
+        expect(spy).toHaveBeenCalledWith('<p>Hello</p>');
+      } finally {
+        spy.mockRestore();
+      }
+    });
   });
 
-  describe('removeTags', () => {
-    it('removes HTML tags using jQuery', () => {
-      expect($exeDevice.removeTags('<p>Hello</p>')).toBe('Hello');
+  describe('imported question texts, shown as HTML', () => {
+    const image = '<img src="x" onerror="window.ran = true">';
+    const asEntities = image.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+    it('writes a Moodle question text for baseText', () => {
+      expect($exeDevice.questionHtml(`Is the sky blue? ${asEntities}`)).toBe(
+        'Is the sky blue? &lt;img src="x" onerror="window.ran = true">'
+      );
+      expect($exeDevice.questionHtml('<p>What does &lt;p&gt; do?</p>')).toBe('What does &lt;p> do?');
     });
 
-    it('handles nested tags', () => {
-      expect($exeDevice.removeTags('<div><span>Test</span></div>')).toBe('Test');
+    it('writes the question of a text line, already read, without reading it again', () => {
+      const line = $exeDevice.clearText('1#What does &lt;p&gt; do?');
+      expect($exeDevice.getTrueFalseQuestion(line).baseText).toBe('<p>What does &lt;p> do?<p>');
     });
 
-    it('handles empty string', () => {
-      expect($exeDevice.removeTags('')).toBe('');
-    });
-
-    it('handles plain text', () => {
-      expect($exeDevice.removeTags('Plain text')).toBe('Plain text');
+    it('keeps a Moodle answer as the text it shows', () => {
+      const addQuestions = vi.spyOn($exeDevice, 'addQuestions').mockImplementation(() => {});
+      try {
+        $exeDevice.importCuestionaryXML(`<?xml version="1.0" encoding="UTF-8"?>
+<quiz>
+  <question type="multichoice">
+    <questiontext format="html"><text>Which tag starts a paragraph? ${asEntities.replace(/&/g, '&amp;')}</text></questiontext>
+    <answer fraction="100"><text>&amp;lt;p&amp;gt;</text></answer>
+    <answer fraction="0"><text>&amp;lt;div&amp;gt;</text></answer>
+  </question>
+</quiz>`);
+        const [[questions]] = addQuestions.mock.calls;
+        expect(questions[0].baseText).toBe(
+          '<p>Which tag starts a paragraph? &lt;img src="x" onerror="window.ran = true"><p>'
+        );
+        expect(questions[0].answers).toEqual([
+          [true, '<p>'],
+          [false, '<div>'],
+        ]);
+      } finally {
+        addQuestions.mockRestore();
+      }
     });
   });
 

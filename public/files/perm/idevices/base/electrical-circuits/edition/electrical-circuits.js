@@ -356,7 +356,7 @@ var $exeDevice = {
 
     updateQuestionsNumber: function () {
         let percentaje = parseInt(
-            $exeDevice.removeTags(
+            $exeDevicesEdition.iDevice.common.removeTags(
                 $('#elcePercentajeQuestionsValue').val()
             ),
             10
@@ -2036,7 +2036,7 @@ var $exeDevice = {
     },
 
     validateData: function () {
-        const clear = $exeDevice.removeTags,
+        const clear = $exeDevicesEdition.iDevice.common.removeTags,
             activityMode = $('input[name="slcactivitymode"]:checked').val() || 'test',
             instructions = $('#eXeGameInstructions').text(),
             instructionsExe = escape(
@@ -2171,10 +2171,6 @@ var $exeDevice = {
             id: id,
             globalTime: globalTime,
         };
-    },
-
-    removeTags: function (str) {
-        return $('<div></div>').html(str).text();
     },
 
     showTypeQuestion: function (type) {
@@ -2403,7 +2399,6 @@ var $exeDevice = {
                         !file.type ||
                         !(
                             file.type.match('text/plain') ||
-                            file.type.match('application/json') ||
                             file.type.match('application/xml') ||
                             file.type.match('text/xml')
                         )
@@ -2538,54 +2533,26 @@ var $exeDevice = {
     },
 
     importGame: function (content, filetype) {
-        const game =
-            $exeDevices.iDevice.gamification.helpers.isJsonString(content);
-
-        if (content && content.includes('\u0000')) {
+        if (!content) {
+            $exeDevice.showMessage($exeDevice.msgs.msgESelectFile);
+        } else if (content.includes('\u0000')) {
             $exeDevice.showMessage(_('Sorry, wrong file format'));
-            return;
-        } else if (!game && content) {
-            if (filetype.match('text/plain')) {
-                $exeDevice.importText(content);
-            } else if (
-                filetype.match('application/xml') ||
-                filetype.match('text/xml')
-            ) {
-                $exeDevice.importMoodle(content);
-            } else {
-                eXe.app.alert(_('Sorry, wrong file format'));
-            }
-            return;
-        } else if (!game || typeof game.typeGame === 'undefined') {
-            $exeDevice.showMessage($exeDevice.msgs.msgESelectFile);
-            return;
-        } else if (game.typeGame === 'ElectricalCircuits' || game.typeGame === 'Selecciona') {
-            game.id = $exeDevice.getIdeviceID();
-            $exeDevice.active = 0;
-            $exeDevice.updateFieldGame(game);
-            const instructions = game.instructionsExe || game.instructions,
-                tAfter = game.textAfter || '',
-                textFeedBack = game.textFeedBack || '';
-            $exeDevice.setEditorContent('eXeGameInstructions', unescape(instructions));
-            $exeDevice.setEditorContent('eXeIdeviceTextAfter', unescape(tAfter));
-            $exeDevice.setEditorContent('elceFeedBackEditor', unescape(textFeedBack));
-        } else if (game.typeGame === 'QuExt') {
-            $exeDevice.selectsGame = $exeDevice.importQuExt(game);
-        } else if (game.typeGame === 'Rosco' || game.typeGame === 'Adivina') {
-            $exeDevice.selectsGame = $exeDevice.importRosco(game);
+        } else if (filetype.match('text/plain')) {
+            $exeDevice.importText(content);
+        } else if (
+            filetype.match('application/xml') ||
+            filetype.match('text/xml')
+        ) {
+            $exeDevice.importMoodle(content);
         } else {
-            $exeDevice.showMessage($exeDevice.msgs.msgESelectFile);
-            return;
+            eXe.app.alert(_('Sorry, wrong file format'));
         }
-
-        $exeDevice.active = 0;
-        $exeDevice.showQuestion($exeDevice.active);
-        $exeDevice.deleteEmptyQuestion();
-        $exeDevice.updateQuestionsNumber();
-        $exeDevice.updateSelectOrder();
     },
 
     importCuestionaryXML: function (xmlText) {
+        // The question and its options are shown as HTML: their text is
+        // written for it, so a tag written as entities shows as written.
+        const { removeTags, escapeTags } = $exeDevicesEdition.iDevice.common;
         const parser = new DOMParser(),
             xmlDoc = parser.parseFromString(xmlText, 'text/xml');
 
@@ -2625,11 +2592,11 @@ var $exeDevice = {
             if (typeSelect === 0) {
                 for (let j = 0; j < answers.length; j++) {
                     const answer = answers[j],
-                        answerHtml = $exeDevice.removeTags(
+                        answerHtml = $exeDevicesEdition.iDevice.common.removeTags(
                             $(answer).find('text').eq(0).text().trim()
                         ),
                         answerText = answerHtml.split('\n')[0].trim();
-                    options.push(answerText);
+                    options.push(escapeTags(answerText));
                     if (parseFloat($(answer).attr('fraction')) > 0) {
                         solution += String.fromCharCode(65 + j);
                     }
@@ -2652,7 +2619,7 @@ var $exeDevice = {
 
             questionsJson.push({
                 typeSelect,
-                question: $exeDevice.removeTags(questionText.trim()),
+                question: escapeTags(removeTags(questionText.trim())),
                 options,
                 solution,
                 solutionQuestion,
@@ -2919,33 +2886,6 @@ var $exeDevice = {
         $exeDevice.updateQuestionsNumber();
     },
 
-    importQuExt: function (data) {
-        data.questionsGame.forEach((cuestion) => {
-            const p = $exeDevice.getCuestionDefault();
-            p.typeSelect = 0;
-            p.time = cuestion.time;
-            p.numberOptions = cuestion.numberOptions;
-            p.quextion = cuestion.quextion;
-            p.options = [...cuestion.options];
-
-            let numOpt = 0;
-            for (let j = 0; j < p.options.length; j++) {
-                if (p.options[j].trim().length === 0) {
-                    p.numberOptions = numOpt;
-                    break;
-                }
-                numOpt++;
-            }
-
-            const solution = 'ABCD';
-            p.solution = solution.charAt(cuestion.solution);
-            p.solutionQuestion = '';
-            p.percentageShow = 35;
-            $exeDevice.selectsGame.push(p);
-        });
-        return $exeDevice.selectsGame;
-    },
-
     deleteEmptyQuestion: function () {
         if ($exeDevice.selectsGame.length > 1) {
             const quextion = $('#elceQuestion').val().trim(),
@@ -2978,35 +2918,6 @@ var $exeDevice = {
                 $exeDevice.removeQuestion();
             }
         }
-    },
-
-    importRosco: function (data) {
-        for (let i = 0; i < data.wordsGame.length; i++) {
-            const p = $exeDevice.getCuestionDefault();
-            const cuestion = data.wordsGame[i];
-            const msc = $exeDevice.msgs.msgContaint.replace(
-                '%1',
-                cuestion.letter
-            );
-            const mss = $exeDevice.msgs.msgStartWith.replace(
-                '%1',
-                cuestion.letter
-            );
-            const start = cuestion.type == 1 ? msc : mss;
-            p.typeSelect = 2;
-            p.time =
-                cuestion.time || $exeDevice.getIndexTime(data.timeQuestion);
-            p.numberOptions = 4;
-            p.quextion = start + ': ' + cuestion.definition;
-            p.options = ['', '', '', ''];
-            p.solution = '';
-            p.solutionQuestion = cuestion.word;
-            p.percentageShow = cuestion.percentageShow || data.percentageShow;
-            if (p.solutionQuestion.trim().length > 0) {
-                $exeDevice.selectsGame.push(p);
-            }
-        }
-        return $exeDevice.selectsGame;
     },
 
     getIndexTime: function (tm) {
