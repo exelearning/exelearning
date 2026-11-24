@@ -1403,16 +1403,17 @@ global.$exeDevices = {
 
 /**
  * Mirrors $exeDevicesEdition.iDevice.common in public/app/common/common_edition.js.
- * removeTags is the real implementation, not a mock: the iDevices strip tags
- * through it when they validate, import or save, and their tests check what
- * it leaves. Keep it identical to the library's.
+ * removeTags and escapeTags are the real implementations, not mocks: the
+ * iDevices strip tags through them when they validate, import or save, and
+ * their tests check what they leave. Keep them identical to the library's.
  */
 const mockIdeviceCommon = {
   removeTags: html => {
     const template = document.createElement('template');
     template.innerHTML = html == null ? '' : String(html);
-    return template.content.textContent.replace(/<(?=[A-Za-z\/!?])/g, '&lt;');
+    return template.content.textContent;
   },
+  escapeTags: text => (text == null ? '' : String(text)).replace(/<(?=[A-Za-z\/!?])/g, '&lt;'),
 };
 
 global.$exeDevicesEdition = {

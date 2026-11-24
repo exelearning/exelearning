@@ -16,6 +16,11 @@ const shortAnswer = (question: string, answer: string) =>
     <questiontext format="html"><text><![CDATA[${question}]]></text></questiontext>
     <answer fraction="100"><text><![CDATA[${answer}]]></text></answer>
   </question>`);
+const multiChoice = (question: string, answers: string[]) =>
+    quiz(`  <question type="multichoice">
+    <questiontext format="html"><text><![CDATA[${question}]]></text></questiontext>
+${answers.map((answer, i) => `    <answer fraction="${i ? 0 : 100}"><text><![CDATA[${answer}]]></text></answer>`).join('\n')}
+  </question>`);
 const trueFalse = (question: string) =>
     quiz(`  <question type="truefalse">
     <questiontext format="html"><text><![CDATA[${question}]]></text></questiontext>
@@ -86,6 +91,23 @@ cases.push(
         file: { name: 'questions.xml', mimeType: 'text/xml', body: trueFalse(`Is the sky blue? ${asEntities}`) },
         imported: questionShown,
         kept: shownAsWritten('#formPreview', `Is the sky blue? ${image}`),
+    },
+    {
+        device: 'form',
+        source: 'Moodle answers written as entities',
+        file: {
+            name: 'questions.xml',
+            mimeType: 'text/xml',
+            body: multiChoice('Is the sky blue?', ['&lt;p&gt;', `Paris ${asEntities}`]),
+        },
+        imported: questionShown,
+        // The answers are plain text, shown as written, as main shows them.
+        kept: async page => {
+            await expect(page.locator('#formPreview .selection-buttons-container label')).toHaveText([
+                '<p>',
+                `Paris ${image}`,
+            ]);
+        },
     },
     {
         device: 'scrambled-list',

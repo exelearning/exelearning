@@ -262,7 +262,11 @@ var $exeDevice = {
                 if (cleanWord.length <= 14 && !cleanWord.includes(' ')) {
                     let wd = {
                         word: cleanWord,
-                        definition: $exeDevicesEdition.iDevice.common.removeTags(questionText),
+                        // The definition is shown as HTML: its text is written for
+                        // it, so a tag written as entities shows as written.
+                        definition: $exeDevicesEdition.iDevice.common.escapeTags(
+                            $exeDevicesEdition.iDevice.common.removeTags(questionText)
+                        ),
                     };
                     words.push(wd);
                 }

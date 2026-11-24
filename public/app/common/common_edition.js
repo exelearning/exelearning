@@ -163,12 +163,10 @@ var $exeDevicesEdition = {
              * imported file, and parsed in the page its images would load and
              * their handlers run.
              *
-             * Reading decodes character references, so markup written as
-             * entities (&lt;p&gt;) comes out as text with the shape of a tag.
-             * Each "<" that would open a tag there is written back as &lt;:
-             * wherever the text is later shown as HTML it shows as written
-             * and runs nothing, and read here again it gives the same text.
-             * Any other "<", as in "3 < 5", is left as it is.
+             * What is returned is text: markup written as entities
+             * (&lt;p&gt;) comes out as the characters it stands for. A field
+             * shown as plain text can take it as it is; one shown as HTML
+             * needs it through escapeTags first.
              *
              * @param {*} html
              * @returns {string}
@@ -176,7 +174,20 @@ var $exeDevicesEdition = {
             removeTags: function (html) {
                 const template = document.createElement('template');
                 template.innerHTML = html == null ? '' : String(html);
-                return template.content.textContent.replace(/<(?=[A-Za-z\/!?])/g, '&lt;');
+                return template.content.textContent;
+            },
+            /**
+             * Plain text written for a field shown as HTML. Each "<" that
+             * would open a tag ("<p>", "</p", "<!--") is written as &lt;, so
+             * the text shows as written and runs nothing. Any other "<", as
+             * in "3 < 5", is left as it is. Reading the result with
+             * removeTags gives the text back.
+             *
+             * @param {*} text
+             * @returns {string}
+             */
+            escapeTags: function (text) {
+                return (text == null ? '' : String(text)).replace(/<(?=[A-Za-z\/!?])/g, '&lt;');
             }
         },
         // Gamification

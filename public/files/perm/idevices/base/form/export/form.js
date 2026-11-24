@@ -440,16 +440,9 @@ var $form = {
         for (const question of items) {
             // Extract from baseText (all question types have this)
             extractFromHTML(question.baseText);
-            // Extract from answers (for selection type questions)
-            // answers is array of [isCorrect:boolean, text:string]
-            if (question.answers && Array.isArray(question.answers)) {
-                question.answers.forEach((answer) => {
-                    if (Array.isArray(answer) && answer.length > 1) {
-                        // answer[1] is the text
-                        extractFromHTML(answer[1]);
-                    }
-                });
-            }
+            // The answers of a selection question are plain text, shown
+            // escaped, so they hold no media. Read as HTML, text that only
+            // looks like an image would come out here as a real one.
 
             // Extract from feedbackRight and feedbackWrong (all question types can have these)
             extractFromHTML(question.feedbackRight);

@@ -1701,11 +1701,11 @@ var $exeDevice = {
                         eText = answerText;
                     }
                 });
+                // addCards reads the texts: read here too, the text of a
+                // tag written as entities would be read again as a tag.
                 const bktext = {
-                    eTextBk: $exeDevicesEdition.iDevice.common.removeTags(
-                        $question.find('questiontext').first().text().trim()
-                    ),
-                    eText: $exeDevicesEdition.iDevice.common.removeTags(eText),
+                    eTextBk: $question.find('questiontext').first().text().trim(),
+                    eText: eText,
                 };
                 return eText ? bktext : null;
             })
@@ -1769,14 +1769,16 @@ var $exeDevice = {
             return;
         }
         // Every import (text file, Moodle XML, glossary and Create with AI)
-        // ends here. Its texts are read as text, so no markup reaches the card
-        // preview, and stored encoded as the form stores them, so a %-encoded
-        // tag is not decoded into one there.
-        const removeTags = $exeDevicesEdition.iDevice.common.removeTags;
+        // ends here. Its texts are read as text and written for the card,
+        // which is shown as HTML, so no markup reaches the card preview and a
+        // tag written as entities shows as written. They are stored encoded
+        // as the form stores them, so a %-encoded tag is not decoded into one
+        // there.
+        const { removeTags, escapeTags } = $exeDevicesEdition.iDevice.common;
         for (let i = 0; i < cards.length; i++) {
             let card = cards[i];
-            const eText = removeTags(card.eText),
-                eTextBk = removeTags(card.eTextBk);
+            const eText = escapeTags(removeTags(card.eText)),
+                eTextBk = escapeTags(removeTags(card.eTextBk));
             if (eTextBk && eText) {
                 card.eText = $exeDevice.encodeURIComponentSafe(eText);
                 card.eTextBk = $exeDevice.encodeURIComponentSafe(eTextBk);

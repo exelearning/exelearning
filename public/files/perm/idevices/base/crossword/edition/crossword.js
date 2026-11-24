@@ -1552,7 +1552,11 @@ var $exeDevice = {
             if (word && questionText) {
                 let wd = {
                     word: $exeDevicesEdition.iDevice.common.removeTags(word),
-                    definition: $exeDevicesEdition.iDevice.common.removeTags(questionText),
+                    // The definition is shown as HTML: its text is written for
+                    // it, so a tag written as entities shows as written.
+                    definition: $exeDevicesEdition.iDevice.common.escapeTags(
+                        $exeDevicesEdition.iDevice.common.removeTags(questionText)
+                    ),
                 };
                 words.push(wd);
             }

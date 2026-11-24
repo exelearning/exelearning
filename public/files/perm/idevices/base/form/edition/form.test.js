@@ -117,10 +117,8 @@ describe('form iDevice edition', () => {
       expect(result).toBe('& < >');
     });
 
-    it('does not turn markup written as entities into a tag', () => {
-      expect($exeDevice.clearText('Is the sky blue? &lt;img src="x" onerror="window.ran = true"&gt;')).toBe(
-        'Is the sky blue? &lt;img src="x" onerror="window.ran = true">'
-      );
+    it('reads markup written as entities as text, for the answers shown as plain text', () => {
+      expect($exeDevice.clearText('What does &lt;p&gt; do?')).toBe('What does <p> do?');
     });
 
     it('reads the text with the shared removeTags, which runs nothing', () => {
@@ -130,6 +128,47 @@ describe('form iDevice edition', () => {
         expect(spy).toHaveBeenCalledWith('<p>Hello</p>');
       } finally {
         spy.mockRestore();
+      }
+    });
+  });
+
+  describe('imported question texts, shown as HTML', () => {
+    const image = '<img src="x" onerror="window.ran = true">';
+    const asEntities = image.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+    it('writes a Moodle question text for baseText', () => {
+      expect($exeDevice.questionHtml(`Is the sky blue? ${asEntities}`)).toBe(
+        'Is the sky blue? &lt;img src="x" onerror="window.ran = true">'
+      );
+      expect($exeDevice.questionHtml('<p>What does &lt;p&gt; do?</p>')).toBe('What does &lt;p> do?');
+    });
+
+    it('writes the question of a text line, already read, without reading it again', () => {
+      const line = $exeDevice.clearText('1#What does &lt;p&gt; do?');
+      expect($exeDevice.getTrueFalseQuestion(line).baseText).toBe('<p>What does &lt;p> do?<p>');
+    });
+
+    it('keeps a Moodle answer as the text it shows', () => {
+      const addQuestions = vi.spyOn($exeDevice, 'addQuestions').mockImplementation(() => {});
+      try {
+        $exeDevice.importCuestionaryXML(`<?xml version="1.0" encoding="UTF-8"?>
+<quiz>
+  <question type="multichoice">
+    <questiontext format="html"><text>Which tag starts a paragraph? ${asEntities.replace(/&/g, '&amp;')}</text></questiontext>
+    <answer fraction="100"><text>&amp;lt;p&amp;gt;</text></answer>
+    <answer fraction="0"><text>&amp;lt;div&amp;gt;</text></answer>
+  </question>
+</quiz>`);
+        const [[questions]] = addQuestions.mock.calls;
+        expect(questions[0].baseText).toBe(
+          '<p>Which tag starts a paragraph? &lt;img src="x" onerror="window.ran = true"><p>'
+        );
+        expect(questions[0].answers).toEqual([
+          [true, '<p>'],
+          [false, '<div>'],
+        ]);
+      } finally {
+        addQuestions.mockRestore();
       }
     });
   });

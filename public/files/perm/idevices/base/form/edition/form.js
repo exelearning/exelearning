@@ -485,7 +485,7 @@ var $exeDevice = {
                 questionsArray.push({
                     activityType: 'selection',
                     selectionType: selectionType,
-                    baseText: `<p>${$exeDevice.clearText(questionText)}<p>`,
+                    baseText: `<p>${$exeDevice.questionHtml(questionText)}<p>`,
                     answers: answers,
                 });
             } else if (type === 'truefalse') {
@@ -506,7 +506,7 @@ var $exeDevice = {
                 if (correctAnswer !== null) {
                     questionsArray.push({
                         activityType: 'true-false',
-                        baseText: `<p>${$exeDevice.clearText(questionText)}<p>`,
+                        baseText: `<p>${$exeDevice.questionHtml(questionText)}<p>`,
                         answer: correctAnswer,
                     });
                 }
@@ -525,6 +525,20 @@ var $exeDevice = {
         let sinCdata = text.replace(/<!\[CDATA\[/, '').replace(/]]$/, '');
         const cleartext = $exeDevicesEdition.iDevice.common.removeTags(sinCdata);
         return cleartext.replace(/\n/g, ' ').trim();
+    },
+
+    // A question's baseText is shown as HTML, so an imported question text is
+    // written for it: a tag written as entities shows as written. The answers
+    // are shown as plain text and keep what clearText returns.
+    questionHtml(text) {
+        return $exeDevicesEdition.iDevice.common.escapeTags($exeDevice.clearText(text));
+    },
+
+    // insertQuestions reads each line of a text file with clearText before it
+    // is split, so its question text is only written for baseText: read again,
+    // the text of a tag written as entities would be read as a tag.
+    lineQuestionHtml(text) {
+        return $exeDevicesEdition.iDevice.common.escapeTags(String(text == null ? '' : text).trim());
     },
 
     importText: function (content) {
@@ -605,7 +619,7 @@ var $exeDevice = {
         if (isNaN(solution) || (solution !== 0 && solution !== 1)) return null;
         return {
             activityType: 'true-false',
-            baseText: `<p>${$exeDevice.clearText(linarray[1])}<p>`,
+            baseText: `<p>${$exeDevice.lineQuestionHtml(linarray[1])}<p>`,
             answer: solution,
         };
     },
@@ -618,7 +632,7 @@ var $exeDevice = {
         if (isNaN(solution) || (solution !== 0 && solution !== 1)) return null;
         return {
             activityType: 'true-false',
-            baseText: `<p>${$exeDevice.clearText(linarray[1])}<p>`,
+            baseText: `<p>${$exeDevice.lineQuestionHtml(linarray[1])}<p>`,
             answer: solution,
         };
     },
@@ -630,7 +644,7 @@ var $exeDevice = {
         const solution = parseInt(linarray[1]) ? 1 : 0;
         return {
             activityType: 'true-false',
-            baseText: `<p>${$exeDevice.clearText(linarray[0])}<p>`,
+            baseText: `<p>${$exeDevice.lineQuestionHtml(linarray[0])}<p>`,
             answer: solution,
         };
     },
@@ -648,7 +662,7 @@ var $exeDevice = {
         let question = {
             activityType: 'selection',
             selectionType: 'single',
-            baseText: `<p>${$exeDevice.clearText(questionText)}<p>`,
+            baseText: `<p>${$exeDevice.lineQuestionHtml(questionText)}<p>`,
             answers: answers,
         };
         return question;
@@ -671,7 +685,7 @@ var $exeDevice = {
         return {
             activityType: 'selection',
             selectionType: 'multiple',
-            baseText: `<p>${$exeDevice.clearText(questionText)}</p>`,
+            baseText: `<p>${$exeDevice.lineQuestionHtml(questionText)}</p>`,
             answers: answers,
         };
     },

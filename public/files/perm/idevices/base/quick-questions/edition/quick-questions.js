@@ -1968,6 +1968,9 @@ var $exeDevice = {
     },
 
     importCuestionaryXML: function (xmlText) {
+        // The question and its options are shown as HTML: their text is
+        // written for it, so a tag written as entities shows as written.
+        const { removeTags, escapeTags } = $exeDevicesEdition.iDevice.common;
         const parser = new DOMParser(),
             xmlDoc = parser.parseFromString(xmlText, 'text/xml');
         if ($(xmlDoc).find('parsererror').length > 0) {
@@ -1997,13 +2000,13 @@ var $exeDevice = {
                 const answer = $(this),
                     answerHtml = $exeDevicesEdition.iDevice.common.removeTags(answer.text().trim()),
                     answerText = answerHtml.split('\n')[0].trim();
-                options.push(answerText);
+                options.push(escapeTags(answerText));
                 if (parseInt(answer.attr('fraction')) === 100) {
                     solution = index;
                 }
             });
             questionsJson.push({
-                question: $exeDevicesEdition.iDevice.common.removeTags(questionText.trim()),
+                question: escapeTags(removeTags(questionText.trim())),
                 options: options,
                 solution: solution,
             });

@@ -189,36 +189,61 @@ describe('common_edition.js', () => {
         );
       });
 
-      it('does not turn markup written as entities into a tag', () => {
-        expect(removeTags('Paris &lt;img src="x" onerror="window.ran = true"&gt;')).toBe(
-          'Paris &lt;img src="x" onerror="window.ran = true">'
-        );
-        expect(removeTags('&lt;/p&gt; &lt;!-- note --&gt; &lt;?xml?&gt;')).toBe('&lt;/p> &lt;!-- note --> &lt;?xml?>');
+      it('returns markup written as entities as the text it stands for', () => {
+        // The text of a field shown as plain text, as main returns it: "<p>", not "&lt;p>".
+        expect(removeTags('What does &lt;p&gt; do?')).toBe('What does <p> do?');
+        expect(removeTags('a < b & c')).toBe('a < b & c');
+        expect(removeTags('5 &gt; 3')).toBe('5 > 3');
+      });
+    });
+
+    describe('escapeTags', () => {
+      const { escapeTags, removeTags } = globalThis.$exeDevicesEdition.iDevice.common;
+      const shown = (html) => {
+        const template = document.createElement('template');
+        template.innerHTML = html;
+        return { text: template.content.textContent, elements: template.content.querySelectorAll('*').length };
+      };
+
+      it('writes each "<" that would open a tag as a character reference', () => {
+        expect(escapeTags('What does <p> do?')).toBe('What does &lt;p> do?');
+        expect(escapeTags('</p> <!-- note --> <?xml?>')).toBe('&lt;/p> &lt;!-- note --> &lt;?xml?>');
       });
 
-      it('returns text that shows as written in HTML', () => {
-        const shown = (html) => {
-          const template = document.createElement('template');
-          template.innerHTML = html;
-          return { text: template.content.textContent, elements: template.content.querySelectorAll('*').length };
-        };
-        expect(shown(removeTags('What does &lt;p&gt; do?'))).toEqual({ text: 'What does <p> do?', elements: 0 });
-        expect(shown(removeTags('Paris &lt;img src="x" onerror="window.ran = true"&gt;'))).toEqual({
-          text: 'Paris <img src="x" onerror="window.ran = true">',
+      it('leaves any other "<" as it is', () => {
+        expect(escapeTags('a < b & c')).toBe('a < b & c');
+        expect(escapeTags('x<5 and 5 > 3')).toBe('x<5 and 5 > 3');
+      });
+
+      it('reads no text from a missing value, and a number as its digits', () => {
+        expect(escapeTags(undefined)).toBe('');
+        expect(escapeTags(null)).toBe('');
+        expect(escapeTags(5)).toBe('5');
+      });
+
+      it('gives text that shows as written in HTML and runs nothing', () => {
+        const image = '<img src="x" onerror="window.ran = true">';
+        expect(shown(escapeTags(removeTags('What does &lt;p&gt; do?')))).toEqual({
+          text: 'What does <p> do?',
+          elements: 0,
+        });
+        expect(shown(escapeTags(removeTags(`Paris ${image.replace(/</g, '&lt;')}`)))).toEqual({
+          text: `Paris ${image}`,
           elements: 0,
         });
       });
 
-      it('leaves a "<" that opens no tag as it is', () => {
-        expect(removeTags('a < b & c')).toBe('a < b & c');
-        // Written as entities: happy-dom, unlike a browser, reads a bare "<5" as a tag.
-        expect(removeTags('x &lt; 5, x&lt;5 and 5 &gt; 3')).toBe('x < 5, x<5 and 5 > 3');
+      it('gives the text back when its result is read with removeTags', () => {
+        // No bare "<5" or "-->": happy-dom, unlike a browser, misreads them.
+        for (const text of ['What does <p> do?', 'a < b & c', '</p> and <b>', '100%']) {
+          expect(removeTags(escapeTags(text))).toBe(text);
+        }
       });
 
-      it('gives the same text when its result is read again', () => {
-        for (const html of ['a < b & c', '5 &gt; 3', 'Tom &amp; Jerry', '&lt;p&gt;Hi&lt;/p&gt;', '100%']) {
-          const text = removeTags(html);
-          expect(removeTags(text)).toBe(text);
+      it('gives the same HTML when a field is imported twice', () => {
+        for (const html of ['What does &lt;p&gt; do?', '&lt;p&gt;Hi&lt;/p&gt;', 'a < b & c', 'Tom &amp; Jerry']) {
+          const once = escapeTags(removeTags(html));
+          expect(escapeTags(removeTags(once))).toBe(once);
         }
       });
     });

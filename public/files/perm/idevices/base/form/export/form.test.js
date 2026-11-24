@@ -58,6 +58,24 @@ describe('form iDevice export', () => {
     });
   });
 
+  describe('extractMediaElements', () => {
+    it('collects the media of the question, not of the plain-text answers', () => {
+      const html = $form.extractMediaElements([
+        {
+          baseText: '<p>Look <img src="files/map.png"></p>',
+          answers: [
+            [true, '<img src="files/answer.png" onerror="window.ran = true">'],
+            [false, 'Plain'],
+          ],
+        },
+      ]);
+
+      expect(html).toContain('files/map.png');
+      expect(html).not.toContain('files/answer.png');
+      expect(html).not.toContain('onerror');
+    });
+  });
+
   describe('getProcessTextSelectionQuestion escaping', () => {
     it('renders plain-text symbols without changing the stored answers', () => {
       $form.replaceResourceDirectoryPaths = (_data, text) => text;

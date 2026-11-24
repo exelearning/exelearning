@@ -478,3 +478,23 @@ describe('trivial minimum score text', () => {
     expect(device.ci18n.msgPassScore).toBe('Minimum score needed to pass this activity: %s');
   });
 });
+
+describe('trivial Moodle import', () => {
+  it('writes the question and its options for their HTML fields', () => {
+    global.$exeDevice = undefined;
+    const device = global.loadIdevice(join(__dirname, 'trivial.js'));
+    device.selectsGame = [];
+    const [question] = device.importCuestionaryXML(`<?xml version="1.0" encoding="UTF-8"?>
+<quiz>
+  <question type="multichoice">
+    <questiontext format="html"><text>What does &amp;lt;p&amp;gt; do?</text></questiontext>
+    <answer fraction="100"><text>It starts a &amp;lt;p&amp;gt;</text></answer>
+    <answer fraction="0"><text>Nothing</text></answer>
+  </question>
+</quiz>`);
+
+    // Shown as HTML, each reads as written: "<p>", not a paragraph.
+    expect(question.quextion).toBe('What does &lt;p> do?');
+    expect(question.options.slice(0, 2)).toEqual(['It starts a &lt;p>', 'Nothing']);
+  });
+});
