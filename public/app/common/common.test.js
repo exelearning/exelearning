@@ -5376,6 +5376,31 @@ describe('common.js $exeDevices', () => {
         getMath().isRenderedMath(forged);
         expect(window.ran).toBeUndefined();
       });
+
+      // escapeHtmlButKeepRenderedMath only passes fragments its pattern
+      // matches, so these checks are reached by calling isRenderedMath itself.
+      it.each([
+        ['an empty fragment', ''],
+        ['more than the span', `${formula('<svg></svg>')}<b>x</b>`],
+        ['another element', '<div class="exe-math-rendered" data-latex="x"><svg></svg></div>'],
+        ['another class', '<span class="exe-math-rendered extra" data-latex="x"><svg></svg></span>'],
+        ['another attribute on the span', '<span class="exe-math-rendered" data-latex="x" title="x"><svg></svg></span>'],
+        ['text next to the formula', '<span class="exe-math-rendered" data-latex="x"><svg></svg>text</span>'],
+        ['no SVG', '<span class="exe-math-rendered" data-latex="x"></span>'],
+        ['a third element', formula('<svg></svg>', '<math></math><math></math>')],
+        ['MathML before the SVG', '<span class="exe-math-rendered" data-latex="x"><math></math></span>'],
+        ['a second SVG instead of MathML', formula('<svg></svg>', '<svg></svg>')],
+        ['a tip box outside a foreignObject', formula('<svg><g><mjx-tool><mjx-tip></mjx-tip></mjx-tool></g></svg>')],
+        ['a tip outside its box', formula('<svg><g><mjx-tip><svg></svg></mjx-tip></g></svg>')],
+      ])('isRenderedMath rejects %s', (_, html) => {
+        expect(getMath().isRenderedMath(html)).toBe(false);
+      });
+
+      it('treats a missing value as empty', () => {
+        expect(getMath().escapeHtmlButKeepRenderedMath(null)).toBe('');
+        expect(getMath().escapeHtmlButKeepRenderedMath(undefined)).toBe('');
+        expect(getMath().isRenderedMath(null)).toBe(false);
+      });
     });
 
     it('hasLatex detects LaTeX syntax', () => {
