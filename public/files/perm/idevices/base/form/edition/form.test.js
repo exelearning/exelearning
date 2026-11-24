@@ -119,7 +119,7 @@ describe('form iDevice edition', () => {
 
     it('does not turn markup written as entities into a tag', () => {
       expect($exeDevice.clearText('Is the sky blue? &lt;img src="x" onerror="window.ran = true"&gt;')).toBe(
-        'Is the sky blue?'
+        'Is the sky blue? &lt;img src="x" onerror="window.ran = true">'
       );
     });
 

@@ -39,11 +39,15 @@ const cardShown = (input: string, text: RegExp) => async (page: Page) => {
 const questionShown = async (page: Page) => {
     await expect(page.locator('#formPreview')).toContainText('Is the sky blue?');
 };
+// Markup written as entities is text, and is shown as written where the iDevice renders HTML.
+const shownAsWritten = (preview: string, text: string) => async (page: Page) => {
+    await expect(page.locator(preview)).toContainText(text);
+};
 
 const cases: ImportCase[] = [];
-for (const [device, input] of [
-    ['relate', '#rclEText'],
-    ['flipcards', '#flipcardsEText'],
+for (const [device, input, preview] of [
+    ['relate', '#rclEText', '#rclETextDiv'],
+    ['flipcards', '#flipcardsEText', '#flipcardsETextDiv'],
 ]) {
     cases.push(
         {
@@ -55,6 +59,7 @@ for (const [device, input] of [
                 body: shortAnswer('Capital of France?', `Paris ${asEntities}`),
             },
             imported: cardShown(input, /Paris/),
+            kept: shownAsWritten(preview, `Paris ${image}`),
         },
         {
             device,
@@ -80,6 +85,7 @@ cases.push(
         source: 'a Moodle question whose image is written as entities',
         file: { name: 'questions.xml', mimeType: 'text/xml', body: trueFalse(`Is the sky blue? ${asEntities}`) },
         imported: questionShown,
+        kept: shownAsWritten('#formPreview', `Is the sky blue? ${image}`),
     },
     {
         device: 'scrambled-list',

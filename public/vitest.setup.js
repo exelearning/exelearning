@@ -1409,18 +1409,9 @@ global.$exeDevices = {
  */
 const mockIdeviceCommon = {
   removeTags: html => {
-    const read = value => {
-      const template = document.createElement('template');
-      template.innerHTML = value;
-      return template.content.textContent;
-    };
-    let text = html == null ? '' : String(html);
-    for (let pass = 0; pass < 32; pass++) {
-      const next = read(text);
-      if (next === text) return text;
-      text = next;
-    }
-    return text.replace(/</g, '');
+    const template = document.createElement('template');
+    template.innerHTML = html == null ? '' : String(html);
+    return template.content.textContent.replace(/<(?=[A-Za-z\/!?])/g, '&lt;');
   },
 };
 

@@ -63,7 +63,10 @@ describe('flipcards iDevice', () => {
 
       expect($exeDevice.cardsGame).toHaveLength(1);
       const [card] = $exeDevice.cardsGame;
-      expect($exeDevice.decodeURIComponentSafe(card.eText)).toBe('Paris ');
+      // The card shows the image written as entities as the text it was.
+      expect($exeDevice.decodeURIComponentSafe(card.eText)).toBe(
+        'Paris &lt;img src="x" onerror="window.ran = true">'
+      );
       // A %-encoded tag stays the text it was, and a % no longer breaks the card.
       expect($exeDevice.decodeURIComponentSafe(card.eTextBk)).toBe('Capital %3Cimg%20src%3Dx%3E 100%');
     });
@@ -100,6 +103,7 @@ describe('flipcards iDevice', () => {
       const cards = [
         { eText: stored('New York'), eTextBk: stored('Nueva York') },
         { eText: stored('50% off'), eTextBk: stored('café, 100%') },
+        { eText: stored('What does &lt;p> do?'), eTextBk: stored('It starts a paragraph') },
       ];
 
       $exeDevice.insertCards($exeDevice.getLinesQuestions(cards));
@@ -107,6 +111,7 @@ describe('flipcards iDevice', () => {
       expect(texts()).toEqual([
         ['New York', 'Nueva York'],
         ['50% off', 'café, 100%'],
+        ['What does &lt;p> do?', 'It starts a paragraph'],
       ]);
     });
 

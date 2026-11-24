@@ -164,29 +164,19 @@ var $exeDevicesEdition = {
              * their handlers run.
              *
              * Reading decodes character references, so markup written as
-             * entities (&lt;img …&gt;) would come out as a real tag, and run
-             * wherever the text is later shown as HTML. The text is read
-             * again until there is nothing left to decode: what is returned
-             * reads as the same text in HTML.
+             * entities (&lt;p&gt;) comes out as text with the shape of a tag.
+             * Each "<" that would open a tag there is written back as &lt;:
+             * wherever the text is later shown as HTML it shows as written
+             * and runs nothing, and read here again it gives the same text.
+             * Any other "<", as in "3 < 5", is left as it is.
              *
              * @param {*} html
              * @returns {string}
              */
             removeTags: function (html) {
-                const read = (value) => {
-                    const template = document.createElement('template');
-                    template.innerHTML = value;
-                    return template.content.textContent;
-                };
-                let text = html == null ? '' : String(html);
-                // One or two passes are enough for real text; the limit only guards
-                // against a fragment encoded more times than any real use needs.
-                for (let pass = 0; pass < 32; pass++) {
-                    const next = read(text);
-                    if (next === text) return text;
-                    text = next;
-                }
-                return text.replace(/</g, '');
+                const template = document.createElement('template');
+                template.innerHTML = html == null ? '' : String(html);
+                return template.content.textContent.replace(/<(?=[A-Za-z\/!?])/g, '&lt;');
             }
         },
         // Gamification

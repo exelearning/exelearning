@@ -190,17 +190,36 @@ describe('common_edition.js', () => {
       });
 
       it('does not turn markup written as entities into a tag', () => {
-        expect(removeTags('Paris &lt;img src="x" onerror="window.ran = true"&gt;')).toBe('Paris ');
-        expect(removeTags('&amp;lt;b&amp;gt;bold&amp;lt;/b&amp;gt;')).toBe('bold');
+        expect(removeTags('Paris &lt;img src="x" onerror="window.ran = true"&gt;')).toBe(
+          'Paris &lt;img src="x" onerror="window.ran = true">'
+        );
+        expect(removeTags('&lt;/p&gt; &lt;!-- note --&gt; &lt;?xml?&gt;')).toBe('&lt;/p> &lt;!-- note --> &lt;?xml?>');
       });
 
-      it('returns text that reads as the same text in HTML', () => {
+      it('returns text that shows as written in HTML', () => {
+        const shown = (html) => {
+          const template = document.createElement('template');
+          template.innerHTML = html;
+          return { text: template.content.textContent, elements: template.content.querySelectorAll('*').length };
+        };
+        expect(shown(removeTags('What does &lt;p&gt; do?'))).toEqual({ text: 'What does <p> do?', elements: 0 });
+        expect(shown(removeTags('Paris &lt;img src="x" onerror="window.ran = true"&gt;'))).toEqual({
+          text: 'Paris <img src="x" onerror="window.ran = true">',
+          elements: 0,
+        });
+      });
+
+      it('leaves a "<" that opens no tag as it is', () => {
+        expect(removeTags('a < b & c')).toBe('a < b & c');
+        // Written as entities: happy-dom, unlike a browser, reads a bare "<5" as a tag.
+        expect(removeTags('x &lt; 5, x&lt;5 and 5 &gt; 3')).toBe('x < 5, x<5 and 5 > 3');
+      });
+
+      it('gives the same text when its result is read again', () => {
         for (const html of ['a < b & c', '5 &gt; 3', 'Tom &amp; Jerry', '&lt;p&gt;Hi&lt;/p&gt;', '100%']) {
           const text = removeTags(html);
           expect(removeTags(text)).toBe(text);
         }
-        expect(removeTags('a < b & c')).toBe('a < b & c');
-        expect(removeTags('5 &gt; 3')).toBe('5 > 3');
       });
     });
   });
