@@ -1335,7 +1335,24 @@ const mockGamificationMath = {
   }),
   hasLatex: vi.fn((text) => text && (text.includes('\\(') || text.includes('$$'))),
   updateLatex: vi.fn(() => {}),
+  ...readCommonMathMethods(),
 };
+
+/**
+ * escapeHtmlButKeepRenderedMath and isRenderedMath, read from common.js rather
+ * than copied: they decide which markup an export writes raw, and the iDevice
+ * tests have to check the real decision. If they move, this throws.
+ */
+function readCommonMathMethods() {
+  const source = readFileSync(join(__vitest_setup_dirname, 'app/common/common.js'), 'utf8');
+  const start = source.indexOf('escapeHtmlButKeepRenderedMath: function (str) {');
+  const end = source.indexOf('updateLatex: function (target, opts) {', start);
+  if (start === -1 || end === -1) {
+    throw new Error('vitest.setup: escapeHtmlButKeepRenderedMath and isRenderedMath not found in common.js');
+  }
+  // eslint-disable-next-line no-new-func
+  return new Function(`return { ${source.slice(start, end)} };`)();
+}
 
 const mockGamificationObservers = {
   debounce: vi.fn((func, wait) => func),

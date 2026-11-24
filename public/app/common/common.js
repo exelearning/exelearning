@@ -3044,6 +3044,102 @@ var $exeDevices = {
                     return /\\\(|\\\[|\\begin\{|\$\$/.test(stripped);
                 },
 
+                /**
+                 * Plain text written for HTML, keeping the formulas that
+                 * LatexPreRenderer rendered in it: <span class="exe-math-rendered"
+                 * data-latex="…"> holding MathJax's SVG and, at most, its MathML.
+                 * Everything else is escaped, and so is a fragment that only has
+                 * the shape of a formula: the text can come from an imported
+                 * file, so a fragment is kept only if isRenderedMath accepts it.
+                 *
+                 * @param {*} str
+                 * @returns {string}
+                 */
+                escapeHtmlButKeepRenderedMath: function (str) {
+                    var self = $exeDevices.iDevice.gamification.math;
+                    var text = String(str == null ? '' : str);
+                    var escape = function (part) {
+                        return part.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                    };
+                    var renderedMath =
+                        /<span class="exe-math-rendered" data-latex="[^"]*"(?: data-display="block")?><svg\b[\s\S]*?<\/svg>(?:<math\b[\s\S]*?<\/math>)?<\/span>/g;
+                    var out = '';
+                    var last = 0;
+                    var match;
+                    while ((match = renderedMath.exec(text)) !== null) {
+                        out += escape(text.slice(last, match.index));
+                        out += self.isRenderedMath(match[0]) ? match[0] : escape(match[0]);
+                        last = match.index + match[0].length;
+                    }
+                    return out + escape(text.slice(last));
+                },
+
+                /**
+                 * Whether a fragment is a formula as LatexPreRenderer writes it.
+                 * It is read in a template, where nothing loads or runs, and
+                 * accepted only as one span.exe-math-rendered holding an SVG and,
+                 * at most, a MathML element, with every element inside one that
+                 * MathJax writes, no event handler, and links only to a part of
+                 * the formula ("#…") or, as \href writes them, to a web or mail
+                 * address.
+                 *
+                 * @param {string} html
+                 * @returns {boolean}
+                 */
+                isRenderedMath: function (html) {
+                    var SVG = 'http://www.w3.org/2000/svg';
+                    var MATHML = 'http://www.w3.org/1998/Math/MathML';
+                    var HTML = 'http://www.w3.org/1999/xhtml';
+                    // MathML is checked by name in either namespace: a parser
+                    // that does not know MathML, as some test environments, puts
+                    // it in the HTML one, where an unknown element runs nothing.
+                    var mathml = ['math', 'mi', 'mn', 'mo', 'ms', 'mtext', 'mspace', 'mrow', 'mfrac', 'msqrt',
+                        'mroot', 'mstyle', 'merror', 'mpadded', 'mphantom', 'mfenced', 'menclose', 'msub', 'msup',
+                        'msubsup', 'munder', 'mover', 'munderover', 'mmultiscripts', 'mprescripts', 'none', 'mtable',
+                        'mtr', 'mtd', 'mlabeledtr', 'semantics', 'annotation'];
+                    var allowed = {};
+                    allowed[SVG] = ['svg', 'g', 'path', 'use', 'defs', 'rect', 'line', 'ellipse', 'circle', 'polygon',
+                        'polyline', 'text', 'a', 'title'];
+                    allowed[MATHML] = mathml;
+                    allowed[HTML] = mathml;
+                    var template = document.createElement('template');
+                    template.innerHTML = String(html == null ? '' : html);
+                    var content = template.content;
+                    var span = content.firstElementChild;
+                    if (!span || content.childNodes.length !== 1 || span.localName !== 'span') return false;
+                    if (span.getAttribute('class') !== 'exe-math-rendered') return false;
+                    var i;
+                    for (i = 0; i < span.attributes.length; i++) {
+                        if (['class', 'data-latex', 'data-display'].indexOf(span.attributes[i].name) === -1) return false;
+                    }
+                    for (i = 0; i < span.childNodes.length; i++) {
+                        var node = span.childNodes[i];
+                        if (node.nodeType !== 1 && !(node.nodeType === 3 && !node.nodeValue.trim())) return false;
+                    }
+                    var parts = span.children;
+                    if (parts.length < 1 || parts.length > 2) return false;
+                    if (parts[0].namespaceURI !== SVG || parts[0].localName !== 'svg') return false;
+                    if (parts[1] && (parts[1].namespaceURI === SVG || parts[1].localName !== 'math')) return false;
+                    var elements = span.querySelectorAll('*');
+                    for (i = 0; i < elements.length; i++) {
+                        var element = elements[i];
+                        var names = allowed[element.namespaceURI];
+                        if (!names || names.indexOf(element.localName) === -1) return false;
+                        for (var j = 0; j < element.attributes.length; j++) {
+                            var name = element.attributes[j].name.toLowerCase();
+                            if (name.indexOf('on') === 0) return false;
+                            if (/(^|:)href$/.test(name) || name === 'src') {
+                                var value = element.attributes[j].value.trim();
+                                if (value.charAt(0) === '#') continue;
+                                var linkable = element.localName === 'a' || element.namespaceURI !== SVG;
+                                if (linkable && /^(https?:|mailto:)/i.test(value)) continue;
+                                return false;
+                            }
+                        }
+                    }
+                    return true;
+                },
+
                 updateLatex: function (target, opts) {
                     var self = $exeDevices.iDevice.gamification.math;
                     var options = opts || {};

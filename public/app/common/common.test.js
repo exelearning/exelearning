@@ -5287,6 +5287,53 @@ describe('common.js $exeDevices', () => {
       getMath()._callbacks = [];
     });
 
+    describe('escapeHtmlButKeepRenderedMath', () => {
+      // The shape LatexPreRenderer writes: MathJax's SVG, then its MathML.
+      const formula = (svg, mathml = '<math xmlns="http://www.w3.org/1998/Math/MathML"><mi>x</mi></math>') =>
+        `<span class="exe-math-rendered" data-latex="x^2">${svg}${mathml}</span>`;
+      const mathJaxSvg =
+        '<svg style="vertical-align: -0.025ex;" xmlns="http://www.w3.org/2000/svg" width="2.24ex" height="2.047ex" ' +
+        'role="img" focusable="false" viewBox="0 -893.3 990.3 904.3" xmlns:xlink="http://www.w3.org/1999/xlink" ' +
+        'aria-hidden="true"><defs><path id="MJX-1-TEX-I-1D465" d="M52 289Q59 331"></path></defs>' +
+        '<g stroke="currentColor" fill="currentColor" stroke-width="0" transform="scale(1,-1)">' +
+        '<g data-mml-node="math"><use data-c="1D465" xlink:href="#MJX-1-TEX-I-1D465"></use>' +
+        '<rect width="60" height="60" x="120" y="220"></rect></g></g></svg>';
+      const escaped = text => text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+      it('keeps a formula as LatexPreRenderer writes it and escapes the text around it', () => {
+        const math = getMath();
+        expect(math.escapeHtmlButKeepRenderedMath(`Area <b> ${formula(mathJaxSvg)} & more`)).toBe(
+          `Area &lt;b&gt; ${formula(mathJaxSvg)} &amp; more`
+        );
+      });
+
+      it('keeps the web link of a formula written with \\href', () => {
+        const linked = formula('<svg><a href="https://example.com"><use xlink:href="#MJX-1"></use></a></svg>');
+        expect(getMath().escapeHtmlButKeepRenderedMath(linked)).toBe(linked);
+      });
+
+      it.each([
+        ['a handler separated by a slash', '<svg/onload="window.ran = true"></svg>'],
+        ['an element MathJax does not write', '<svg><image href="x" onerror="window.ran = true"></image></svg>'],
+        ['a script', '<svg><script>window.ran = true</script></svg>'],
+        ['a style block', '<svg><style>* { display: none }</style></svg>'],
+        ['a javascript: link', '<svg><a href="javascript:alert(1)"><text>x</text></a></svg>'],
+        ['a javascript: link written as entities', '<svg><a href="&#106;avascript:alert(1)"><text>x</text></a></svg>'],
+        ['an outside reference from use', '<svg><use href="https://example.com/x.svg#a"></use></svg>'],
+        ['HTML inside the MathML', '<svg></svg><math><mtext><img src="x" onerror="window.ran = true"></mtext></math>'],
+      ])('escapes a fragment shaped like a formula with %s', (_, inner) => {
+        const forged = `<span class="exe-math-rendered" data-latex="x">${inner}</span>`;
+        expect(getMath().escapeHtmlButKeepRenderedMath(forged)).toBe(escaped(forged));
+      });
+
+      it('reads the fragment inert, without loading or running anything', () => {
+        const forged = '<span class="exe-math-rendered" data-latex="x"><svg><image href="x" onerror="window.ran = true"></image></svg></span>';
+        delete window.ran;
+        getMath().isRenderedMath(forged);
+        expect(window.ran).toBeUndefined();
+      });
+    });
+
     it('hasLatex detects LaTeX syntax', () => {
       const math = getMath();
       expect(math.hasLatex('\\(x^2\\)')).toBe(true);

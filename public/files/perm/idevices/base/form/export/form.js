@@ -1344,30 +1344,18 @@ var $form = {
      * EXCEPT those spans, so the math shows as SVG without bundling MathJax —
      * while a stray "<" in plain text is still escaped (mirrors adaptative-quiz).
      *
-     * Security: only spans matching our exact pre-renderer output AND carrying no
-     * script-bearing markup are kept raw. A forged span typed into a plain-text
-     * field (e.g. with an onerror handler) fails the strict pattern or the
-     * denylist and is escaped, preserving the XSS boundary.
+     * Security: a span is kept raw only if the shared
+     * gamification.math.isRenderedMath reads it as pre-renderer output: MathJax's
+     * elements only, no event handler, no outside link but \href's. Anything else,
+     * a forged span included, is escaped.
      *
      * @param {String} str
      * @returns {String}
      */
     escapeHtmlButKeepRenderedMath(str) {
-        const text = String(str ?? '');
-        const RENDERED_MATH =
-            /<span class="exe-math-rendered" data-latex="[^"]*"(?: data-display="block")?><svg\b[\s\S]*?<\/svg>(?:<math\b[\s\S]*?<\/math>)?<\/span>/g;
-        const UNSAFE = /<script|<foreignobject|<iframe|<animate|<set\b|javascript:|\son\w+\s*=/i;
-        let out = '';
-        let last = 0;
-        let match;
-        RENDERED_MATH.lastIndex = 0;
-        while ((match = RENDERED_MATH.exec(text)) !== null) {
-            out += this.escapeHtmlText(text.slice(last, match.index));
-            out += UNSAFE.test(match[0]) ? this.escapeHtmlText(match[0]) : match[0];
-            last = match.index + match[0].length;
-        }
-        out += this.escapeHtmlText(text.slice(last));
-        return out;
+        // The shared helper validates each fragment shaped like a formula
+        // before keeping it: answers and texts can come from imported files.
+        return $exeDevices.iDevice.gamification.math.escapeHtmlButKeepRenderedMath(str);
     },
 
     /**

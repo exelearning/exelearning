@@ -1547,12 +1547,14 @@ describe('adaptative-quiz export', () => {
 
     describe('checkAnswer end-of-game boundary', () => {
         beforeEach(() => {
+            // Keeps the shared escapeHtmlButKeepRenderedMath the runtime calls.
+            const sharedMath = global.$exeDevices.iDevice.gamification.math;
             global.$exeDevices = {
                 iDevice: {
                     gamification: {
                         scorm: { sendScoreNew: vi.fn() },
                         report: { saveEvaluation: vi.fn() },
-                        math: { hasLatex: vi.fn(() => false), updateLatex: vi.fn() },
+                        math: { ...sharedMath, hasLatex: vi.fn(() => false), updateLatex: vi.fn() },
                     },
                 },
             };
