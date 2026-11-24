@@ -91,48 +91,38 @@ describe('flipcards iDevice', () => {
       vi.spyOn($exeDevice, 'postImportProcessing').mockImplementation(() => {});
     });
 
-    it('writes the text of each card, not its stored form', () => {
+    it('writes each card as it stores it, so a "#" in its text is not a separator', () => {
       const lines = $exeDevice.getLinesQuestions([
-        { eText: stored('New York'), eTextBk: stored('50% off') },
+        { eText: stored('C#language'), eTextBk: stored('Programming') },
       ]);
 
-      expect(lines).toEqual(['New York#50% off']);
+      expect(lines).toEqual([`${stored('C#language')}#${stored('Programming')}`]);
+      expect(lines[0].split('#')).toHaveLength(2);
     });
 
     it('reads an exported file back into the same cards', () => {
       const cards = [
-        { eText: stored('New York'), eTextBk: stored('Nueva York') },
-        { eText: stored('50% off'), eTextBk: stored('café, 100%') },
-        { eText: stored('What does &lt;p> do?'), eTextBk: stored('It starts a paragraph') },
-      ];
-
-      $exeDevice.insertCards($exeDevice.getLinesQuestions(cards));
-
-      expect(texts()).toEqual([
         ['New York', 'Nueva York'],
+        ['C#language', 'Programming'],
+        ['100%25', 'A literal percent sequence'],
         ['50% off', 'café, 100%'],
         ['What does &lt;p> do?', 'It starts a paragraph'],
-      ]);
+      ];
+
+      $exeDevice.insertCards(
+        $exeDevice.getLinesQuestions(cards.map(([front, back]) => ({ eText: stored(front), eTextBk: stored(back) })))
+      );
+
+      expect(texts()).toEqual(cards);
     });
 
-    it('reads a file exported by earlier versions, which held the stored form', () => {
-      $exeDevice.insertCards([
-        `${stored('New York')}#${stored('Nueva York')}`,
-        `${stored('50% off')}#${stored('café')}`,
-      ]);
+    it('reads text written by hand as written, a stray "%" included', () => {
+      $exeDevice.insertCards(['New York#Nueva York', '50% off#Half price', 'Vitamin%B12#100%']);
 
       expect(texts()).toEqual([
         ['New York', 'Nueva York'],
-        ['50% off', 'café'],
-      ]);
-    });
-
-    it('keeps as written a side that is not only in the stored form', () => {
-      $exeDevice.insertCards(['Vitamin%B12#100%', 'Capital %3Cimg%3E#Paris']);
-
-      expect(texts()).toEqual([
+        ['50% off', 'Half price'],
         ['Vitamin%B12', '100%'],
-        ['Capital %3Cimg%3E', 'Paris'],
       ]);
     });
 

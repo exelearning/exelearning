@@ -1474,9 +1474,10 @@ var $exeDevice = {
         let linequestions = [];
         for (let i = 0; i < cards.length; i++) {
             let c = cards[i];
-            // Cards are stored encoded; the file holds their text, which is
-            // what the import reads.
-            let card = `${$exeDevice.decodeURIComponentSafe(c.eText)}#${$exeDevice.decodeURIComponentSafe(c.eTextBk)}`;
+            // Each side is written as the card stores it, %-encoded, as every
+            // version has written it: a "#" in the text cannot be taken for
+            // the separator, and readExportedText reads it back exactly.
+            let card = `${c.eText}#${c.eTextBk}`;
             linequestions.push(card);
         }
         return linequestions;
@@ -1646,15 +1647,14 @@ var $exeDevice = {
     },
 
     /**
-     * Text files exported by earlier versions hold each side as the card
-     * stores it, %-encoded ("New%20York"). A side written only in that form is
-     * read back as its text; any other side is kept as written. addCards still
-     * reads the result as text, so a decoded tag goes no further than before.
+     * A side of a text file holds the card's text as the export writes it,
+     * %-encoded ("New%20York"), and is decoded as the card preview always
+     * decoded it. Text written by hand decodes to itself unless it has a "%";
+     * a side that cannot be decoded, such as "50% off", is kept as written
+     * instead of breaking the card. addCards reads the result as text, so a
+     * decoded tag goes no further than before.
      */
     readExportedText: function (text) {
-        if (!/^[\w.!~*'()%-]+$/.test(text) || !/%[0-9A-Fa-f]{2}/.test(text)) {
-            return text;
-        }
         try {
             return $exeDevice.decodeURIComponentSafe(text);
         } catch (error) {

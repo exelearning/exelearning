@@ -3,11 +3,11 @@ import { expect, test } from '../../fixtures/auth.fixture';
 import { addIdevice, gotoWorkarea, selectFirstPage, waitForAppReady } from '../../helpers/workarea-helpers';
 
 /**
- * Memory cards store the text of each side %-encoded. Earlier versions wrote
- * that stored form to the exported text file ("New%20York"), and the import,
- * which now encodes what it reads, would have encoded it a second time.
+ * Memory cards store the text of each side %-encoded, and their text file
+ * holds it in that form, as every version has written it. Read back, a "#" in
+ * the text is not taken for the separator and a literal "%25" is not decoded.
  */
-test('flipcards reads an earlier text file and exports its cards as text', async ({
+test('flipcards reads its text file and exports the cards the same way', async ({
     authenticatedPage: page,
     createProject,
 }) => {
@@ -22,19 +22,22 @@ test('flipcards reads an earlier text file and exports its cards as text', async
         return !!input && !!(window as any).jQuery?._data(input, 'events')?.change;
     });
 
-    // A file as earlier versions exported it, sides in their stored form.
+    // Each side as the card stores it, which is how the export writes it.
+    const stored = (text: string) => encodeURIComponent(text.replace('%', '&percnt;'));
+    const file = [
+        ['C#language', 'Programming'],
+        ['100%25', 'A literal percent sequence'],
+        ['New York', 'Nueva York'],
+    ]
+        .map(([front, back]) => `${stored(front)}#${stored(back)}`)
+        .join('\n');
     await page.locator('#eXeGameImportGame').setInputFiles({
         name: 'cards.txt',
         mimeType: 'text/plain',
-        buffer: Buffer.from(
-            [
-                `${encodeURIComponent('New York')}#${encodeURIComponent('Nueva York')}`,
-                `${encodeURIComponent('50&percnt; off')}#${encodeURIComponent('Half price')}`,
-            ].join('\n'),
-        ),
+        buffer: Buffer.from(file),
     });
-    await expect(page.locator('#flipcardsEText')).toHaveValue('New York');
-    await expect(page.locator('#flipcardsETextBack')).toHaveValue('Nueva York');
+    await expect(page.locator('#flipcardsEText')).toHaveValue('C#language');
+    await expect(page.locator('#flipcardsETextBack')).toHaveValue('Programming');
 
     await page
         .locator('.exe-form-tabs a')
@@ -44,5 +47,5 @@ test('flipcards reads an earlier text file and exports its cards as text', async
     await page.locator('#eXeGameExportQuestions').click();
     const download = await downloadPromise;
 
-    expect(readFileSync(await download.path(), 'utf8')).toBe('New York#Nueva York\n50% off#Half price');
+    expect(readFileSync(await download.path(), 'utf8')).toBe(file);
 });
