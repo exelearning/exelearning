@@ -21,7 +21,7 @@ describe('isMinifiableJs', () => {
         expect(isMinifiableJs('app/common/exe_tooltips/jquery.qtip.min.js')).toBe(false);
         // vendored trees
         expect(isMinifiableJs('app/common/exe_math/tex-mml-svg.js')).toBe(false);
-        expect(isMinifiableJs('app/common/mermaid/mermaid.js')).toBe(false);
+        expect(isMinifiableJs('app/common/pele/pele.global.js')).toBe(false);
         expect(isMinifiableJs('libs/tinymce_5/js/tinymce/plugins/exemindmap/editor/mindmap-editor.bundle.js')).toBe(false);
         // byte-identity contract (vendored pipwerks SCORM)
         expect(isMinifiableJs('app/common/scorm/SCORM_API_wrapper.js')).toBe(false);

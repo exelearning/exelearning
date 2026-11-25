@@ -154,7 +154,6 @@ export class ElpxExporter extends Html5Exporter {
 
             // 1.1 Generate HTML pages with optional LaTeX/Mermaid pre-rendering and store them for ZIP insertion.
             const pageHtmlMap = new Map<string, string>();
-            let mermaidWasRendered = false;
             let latexWasRendered = false;
             this.logElpxExportDebugPhase('exporter:generate-pages:start', {
                 pages: pages.length,
@@ -188,13 +187,11 @@ export class ElpxExporter extends Html5Exporter {
                 }
 
                 // Pre-render Mermaid diagrams to static SVG if hook is provided
-                // This eliminates the need for the ~2.7MB Mermaid library in exports
                 if (options?.preRenderMermaid) {
                     try {
                         const result = await options.preRenderMermaid(html);
                         if (result.mermaidRendered) {
                             html = result.html;
-                            mermaidWasRendered = true;
                             console.log(
                                 `[ElpxExporter] Pre-rendered ${result.count} Mermaid diagram(s) on page: ${page.title}`,
                             );
@@ -219,22 +216,19 @@ export class ElpxExporter extends Html5Exporter {
                 addFile('search_index.js', searchIndexContent);
             }
 
-            // 1.3 Add base CSS (fetch from content/css) and Mermaid pre-rendered CSS
+            // 1.3 Add base CSS (fetch from content/css) and pre-rendered LaTeX CSS
             this.logElpxExportDebugPhase('exporter:content-css:start');
             const contentCssFiles = await this.resources.fetchContentCss();
             let baseCss = contentCssFiles.get('content/css/base.css');
             if (!baseCss) {
                 throw new Error('Failed to fetch content/css/base.css');
             }
-            // Append pre-rendered LaTeX / Mermaid CSS if either was rendered
-            if (latexWasRendered || mermaidWasRendered) {
+            // Append pre-rendered LaTeX CSS if it was rendered (Mermaid styles are in base.css)
+            if (latexWasRendered) {
                 const decoder = new TextDecoder();
                 let baseCssText = decoder.decode(baseCss);
                 if (latexWasRendered) {
                     baseCssText += '\n' + this.getPreRenderedLatexCss();
-                }
-                if (mermaidWasRendered) {
-                    baseCssText += '\n' + this.getPreRenderedMermaidCss();
                 }
                 const encoder = new TextEncoder();
                 baseCss = encoder.encode(baseCssText);

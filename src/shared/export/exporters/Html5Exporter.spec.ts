@@ -1251,7 +1251,7 @@ describe('Html5Exporter', () => {
             expect(pagesProcessed).toBe(samplePages.length);
         });
 
-        it('should include Mermaid CSS when preRenderMermaid succeeds', async () => {
+        it('should ship base.css unchanged when Mermaid is rendered (its styles live there)', async () => {
             await exporter.export({
                 preRenderMermaid: async (html: string) => ({
                     html,
@@ -1262,9 +1262,7 @@ describe('Html5Exporter', () => {
             });
 
             const baseCss = zip.files.get('content/css/base.css');
-            expect(baseCss).toBeDefined();
-            const cssContent = decodePreviewFile(baseCss as Buffer | string | undefined);
-            expect(cssContent).toContain('.exe-mermaid-rendered');
+            expect(decodePreviewFile(baseCss as Buffer | string | undefined)).toBe('/* base css */');
         });
 
         it('should not include Mermaid CSS when no mermaid was rendered', async () => {
@@ -2507,7 +2505,7 @@ describe('Html5Exporter', () => {
             expect(cssText).toContain('exe-math-rendered');
         });
 
-        it('should append pre-rendered CSS to base CSS when Mermaid is rendered', async () => {
+        it('should leave base CSS unchanged when only Mermaid is rendered', async () => {
             const files = await exporter.generateForPreview({
                 preRenderMermaid: async (html: string) => ({
                     html,
@@ -2520,8 +2518,7 @@ describe('Html5Exporter', () => {
             const baseCss = files.get('content/css/base.css');
             expect(baseCss).toBeDefined();
 
-            const cssText = decodePreviewFile(baseCss);
-            expect(cssText).toContain('exe-mermaid-rendered');
+            expect(decodePreviewFile(baseCss)).toBe('/* base css */');
         });
 
         it('should call preRenderDataGameLatex hook when provided', async () => {
@@ -2884,7 +2881,7 @@ describe('Html5Exporter', () => {
     });
 
     describe('Combined LaTeX and Mermaid CSS', () => {
-        it('should append both LaTeX and Mermaid CSS when both are rendered', async () => {
+        it('should append only the LaTeX CSS when both are rendered', async () => {
             await exporter.export({
                 preRenderLatex: async (html: string) => ({
                     html,
@@ -2904,12 +2901,12 @@ describe('Html5Exporter', () => {
             expect(baseCss).toBeDefined();
             const cssContent = decodePreviewFile(baseCss as Buffer | string | undefined);
 
-            // Should contain both LaTeX and Mermaid CSS
+            // Mermaid styles are part of base.css itself
             expect(cssContent).toContain('.exe-math-rendered');
-            expect(cssContent).toContain('.exe-mermaid-rendered');
+            expect(cssContent).not.toContain('.exe-mermaid-rendered');
         });
 
-        it('should append both LaTeX and Mermaid CSS in generateForPreview', async () => {
+        it('should append only the LaTeX CSS in generateForPreview', async () => {
             const files = await exporter.generateForPreview({
                 preRenderLatex: async (html: string) => ({
                     html,
@@ -2930,9 +2927,9 @@ describe('Html5Exporter', () => {
 
             const cssText = decodePreviewFile(baseCss);
 
-            // Should contain both LaTeX and Mermaid CSS
+            // Mermaid styles are part of base.css itself
             expect(cssText).toContain('.exe-math-rendered');
-            expect(cssText).toContain('.exe-mermaid-rendered');
+            expect(cssText).not.toContain('.exe-mermaid-rendered');
         });
     });
 

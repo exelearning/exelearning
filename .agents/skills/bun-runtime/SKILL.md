@@ -17,7 +17,7 @@ Use the installed version and [Bun documentation](https://bun.sh/docs) for API d
 - Follow existing injectable dependencies and reset them after tests. Do not introduce `mock.module()`
   or new global state to make a test pass; include a suite-level run when diagnosing pollution.
 - Keep runtime-specific code out of `src/shared/` browser bundles. Backend builds target Bun and leave
-  `kysely`, `kysely/*` and jsdom external; preserve subpath resolution in standalone/CLI builds.
+  `kysely` and `kysely/*` external; preserve subpath resolution in standalone/CLI builds.
 - Configuration comes from `.env` (template `.env.dist`; `make check-env` creates it): `APP_PORT`,
   `DB_DRIVER`/`DB_PATH`, `FILES_DIR`, `APP_SECRET`, `BASE_PATH`, `APP_AUTH_METHODS` and others described
   in [environment](../../../doc/development/environment.md). Add new variables to `.env.dist` and that doc.

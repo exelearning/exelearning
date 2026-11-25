@@ -1468,9 +1468,8 @@ if (typeof window !== 'undefined') {
  */
 global.$exe = {
   mermaid: {
-    engine: './libs/mermaid/mermaid.min.js',
-    reload_pending: false,
-    loadMermaid: vi.fn(() => {}),
+    enginePath: vi.fn(() => null),
+    load: vi.fn(() => Promise.resolve()),
     init: vi.fn(() => {}),
   },
   math: {

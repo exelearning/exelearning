@@ -78,12 +78,8 @@ export class PageExporter extends Html5Exporter {
                             if (block.components) {
                                 for (const component of block.components) {
                                     try {
-                                        // Check if content has potential Mermaid diagrams
-                                        if (
-                                            component.content &&
-                                            (component.content.includes('class="mermaid"') ||
-                                                component.content.includes("class='mermaid'"))
-                                        ) {
+                                        // Cheap check; the renderer matches the exact class token
+                                        if (component.content?.includes('mermaid')) {
                                             const result = await options.preRenderMermaid(component.content);
                                             // Only update if changes were made
                                             if (result.mermaidRendered) {
