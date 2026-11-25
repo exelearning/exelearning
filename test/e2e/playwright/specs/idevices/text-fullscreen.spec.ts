@@ -56,12 +56,18 @@ test.describe('Text iDevice fullscreen', () => {
 
         const wrap = idevice.locator('.text-fullscreen-wrap').first();
         const button = wrap.locator('> .text-fullscreen-btn');
+        // In preview (as in exported pages) the whole block goes fullscreen,
+        // so the block title is shown and enlarged too.
+        const box = frame.locator('article.box', { has: idevice }).first();
+        await expect(box).toHaveClass(/text-fullscreen-target/);
+        const title = box.locator('.box-title').first();
         await expect(button).toHaveCount(1);
         await expect(button).toHaveAttribute('aria-label', /.+/);
 
         const paragraph = wrap.getByText(content).first();
         await expect(paragraph).toBeVisible();
         const sizeBefore = await paragraph.evaluate(el => parseFloat(getComputedStyle(el).fontSize));
+        const titleBefore = await title.evaluate(el => parseFloat(getComputedStyle(el).fontSize));
 
         await wrap.hover();
         await button.click();
@@ -70,7 +76,7 @@ test.describe('Text iDevice fullscreen', () => {
         await expect
             .poll(
                 () =>
-                    wrap.evaluate(
+                    box.evaluate(
                         el => el.ownerDocument.fullscreenElement === el || el.classList.contains('text-fs-active'),
                     ),
                 { timeout: 5000 },
@@ -80,13 +86,15 @@ test.describe('Text iDevice fullscreen', () => {
 
         const sizeAfter = await paragraph.evaluate(el => parseFloat(getComputedStyle(el).fontSize));
         expect(sizeAfter).toBeGreaterThan(sizeBefore);
+        const titleAfter = await title.evaluate(el => parseFloat(getComputedStyle(el).fontSize));
+        expect(titleAfter).toBeGreaterThan(titleBefore);
 
         // Leave fullscreen with the same button.
         await button.click();
         await expect
             .poll(
                 () =>
-                    wrap.evaluate(
+                    box.evaluate(
                         el => el.ownerDocument.fullscreenElement === el || el.classList.contains('text-fs-active'),
                     ),
                 { timeout: 5000 },
