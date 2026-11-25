@@ -58,12 +58,13 @@
 }
 
 /* ── Fullscreen state: native API and CSS fallback ───────────────────────────
-   The base font size grows with the viewport, and every size inside the
-   content that uses em/rem-relative units grows with it. Images may use their
-   full width up to the screen size. */
+   The target is the whole block (title included) in exported pages, or the
+   content alone in the editor. The base font size grows with the viewport, and
+   every size inside the content that uses em/rem-relative units grows with it.
+   Images may use their full width up to the screen size. */
 
-.text-fullscreen-wrap:fullscreen,
-.text-fullscreen-wrap.text-fs-active {
+.text-fullscreen-target:fullscreen,
+.text-fullscreen-target.text-fs-active {
     box-sizing: border-box;
     width: 100vw;
     height: 100vh;
@@ -71,35 +72,51 @@
     margin: 0;
     padding: 2.5em 5vw;
     overflow-y: auto;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
     background-color: #fff;
     color: #1d1d1f;
     font-size: clamp(1.25rem, 1rem + 1.2vw, 2.75rem);
     line-height: 1.5;
 }
 
-.text-fullscreen-wrap.text-fs-active {
+.text-fullscreen-target.text-fs-active {
     position: fixed !important;
     inset: 0 !important;
     z-index: 99999 !important;
 }
 
-.text-fullscreen-wrap:fullscreen > :not(.text-fullscreen-btn),
-.text-fullscreen-wrap.text-fs-active > :not(.text-fullscreen-btn) {
+.text-fullscreen-target:fullscreen > :not(.text-fullscreen-btn),
+.text-fullscreen-target.text-fs-active > :not(.text-fullscreen-btn) {
     max-width: 60em;
     margin-right: auto;
     margin-left: auto;
 }
 
-.text-fullscreen-wrap:fullscreen img,
-.text-fullscreen-wrap.text-fs-active img {
+/* Block title: themes size it in rem, so it would not grow with the text. */
+.text-fullscreen-target:fullscreen .box-title,
+.text-fullscreen-target.text-fs-active .box-title {
+    font-size: 1.5em !important;
+    line-height: 1.2;
+}
+
+/* Collapsing the block makes no sense while it fills the screen. */
+.text-fullscreen-target:fullscreen .box-toggle,
+.text-fullscreen-target.text-fs-active .box-toggle {
+    display: none;
+}
+
+.text-fullscreen-target:fullscreen img,
+.text-fullscreen-target.text-fs-active img {
     width: auto;
     height: auto;
     max-width: 100%;
     max-height: 85vh;
 }
 
-.text-fullscreen-wrap:fullscreen > .text-fullscreen-btn,
-.text-fullscreen-wrap.text-fs-active > .text-fullscreen-btn {
+.text-fullscreen-target:fullscreen .text-fullscreen-btn,
+.text-fullscreen-target.text-fs-active .text-fullscreen-btn {
     position: fixed;
     top: 12px;
     right: 12px;
