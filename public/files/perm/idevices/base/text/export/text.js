@@ -23,6 +23,7 @@ var $text = {
     // The button is added at runtime (renderBehaviour), so it is never saved
     // in the iDevice HTML and existing projects get it without re-editing.
     fullscreenWrapClass: 'text-fullscreen-wrap',
+    fullscreenTargetClass: 'text-fullscreen-target',
     fullscreenBtnClass: 'text-fullscreen-btn',
     fullscreenActiveClass: 'text-fs-active',
     fullscreenIcon:
@@ -211,6 +212,7 @@ var $text = {
         if (this.getFullscreenButton(wrap)) return wrap;
 
         wrap.classList.add(this.fullscreenWrapClass);
+        this.getFullscreenTarget(wrap).classList.add(this.fullscreenTargetClass);
         const btn = document.createElement('button');
         btn.type = 'button';
         btn.className = this.fullscreenBtnClass;
@@ -235,60 +237,73 @@ var $text = {
     },
 
     /**
-     * Update the button of a wrapper to match its current state.
-     * @param {HTMLElement} wrap
+     * The element that goes fullscreen: in exported pages and preview, the
+     * whole block (article.box), so its title is shown too. In the editor,
+     * where the block also holds the editing controls, only the content.
+     * @param {HTMLElement} wrap - The wrapper that holds the button
+     * @returns {HTMLElement}
      */
-    syncFullscreenButton(wrap) {
-        const btn = this.getFullscreenButton(wrap);
-        if (!btn) return;
+    getFullscreenTarget(wrap) {
+        const box = wrap.closest ? wrap.closest('article.box') : null;
+        if (box && !box.closest('#node-content')) return box;
+        return wrap;
+    },
+
+    /**
+     * Update the buttons inside a fullscreen target to match its state.
+     * @param {HTMLElement} target
+     */
+    syncFullscreenButton(target) {
         const expanded =
-            document.fullscreenElement === wrap ||
-            wrap.classList.contains(this.fullscreenActiveClass);
+            document.fullscreenElement === target ||
+            target.classList.contains(this.fullscreenActiveClass);
         const label = this.getFullscreenLabel(expanded);
-        btn.setAttribute('aria-label', label);
-        btn.setAttribute('title', label);
-        btn.setAttribute('aria-pressed', expanded ? 'true' : 'false');
+        target.querySelectorAll('.' + this.fullscreenBtnClass).forEach((btn) => {
+            btn.setAttribute('aria-label', label);
+            btn.setAttribute('title', label);
+            btn.setAttribute('aria-pressed', expanded ? 'true' : 'false');
+        });
     },
 
     /**
      * CSS-simulated fullscreen, used when the Fullscreen API is unavailable
      * or refused (e.g. inside an iframe without allowfullscreen).
-     * @param {HTMLElement} wrap
+     * @param {HTMLElement} target
      * @param {boolean} active
      */
-    setCssFullscreen(wrap, active) {
-        wrap.classList.toggle(this.fullscreenActiveClass, active);
+    setCssFullscreen(target, active) {
+        target.classList.toggle(this.fullscreenActiveClass, active);
         const anyActive = document.querySelector(
-            '.' + this.fullscreenWrapClass + '.' + this.fullscreenActiveClass
+            '.' + this.fullscreenTargetClass + '.' + this.fullscreenActiveClass
         );
         document.body.style.overflow = anyActive ? 'hidden' : '';
-        this.syncFullscreenButton(wrap);
+        this.syncFullscreenButton(target);
     },
 
     /**
-     * Enter or leave fullscreen for a wrapper.
-     * @param {HTMLElement} wrap
+     * Enter or leave fullscreen for a target.
+     * @param {HTMLElement} target
      */
-    toggleFullscreen(wrap) {
-        if (document.fullscreenElement === wrap) {
+    toggleFullscreen(target) {
+        if (document.fullscreenElement === target) {
             if (document.exitFullscreen) document.exitFullscreen();
             return;
         }
-        if (wrap.classList.contains(this.fullscreenActiveClass)) {
-            this.setCssFullscreen(wrap, false);
+        if (target.classList.contains(this.fullscreenActiveClass)) {
+            this.setCssFullscreen(target, false);
             return;
         }
-        if (typeof wrap.requestFullscreen !== 'function') {
-            this.setCssFullscreen(wrap, true);
+        if (typeof target.requestFullscreen !== 'function') {
+            this.setCssFullscreen(target, true);
             return;
         }
         try {
-            const request = wrap.requestFullscreen();
+            const request = target.requestFullscreen();
             if (request && typeof request.catch === 'function') {
-                request.catch(() => this.setCssFullscreen(wrap, true));
+                request.catch(() => this.setCssFullscreen(target, true));
             }
         } catch (_e) {
-            this.setCssFullscreen(wrap, true);
+            this.setCssFullscreen(target, true);
         }
     },
 
@@ -299,6 +314,7 @@ var $text = {
         if (document._textFullscreenWired) return;
         document._textFullscreenWired = true;
         const wrapSelector = '.' + this.fullscreenWrapClass;
+        const targetSelector = '.' + this.fullscreenTargetClass;
 
         document.addEventListener('click', (e) => {
             const btn =
@@ -307,20 +323,20 @@ var $text = {
                     : null;
             if (!btn) return;
             const wrap = btn.closest(wrapSelector);
-            if (wrap) this.toggleFullscreen(wrap);
+            if (wrap) this.toggleFullscreen(this.getFullscreenTarget(wrap));
         });
 
         document.addEventListener('keydown', (e) => {
             if (e.key !== 'Escape') return;
             document
-                .querySelectorAll(wrapSelector + '.' + this.fullscreenActiveClass)
-                .forEach((wrap) => this.setCssFullscreen(wrap, false));
+                .querySelectorAll(targetSelector + '.' + this.fullscreenActiveClass)
+                .forEach((target) => this.setCssFullscreen(target, false));
         });
 
         document.addEventListener('fullscreenchange', () => {
             document
-                .querySelectorAll(wrapSelector)
-                .forEach((wrap) => this.syncFullscreenButton(wrap));
+                .querySelectorAll(targetSelector)
+                .forEach((target) => this.syncFullscreenButton(target));
         });
     },
 
