@@ -18,6 +18,7 @@ var $text = {
     feedbackContentId: 'textFeedbackTextarea',
 
     defaultBtnFeedbackText: $exe_i18n.showFeedback,
+    emptyInfoClass: 'exe-text-info-empty',
 
     /**
      * Engine execution order: 1
@@ -164,6 +165,7 @@ var $text = {
                 );
             });
         }
+        this.hideEmptyTaskInfo($node[0]);
         const dataString = $node.html() || '';
         if ($exeDevices.iDevice.gamification.math.hasLatex(dataString)) {
             $exeDevices.iDevice.gamification.math.updateLatex(
@@ -204,6 +206,23 @@ var $text = {
             <div class="exe-text-activity">
                 <div>${content}</div>
             </div>`;
+    },
+
+    /**
+     * Hide the task information rows (Duration / Grouping) that have no value.
+     * The rows stay in the HTML because the editor reads them by position
+     * (first row: duration, second row: grouping); they are only hidden.
+     * The CSS hides rows whose <dd> is :empty; this also covers older content
+     * where the empty <dd> holds whitespace.
+     * @param {HTMLElement} node - The iDevice node
+     */
+    hideEmptyTaskInfo(node) {
+        if (!node || !node.querySelectorAll) return;
+        node.querySelectorAll('dl > div.inline').forEach((row) => {
+            const dd = row.querySelector('dd');
+            const empty = !!dd && dd.textContent.trim() === '';
+            row.classList.toggle(this.emptyInfoClass, empty);
+        });
     },
 
     createInfoHTML(
