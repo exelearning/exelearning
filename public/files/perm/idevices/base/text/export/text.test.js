@@ -415,6 +415,36 @@ describe('text iDevice export', () => {
       expect(listeners.map(([type]) => type)).toEqual(['click', 'keydown', 'fullscreenchange']);
     });
 
+    it('makes the whole block (with its title) go fullscreen in exported pages', () => {
+      document.body.innerHTML =
+        '<article class="box"><header class="box-head"><h1 class="box-title">Title</h1></header>' +
+        '<div class="box-content"><div id="text-2" class="idevice_node text">' +
+        '<div class="exe-text-template"><p>Hi</p></div></div></div></article>';
+      const box = document.querySelector('article.box');
+      const wrap = $text.addFullscreenButton(document.getElementById('text-2'));
+      expect($text.getFullscreenTarget(wrap)).toBe(box);
+      expect(box.classList.contains('text-fullscreen-target')).toBe(true);
+      box.requestFullscreen = undefined;
+      const btn = wrap.firstElementChild;
+      btn.click();
+      expect(box.classList.contains('text-fs-active')).toBe(true);
+      expect(wrap.classList.contains('text-fs-active')).toBe(false);
+      expect(btn.getAttribute('aria-pressed')).toBe('true');
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+      expect(box.classList.contains('text-fs-active')).toBe(false);
+      expect(btn.getAttribute('aria-pressed')).toBe('false');
+    });
+
+    it('keeps only the content as target inside the editor', () => {
+      document.body.innerHTML =
+        '<div id="node-content"><article class="box"><div class="idevice_node text" id="text-3">' +
+        '<div class="idevice_body"><p>Editor</p></div></div></article></div>';
+      const wrap = $text.addFullscreenButton(document.getElementById('text-3'));
+      expect($text.getFullscreenTarget(wrap)).toBe(wrap);
+      expect(wrap.classList.contains('text-fullscreen-target')).toBe(true);
+      expect(document.querySelector('article.box').classList.contains('text-fullscreen-target')).toBe(false);
+    });
+
     it('renderBehaviour adds the fullscreen button', () => {
       const origIsInExe = eXe.app.isInExe;
       const origExeDevices = global.$exeDevices;
