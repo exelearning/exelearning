@@ -18,3 +18,96 @@
 .idevice_node.text .iDevice_buttons.feedback-button {
     margin-bottom: 1em;
 }
+
+/* ── Fullscreen button (revealed on hover or keyboard focus) ─────────────── */
+
+.text-fullscreen-wrap {
+    position: relative;
+}
+
+.text-fullscreen-wrap > .text-fullscreen-btn {
+    position: absolute;
+    top: 0;
+    right: 0;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    padding: 0;
+    border: none;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.85);
+    color: #1d1d1f;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
+}
+
+.text-fullscreen-wrap:hover > .text-fullscreen-btn,
+.text-fullscreen-wrap > .text-fullscreen-btn:focus-visible {
+    opacity: 1;
+}
+
+.text-fullscreen-wrap > .text-fullscreen-btn svg {
+    width: 14px;
+    height: 14px;
+    pointer-events: none;
+}
+
+/* ── Fullscreen state: native API and CSS fallback ───────────────────────────
+   The base font size grows with the viewport, and every size inside the
+   content that uses em/rem-relative units grows with it. Images may use their
+   full width up to the screen size. */
+
+.text-fullscreen-wrap:fullscreen,
+.text-fullscreen-wrap.text-fs-active {
+    box-sizing: border-box;
+    width: 100vw;
+    height: 100vh;
+    max-width: none;
+    margin: 0;
+    padding: 2.5em 5vw;
+    overflow-y: auto;
+    background-color: #fff;
+    color: #1d1d1f;
+    font-size: clamp(1.25rem, 1rem + 1.2vw, 2.75rem);
+    line-height: 1.5;
+}
+
+.text-fullscreen-wrap.text-fs-active {
+    position: fixed !important;
+    inset: 0 !important;
+    z-index: 99999 !important;
+}
+
+.text-fullscreen-wrap:fullscreen > :not(.text-fullscreen-btn),
+.text-fullscreen-wrap.text-fs-active > :not(.text-fullscreen-btn) {
+    max-width: 60em;
+    margin-right: auto;
+    margin-left: auto;
+}
+
+.text-fullscreen-wrap:fullscreen img,
+.text-fullscreen-wrap.text-fs-active img {
+    width: auto;
+    height: auto;
+    max-width: 100%;
+    max-height: 85vh;
+}
+
+.text-fullscreen-wrap:fullscreen > .text-fullscreen-btn,
+.text-fullscreen-wrap.text-fs-active > .text-fullscreen-btn {
+    position: fixed;
+    top: 12px;
+    right: 12px;
+    opacity: 1;
+}
+
+@media print {
+    .text-fullscreen-wrap > .text-fullscreen-btn {
+        display: none;
+    }
+}
