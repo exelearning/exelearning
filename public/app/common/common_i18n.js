@@ -27,7 +27,7 @@ $exe_i18n = {
     "newWindow": c_("New window"),
     "fullSize": c_("Full size"),
     "fullScreen": c_("Full screen"),
-    "exitFullScreen": c_("Exit full screen"),
+    "exitFullScreen": c_("Exit Full Screen"),
     "accessibility_tools": c_("Accessibility tools"),
     "close_toolbar": c_("Close"),
     "default_font": c_("Default font"),

@@ -26,6 +26,12 @@ var $text = {
     fullscreenTargetClass: 'text-fullscreen-target',
     fullscreenBtnClass: 'text-fullscreen-btn',
     fullscreenActiveClass: 'text-fs-active',
+    // In fullscreen the content is laid out at this width (CSS px) and zoomed
+    // to fill the screen, up to fullscreenMaxZoom.
+    fullscreenBaseWidth: 640,
+    fullscreenMaxZoom: 2.75,
+    // State of the CSS fallback (one target at a time), or null.
+    cssFullscreen: null,
     fullscreenIcon:
         '<svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 5V1h4M9 1h4v4M13 9v4H9M5 13H1V9"/></svg>',
 
@@ -191,7 +197,7 @@ var $text = {
     getFullscreenLabel(expanded) {
         const i18n = typeof $exe_i18n === 'object' && $exe_i18n ? $exe_i18n : {};
         return expanded
-            ? i18n.exitFullScreen || 'Exit full screen'
+            ? i18n.exitFullScreen || 'Exit Full Screen'
             : i18n.fullScreen || 'Full screen';
     },
 
@@ -199,7 +205,7 @@ var $text = {
      * Add the fullscreen button to a rendered Text iDevice.
      * Idempotent: a node that already has the button is left unchanged.
      * @param {HTMLElement} node - The iDevice node (element with the iDevice id)
-     * @returns {HTMLElement|null} The wrapper that goes fullscreen, or null
+     * @returns {HTMLElement|null} The wrapper that holds the button, or null
      */
     addFullscreenButton(node) {
         if (!node || !node.querySelector) return null;
@@ -250,34 +256,182 @@ var $text = {
     },
 
     /**
-     * Update the buttons inside a fullscreen target to match its state.
+     * Whether a target is in fullscreen (native or CSS fallback).
+     * @param {HTMLElement} target
+     * @returns {boolean}
+     */
+    isFullscreen(target) {
+        return (
+            document.fullscreenElement === target ||
+            target.classList.contains(this.fullscreenActiveClass)
+        );
+    },
+
+    /**
+     * Update the button label and the content zoom of a target to match its
+     * state. The button keeps a single accessible name that says what it does
+     * next ("Full screen" / "Exit Full Screen"), so no aria-pressed is used.
      * @param {HTMLElement} target
      */
     syncFullscreenButton(target) {
-        const expanded =
-            document.fullscreenElement === target ||
-            target.classList.contains(this.fullscreenActiveClass);
+        const expanded = this.isFullscreen(target);
         const label = this.getFullscreenLabel(expanded);
         target.querySelectorAll('.' + this.fullscreenBtnClass).forEach((btn) => {
             btn.setAttribute('aria-label', label);
             btn.setAttribute('title', label);
-            btn.setAttribute('aria-pressed', expanded ? 'true' : 'false');
         });
+        if (expanded) this.updateFullscreenZoom(target);
+        else target.style.removeProperty('--text-fs-zoom');
+    },
+
+    /**
+     * Scale the content to the screen. The content is laid out at a fixed,
+     * readable width (fullscreenBaseWidth) and then zoomed to fill the
+     * available width, so everything grows in proportion: text in any unit
+     * (em, rem, px, pt), images with the size the author gave them, tables
+     * and embedded media. The zoom is capped so short lines stay readable.
+     * @param {HTMLElement} target
+     */
+    updateFullscreenZoom(target) {
+        const style = window.getComputedStyle(target);
+        const available =
+            target.clientWidth -
+            (parseFloat(style.paddingLeft) || 0) -
+            (parseFloat(style.paddingRight) || 0);
+        let zoom = available > 0 ? available / this.fullscreenBaseWidth : 1;
+        zoom = Math.min(this.fullscreenMaxZoom, Math.max(1, zoom));
+        target.style.setProperty('--text-fs-zoom', String(Math.round(zoom * 100) / 100));
+    },
+
+    /**
+     * Elements that can receive keyboard focus inside a container.
+     * @param {HTMLElement} container
+     * @returns {HTMLElement[]}
+     */
+    getFocusableElements(container) {
+        const selector = [
+            'a[href]',
+            'area[href]',
+            'button:not([disabled])',
+            'input:not([disabled]):not([type="hidden"])',
+            'select:not([disabled])',
+            'textarea:not([disabled])',
+            'iframe',
+            'audio[controls]',
+            'video[controls]',
+            '[contenteditable]:not([contenteditable="false"])',
+            '[tabindex]:not([tabindex="-1"])',
+        ].join(',');
+        return Array.from(container.querySelectorAll(selector)).filter(
+            (el) => !el.closest('[inert]') && this.isRendered(el, container)
+        );
+    },
+
+    /**
+     * Whether an element is rendered (not hidden by itself or by an ancestor
+     * up to the container), so that it can actually take focus.
+     * @param {HTMLElement} el
+     * @param {HTMLElement} container
+     * @returns {boolean}
+     */
+    isRendered(el, container) {
+        for (let node = el; node && node !== container.parentNode; node = node.parentElement) {
+            if (node.hidden) return false;
+            const style = window.getComputedStyle(node);
+            if (style.display === 'none' || style.visibility === 'hidden') return false;
+        }
+        return true;
     },
 
     /**
      * CSS-simulated fullscreen, used when the Fullscreen API is unavailable
      * or refused (e.g. inside an iframe without allowfullscreen).
+     * Only one target uses it at a time. While it is active, the page behind
+     * does not scroll (its previous overflow value is kept and restored),
+     * keyboard focus stays inside the target, and focus goes back to where it
+     * was on exit. If the target is removed from the page (e.g. re-rendered in
+     * the editor), the fallback is cleaned up as well.
      * @param {HTMLElement} target
      * @param {boolean} active
      */
     setCssFullscreen(target, active) {
-        target.classList.toggle(this.fullscreenActiveClass, active);
-        const anyActive = document.querySelector(
-            '.' + this.fullscreenTargetClass + '.' + this.fullscreenActiveClass
-        );
-        document.body.style.overflow = anyActive ? 'hidden' : '';
+        const current = this.cssFullscreen;
+        if (!active) {
+            if (current && current.target === target) {
+                this.endCssFullscreen();
+            } else {
+                target.classList.remove(this.fullscreenActiveClass);
+                this.syncFullscreenButton(target);
+            }
+            return;
+        }
+        if (current && current.target === target) return;
+        if (current) this.endCssFullscreen();
+
+        const state = {
+            target,
+            returnFocus: document.activeElement,
+            previousOverflow: document.body.style.overflow,
+            observer: null,
+        };
+        this.cssFullscreen = state;
+        target.classList.add(this.fullscreenActiveClass);
+        document.body.style.overflow = 'hidden';
+        if (typeof MutationObserver === 'function') {
+            state.observer = new MutationObserver(() => {
+                if (!target.isConnected) this.endCssFullscreen();
+            });
+            state.observer.observe(document.body, { childList: true, subtree: true });
+        }
         this.syncFullscreenButton(target);
+        const btn = target.querySelector('.' + this.fullscreenBtnClass);
+        if (btn) btn.focus();
+    },
+
+    /**
+     * Leave the CSS fallback and restore the page state it changed.
+     */
+    endCssFullscreen() {
+        const state = this.cssFullscreen;
+        if (!state) return;
+        this.cssFullscreen = null;
+        if (state.observer) state.observer.disconnect();
+        const { target } = state;
+        target.classList.remove(this.fullscreenActiveClass);
+        document.body.style.overflow = state.previousOverflow;
+        this.syncFullscreenButton(target);
+        let back = state.returnFocus;
+        if (!back || !back.isConnected || back === document.body) {
+            back = target.isConnected
+                ? target.querySelector('.' + this.fullscreenBtnClass)
+                : null;
+        }
+        if (back && typeof back.focus === 'function') back.focus();
+    },
+
+    /**
+     * Keep Tab / Shift+Tab inside the target while the CSS fallback is on.
+     * @param {KeyboardEvent} e
+     */
+    trapFullscreenFocus(e) {
+        const state = this.cssFullscreen;
+        if (!state || e.key !== 'Tab') return;
+        const items = this.getFocusableElements(state.target);
+        if (!items.length) {
+            e.preventDefault();
+            return;
+        }
+        const first = items[0];
+        const last = items[items.length - 1];
+        const current = document.activeElement;
+        const inside = state.target.contains(current);
+        if (e.shiftKey && (!inside || current === first)) {
+            e.preventDefault();
+            last.focus();
+        } else if (!e.shiftKey && (!inside || current === last)) {
+            e.preventDefault();
+            first.focus();
+        }
     },
 
     /**
@@ -315,6 +469,11 @@ var $text = {
         document._textFullscreenWired = true;
         const wrapSelector = '.' + this.fullscreenWrapClass;
         const targetSelector = '.' + this.fullscreenTargetClass;
+        const syncAll = () => {
+            document
+                .querySelectorAll(targetSelector)
+                .forEach((target) => this.syncFullscreenButton(target));
+        };
 
         document.addEventListener('click', (e) => {
             const btn =
@@ -327,16 +486,20 @@ var $text = {
         });
 
         document.addEventListener('keydown', (e) => {
-            if (e.key !== 'Escape') return;
-            document
-                .querySelectorAll(targetSelector + '.' + this.fullscreenActiveClass)
-                .forEach((target) => this.setCssFullscreen(target, false));
+            if (e.key === 'Escape') {
+                this.endCssFullscreen();
+                return;
+            }
+            this.trapFullscreenFocus(e);
         });
 
-        document.addEventListener('fullscreenchange', () => {
+        document.addEventListener('fullscreenchange', syncAll);
+        window.addEventListener('resize', () => {
             document
                 .querySelectorAll(targetSelector)
-                .forEach((target) => this.syncFullscreenButton(target));
+                .forEach((target) => {
+                    if (this.isFullscreen(target)) this.updateFullscreenZoom(target);
+                });
         });
     },
 

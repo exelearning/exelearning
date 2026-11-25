@@ -51,6 +51,13 @@
     opacity: 1;
 }
 
+/* Touch screens have no reliable hover: keep the button visible. */
+@media (hover: none) {
+    .text-fullscreen-wrap > .text-fullscreen-btn {
+        opacity: 1;
+    }
+}
+
 .text-fullscreen-wrap > .text-fullscreen-btn svg {
     width: 14px;
     height: 14px;
@@ -59,9 +66,10 @@
 
 /* ── Fullscreen state: native API and CSS fallback ───────────────────────────
    The target is the whole block (title included) in exported pages, or the
-   content alone in the editor. The base font size grows with the viewport, and
-   every size inside the content that uses em/rem-relative units grows with it.
-   Images may use their full width up to the screen size. */
+   content alone in the editor. Its children are laid out at a readable width
+   and zoomed (--text-fs-zoom, set by text.js) to fill the screen, so the
+   content keeps its proportions: text in any unit, images with the size the
+   author gave them, tables and media all grow together. */
 
 .text-fullscreen-target:fullscreen,
 .text-fullscreen-target.text-fs-active {
@@ -70,15 +78,13 @@
     height: 100vh;
     max-width: none;
     margin: 0;
-    padding: 2.5em 5vw;
+    padding: 2.5rem 4vw;
     overflow-y: auto;
     border: none;
     border-radius: 0;
     box-shadow: none;
     background-color: #fff;
     color: #1d1d1f;
-    font-size: clamp(1.25rem, 1rem + 1.2vw, 2.75rem);
-    line-height: 1.5;
 }
 
 .text-fullscreen-target.text-fs-active {
@@ -89,16 +95,11 @@
 
 .text-fullscreen-target:fullscreen > :not(.text-fullscreen-btn),
 .text-fullscreen-target.text-fs-active > :not(.text-fullscreen-btn) {
-    max-width: 60em;
+    box-sizing: border-box;
+    max-width: 640px;
     margin-right: auto;
     margin-left: auto;
-}
-
-/* Block title: themes size it in rem, so it would not grow with the text. */
-.text-fullscreen-target:fullscreen .box-title,
-.text-fullscreen-target.text-fs-active .box-title {
-    font-size: 1.5em !important;
-    line-height: 1.2;
+    zoom: var(--text-fs-zoom, 1);
 }
 
 /* Collapsing the block makes no sense while it fills the screen. */
@@ -107,12 +108,13 @@
     display: none;
 }
 
+/* Keep the author's image sizes (they grow with the zoom); only make sure an
+   image never overflows the column or the screen height. */
 .text-fullscreen-target:fullscreen img,
 .text-fullscreen-target.text-fs-active img {
-    width: auto;
-    height: auto;
     max-width: 100%;
     max-height: 85vh;
+    object-fit: contain;
 }
 
 .text-fullscreen-target:fullscreen .text-fullscreen-btn,
