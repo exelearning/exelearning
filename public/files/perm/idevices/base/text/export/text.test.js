@@ -260,6 +260,8 @@ describe('text iDevice export', () => {
     let node;
     let listeners;
     let addListener;
+    let windowListeners;
+    let addWindowListener;
 
     beforeEach(() => {
       // Track the document listeners each test registers, so they can be
@@ -270,7 +272,14 @@ describe('text iDevice export', () => {
         listeners.push([type, fn, opts]);
         return addListener.call(this, type, fn, opts);
       };
+      windowListeners = [];
+      addWindowListener = window.addEventListener;
+      window.addEventListener = function (type, fn, opts) {
+        windowListeners.push([type, fn, opts]);
+        return addWindowListener.call(this, type, fn, opts);
+      };
       document._textFullscreenWired = false;
+      $text.cssFullscreen = null;
       document.body.innerHTML = '';
       document.body.style.overflow = '';
       node = document.createElement('div');
@@ -283,6 +292,9 @@ describe('text iDevice export', () => {
     afterEach(() => {
       listeners.forEach(([type, fn, opts]) => document.removeEventListener(type, fn, opts));
       document.addEventListener = addListener;
+      windowListeners.forEach(([type, fn, opts]) => window.removeEventListener(type, fn, opts));
+      window.addEventListener = addWindowListener;
+      if ($text.cssFullscreen && $text.cssFullscreen.observer) $text.cssFullscreen.observer.disconnect();
       Object.defineProperty(document, 'fullscreenElement', { value: null, configurable: true });
     });
 
@@ -296,7 +308,7 @@ describe('text iDevice export', () => {
       expect($text.getFullscreenLabel(true)).toBe('Salir');
       global.$exe_i18n = undefined;
       expect($text.getFullscreenLabel(false)).toBe('Full screen');
-      expect($text.getFullscreenLabel(true)).toBe('Exit full screen');
+      expect($text.getFullscreenLabel(true)).toBe('Exit Full Screen');
     });
 
     it('adds one accessible button to the text template wrapper', () => {
@@ -352,12 +364,13 @@ describe('text iDevice export', () => {
       const btn = wrap.firstElementChild;
       setFullscreenElement(wrap);
       document.dispatchEvent(new Event('fullscreenchange'));
-      expect(btn.getAttribute('aria-label')).toBe('Exit full screen');
-      expect(btn.getAttribute('aria-pressed')).toBe('true');
+      expect(btn.getAttribute('aria-label')).toBe('Exit Full Screen');
+      expect(btn.hasAttribute('aria-pressed')).toBe(false);
+      expect(wrap.style.getPropertyValue('--text-fs-zoom')).toBe('1');
       setFullscreenElement(null);
       document.dispatchEvent(new Event('fullscreenchange'));
       expect(btn.getAttribute('aria-label')).toBe('Full screen');
-      expect(btn.getAttribute('aria-pressed')).toBe('false');
+      expect(wrap.style.getPropertyValue('--text-fs-zoom')).toBe('');
     });
 
     it('uses the CSS fallback when the Fullscreen API is unavailable, and leaves it on a second click', () => {
@@ -367,7 +380,7 @@ describe('text iDevice export', () => {
       btn.click();
       expect(wrap.classList.contains('text-fs-active')).toBe(true);
       expect(document.body.style.overflow).toBe('hidden');
-      expect(btn.getAttribute('aria-label')).toBe('Exit full screen');
+      expect(btn.getAttribute('aria-label')).toBe('Exit Full Screen');
       btn.click();
       expect(wrap.classList.contains('text-fs-active')).toBe(false);
       expect(document.body.style.overflow).toBe('');
@@ -413,6 +426,7 @@ describe('text iDevice export', () => {
       $text.wireFullscreenEvents();
       $text.wireFullscreenEvents();
       expect(listeners.map(([type]) => type)).toEqual(['click', 'keydown', 'fullscreenchange']);
+      expect(windowListeners.map(([type]) => type)).toEqual(['resize']);
     });
 
     it('makes the whole block (with its title) go fullscreen in exported pages', () => {
@@ -429,10 +443,10 @@ describe('text iDevice export', () => {
       btn.click();
       expect(box.classList.contains('text-fs-active')).toBe(true);
       expect(wrap.classList.contains('text-fs-active')).toBe(false);
-      expect(btn.getAttribute('aria-pressed')).toBe('true');
+      expect(btn.getAttribute('aria-label')).toBe('Exit Full Screen');
       document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
       expect(box.classList.contains('text-fs-active')).toBe(false);
-      expect(btn.getAttribute('aria-pressed')).toBe('false');
+      expect(btn.getAttribute('aria-label')).toBe('Full screen');
     });
 
     it('keeps only the content as target inside the editor', () => {
@@ -443,6 +457,243 @@ describe('text iDevice export', () => {
       expect($text.getFullscreenTarget(wrap)).toBe(wrap);
       expect(wrap.classList.contains('text-fullscreen-target')).toBe(true);
       expect(document.querySelector('article.box').classList.contains('text-fullscreen-target')).toBe(false);
+    });
+
+    describe('CSS fallback state', () => {
+      const makeBlock = (id, extra = '') => {
+        const el = document.createElement('div');
+        el.id = id;
+        el.className = 'idevice_node text';
+        el.innerHTML = `<div class="exe-text-template"><p>${id}</p>${extra}</div>`;
+        document.body.appendChild(el);
+        const wrap = $text.addFullscreenButton(el);
+        wrap.requestFullscreen = undefined;
+        return wrap;
+      };
+
+      it('restores the previous body overflow instead of clearing it', () => {
+        document.body.style.overflow = 'scroll';
+        const wrap = $text.addFullscreenButton(node);
+        $text.setCssFullscreen(wrap, true);
+        expect(document.body.style.overflow).toBe('hidden');
+        $text.setCssFullscreen(wrap, false);
+        expect(document.body.style.overflow).toBe('scroll');
+      });
+
+      it('keeps a single CSS fullscreen active at a time', () => {
+        document.body.style.overflow = 'auto';
+        const a = makeBlock('text-a');
+        const b = makeBlock('text-b');
+        a.firstElementChild.click();
+        b.firstElementChild.click();
+        expect(a.classList.contains('text-fs-active')).toBe(false);
+        expect(b.classList.contains('text-fs-active')).toBe(true);
+        expect(a.firstElementChild.getAttribute('aria-label')).toBe('Full screen');
+        b.firstElementChild.click();
+        expect(document.body.style.overflow).toBe('auto');
+        expect(document.querySelectorAll('.text-fs-active').length).toBe(0);
+      });
+
+      it('each button only toggles its own block when several are on the page', () => {
+        const a = makeBlock('text-a');
+        const b = makeBlock('text-b');
+        b.firstElementChild.click();
+        expect(b.classList.contains('text-fs-active')).toBe(true);
+        expect(a.classList.contains('text-fs-active')).toBe(false);
+        b.firstElementChild.click();
+        expect(b.classList.contains('text-fs-active')).toBe(false);
+      });
+
+      it('cleans up when the block is removed while in fullscreen', async () => {
+        document.body.style.overflow = 'visible';
+        const outside = document.createElement('button');
+        document.body.appendChild(outside);
+        outside.focus();
+        const wrap = $text.addFullscreenButton(node);
+        $text.setCssFullscreen(wrap, true);
+        node.remove();
+        await new Promise((resolve) => setTimeout(resolve, 0));
+        expect($text.cssFullscreen).toBeNull();
+        expect(document.body.style.overflow).toBe('visible');
+        expect(document.activeElement).toBe(outside);
+      });
+
+      it('ignores a second activation of the same block and a stray deactivation', () => {
+        const wrap = $text.addFullscreenButton(node);
+        $text.setCssFullscreen(wrap, true);
+        const state = $text.cssFullscreen;
+        $text.setCssFullscreen(wrap, true);
+        expect($text.cssFullscreen).toBe(state);
+        $text.endCssFullscreen();
+        $text.endCssFullscreen();
+        expect($text.cssFullscreen).toBeNull();
+        const other = makeBlock('text-c');
+        other.classList.add('text-fs-active');
+        $text.setCssFullscreen(other, false);
+        expect(other.classList.contains('text-fs-active')).toBe(false);
+      });
+
+      it('works without MutationObserver', () => {
+        const original = global.MutationObserver;
+        global.MutationObserver = undefined;
+        try {
+          const wrap = $text.addFullscreenButton(node);
+          $text.setCssFullscreen(wrap, true);
+          expect($text.cssFullscreen.observer).toBeNull();
+          $text.setCssFullscreen(wrap, false);
+          expect(wrap.classList.contains('text-fs-active')).toBe(false);
+        } finally {
+          global.MutationObserver = original;
+        }
+      });
+    });
+
+    describe('CSS fallback keyboard focus', () => {
+      let wrap;
+      let btn;
+      let link;
+      let input;
+      let outside;
+
+      beforeEach(() => {
+        node.innerHTML =
+          '<div class="exe-text-template"><p><a href="#a">Link</a></p>' +
+          '<input type="text"><input type="hidden"><button hidden>Hidden</button>' +
+          '<span style="display: none"><a href="#b">In a hidden parent</a></span>' +
+          '<button style="visibility: hidden">Invisible</button><div inert><a href="#c">Inert</a></div></div>';
+        outside = document.createElement('button');
+        outside.textContent = 'Outside';
+        document.body.appendChild(outside);
+        wrap = $text.addFullscreenButton(node);
+        wrap.requestFullscreen = undefined;
+        btn = wrap.firstElementChild;
+        link = wrap.querySelector('a');
+        input = wrap.querySelector('input[type="text"]');
+      });
+
+      const tab = (shiftKey = false) => {
+        const e = new KeyboardEvent('keydown', { key: 'Tab', shiftKey, cancelable: true });
+        document.dispatchEvent(e);
+        return e;
+      };
+
+      it('moves focus to the button on enter and back to the previous element on exit', () => {
+        outside.focus();
+        $text.setCssFullscreen(wrap, true);
+        expect(document.activeElement).toBe(btn);
+        document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+        expect(document.activeElement).toBe(outside);
+      });
+
+      it('falls back to the button when the previous element is gone', () => {
+        outside.focus();
+        $text.setCssFullscreen(wrap, true);
+        outside.remove();
+        $text.setCssFullscreen(wrap, false);
+        expect(document.activeElement).toBe(btn);
+      });
+
+      it('lists only focusable, visible elements', () => {
+        expect($text.getFocusableElements(wrap)).toEqual([btn, link, input]);
+      });
+
+      it('wraps Tab from the last element to the first one', () => {
+        $text.setCssFullscreen(wrap, true);
+        input.focus();
+        const e = tab();
+        expect(e.defaultPrevented).toBe(true);
+        expect(document.activeElement).toBe(btn);
+      });
+
+      it('wraps Shift+Tab from the first element to the last one', () => {
+        $text.setCssFullscreen(wrap, true);
+        btn.focus();
+        const e = tab(true);
+        expect(e.defaultPrevented).toBe(true);
+        expect(document.activeElement).toBe(input);
+      });
+
+      it('brings focus back inside when it is outside the block', () => {
+        $text.setCssFullscreen(wrap, true);
+        outside.focus();
+        tab();
+        expect(document.activeElement).toBe(btn);
+      });
+
+      it('lets Tab move normally between elements inside the block', () => {
+        $text.setCssFullscreen(wrap, true);
+        link.focus();
+        expect(tab().defaultPrevented).toBe(false);
+      });
+
+      it('does nothing with Tab when no CSS fullscreen is active, or for other keys', () => {
+        outside.focus();
+        expect(tab().defaultPrevented).toBe(false);
+        $text.setCssFullscreen(wrap, true);
+        const e = new KeyboardEvent('keydown', { key: 'a', cancelable: true });
+        document.dispatchEvent(e);
+        expect(e.defaultPrevented).toBe(false);
+      });
+
+      it('blocks Tab when nothing inside can take focus', () => {
+        const box = document.createElement('div');
+        box.className = 'text-fullscreen-target';
+        document.body.appendChild(box);
+        $text.setCssFullscreen(box, true);
+        expect(tab().defaultPrevented).toBe(true);
+        $text.setCssFullscreen(box, false);
+      });
+    });
+
+    describe('content zoom', () => {
+      const setWidth = (el, width) => {
+        Object.defineProperty(el, 'clientWidth', { value: width, configurable: true });
+      };
+
+      it('zooms the content to fill the available width', () => {
+        const wrap = $text.addFullscreenButton(node);
+        setWidth(wrap, 1280);
+        $text.updateFullscreenZoom(wrap);
+        expect(wrap.style.getPropertyValue('--text-fs-zoom')).toBe('2');
+      });
+
+      it('subtracts the padding from the available width', () => {
+        const wrap = $text.addFullscreenButton(node);
+        wrap.style.paddingLeft = '160px';
+        wrap.style.paddingRight = '160px';
+        setWidth(wrap, 1280);
+        $text.updateFullscreenZoom(wrap);
+        expect(wrap.style.getPropertyValue('--text-fs-zoom')).toBe('1.5');
+      });
+
+      it('never shrinks the content and caps the zoom', () => {
+        const wrap = $text.addFullscreenButton(node);
+        setWidth(wrap, 300);
+        $text.updateFullscreenZoom(wrap);
+        expect(wrap.style.getPropertyValue('--text-fs-zoom')).toBe('1');
+        setWidth(wrap, 5000);
+        $text.updateFullscreenZoom(wrap);
+        expect(wrap.style.getPropertyValue('--text-fs-zoom')).toBe('2.75');
+        setWidth(wrap, 0);
+        $text.updateFullscreenZoom(wrap);
+        expect(wrap.style.getPropertyValue('--text-fs-zoom')).toBe('1');
+      });
+
+      it('sets the zoom on enter, removes it on exit and updates it on resize', () => {
+        const wrap = $text.addFullscreenButton(node);
+        wrap.requestFullscreen = undefined;
+        setWidth(wrap, 960);
+        wrap.firstElementChild.click();
+        expect(wrap.style.getPropertyValue('--text-fs-zoom')).toBe('1.5');
+        setWidth(wrap, 1280);
+        window.dispatchEvent(new Event('resize'));
+        expect(wrap.style.getPropertyValue('--text-fs-zoom')).toBe('2');
+        wrap.firstElementChild.click();
+        expect(wrap.style.getPropertyValue('--text-fs-zoom')).toBe('');
+        setWidth(wrap, 640);
+        window.dispatchEvent(new Event('resize'));
+        expect(wrap.style.getPropertyValue('--text-fs-zoom')).toBe('');
+      });
     });
 
     it('renderBehaviour adds the fullscreen button', () => {
