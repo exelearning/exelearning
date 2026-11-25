@@ -255,4 +255,86 @@ describe('text iDevice export', () => {
       expect(result).toContain('feedbacktooglebutton');
     });
   });
+
+  describe('hideEmptyTaskInfo', () => {
+    const row = (label, value) =>
+      `<div class="inline"><dt><span title="${label}">${label}</span></dt><dd>${value}</dd></div>`;
+    const makeNode = (html) => {
+      const node = document.createElement('div');
+      node.innerHTML = `<div class="exe-text-activity"><dl>${html}</dl><p>Text</p></div>`;
+      return node;
+    };
+    const hidden = (node) =>
+      Array.from(node.querySelectorAll('dl > div.inline')).map((r) =>
+        r.classList.contains('exe-text-info-empty')
+      );
+
+    it('hides the Grouping row when only Duration has a value', () => {
+      const node = makeNode(row('Duration', '45 min') + row('Grouping', ''));
+      $text.hideEmptyTaskInfo(node);
+      expect(hidden(node)).toEqual([false, true]);
+    });
+
+    it('hides the Duration row when only Grouping has a value', () => {
+      const node = makeNode(row('Duration', '') + row('Grouping', 'In pairs'));
+      $text.hideEmptyTaskInfo(node);
+      expect(hidden(node)).toEqual([true, false]);
+    });
+
+    it('keeps both rows when both have a value', () => {
+      const node = makeNode(row('Duration', '45 min') + row('Grouping', 'In pairs'));
+      $text.hideEmptyTaskInfo(node);
+      expect(hidden(node)).toEqual([false, false]);
+    });
+
+    it('treats a value made only of whitespace (older content) as empty', () => {
+      const node = makeNode(row('Duration', '45 min') + row('Grouping', '\n   '));
+      $text.hideEmptyTaskInfo(node);
+      expect(hidden(node)).toEqual([false, true]);
+    });
+
+    it('keeps the rows in the HTML, so the editor can still read them by position', () => {
+      const node = makeNode(row('Duration', '') + row('Grouping', 'In pairs'));
+      $text.hideEmptyTaskInfo(node);
+      const rows = node.querySelectorAll('dl > div.inline');
+      expect(rows.length).toBe(2);
+      expect(rows[1].querySelector('dd').textContent).toBe('In pairs');
+    });
+
+    it('shows a row again when its value is filled after a new render', () => {
+      const node = makeNode(row('Duration', '45 min') + row('Grouping', ''));
+      $text.hideEmptyTaskInfo(node);
+      node.querySelectorAll('dd')[1].textContent = 'In pairs';
+      $text.hideEmptyTaskInfo(node);
+      expect(hidden(node)).toEqual([false, false]);
+    });
+
+    it('ignores rows without a value element and missing nodes', () => {
+      const node = makeNode('<div class="inline"><dt>Only a term</dt></div>');
+      $text.hideEmptyTaskInfo(node);
+      expect(hidden(node)).toEqual([false]);
+      expect(() => $text.hideEmptyTaskInfo(null)).not.toThrow();
+    });
+
+    it('is applied by renderBehaviour', () => {
+      document.body.innerHTML = '';
+      const node = makeNode(row('Duration', '45 min') + row('Grouping', ''));
+      node.id = 'text-info-1';
+      document.body.appendChild(node);
+      const origIsInExe = eXe.app.isInExe;
+      const origExeDevices = global.$exeDevices;
+      eXe.app.isInExe = () => false;
+      global.$exeDevices = {
+        iDevice: { gamification: { math: { hasLatex: () => false, updateLatex: vi.fn() } } },
+      };
+      try {
+        $text.renderBehaviour({ ideviceId: 'text-info-1' });
+        expect(hidden(node)).toEqual([false, true]);
+      } finally {
+        eXe.app.isInExe = origIsInExe;
+        global.$exeDevices = origExeDevices;
+        document.body.innerHTML = '';
+      }
+    });
+  });
 });
