@@ -18,3 +18,115 @@
 .idevice_node.text .iDevice_buttons.feedback-button {
     margin-bottom: 1em;
 }
+
+/* ── Fullscreen button (revealed on hover or keyboard focus) ─────────────── */
+
+.text-fullscreen-wrap {
+    position: relative;
+}
+
+.text-fullscreen-wrap > .text-fullscreen-btn {
+    position: absolute;
+    top: 0;
+    right: 0;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    padding: 0;
+    border: none;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.85);
+    color: #1d1d1f;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
+}
+
+.text-fullscreen-wrap:hover > .text-fullscreen-btn,
+.text-fullscreen-wrap > .text-fullscreen-btn:focus-visible {
+    opacity: 1;
+}
+
+/* Touch screens have no reliable hover: keep the button visible. */
+@media (hover: none) {
+    .text-fullscreen-wrap > .text-fullscreen-btn {
+        opacity: 1;
+    }
+}
+
+.text-fullscreen-wrap > .text-fullscreen-btn svg {
+    width: 14px;
+    height: 14px;
+    pointer-events: none;
+}
+
+/* ── Fullscreen state: native API and CSS fallback ───────────────────────────
+   The target is the whole block (title included) in exported pages, or the
+   content alone in the editor. Its children are laid out at a readable width
+   and zoomed (--text-fs-zoom, set by text.js) to fill the screen, so the
+   content keeps its proportions: text in any unit, images with the size the
+   author gave them, tables and media all grow together. */
+
+.text-fullscreen-target:fullscreen,
+.text-fullscreen-target.text-fs-active {
+    box-sizing: border-box;
+    width: 100vw;
+    height: 100vh;
+    max-width: none;
+    margin: 0;
+    padding: 2.5rem 4vw;
+    overflow-y: auto;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+    background-color: #fff;
+    color: #1d1d1f;
+}
+
+.text-fullscreen-target.text-fs-active {
+    position: fixed !important;
+    inset: 0 !important;
+    z-index: 99999 !important;
+}
+
+.text-fullscreen-target:fullscreen > :not(.text-fullscreen-btn),
+.text-fullscreen-target.text-fs-active > :not(.text-fullscreen-btn) {
+    box-sizing: border-box;
+    max-width: 640px;
+    margin-right: auto;
+    margin-left: auto;
+    zoom: var(--text-fs-zoom, 1);
+}
+
+/* Collapsing the block makes no sense while it fills the screen. */
+.text-fullscreen-target:fullscreen .box-toggle,
+.text-fullscreen-target.text-fs-active .box-toggle {
+    display: none;
+}
+
+/* Keep the author's image sizes (they grow with the zoom); only make sure an
+   image never overflows the column or the screen height. */
+.text-fullscreen-target:fullscreen img,
+.text-fullscreen-target.text-fs-active img {
+    max-width: 100%;
+    max-height: 85vh;
+    object-fit: contain;
+}
+
+.text-fullscreen-target:fullscreen .text-fullscreen-btn,
+.text-fullscreen-target.text-fs-active .text-fullscreen-btn {
+    position: fixed;
+    top: 12px;
+    right: 12px;
+    opacity: 1;
+}
+
+@media print {
+    .text-fullscreen-wrap > .text-fullscreen-btn {
+        display: none;
+    }
+}
