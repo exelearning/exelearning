@@ -19,6 +19,9 @@ var $text = {
 
     defaultBtnFeedbackText: $exe_i18n.showFeedback,
     emptyInfoClass: 'exe-text-info-empty',
+    // Class of the task information list written by the editor (and by
+    // createInfoHTML). Older content has no class: see isLegacyTaskInfoList.
+    taskInfoClass: 'exe-text-task-info',
 
     /**
      * Engine execution order: 1
@@ -237,8 +240,9 @@ var $text = {
     /**
      * The task information list of a Text iDevice activity, or null.
      * It is the first element of .exe-text-activity, or of its inner wrapper
-     * <div> (older content and getHTMLView), and it only holds one or two
-     * <div class="inline"> rows, each with a <dt> and a <dd>.
+     * <div> (older content and getHTMLView), and it is either marked with
+     * taskInfoClass (content written since this class exists) or has the exact
+     * structure older versions wrote (see isLegacyTaskInfoList).
      * @param {HTMLElement} activity - The .exe-text-activity element
      * @returns {HTMLElement|null}
      */
@@ -246,12 +250,21 @@ var $text = {
         const first = activity.firstElementChild;
         const candidates = [first, first && first.tagName === 'DIV' ? first.firstElementChild : null];
         return (
-            candidates.find((el) => el && el.tagName === 'DL' && this.isTaskInfoList(el)) || null
+            candidates.find(
+                (el) =>
+                    el &&
+                    el.tagName === 'DL' &&
+                    (el.classList.contains(this.taskInfoClass)
+                        ? this.isTaskInfoList(el)
+                        : this.isLegacyTaskInfoList(el))
+            ) || null
         );
     },
 
     /**
-     * Whether a <dl> has the task information structure.
+     * Whether a <dl> marked as task information has the expected rows: one or
+     * two <div class="inline">, each with a <dt> and a <dd>. The CSS applies the
+     * same limit (no third child).
      * @param {HTMLElement} dl
      * @returns {boolean}
      */
@@ -264,6 +277,24 @@ var $text = {
                 row.classList.contains('inline') &&
                 !!row.querySelector(':scope > dt') &&
                 !!row.querySelector(':scope > dd')
+        );
+    },
+
+    /**
+     * Whether a <dl> without taskInfoClass has the exact structure that older
+     * versions wrote for task information: two <div class="inline"> rows, each
+     * with a <dt> holding a <span title> and a <dd>. Definition lists written
+     * by the author do not have it (the editor does not keep <div> rows in a
+     * <dl>).
+     * @param {HTMLElement} dl
+     * @returns {boolean}
+     */
+    isLegacyTaskInfoList(dl) {
+        const rows = Array.from(dl.children);
+        return (
+            rows.length === 2 &&
+            this.isTaskInfoList(dl) &&
+            rows.every((row) => !!row.querySelector(':scope > dt > span[title]'))
         );
     },
 
@@ -284,7 +315,7 @@ var $text = {
         participantsValue
     ) {
         return `
-            <dl>
+            <dl class="${this.taskInfoClass}">
                 <div class="inline"><dt><span title="${durationText}">${durationText}</span></dt><dd>${durationValue}</dd></div>
                 <div class="inline"><dt><span title="${participantsText}">${participantsText}</span></dt><dd>${participantsValue}</dd></div>
             </dl>`;

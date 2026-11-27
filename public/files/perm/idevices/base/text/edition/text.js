@@ -166,7 +166,7 @@ var $exeDevice = {
 
         // Add duration/participants dl if we have values
         if (hasTaskInfo) {
-            html += '<dl>';
+            html += '<dl class="exe-text-task-info">';
             html += `<div class="inline"><dt><span title="${this.escapeHtmlAttr(durationLabel)}">${this.escapeHtml(durationLabel)}</span></dt>`;
             html += `<dd>${this.escapeHtml(durationValue)}</dd></div>`;
             html += `<div class="inline"><dt><span title="${this.escapeHtmlAttr(participantsLabel)}">${this.escapeHtml(participantsLabel)}</span></dt>`;
