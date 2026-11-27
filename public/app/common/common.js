@@ -1215,6 +1215,40 @@ var $exe = {
 // iDevices common code - To review (Part of this code should not be exported)
 var $exeDevices = {
     iDevice: {
+        // Feedback toggle buttons ("Show feedback" / "Hide feedback")
+        feedback: {
+            idCount: 0,
+
+            /**
+             * Make a feedback toggle button accessible: link it to the
+             * feedback it shows (aria-controls) and expose its state
+             * (aria-expanded). Screen reader users then hear whether the
+             * feedback is shown, even when the button label does not change.
+             * @param {HTMLElement} button - The toggle button
+             * @param {HTMLElement} feedback - The feedback element it shows/hides
+             * @param {boolean} [expanded=false] - Whether the feedback is shown
+             */
+            init: function (button, feedback, expanded) {
+                if (!button || !feedback) return;
+                if (!feedback.id) {
+                    $exeDevices.iDevice.feedback.idCount += 1;
+                    feedback.id = 'exe-feedback-' + $exeDevices.iDevice.feedback.idCount;
+                }
+                button.setAttribute('aria-controls', feedback.id);
+                $exeDevices.iDevice.feedback.setExpanded(button, !!expanded);
+            },
+
+            /**
+             * Update the state of a feedback toggle button.
+             * @param {HTMLElement} button
+             * @param {boolean} expanded - Whether the feedback is now shown
+             */
+            setExpanded: function (button, expanded) {
+                if (!button) return;
+                button.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+            },
+        },
+
         // Gamification
         gamification: {
             initGame($game, nameGame, gameClass, ideviceClass) {

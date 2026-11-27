@@ -139,6 +139,7 @@ var $text = {
             $btn.off('click')
                 .closest('.feedback-button')
                 .removeClass('clearfix');
+            $text.initFeedbackState($btn);
 
             $btn.on('click', function () {
                 if ($text.working) return false;
@@ -150,11 +151,13 @@ var $text = {
 
                 if (feedbackEl.is(':visible')) {
                     btn.val(btn.attr('data-text-a'));
+                    $text.setFeedbackState(btn, false);
                     feedbackEl.fadeOut(() => {
                         $text.working = false;
                     });
                 } else {
                     btn.val(btn.attr('data-text-b'));
+                    $text.setFeedbackState(btn, true);
                     feedbackEl.fadeIn(() => {
                         $text.working = false;
                     });
@@ -170,6 +173,40 @@ var $text = {
                 '.exe-text-template'
             );
         }
+    },
+
+    /**
+     * Link the feedback button to its feedback and expose its state to
+     * assistive technologies (aria-controls / aria-expanded).
+     * @param {jQuery} $btn - The feedback toggle button
+     */
+    initFeedbackState($btn) {
+        const helper = $text.getFeedbackHelper();
+        if (!helper) return;
+        const feedbackEl = $btn.closest('.feedback-button').next('.feedback');
+        helper.init($btn[0], feedbackEl[0], feedbackEl.is(':visible'));
+    },
+
+    /**
+     * Update the state of the feedback button.
+     * @param {jQuery} $btn
+     * @param {boolean} expanded - Whether the feedback is now shown
+     */
+    setFeedbackState($btn, expanded) {
+        const helper = $text.getFeedbackHelper();
+        if (helper) helper.setExpanded($btn[0], expanded);
+    },
+
+    /**
+     * The shared feedback helper from common.js, if it is loaded.
+     * @returns {object|null}
+     */
+    getFeedbackHelper() {
+        return typeof $exeDevices !== 'undefined' &&
+            $exeDevices.iDevice &&
+            $exeDevices.iDevice.feedback
+            ? $exeDevices.iDevice.feedback
+            : null;
     },
 
     replaceResourceDirectoryPaths(newDir, htmlString) {

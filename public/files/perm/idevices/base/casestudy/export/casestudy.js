@@ -134,8 +134,16 @@ var $casestudy = {
     },
 
     addEvents: function (data) {
+        const feedbackHelper =
+            typeof $exeDevices !== 'undefined' && $exeDevices.iDevice && $exeDevices.iDevice.feedback
+                ? $exeDevices.iDevice.feedback
+                : null;
         $(`.CSP-FeedbackBtn`).each(function () {
             const $btn = $(this);
+            if (feedbackHelper && !$btn.attr('aria-controls')) {
+                const $fb = $btn.closest('.CSP-ActivityDiv').find('.CSP-FeedbackText');
+                feedbackHelper.init(this, $fb[0], $fb.is(':visible'));
+            }
             if ($btn.attr('data-text-a')) return;
             const [textA, textB = textA] = $btn.val().split('|');
             $btn.val(textA).attr('data-text-a', textA).attr('data-text-b', textB);
@@ -147,6 +155,7 @@ var $casestudy = {
             const $fb = $activityDiv.find('.CSP-FeedbackText');
             const isVisible = $fb.is(':visible');
             $btn.val(isVisible ? $btn.attr('data-text-a') : $btn.attr('data-text-b'));
+            if (feedbackHelper) feedbackHelper.setExpanded(this, !isVisible);
             $fb.slideToggle(200, function () {
                 $exeDevices.iDevice.gamification.math.updateLatex(
                     '.CSP-FeedbackText'

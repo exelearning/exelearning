@@ -91,6 +91,14 @@ var $markdowntext = {
                 .attr('data-text-a', textA)
                 .attr('data-text-b', textB);
             $btn.off('click').closest('.feedback-button').removeClass('clearfix');
+            const feedbackHelper =
+                typeof $exeDevices !== 'undefined' && $exeDevices.iDevice && $exeDevices.iDevice.feedback
+                    ? $exeDevices.iDevice.feedback
+                    : null;
+            if (feedbackHelper) {
+                const $feedback = $btn.closest('.feedback-button').next('.feedback');
+                feedbackHelper.init($btn[0], $feedback[0], $feedback.is(':visible'));
+            }
 
             $btn.on('click', (event) => {
                 event.preventDefault();
@@ -105,11 +113,13 @@ var $markdowntext = {
 
                 if (feedbackEl.is(':visible')) {
                     btn.val(btn.attr('data-text-a'));
+                    if (feedbackHelper) feedbackHelper.setExpanded(btn[0], false);
                     feedbackEl.fadeOut(() => {
                         $markdowntext.working = false;
                     });
                 } else {
                     btn.val(btn.attr('data-text-b'));
+                    if (feedbackHelper) feedbackHelper.setExpanded(btn[0], true);
                     feedbackEl.fadeIn(() => {
                         $markdowntext.working = false;
                     });
