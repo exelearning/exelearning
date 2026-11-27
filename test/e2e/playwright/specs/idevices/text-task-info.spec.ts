@@ -167,6 +167,89 @@ test.describe('Text iDevice task information', () => {
         }
     });
 
+    test('CSS and JavaScript hide the same rows (real visibility in an exported page)', async ({
+        authenticatedPage,
+        createProject,
+    }) => {
+        const page = authenticatedPage;
+        await createTextWithInfo(page, createProject, { duration: '45 min', grouping: '' });
+        const download = await exportProjectAs(page, 'html5');
+        const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'text-task-info-css-'));
+        try {
+            const zipPath = path.join(dir, 'package.zip');
+            await download.saveAs(zipPath);
+            const entries = unzipSync(fs.readFileSync(zipPath));
+            for (const [name, data] of Object.entries(entries)) {
+                if (name.endsWith('/')) continue;
+                const target = path.join(dir, 'out', name);
+                fs.mkdirSync(path.dirname(target), { recursive: true });
+                fs.writeFileSync(target, data);
+            }
+            const exported = await page.context().newPage();
+            await exported.goto(pathToFileURL(path.join(dir, 'out', 'index.html')).href);
+            await exported.waitForFunction(() => typeof (window as any).$text?.hideEmptyTaskInfo === 'function');
+
+            // Lists added to the exported page, with the page's own text.css.
+            const row = (label: string, value: string, span = true) =>
+                `<div class="inline"><dt>${span ? `<span title="${label}">${label}</span>` : label}</dt><dd>${value}</dd></div>`;
+            const cases: Record<string, string> = {
+                marked: `<dl class="exe-text-task-info">${row('Duration', '45 min')}${row('Grouping', '')}</dl>`,
+                legacy: `<div><dl>${row('Duration', '45 min')}${row('Grouping', '')}</dl></div>`,
+                authorThreeRows: `<dl>${row('A', '')}${row('B', 'b')}${row('C', 'c')}</dl>`,
+                markedThreeRows: `<dl class="exe-text-task-info">${row('A', '')}${row('B', 'b')}${row('C', 'c')}</dl>`,
+                authorTwoRows: `<dl>${row('Example', '', false)}${row('Image', '<img src="x.png" alt="X">', false)}</dl>`,
+                authorLater: `<p>Intro</p><dl>${row('Duration', '')}${row('Grouping', 'g')}</dl>`,
+            };
+            const visibility = async () =>
+                exported.evaluate(
+                    names =>
+                        Object.fromEntries(
+                            names.map(name => [
+                                name,
+                                Array.from(document.querySelectorAll(`#case-${name} dl > div.inline`)).map(
+                                    el => getComputedStyle(el).display !== 'none',
+                                ),
+                            ]),
+                        ),
+                    Object.keys(cases),
+                );
+            await exported.evaluate(all => {
+                const host = document.createElement('div');
+                host.id = 'task-info-cases';
+                host.innerHTML = Object.entries(all)
+                    .map(([name, html]) => `<div id="case-${name}"><div class="exe-text-activity">${html}</div></div>`)
+                    .join('');
+                document.body.appendChild(host);
+            }, cases);
+
+            // CSS only (before the script runs on these lists): only the marked list.
+            expect(await visibility()).toEqual({
+                marked: [true, false],
+                legacy: [true, true],
+                authorThreeRows: [true, true, true],
+                markedThreeRows: [true, true, true],
+                authorTwoRows: [true, true],
+                authorLater: [true, true],
+            });
+
+            // After the script: the marked list and the older structure, nothing else.
+            await exported.evaluate(() =>
+                (window as any).$text.hideEmptyTaskInfo(document.getElementById('task-info-cases')),
+            );
+            expect(await visibility()).toEqual({
+                marked: [true, false],
+                legacy: [true, false],
+                authorThreeRows: [true, true, true],
+                markedThreeRows: [true, true, true],
+                authorTwoRows: [true, true],
+                authorLater: [true, true],
+            });
+            await exported.close();
+        } finally {
+            fs.rmSync(dir, { recursive: true, force: true });
+        }
+    });
+
     test('does not touch definition lists written by the author, including rows with images', async ({
         authenticatedPage,
         createProject,

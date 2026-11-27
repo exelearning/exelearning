@@ -390,10 +390,58 @@ describe('text iDevice export', () => {
       classRules.forEach((sel) => expect(sel).not.toContain(':has('));
       const hasRules = rules.filter((sel) => sel.includes(':has('));
       expect(hasRules.length).toBeGreaterThan(0);
-      // Every selector is limited to the task information list of the activity.
-      [...classRules, ...hasRules].forEach((sel) =>
-        sel.split(',').forEach((one) => expect(one.trim()).toMatch(/^\.exe-text-activity > (div:first-child > )?dl:first-child/))
+      // The :has() rule only targets marked task information lists, with the
+      // same position and size limits as getTaskInfoList / isTaskInfoList.
+      hasRules.forEach((sel) =>
+        sel.split(/,(?![^(]*\))/).forEach((one) =>
+          expect(one.trim()).toMatch(
+            /^\.exe-text-activity > (div:first-child > )?dl\.exe-text-task-info:first-child:not\(:has\(> :nth-child\(3\)\)\) > div\.inline:has\(> dt \+ dd:empty\)$/
+          )
+        )
       );
+    });
+
+    it('accepts a list marked with exe-text-task-info, with one or two rows', () => {
+      const one = document.createElement('div');
+      one.innerHTML = `<div class="exe-text-activity"><dl class="exe-text-task-info"><div class="inline"><dt>Duration</dt><dd></dd></div></dl><p>Text</p></div>`;
+      $text.hideEmptyTaskInfo(one);
+      expect(hidden(one)).toEqual([true]);
+
+      const two = document.createElement('div');
+      two.innerHTML = `<div class="exe-text-activity"><dl class="exe-text-task-info"><div class="inline"><dt>Duration</dt><dd>45 min</dd></div><div class="inline"><dt>Grouping</dt><dd></dd></div></dl></div>`;
+      $text.hideEmptyTaskInfo(two);
+      expect(hidden(two)).toEqual([false, true]);
+    });
+
+    it('ignores a marked list with three rows', () => {
+      const node = document.createElement('div');
+      node.innerHTML = `<div class="exe-text-activity"><dl class="exe-text-task-info">${row('A', '')}${row('B', 'b')}${row('C', 'c')}</dl></div>`;
+      $text.hideEmptyTaskInfo(node);
+      expect(node.querySelectorAll('.exe-text-info-empty').length).toBe(0);
+    });
+
+    it('only accepts an unmarked first list with the exact older structure (two rows, dt > span[title])', () => {
+      const author = document.createElement('div');
+      author.innerHTML =
+        '<div class="exe-text-activity"><dl>' +
+        '<div class="inline"><dt>Example</dt><dd></dd></div>' +
+        '<div class="inline"><dt>Image</dt><dd><img src="a.png" alt="A"></dd></div>' +
+        '</dl><p>Text</p></div>';
+      $text.hideEmptyTaskInfo(author);
+      expect(author.querySelectorAll('.exe-text-info-empty').length).toBe(0);
+
+      const oneRow = makeNode(row('Duration', ''));
+      $text.hideEmptyTaskInfo(oneRow);
+      expect(oneRow.querySelectorAll('.exe-text-info-empty').length).toBe(0);
+    });
+
+    it('marks the list it creates with exe-text-task-info', () => {
+      const html = $text.createInfoHTML('Duration', '45 min', 'Grouping', '');
+      expect(html).toContain('<dl class="exe-text-task-info">');
+      const node = document.createElement('div');
+      node.innerHTML = $text.createMainContent(html + '<p>Text</p>');
+      $text.hideEmptyTaskInfo(node);
+      expect(hidden(node)).toEqual([false, true]);
     });
 
     it('is applied by renderBehaviour', () => {
