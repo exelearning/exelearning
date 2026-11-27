@@ -828,7 +828,7 @@ describe('text iDevice', () => {
       const result = $exeDevice.buildTextareaHtml();
 
       expect(result).toContain('exe-text-activity');
-      expect(result).toContain('<dl>');
+      expect(result).toContain('<dl class="exe-text-task-info">');
       expect(result).toContain('Duration:');
       expect(result).toContain('30 min');
       expect(result).toContain('Task content');
@@ -866,7 +866,7 @@ describe('text iDevice', () => {
       const result = $exeDevice.buildTextareaHtml();
 
       expect(result).toContain('exe-text-activity');
-      expect(result).toContain('<dl>');
+      expect(result).toContain('<dl class="exe-text-task-info">');
       expect(result).toContain('Time:');
       expect(result).toContain('1 hour');
       expect(result).toContain('Grouping:');

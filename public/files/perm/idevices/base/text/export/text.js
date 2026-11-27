@@ -18,6 +18,10 @@ var $text = {
     feedbackContentId: 'textFeedbackTextarea',
 
     defaultBtnFeedbackText: $exe_i18n.showFeedback,
+    emptyInfoClass: 'exe-text-info-empty',
+    // Class of the task information list written by the editor (and by
+    // createInfoHTML). Older content has no class: see isLegacyTaskInfoList.
+    taskInfoClass: 'exe-text-task-info',
 
     /**
      * Engine execution order: 1
@@ -164,6 +168,7 @@ var $text = {
                 );
             });
         }
+        this.hideEmptyTaskInfo($node[0]);
         const dataString = $node.html() || '';
         if ($exeDevices.iDevice.gamification.math.hasLatex(dataString)) {
             $exeDevices.iDevice.gamification.math.updateLatex(
@@ -206,6 +211,103 @@ var $text = {
             </div>`;
     },
 
+    /**
+     * Hide the task information rows (Duration / Grouping) that have no value,
+     * and the whole list when both are empty.
+     * The rows stay in the HTML because the editor reads them by position
+     * (first row: duration, second row: grouping); they are only hidden.
+     * Only the task information list is touched (see getTaskInfoList), never
+     * definition lists written by the author. It also covers older content,
+     * which may hold whitespace in an empty <dd>, without saving it again.
+     * @param {HTMLElement} node - The iDevice node
+     */
+    hideEmptyTaskInfo(node) {
+        if (!node || !node.querySelectorAll) return;
+        node.querySelectorAll('.exe-text-activity').forEach((activity) => {
+            const list = this.getTaskInfoList(activity);
+            if (!list) return;
+            const rows = Array.from(list.children);
+            let allEmpty = true;
+            rows.forEach((row) => {
+                const empty = this.isEmptyTaskInfoValue(row.querySelector(':scope > dd'));
+                row.classList.toggle(this.emptyInfoClass, empty);
+                if (!empty) allEmpty = false;
+            });
+            list.classList.toggle(this.emptyInfoClass, allEmpty);
+        });
+    },
+
+    /**
+     * The task information list of a Text iDevice activity, or null.
+     * It is the first element of .exe-text-activity, or of its inner wrapper
+     * <div> (older content and getHTMLView), and it is either marked with
+     * taskInfoClass (content written since this class exists) or has the exact
+     * structure older versions wrote (see isLegacyTaskInfoList).
+     * @param {HTMLElement} activity - The .exe-text-activity element
+     * @returns {HTMLElement|null}
+     */
+    getTaskInfoList(activity) {
+        const first = activity.firstElementChild;
+        const candidates = [first, first && first.tagName === 'DIV' ? first.firstElementChild : null];
+        return (
+            candidates.find(
+                (el) =>
+                    el &&
+                    el.tagName === 'DL' &&
+                    (el.classList.contains(this.taskInfoClass)
+                        ? this.isTaskInfoList(el)
+                        : this.isLegacyTaskInfoList(el))
+            ) || null
+        );
+    },
+
+    /**
+     * Whether a <dl> marked as task information has the expected rows: one or
+     * two <div class="inline">, each with a <dt> and a <dd>. The CSS applies the
+     * same limit (no third child).
+     * @param {HTMLElement} dl
+     * @returns {boolean}
+     */
+    isTaskInfoList(dl) {
+        const rows = Array.from(dl.children);
+        if (rows.length < 1 || rows.length > 2) return false;
+        return rows.every(
+            (row) =>
+                row.tagName === 'DIV' &&
+                row.classList.contains('inline') &&
+                !!row.querySelector(':scope > dt') &&
+                !!row.querySelector(':scope > dd')
+        );
+    },
+
+    /**
+     * Whether a <dl> without taskInfoClass has the exact structure that older
+     * versions wrote for task information: two <div class="inline"> rows, each
+     * with a <dt> holding a <span title> and a <dd>. Definition lists written
+     * by the author do not have it (the editor does not keep <div> rows in a
+     * <dl>).
+     * @param {HTMLElement} dl
+     * @returns {boolean}
+     */
+    isLegacyTaskInfoList(dl) {
+        const rows = Array.from(dl.children);
+        return (
+            rows.length === 2 &&
+            this.isTaskInfoList(dl) &&
+            rows.every((row) => !!row.querySelector(':scope > dt > span[title]'))
+        );
+    },
+
+    /**
+     * Whether a task information value is empty: no text and no elements
+     * (an image or any other element counts as content).
+     * @param {HTMLElement|null} dd
+     * @returns {boolean}
+     */
+    isEmptyTaskInfoValue(dd) {
+        return !!dd && dd.children.length === 0 && dd.textContent.trim() === '';
+    },
+
     createInfoHTML(
         durationText,
         durationValue,
@@ -213,7 +315,7 @@ var $text = {
         participantsValue
     ) {
         return `
-            <dl>
+            <dl class="${this.taskInfoClass}">
                 <div class="inline"><dt><span title="${durationText}">${durationText}</span></dt><dd>${durationValue}</dd></div>
                 <div class="inline"><dt><span title="${participantsText}">${participantsText}</span></dt><dd>${participantsValue}</dd></div>
             </dl>`;

@@ -15,6 +15,26 @@
     margin-left: 10px;
 }
 
+/* Task information: hide the Duration or Grouping row when it has no value,
+   and the whole list when both are empty. The rows stay in the HTML (the
+   editor reads them by position), so they are only hidden.
+   text.js decides which list is the task information (getTaskInfoList) and
+   sets .exe-text-info-empty; the first rule only follows that class.
+   The second rule works before scripts run, only for lists marked with
+   .exe-text-task-info and with the same position and size limits as text.js
+   (first element of the activity or of its inner wrapper, no third child).
+   The rules are kept apart: a browser without :has() drops a whole selector
+   list that contains it. !important wins over the theme rules for div.inline. */
+.exe-text-activity dl.exe-text-info-empty,
+.exe-text-activity dl > div.inline.exe-text-info-empty {
+    display: none !important;
+}
+
+.exe-text-activity > dl.exe-text-task-info:first-child:not(:has(> :nth-child(3))) > div.inline:has(> dt + dd:empty),
+.exe-text-activity > div:first-child > dl.exe-text-task-info:first-child:not(:has(> :nth-child(3))) > div.inline:has(> dt + dd:empty) {
+    display: none !important;
+}
+
 .idevice_node.text .iDevice_buttons.feedback-button {
     margin-bottom: 1em;
 }
