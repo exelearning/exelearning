@@ -209,20 +209,72 @@ var $text = {
     },
 
     /**
-     * Hide the task information rows (Duration / Grouping) that have no value.
+     * Hide the task information rows (Duration / Grouping) that have no value,
+     * and the whole list when both are empty.
      * The rows stay in the HTML because the editor reads them by position
      * (first row: duration, second row: grouping); they are only hidden.
-     * The CSS hides rows whose <dd> is :empty; this also covers older content
-     * where the empty <dd> holds whitespace.
+     * Only the task information list is touched (see getTaskInfoList), never
+     * definition lists written by the author. It also covers older content,
+     * which may hold whitespace in an empty <dd>, without saving it again.
      * @param {HTMLElement} node - The iDevice node
      */
     hideEmptyTaskInfo(node) {
         if (!node || !node.querySelectorAll) return;
-        node.querySelectorAll('dl > div.inline').forEach((row) => {
-            const dd = row.querySelector('dd');
-            const empty = !!dd && dd.textContent.trim() === '';
-            row.classList.toggle(this.emptyInfoClass, empty);
+        node.querySelectorAll('.exe-text-activity').forEach((activity) => {
+            const list = this.getTaskInfoList(activity);
+            if (!list) return;
+            const rows = Array.from(list.children);
+            let allEmpty = true;
+            rows.forEach((row) => {
+                const empty = this.isEmptyTaskInfoValue(row.querySelector(':scope > dd'));
+                row.classList.toggle(this.emptyInfoClass, empty);
+                if (!empty) allEmpty = false;
+            });
+            list.classList.toggle(this.emptyInfoClass, allEmpty);
         });
+    },
+
+    /**
+     * The task information list of a Text iDevice activity, or null.
+     * It is the first element of .exe-text-activity, or of its inner wrapper
+     * <div> (older content and getHTMLView), and it only holds one or two
+     * <div class="inline"> rows, each with a <dt> and a <dd>.
+     * @param {HTMLElement} activity - The .exe-text-activity element
+     * @returns {HTMLElement|null}
+     */
+    getTaskInfoList(activity) {
+        const first = activity.firstElementChild;
+        const candidates = [first, first && first.tagName === 'DIV' ? first.firstElementChild : null];
+        return (
+            candidates.find((el) => el && el.tagName === 'DL' && this.isTaskInfoList(el)) || null
+        );
+    },
+
+    /**
+     * Whether a <dl> has the task information structure.
+     * @param {HTMLElement} dl
+     * @returns {boolean}
+     */
+    isTaskInfoList(dl) {
+        const rows = Array.from(dl.children);
+        if (rows.length < 1 || rows.length > 2) return false;
+        return rows.every(
+            (row) =>
+                row.tagName === 'DIV' &&
+                row.classList.contains('inline') &&
+                !!row.querySelector(':scope > dt') &&
+                !!row.querySelector(':scope > dd')
+        );
+    },
+
+    /**
+     * Whether a task information value is empty: no text and no elements
+     * (an image or any other element counts as content).
+     * @param {HTMLElement|null} dd
+     * @returns {boolean}
+     */
+    isEmptyTaskInfoValue(dd) {
+        return !!dd && dd.children.length === 0 && dd.textContent.trim() === '';
     },
 
     createInfoHTML(

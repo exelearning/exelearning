@@ -15,11 +15,24 @@
     margin-left: 10px;
 }
 
-/* Task information: hide the Duration or Grouping row when it has no value.
-   The row stays in the HTML (the editor reads the rows by position), so it is
-   only hidden. !important wins over the theme rules for div.inline. */
-.exe-text-activity dl > div.inline:has(> dd:empty),
-.exe-text-activity dl > div.inline.exe-text-info-empty {
+/* Task information: hide the Duration or Grouping row when it has no value,
+   and the whole list when both are empty. The rows stay in the HTML (the
+   editor reads them by position), so they are only hidden. Only the task
+   information list is targeted: the first <dl> of the activity (or of its
+   inner wrapper), never definition lists written by the author.
+   !important wins over the theme rules for div.inline.
+   The two rules are kept apart: a browser without :has() drops a whole
+   selector list that contains it, and the class set by text.js must still
+   work there. */
+.exe-text-activity > dl:first-child.exe-text-info-empty,
+.exe-text-activity > div:first-child > dl:first-child.exe-text-info-empty,
+.exe-text-activity > dl:first-child > div.inline.exe-text-info-empty,
+.exe-text-activity > div:first-child > dl:first-child > div.inline.exe-text-info-empty {
+    display: none !important;
+}
+
+.exe-text-activity > dl:first-child > div.inline:has(> dt + dd:empty),
+.exe-text-activity > div:first-child > dl:first-child > div.inline:has(> dt + dd:empty) {
     display: none !important;
 }
 
