@@ -316,6 +316,86 @@ describe('text iDevice export', () => {
       expect(() => $text.hideEmptyTaskInfo(null)).not.toThrow();
     });
 
+    it('hides both rows and the whole list when both fields are empty', () => {
+      const node = makeNode(row('Duration', '') + row('Grouping', ''));
+      $text.hideEmptyTaskInfo(node);
+      expect(hidden(node)).toEqual([true, true]);
+      expect(node.querySelector('dl').classList.contains('exe-text-info-empty')).toBe(true);
+    });
+
+    it('does not hide the list when one field has a value', () => {
+      const node = makeNode(row('Duration', '45 min') + row('Grouping', ''));
+      $text.hideEmptyTaskInfo(node);
+      expect(node.querySelector('dl').classList.contains('exe-text-info-empty')).toBe(false);
+    });
+
+    it('handles older saved content (inner wrapper, whitespace) without saving it again', () => {
+      // Same markup as the Text iDevices in test/fixtures/basic-example.elp.
+      const node = document.createElement('div');
+      node.innerHTML =
+        '<div class="exe-text-template"><div class="textIdeviceContent"> <div class="exe-text-activity"> <div> <dl> ' +
+        '<div class="inline"> <dt><span title="Duration">Duration</span></dt> <dd> 2 hours </dd> </div> ' +
+        '<div class="inline"> <dt><span title=""></span></dt> <dd> </dd> </div> ' +
+        '</dl><p>Description 1</p> </div> </div></div></div>';
+      $text.hideEmptyTaskInfo(node);
+      expect(hidden(node)).toEqual([false, true]);
+    });
+
+    it('treats a value with an image as not empty', () => {
+      const node = makeNode(row('Duration', '<img src="clock.png" alt="45 min">') + row('Grouping', ''));
+      $text.hideEmptyTaskInfo(node);
+      expect(hidden(node)).toEqual([false, true]);
+    });
+
+    it('leaves author definition lists untouched, including rows with images', () => {
+      const node = document.createElement('div');
+      node.innerHTML =
+        '<div class="exe-text-activity">' +
+        `<dl>${row('Duration', '45 min')}${row('Grouping', '')}</dl>` +
+        '<p>Text</p>' +
+        `<dl class="author">${row('Term', '')}${row('Picture', '<img src="a.png" alt="A">')}</dl>` +
+        '<dl class="exe-dl"><dt>REA</dt><dd><img src="b.png" alt="B"></dd><dt>Empty</dt><dd></dd></dl>' +
+        '</div>';
+      $text.hideEmptyTaskInfo(node);
+      const authorRows = node.querySelectorAll('dl.author > div.inline');
+      expect(Array.from(authorRows).map((r) => r.classList.contains('exe-text-info-empty'))).toEqual([false, false]);
+      expect(node.querySelectorAll('dl.exe-dl .exe-text-info-empty').length).toBe(0);
+      expect(node.querySelector('dl.author').classList.contains('exe-text-info-empty')).toBe(false);
+    });
+
+    it('ignores a first definition list that does not have the task information structure', () => {
+      const node = document.createElement('div');
+      node.innerHTML =
+        '<div class="exe-text-activity"><dl class="exe-dl"><dt>Term</dt><dd></dd></dl><p>Text</p></div>';
+      $text.hideEmptyTaskInfo(node);
+      expect(node.querySelectorAll('.exe-text-info-empty').length).toBe(0);
+
+      const three = makeNode(row('A', '') + row('B', '') + row('C', ''));
+      $text.hideEmptyTaskInfo(three);
+      expect(three.querySelectorAll('.exe-text-info-empty').length).toBe(0);
+    });
+
+    it('ignores definition lists outside the task information block', () => {
+      const node = document.createElement('div');
+      node.innerHTML = `<div class="exe-text-activity"><p>Text</p><dl>${row('Duration', '')}</dl></div>`;
+      $text.hideEmptyTaskInfo(node);
+      expect(node.querySelectorAll('.exe-text-info-empty').length).toBe(0);
+    });
+
+    it('keeps the class rule apart from :has() in the CSS (browsers without :has() drop the whole list)', () => {
+      const css = readFileSync(join(__dirname, 'text.css'), 'utf-8').replace(/\/\*[\s\S]*?\*\//g, '');
+      const rules = css.split('}').map((rule) => rule.split('{')[0].trim()).filter(Boolean);
+      const classRules = rules.filter((sel) => sel.includes('.exe-text-info-empty'));
+      expect(classRules.length).toBeGreaterThan(0);
+      classRules.forEach((sel) => expect(sel).not.toContain(':has('));
+      const hasRules = rules.filter((sel) => sel.includes(':has('));
+      expect(hasRules.length).toBeGreaterThan(0);
+      // Every selector is limited to the task information list of the activity.
+      [...classRules, ...hasRules].forEach((sel) =>
+        sel.split(',').forEach((one) => expect(one.trim()).toMatch(/^\.exe-text-activity > (div:first-child > )?dl:first-child/))
+      );
+    });
+
     it('is applied by renderBehaviour', () => {
       document.body.innerHTML = '';
       const node = makeNode(row('Duration', '45 min') + row('Grouping', ''));
