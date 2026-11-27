@@ -3,7 +3,10 @@ import IdevicesEngine from './idevices/idevicesEngine.js';
 import StructureEngine from './structure/structureEngine.js';
 import ImportProgress from '../interface/importProgress.js';
 import { buildMissingAssetsNotice } from './missingAssetsNotice.js';
-import { buildDamagedPropertiesNotice } from './damagedPropertiesNotice.js';
+import {
+    buildDamagedPropertiesNotice,
+    buildRepairedPropertiesNotice,
+} from './damagedPropertiesNotice.js';
 import { isImportCancelled } from '../interface/importResult.js';
 
 // Use global AppLogger for debug-controlled logging
@@ -315,21 +318,23 @@ export default class projectManager {
 
     /**
      * Tell the author what the import could not fully restore: activities whose
-     * saved data is damaged (#2190) and activities referencing files the package
-     * did not carry (#2223). Called from every browser import path through
+     * saved data is damaged (#2190) or was repaired (#2611), and activities
+     * referencing files the package did not carry (#2223). Called from every browser import path through
      * `importFromElpxViaYjs`, so the notices do not depend on which entry point
      * started the import.
      *
      * The alert modal is a singleton — a second show() replaces the first — so
-     * when both reports have content they must share one dialog.
+     * when several reports have content they must share one dialog.
      *
-     * @param {Object} stats - Import result, `malformedProperties` and
-     *   `missingAssets` are the reports
+     * @param {Object} stats - Import result, `malformedProperties`,
+     *   `repairedProperties` and `missingAssets` are the reports
      */
     showImportNotices(stats) {
         const notices = [];
         const damaged = buildDamagedPropertiesNotice(stats?.malformedProperties);
         if (damaged) notices.push({ ...damaged, contentId: 'damaged-activities' });
+        const repaired = buildRepairedPropertiesNotice(stats?.repairedProperties);
+        if (repaired) notices.push({ ...repaired, contentId: 'repaired-activities' });
         const missing = buildMissingAssetsNotice(
             stats?.missingAssets,
             this._yjsBridge?.documentManager?.getNavigation(),
