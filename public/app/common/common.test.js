@@ -297,6 +297,59 @@ describe('common.js $exe helpers', () => {
     });
   });
 
+  describe('$exeDevices.iDevice.feedback', () => {
+    const feedback = () => global.$exeDevices.iDevice.feedback;
+    const make = (feedbackId = '') => {
+      document.body.innerHTML =
+        '<div class="iDevice_buttons feedback-button"><input type="button" class="feedbacktooglebutton" value="Show"></div>' +
+        `<div class="feedback js-feedback"${feedbackId ? ` id="${feedbackId}"` : ''}>Text</div>`;
+      return {
+        button: document.querySelector('.feedbacktooglebutton'),
+        panel: document.querySelector('.feedback'),
+      };
+    };
+
+    it('links the button to the feedback and starts collapsed', () => {
+      const { button, panel } = make();
+      feedback().init(button, panel);
+      expect(panel.id).toMatch(/^exe-feedback-\d+$/);
+      expect(button.getAttribute('aria-controls')).toBe(panel.id);
+      expect(button.getAttribute('aria-expanded')).toBe('false');
+    });
+
+    it('keeps an existing feedback id and gives each feedback its own id', () => {
+      const { button, panel } = make('my-feedback');
+      feedback().init(button, panel, true);
+      expect(panel.id).toBe('my-feedback');
+      expect(button.getAttribute('aria-controls')).toBe('my-feedback');
+      expect(button.getAttribute('aria-expanded')).toBe('true');
+
+      const first = make();
+      feedback().init(first.button, first.panel);
+      const firstId = first.panel.id;
+      const second = make();
+      feedback().init(second.button, second.panel);
+      expect(second.panel.id).not.toBe(firstId);
+    });
+
+    it('updates the state', () => {
+      const { button, panel } = make();
+      feedback().init(button, panel);
+      feedback().setExpanded(button, true);
+      expect(button.getAttribute('aria-expanded')).toBe('true');
+      feedback().setExpanded(button, false);
+      expect(button.getAttribute('aria-expanded')).toBe('false');
+    });
+
+    it('ignores missing elements', () => {
+      const { button } = make();
+      expect(() => feedback().init(null, null)).not.toThrow();
+      expect(() => feedback().init(button, null)).not.toThrow();
+      expect(button.hasAttribute('aria-controls')).toBe(false);
+      expect(() => feedback().setExpanded(null, true)).not.toThrow();
+    });
+  });
+
   describe('report.showPassScoreNotice', () => {
     const report = () => global.$exeDevices.iDevice.gamification.report;
     const game = (overrides = {}) =>

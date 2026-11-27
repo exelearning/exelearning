@@ -255,4 +255,83 @@ describe('text iDevice export', () => {
       expect(result).toContain('feedbacktooglebutton');
     });
   });
+
+  describe('feedback button state (aria-controls / aria-expanded)', () => {
+    let helper;
+    let origHelper;
+    let origIs;
+    let origFxOff;
+
+    beforeEach(() => {
+      origHelper = global.$exeDevices.iDevice.feedback;
+      helper = { init: vi.fn(), setExpanded: vi.fn() };
+      global.$exeDevices.iDevice.feedback = helper;
+      // happy-dom/jsdom have no layout, so jQuery's :visible is always false:
+      // read the inline display instead.
+      origIs = $.fn.is;
+      $.fn.is = function (selector) {
+        if (selector === ':visible') return this.length > 0 && this[0].style.display !== 'none';
+        return origIs.call(this, selector);
+      };
+      origFxOff = $.fx.off;
+      $.fx.off = true;
+      document.body.innerHTML =
+        '<div id="idev-1"><div class="exe-text-template">' +
+        '<p>Text</p>' +
+        '<div class="iDevice_buttons feedback-button js-required"><input type="button" class="feedbacktooglebutton" value="Show|Hide"></div>' +
+        '<div class="feedback js-feedback js-hidden" style="display: none;"><p>Answer</p></div>' +
+        '</div></div>';
+    });
+
+    afterEach(() => {
+      global.$exeDevices.iDevice.feedback = origHelper;
+      $.fn.is = origIs;
+      $.fx.off = origFxOff;
+      document.body.innerHTML = '';
+    });
+
+    it('links the button to its feedback, collapsed, when rendered', () => {
+      const origIsInExe = eXe.app.isInExe;
+      eXe.app.isInExe = () => false;
+      try {
+        $text.renderBehaviour({ ideviceId: 'idev-1' });
+      } finally {
+        eXe.app.isInExe = origIsInExe;
+      };
+      const btn = document.querySelector('.feedbacktooglebutton');
+      expect(helper.init).toHaveBeenCalledWith(btn, document.querySelector('.feedback'), false);
+    });
+
+    it('reports the state when the feedback is shown and hidden', () => {
+      const origIsInExe = eXe.app.isInExe;
+      eXe.app.isInExe = () => false;
+      try {
+        $text.renderBehaviour({ ideviceId: 'idev-1' });
+      } finally {
+        eXe.app.isInExe = origIsInExe;
+      };
+      const btn = document.querySelector('.feedbacktooglebutton');
+      $(btn).trigger('click');
+      expect(helper.setExpanded).toHaveBeenLastCalledWith(btn, true);
+      expect(btn.value).toBe('Hide');
+      $text.working = false;
+      $(btn).trigger('click');
+      expect(helper.setExpanded).toHaveBeenLastCalledWith(btn, false);
+      expect(btn.value).toBe('Show');
+    });
+
+    it('still works when the shared helper is not loaded', () => {
+      global.$exeDevices.iDevice.feedback = undefined;
+      const origIsInExe = eXe.app.isInExe;
+      eXe.app.isInExe = () => false;
+      try {
+        $text.renderBehaviour({ ideviceId: 'idev-1' });
+      } finally {
+        eXe.app.isInExe = origIsInExe;
+      };
+      const btn = document.querySelector('.feedbacktooglebutton');
+      expect(() => $(btn).trigger('click')).not.toThrow();
+      expect(btn.value).toBe('Hide');
+    });
+  });
 });

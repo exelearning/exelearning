@@ -155,6 +155,62 @@ describe('casestudy iDevice export', () => {
             expect(btn.val()).toBe('Show feedback');
         });
 
+        describe('aria-controls / aria-expanded', () => {
+            let helper;
+            let origHelper;
+
+            beforeEach(() => {
+                origHelper = global.$exeDevices.iDevice.feedback;
+                helper = { init: vi.fn(), setExpanded: vi.fn() };
+                global.$exeDevices.iDevice.feedback = helper;
+            });
+
+            afterEach(() => {
+                global.$exeDevices.iDevice.feedback = origHelper;
+            });
+
+            it('links each button to its own feedback, collapsed', () => {
+                buildActivity('Show|Hide');
+                buildActivity('Open|Close');
+                $casestudy.addEvents({});
+                const buttons = document.querySelectorAll('.CSP-FeedbackBtn');
+                const panels = document.querySelectorAll('.CSP-FeedbackText');
+                expect(helper.init).toHaveBeenCalledTimes(2);
+                expect(helper.init).toHaveBeenNthCalledWith(1, buttons[0], panels[0], false);
+                expect(helper.init).toHaveBeenNthCalledWith(2, buttons[1], panels[1], false);
+            });
+
+            it('does not link a button again on a second addEvents call', () => {
+                buildActivity('Show|Hide');
+                $casestudy.addEvents({});
+                document.querySelector('.CSP-FeedbackBtn').setAttribute('aria-controls', 'x');
+                $casestudy.addEvents({});
+                expect(helper.init).toHaveBeenCalledTimes(1);
+            });
+
+            it('reports the state when the feedback is shown and hidden', () => {
+                buildActivity('Show|Hide');
+                $casestudy.addEvents({});
+                const btn = $(`.CSP-FeedbackBtn`);
+                const $fb = btn.closest('.CSP-ActivityDiv').find('.CSP-FeedbackText');
+                $fb.css('display', 'none');
+                btn.trigger('click');
+                expect(helper.setExpanded).toHaveBeenLastCalledWith(btn[0], true);
+                $fb.css('display', 'block');
+                btn.trigger('click');
+                expect(helper.setExpanded).toHaveBeenLastCalledWith(btn[0], false);
+            });
+
+            it('still works when the shared helper is not loaded', () => {
+                global.$exeDevices.iDevice.feedback = undefined;
+                buildActivity('Show|Hide');
+                $casestudy.addEvents({});
+                const btn = $(`.CSP-FeedbackBtn`);
+                expect(() => btn.trigger('click')).not.toThrow();
+                expect(btn.val()).toBe('Hide');
+            });
+        });
+
         it('does not reinitialize data attributes on second addEvents call', () => {
             buildActivity('Show|Hide');
             $casestudy.addEvents({});
