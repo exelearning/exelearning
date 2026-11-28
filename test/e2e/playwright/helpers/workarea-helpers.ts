@@ -56,6 +56,11 @@ export async function waitForAppReady(page: Page, timeout = 30000): Promise<void
             await waitForLoadingScreen(page, Math.min(15000, remaining));
             return;
         } catch (error) {
+            // A test timeout closes the page first. Reloading it only replaces
+            // the original failure with "browser has been closed".
+            if (page.isClosed()) {
+                throw error;
+            }
             const onWorkarea = page.url().includes('/workarea');
             if (retriedReload || !onWorkarea || Date.now() >= deadline) {
                 throw error;
