@@ -348,6 +348,19 @@ describe('common.js $exe helpers', () => {
       expect(button.hasAttribute('aria-controls')).toBe(false);
       expect(() => feedback().setExpanded(null, true)).not.toThrow();
     });
+
+    it('does not reuse an id already present in the document', () => {
+      const { button, panel } = make();
+      const taken = 'exe-feedback-' + (feedback().idCount + 1);
+      const other = document.createElement('div');
+      other.id = taken;
+      document.body.appendChild(other);
+      feedback().init(button, panel);
+      expect(panel.id).not.toBe(taken);
+      expect(panel.id).toMatch(/^exe-feedback-\d+$/);
+      expect(document.querySelectorAll('[id="' + panel.id + '"]').length).toBe(1);
+      expect(button.getAttribute('aria-controls')).toBe(panel.id);
+    });
   });
 
   describe('report.showPassScoreNotice', () => {

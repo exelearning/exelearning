@@ -1231,8 +1231,12 @@ var $exeDevices = {
             init: function (button, feedback, expanded) {
                 if (!button || !feedback) return;
                 if (!feedback.id) {
-                    $exeDevices.iDevice.feedback.idCount += 1;
-                    feedback.id = 'exe-feedback-' + $exeDevices.iDevice.feedback.idCount;
+                    var newId;
+                    do {
+                        $exeDevices.iDevice.feedback.idCount += 1;
+                        newId = 'exe-feedback-' + $exeDevices.iDevice.feedback.idCount;
+                    } while (document.getElementById(newId));
+                    feedback.id = newId;
                 }
                 button.setAttribute('aria-controls', feedback.id);
                 $exeDevices.iDevice.feedback.setExpanded(button, !!expanded);
