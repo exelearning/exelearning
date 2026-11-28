@@ -177,6 +177,28 @@ test.describe('Three Sixty Viewer iDevice', () => {
         await expect(page.locator('#threeSixtyAutorotate')).toBeChecked();
     });
 
+    test('vendored three.min.js defines THREE and OrbitControls as a classic script', async ({ authenticatedPage }) => {
+        const page = authenticatedPage;
+        const result = await page.evaluate(async () => {
+            await new Promise((resolve, reject) => {
+                const script = document.createElement('script');
+                script.src = '/files/perm/idevices/base/three-sixty-viewer/export/three.min.js';
+                script.onload = resolve;
+                script.onerror = reject;
+                document.head.appendChild(script);
+            });
+            const T = (window as any).THREE;
+            const camera = new T.PerspectiveCamera(75, 1, 0.1, 1000);
+            const controls = new T.OrbitControls(camera, document.createElement('canvas'));
+            controls.update();
+            controls.dispose();
+            return { revision: T.REVISION, sphere: typeof T.SphereGeometry, textures: typeof T.TextureLoader };
+        });
+        expect(Number(result.revision)).toBeGreaterThanOrEqual(186);
+        expect(result.sphere).toBe('function');
+        expect(result.textures).toBe('function');
+    });
+
     test('draws the viewer in the editor, with three.js loaded before it starts', async ({
         authenticatedPage,
         createProject,
