@@ -28,6 +28,27 @@ describe('filemanager.njk upload input accept attribute (issue #2034)', () => {
   });
 });
 
+// Firefox resolves src="" against the document base URL, issues a GET for it
+// and immediately aborts it (NS_BINDING_ABORTED), which pollutes the console
+// and hits the server (or the embedding script named by <base href>) with a
+// useless request. The template must not ship empty src attributes.
+describe('filemanager.njk media preview empty src (issue #2691)', () => {
+  const previewClasses = [
+    'media-library-preview-img',
+    'media-library-preview-video',
+    'media-library-preview-audio',
+  ];
+
+  it.each(previewClasses)('renders .%s without a src attribute', (className) => {
+    const njkPath = join(process.cwd(), 'views', 'workarea', 'modals', 'pages', 'filemanager.njk');
+    const source = readFileSync(njkPath, 'utf-8');
+
+    const tagMatch = source.match(new RegExp(`<[a-z]+[^>]*class="${className}"[^>]*>`));
+    expect(tagMatch).not.toBeNull();
+    expect(tagMatch[0]).not.toMatch(/\ssrc=/);
+  });
+});
+
 describe('ModalFilemanager', () => {
   let modal;
   let mockManager;
@@ -1387,13 +1408,32 @@ it('should filter by accept=3d for 3D models', () => {
       modal.acceptFilter = 'image';
       modal.searchInput.value = 'query';
       modal.close();
-      expect(modal.previewVideo.getAttribute('src') || '').toBe('');
-      expect(modal.previewAudio.getAttribute('src') || '').toBe('');
+      // Clearing with src = '' would make Firefox re-request the base URL.
+      expect(modal.previewVideo.hasAttribute('src')).toBe(false);
+      expect(modal.previewAudio.hasAttribute('src')).toBe(false);
       expect(modal.selectedAsset).toBeNull();
       expect(modal.onSelectCallback).toBeNull();
       expect(modal.acceptFilter).toBeNull();
       expect(modal.searchInput.value).toBe('');
       expect(modal.currentPage).toBe(1);
+    });
+
+    it('should drop the image preview src instead of emptying it (issue #2691)', () => {
+      modal.previewImg.src = 'blob:image';
+      modal.close();
+      expect(modal.previewImg.hasAttribute('src')).toBe(false);
+    });
+
+    it('should reload media elements after dropping their src (issue #2691)', () => {
+      const videoLoad = vi.fn();
+      const audioLoad = vi.fn();
+      modal.previewVideo.load = videoLoad;
+      modal.previewAudio.load = audioLoad;
+      modal.previewVideo.src = 'blob:video';
+      modal.previewAudio.src = 'blob:audio';
+      modal.close();
+      expect(videoLoad).toHaveBeenCalled();
+      expect(audioLoad).toHaveBeenCalled();
     });
 
     it('should reset typeFilter and filterSelect', () => {
