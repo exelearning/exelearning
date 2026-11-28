@@ -144,6 +144,16 @@ const COPIES = [
         dest: pub('files/perm/idevices/base/rubric/export/html2canvas.js'),
     },
 
+    // jsPDF (checklist, progress report and rubric "save as PDF"). One shared
+    // copy, lazy-loaded by $exe.loadJsPDF (common.js) and added to exports only
+    // when one of those iDevices is present (LIBRARY_PATTERNS 'jspdf').
+    // stripSourceMap: exports ship this file but not the map.
+    {
+        src: nm('jspdf/dist/jspdf.umd.min.js'),
+        dest: pub('libs/jspdf/jspdf.umd.min.js'),
+        stripSourceMap: true,
+    },
+
     // SimpleLightbox — image-gallery iDevice. image-gallery.js builds the
     // title/author/license caption itself (captionSelector function).
     {

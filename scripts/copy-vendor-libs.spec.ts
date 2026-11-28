@@ -59,6 +59,13 @@ describe('copy-vendor-libs', () => {
             expect(dests.some(d => d.endsWith('rubric/export/html2canvas.js'))).toBe(true);
         });
 
+        it('copies jsPDF once, to the shared libs/ folder, without its source map comment', () => {
+            const jspdfCopies = COPIES.filter(c => c.src.replace(/\\/g, '/').endsWith('jspdf/dist/jspdf.umd.min.js'));
+            expect(jspdfCopies).toHaveLength(1);
+            expect(jspdfCopies[0].dest.replace(/\\/g, '/')).toMatch(/public\/libs\/jspdf\/jspdf\.umd\.min\.js$/);
+            expect(jspdfCopies[0].stripSourceMap).toBe(true);
+        });
+
         // (c) every COPIES src path resolves after install
         it('resolves every source path (run `bun install` first)', () => {
             const missing = COPIES.filter(c => !fs.existsSync(c.src)).map(c => path.relative(projectRoot, c.src));
