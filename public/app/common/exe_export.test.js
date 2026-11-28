@@ -330,6 +330,43 @@ describe('exe_export.js', () => {
         expect(node.firstElementChild.style.display).toBe('none');
       });
 
+      it('syncs the toggle button state when it opens feedback for print', () => {
+        window.$exeExport.printing = { kind: 'document', activities: null };
+        const node = document.createElement('div');
+        node.innerHTML =
+          '<input type="button" class="feedbacktooglebutton" aria-controls="exe-feedback-print" aria-expanded="false">' +
+          '<div id="exe-feedback-print" class="feedback js-hidden" style="display: none">Answer</div>';
+
+        window.$exeExport.afterIdeviceRendered(node);
+
+        const feedback = node.querySelector('.feedback');
+        const button = node.querySelector('[aria-controls="exe-feedback-print"]');
+        expect(feedback.style.display).toBe('');
+        expect(button.getAttribute('aria-expanded')).toBe('true');
+      });
+
+      it('matches the toggle button when the feedback id has special characters', () => {
+        window.$exeExport.printing = { kind: 'document', activities: null };
+        const node = document.createElement('div');
+        // The shared helper keeps author-provided ids, which may contain
+        // characters that break a CSS selector (a double quote, a backslash...).
+        const specialId = 'exe-feedback-"weird\\id';
+        const button = document.createElement('input');
+        button.type = 'button';
+        button.className = 'feedbacktooglebutton';
+        button.setAttribute('aria-controls', specialId);
+        button.setAttribute('aria-expanded', 'false');
+        const feedback = document.createElement('div');
+        feedback.id = specialId;
+        feedback.className = 'feedback js-hidden';
+        feedback.style.display = 'none';
+        node.append(button, feedback);
+
+        expect(() => window.$exeExport.afterIdeviceRendered(node)).not.toThrow();
+        expect(feedback.style.display).toBe('');
+        expect(button.getAttribute('aria-expanded')).toBe('true');
+      });
+
       it('leaves visible feedback and other hidden content alone', () => {
         window.$exeExport.printing = { kind: 'document' };
         const node = document.createElement('div');
