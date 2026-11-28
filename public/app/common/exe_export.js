@@ -604,9 +604,15 @@ window.$exeExport = {
                 // The feedback is now shown for print, so keep the state of its
                 // toggle button in sync for assistive technologies (the feedback
                 // helper sets aria-controls to the feedback id). See #2822.
+                // Match by comparing aria-controls directly rather than building
+                // a CSS selector: the id may be author-provided and contain
+                // characters that would make the selector invalid. See #2824.
                 if (feedback.id) {
-                    const toggle = ideviceNode.querySelector('[aria-controls="' + feedback.id + '"]');
-                    if (toggle) toggle.setAttribute('aria-expanded', 'true');
+                    ideviceNode.querySelectorAll('[aria-controls]').forEach(toggle => {
+                        if (toggle.getAttribute('aria-controls') === feedback.id) {
+                            toggle.setAttribute('aria-expanded', 'true');
+                        }
+                    });
                 }
             });
         }

@@ -345,6 +345,28 @@ describe('exe_export.js', () => {
         expect(button.getAttribute('aria-expanded')).toBe('true');
       });
 
+      it('matches the toggle button when the feedback id has special characters', () => {
+        window.$exeExport.printing = { kind: 'document', activities: null };
+        const node = document.createElement('div');
+        // The shared helper keeps author-provided ids, which may contain
+        // characters that break a CSS selector (a double quote, a backslash...).
+        const specialId = 'exe-feedback-"weird\\id';
+        const button = document.createElement('input');
+        button.type = 'button';
+        button.className = 'feedbacktooglebutton';
+        button.setAttribute('aria-controls', specialId);
+        button.setAttribute('aria-expanded', 'false');
+        const feedback = document.createElement('div');
+        feedback.id = specialId;
+        feedback.className = 'feedback js-hidden';
+        feedback.style.display = 'none';
+        node.append(button, feedback);
+
+        expect(() => window.$exeExport.afterIdeviceRendered(node)).not.toThrow();
+        expect(feedback.style.display).toBe('');
+        expect(button.getAttribute('aria-expanded')).toBe('true');
+      });
+
       it('leaves visible feedback and other hidden content alone', () => {
         window.$exeExport.printing = { kind: 'document' };
         const node = document.createElement('div');
