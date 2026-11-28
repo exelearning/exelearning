@@ -217,6 +217,15 @@ describe('ServerMermaidPreRenderer', () => {
                 selector,
             ) as Element;
 
+        it.each([
+            ['ellipse', '<ellipse cx="10" cy="20" rx="4" ry="7"/>', { x: 6, y: 13, width: 8, height: 14 }],
+            ['line', '<line x1="5" y1="8" x2="-3" y2="-2"/>', { x: -3, y: -2, width: 8, height: 10 }],
+            ['polygon', '<polygon points="-2,4 10,20 6,-8"/>', { x: -2, y: -8, width: 12, height: 28 }],
+            ['polyline', '<polyline points="0,0 8,3"/>', { x: 0, y: 0, width: 8, height: 3 }],
+        ])('measures %s shapes used by diagrams', (tag, markup, expected) => {
+            expect(estimateBBox(element(markup, tag))).toEqual(expected);
+        });
+
         it('measures text by its length, from its baseline', () => {
             expect(estimateBBox(element('<text x="10" y="20">Inicio</text>', 'text'))).toEqual({
                 x: 10,

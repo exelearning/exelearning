@@ -46,6 +46,36 @@ describe('theme-parser', () => {
         },
     };
 
+    it('uses fallback files when no filesystem adapter is supplied', () => {
+        const config = parseThemeConfig('<theme><name>Fallback</name></theme>', {
+            themeId: 'fallback',
+            themePath: '/themes/fallback',
+            type: 'base',
+            themeUrl: '/themes/fallback',
+        });
+        expect(config?.cssFiles).toEqual(['style.css']);
+        expect(config?.js).toEqual([]);
+    });
+
+    it('scans string directory entries with the default path adapter', () => {
+        const config = parseThemeConfig('<theme/>', {
+            themeId: 'custom',
+            themePath: '/themes/custom',
+            type: 'base',
+            themeUrl: '/themes/custom',
+            fs: {
+                existsSync: () => true,
+                readFileSync: () => '',
+                readdirSync: p =>
+                    p.endsWith('/icons') ? ['alarm.png', 'notes.txt'] : ['main.css', 'main.js', 'notes.txt'],
+            },
+        });
+        expect(config?.cssFiles).toEqual(['main.css']);
+        expect(config?.js).toEqual(['main.js']);
+        expect(config?.icons.alarm.id).toBe('alarm');
+        expect(config?.icons.notes).toBeUndefined();
+    });
+
     describe('parseThemeConfig', () => {
         it('should parse basic theme config', () => {
             const xmlContent = `<?xml version="1.0" encoding="utf-8"?>

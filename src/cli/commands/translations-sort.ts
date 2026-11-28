@@ -291,27 +291,30 @@ ${colors.cyan('Examples:')}
 `);
 }
 
-// Allow running directly
-if (import.meta.main) {
-    const { positional, flags } = parseArgs(process.argv);
+/** Run the direct CLI entry point and return its process exit status. */
+export async function runCli(argv: string[] = process.argv): Promise<number> {
+    const { positional, flags } = parseArgs(argv);
 
     if (hasHelp(flags)) {
         printHelp();
-        process.exit(EXIT_CODES.SUCCESS);
+        return EXIT_CODES.SUCCESS;
     }
 
-    execute(positional, flags)
-        .then(result => {
-            if (result.success) {
-                success(result.message);
-                process.exit(EXIT_CODES.SUCCESS);
-            } else {
-                error(result.message);
-                process.exit(EXIT_CODES.FAILURE);
-            }
-        })
-        .catch(err => {
-            error(err instanceof Error ? err.message : String(err));
-            process.exit(EXIT_CODES.FAILURE);
-        });
+    try {
+        const result = await execute(positional, flags);
+        if (result.success) {
+            success(result.message);
+            return EXIT_CODES.SUCCESS;
+        }
+        error(result.message);
+        return EXIT_CODES.FAILURE;
+    } catch (err) {
+        error(err instanceof Error ? err.message : String(err));
+        return EXIT_CODES.FAILURE;
+    }
+}
+
+// Allow running directly.
+if (import.meta.main) {
+    process.exit(await runCli());
 }
