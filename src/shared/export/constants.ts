@@ -100,6 +100,14 @@ export const LEGACY_IDEVICE_MAPPING: Record<string, string> = {
 // Library Patterns (for detecting required JS/CSS libraries)
 // =============================================================================
 
+/** Content lightbox: stock Tobii first, then the eXe adapter (exe_lightbox.js). */
+const EXE_LIGHTBOX_FILES = [
+    'exe_lightbox/tobii.min.js',
+    'exe_lightbox/exe_lightbox.js',
+    'exe_lightbox/tobii.min.css',
+    'exe_lightbox/exe_lightbox.css',
+];
+
 /**
  * Library detection patterns
  * Used to scan HTML content and determine which libraries to include
@@ -131,26 +139,23 @@ export const LIBRARY_PATTERNS: LibraryPattern[] = [
         files: ['exe_highlighter/exe_highlighter.js', 'exe_highlighter/exe_highlighter.css'],
     },
 
-    // Lightbox for images
-    // isDirectory: true to include sprite images (PNG, GIF) referenced from CSS
+    // Content lightbox for rel="lightbox" links: Tobii (npm, copied by
+    // copy-vendor-libs.js) plus the eXe adapter, loaded in that order.
     {
         name: 'exe_lightbox',
         type: 'rel',
         pattern: 'lightbox',
-        files: ['exe_lightbox/exe_lightbox.js', 'exe_lightbox/exe_lightbox.css'],
-        isDirectory: true,
+        files: EXE_LIGHTBOX_FILES,
     },
 
     // Lightbox for legacy image galleries (`imageGallery` / eXe 2 `exeImageGallery`
     // class tokens). The image-gallery iDevice's `imageGallery-IDevice` uses
-    // SimpleLightbox instead, so it must not pull in prettyPhoto.
-    // isDirectory: true to include sprite images (PNG, GIF) referenced from CSS
+    // SimpleLightbox instead, so it must not pull in exe_lightbox.
     {
         name: 'exe_lightbox_gallery',
         type: 'regex',
         pattern: /class\s*=\s*["'](?:[^"']*\s)?(?:exe)?imageGallery["'\s]/i,
-        files: ['exe_lightbox/exe_lightbox.js', 'exe_lightbox/exe_lightbox.css'],
-        isDirectory: true,
+        files: EXE_LIGHTBOX_FILES,
     },
 
     // Tooltips (qTip2)

@@ -838,13 +838,15 @@ var $exe = {
     },
 
     // Transform links to audios or videos (with rel^='lightbox') in links to inline content
-    // (see prettyPhoto documentation)
+    // and open every lightbox link with exe_lightbox (Tobii)
     // context: optional node whose links have to be transformed (e.g. an iDevice rendered after init)
     setMultimediaGalleries: function (context) {
-        if (typeof ($.prettyPhoto) != 'undefined') {
+        if (typeof window.exeLightbox != 'undefined') {
             var lightboxLinks = $("a[rel^='lightbox']", context);
             lightboxLinks.each(function () {
                 var ref = $(this).attr("href");
+                // No href (e.g. an unsafe one dropped by the editor's sanitizer): nothing to open
+                if (typeof ref != 'string') return;
 
                 // Within eXe replace the blob URL with the URL of the asset to check if isAudio or isVideo
                 if (typeof ref == 'string' && ref.startsWith('blob:') && typeof eXeLearning !== 'undefined' && typeof eXeLearningAssetResolver !== 'undefined') {
@@ -872,60 +874,12 @@ var $exe = {
                 }
             });
             // Re-query after $exeFX.init() has finished rebuilding exe-fx DOM (e.g. accordion rft()).
-            // Both prettyPhoto and the gallery-error fallback use the same post-FX-init set.
-            // The whole page is bound even with a context: prettyPhoto builds its galleries
-            // from the links it is bound to.
+            // Both the lightbox and the gallery-error fallback use the same post-FX-init set.
+            // The whole page is bound even with a context: galleries (rel="lightbox[name]")
+            // are built from every link of the page.
             setTimeout(function() {
                 var currentLightboxLinks = $("a[rel^='lightbox']");
-                currentLightboxLinks.prettyPhoto({
-                    social_tools: "",
-                    deeplinking: false,
-                    opacity: 0.85,
-                    changepicturecallback: function () {
-                        var block = $("#pp_full_res")
-                        var media = $(".exe-media-box-element", block);
-                        if ($exe.loadMediaPlayer != undefined) {
-                            if ($exe.loadMediaPlayer.isReady) {
-                                // No mediaelementplayer in prettyPhoto
-                                // if (media.length == 1) media.mediaelementplayer();
-                                $exe.loadMediaPlayer.isCalledInBox = true;
-                            }
-                        }
-                        // Add a download link and a CSS class to pp_content_container (see exe_lightbox.css)
-                        var cont = $(".pp_content_container");
-                        cont.attr("class", "pp_content_container");
-                        var src = null;
-                        if (media.length == 1) {
-                            if (media[0].hasAttribute('src')) {
-                                src = media.attr('src');
-                            } else {
-                                var sourceEl = media.find('source[src]').first();
-                                if (sourceEl.length) src = sourceEl.attr('src');
-                            }
-                        }
-                        if (src) {
-                            if (media.hasClass("exe-media-box-audio")) cont.attr("class", "pp_content_container with-audio");
-                            // Extension = last dot-segment of the filename, without query string or fragment
-                            var fileName = src.split("/").pop().split("?")[0].split("#")[0];
-                            var dotIndex = fileName.lastIndexOf(".");
-                            var ext = dotIndex > -1 ? fileName.substring(dotIndex + 1) : undefined;
-                            if (typeof ext == 'undefined' || ext == 'undefined' || ext == '') ext = $exe_i18n.download;
-                            $(".pp_details .pp_description").append(' <span class="exe-media-download"><a href="' + src + '" title="' + $exe_i18n.download + '" download>' + ext + '</a></span>');
-                        } else {
-                            // Hide the title at the bottom (we use h2.pp_title instead)
-                            block = $(".pp_inline", block);
-                            if (block.length == 1) $(".pp_description").hide();
-                        }
-                        // Recalculate pp_content height for video elements (screen height + 50px for controls)
-                        var ppVideo = $("#pp_full_res video");
-                        if (ppVideo.length) {
-                            var videoHeight = ppVideo[0].getBoundingClientRect().height;
-                            if (videoHeight > 0) {
-                                $(".pp_content").css('height', videoHeight + 50);
-                            }
-                        }
-                    }
-                });
+                window.exeLightbox.bind();
                 // If there are galleries but no lightbox links, there's an error (e.g. some ePub readers).
                 // See issue #258
                 var eXeGalleries = $('.GalleryIdevice');
@@ -953,7 +907,7 @@ var $exe = {
 
     // Load MediaElement if required - To review (Shall eXe still use MediaElement?)
     loadMediaPlayer: {
-        isCalledInBox: false, // Box = prettyPhoto with video or audio
+        isCalledInBox: false, // Box = lightbox with video or audio
         isReady: false,
         // Start MediaElement
         init: function () {
@@ -995,7 +949,7 @@ var $exe = {
                 }
             });
             $exe.loadMediaPlayer.isReady = true;
-            // No JavaScript player in prettyPhoto
+            // No JavaScript player in the lightbox
             // if (!$exe.loadMediaPlayer.isCalledInBox) $("#pp_full_res .exe-media-box-element").mediaelementplayer();
         }
     },

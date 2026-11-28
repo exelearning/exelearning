@@ -927,12 +927,11 @@ window.$exeExport = {
         // nothing else in this module needs to change.
         overlaySignals : [
             {
-                name: 'exe_lightbox (prettyPhoto, rel="lightbox[...]")',
-                // .pp_pic_holder is created once on first open and never removed; open/closed
-                // is toggled via jQuery show/hide, so existence alone is NOT enough.
-                isActive: function (pm) {
-                    var el = document.querySelector('.pp_pic_holder');
-                    return !!el && !pm.isHidden(el);
+                name: 'exe_lightbox (Tobii, rel="lightbox[...]")',
+                // Tobii's dialog is created once and kept; open/closed is its aria-hidden,
+                // so existence alone is NOT enough.
+                isActive: function () {
+                    return !!document.querySelector('.tobii[aria-hidden="false"]');
                 }
             },
             {
