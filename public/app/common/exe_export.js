@@ -601,6 +601,13 @@ window.$exeExport = {
                 if (this.openedPrintFeedback.has(feedback)) return;
                 this.openedPrintFeedback.add(feedback);
                 if (feedback.style.display === 'none') feedback.style.removeProperty('display');
+                // The feedback is now shown for print, so keep the state of its
+                // toggle button in sync for assistive technologies (the feedback
+                // helper sets aria-controls to the feedback id). See #2822.
+                if (feedback.id) {
+                    const toggle = ideviceNode.querySelector('[aria-controls="' + feedback.id + '"]');
+                    if (toggle) toggle.setAttribute('aria-expanded', 'true');
+                }
             });
         }
     },

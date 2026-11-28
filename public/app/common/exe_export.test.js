@@ -330,6 +330,21 @@ describe('exe_export.js', () => {
         expect(node.firstElementChild.style.display).toBe('none');
       });
 
+      it('syncs the toggle button state when it opens feedback for print', () => {
+        window.$exeExport.printing = { kind: 'document', activities: null };
+        const node = document.createElement('div');
+        node.innerHTML =
+          '<input type="button" class="feedbacktooglebutton" aria-controls="exe-feedback-print" aria-expanded="false">' +
+          '<div id="exe-feedback-print" class="feedback js-hidden" style="display: none">Answer</div>';
+
+        window.$exeExport.afterIdeviceRendered(node);
+
+        const feedback = node.querySelector('.feedback');
+        const button = node.querySelector('[aria-controls="exe-feedback-print"]');
+        expect(feedback.style.display).toBe('');
+        expect(button.getAttribute('aria-expanded')).toBe('true');
+      });
+
       it('leaves visible feedback and other hidden content alone', () => {
         window.$exeExport.printing = { kind: 'document' };
         const node = document.createElement('div');
