@@ -1,7 +1,7 @@
 ---
 id: ADR-2184-01
 title: "Do not implement a generic open-response assessment iDevice"
-status: Proposed
+status: Accepted
 date: 2026-07-16
 tracking_issue: 2184
 legacy_id: ADR-0042

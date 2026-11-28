@@ -1,7 +1,7 @@
 ---
 id: ADR-2019-04
 title: "Presentation mode is activated by the reader through a URL parameter and a visible control, never stored in the project"
-status: Proposed
+status: Accepted
 date: 2026-09-15
 tracking_issue: 2019
 deciders:

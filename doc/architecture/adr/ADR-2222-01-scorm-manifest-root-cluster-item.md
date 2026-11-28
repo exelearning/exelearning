@@ -1,7 +1,7 @@
 ---
 id: ADR-2222-01
 title: "Wrap every exported page in a root cluster item in SCORM/IMS manifests"
-status: Proposed
+status: Accepted
 date: 2026-08-06
 tracking_issue: 2222
 deciders:

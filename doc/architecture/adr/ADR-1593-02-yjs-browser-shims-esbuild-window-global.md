@@ -1,7 +1,7 @@
 ---
 id: ADR-1593-02
 title: "Ship Yjs to the browser as esbuild-built global-window.Y shims generated from root dependencies"
-status: Proposed
+status: Accepted
 date: 2026-07-09
 tracking_issue: 1593
 legacy_id: ADR-0030

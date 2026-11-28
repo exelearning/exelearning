@@ -1,7 +1,7 @@
 ---
 id: ADR-2006-01
 title: "Fail-closed production secrets with a single environment source of truth"
-status: Proposed
+status: Accepted
 date: 2026-07-09
 tracking_issue: 2006
 legacy_id: ADR-0020

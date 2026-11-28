@@ -1,7 +1,7 @@
 ---
 id: ADR-2302-02
 title: "Retire xAPI emission from exports"
-status: Proposed
+status: Accepted
 date: 2026-09-03
 tracking_issue: 2302
 deciders:

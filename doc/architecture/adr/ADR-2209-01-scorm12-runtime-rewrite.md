@@ -1,7 +1,7 @@
 ---
 id: ADR-2209-01
 title: "Rewrite the SCORM 1.2 content runtime with clean AGPL provenance"
-status: Proposed
+status: Accepted
 date: 2026-07-24
 tracking_issue: 2209
 legacy_id: ADR-0001

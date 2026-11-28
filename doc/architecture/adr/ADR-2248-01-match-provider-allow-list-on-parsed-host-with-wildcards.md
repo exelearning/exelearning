@@ -1,7 +1,7 @@
 ---
 id: ADR-2248-01
 title: "Match the provider allow-list on the parsed host, with single-label wildcards"
-status: Proposed
+status: Accepted
 date: 2026-08-12
 tracking_issue: 2248
 deciders:

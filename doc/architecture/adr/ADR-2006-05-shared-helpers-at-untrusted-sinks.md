@@ -1,7 +1,7 @@
 ---
 id: ADR-2006-05
 title: "Untrusted input crosses filesystem and HTML/inline-JS sinks only through shared validation and encoding helpers"
-status: Proposed
+status: Accepted
 date: 2026-07-09
 tracking_issue: 2006
 legacy_id: ADR-0024

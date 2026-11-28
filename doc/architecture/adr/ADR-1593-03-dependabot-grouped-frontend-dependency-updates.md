@@ -1,7 +1,7 @@
 ---
 id: ADR-1593-03
 title: "Govern the newly npm-managed frontend dependencies with grouped Dependabot updates"
-status: Proposed
+status: Accepted
 date: 2026-07-09
 tracking_issue: 1593
 legacy_id: ADR-0031
